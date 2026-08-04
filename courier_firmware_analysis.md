@@ -143,12 +143,67 @@ datapump support:
 - XOR key `0x26` at file `0x1C84D` decodes `NVRAM Sett.s`, confirming a
   user-visible NVRAM settings/report surface in the diagnostic text.
 
+### Recovered `ATY14` source and feature decode
+
+The `ATY14` handler is at `0x85250`. It prints `[0x0a0c]` down to `[0x0a07]`,
+one byte per field, separated by commas, and falls back to the bare `,,,,,`
+literal at `0x8525a` when `[0x0a06]` reads `0xff`.
+
+Those seven bytes are written by the parameter-block unpack at `0x7e007`, which
+copies bytes 0..6 of the accepted configuration record to `0x0a06..0x0a0c`. So
+the printed fields are record bytes 6, 5, 4, 3, 2, 1, matching the field names
+from the archived post:
+
+| `ATY14` field | name | RAM | record byte |
+|---:|---|---|---:|
+| 1 | unused1 | `0x0a0c` | 6 |
+| 2 | unused2 | `0x0a0b` | 5 |
+| 3 | type1 | `0x0a0a` | 4 |
+| 4 | type2 | `0x0a09` | 3 |
+| 5 | **features** | `0x0a08` | 2 |
+| 6 | country | `0x0a07` | 1 |
+
+This corrects the guess above: on this firmware the configuration register dump
+comes from the **memory-mapped parameter sector searched at `0xf8000`**, not from
+the Microwire serial EEPROM bit-banged on port `0x10`. The unpack also feeds
+`[0x0a07]` to `[0x0173]` (country), `[0x0a09]` to `[0x0a04]`, and `[0x0a0a]` to
+`[0x0a03]`, each gated by a bit in the `[0x0a06]` flags byte.
+
+Field 5 is decoded at `0x7e024` through a five-entry table at `0x7e072`:
+
+| features bit | value | label | sets `[0x19d7]` |
+|---:|---:|---|---|
+| 0 | 1 | HST | `0x04` |
+| 1 | 2 | Fax | `0x0a` |
+| 2 | 4 | Terbo | `0x4a` |
+| 3 | 8 | V.FC / V.34 | `0xca` |
+| 4 | 16 | (x2, by inference) | `0x6a` |
+
+The table has exactly five entries, so this firmware recognises exactly five
+feature bits. Bit 4 is real and decoded, and it is the only entry that
+contributes `[0x19d7]` bit `0x20`.
+
+That gives a cheap hardware check. `0x82e7d` tests `[0x19d7]` bit `0x20` to
+select the product code reported by `ATI`/`ATI0`:
+
+| `[0x19d7]` bit `0x20` | EEPROM fitted | `ATI` |
+|---|---|---|
+| set | yes | `5608` |
+| set | no | `5608A` |
+| clear | yes | `3368` |
+| clear | no | `3368A` |
+
+Confirmed in the emulator: forcing the bit changes `ATI` from `3368` to `5608`
+with nothing else altered. So on a unit whose `ATY14` field 5 has bit 4 set,
+`ATI` should report `5608`; if it reports `3368` instead, bit 4 is not the x2
+bit on that firmware.
+
 Interpretation: x2 is controlled by a persistent settings/feature path. `S58`
 looks like the runtime modulation mask, while `S30` looks like the bit that
 allows feature-upgrade handling. The message "x2-capable but feature not
 installed" is the strongest sign that some Courier hardware/line state can be
-recognized as capable but held back by an installed-feature flag, probably loaded
-from NVRAM into the supervisor's settings block at boot. A literal unlock-key
+recognized as capable but held back by an installed-feature flag, loaded from the
+parameter sector into the supervisor's settings block at boot as traced above. A literal unlock-key
 string or key-entry prompt has **not** been found in the firmware image yet.
 
 Live-command evidence: `ATY14` returns a compact six-field configuration-register
