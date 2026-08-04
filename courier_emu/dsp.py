@@ -102,6 +102,9 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.c_uint64, ctypes.c_char_p, ctypes.c_size_t,
         ]
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
+        lib.courier_c5x_host_write.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
+        ]
         lib.courier_c5x_queue_serial_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
@@ -132,6 +135,10 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_io_event_count.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_io_event_count.restype = ctypes.c_size_t
+        lib.courier_c5x_get_io_port_stats.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16,
+            ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t,
+        ]
         lib.courier_c5x_get_io_event.argtypes = [
             ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
@@ -151,6 +158,11 @@ class NativeC5x:
 
     def set_io(self, port: int, value: int) -> None:
         self.library.courier_c5x_set_io(self.handle, port, value)
+
+    def host_write(self, address: int, value: int) -> None:
+        self.library.courier_c5x_host_write(
+            self.handle, address & 0xFFFF, value & 0xFFFF
+        )
 
     def queue_serial_rx(self, samples: list[int] | tuple[int, ...]) -> None:
         if not samples:
@@ -236,11 +248,27 @@ class NativeC5x:
             result.append(event)
         return result
 
-    def line_tx_samples(self) -> list[int]:
+    def io_port_stats(self, ports: range = range(0x50, 0x60)) -> dict[str, dict[str, int]]:
+        names = (
+            "reads", "writes", "last_read", "last_write",
+            "last_read_pc", "last_write_pc",
+        )
+        result: dict[str, dict[str, int]] = {}
+        for port in ports:
+            values = (ctypes.c_uint64 * len(names))()
+            self.library.courier_c5x_get_io_port_stats(
+                self.handle, port, values, len(values)
+            )
+            stats = dict(zip(names, map(int, values), strict=True))
+            if stats["reads"] or stats["writes"]:
+                result[f"0x{port:02x}"] = stats
+        return result
+
+    def line_tx_samples(self, start: int = 0) -> list[int]:
         count = self.serial_state()["line_tx_writes"]
         samples = [
             int(self.library.courier_c5x_get_line_tx_sample(self.handle, index))
-            for index in range(count)
+            for index in range(max(0, start), count)
         ]
         return [sample - 0x10000 if sample & 0x8000 else sample for sample in samples]
 

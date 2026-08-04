@@ -82,9 +82,9 @@ command mode and returns `\r\nOK\r\n`. Captured output is capped at 64 KiB;
 `serial_truncated` reports when a diagnostic command exceeds that limit.
 Commands execute inside the original firmware: `ATQ1` changes its quiet-mode
 profile byte and suppresses the result code, while `ATD123` and `ATA` enter the
-line-control path, reset and reload the DSP, and currently return `NO DIAL
-TONE` because the remaining DAA state/dial-tone decision is not modeled. DSP results
-separate completed `bootstraps` and `transfer_commands` from runtime
+line-control path. With no modeled line, an originating call follows the
+firmware's `NO DIAL TONE` path. DSP results separate completed `bootstraps` and
+`transfer_commands` from runtime
 `mailbox_commands`, with a `mailbox_windows` histogram of the latter.
 
 The line-audio endpoint is the Courier ASIC's external C52 I/O frame, separate
@@ -108,9 +108,48 @@ missing board-to-DSP dial-command handoff recognizes the firmware's parsed
 `D` command and drives 9.6 kHz DTMF frames through the C52's real `OUT`
 instruction. `ATDT123` produces 697+1209, 697+1336, and 697+1477 Hz bursts.
 This establishes bidirectional waveform transport and reproducible tone output;
-the original datapump's internal command mailbox and dial-tone decision remain
-to be recovered, so the 80186 still reports `NO DIAL TONE` without a complete
-DAA model.
+the original datapump's internal command mailbox remains to be recovered.
+
+The behavioral DAA can attach a disconnected, quiet, dial-tone, or ringing
+line. A dial-tone line seizes the hook relay, supplies 350+440 Hz audio to the
+recovered ASIC ADC, qualifies the supervisor's five-hit detector at RAM
+`0x0649`, removes central-office tone, and starts the parsed digits on the
+already-active C52. `--daa-line` enables the DSP bridge automatically:
+
+```sh
+python3 -m courier_emu run main211.xmf --instructions 9000000 \
+  --daa-line dial-tone --at ATDT123 --summary
+```
+
+The original firmware then returns `OK` instead of `NO DIAL TONE`, and
+`dsp_bridge.daa` reports hook, line, detector, and generated-sample state. This
+is a firmware-derived behavioral DAA, not a claimed identification of the
+physical line-interface IC. Ring qualification, loop-current loss,
+busy/reorder tone, and carrier negotiation remain unmodeled.
+
+## Minimal SIP dial-out
+
+`--sip-server` attaches the DAA to a small UDP SIP user agent and enables both
+the DAA and DSP automatically. Parsed `ATD` digits become the destination URI;
+the client supports an unauthenticated INVITE or one MD5 Digest retry after
+`401`/`407`, SDP with PCMU payload 0, ACK/BYE, and bidirectional RTP. The modem's
+9.6 kHz line stream is converted to/from 8 kHz PCMU, so firmware-generated DTMF
+travels as ordinary in-band audio.
+
+Keep the password out of command history by putting it in the environment:
+
+```sh
+export COURIER_SIP_PASSWORD='your-password'
+python3 -m courier_emu run main211.xmf --instructions 12000000 \
+  --sip-server pbx.example.net:5060 --sip-username 6001 \
+  --sip-target 'sip:{number}@pbx.example.net' --at ATD123 --summary
+```
+
+`dsp_bridge.sip` reports the target, response status, dialog state, RTP
+endpoints/counters, and a bounded event trace; it never includes the password.
+This deliberately minimal client is UDP/IPv4 and PCMU-only. It does not yet
+REGISTER, use SIP/TLS, negotiate other codecs, send RFC 2833 events, or turn
+SIP failure responses into Courier `BUSY`/`NO ANSWER` result codes.
 
 The result includes CPU registers, the first 128 I/O/MMIO operations, complete
 per-address event counts, the hottest code addresses, and the final execution
@@ -133,5 +172,6 @@ byte-for-byte against the XMF C52 boot segment, and published to the native DSP
 through the recovered mailbox. The DTE serial path can inject commands and
 capture firmware-generated result text. The ASIC line frame now transports
 9.6 kHz input/output samples and captures dial tones. Remaining device work is
-the original datapump command mailbox and DAA decision state, complete 80186
-peripheral timing, persistent NVRAM, and unexercised C52 opcode forms.
+the original datapump command mailbox, remaining DAA ring/loop/call-progress
+events, complete 80186 peripheral timing, persistent NVRAM, and unexercised C52
+opcode forms.

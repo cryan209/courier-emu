@@ -69,6 +69,7 @@ public:
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void set_io_callbacks(IoRead read, IoWrite write);
     void set_io(uint16_t port, uint16_t value);
+    void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
     void set_dtmf_digits(const char *digits, std::size_t count);

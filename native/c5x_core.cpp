@@ -76,6 +76,13 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 }
 
 void C5xCore::set_io(uint16_t port, uint16_t value) { m_io[port] = value; }
+void C5xCore::host_write(uint16_t address, uint16_t value)
+{
+    // The board runtime mailbox presents a C52 data-space address followed by
+    // the value to place there.  Use the normal data-memory decoder because
+    // low addresses are memory-mapped CPU registers on the C52.
+    DM_WRITE16(address, value);
+}
 void C5xCore::queue_serial_rx(const uint16_t *samples, std::size_t count)
 {
     for (std::size_t index = 0; index < count; ++index) m_line_rx.push_back(samples[index]);

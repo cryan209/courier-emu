@@ -4,6 +4,7 @@ from unittest.mock import patch
 import unittest
 
 from courier_emu.bridge import CourierDspBridge
+from courier_emu.daa import CourierDaa
 from courier_emu.xmf import DSP_BOOT_SIZE
 
 
@@ -44,6 +45,28 @@ class _Core:
     def set_dtmf_digits(self, digits: str) -> None:
         self.dtmf = digits
 
+    def line_tx_samples(self, _start: int = 0) -> list[int]:
+        return []
+
+
+class _ConnectedSip:
+    state = "connected"
+
+    def poll(self) -> None:
+        pass
+
+    def receive_audio(self) -> list[int]:
+        return []
+
+    def send_audio(self, _samples: list[int]) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def status(self) -> dict[str, str]:
+        return {"state": self.state}
+
 
 class BridgeTests(unittest.TestCase):
     @staticmethod
@@ -78,6 +101,106 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(len(cores), 2)
         self.assertEqual(cores[-1].queued, [0x1234, -2])
         self.assertEqual(cores[-1].dtmf, "12#")
+
+    def test_daa_qualification_starts_dialing_on_active_core(self) -> None:
+        image = _Image()
+        core = _Core()
+        daa = CourierDaa("dial-tone")
+        with patch("courier_emu.bridge.NativeC5x", return_value=core):
+            bridge = CourierDspBridge(image, daa=daa)  # type: ignore[arg-type]
+            bridge.arm_dial_tones(b"DT1")
+            self._bootstrap(bridge, image.program)
+            bridge.begin_dialing()
+
+        self.assertEqual(daa.operation, "dialing")
+        self.assertEqual(core.dtmf, "1")
+
+    def test_second_bootstrap_enters_originate_dialing_phase(self) -> None:
+        image = _Image()
+        cores: list[_Core] = []
+
+        def make_core(_image: object) -> _Core:
+            core = _Core()
+            cores.append(core)
+            return core
+
+        daa = CourierDaa("dial-tone")
+        with patch("courier_emu.bridge.NativeC5x", side_effect=make_core):
+            bridge = CourierDspBridge(image, daa=daa)  # type: ignore[arg-type]
+            bridge.arm_dial_tones(b"DT12")
+            daa.render(4_800)
+            self._bootstrap(bridge, image.program)
+            self._bootstrap(bridge, image.program)
+
+        self.assertEqual(daa.operation, "dialing")
+        self.assertEqual(cores[-1].dtmf, "12")
+        self.assertEqual(bridge.read(0x1C, 1), 3)
+        self.assertEqual(bridge.read(0x58, 1), 0x02)
+        self.assertEqual(bridge.read(0x5A, 1), 0x00)
+
+    def test_quiet_daa_does_not_dial_after_failure_bootstrap(self) -> None:
+        image = _Image()
+        cores: list[_Core] = []
+
+        def make_core(_image: object) -> _Core:
+            core = _Core()
+            cores.append(core)
+            return core
+
+        with patch("courier_emu.bridge.NativeC5x", side_effect=make_core):
+            bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, daa=CourierDaa("quiet")
+            )
+            bridge.arm_dial_tones(b"DT1")
+            self._bootstrap(bridge, image.program)
+            self._bootstrap(bridge, image.program)
+
+        self.assertEqual(cores[-1].dtmf, "")
+
+    def test_runtime_mailbox_records_words_and_reset_floats_bus(self) -> None:
+        image = _Image()
+        core = _Core()
+        with patch("courier_emu.bridge.NativeC5x", return_value=core):
+            bridge = CourierDspBridge(image)  # type: ignore[arg-type]
+            self._bootstrap(bridge, image.program)
+            for port, value in ((0x58, 0x84), (0x5A, 0x00), (0x5C, 0x68), (0x5E, 0x14)):
+                bridge.write(port, 1, value)
+
+        self.assertEqual(bridge.read(0x1C, 1), 0)
+        bridge.write(0x1C, 1, 0)
+        self.assertEqual(bridge.read(0x1C, 1), 0)
+        bridge.float_runtime_bus()
+        self.assertEqual(bridge.read(0x1C, 1), 0xFF)
+        self.assertEqual(bridge.status().runtime_messages, ["0084:1468"])
+
+    def test_connected_sip_queues_firmware_call_up_event_once(self) -> None:
+        image = _Image()
+        cores: list[_Core] = []
+
+        def make_core(_image: object) -> _Core:
+            core = _Core()
+            cores.append(core)
+            return core
+
+        with patch("courier_emu.bridge.NativeC5x", side_effect=make_core):
+            bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, batch=1, sip=_ConnectedSip()  # type: ignore[arg-type]
+            )
+            self._bootstrap(bridge, image.program)
+            self._bootstrap(bridge, image.program)
+            bridge.clock_x86()
+
+        self.assertEqual(
+            list(bridge._runtime_inbound),
+            [
+                (0x0002, 0x0000),
+                (0x0003, 0x0000),
+                (0x0009, 0x0000),
+                (0x004D, 0x0001),
+            ],
+        )
+        bridge.clock_x86()
+        self.assertEqual(len(bridge._runtime_inbound), 4)
 
 
 if __name__ == "__main__":

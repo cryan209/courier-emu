@@ -61,6 +61,11 @@ void courier_c5x_set_io(void *handle, uint16_t port, uint16_t value)
     if (handle) static_cast<C5xCore *>(handle)->set_io(port, value);
 }
 
+void courier_c5x_host_write(void *handle, uint16_t address, uint16_t value)
+{
+    if (handle) static_cast<C5xCore *>(handle)->host_write(address, value);
+}
+
 void courier_c5x_queue_serial_rx(void *handle, const uint16_t *samples, std::size_t count)
 {
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_serial_rx(samples, count);
@@ -129,6 +134,26 @@ std::size_t courier_c5x_get_data_event_count(void *handle)
 std::size_t courier_c5x_get_io_event_count(void *handle)
 {
     return handle ? static_cast<C5xCore *>(handle)->io_events().size() : 0;
+}
+
+void courier_c5x_get_io_port_stats(
+    void *handle, uint16_t port, uint64_t *values, std::size_t count)
+{
+    if (!handle || !values || count < 6) return;
+    uint64_t reads = 0, writes = 0, last_read = 0, last_write = 0;
+    uint64_t last_read_pc = 0, last_write_pc = 0;
+    for (const auto &event : static_cast<C5xCore *>(handle)->io_events()) {
+        if (event.port != port) continue;
+        if (event.write) {
+            ++writes; last_write = event.value; last_write_pc = event.pc;
+        } else {
+            ++reads; last_read = event.value; last_read_pc = event.pc;
+        }
+    }
+    uint64_t result[] = {
+        reads, writes, last_read, last_write, last_read_pc, last_write_pc,
+    };
+    std::copy(std::begin(result), std::end(result), values);
 }
 
 void courier_c5x_get_io_event(void *handle, std::size_t index, uint64_t *values, std::size_t count)

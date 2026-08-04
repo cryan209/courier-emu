@@ -6,11 +6,14 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
+from .daa import CourierDaa
+from .sip import SipSession
 
 
 ADDRESS_SPACE_SIZE = 0x100000
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
+TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 
 
 def attention_body(command: bytes) -> bytes | None:
@@ -57,6 +60,7 @@ class RunResult:
     serial_truncated: bool = False
     serial_input_remaining: int = 0
     serial_interrupts: int = 0
+    timer_interrupts: int = 0
     serial_trace: list[str] = field(default_factory=list)
     accelerated_delays: int = 0
     error: str | None = None
@@ -85,6 +89,8 @@ class CourierMachine:
         dsp_rx_samples: list[int] | None = None,
         dsp_tx_pcm: str | None = None,
         serial_input: bytes = b"",
+        daa: CourierDaa | None = None,
+        sip: SipSession | None = None,
     ) -> None:
         self.image = image
         self.port_values = dict(port_values or {})
@@ -101,6 +107,7 @@ class CourierMachine:
         self.serial_truncated = False
         self.serial_rx: deque[int] = deque(serial_input)
         self.serial_interrupts = 0
+        self.timer_interrupts = 0
         self.serial_trace: list[str] = []
         self._serial_started = False
         self._serial_irq_requested = False
@@ -109,15 +116,24 @@ class CourierMachine:
         self._serial_tx_pump = False
         self._serial_empty_probes = 0
         self._serial_cooldown = 0
+        self._timer_irq_requested = False
+        self._timer_in_handler = False
+        self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
+        self._daa_originate_event_posted = False
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
+        self.call_up_trace: list[int] = []
+        self.call_up_states: list[str] = []
+        self._trace_call_up = False
         self.instructions = 0
         self.interrupt: int | None = None
         self.accelerated_delays = 0
         self.milestones: list[str] = []
         self.dsp_bridge = (
-            CourierDspBridge(image, rx_samples=dsp_rx_samples) if with_dsp else None
+            CourierDspBridge(image, rx_samples=dsp_rx_samples, daa=daa, sip=sip)
+            if with_dsp
+            else None
         )
         self.dsp_tx_pcm = dsp_tx_pcm
         self._milestone_addresses = {
@@ -240,7 +256,64 @@ class CourierMachine:
             )
             return True
 
+        def inject_timer_interrupt() -> bool:
+            vector = bytes(uc.mem_read(0x0C * 4, 4))
+            offset = int.from_bytes(vector[:2], "little")
+            segment = int.from_bytes(vector[2:], "little")
+            if not (offset or segment):
+                return False
+            flags = uc.reg_read(UC_X86_REG_FLAGS)
+            if not flags & 0x0200:
+                return False
+            ss = uc.reg_read(UC_X86_REG_SS)
+            sp = uc.reg_read(UC_X86_REG_SP)
+            return_cs = uc.reg_read(UC_X86_REG_CS)
+            return_ip = uc.reg_read(UC_X86_REG_IP)
+
+            # Match 80186 hardware interrupt entry: FLAGS, CS, then IP.
+            for value in (flags, return_cs, return_ip):
+                sp = (sp - 2) & 0xFFFF
+                stack_address = ((ss << 4) + sp) & 0xFFFFF
+                uc.mem_write(stack_address, (value & 0xFFFF).to_bytes(2, "little"))
+            uc.reg_write(UC_X86_REG_SP, sp)
+            uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0300)
+            uc.reg_write(UC_X86_REG_CS, segment)
+            uc.reg_write(UC_X86_REG_IP, offset)
+            self._timer_irq_requested = False
+            self._timer_in_handler = True
+            self.timer_interrupts += 1
+            return True
+
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            if address == 0x6F89B:
+                self._trace_call_up = True
+            if self._trace_call_up and len(self.call_up_trace) < 512:
+                self.call_up_trace.append(address)
+            if self._trace_call_up and address in (
+                0x63483,
+                0x6348F,
+                0x634DD,
+                0x634F5,
+                0x667BA,
+                0x66800,
+                0x6680F,
+                0x668BE,
+            ):
+                self.call_up_states.append(
+                    f"{address:05x} ax={_uc.reg_read(UC_X86_REG_AX) & 0xffff:04x} "
+                    f"flags={_uc.reg_read(UC_X86_REG_FLAGS) & 0xffff:04x}"
+                )
+            if (
+                address == 0x6AD6E
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.pending_runtime_message() is not None
+            ):
+                header, data = self.dsp_bridge.pending_runtime_message() or (0, 0)
+                callback = int.from_bytes(_uc.mem_read(0x2DA, 2), "little")
+                self._trace_serial(
+                    f"dsp-rx {header:04x}:{data:04x} callback={callback:04x} "
+                    f"i={self.instructions}"
+                )
             if self._serial_started and address == 0x65F03:
                 # The physical DTE front-end recognizes the attention prefix
                 # before handing a command body to this banked parser. Our
@@ -259,6 +332,8 @@ class CourierMachine:
             if self._serial_started and address == 0x5CE2B:
                 terminal_value = _uc.reg_read(UC_X86_REG_AX) & 0xFF
                 self._capture_serial(terminal_value)
+                if terminal_value == ord("N"):
+                    self._trace_call_up = False
                 ss = _uc.reg_read(UC_X86_REG_SS)
                 sp = _uc.reg_read(UC_X86_REG_SP)
                 stack_address = ((ss << 4) + sp) & 0xFFFFF
@@ -267,7 +342,9 @@ class CourierMachine:
                     f"{int.from_bytes(stack[index:index + 2], 'little'):04x}"
                     for index in range(0, len(stack), 2)
                 )
-                self._trace_serial(f"fifo {terminal_value:02x} stack={words}")
+                self._trace_serial(
+                    f"fifo {terminal_value:02x} stack={words} i={self.instructions}"
+                )
             if address == 0x5D5B0 and len(self.serial_trace) < 64:
                 self.serial_trace.append("entered-uart-isr")
             if self._serial_in_handler and self._previous_address in (0x5D608, 0x5D640):
@@ -285,6 +362,9 @@ class CourierMachine:
                 self._serial_in_handler = False
                 self._serial_irq_mode = None
                 self._serial_cooldown = 128 if self.serial_rx else 512
+            if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8):
+                self._timer_in_handler = False
+                self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
             self.instructions += 1
             self.executed[address] += 1
             self.last_addresses.append(address)
@@ -339,6 +419,11 @@ class CourierMachine:
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
                 _uc.mem_write(0xFF46, (value | 0x20).to_bytes(2, "little"))
                 self.accelerated_delays += 1
+            # The line-state transition resets the coprocessor interface and
+            # waits here until both status words float to all ones. The next
+            # step is the second C52 program download for the call datapump.
+            if address == 0x69C61 and self.dsp_bridge is not None:
+                self.dsp_bridge.float_runtime_bus()
             # Firmware delay helpers either burn CX or wait for the timer ISR
             # to advance the tick at 0000:0152. Advance both without inventing
             # asynchronous interrupts in the CPU-only harness.
@@ -356,7 +441,60 @@ class CourierMachine:
             # Command-mode initialization also waits directly on the 10 ms
             # timer countdown at 0000:0289 instead of using the delay helper.
             if self.fast_delays and address in (0x5DB9D, 0x5DBE7):
-                _uc.mem_write(0x289, b"\x00\x00")
+                daa = self.dsp_bridge.daa if self.dsp_bridge is not None else None
+                if address == 0x5DBE7 and daa is not None and daa.dial_tone_present:
+                    if daa.dial_tone_qualified:
+                        # 0x0649 is the recovered five-hit dial-tone detector
+                        # counter consumed by the supervisor's originate loop.
+                        _uc.mem_write(0x649, b"\x05")
+                        self._trace_serial("daa dial-tone-qualified 0649=05")
+                        self.dsp_bridge.begin_dialing()
+                else:
+                    _uc.mem_write(0x289, b"\x00\x00")
+                self.accelerated_delays += 1
+            # After dial-tone qualification the dialer waits on the S6-style
+            # pre-dial countdown at 0000:08d6, normally decremented by the
+            # board timer ISR.
+            if self.fast_delays and address == 0x828A6:
+                _uc.mem_write(0x8D6, b"\x00\x00")
+                self.accelerated_delays += 1
+            # Successful completion of the originating dialer returns through
+            # 0x828ae.  On hardware the board-side line event posts dispatcher
+            # event 3 at 0x1cf1, whose target at 0x65c61 enters the supervisor's
+            # online/originate path.  The CPU-only timer model has no producer
+            # for that event, leaving ATD parked in command mode after the
+            # digits.  Reproduce the recovered event edge once per seizure.
+            if (
+                address == 0x828AE
+                and not self._daa_originate_event_posted
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.daa is not None
+                and self.dsp_bridge.daa.off_hook
+                and self.dsp_bridge.daa.operation == "dialing"
+            ):
+                _uc.mem_write(0x1CF0, b"\x01")
+                _uc.mem_write(0x1CF1, b"\x03")
+                self._daa_originate_event_posted = True
+                self._trace_serial("daa originate-event 1cf1=03")
+            # The successful board call-up message (tag 0x4d) returns here
+            # after updating the supervisor's call-state bytes. Its hardware
+            # companion then posts dispatcher event 3, which enters the
+            # online/originate branch. The dialer-return hook above remains a
+            # fallback for a DAA without a SIP-backed call-up message.
+            if (
+                address == 0x6F89B
+                and not self._daa_originate_event_posted
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.sip is not None
+                and self.dsp_bridge.sip.state == "connected"
+            ):
+                _uc.mem_write(0x1CF0, b"\x01")
+                _uc.mem_write(0x1CF1, b"\x03")
+                self._daa_originate_event_posted = True
+                self._trace_serial("dsp call-up originate-event 1cf1=03")
+            # Inter-digit cadence uses the timer word at 0000:0161.
+            if self.fast_delays and address in (0x6355F, 0x822E0, 0x82342, 0x8235B):
+                _uc.mem_write(0x161, b"\x00\x00")
                 self.accelerated_delays += 1
             # The same initialization waits for an 80186 peripheral-ready
             # indication in the relocated interrupt-control block.
@@ -377,6 +515,22 @@ class CourierMachine:
                         if _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                             self._serial_irq_requested = True
                             _uc.emu_stop()
+            if (
+                self._serial_started
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and not self._serial_irq_requested
+                and (self.dsp_bridge is None or self.dsp_bridge.active)
+            ):
+                dsp_interrupt_pending = (
+                    self.dsp_bridge is not None
+                    and self.dsp_bridge.pending_runtime_message() is not None
+                )
+                if self._timer_cooldown and not dsp_interrupt_pending:
+                    self._timer_cooldown -= 1
+                elif _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
+                    self._timer_irq_requested = True
+                    _uc.emu_stop()
             self._previous_address = address
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
@@ -466,14 +620,27 @@ class CourierMachine:
         try:
             begin = self.image.entry_physical
             while self.instructions < instruction_limit:
-                uc.emu_start(begin, ADDRESS_SPACE_SIZE, count=instruction_limit - self.instructions)
-                if not self._serial_irq_requested:
+                # A real 80186 wraps segment:offset addresses at 20 bits.  In
+                # particular this firmware reaches F800:8000 (linear 1 MiB)
+                # during startup and continues at physical zero.  Passing 1
+                # MiB as Unicorn's optional stop PC terminates the run at that
+                # boundary before Unicorn can apply real-mode wrapping.
+                uc.emu_start(begin, 0, count=instruction_limit - self.instructions)
+                if not (self._serial_irq_requested or self._timer_irq_requested):
                     break
-                if not inject_serial_interrupt():
-                    self._serial_cooldown = 64
-                    self._serial_irq_requested = False
+                if self._serial_irq_requested:
+                    injected = inject_serial_interrupt()
+                    if not injected:
+                        self._serial_cooldown = 64
+                        self._serial_irq_requested = False
+                else:
+                    injected = inject_timer_interrupt()
+                    if not injected:
+                        self._timer_cooldown = 64
+                        self._timer_irq_requested = False
                 begin = current_pc()
-                self.serial_trace.append(f"resume {begin:05x}")
+                if self._serial_in_handler:
+                    self.serial_trace.append(f"resume {begin:05x}")
             if self.interrupt is not None:
                 status = "software-interrupt"
             elif self.instructions < instruction_limit:
@@ -548,6 +715,7 @@ class CourierMachine:
             serial_truncated=self.serial_truncated,
             serial_input_remaining=len(self.serial_rx),
             serial_interrupts=self.serial_interrupts,
+            timer_interrupts=self.timer_interrupts,
             serial_trace=self.serial_trace,
             accelerated_delays=self.accelerated_delays,
             error=error,

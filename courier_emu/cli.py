@@ -38,8 +38,19 @@ def _run_isolated(args: argparse.Namespace) -> int:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp:
+    if args.with_dsp or args.daa_line or args.sip_server:
         command.append("--with-dsp")
+    daa_line = args.daa_line or ("dial-tone" if args.sip_server else None)
+    if daa_line:
+        command.extend(("--daa-line", daa_line))
+    if args.sip_server:
+        command.extend(("--sip-server", args.sip_server))
+        command.extend(("--sip-username", args.sip_username))
+        command.extend(("--sip-password-env", args.sip_password_env))
+        command.extend(("--sip-local-port", str(args.sip_local_port)))
+        command.extend(("--rtp-local-port", str(args.rtp_local_port)))
+        if args.sip_target:
+            command.extend(("--sip-target", args.sip_target))
     if args.dsp_rx_pcm:
         command.extend(("--dsp-rx-pcm", str(Path(args.dsp_rx_pcm).resolve())))
     if args.dsp_tx_pcm:
@@ -131,6 +142,27 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="lock-step the native TMS320C52 core through the Courier host-port bridge",
     )
+    run.add_argument(
+        "--daa-line",
+        choices=("disconnected", "quiet", "dial-tone", "ringing"),
+        help="attach a behavioral DAA line source (use dial-tone for an originating call)",
+    )
+    run.add_argument("--sip-server", metavar="HOST[:PORT]", help="send ATD calls via UDP SIP")
+    run.add_argument(
+        "--sip-target",
+        default="",
+        metavar="URI",
+        help="destination URI template; {number} and {server} are replaced",
+    )
+    run.add_argument("--sip-username", default="courier")
+    run.add_argument(
+        "--sip-password-env",
+        default="COURIER_SIP_PASSWORD",
+        metavar="NAME",
+        help="environment variable containing the SIP password",
+    )
+    run.add_argument("--sip-local-port", type=_number, default=0)
+    run.add_argument("--rtp-local-port", type=_number, default=0)
     run.add_argument(
         "--dsp-rx-pcm",
         metavar="PATH",
