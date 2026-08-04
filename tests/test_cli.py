@@ -4,9 +4,11 @@ from contextlib import redirect_stdout
 from io import StringIO
 import json
 from pathlib import Path
+import tempfile
 import unittest
 
 from courier_emu.cli import main
+from courier_emu.parameters import FEATURE_BITS, ParameterSector, features_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -118,6 +120,42 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run["status"], "main-loop")
         self.assertEqual(run["serial_text"], "")
         self.assertEqual(run["panel"]["dip_switches"]["result-codes"], "open")
+
+    def test_synthesised_sector_reproduces_the_reported_dump(self) -> None:
+        # A real parameter sector cannot be dumped, so this builds one carrying
+        # the configuration an x2-enabled unit reports and checks the firmware
+        # prints it back, along with the serial number and the x2 product code.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "params.bin"
+            ParameterSector(
+                features=features_value(tuple(FEATURE_BITS)), serial="12345678"
+            ).save(path)
+            for command, expected in (
+                ("ATY14", "000,000,030,007,031,000"),
+                ("ATI", "5608"),
+                ("ATI7", "12345678"),
+            ):
+                with self.subTest(command=command):
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        result = main(
+                            [
+                                "run",
+                                str(ROOT / "main211.xmf"),
+                                "--instructions",
+                                "8000000",
+                                "--parameter-sector",
+                                str(path),
+                                "--at",
+                                command,
+                                "--summary",
+                            ]
+                        )
+                    self.assertEqual(result, 0)
+                    run = json.loads(output.getvalue())
+                    self.assertEqual(run["status"], "main-loop")
+                    self.assertIn(expected, run["serial_text"])
+                    self.assertTrue(run["serial_text"].rstrip().endswith("OK"))
 
     def test_settings_report_is_captured_once_per_byte(self) -> None:
         # The transmit routine re-enters itself while the integrated UART

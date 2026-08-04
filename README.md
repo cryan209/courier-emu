@@ -332,6 +332,75 @@ with a matching checksum makes the search return `es = 0xf800` and load
 filled in than a stub provides, so the harness does not ship one; recovering a
 real parameter sector from hardware is what that path needs.
 
+## Parameter sector
+
+The persistent configuration lives in a 16 KiB parameter flash searched at
+physical `0xf8000`, which the XMF update image does not carry. The search at
+`0x7e07c` walks four 4 KiB sectors, checksums bytes `0x000..0xffd`, compares
+against the word at `0xffe`, and keeps the sector with the highest 32-bit
+version at `0xffa`. The winner is copied to `0x0a06` one byte for one, so sector
+offset *i* lands at RAM `0x0a06 + i`:
+
+| offset | RAM | role |
+|---|---|---|
+| `0x00` | `0x0a06` | flags; bit 3 keeps `[0x0a03]` clear |
+| `0x01..0x06` | `0x0a07..0x0a0c` | country, features, type2, type1, unused2, unused1 |
+| `0x11..0x1c` | `0x0a17..0x0a22` | serial number, 12 ASCII characters |
+| `0x1d..0x2f` | `0x0a23..0x0a35` | packed config, expanded at `0x64044` |
+| `0x30..0x61` | `0x0a36..0x0a67` | working-profile image, scattered at `0x6406f` |
+| `0xffa` | | 32-bit version |
+| `0xffe` | | CRC-16/CCITT over `0x000..0xffd` |
+
+The packed config is expanded through the `(shift, mask)` table at `0x63f8d`
+into the 36 profile bytes `0x0932..0x0955`; the profile image is scattered to
+`0x08de` plus the 50 offsets listed at `0x63fd6`. The serial number is read as
+nine characters at `0x0a17` plus three at `0x0a20` (`0x835bb`), and `0x77bb9`
+treats four `0xffff` words as no serial fitted.
+
+Dumping the real part is not practical, so `parameters` synthesises a sector the
+firmware accepts. It carries the firmware's own power-on defaults for the packed
+config and profile image, so only the fields you set change:
+
+```sh
+python3 -m courier_emu parameters params.bin --serial 12345678 \
+  --feature hst --feature fax --feature terbo --feature v34 --feature x2
+python3 -m courier_emu run main211.xmf --instructions 8000000 \
+  --parameter-sector params.bin --at ATY14
+```
+
+That reproduces the configuration dump reported for an x2-enabled unit, and
+`ATI7` renders the full profile including the serial number:
+
+```text
+000,000,030,007,031,000
+
+Product type           US/Canada Internal
+Product ID             XX345302
+Options                HST,V32bis,Terbo,VFC,V34+,V90,V92
+Clock Freq             25 Mhz
+Serial Number          12345678
+```
+
+With the x2 feature bit set, `ATI` reports `5608` instead of `3368`, which is
+the product-code branch at `0x82e7d` reached through a real feature byte rather
+than a forced flag.
+
+The board identification straps select the enclosure `ATI7` reports, which is a
+useful cross-check against a physical unit:
+
+| `--board-id` | capability | `ATI7` product type |
+|---:|---|---|
+| 2, 9, 12 | `0x29`, `0x28` | Internal |
+| 5 | `0x14` | Rackmount |
+| 7, 13 | `0x22` | External |
+
+Note the tension with the default: codes 2/9/12 carry capability bit `0x08`, the
+settings-EEPROM bit, but report Internal, while the External codes do not carry
+it. Capability `0x22` is also the one value `0x667cb` special-cases as always
+returning `OK`. An external unit is therefore likely `--board-id 7`, which also
+changes the product code to the `A` suffixed form (`5608A`/`3368A`). Running
+`ATI` on real hardware settles it.
+
 ## Minimal SIP dial-out
 
 `--sip-server` attaches the DAA to a small UDP SIP user agent and enables both

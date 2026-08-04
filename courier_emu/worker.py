@@ -8,6 +8,7 @@ from pathlib import Path
 from .daa import CourierDaa, DAA_LINE_STATES
 from .machine import CourierMachine
 from .nvram import CourierNvram
+from .parameters import load_sector
 from .sip import SipConfig, SipSession
 from .xmf import XmfImage
 
@@ -38,6 +39,7 @@ def main() -> int:
     parser.add_argument("--nvram")
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
+    parser.add_argument("--parameter-sector")
     args = parser.parse_args()
 
     ports: dict[int, int] = {}
@@ -91,6 +93,7 @@ def main() -> int:
         nvram=CourierNvram.load(args.nvram) if args.nvram else None,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
         dip_closed=frozenset(args.dip),
+        parameter_sector=load_sector(args.parameter_sector) if args.parameter_sector else None,
         sip=sip,
     )
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))

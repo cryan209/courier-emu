@@ -9,6 +9,7 @@ from .bridge import CourierDspBridge
 from .daa import CourierDaa
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
 from .panel import DEFAULT_BOARD_ID, DEFAULT_DIP_CLOSED, STRAP_SENSE_BIT, CourierPanel
+from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
 
 
@@ -99,9 +100,11 @@ class CourierMachine:
         nvram: CourierNvram | None = None,
         board_id: int | None = DEFAULT_BOARD_ID,
         dip_closed: frozenset[str] | None = None,
+        parameter_sector: bytes | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
+        self.parameter_sector = parameter_sector
         self.panel = CourierPanel(
             board_id=board_id,
             dip_closed=DEFAULT_DIP_CLOSED if dip_closed is None else dip_closed,
@@ -202,6 +205,10 @@ class CourierMachine:
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
         uc.mem_write(FLASH_PHYSICAL_BASE, self.image.data)
+        if self.parameter_sector is not None:
+            # The parameter flash is a separate device from the XMF payload;
+            # 0x7e07c searches four sectors from 0xf8000 upward.
+            uc.mem_write(SECTOR_BASE, self.parameter_sector[:SECTOR_SIZE])
 
         uc.reg_write(UC_X86_REG_CS, self.image.entry_segment)
         uc.reg_write(UC_X86_REG_IP, self.image.entry_offset)

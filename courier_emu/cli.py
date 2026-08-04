@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 
+from .parameters import FEATURE_BITS, ParameterSector, features_value
 from .panel import (
     BOARD_CAPABILITY,
     DEFAULT_BOARD_ID,
@@ -81,6 +82,8 @@ def _run_isolated(args: argparse.Namespace) -> int:
             command.extend(("--sip-target", args.sip_target))
     if args.nvram:
         command.extend(("--nvram", str(Path(args.nvram).resolve())))
+    if args.parameter_sector:
+        command.extend(("--parameter-sector", str(Path(args.parameter_sector).resolve())))
     command.extend(("--board-id", args.board_id))
     closed = sorted(DEFAULT_DIP_CLOSED) if args.dip is None else args.dip
     for switch in closed:
@@ -207,6 +210,12 @@ def build_parser() -> argparse.ArgumentParser:
         f"or 'none' to leave them floating (default: {DEFAULT_BOARD_ID})",
     )
     run.add_argument(
+        "--parameter-sector",
+        metavar="PATH",
+        help="attach a 4 KiB parameter sector image at 0xf8000; build one with "
+        "the `parameters` subcommand",
+    )
+    run.add_argument(
         "--dip",
         action="append",
         choices=sorted(DIP_SWITCHES) + ["none"],
@@ -245,6 +254,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="queue literal Latin-1 terminal input after boot",
     )
 
+    parameters = subparsers.add_parser(
+        "parameters", help="synthesise a parameter sector image"
+    )
+    parameters.add_argument("output", help="path to write the 4 KiB sector to")
+    parameters.add_argument("--serial", default="", help="serial number, up to 12 characters")
+    parameters.add_argument(
+        "--feature",
+        action="append",
+        default=[],
+        choices=sorted(FEATURE_BITS),
+        metavar="NAME",
+        help="enable an ATC8 feature bit; repeatable (" + ", ".join(sorted(FEATURE_BITS)) + ")",
+    )
+    parameters.add_argument("--country", type=_number, default=0)
+    parameters.add_argument("--type1", type=_number, default=30)
+    parameters.add_argument("--type2", type=_number, default=7)
+    parameters.add_argument("--version", type=_number, default=1)
+
     dsp_run = subparsers.add_parser("dsp-run", help="execute the TMS320C52 firmware")
     dsp_run.add_argument("image")
     dsp_run.add_argument("--instructions", type=_number, default=1_000_000)
@@ -276,6 +303,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "run":
             return _run_isolated(args)
+        if args.command == "parameters":
+            sector = ParameterSector(
+                country=args.country,
+                features=features_value(args.feature),
+                type1=args.type1,
+                type2=args.type2,
+                serial=args.serial,
+                version=args.version,
+            )
+            sector.save(args.output)
+            result = sector.status()
+            result["path"] = str(Path(args.output).resolve())
+            _print_json(result)
+            return 0
         if args.command == "dsp-run":
             image = XmfImage.load(args.image)
             ports: dict[int, int] = {}
