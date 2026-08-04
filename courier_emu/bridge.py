@@ -67,7 +67,6 @@ class CourierDspBridge:
         self._runtime_ready_delay = 0
         self._runtime_header = 0xFFFF
         self._runtime_data = 0xFFFF
-        self._runtime_dsp_pending = False
         self._runtime_inbound: deque[tuple[int, int]] = deque()
         self._runtime_inbound_seen = False
         self._connected_event_queued = False
@@ -151,13 +150,6 @@ class CourierDspBridge:
                     words = (self._runtime_header, self._runtime_data)
                     self.runtime_words_queued += len(words)
                     self.runtime_messages.append(f"{words[0]:04x}:{words[1]:04x}")
-                    # Runtime transfers use a two-word C52 host latch. Port
-                    # 0x50 carries the header/valid word and 0x51 its data;
-                    # the resident service loop polls bit 9 of 0x50. Keep the
-                    # words stable until the next DSP scheduling quantum.
-                    self.core.set_io(0x50, words[0])
-                    self.core.set_io(0x51, words[1])
-                    self._runtime_dsp_pending = True
             return
         if port == 0x1C:
             if self._runtime_mode:
@@ -266,7 +258,7 @@ class CourierDspBridge:
     def clock_x86(self) -> None:
         if not self.active or self.error:
             return
-        if self._runtime_mode and not self._runtime_ready and not self._runtime_dsp_pending:
+        if self._runtime_mode and not self._runtime_ready:
             if self._runtime_ready_delay > 0:
                 self._runtime_ready_delay -= 1
             else:
@@ -317,12 +309,6 @@ class CourierDspBridge:
                 ):
                     self.begin_dialing()
             self.core.step(dsp_steps)
-            if self._runtime_dsp_pending:
-                self.core.set_io(0x50, 0xFFFF)
-                self.core.set_io(0x51, 0xFFFF)
-                self._runtime_dsp_pending = False
-                self._runtime_ready_delay = 0
-                self._runtime_ready = True
             if self.sip is not None:
                 samples = self.core.line_tx_samples(self._sip_tx_index)
                 self._sip_tx_index += len(samples)

@@ -123,9 +123,6 @@ class CourierMachine:
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
-        self.call_up_trace: list[int] = []
-        self.call_up_states: list[str] = []
-        self._trace_call_up = False
         self.instructions = 0
         self.interrupt: int | None = None
         self.accelerated_delays = 0
@@ -285,24 +282,6 @@ class CourierMachine:
             return True
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
-            if address == 0x6F89B:
-                self._trace_call_up = True
-            if self._trace_call_up and len(self.call_up_trace) < 512:
-                self.call_up_trace.append(address)
-            if self._trace_call_up and address in (
-                0x63483,
-                0x6348F,
-                0x634DD,
-                0x634F5,
-                0x667BA,
-                0x66800,
-                0x6680F,
-                0x668BE,
-            ):
-                self.call_up_states.append(
-                    f"{address:05x} ax={_uc.reg_read(UC_X86_REG_AX) & 0xffff:04x} "
-                    f"flags={_uc.reg_read(UC_X86_REG_FLAGS) & 0xffff:04x}"
-                )
             if (
                 address == 0x6AD6E
                 and self.dsp_bridge is not None
@@ -311,8 +290,7 @@ class CourierMachine:
                 header, data = self.dsp_bridge.pending_runtime_message() or (0, 0)
                 callback = int.from_bytes(_uc.mem_read(0x2DA, 2), "little")
                 self._trace_serial(
-                    f"dsp-rx {header:04x}:{data:04x} callback={callback:04x} "
-                    f"i={self.instructions}"
+                    f"dsp-rx {header:04x}:{data:04x} callback={callback:04x}"
                 )
             if self._serial_started and address == 0x65F03:
                 # The physical DTE front-end recognizes the attention prefix
@@ -332,8 +310,6 @@ class CourierMachine:
             if self._serial_started and address == 0x5CE2B:
                 terminal_value = _uc.reg_read(UC_X86_REG_AX) & 0xFF
                 self._capture_serial(terminal_value)
-                if terminal_value == ord("N"):
-                    self._trace_call_up = False
                 ss = _uc.reg_read(UC_X86_REG_SS)
                 sp = _uc.reg_read(UC_X86_REG_SP)
                 stack_address = ((ss << 4) + sp) & 0xFFFFF
@@ -342,9 +318,7 @@ class CourierMachine:
                     f"{int.from_bytes(stack[index:index + 2], 'little'):04x}"
                     for index in range(0, len(stack), 2)
                 )
-                self._trace_serial(
-                    f"fifo {terminal_value:02x} stack={words} i={self.instructions}"
-                )
+                self._trace_serial(f"fifo {terminal_value:02x} stack={words}")
             if address == 0x5D5B0 and len(self.serial_trace) < 64:
                 self.serial_trace.append("entered-uart-isr")
             if self._serial_in_handler and self._previous_address in (0x5D608, 0x5D640):
@@ -472,26 +446,9 @@ class CourierMachine:
                 and self.dsp_bridge.daa.off_hook
                 and self.dsp_bridge.daa.operation == "dialing"
             ):
-                _uc.mem_write(0x1CF0, b"\x01")
                 _uc.mem_write(0x1CF1, b"\x03")
                 self._daa_originate_event_posted = True
                 self._trace_serial("daa originate-event 1cf1=03")
-            # The successful board call-up message (tag 0x4d) returns here
-            # after updating the supervisor's call-state bytes. Its hardware
-            # companion then posts dispatcher event 3, which enters the
-            # online/originate branch. The dialer-return hook above remains a
-            # fallback for a DAA without a SIP-backed call-up message.
-            if (
-                address == 0x6F89B
-                and not self._daa_originate_event_posted
-                and self.dsp_bridge is not None
-                and self.dsp_bridge.sip is not None
-                and self.dsp_bridge.sip.state == "connected"
-            ):
-                _uc.mem_write(0x1CF0, b"\x01")
-                _uc.mem_write(0x1CF1, b"\x03")
-                self._daa_originate_event_posted = True
-                self._trace_serial("dsp call-up originate-event 1cf1=03")
             # Inter-digit cadence uses the timer word at 0000:0161.
             if self.fast_delays and address in (0x6355F, 0x822E0, 0x82342, 0x8235B):
                 _uc.mem_write(0x161, b"\x00\x00")

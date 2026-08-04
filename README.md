@@ -133,8 +133,10 @@ busy/reorder tone, and carrier negotiation remain unmodeled.
 the DAA and DSP automatically. Parsed `ATD` digits become the destination URI;
 the client supports an unauthenticated INVITE or one MD5 Digest retry after
 `401`/`407`, SDP with PCMU payload 0, ACK/BYE, and bidirectional RTP. The modem's
-9.6 kHz line stream is converted to/from 8 kHz PCMU, so firmware-generated DTMF
-travels as ordinary in-band audio.
+9.6 kHz line stream is converted to/from 8 kHz PCMU. The current DTMF assist is
+inserted at the recovered C52 DAC write, so it travels as ordinary in-band
+audio; it is not yet evidence that the firmware datapump entered originate
+mode.
 
 Keep the password out of command history by putting it in the environment:
 
@@ -150,6 +152,14 @@ endpoints/counters, and a bounded event trace; it never includes the password.
 This deliberately minimal client is UDP/IPv4 and PCMU-only. It does not yet
 REGISTER, use SIP/TLS, negotiate other codecs, send RFC 2833 events, or turn
 SIP failure responses into Courier `BUSY`/`NO ANSWER` result codes.
+
+A live 6000-to-7800 validation completed Digest authentication, received
+`200 OK`, and carried 1,152 inbound and 507 outbound RTP packets, while the
+Courier still returned `NO CARRIER`. The supervisor emitted 30 two-word
+runtime control messages on ports `0x58..0x5e`, but the C52 command poll at
+external port `0x50` continued to read `0xffff`. The remaining blocker is the
+runtime supervisor-to-C52 host latch/acknowledgement protocol, not SIP duration
+or RTP transport.
 
 The result includes CPU registers, the first 128 I/O/MMIO operations, complete
 per-address event counts, the hottest code addresses, and the final execution
