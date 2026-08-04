@@ -1,0 +1,44 @@
+# macOS and editor state
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python caches, environments, and packaging output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Native build products
+.build/
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Emulator captures and diagnostic output
+artifacts/
+*.s16le
+*.pcm
+*.wav
+*.log
+*.trace
+
+# Local firmware inputs (not redistributable project source)
+*.xmf
+*.XMF
+*.xmd
+*.XMD

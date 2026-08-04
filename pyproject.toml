@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "courier-emu"
+version = "0.1.0"
+description = "Instrumented Intel 80186 and TMS320C52 harness for USRobotics Courier XMF firmware"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+execute = ["unicorn>=2.1.4"]
+disasm = ["capstone>=5.0"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+courier-emu = "courier_emu.cli:main"
+
+[tool.setuptools]
+packages = ["courier_emu"]
