@@ -198,6 +198,37 @@ with nothing else altered. So on a unit whose `ATY14` field 5 has bit 4 set,
 `ATI` should report `5608`; if it reports `3368` instead, bit 4 is not the x2
 bit on that firmware.
 
+### Parameter sector layout beyond the first seven bytes
+
+The whole accepted record is copied to `0x0a06` one-for-one, so record byte *i*
+lands at `0x0a06 + i`. Only bytes 0..6 are unpacked into the named fields above;
+the rest is a packed configuration image.
+
+Bytes `0x1d..0x2f` (RAM `0x0a23..0x0a35`) are expanded at `0x64044` into the
+profile bytes `0x0932..0x0955`. The unpacker walks a `(shift, mask)` control
+table at `0x63f8d`, storing `(source >> shift) & mask` per field and advancing to
+the next source byte whenever `shift` is zero. That is 36 fields across 19 source
+bytes. Notably:
+
+```text
+src+5 >> 4 & 0x0f -> [0x0940]
+src+5 >> 0 & 0x0f -> [0x0941]
+```
+
+`[0x0941]` is a **test-mode selector**. `0x5bc57` and `0x5bc8d` compare it
+against 6, and anything `>= 6` takes `ljmp 0x7a59:0000` into a diagnostic
+dispatcher that selects a handler by `([0x0941] - 6) * 2` and then loops on
+`call [0x1fbc]` forever. It never returns to the normal boot path.
+
+This explains an easy trap when synthesising a parameter sector: filling the
+record with `0xff` makes `[0x0941]` unpack to 15, so the firmware enters test
+mode 9 and appears to hang in the rate module at `0x7abaa`. The two spin loops
+there wait on `[0x1fe7]` (which mirrors port `0x14` bit `0x01`, inverted) and
+`[0x1fe8]` (set by events 3 and 9 at `0x7a64e`), and they have complementary exit
+conditions, so no static input frees both. The firmware is behaving correctly;
+the record is wrong. A sector whose packed config decodes to sane values boots
+straight through to the main loop.
+
 Interpretation: x2 is controlled by a persistent settings/feature path. `S58`
 looks like the runtime modulation mask, while `S30` looks like the bit that
 allows feature-upgrade handling. The message "x2-capable but feature not

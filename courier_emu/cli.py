@@ -8,7 +8,13 @@ import signal
 import subprocess
 import sys
 
-from .panel import BOARD_CAPABILITY, DEFAULT_BOARD_ID, USABLE_BOARD_IDS
+from .panel import (
+    BOARD_CAPABILITY,
+    DEFAULT_BOARD_ID,
+    DEFAULT_DIP_CLOSED,
+    DIP_SWITCHES,
+    USABLE_BOARD_IDS,
+)
 from .xmf import XmfFormatError, XmfImage
 from .dsp import run_dsp
 
@@ -76,6 +82,10 @@ def _run_isolated(args: argparse.Namespace) -> int:
     if args.nvram:
         command.extend(("--nvram", str(Path(args.nvram).resolve())))
     command.extend(("--board-id", args.board_id))
+    closed = sorted(DEFAULT_DIP_CLOSED) if args.dip is None else args.dip
+    for switch in closed:
+        if switch != "none":
+            command.extend(("--dip", switch))
     if args.dsp_rx_pcm:
         command.extend(("--dsp-rx-pcm", str(Path(args.dsp_rx_pcm).resolve())))
     if args.dsp_tx_pcm:
@@ -195,6 +205,15 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="CODE",
         help="drive the four board identification straps with this 0-15 code, "
         f"or 'none' to leave them floating (default: {DEFAULT_BOARD_ID})",
+    )
+    run.add_argument(
+        "--dip",
+        action="append",
+        choices=sorted(DIP_SWITCHES) + ["none"],
+        metavar="SWITCH",
+        help="close this board option switch; repeatable, and the first use "
+        "replaces the default set. Use 'none' to leave every switch open. "
+        "Default: " + ", ".join(sorted(DEFAULT_DIP_CLOSED)),
     )
     run.add_argument(
         "--nvram",

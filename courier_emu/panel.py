@@ -124,6 +124,28 @@ NVRAM_BOARD_IDS: tuple[int, ...] = tuple(
 DEFAULT_BOARD_ID = NVRAM_BOARD_IDS[0]
 
 
+# The option switches are input bits on the same latch ports, read once through
+# the latch-read entry while the profile is being built at 0x63e10..0x63ec2.
+# Each one is sampled with `mov ax, mask << 8 | index; call 0x2d4a`, and the
+# firmware reads a *closed* switch as a low bit, so the sense is inverted.
+# Names describe the setting each switch selects, which is what the firmware
+# shows; the mapping onto the physical switch numbers is not established here.
+DIP_SWITCHES: dict[str, tuple[int, int, str]] = {
+    # name: (port, mask, what the firmware does when the switch reads closed)
+    "result-codes": (0x14, 0x20, "0x63e2e clears the quiet setting at [0x092f]"),
+    "quiet-alt-a": (0x12, 0x08, "0x63e54 sets [0x092f] to 2"),
+    "quiet-alt-b": (0x12, 0x80, "0x63e75 sets [0x092f] to 2"),
+    "verbose": (0x10, 0x02, "0x63e17 leaves [0x092e] clear"),
+    "echo": (0x12, 0x10, "0x63e93 leaves [0x092d] clear"),
+    "profile-source": (0x14, 0x10, "0x63ead leaves [0x08de] from the defaults"),
+}
+
+# A directly attached DTE wants the modem to report result codes, which is the
+# closed position of that switch. Everything else idles open, matching an input
+# that is not driven.
+DEFAULT_DIP_CLOSED: frozenset[str] = frozenset({"result-codes"})
+
+
 def _names(port: int, value: int, table: dict[int, dict[int, str]]) -> list[str]:
     bits = table.get(port, {})
     return [name for mask, name in sorted(bits.items()) if value & mask]
@@ -172,10 +194,30 @@ class CourierPanel:
     events: list[PanelEvent] = field(default_factory=list)
     truncated: bool = False
     board_id: int | None = None
+    dip_closed: frozenset[str] = DEFAULT_DIP_CLOSED
 
     def __post_init__(self) -> None:
         if self.board_id is not None and not 0 <= self.board_id <= 15:
             raise ValueError(f"board id {self.board_id} is outside the four-bit strap range")
+        unknown = set(self.dip_closed) - set(DIP_SWITCHES)
+        if unknown:
+            known = ", ".join(sorted(DIP_SWITCHES))
+            raise ValueError(f"unknown option switch {sorted(unknown)}; known switches are {known}")
+
+    def dip_input(self, port: int) -> int:
+        """Return the mask of bits this port's closed option switches pull low."""
+        low = 0
+        for name in self.dip_closed:
+            switch_port, mask, _ = DIP_SWITCHES[name]
+            if switch_port == port:
+                low |= mask
+        return low
+
+    def dip_state(self) -> dict[str, str]:
+        return {
+            name: "closed" if name in self.dip_closed else "open"
+            for name in sorted(DIP_SWITCHES)
+        }
 
     @property
     def board_capability(self) -> int | None:
@@ -239,6 +281,7 @@ class CourierPanel:
             "off_hook": self.off_hook,
             "board_id": self.board_id,
             "board_capability": self.board_capability,
+            "dip_switches": self.dip_state(),
             "events": [event.describe() for event in self.events],
             "events_truncated": self.truncated,
         }

@@ -196,6 +196,36 @@ indicator bits on `0x12` and `0x14` are reported under placeholder names with
 their driver-wrapper addresses in `courier_emu/panel.py`; mapping them onto
 front-panel legends still needs a physical reference.
 
+### Option switches
+
+The board option switches are input bits on the same latch ports, sampled once
+while the profile is built at `0x63e10..0x63ec2` with the same
+`mov ax, mask << 8 | index; call 0x2d4a` form the straps use. The firmware reads
+a **closed** switch as a low bit, so the sense is inverted.
+
+| switch | port/bit | closed behaviour |
+|---|---|---|
+| `result-codes` | `0x14` `0x20` | `0x63e2e` clears the quiet setting at `[0x092f]` |
+| `quiet-alt-a` | `0x12` `0x08` | `0x63e54` sets `[0x092f]` to 2 |
+| `quiet-alt-b` | `0x12` `0x80` | `0x63e75` sets `[0x092f]` to 2 |
+| `verbose` | `0x10` `0x02` | `0x63e17` leaves `[0x092e]` clear |
+| `echo` | `0x12` `0x10` | `0x63e93` leaves `[0x092d]` clear |
+| `profile-source` | `0x14` `0x10` | `0x63ead` leaves `[0x08de]` from the defaults |
+
+Names describe the setting each switch selects, which is what the firmware
+itself shows. Mapping them onto the physical switch numbers on the case is not
+established here.
+
+`--dip` closes a switch and is repeatable; the first use replaces the default
+set, and `--dip none` leaves every switch open. `result-codes` is closed by
+default because a directly attached DTE wants result codes — with it open the
+modem is genuinely silent, which is the real behaviour and used to be papered
+over by writing `[0x092f]` directly:
+
+```sh
+python3 -m courier_emu run main211.xmf --instructions 4000000 --at AT --dip none
+```
+
 ### Board identification straps
 
 The scan at `0x5bfc6` identifies the board by driving four latch lines low one

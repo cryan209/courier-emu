@@ -8,7 +8,7 @@ from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
 from .daa import CourierDaa
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
-from .panel import DEFAULT_BOARD_ID, STRAP_SENSE_BIT, CourierPanel
+from .panel import DEFAULT_BOARD_ID, DEFAULT_DIP_CLOSED, STRAP_SENSE_BIT, CourierPanel
 from .sip import SipSession
 
 
@@ -98,10 +98,14 @@ class CourierMachine:
         sip: SipSession | None = None,
         nvram: CourierNvram | None = None,
         board_id: int | None = DEFAULT_BOARD_ID,
+        dip_closed: frozenset[str] | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
-        self.panel = CourierPanel(board_id=board_id)
+        self.panel = CourierPanel(
+            board_id=board_id,
+            dip_closed=DEFAULT_DIP_CLOSED if dip_closed is None else dip_closed,
+        )
         self.port_values = dict(port_values or {})
         self.runtime_port_values = dict(runtime_port_values or {})
         self.output_latches: dict[int, int] = {}
@@ -387,11 +391,6 @@ class CourierMachine:
                     # the buffer at 1cf5.
                     _uc.mem_write(0x2AC, (0xA8D9).to_bytes(2, "little"))
                     self.serial_trace.append("callback 2ac=a8d9")
-                    # With no NVRAM device, the loaded profile leaves Q1
-                    # (quiet mode) selected at 092f. A directly attached DTE
-                    # starts from the factory Q0 profile so result codes reach
-                    # the terminal.
-                    _uc.mem_write(0x92F, b"\x00")
                 self._serial_started = True
                 self._serial_tx_pump = not self.serial_rx
                 self._serial_cooldown = 512
@@ -541,6 +540,9 @@ class CourierMachine:
             else:
                 bridged = self.dsp_bridge.read(port, size) if self.dsp_bridge is not None else None
                 value = self.port_values.get(port, bridged if bridged is not None else mask)
+                if port in (0x10, 0x12, 0x14) and size == 1:
+                    # A closed option switch pulls its latch input bit low.
+                    value &= ~self.panel.dip_input(port)
                 if self.panel.board_id is not None and port == 0x14 and size == 1:
                     # The identification scan at 0x5bfc6 reads its sense line
                     # here while holding one drive line low.

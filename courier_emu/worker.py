@@ -37,6 +37,7 @@ def main() -> int:
     parser.add_argument("--serial-input-hex", default="")
     parser.add_argument("--nvram")
     parser.add_argument("--board-id", default="")
+    parser.add_argument("--dip", action="append", default=[])
     args = parser.parse_args()
 
     ports: dict[int, int] = {}
@@ -89,6 +90,7 @@ def main() -> int:
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
         nvram=CourierNvram.load(args.nvram) if args.nvram else None,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
+        dip_closed=frozenset(args.dip),
         sip=sip,
     )
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))

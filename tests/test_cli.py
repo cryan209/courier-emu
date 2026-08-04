@@ -95,6 +95,30 @@ class CliTests(unittest.TestCase):
         self.assertIsNone(run["panel"]["board_capability"])
         self.assertTrue(run["serial_text"].rstrip().endswith("ERROR"))
 
+    def test_opening_the_result_code_switch_suppresses_them(self) -> None:
+        # 0x63e2e only clears the quiet setting at [0x092f] when that switch
+        # reads closed, so the open position is a genuinely silent modem.
+        output = StringIO()
+        with redirect_stdout(output):
+            result = main(
+                [
+                    "run",
+                    str(ROOT / "main211.xmf"),
+                    "--instructions",
+                    "4000000",
+                    "--dip",
+                    "none",
+                    "--at",
+                    "AT",
+                    "--summary",
+                ]
+            )
+        self.assertEqual(result, 0)
+        run = json.loads(output.getvalue())
+        self.assertEqual(run["status"], "main-loop")
+        self.assertEqual(run["serial_text"], "")
+        self.assertEqual(run["panel"]["dip_switches"]["result-codes"], "open")
+
     def test_settings_report_is_captured_once_per_byte(self) -> None:
         # The transmit routine re-enters itself while the integrated UART
         # reports busy. Capturing at the entry recorded one copy of the pending

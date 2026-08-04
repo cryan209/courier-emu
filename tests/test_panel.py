@@ -4,6 +4,8 @@ import unittest
 
 from courier_emu.panel import (
     BOARD_CAPABILITY,
+    DEFAULT_DIP_CLOSED,
+    DIP_SWITCHES,
     DEFAULT_BOARD_ID,
     NVRAM_BOARD_IDS,
     STRAP_DRIVE_LINES,
@@ -79,6 +81,35 @@ class CourierPanelTest(unittest.TestCase):
         capability = BOARD_CAPABILITY[DEFAULT_BOARD_ID]
         self.assertFalse(capability & 0x40)
         self.assertTrue(capability & 0x08)
+
+    def test_closed_switches_pull_their_input_bit_low(self) -> None:
+        panel = CourierPanel(dip_closed=frozenset({"result-codes", "echo"}))
+        self.assertEqual(panel.dip_input(0x14), 0x20)   # result-codes
+        self.assertEqual(panel.dip_input(0x12), 0x10)   # echo
+        self.assertEqual(panel.dip_input(0x10), 0x00)
+
+    def test_open_switches_drive_nothing(self) -> None:
+        panel = CourierPanel(dip_closed=frozenset())
+        for port in (0x10, 0x12, 0x14):
+            self.assertEqual(panel.dip_input(port), 0x00)
+
+    def test_every_switch_maps_to_a_latch_input_bit(self) -> None:
+        for name, (port, mask, _) in DIP_SWITCHES.items():
+            with self.subTest(switch=name):
+                self.assertIn(port, (0x10, 0x12, 0x14))
+                self.assertEqual(mask & (mask - 1), 0, "must be a single bit")
+                panel = CourierPanel(dip_closed=frozenset({name}))
+                self.assertEqual(panel.dip_input(port), mask)
+
+    def test_unknown_switch_names_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            CourierPanel(dip_closed=frozenset({"nonexistent"}))
+
+    def test_default_closes_the_result_code_switch(self) -> None:
+        # A directly attached DTE wants result codes; the open position leaves
+        # the firmware's quiet setting at 0x092f suppressing them.
+        self.assertEqual(DEFAULT_DIP_CLOSED, frozenset({"result-codes"}))
+        self.assertEqual(CourierPanel().dip_state()["result-codes"], "closed")
 
     def test_non_panel_ports_are_ignored(self) -> None:
         panel = CourierPanel()
