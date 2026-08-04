@@ -177,14 +177,27 @@ Field 5 is decoded at `0x7e024` through a five-entry table at `0x7e072`:
 | 1 | 2 | Fax | `0x0a` |
 | 2 | 4 | Terbo | `0x4a` |
 | 3 | 8 | V.FC / V.34 | `0xca` |
-| 4 | 16 | (x2, by inference) | `0x6a` |
+| 4 | 16 | **V.90 on this firmware** | `0x6a` |
 
 The table has exactly five entries, so this firmware recognises exactly five
 feature bits. Bit 4 is real and decoded, and it is the only entry that
 contributes `[0x19d7]` bit `0x20`.
 
-That gives a cheap hardware check. `0x82e7d` tests `[0x19d7]` bit `0x20` to
-select the product code reported by `ATI`/`ATI0`:
+**Bit 4 is not x2 here.** The archived post describing `ATY14` covers an older
+Courier, and the label does not carry over to this 2002 build (the banner reads
+`Copyright (c) 1988 - 2002 by USRobotics`). Two pieces of evidence:
+
+- `0x77d47` tests `[0x19d7]` bit `0x20` to decide whether to append `,V90` to the
+  `ATI7` options list. Building a sector with bit 4 set yields
+  `HST,V32bis,Terbo,VFC,V34+,V90,V92`; clearing it yields
+  `HST,V32bis,Terbo,VFC,V34+,V92`. `,V92` is emitted unconditionally.
+- The options table at `733c:49c4` does contain an `x2` entry at `733c:49d6`,
+  but `mov si, 0x49d6` does not appear anywhere in the image. Nothing can ever
+  select it, so this firmware cannot report x2 at all. The x2 connect-rate
+  vocabulary catalogued above is dead weight carried forward from older builds.
+
+`0x82e7d` tests the same `[0x19d7]` bit `0x20` to select the product code
+reported by `ATI`/`ATI0`, so that code tracks V.90, not x2:
 
 | `[0x19d7]` bit `0x20` | EEPROM fitted | `ATI` |
 |---|---|---|
@@ -193,10 +206,9 @@ select the product code reported by `ATI`/`ATI0`:
 | clear | yes | `3368` |
 | clear | no | `3368A` |
 
-Confirmed in the emulator: forcing the bit changes `ATI` from `3368` to `5608`
-with nothing else altered. So on a unit whose `ATY14` field 5 has bit 4 set,
-`ATI` should report `5608`; if it reports `3368` instead, bit 4 is not the x2
-bit on that firmware.
+Confirmed in the emulator with a synthesised parameter sector: features `031`
+gives `ATI` = `5608` and an options list including `V90`, while features `015`
+gives `3368` and drops `V90`.
 
 ### Parameter sector layout beyond the first seven bytes
 

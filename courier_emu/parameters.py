@@ -51,12 +51,19 @@ PROFILE_IMAGE = bytes.fromhex(
 )
 
 # ATC8 feature bits, decoded at 0x7e024 through the five-entry table at 0x7e072.
+#
+# Bit 4 is labelled x2 in archived notes for older Courier firmware, but that is
+# not what it does here. It is the only entry contributing [0x19d7] bit 0x20,
+# and in this 2002 build that bit gates the ",V90" entry in the ATI7 options
+# list at 0x77d47 and selects the 5608 product code at 0x82e7d. The "x2" string
+# does sit in the options table at 733c:49d6, but nothing in the image ever
+# loads it, so this firmware cannot report x2 at all.
 FEATURE_BITS: dict[str, int] = {
     "hst": 0x01,
     "fax": 0x02,
     "terbo": 0x04,
     "v34": 0x08,
-    "x2": 0x10,
+    "v90": 0x10,
 }
 
 

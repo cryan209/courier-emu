@@ -46,16 +46,18 @@ class ChecksumTest(unittest.TestCase):
 
 
 class FeatureBitsTest(unittest.TestCase):
-    def test_reported_x2_unit_reads_thirty_one(self) -> None:
+    def test_all_features_read_thirty_one(self) -> None:
         # A unit with every feature bit set reports 031 in ATY14 field 5.
         self.assertEqual(features_value(tuple(FEATURE_BITS)), 31)
 
-    def test_x2_is_bit_four(self) -> None:
-        self.assertEqual(FEATURE_BITS["x2"], 0x10)
+    def test_bit_four_is_v90_on_this_firmware(self) -> None:
+        # Archived notes label bit 4 x2, but here it gates ",V90" at 0x77d47.
+        self.assertEqual(FEATURE_BITS["v90"], 0x10)
+        self.assertNotIn("x2", FEATURE_BITS)
 
     def test_unknown_feature_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            features_value(("v92",))
+            features_value(("x2",))
 
 
 class ParameterSectorTest(unittest.TestCase):

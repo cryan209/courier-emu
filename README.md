@@ -363,12 +363,12 @@ config and profile image, so only the fields you set change:
 
 ```sh
 python3 -m courier_emu parameters params.bin --serial 12345678 \
-  --feature hst --feature fax --feature terbo --feature v34 --feature x2
+  --feature hst --feature fax --feature terbo --feature v34 --feature v90
 python3 -m courier_emu run main211.xmf --instructions 8000000 \
   --parameter-sector params.bin --at ATY14
 ```
 
-That reproduces the configuration dump reported for an x2-enabled unit, and
+That reproduces the configuration dump reported for a fully featured unit, and
 `ATI7` renders the full profile including the serial number:
 
 ```text
@@ -381,9 +381,12 @@ Clock Freq             25 Mhz
 Serial Number          12345678
 ```
 
-With the x2 feature bit set, `ATI` reports `5608` instead of `3368`, which is
-the product-code branch at `0x82e7d` reached through a real feature byte rather
-than a forced flag.
+Feature bit 4 (value 16) is labelled x2 in archived notes for older Courier
+firmware, but on this 2002 build it gates V.90: `0x77d47` uses it to append
+`,V90` to the options list, and `0x82e7d` uses it to select the `5608` product
+code instead of `3368`. The options table does hold an `x2` string at
+`733c:49d6`, but nothing in the image ever loads it, so **this firmware cannot
+report x2 at all**.
 
 The board identification straps select the enclosure `ATI7` reports, which is a
 useful cross-check against a physical unit:
