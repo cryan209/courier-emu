@@ -7,10 +7,13 @@ from typing import Any
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
 from .daa import CourierDaa
+from .nvram import BIT_DATA, BIT_READY, CourierNvram
+from .panel import DEFAULT_BOARD_ID, STRAP_SENSE_BIT, CourierPanel
 from .sip import SipSession
 
 
 ADDRESS_SPACE_SIZE = 0x100000
+NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
@@ -65,6 +68,8 @@ class RunResult:
     accelerated_delays: int = 0
     error: str | None = None
     dsp_bridge: dict[str, Any] | None = None
+    panel: dict[str, Any] | None = None
+    nvram: dict[str, Any] | None = None
     interrupt_vectors: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -91,8 +96,12 @@ class CourierMachine:
         serial_input: bytes = b"",
         daa: CourierDaa | None = None,
         sip: SipSession | None = None,
+        nvram: CourierNvram | None = None,
+        board_id: int | None = DEFAULT_BOARD_ID,
     ) -> None:
         self.image = image
+        self.nvram = nvram
+        self.panel = CourierPanel(board_id=board_id)
         self.port_values = dict(port_values or {})
         self.runtime_port_values = dict(runtime_port_values or {})
         self.output_latches: dict[int, int] = {}
@@ -307,18 +316,22 @@ class CourierMachine:
                     self._trace_serial(f"attention body={body!r}")
                     if self.dsp_bridge is not None:
                         self.dsp_bridge.arm_dial_tones(body)
-            if self._serial_started and address == 0x5CE2B:
-                terminal_value = _uc.reg_read(UC_X86_REG_AX) & 0xFF
+            # 5b5e:184b transmits AL through the 80186 integrated UART. Both of
+            # its wait edges (5b5e:1874 and 5b5e:1884) branch back to the
+            # routine's own entry, so a byte passes 0x5ce2b once per spin but
+            # is only accepted at 0x5ce66, just before the parity transform and
+            # the write to the transmit register. Capture there so each byte is
+            # recorded exactly once.
+            if self._serial_started and address == 0x5CE66:
+                raw = _uc.reg_read(UC_X86_REG_AX) & 0xFF
+                # The transform at 5b5e:1913 recomputes bit 7 as an even-parity
+                # bit whenever [0x26c6] is zero, then applies the [0x0936]
+                # framing. In those framings bit 7 carries no data, so report
+                # the seven bits a receiving DTE would keep.
+                parity_framing = bytes(_uc.mem_read(0x26C6, 1))[0] == 0
+                terminal_value = raw & 0x7F if parity_framing else raw
                 self._capture_serial(terminal_value)
-                ss = _uc.reg_read(UC_X86_REG_SS)
-                sp = _uc.reg_read(UC_X86_REG_SP)
-                stack_address = ((ss << 4) + sp) & 0xFFFFF
-                stack = bytes(_uc.mem_read(stack_address, 8))
-                words = ",".join(
-                    f"{int.from_bytes(stack[index:index + 2], 'little'):04x}"
-                    for index in range(0, len(stack), 2)
-                )
-                self._trace_serial(f"fifo {terminal_value:02x} stack={words}")
+                self._trace_serial(f"fifo {terminal_value:02x} pc={current_pc():05x}")
             if address == 0x5D5B0 and len(self.serial_trace) < 64:
                 self.serial_trace.append("entered-uart-isr")
             if self._serial_in_handler and self._previous_address in (0x5D608, 0x5D640):
@@ -455,6 +468,15 @@ class CourierMachine:
                 self.accelerated_delays += 1
             # The same initialization waits for an 80186 peripheral-ready
             # indication in the relocated interrupt-control block.
+            # The integrated UART's transmit-holding register never drains in a
+            # CPU-only core, so the ready poll at 5b5e:186e finds status bit
+            # 0x08 clear and spins on the transmit routine forever. This is a
+            # missing device rather than a calibrated delay, so the modeled DTE
+            # reports itself ready regardless of --real-delays.
+            if address == 0x5CE4E:
+                value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
+                if not value & 0x08:
+                    _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
             if self.fast_delays and address == 0x5CE19:
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
@@ -519,6 +541,17 @@ class CourierMachine:
             else:
                 bridged = self.dsp_bridge.read(port, size) if self.dsp_bridge is not None else None
                 value = self.port_values.get(port, bridged if bridged is not None else mask)
+                if self.panel.board_id is not None and port == 0x14 and size == 1:
+                    # The identification scan at 0x5bfc6 reads its sense line
+                    # here while holding one drive line low.
+                    if self.panel.strap_sense():
+                        value |= STRAP_SENSE_BIT
+                    else:
+                        value &= ~STRAP_SENSE_BIT
+                if self.nvram is not None and port == 0x10 and size == 1:
+                    # Board latch 0 reads back the settings EEPROM's ready and
+                    # data-out pins; every other bit keeps its floating level.
+                    value = (value & ~(NVRAM_INPUT_BITS)) | self.nvram.read_latch()
             value &= mask
             self._record_io("in", port, size, value, current_pc())
             return value
@@ -527,7 +560,12 @@ class CourierMachine:
             mask = (1 << (size * 8)) - 1
             value &= mask
             self.output_latches[port] = value
-            self._record_io("out", port, size, value, current_pc())
+            pc = current_pc()
+            self._record_io("out", port, size, value, pc)
+            if size == 1:
+                self.panel.observe_write(port, value, pc, self.instructions)
+                if self.nvram is not None and port == 0x10:
+                    self.nvram.write_latch(value)
             if self.dsp_bridge is not None:
                 self.dsp_bridge.write(port, size, value)
             if port in self.uart_ports:
@@ -652,6 +690,10 @@ class CourierMachine:
                 interrupt_vectors[f"{vector:#04x}"] = f"{segment:04x}:{offset:04x}"
         if self.dsp_bridge is not None:
             self.dsp_bridge.close()
+        nvram_result = None
+        if self.nvram is not None:
+            nvram_result = self.nvram.status()
+            self.nvram.save()
         return RunResult(
             status=status,
             instructions=self.instructions,
@@ -677,6 +719,8 @@ class CourierMachine:
             accelerated_delays=self.accelerated_delays,
             error=error,
             dsp_bridge=bridge_result,
+            panel=self.panel.status(),
+            nvram=nvram_result,
             interrupt_vectors=interrupt_vectors,
         )
 

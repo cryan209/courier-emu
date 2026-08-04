@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .daa import CourierDaa, DAA_LINE_STATES
 from .machine import CourierMachine
+from .nvram import CourierNvram
 from .sip import SipConfig, SipSession
 from .xmf import XmfImage
 
@@ -34,6 +35,8 @@ def main() -> int:
     parser.add_argument("--dsp-rx-pcm")
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
+    parser.add_argument("--nvram")
+    parser.add_argument("--board-id", default="")
     args = parser.parse_args()
 
     ports: dict[int, int] = {}
@@ -84,6 +87,8 @@ def main() -> int:
         dsp_tx_pcm=args.dsp_tx_pcm,
         serial_input=bytes.fromhex(args.serial_input_hex),
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
+        nvram=CourierNvram.load(args.nvram) if args.nvram else None,
+        board_id=None if args.board_id == "none" else int(args.board_id, 0),
         sip=sip,
     )
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))

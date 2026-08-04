@@ -8,12 +8,34 @@ import signal
 import subprocess
 import sys
 
+from .panel import BOARD_CAPABILITY, DEFAULT_BOARD_ID, USABLE_BOARD_IDS
 from .xmf import XmfFormatError, XmfImage
 from .dsp import run_dsp
 
 
 def _number(value: str) -> int:
     return int(value, 0)
+
+
+def _board_id(value: str) -> str:
+    """Validate a board identification strap code, or 'none' for floating."""
+    if value == "none":
+        return value
+    try:
+        code = int(value, 0)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a strap code or 'none'") from None
+    if not 0 <= code <= 15:
+        raise argparse.ArgumentTypeError(f"{code} is outside the four-bit strap range")
+    if code not in USABLE_BOARD_IDS:
+        capability = BOARD_CAPABILITY[code]
+        reason = "no board fitted" if not capability else "a fatal board fault"
+        usable = ", ".join(str(item) for item in USABLE_BOARD_IDS)
+        raise argparse.ArgumentTypeError(
+            f"code {code} maps to capability {capability:#04x}, which the firmware reads "
+            f"as {reason}; usable codes are {usable}"
+        )
+    return value
 
 
 def _print_json(value: object) -> None:
@@ -51,6 +73,9 @@ def _run_isolated(args: argparse.Namespace) -> int:
         command.extend(("--rtp-local-port", str(args.rtp_local_port)))
         if args.sip_target:
             command.extend(("--sip-target", args.sip_target))
+    if args.nvram:
+        command.extend(("--nvram", str(Path(args.nvram).resolve())))
+    command.extend(("--board-id", args.board_id))
     if args.dsp_rx_pcm:
         command.extend(("--dsp-rx-pcm", str(Path(args.dsp_rx_pcm).resolve())))
     if args.dsp_tx_pcm:
@@ -163,6 +188,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--sip-local-port", type=_number, default=0)
     run.add_argument("--rtp-local-port", type=_number, default=0)
+    run.add_argument(
+        "--board-id",
+        type=_board_id,
+        default=str(DEFAULT_BOARD_ID),
+        metavar="CODE",
+        help="drive the four board identification straps with this 0-15 code, "
+        f"or 'none' to leave them floating (default: {DEFAULT_BOARD_ID})",
+    )
+    run.add_argument(
+        "--nvram",
+        metavar="PATH",
+        help="attach the 512-byte board settings EEPROM image (created if absent)",
+    )
     run.add_argument(
         "--dsp-rx-pcm",
         metavar="PATH",
