@@ -62,6 +62,8 @@ void C5xCore::reset()
     m_rpt_start = m_rpt_end = 0;
     m_cbcr = m_cbsr1 = m_cber1 = m_cbsr2 = m_cber2 = 0;
     m_timer = {}; m_serial = {}; m_tdm = {}; m_shadow = {};
+    // Both wait-state registers come out of reset at maximum.
+    m_pdwsr = m_iowsr = 0xffff; m_cwsr = 0x000e;
     m_codec_rx.clear();
     m_line_rx.clear();
     m_line_tx.clear();
@@ -143,6 +145,9 @@ C5xCore::MemoryMap C5xCore::memory_map() const
     m_map.ram = m_pmst.ram;
     m_map.cnf = m_st1.cnf;
     m_map.iptr = m_pmst.iptr;
+    m_map.pdwsr = m_pdwsr;
+    m_map.iowsr = m_iowsr;
+    m_map.cwsr = m_cwsr;
     m_map.rom_present = m_rom_present;
     return m_map;
 }
@@ -155,14 +160,11 @@ void C5xCore::consume_cycles(unsigned cycles)
 
 C5xCore::Region C5xCore::program_region(uint16_t address) const
 {
-    // Microcomputer mode puts the on-chip boot ROM at the bottom of program
-    // space; microprocessor mode leaves the whole space off-chip. The
-    // single-access RAM sits above the ROM window and only appears when
-    // PMST.RAM says so.
+    // Microcomputer mode puts the 4K boot ROM at the bottom of program space;
+    // microprocessor mode leaves the whole space off-chip. CNF brings B0 in
+    // at the top. The C52 has no SARAM, so PMST.RAM does nothing here.
     if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
-    if (m_pmst.ram && address >= C5X_SARAM_PROGRAM_FIRST
-        && address < C5X_SARAM_PROGRAM_FIRST + C5X_SARAM_WORDS)
-        return Region::Saram;
+    if (m_st1.cnf && address >= C5X_B0_PROGRAM_FIRST) return Region::Daram;
     return Region::External;
 }
 
@@ -171,16 +173,16 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
     if (address < 0x60) return Region::Registers;
     if (address >= C5X_B2_FIRST && address < C5X_B2_FIRST + C5X_B2_WORDS)
         return Region::Daram;
-    // B0 leaves data space for program space when CNF is set; B1 does not
-    // move.
-    if (!m_st1.cnf && address >= C5X_B0_FIRST && address < C5X_B0_FIRST + C5X_B0_WORDS)
-        return Region::Daram;
+    // B0 leaves data space for the top of program space when CNF is set, and
+    // what it leaves behind is reserved rather than off-chip. B1 stays put.
+    if (address >= C5X_B0_FIRST && address < C5X_B0_FIRST + C5X_B0_WORDS)
+        return m_st1.cnf ? Region::Reserved : Region::Daram;
     if (address >= C5X_B1_FIRST && address < C5X_B1_FIRST + C5X_B1_WORDS)
         return Region::Daram;
-    if (m_pmst.ovly && address >= C5X_SARAM_DATA_FIRST
-        && address < C5X_SARAM_DATA_FIRST + C5X_SARAM_WORDS)
-        return Region::Saram;
-    return Region::External;
+    // The C52 has no SARAM, so everything from 0x0800 up is off-chip and the
+    // two gaps below it are reserved. PMST.OVLY is a don't-care on this part.
+    if (address >= C5X_DATA_EXTERNAL_FIRST) return Region::External;
+    return Region::Reserved;
 }
 
 uint16_t C5xCore::fetch(uint16_t address)
@@ -194,7 +196,7 @@ uint16_t C5xCore::fetch(uint16_t address)
         // counting the fetches is what says how much of a run rests on it.
         if (!m_rom_present) { ++m_map.rom_holes; break; }
         return m_rom[address];
-    case Region::Saram: ++m_map.program_saram; break;
+    case Region::Daram: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
     default: ++m_map.program_external; break;
     }
     return m_program[address];
@@ -216,7 +218,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     switch (data_region(address)) {
     case Region::Registers: ++m_map.data_registers; break;
     case Region::Daram: ++m_map.data_daram; break;
-    case Region::Saram: ++m_map.data_saram; break;
+    case Region::Reserved: ++m_map.data_reserved; break;
     default: ++m_map.data_external; break;
     }
     return address < 0x60 ? cpuregs_r(address) : m_data[address];
@@ -335,7 +337,10 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     }
     case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
     case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) | (m_timer.tddr & 0xf));
-    case 0x28: case 0x37: return 0;
+    case 0x28: return m_pdwsr;
+    case 0x29: return m_iowsr;
+    case 0x2a: return m_cwsr;
+    case 0x37: return 0;
     case 0x30:
         ++m_tdm.trcv_reads; m_tdm.last_trcv_pc = uint16_t(m_pc - 1);
         return m_tdm.trcv;
@@ -353,7 +358,13 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
 void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 {
     switch (offset) {
-    case 0x00: case 0x05: case 0x28: case 0x29: case 0x2a: return;
+    case 0x00: case 0x05: return;
+    // The wait-state registers say which regions the firmware expects to be
+    // off-chip, which is worth recording even though this core runs every
+    // access in one cycle.
+    case 0x28: m_pdwsr = value; return;
+    case 0x29: m_iowsr = value; return;
+    case 0x2a: m_cwsr = value; return;
     case 0x04: m_imr = value; return;
     case 0x06: m_ifr &= ~value; return;
     case 0x07:

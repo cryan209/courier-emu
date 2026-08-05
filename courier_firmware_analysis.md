@@ -1267,11 +1267,45 @@ wait states or anything else, is an external write of `0xffff` to I/O port
 `0x8057`. And it programs different wait states: `PDWSR` `0x2000` against
 `0x000a`, `IOWSR` `0x0101` against `0x0001`.
 
-That second difference is the interesting one, because `PDWSR` is a statement
-about the memory map rather than an inference from one: it carries the wait
-states each program and data region needs, so a datasheet decode of those two
-values says directly which regions these boards put off-chip. This core ignores
-writes to `PDWSR`, `IOWSR` and `CWSR`, so nothing here depends on them yet.
+### What the wait states say
+
+`PDWSR` gives each 16K block of program and data space a two-bit field, `IOWSR`
+gives each pair of I/O ports one — or each 8K block when `CWSR`'s `BIG` bit is
+set — and `CWSR` decides whether a field means 0/1/2/3 wait states or 0/1/3/7
+(SPRU056D §9.4.1–9.4.3, tables 9–5 and 9–10). Both builds write `CWSR` `0x0010`:
+`BIG` set, and every space on the plain 0/1/2/3 scale. That resolves the two
+`PDWSR` words:
+
+| build | field | range | wait states |
+|---|---|---|---:|
+| 2.1/2.2 (`0x000a`) | Program 1 | `0x0000..0x3fff` | **2** |
+| | Program 2 | `0x4000..0x7fff` | **2** |
+| | everything else | | 0 |
+| 2.3.x (`0x2000`) | Data 3 | `0x8000..0xbfff` | **2** |
+| | everything else | | 0 |
+
+and the two `IOWSR` words: 2.1/2.2 `0x0001` gives I/O `0x0000..0x1fff` one wait
+state; 2.3.x `0x0101` gives that block one and `0x8000..0x9fff` one as well —
+the block holding port `0x8057`, which is the port its very first instruction
+writes.
+
+Software wait states only apply to **off-chip** accesses. Zero says nothing,
+because zero is also what you leave a region you do not care about, but a
+non-zero field is the firmware stating it expects external memory there. So:
+
+- **The 2.1/2.2 boards put program `0x0000..0x7fff` off-chip**, which is exactly
+  the span of the 30,172-word segment the supervisor downloads
+  (`0x0000..0x75d9`). The download lives in external program RAM at `0x0000`.
+- The 2.3.x boards need no wait states in program space at all and instead put
+  slow external memory in **data** `0x8000..0xbfff`. The two generations hang
+  their external memory off different spaces.
+
+That settles `MP/MC`. Table 8–3 says microcomputer mode puts 4K of on-chip ROM
+at program `0x0000..0x0fff`, where wait states would do nothing; programming two
+of them across `0x0000..0x3fff` is only meaningful with **`MP/MC` = 1**, all
+program space off-chip. The pin now defaults to 1 for that reason rather than
+by convention, and the flat program space this harness always had turns out to
+be right — now for a stated reason.
 
 Either way, the vector area holding reset code is a property of every build in
 the tree, across five years and two product lines, rather than a quirk of one
@@ -1282,15 +1316,20 @@ image.
 `PMST` carries `MP/MC`, `OVLY` and `RAM`, and this core parsed all three and
 acted on none of them. It now decodes both spaces through the C52's map:
 
+The regions are the C52's own, from tables 8–3 and 8–10 rather than the family
+generalities: **the C52 has no SARAM at all**, which makes `PMST.RAM` and
+`PMST.OVLY` don't-cares on this part, and its data space is off-chip only from
+`0x0800` up with two reserved gaps below that.
+
 | space | region | when |
 |---|---|---|
 | program | on-chip ROM, `0x0000..0x0fff` | `MP/MC` = 0 |
-| program | SARAM, `0x1000..0x1fff` | `PMST.RAM` |
+| program | DARAM B0, `0xfe00..0xffff` | `CNF` |
 | program | external | otherwise |
 | data | memory-mapped registers, `0x0000..0x005f` | always |
-| data | DARAM B2 `0x0060`, B0 `0x0100` (unless `CNF`), B1 `0x0300` | always |
-| data | SARAM, `0x0800..0x17ff` | `PMST.OVLY` |
-| data | external | otherwise |
+| data | DARAM B2 `0x0060..0x007f`, B0 `0x0100..0x02ff` (unless `CNF`), B1 `0x0300..0x04ff` | |
+| data | external, `0x0800..0xffff` | always |
+| data | reserved — `0x0080..0x00ff` and `0x0500..0x07ff` | |
 
 `MP/MC` is a pin, not something an image records, so it is supplied to the core
 and defaults to 0 — the level this core has always presented when the firmware
@@ -1304,23 +1343,31 @@ and the fetches are counted instead. That count is the size of the assumption.
 Over a 12 M-instruction `ATA`:
 
 ```
-program_external 13,842,728    program_rom 693,322    rom_holes 693,322
-data_registers    1,176,533    data_daram 1,384,195   data_external 761,255
+program_external 13,843,991    program_rom 692,059    rom_holes 692,059
+data_registers    1,176,533    data_daram 1,384,195
+data_reserved       692,047    data_external 69,208
 ```
 
-**4.8% of every program fetch in a run comes out of the window that would be
-on-chip ROM in microcomputer mode.** `courier_c5x_load_rom` takes one if a dump
-of the C52's ROM ever appears; until then `dsp_bridge.dsp_memory_map` reports
-the mode bits, the per-region counts and the hole count on every run, so the
-assumption is in the output rather than in the reader's head.
+`courier_c5x_load_rom` takes a ROM if a dump of the C52's ever appears; until
+then `dsp_bridge.dsp_memory_map` reports the mode bits, the wait-state decode,
+the per-region counts and the hole count on every run.
 
-`OVLY` and `RAM` both read zero for most of a run, which is its own oddity: the
-reset code sets them — `OPL #0x00b0, @07` — and they are cleared again later by
-the same writes that zero `IMR`, `IFR` and `PMST` from `0xb626`, `0xb65f`,
-`0xb667`, `0xb677` and `0xb67c`. A store that switches the part out of
-microcomputer mode and turns off its on-chip RAM mid-run is not something
-firmware does on purpose, so those sites are more evidence that the addresses
-the low bank computes are landing in the wrong place.
+Two of those counts are worth reading.
+
+`program_rom` is 692,059 even with the pin at 1, because `PMST` is written zero
+mid-run — by the same stores at `0xb626`, `0xb65f`, `0xb667`, `0xb677` and
+`0xb67c` that zero `IMR` and `IFR` — which clears `MP/MC` and re-opens the ROM
+window under the running program. Firmware does not switch the part out of
+microprocessor mode on purpose.
+
+`data_reserved` is 692,047: **nearly 700,000 data accesses a run land in the
+C52's reserved windows.** Those are the frame-block cells — `[0x00ca]` through
+`[0x00cd]`, holding the line-DAC source and the gate this section opened with —
+and `0x0080..0x00ff` is a range the C52 has nothing in. On silicon those
+addresses hold no storage at all. That is an independent confirmation, from the
+part's own memory map rather than from behaviour, of what the vector-table
+search concluded from the other end: the addresses the low bank computes are
+not landing where the code thinks they are.
 
 ### Two core defects found on that path
 

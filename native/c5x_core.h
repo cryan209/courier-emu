@@ -14,16 +14,18 @@
 
 namespace courier {
 
-// TMS320C52 on-chip memory, from the C5x family map. The DARAM blocks sit at
-// the same data addresses across the family; the ROM and single-access RAM
-// sizes are the C52's.
+// TMS320C52 on-chip memory, from tables 8-3 and 8-10 of the C5x User's Guide
+// (SPRU056D). The C52 carries 4K words of program ROM and three DARAM blocks
+// and **no SARAM at all**, which makes PMST.RAM and PMST.OVLY don't-cares on
+// this part. Data outside the blocks below is off-chip from 0x0800 up, and
+// reserved in the two gaps.
 constexpr uint16_t C5X_ROM_WORDS = 0x1000;
-constexpr uint16_t C5X_SARAM_WORDS = 0x1000;
-constexpr uint16_t C5X_SARAM_PROGRAM_FIRST = 0x1000;
-constexpr uint16_t C5X_SARAM_DATA_FIRST = 0x0800;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
 constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;
 constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
+// CNF moves B0 out of data space and into the top of program space.
+constexpr uint16_t C5X_B0_PROGRAM_FIRST = 0xFE00;
+constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
 
 class C5xCore {
 public:
@@ -71,19 +73,23 @@ public:
         uint16_t line_tx_last, line_tx_last_pc;
     };
 
-    // Where a C52 address lands. The parts that move are on-chip: the boot
-    // ROM appears in program space only in microcomputer mode, and the
-    // single-access RAM appears in program space under PMST.RAM and in data
-    // space under PMST.OVLY. Everything else is off-chip.
-    enum class Region { Rom, Saram, Daram, Registers, External };
+    // Where a C52 address lands. The two parts that move are the boot ROM,
+    // which appears at the bottom of program space only in microcomputer
+    // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
+    // 0xfe00. Everything else is off-chip or reserved.
+    enum class Region { Rom, Daram, Registers, Reserved, External };
 
     struct MemoryMap {
-        // Sampled from the pin and the two mode bits, so a run can report
-        // which map it ran under rather than leaving it implied.
+        // Sampled from the pin and the mode bits, so a run can report which
+        // map it ran under rather than leaving it implied.
         uint16_t mpmc_pin, mpmc, ovly, ram, cnf, iptr;
+        // The wait-state registers, which say which regions the firmware
+        // expects to be off-chip. This core does not delay on them; it
+        // records them so a run reports the board it thinks it is on.
+        uint16_t pdwsr, iowsr, cwsr;
         bool rom_present;
-        uint64_t program_rom, program_saram, program_external;
-        uint64_t data_registers, data_daram, data_saram, data_external;
+        uint64_t program_rom, program_daram, program_external;
+        uint64_t data_registers, data_daram, data_reserved, data_external;
         // Fetches from on-chip ROM this harness does not have. An XMF carries
         // the downloaded program and nothing else, so in microcomputer mode
         // every one of these is a hole rather than a byte.
@@ -147,10 +153,11 @@ private:
     bool m_rom_present = false;
     // PMST.MPMC is preserved by this firmware's reset code rather than
     // written, because on hardware it comes from a pin. Nothing in an image
-    // records the pin, so it is supplied here. Zero is what this core has
-    // always answered when the firmware reads PMST back, and the firmware
-    // does read it, so that stays the default until the pin is known.
-    uint16_t m_mpmc_pin = 0;
+    // records the pin, so it is supplied here. One is what the firmware's own
+    // wait states argue for: it gives program 0x0000..0x7fff two of them, and
+    // wait states only apply off-chip, so it does not expect a boot ROM under
+    // the download.
+    uint16_t m_mpmc_pin = 1;
     mutable MemoryMap m_map{};
     IoRead m_io_read;
     IoWrite m_io_write;
@@ -170,6 +177,7 @@ private:
     st1_t m_st1{};
     pmst_t m_pmst{};
     uint16_t m_ifr = 0, m_imr = 0;
+    uint16_t m_pdwsr = 0xffff, m_iowsr = 0xffff, m_cwsr = 0x000e;
     uint16_t m_pcstack[8]{};
     int m_pcstack_ptr = 0;
     uint16_t m_rpt_start = 0, m_rpt_end = 0;

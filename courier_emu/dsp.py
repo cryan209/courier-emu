@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from typing import Any
 
 from .xmf import XmfImage
 
@@ -66,6 +67,59 @@ def build_library(*, force: bool = False) -> Path:
         detail = process.stderr.strip() or process.stdout.strip()
         raise RuntimeError(f"failed to build the C5x library: {detail}")
     return LIBRARY
+
+
+# The C52's wait-state generator, from sections 9.4.1 to 9.4.3 of the C5x
+# User's Guide. PDWSR gives each 16K block of program and data space a two-bit
+# field; IOWSR gives each pair of I/O ports one, or each 8K block when CWSR's
+# BIG bit is set. CWSR also chooses what the two-bit values mean.
+PDWSR_FIELDS = (
+    ("program", 0x0000, 0x3FFF, 0),
+    ("program", 0x4000, 0x7FFF, 2),
+    ("program", 0x8000, 0xBFFF, 4),
+    ("program", 0xC000, 0xFFFF, 6),
+    ("data", 0x0000, 0x3FFF, 8),
+    ("data", 0x4000, 0x7FFF, 10),
+    ("data", 0x8000, 0xBFFF, 12),
+    ("data", 0xC000, 0xFFFF, 14),
+)
+# A field means its own value, unless the space's CWSR bit stretches the top
+# two steps.
+WAIT_STATE_STEPS = {0: (0, 1, 2, 3), 1: (0, 1, 3, 7)}
+CWSR_BIG = 1 << 4
+CWSR_SPACE_BIT = {"program": 0, "data": 1, "io-low": 2, "io-high": 3}
+
+
+def decode_wait_states(pdwsr: int, iowsr: int, cwsr: int) -> dict[str, Any]:
+    """Read the wait-state registers as the ranges they describe.
+
+    Software wait states only apply to off-chip accesses, so a non-zero field
+    is the firmware saying it expects external memory in that range.
+    """
+
+    def steps(space: str) -> tuple[int, ...]:
+        return WAIT_STATE_STEPS[(cwsr >> CWSR_SPACE_BIT[space]) & 1]
+
+    regions = []
+    for space, first, last, shift in PDWSR_FIELDS:
+        count = steps(space)[(pdwsr >> shift) & 3]
+        regions.append(
+            {"space": space, "first": first, "last": last, "wait_states": count}
+        )
+    big = bool(cwsr & CWSR_BIG)
+    for block in range(8):
+        count = steps("io-high" if block >= 4 else "io-low")[(iowsr >> (2 * block)) & 3]
+        entry: dict[str, Any] = {"space": "io", "wait_states": count}
+        if big:
+            entry["first"], entry["last"] = block * 0x2000, block * 0x2000 + 0x1FFF
+        else:
+            entry["ports"] = f"every port pair {2 * block:x}/{2 * block + 1:x}"
+        regions.append(entry)
+    return {
+        "io_mapping": "8K blocks" if big else "port pairs",
+        "external": [region for region in regions if region["wait_states"]],
+        "regions": regions,
+    }
 
 
 class NativeC5x:
@@ -180,17 +234,21 @@ class NativeC5x:
         ):
             raise RuntimeError(error.value.decode("utf-8", "replace"))
 
-    def memory_map(self) -> dict[str, int | bool]:
-        values = (ctypes.c_uint64 * 15)()
+    def memory_map(self) -> dict[str, Any]:
+        values = (ctypes.c_uint64 * 18)()
         self.library.courier_c5x_get_memory_map(self.handle, values, len(values))
         names = (
-            "mpmc_pin", "mpmc", "ovly", "ram", "cnf", "iptr", "rom_present",
-            "program_rom", "program_saram", "program_external",
-            "data_registers", "data_daram", "data_saram", "data_external",
+            "mpmc_pin", "mpmc", "ovly", "ram", "cnf", "iptr",
+            "pdwsr", "iowsr", "cwsr", "rom_present",
+            "program_rom", "program_daram", "program_external",
+            "data_registers", "data_daram", "data_reserved", "data_external",
             "rom_holes",
         )
-        state: dict[str, int | bool] = dict(zip(names, map(int, values), strict=True))
+        state: dict[str, Any] = dict(zip(names, map(int, values), strict=True))
         state["rom_present"] = bool(state["rom_present"])
+        state["wait_states"] = decode_wait_states(
+            state["pdwsr"], state["iowsr"], state["cwsr"]
+        )
         return state
 
     def host_write(self, address: int, value: int) -> None:

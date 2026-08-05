@@ -68,16 +68,16 @@ void courier_c5x_set_mpmc_pin(void *handle, int level)
 
 void courier_c5x_get_memory_map(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 14) return;
+    if (!handle || !values || count < 18) return;
     auto map = static_cast<C5xCore *>(handle)->memory_map();
     uint64_t result[] = {
         map.mpmc_pin, map.mpmc, map.ovly, map.ram, map.cnf, map.iptr,
-        map.rom_present ? 1u : 0u,
-        map.program_rom, map.program_saram, map.program_external,
-        map.data_registers, map.data_daram, map.data_saram, map.data_external,
+        map.pdwsr, map.iowsr, map.cwsr, map.rom_present ? 1u : 0u,
+        map.program_rom, map.program_daram, map.program_external,
+        map.data_registers, map.data_daram, map.data_reserved,
+        map.data_external, map.rom_holes,
     };
     std::copy(std::begin(result), std::end(result), values);
-    if (count >= 15) values[14] = map.rom_holes;
 }
 
 int courier_c5x_step(void *handle, uint64_t count, char *error, std::size_t error_size)

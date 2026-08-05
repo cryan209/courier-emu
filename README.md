@@ -997,25 +997,42 @@ that receives the download, and neither is in this image — so the assumption
 that the downloaded segment begins at program `0x0000` puts the downloaded init
 on top of the vectors.
 
-### The C52 memory map
+### The C52 memory map, and what the wait states say
 
 The core used to parse `MP/MC`, `OVLY` and `RAM` out of `PMST` and act on none
-of them. It now decodes both spaces: program is on-chip ROM below `0x1000` when
-`MP/MC` is low, SARAM at `0x1000` under `PMST.RAM`, and external otherwise;
-data is registers below `0x0060`, DARAM at B2 `0x0060`, B0 `0x0100` (unless
-`CNF` moves it) and B1 `0x0300`, SARAM at `0x0800` under `PMST.OVLY`, and
-external otherwise.
+of them. It now decodes both spaces as the C52 actually lays them out: program
+is on-chip ROM below `0x1000` when `MP/MC` is low, DARAM B0 at `0xfe00` under
+`CNF`, external otherwise; data is registers below `0x0060`, DARAM at B2
+`0x0060`, B0 `0x0100` (unless `CNF` moves it) and B1 `0x0300`, external from
+`0x0800` up, and **reserved** in the gaps at `0x0080..0x00ff` and
+`0x0500..0x07ff`. The C52 has no SARAM at all, so `PMST.RAM` and `PMST.OVLY`
+are don't-cares on this part.
 
-`MP/MC` is a pin rather than something an image records, so it is supplied to
-the core and defaults to low — the level this core has always presented when
-the firmware reads `PMST` back. No XMF carries an on-chip ROM, so with none
-supplied that window still answers from the downloaded image exactly as before;
-what is new is that the fetches are counted. Every run now reports
-`dsp_bridge.dsp_memory_map` with the mode bits, per-region access counts and
-the hole count, and over a 12 M-instruction `ATA` **4.8% of all program fetches
-come out of the window that would be on-chip ROM**. That is the size of the
-assumption, in the output rather than in the reader's head.
-`courier_firmware_analysis.md` has the rest of the measurements.
+The wait-state registers are decoded too, and they answer the `MP/MC` question
+the images could not. Both firmware families write `CWSR 0x0010`, which puts
+every space on the plain 0/1/2/3 scale, and then:
+
+```text
+2.1/2.2  PDWSR 0x000a   program 0x0000..0x7fff  2 wait states
+         IOWSR 0x0001   io      0x0000..0x1fff  1
+2.3.x    PDWSR 0x2000   data    0x8000..0xbfff  2 wait states
+         IOWSR 0x0101   io      0x0000..0x1fff  1, io 0x8000..0x9fff  1
+```
+
+Wait states only apply off-chip, so a non-zero field is the firmware saying it
+expects external memory there. The 2.1/2.2 boards put program `0x0000..0x7fff`
+off-chip — exactly the span of the 30,172-word segment the supervisor downloads
+— which means `MP/MC` is high and there is no boot ROM under the download. The
+pin now defaults to high for that reason rather than by convention. The 2.3.x
+boards need no program wait states at all and put their slow external memory in
+data space instead.
+
+Every run reports `dsp_bridge.dsp_memory_map` with the mode bits, the
+wait-state decode and per-region access counts. One of those counts is worth
+reading on its own: **about 700,000 data accesses a run land in the C52's
+reserved windows**, and they are the frame-block cells `[0x00ca]`–`[0x00cd]`,
+including the line-DAC source and the gate above. On silicon those addresses
+hold no storage. `courier_firmware_analysis.md` has the rest.
 
 ## Minimal SIP dial-out
 
