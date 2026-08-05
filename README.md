@@ -960,25 +960,26 @@ whole of what the C52 executes in steady state is 167 instructions, one pass is
 downloads. The datapump is resident and idle, not un-entered, and it uses about
 6% of the cycles a 25 MHz part has per 9.6 kHz sample.
 
-It idles behind one bit. Every pass ends with `BIT *, 4` on `[0x00cc]` and a
-`CC 0xb4d4` on the result, and `[0x00cc]` is zero on every sample of every run.
-Setting that bit by hand is the first thing that has moved it: the parked PC
-leaves the resident bank for `0x0bda3` in the downloaded one, and the line DAC
-produces its first output.
+Every pass ends with `BIT *, 4` on `[0x00cc]` and a `CC 0xb4d4` on the result,
+and `[0x00cc]` is zero on every sample of every run. `[0x00cc]` is the
+datapump's own status word — the low half of a 32-bit value carried from sample
+to sample through `[0x7e]:[0x7d]` and ACCB, holding `0x0555_0000` throughout —
+and `0xb4d4` turns out not to be code at all but a numeric table, so that
+conditional is not the way in.
 
-What sets `[0x00cc]` is the datapump itself. It is the low half of a 32-bit
-word carried from sample to sample through `[0x7e]:[0x7d]` and ACCB, rebuilt
-from those two cells at the end of every pass, and it holds `0x0555_0000` for
-the whole run — so bit 4 is clear and the gate stays shut. The line sample does
-reach the accumulator, and is then discarded: `LACB` at `0xb306` reloads ACC
-over the sum, and the cell it was stored in is overwritten from a program table
-before anything reads it. That is why feeding the line 2100, 1800 or 980 Hz, or
-noise, instead of silence leaves every counter identical.
+What the datapump is waiting on is an interrupt. The reset code at program
+`0x0000` sets `IMR = 0x002a` and clears `INTM`, and every sample ends with
+`0x0080` written to `IMR`; raising each of the sixteen interrupts in turn, only
+number 7 — the TDM serial port, the C52's connection to the ASIC — changes
+anything, and it changes a lot: executed instructions go from 167 to 521, the
+C52 starts writing its serial transmit register, and two thirds of the line
+output stops being silence. Nothing in the harness has ever raised it or fed
+`TRCV`.
 
-Nothing outside sets it either. Holding each of the 1,952 cells of the C52's
-on-chip data space in turn moves the run for eight, all of them the frame block
-or scratch. An idle datapump reads essentially nothing — not its RAM, not the
-line, not the host window, and not an interrupt, since `IMR` is zero.
+It is not a carrier yet. What reaches the line is a stuck DC level, which is
+what an ISR handed no TDM frame would compute, and the vector it takes lands
+inside the reset code because `PMST.IPTR` is zero. Finding this firmware's real
+vector table and modelling the ASIC's TDM frame is the next step.
 `courier_firmware_analysis.md` has the listing and the measurements.
 
 ## Minimal SIP dial-out

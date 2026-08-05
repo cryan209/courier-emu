@@ -1147,6 +1147,78 @@ zero, and the same parked PC. The datapump does not respond to signal at all
 until something commands it, which is consistent with the gate above and rules
 out "it is listening but hears nothing".
 
+### What `0xb4d4` expects on entry: nothing, because it is not code
+
+Forcing the gate and catching the first entry gives the state it is handed —
+`DP` 0x380, `ARP` 5, `AR5` = `0x00cc`, `ACC` `ffffff00`, `ACCB` `05550000`,
+`[0x7b..0x7f]` = 0, 0, 0, `0555`, 0 — and then 570 instructions that decode as a
+run of `LAR AR0, @xx` over a smooth numeric sequence broken by runs of `0xffff`:
+
+```
+b4d4: 0053 0064 0079 0092 ffff ffff ffff ffff ffff 0093 0078 0061 0052 0049
+b4e2: 002a 002f 003a 0047 005f 007d 009e ffff ffff ffff 009f 007b 005e 0046
+```
+
+That is a table, not a routine. It falls through into `0xc418`, `0xe580` and
+`0xb671`, spends 1,171 instructions there, and returns. So the earlier reading
+of `0xa8cb` as a live conditional call into the datapump was wrong: forcing the
+bit runs the CPU into data, and the ten non-zero line words it produced are
+that, not a carrier.
+
+### The reset code, which is anchored, says something different
+
+Program `0x0000` — the one origin that is not a guess, since it is the bank the
+supervisor downloads — is unambiguous C5x startup:
+
+```
+0000  LDP  #0
+0007  SPLK #0x0010, @2a     ; CWSR
+0009  SPLK #0x000a, @28     ; PDWSR
+000b  SPLK #0x0001, @29     ; IOWSR
+0011  SPLK #0x27bd, @7d ; LST ST1
+0014  APL  #0x07f8, @07 ; OPL #0x00b0, @07   ; PMST: AVIS, OVLY, RAM
+001d  LAR  AR1, #0x0100 ; RPTZ #0x3ff ; SACH *   ; clear 1,024 words
+00bd  SPLK #0x0008, *   ; SPC = 0x0008
+00bf  SPLK #0x40c8, *   ; SPC = 0x40c8, receiver out of reset
+00c9  LACC #0x002a ; SAMM @04              ; IMR = 0x002a
+00cc  CLRC INTM                            ; interrupts on
+00cf  CALL 0x8188
+```
+
+The `CALL 0x8188` literal lands exactly where `SPC` is written again — the one
+site in the image carrying `0x40c8`, and here it writes `0x0000`. So the serial
+port is opened by the reset code and closed immediately by the routine reset
+calls; "nothing in the reachable image turns it back on" was half the story.
+
+### Two earlier measurements were mine, not the firmware's
+
+`courier_c5x_get_data` and `courier_c5x_set_data` go straight to the data array
+and skip the C5x register decode, so reading address `0x04` answers
+`m_data[0x04]` rather than `IMR`. **`IMR` is not zero.** It is `0x002a` out of
+reset and every sample ends with `0x0080` written to it from `0x81be`.
+
+### Interrupt 7 is enabled, and it is the thing nobody was raising
+
+Raising each of the sixteen interrupts in turn, exactly one changes the run:
+
+| | executed sites | line-DAC writes | non-zero | DXR writes |
+|---|---:|---:|---:|---:|
+| idle | 167 | 8,220 | 1 | 3 |
+| interrupt 7 driven | **521** | 7,343 | **4,999** | 13 |
+| interrupt 7, faster | 481 | 2,683 | 347 | **695** |
+
+Three times as much of the program comes alive, two thirds of the line output
+stops being silence, and the C52 starts writing its serial transmit register.
+This is the TDM port — the C52's connection to the ASIC — and the harness has
+never raised its interrupt or fed `TRCV`.
+
+It is not yet a carrier. What reaches the line is a stuck DC level rather than a
+waveform, which is what an ISR fed no TDM frame would compute. And the vector
+it takes is wrong: `PMST.IPTR` is zero, so interrupt 7 vectors to program
+`0x0010`, which is inside the reset code above. Settling where this firmware's
+vector table actually is — and modelling the ASIC's TDM frame behind `TRCV` and
+`TDXR` — is what the datapump is waiting on.
+
 ### Two core defects found on that path
 
 - **TREG0 was not memory-mapped.** `LT` and its relatives wrote `m_treg0`
