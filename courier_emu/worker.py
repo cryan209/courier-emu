@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
+from .line import LineLink
 from .machine import CourierMachine
 from .nvram import CourierNvram
 from .parameters import load_sector
@@ -40,6 +41,8 @@ def main() -> int:
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
+    parser.add_argument("--line-link")
+    parser.add_argument("--line-listen", action="store_true")
     parser.add_argument("--ring-cadence")
     parser.add_argument("--ring-start", type=_number, default=0)
     parser.add_argument("--ring-count", type=_number, default=0)
@@ -82,6 +85,11 @@ def main() -> int:
             )
         )
 
+    line = None
+    if args.line_link:
+        line = LineLink(path=args.line_link, listen=args.line_listen)
+        line.open()
+
     ring = None
     if args.ring_cadence:
         on_text, _, off_text = args.ring_cadence.partition(":")
@@ -109,6 +117,7 @@ def main() -> int:
         dip_closed=frozenset(args.dip),
         parameter_sector=load_sector(args.parameter_sector) if args.parameter_sector else None,
         sip=sip,
+        line=line,
     )
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))
     return 0

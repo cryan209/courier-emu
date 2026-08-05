@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from dataclasses import dataclass
+from typing import Any
 
 from .daa import CourierDaa, DAA_FRAME_SAMPLES
 from .dsp import NativeC5x
+from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import RateConverter, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
 
@@ -34,6 +36,7 @@ class BridgeStatus:
     dial_digits: str
     daa: dict[str, str | int | bool] | None
     sip: dict[str, str | int | bool | list[str]] | None
+    line: dict[str, Any] | None = None
 
 
 class CourierDspBridge:
@@ -47,6 +50,7 @@ class CourierDspBridge:
         rx_samples: list[int] | None = None,
         daa: CourierDaa | None = None,
         sip: SipSession | None = None,
+        line: LineLink | None = None,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -77,6 +81,10 @@ class CourierDspBridge:
         self.dial_digits = ""
         self.daa = daa
         self.sip = sip
+        self.line = line
+        self._line_instructions = 0
+        self._line_tx_index = 0
+        self._line_rx_samples: deque[int] = deque()
         self._sip_tx_index = 0
         self._sip_tx_rate = RateConverter(9_600, 8_000)
         self._sip_rx_rate = RateConverter(8_000, 9_600)
@@ -286,6 +294,8 @@ class CourierDspBridge:
                 self._sip_rx_samples.extend(
                     self._sip_rx_rate.convert(self.sip.receive_audio())
                 )
+            if self.line is not None:
+                self._service_line()
             if (
                 self.daa is not None
                 and self.daa.off_hook
@@ -300,6 +310,10 @@ class CourierDspBridge:
                         available = min(count, len(self._sip_rx_samples))
                         for index in range(available):
                             samples[index] = self._sip_rx_samples.popleft()
+                    if self._line_rx_samples:
+                        available = min(count, len(self._line_rx_samples))
+                        for index in range(available):
+                            samples[index] = self._line_rx_samples.popleft()
                     self.core.queue_serial_rx(samples)
                 if (
                     self.bootstraps >= 2
@@ -316,6 +330,34 @@ class CourierDspBridge:
                     self.sip.send_audio(self._sip_tx_rate.convert(samples))
         except RuntimeError as exc:
             self.error = str(exc)
+
+    def _service_line(self) -> None:
+        """Hand one frame to the far end and take its frame off the line.
+
+        The exchange runs on the instruction clock rather than on hook state,
+        because a modem waiting on hook still has to keep the far end's run
+        moving.
+        """
+        self._line_instructions += self.batch
+        if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
+            return
+        self._line_instructions = 0
+        off_hook = self.daa is not None and self.daa.off_hook
+        samples = self.core.line_tx_samples(self._line_tx_index)[:LINE_FRAME_SAMPLES]
+        self._line_tx_index += len(samples)
+        self.line.exchange(
+            LineFrame(
+                instructions=self.line.frames * LINE_FRAME_INSTRUCTIONS,
+                off_hook=off_hook,
+                ringing=False,
+                samples=samples,
+            )
+        )
+        self._line_rx_samples.extend(self.line.receive_audio())
+        if self.daa is not None:
+            # The far end going off hook is the whole of call setup on a
+            # dedicated line: there is loop current or there is not.
+            self.daa.line_state = "quiet" if self.line.peer_off_hook else "disconnected"
 
     def status(self) -> BridgeStatus:
         return BridgeStatus(
@@ -339,6 +381,7 @@ class CourierDspBridge:
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
+            line=self.line.status() if self.line is not None else None,
         )
 
     def save_tx_pcm(self, path: str) -> int:
@@ -351,4 +394,6 @@ class CourierDspBridge:
     def close(self) -> None:
         if self.sip is not None:
             self.sip.close()
+        if self.line is not None:
+            self.line.close()
         self.core.close()

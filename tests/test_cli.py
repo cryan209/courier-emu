@@ -180,6 +180,46 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run["ring"]["off_ms"], 4_000)
         self.assertGreaterEqual(run["ring"]["bursts_delivered"], 3)
 
+    def test_two_linked_instances_hold_one_line_open(self) -> None:
+        # Both sides answer into the same line: each sees the other seize it,
+        # each qualifies the line detector, and both exchange the same number
+        # of frames because the link is what keeps their clocks together.
+        output = StringIO()
+        with tempfile.TemporaryDirectory(dir="/tmp") as directory:
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "link",
+                        str(ROOT / "main211.xmf"),
+                        "--instructions",
+                        "20000000",
+                        "--socket",
+                        str(Path(directory) / "line.sock"),
+                        "--summary",
+                    ]
+                )
+        self.assertEqual(result, 0)
+        run = json.loads(output.getvalue())
+        for side in ("a", "b"):
+            with self.subTest(side=side):
+                bridge = run[side]["dsp_bridge"]
+                self.assertEqual(run[side]["status"], "main-loop")
+                self.assertTrue(bridge["daa"]["off_hook"])
+                self.assertTrue(bridge["line"]["peer_off_hook"])
+                self.assertTrue(bridge["daa"]["detector_qualified"])
+                self.assertGreater(bridge["line"]["frames"], 0)
+                self.assertIsNone(bridge["line"]["error"])
+        self.assertEqual(
+            run["a"]["dsp_bridge"]["line"]["frames"],
+            run["b"]["dsp_bridge"]["line"]["frames"],
+        )
+        # The call is up at the line layer and no further: the C52 never gets a
+        # datapump command, so every sample either side puts on the line is
+        # silence and both report NO CARRIER.
+        for side in ("a", "b"):
+            self.assertEqual(run[side]["dsp_bridge"]["serial_port"]["line_tx_nonzero"], 0)
+            self.assertIn("NO CARRIER", run[side]["serial_text"])
+
     def test_synthesised_sector_reproduces_the_reported_dump(self) -> None:
         # A real parameter sector cannot be dumped, so this builds one carrying
         # the configuration an x2-enabled unit reports and checks the firmware

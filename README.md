@@ -496,6 +496,45 @@ returning `OK`. An external unit is therefore likely `--board-id 7`, which also
 changes the product code to the `A` suffixed form (`5608A`/`3368A`). Running
 `ATI` on real hardware settles it.
 
+## Two instances on one line
+
+`link` runs two instances sharing a two-wire line over a UNIX socket. Each side
+hands the far end one 100 ms frame of hook state and line audio and blocks for
+the far end's frame, so two independently executing runs stay on the same
+emulated clock without either knowing how fast the other goes. Both sides get
+the `dedicated-line` option switches and answer:
+
+```sh
+python3 -m courier_emu link main211.xmf --instructions 40000000 --summary
+```
+
+`--a-at` and `--b-at` change what each side is told to do, and `run` takes
+`--line-link PATH` plus `--line-listen` directly if you would rather drive the
+two processes yourself. The link implies `--with-dsp` and supersedes
+`--daa-line`: the far end's hook state is the line state.
+
+The call comes up at the line layer. Each side reports the other off hook, both
+qualify the line detector, and each exchanges the same frame count:
+
+```text
+a NO CARRIER  frames=354 peer_off_hook=True
+b NO CARRIER  frames=354 peer_off_hook=True
+```
+
+It gets no further, and the reason is the one the SIP section describes rather
+than anything about the link. Over the same run each C52 wrote 271,869 line
+samples and **every one of them was zero**, while its command poll at external
+port `0x50` read `0xffff` 271,869 times. The supervisor sent 38 runtime control
+messages and the datapump never received a command, so neither side ever
+transmits a carrier for the other to hear. Recovering the supervisor-to-C52
+runtime latch protocol is what stands between this and two Couriers training
+against each other.
+
+The line carries no call setup, which is what a dedicated line is: both ends are
+connected and each simply sees the other seize. Ring cadence is modelled
+separately (`--ring`) and does not yet reach an answer, so an originate/answer
+call over the link is not available.
+
 ## Minimal SIP dial-out
 
 `--sip-server` attaches the DAA to a small UDP SIP user agent and enables both

@@ -7,6 +7,7 @@ from typing import Any
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
 from .daa import CourierDaa, RingSource
+from .line import LineLink
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
 from .panel import (
     DEFAULT_BOARD_ID,
@@ -106,6 +107,7 @@ class CourierMachine:
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
         sip: SipSession | None = None,
+        line: LineLink | None = None,
         nvram: CourierNvram | None = None,
         board_id: int | None = DEFAULT_BOARD_ID,
         dip_closed: frozenset[str] | None = None,
@@ -154,7 +156,9 @@ class CourierMachine:
         self.accelerated_delays = 0
         self.milestones: list[str] = []
         self.dsp_bridge = (
-            CourierDspBridge(image, rx_samples=dsp_rx_samples, daa=daa, sip=sip)
+            CourierDspBridge(
+                image, rx_samples=dsp_rx_samples, daa=daa, sip=sip, line=line
+            )
             if with_dsp
             else None
         )

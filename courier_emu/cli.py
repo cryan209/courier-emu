@@ -10,6 +10,7 @@ import sys
 
 from .parameters import FEATURE_BITS, ParameterSector, features_value
 from .daa import RING_OFF_MS, RING_ON_MS, RING_START_MS
+from .line import MAX_SOCKET_PATH
 from .panel import (
     BOARD_CAPABILITY,
     DEFAULT_BOARD_ID,
@@ -19,6 +20,8 @@ from .panel import (
     USABLE_BOARD_IDS,
 )
 from .xmf import XmfFormatError, XmfImage
+
+DEFAULT_LINE_SOCKET = "/tmp/courier-line.sock"
 from .dsp import run_dsp
 
 
@@ -79,9 +82,17 @@ def _run_isolated(args: argparse.Namespace) -> int:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp or args.daa_line or args.sip_server:
+    if args.with_dsp or args.daa_line or args.sip_server or args.line_link:
         command.append("--with-dsp")
+    if args.line_link:
+        command.extend(("--line-link", str(args.line_link)))
+        if args.line_listen:
+            command.append("--line-listen")
+    # A linked instance always needs a DAA: the link drives its line state
+    # frame by frame, starting from a line with nothing on the far end.
     daa_line = args.daa_line or ("dial-tone" if args.sip_server else None)
+    if daa_line is None and args.line_link:
+        daa_line = "disconnected"
     if daa_line:
         command.extend(("--daa-line", daa_line))
     if args.sip_server:
@@ -147,6 +158,65 @@ def _run_isolated(args: argparse.Namespace) -> int:
         result.pop("mmio_events", None)
         result.pop("last_addresses", None)
     _print_json(result)
+    return 0
+
+
+def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> list[str]:
+    command = [
+        sys.executable,
+        "-m",
+        "courier_emu",
+        "run",
+        str(Path(args.image).resolve()),
+        "--instructions",
+        str(args.instructions),
+        "--line-link",
+        args.socket,
+        "--dip-preset",
+        args.dip_preset,
+        "--board-id",
+        args.board_id,
+    ]
+    if listen:
+        command.append("--line-listen")
+    if args.summary:
+        command.append("--summary")
+    for text in commands or ["ATA"]:
+        command.extend(("--at", text))
+    return command
+
+
+def _run_linked_pair(args: argparse.Namespace) -> int:
+    """Run both sides of one line and report each side's result."""
+    socket_path = Path(args.socket)
+    if len(str(socket_path).encode()) > MAX_SOCKET_PATH:
+        raise ValueError(
+            f"line socket path is {len(str(socket_path))} characters; "
+            f"a UNIX socket path fits {MAX_SOCKET_PATH}"
+        )
+    if socket_path.exists():
+        socket_path.unlink()
+    XmfImage.load(args.image)
+
+    # Either side may reach the socket first; the connecting side retries
+    # until the listening side has bound and listened.
+    side_a = subprocess.Popen(
+        _link_side(args, args.a_at, listen=True), text=True, stdout=subprocess.PIPE
+    )
+    side_b = subprocess.Popen(
+        _link_side(args, args.b_at, listen=False), text=True, stdout=subprocess.PIPE
+    )
+    output_a, _ = side_a.communicate()
+    output_b, _ = side_b.communicate()
+    if side_a.returncode or side_b.returncode:
+        print(
+            f"linked run failed (a: {side_a.returncode}, b: {side_b.returncode})",
+            file=sys.stderr,
+        )
+        return 2
+    _print_json({"a": json.loads(output_a), "b": json.loads(output_b)})
+    if socket_path.exists():
+        socket_path.unlink()
     return 0
 
 
@@ -249,6 +319,17 @@ def build_parser() -> argparse.ArgumentParser:
         "Default: " + ", ".join(sorted(DEFAULT_DIP_CLOSED)),
     )
     run.add_argument(
+        "--line-link",
+        metavar="PATH",
+        help="share a two-wire line with another instance over this UNIX socket; "
+        "implies --with-dsp and supersedes --daa-line",
+    )
+    run.add_argument(
+        "--line-listen",
+        action="store_true",
+        help="bind the --line-link socket instead of connecting to it",
+    )
+    run.add_argument(
         "--dip-preset",
         choices=sorted(DIP_PRESETS),
         metavar="NAME",
@@ -313,6 +394,46 @@ def build_parser() -> argparse.ArgumentParser:
         help="queue literal Latin-1 terminal input after boot",
     )
 
+    link = subparsers.add_parser(
+        "link",
+        help="run two instances sharing one line, as a dedicated-line pair",
+    )
+    link.add_argument("image")
+    link.add_argument("--instructions", type=_number, default=40_000_000)
+    link.add_argument(
+        "--socket",
+        default=DEFAULT_LINE_SOCKET,
+        metavar="PATH",
+        help=f"UNIX socket the two instances share (default {DEFAULT_LINE_SOCKET})",
+    )
+    link.add_argument(
+        "--a-at",
+        action="append",
+        default=[],
+        metavar="COMMAND",
+        help="AT command for side A; repeatable (default ATA)",
+    )
+    link.add_argument(
+        "--b-at",
+        action="append",
+        default=[],
+        metavar="COMMAND",
+        help="AT command for side B; repeatable (default ATA)",
+    )
+    link.add_argument(
+        "--dip-preset",
+        choices=sorted(DIP_PRESETS),
+        default="dedicated-line",
+        metavar="NAME",
+        help="option switches for both sides (default dedicated-line)",
+    )
+    link.add_argument("--board-id", type=_board_id, default=str(DEFAULT_BOARD_ID))
+    link.add_argument(
+        "--summary",
+        action="store_true",
+        help="omit individual event records and the final address window",
+    )
+
     parameters = subparsers.add_parser(
         "parameters", help="synthesise a parameter sector image"
     )
@@ -362,6 +483,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "run":
             return _run_isolated(args)
+        if args.command == "link":
+            return _run_linked_pair(args)
         if args.command == "parameters":
             sector = ParameterSector(
                 country=args.country,
