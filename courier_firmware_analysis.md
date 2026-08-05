@@ -1066,13 +1066,14 @@ correct answer for an `ATA` with no modelled DAA. The harness therefore
 honours the mask: no edge is delivered on vector `0x0f` while `int3` is masked,
 and `ATI10`/`ATI11` remain unfinished rather than finished by a fabricated one.
 
-The likely real source is the DSP interrupt. Vector `0x0c` — INT0, unmasked —
-enters at `0x6ad00` and begins with a divider: `inc byte [0x176]`, compare
-against 25, and on reaching it `mov byte [0x66c], 0x80`. That same flag is set
-inside the countdown chain at `0x5c227` and cleared at `0x5c2b1`. A time base
-derived from the DSP frame clock also fits the board, where the frame clock is
-the only steady reference. The path from that flag into the chain is not yet
-traced.
+The DSP interrupt looked like the real source for a while: vector `0x0c` —
+INT0, unmasked — enters at `0x6ad00` and begins with what reads as a divider,
+`inc byte [0x176]`, compare against 25, and on reaching it
+`mov byte [0x66c], 0x80`. Tracing that flag settles it, and not in favour of
+the hypothesis: `[0x66c]` bit `0x80` is a watchdog alarm rather than a tick,
+and it is never tested to decide whether to run the chain. See "The two
+handlers watch each other" below. The chain still has exactly one entry, the
+masked vector.
 
 ### The mask is set at boot and never cleared
 
@@ -1146,6 +1147,55 @@ generators at 641.5 Hz, 133.6 Hz and 33.4 Hz, and runs VRTX on top of them —
 5,822 `int 0x30` kernel calls in the same run. That is what a live time base on
 this hardware family looks like.
 
+### The two handlers watch each other
+
+`[0x66c]` is a bitfield, not a flag — 335 accesses across the image use every
+bit from `0x01` to `0x80`. Bit `0x80` is the one both interrupt handlers write,
+and each writes it when the *other* has stopped.
+
+The tick's side sits at `0x5c18f`, inside the countdown chain:
+
+```
+test byte [0x1fb9], 1
+jne  0x5c1b2                 ; the check is switched off
+cmp  byte [0x176], 0
+jne  0x5c1b2                 ; a DSP interrupt arrived this tick, so all is well
+inc  byte [0x177]            ; otherwise count consecutive silent ticks
+cmp  byte [0x177], 3
+jb   0x5c1b7
+mov  byte [0x66c], 0x80      ; three silent ticks: raise the alarm
+or   byte [0x1fb9], 2
+0x5c1b2:  mov byte [0x177], 0
+0x5c1b7:  mov byte [0x176], 0    ; and reset the DSP counter every tick
+```
+
+The DSP's side is the divider above: `inc byte [0x176]`, and once it reaches 25
+without a tick having cleared it, the same `mov byte [0x66c], 0x80`. So the
+tick fires the alarm when the DSP goes quiet, and the DSP fires it when the
+tick does. The bit carries no timing — it means "my counterpart has stopped" —
+and the code that waits treats it as an abort. `0x5dbe0` tests it immediately
+before the detector wait and jumps to the timeout at `0x5dc53` when it is set;
+there are around a hundred `test byte [0x66c], 0x80` sites.
+
+In this harness that watchdog is permanently tripped. `[0x176]` is only ever
+cleared at `0x5c1b7`, inside the handler that never runs, so it free-runs as a
+byte and spends 231 counts in every 256 at or above 25. Over a 30 M-instruction
+`ATDT` run:
+
+| site | executions |
+|---|---:|
+| `0x6ad00` INT0 entry | 6,618 |
+| `0x6ad11` `mov byte [0x66c], 0x80` | 5,969 |
+| `0x5c0fa` INT3 entry | 0 |
+| `0x5c1b7` `mov byte [0x176], 0` | 0 |
+
+Nine DSP interrupts in ten stamp the alarm. The instruction is a `mov`, not an
+`or`, so each of those ~6,000 stores also wipes bits `0x01`..`0x40` — six other
+flags that hundreds of sites across the image read and write. The masked
+interrupt does not merely withhold the countdowns; its absence actively
+corrupts a shared byte several thousand times per run, and any behaviour read
+off a run has to be weighed against that.
+
 ### What the mask costs
 
 The handler's last act before its EOI is a call into the DAA:
@@ -1173,6 +1223,29 @@ this one handler services, and they are forged because the interrupt that would
 service them is switched off. Driving `int3` faithfully would retire all of
 them together; forging `[0x649]` in particular also keeps the poller from ever
 running, so no run has yet sent a `0x7c00` request or received a `0x7c` reply.
+
+### Why this is the blocker for placing and answering calls
+
+Everything a call needs is downstream of this one interrupt. Seizing the line
+and qualifying what comes back is the `[0x649]` path; ring qualification is the
+`[0x647]`/`[0x648]` debounce on the tag `0x7e` ring bits, counted against the
+S-register at `[0x92a]`; the pre-dial interval is `[0x8d6]`; call progress runs
+through the same `[0x65e]` state chain. All of them are serviced by the handler
+on the masked vector, and every one the harness forges is a place where the
+firmware stops telling us what the board would do and starts telling us what we
+told it.
+
+Four explanations for the mask have been tested and three are closed. It is not
+a condition the harness fails to meet: nothing in the image writes the register
+a second time. It is not a misread register map: timer 0's max count
+cross-checks the base. It is not an update payload inheriting a boot block's
+work: the one complete flash ROM here masks it inside its own boot block. What
+remains is that the countdown chain is dormant in every build we have and the
+shipping modem keeps time somewhere we have not looked — which cannot be
+settled from these images alone. A RAM or state dump from a physical Courier,
+already the highest-leverage item under "Possible next steps", would settle it
+directly: read `[0x176]`, `[0x177]`, `[0x66c]` and the interrupt controller's
+mask on a running modem and the question answers itself.
 
 ## Possible next steps
 
