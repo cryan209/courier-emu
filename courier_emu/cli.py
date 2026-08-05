@@ -9,10 +9,12 @@ import subprocess
 import sys
 
 from .parameters import FEATURE_BITS, ParameterSector, features_value
+from .daa import RING_OFF_MS, RING_ON_MS, RING_START_MS
 from .panel import (
     BOARD_CAPABILITY,
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
+    DIP_PRESETS,
     DIP_SWITCHES,
     USABLE_BOARD_IDS,
 )
@@ -43,6 +45,16 @@ def _board_id(value: str) -> str:
             f"as {reason}; usable codes are {usable}"
         )
     return value
+
+
+def ring_cadence(value: str | None) -> tuple[int, int]:
+    """Split an ON:OFF millisecond cadence, defaulting either half."""
+    if not value:
+        return RING_ON_MS, RING_OFF_MS
+    on_text, separator, off_text = value.partition(":")
+    if not separator:
+        raise ValueError(f"ring cadence must be ON:OFF milliseconds, got {value!r}")
+    return _number(on_text or str(RING_ON_MS)), _number(off_text or str(RING_OFF_MS))
 
 
 def _print_json(value: object) -> None:
@@ -85,10 +97,22 @@ def _run_isolated(args: argparse.Namespace) -> int:
     if args.parameter_sector:
         command.extend(("--parameter-sector", str(Path(args.parameter_sector).resolve())))
     command.extend(("--board-id", args.board_id))
-    closed = sorted(DEFAULT_DIP_CLOSED) if args.dip is None else args.dip
+    if args.dip is not None and args.dip_preset:
+        raise ValueError("use --dip or --dip-preset, not both")
+    if args.dip is not None:
+        closed = args.dip
+    elif args.dip_preset:
+        closed = sorted(DIP_PRESETS[args.dip_preset])
+    else:
+        closed = sorted(DEFAULT_DIP_CLOSED)
     for switch in closed:
         if switch != "none":
             command.extend(("--dip", switch))
+    if args.ring or args.ring_cadence:
+        on_ms, off_ms = ring_cadence(args.ring_cadence)
+        command.extend(("--ring-cadence", f"{on_ms}:{off_ms}"))
+        command.extend(("--ring-start", str(args.ring_start)))
+        command.extend(("--ring-count", str(args.ring_count)))
     if args.dsp_rx_pcm:
         command.extend(("--dsp-rx-pcm", str(Path(args.dsp_rx_pcm).resolve())))
     if args.dsp_tx_pcm:
@@ -223,6 +247,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="close this board option switch; repeatable, and the first use "
         "replaces the default set. Use 'none' to leave every switch open. "
         "Default: " + ", ".join(sorted(DEFAULT_DIP_CLOSED)),
+    )
+    run.add_argument(
+        "--dip-preset",
+        choices=sorted(DIP_PRESETS),
+        metavar="NAME",
+        help="close a named set of option switches: "
+        + "; ".join(
+            f"{name} ({', '.join(sorted(switches))})"
+            for name, switches in sorted(DIP_PRESETS.items())
+        ),
+    )
+    run.add_argument(
+        "--ring",
+        action="store_true",
+        help="ring the line: drives the ring detector on input port 0x14 with a "
+        f"{RING_ON_MS} ms on / {RING_OFF_MS} ms off cadence",
+    )
+    run.add_argument(
+        "--ring-cadence",
+        metavar="ON:OFF",
+        help=f"ring burst and silence in milliseconds (default {RING_ON_MS}:{RING_OFF_MS})",
+    )
+    run.add_argument(
+        "--ring-start",
+        type=_number,
+        default=RING_START_MS,
+        metavar="MS",
+        help=f"milliseconds to wait before the first ring (default {RING_START_MS})",
+    )
+    run.add_argument(
+        "--ring-count",
+        type=_number,
+        default=0,
+        metavar="N",
+        help="stop after this many rings (default 0, ring until the run ends)",
     )
     run.add_argument(
         "--nvram",

@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from courier_emu.cli import main
+from courier_emu.cli import main, ring_cadence
 from courier_emu.parameters import FEATURE_BITS, ParameterSector, features_value
 
 
@@ -120,6 +120,65 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run["status"], "main-loop")
         self.assertEqual(run["serial_text"], "")
         self.assertEqual(run["panel"]["dip_switches"]["result-codes"], "open")
+
+    def test_ring_cadence_defaults_either_half(self) -> None:
+        self.assertEqual(ring_cadence(None), (2_000, 4_000))
+        self.assertEqual(ring_cadence("1500:3000"), (1_500, 3_000))
+        self.assertEqual(ring_cadence(":3000"), (2_000, 3_000))
+        with self.assertRaises(ValueError):
+            ring_cadence("1500")
+
+    def test_dedicated_line_preset_forces_carrier_detect_on(self) -> None:
+        # 0x5e3cf reads that switch straight into the &C setting, so the
+        # profile the firmware prints is the check on it.
+        output = StringIO()
+        with redirect_stdout(output):
+            result = main(
+                [
+                    "run",
+                    str(ROOT / "main211.xmf"),
+                    "--instructions",
+                    "12000000",
+                    "--dip-preset",
+                    "dedicated-line",
+                    "--at",
+                    "ATI4",
+                    "--summary",
+                ]
+            )
+        self.assertEqual(result, 0)
+        run = json.loads(output.getvalue())
+        self.assertIn("&C0", run["serial_text"])
+        self.assertIn("S14=000", run["serial_text"])
+        switches = run["panel"]["dip_switches"]
+        self.assertEqual(switches["carrier-detect-override"], "closed")
+        self.assertEqual(switches["dtr-override"], "closed")
+        # Auto answer stays on: the switch that would disable it is open.
+        self.assertEqual(switches["no-auto-answer"], "open")
+        self.assertIn("S00=001", run["serial_text"])
+
+    def test_the_ring_detector_follows_the_configured_cadence(self) -> None:
+        # The answer machine at 0x70fb4 polls input port 0x14 bit 0x02 and
+        # every state waits on an edge, so the run has to see whole bursts.
+        output = StringIO()
+        with redirect_stdout(output):
+            result = main(
+                [
+                    "run",
+                    str(ROOT / "main211.xmf"),
+                    "--instructions",
+                    "30000000",
+                    "--ring",
+                    "--ring-start",
+                    "8000",
+                    "--summary",
+                ]
+            )
+        self.assertEqual(result, 0)
+        run = json.loads(output.getvalue())
+        self.assertEqual(run["ring"]["on_ms"], 2_000)
+        self.assertEqual(run["ring"]["off_ms"], 4_000)
+        self.assertGreaterEqual(run["ring"]["bursts_delivered"], 3)
 
     def test_synthesised_sector_reproduces_the_reported_dump(self) -> None:
         # A real parameter sector cannot be dumped, so this builds one carrying

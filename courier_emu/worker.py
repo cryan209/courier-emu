@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 
-from .daa import CourierDaa, DAA_LINE_STATES
+from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .machine import CourierMachine
 from .nvram import CourierNvram
 from .parameters import load_sector
@@ -40,6 +40,9 @@ def main() -> int:
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
+    parser.add_argument("--ring-cadence")
+    parser.add_argument("--ring-start", type=_number, default=0)
+    parser.add_argument("--ring-count", type=_number, default=0)
     args = parser.parse_args()
 
     ports: dict[int, int] = {}
@@ -79,6 +82,16 @@ def main() -> int:
             )
         )
 
+    ring = None
+    if args.ring_cadence:
+        on_text, _, off_text = args.ring_cadence.partition(":")
+        ring = RingSource(
+            on_ms=_number(on_text),
+            off_ms=_number(off_text),
+            start_ms=args.ring_start,
+            count=args.ring_count,
+        )
+
     machine = CourierMachine(
         XmfImage.load(args.image),
         port_values=ports,
@@ -90,6 +103,7 @@ def main() -> int:
         dsp_tx_pcm=args.dsp_tx_pcm,
         serial_input=bytes.fromhex(args.serial_input_hex),
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
+        ring=ring,
         nvram=CourierNvram.load(args.nvram) if args.nvram else None,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
         dip_closed=frozenset(args.dip),

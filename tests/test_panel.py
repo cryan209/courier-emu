@@ -5,6 +5,7 @@ import unittest
 from courier_emu.panel import (
     BOARD_CAPABILITY,
     DEFAULT_DIP_CLOSED,
+    DIP_PRESETS,
     DIP_SWITCHES,
     DEFAULT_BOARD_ID,
     NVRAM_BOARD_IDS,
@@ -83,9 +84,9 @@ class CourierPanelTest(unittest.TestCase):
         self.assertTrue(capability & 0x08)
 
     def test_closed_switches_pull_their_input_bit_low(self) -> None:
-        panel = CourierPanel(dip_closed=frozenset({"result-codes", "echo"}))
+        panel = CourierPanel(dip_closed=frozenset({"result-codes", "no-echo"}))
         self.assertEqual(panel.dip_input(0x14), 0x20)   # result-codes
-        self.assertEqual(panel.dip_input(0x12), 0x10)   # echo
+        self.assertEqual(panel.dip_input(0x12), 0x10)   # no-echo
         self.assertEqual(panel.dip_input(0x10), 0x00)
 
     def test_open_switches_drive_nothing(self) -> None:
@@ -122,8 +123,35 @@ class CourierPanelTest(unittest.TestCase):
         panel.observe_write(0x14, 0xE5, pc=0x5E317, instruction=1)
         signals = panel.status()["signals"]
         self.assertFalse(signals["indicator-14-02"])
-        self.assertTrue(signals["indicator-14-01"])
+        # 0x01 is one of the carrier-detect pair, which 0x5de65 asserts by
+        # driving it low, so a high latch bit is the released state.
+        self.assertFalse(signals["carrier-detect-a"])
         self.assertTrue(signals["id-strap-drive-a"])
+
+    def test_carrier_detect_pair_is_asserted_by_driving_its_bits_low(self) -> None:
+        # 0x5de65 clears both lines for the &C0 setting, which is the position
+        # that holds carrier detect on.
+        panel = CourierPanel()
+        panel.observe_write(0x14, 0xFF, pc=0x5E2E0, instruction=1)
+        signals = panel.signals()
+        self.assertFalse(signals["carrier-detect-a"])
+        self.assertFalse(signals["carrier-detect-b"])
+        panel.observe_write(0x14, 0x7E, pc=0x5E317, instruction=2)
+        signals = panel.signals()
+        self.assertTrue(signals["carrier-detect-a"])
+        self.assertTrue(signals["carrier-detect-b"])
+
+    def test_dedicated_line_preset_overrides_dtr_and_carrier_detect(self) -> None:
+        # A modem on a dedicated line has no DTE holding DTR up, and needs
+        # carrier detect asserted rather than following a call that never
+        # gets set up by dialling.
+        preset = DIP_PRESETS["dedicated-line"]
+        self.assertIn("dtr-override", preset)
+        self.assertIn("carrier-detect-override", preset)
+        self.assertNotIn("no-auto-answer", preset)
+        panel = CourierPanel(dip_closed=preset)
+        self.assertEqual(panel.dip_input(0x12), 0x20)   # dtr-override
+        self.assertEqual(panel.dip_input(0x14), 0x24)   # carrier detect + result codes
 
 
 if __name__ == "__main__":

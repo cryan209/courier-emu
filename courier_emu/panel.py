@@ -54,14 +54,22 @@ OUTPUT_BITS: dict[int, dict[int, str]] = {
         0x80: "indicator-12-80",
     },
     0x14: {
-        0x01: "indicator-14-01",
+        # 0x5de57 drives 0x01 and 0x80 together as one pair: with the &C
+        # setting at [0x09e9] equal to zero it clears both (0x5de65, 0x5de6b)
+        # and with any other value it sets both (0x5de7d, 0x5de83). &C0 is
+        # "carrier detect always on", so the cleared level is the asserted one
+        # and these two lines are the carrier-detect pair. Which of them is the
+        # DTE pin and which is the front-panel CD lamp is not established.
+        0x01: "carrier-detect-a",
         0x02: "indicator-14-02",
         0x04: "indicator-14-04",
-        0x08: "indicator-14-08",
+        # Paired with latch 1 bit 0x02 by 0x5ddc4/0x5dde1, which drive both
+        # together while the connection state byte [0x094c] is not 1, 4, or 5.
+        0x08: "dte-handshake-b",
         0x10: "id-strap-drive-c",  # driven low at 0x5c015
         0x20: "id-strap-drive-d",  # driven low at 0x5c03d
         0x40: "id-strap-drive-a",  # driven low at 0x5bfed
-        0x80: "indicator-14-80",
+        0x80: "carrier-detect-b",
     },
 }
 
@@ -71,7 +79,12 @@ OUTPUT_BITS: dict[int, dict[int, str]] = {
 # the hook line is asserted by driving its latch bit low. Bit 0x01 is raised for
 # exactly the same window (0x5db4e on seizure, 0x5e197 on release), so it is
 # reported as the paired off-hook indication rather than a second relay.
-ACTIVE_LOW: frozenset[tuple[int, int]] = frozenset({(0x10, 0x04)})
+#
+# The carrier-detect pair follows the same convention: 0x5de65 clears both
+# lines for &C0, which is the setting that holds carrier detect asserted.
+ACTIVE_LOW: frozenset[tuple[int, int]] = frozenset(
+    {(0x10, 0x04), (0x14, 0x01), (0x14, 0x80)}
+)
 
 INPUT_BITS: dict[int, dict[int, str]] = {
     0x10: {
@@ -79,11 +92,26 @@ INPUT_BITS: dict[int, dict[int, str]] = {
         0x10: "nvram-data-out",
         0x80: "board-option-80",  # sampled at 0x5c029 into flag byte 0x017a
     },
+    0x12: {
+        # Sampled at 0x5e375, re-polled at 0x5e395, and re-polled again at
+        # 0x5e3b5. A low reading sets [0x0659] bit 0x80 and clears [0x0652]
+        # bit 0x04; the two transitions post supervisor events 6 and 7, and
+        # 0x5e887 turns a low reading into event 10 when S14 bit 0 is set.
+        # That is the DTE's DTR line, and the S14 gate is what the
+        # `dtr-override` option switch clears.
+        0x40: "dte-dtr",
+    },
     0x14: {
         0x02: "ring-detect",  # sampled at 0x70fb4 and 0x70fc1 by the answer machine
         0x08: "id-strap-sense",  # common return of the 0x5bfc6 strap scan
     },
 }
+
+# The answer machine at 0x70fb4 reads the ring detector with a direct
+# `in al, 0x14` rather than through the latch driver, and every state waits on
+# an edge of this bit.
+RING_DETECT_PORT = 0x14
+RING_DETECT_BIT = 0x02
 
 
 # The board identifies itself at 0x5bfc6 by driving four latch lines low one at
@@ -124,26 +152,53 @@ NVRAM_BOARD_IDS: tuple[int, ...] = tuple(
 DEFAULT_BOARD_ID = NVRAM_BOARD_IDS[0]
 
 
-# The option switches are input bits on the same latch ports, read once through
-# the latch-read entry while the profile is being built at 0x63e10..0x63ec2.
-# Each one is sampled with `mov ax, mask << 8 | index; call 0x2d4a`, and the
-# firmware reads a *closed* switch as a low bit, so the sense is inverted.
-# Names describe the setting each switch selects, which is what the firmware
-# shows; the mapping onto the physical switch numbers is not established here.
+# The option switches are input bits on the same latch ports, sampled with
+# `mov ax, mask << 8 | index; call 0x2d4a`. The firmware reads a *closed*
+# switch as a low bit, so the sense is inverted, and each one also records
+# itself in the switch shadow word at [0x0659].
+#
+# Six are read while the profile is built at 0x63d31..0x63ec2; the carrier
+# detect switch is read separately at 0x5e3cf. Every entry below was confirmed
+# by running `ATI4` with that one input bit pulled low and diffing the profile
+# the firmware prints, so the names describe an observed setting change rather
+# than an inferred one. Mapping them onto the switch numbers printed on the
+# case still needs a physical unit.
 DIP_SWITCHES: dict[str, tuple[int, int, str]] = {
     # name: (port, mask, what the firmware does when the switch reads closed)
-    "result-codes": (0x14, 0x20, "0x63e2e clears the quiet setting at [0x092f]"),
-    "quiet-alt-a": (0x12, 0x08, "0x63e54 sets [0x092f] to 2"),
-    "quiet-alt-b": (0x12, 0x80, "0x63e75 sets [0x092f] to 2"),
-    "verbose": (0x10, 0x02, "0x63e17 leaves [0x092e] clear"),
-    "echo": (0x12, 0x10, "0x63e93 leaves [0x092d] clear"),
-    "profile-source": (0x14, 0x10, "0x63ead leaves [0x08de] from the defaults"),
+    "result-codes": (0x14, 0x20, "0x63e2e clears the quiet setting at [0x092f]: Q0"),
+    "quiet-answer": (0x12, 0x08, "0x63e54 sets [0x092f] to 2: Q2"),
+    # 0x63e40 gates this one on board capability bits 0x08 and 0x20, so it does
+    # nothing on the board codes this harness can run as.
+    "quiet-answer-alt": (0x12, 0x80, "0x63e75 sets [0x092f] to 2: Q2"),
+    "numeric-results": (0x10, 0x02, "0x63e17 leaves [0x092e] clear: V0"),
+    "no-echo": (0x12, 0x10, "0x63e93 leaves [0x092d] clear: E0"),
+    # 0x63d31 leaves S14 at zero instead of loading the flash default. Bit 0 of
+    # S14 is what 0x5e89f tests before it turns a low DTR reading into event 10,
+    # so a closed switch is the DTR override position.
+    "dtr-override": (0x12, 0x20, "0x63d48 leaves S14 at [0x094e] clear"),
+    # 0x5e3cf drives the &C setting rather than a profile default, and it is the
+    # only switch read outside the profile builder.
+    "carrier-detect-override": (0x14, 0x04, "0x5e3e1 clears [0x09e9]: &C0, CD forced on"),
+    # 0x63ead leaves [0x08de] — S0, rings before answering — at the zero stored
+    # by 0x63e0b instead of copying the flash default of 1 into it.
+    "no-auto-answer": (0x14, 0x10, "0x63eb5 leaves S0 at [0x08de] clear"),
 }
 
 # A directly attached DTE wants the modem to report result codes, which is the
 # closed position of that switch. Everything else idles open, matching an input
-# that is not driven.
+# that is not driven — which for `no-auto-answer` means S0 keeps its flash
+# default of 1 and the modem answers on the first ring.
 DEFAULT_DIP_CLOSED: frozenset[str] = frozenset({"result-codes"})
+
+# A modem on a dedicated line has no DTE holding DTR up and no dial tone or
+# ring supervision to lean on, so it has to ignore DTR and hold carrier detect
+# asserted. Auto answer is left on by leaving `no-auto-answer` open.
+DIP_PRESETS: dict[str, frozenset[str]] = {
+    "default": DEFAULT_DIP_CLOSED,
+    "dedicated-line": frozenset(
+        {"result-codes", "dtr-override", "carrier-detect-override"}
+    ),
+}
 
 
 def _names(port: int, value: int, table: dict[int, dict[int, str]]) -> list[str]:

@@ -191,30 +191,54 @@ i=2291289 port=0x10 value=0xf2 pc=0x5e317 -off-hook-aux
 i=2291366 port=0x10 value=0xf6 pc=0x5e2e0 -hook-relay
 ```
 
-Bits are only named where the firmware shows what the line does. The remaining
-indicator bits on `0x12` and `0x14` are reported under placeholder names with
-their driver-wrapper addresses in `courier_emu/panel.py`; mapping them onto
-front-panel legends still needs a physical reference.
+Bits are only named where the firmware shows what the line does. Two runtime
+DTE lines are now named as well:
+
+- Latch 2 bits `0x01` and `0x80` are driven as one pair by `0x5de57`: cleared
+  together at `0x5de65`/`0x5de6b` when the `&C` setting at `[0x09e9]` is zero and
+  set together at `0x5de7d`/`0x5de83` otherwise. `&C0` is "carrier detect always
+  on", so the cleared level is the asserted one and these are the carrier-detect
+  pair. Which one is the DTE pin and which is the front-panel lamp is not
+  established, so they are reported as `carrier-detect-a` and
+  `carrier-detect-b`.
+- Input port `0x12` bit `0x40` is DTR. `0x5e375` samples it, `0x5e395` and
+  `0x5e3b5` re-poll it, the two transitions post supervisor events 6 and 7, and
+  `0x5e887` turns a low reading into event 10 when S14 bit 0 is set.
+
+The remaining indicator bits on `0x12` and `0x14` are reported under placeholder
+names with their driver-wrapper addresses in `courier_emu/panel.py`; mapping them
+onto front-panel legends still needs a physical reference.
 
 ### Option switches
 
-The board option switches are input bits on the same latch ports, sampled once
-while the profile is built at `0x63e10..0x63ec2` with the same
-`mov ax, mask << 8 | index; call 0x2d4a` form the straps use. The firmware reads
-a **closed** switch as a low bit, so the sense is inverted.
+The board option switches are input bits on the same latch ports, sampled with
+the same `mov ax, mask << 8 | index; call 0x2d4a` form the straps use. Six are
+read while the profile is built at `0x63d31..0x63ec2` and the carrier-detect
+switch is read separately at `0x5e3cf`. The firmware reads a **closed** switch as
+a low bit, so the sense is inverted, and each switch also records itself in the
+shadow word at `[0x0659]`.
 
-| switch | port/bit | closed behaviour |
-|---|---|---|
-| `result-codes` | `0x14` `0x20` | `0x63e2e` clears the quiet setting at `[0x092f]` |
-| `quiet-alt-a` | `0x12` `0x08` | `0x63e54` sets `[0x092f]` to 2 |
-| `quiet-alt-b` | `0x12` `0x80` | `0x63e75` sets `[0x092f]` to 2 |
-| `verbose` | `0x10` `0x02` | `0x63e17` leaves `[0x092e]` clear |
-| `echo` | `0x12` `0x10` | `0x63e93` leaves `[0x092d]` clear |
-| `profile-source` | `0x14` `0x10` | `0x63ead` leaves `[0x08de]` from the defaults |
+Every row below was confirmed by running `ATI4` with that one input bit pulled
+low and diffing the profile the firmware prints, so the effect column is
+observed rather than inferred:
 
-Names describe the setting each switch selects, which is what the firmware
-itself shows. Mapping them onto the physical switch numbers on the case is not
-established here.
+| switch | port/bit | closed behaviour | observed |
+|---|---|---|---|
+| `result-codes` | `0x14` `0x20` | `0x63e2e` clears the quiet setting at `[0x092f]` | `Q0` |
+| `quiet-answer` | `0x12` `0x08` | `0x63e54` sets `[0x092f]` to 2 | `Q2` |
+| `quiet-answer-alt` | `0x12` `0x80` | `0x63e75` sets `[0x092f]` to 2 | none — gated on capability bits `0x08` and `0x20` at `0x63e40` |
+| `numeric-results` | `0x10` `0x02` | `0x63e17` leaves `[0x092e]` clear | `V0` |
+| `no-echo` | `0x12` `0x10` | `0x63e93` leaves `[0x092d]` clear | `E0` |
+| `dtr-override` | `0x12` `0x20` | `0x63d48` leaves S14 at `[0x094e]` clear | `S14=000` |
+| `carrier-detect-override` | `0x14` `0x04` | `0x5e3e1` clears `[0x09e9]` | `&C0` |
+| `no-auto-answer` | `0x14` `0x10` | `0x63eb5` leaves S0 at `[0x08de]` clear | `S00=000` |
+
+Three of these names are corrections. `[0x08de]` is S0, not a profile source, so
+that switch is the auto-answer switch and its closed position is the one that
+stops the modem answering; the switches previously called `verbose` and `echo`
+both *disable* those settings when closed. Names now describe what closing the
+switch does. Mapping them onto the switch numbers printed on the case still needs
+a physical unit.
 
 `--dip` closes a switch and is repeatable; the first use replaces the default
 set, and `--dip none` leaves every switch open. `result-codes` is closed by
@@ -225,6 +249,74 @@ over by writing `[0x092f]` directly:
 ```sh
 python3 -m courier_emu run main211.xmf --instructions 4000000 --at AT --dip none
 ```
+
+### Dedicated-line operation
+
+A modem on a dedicated line has no DTE holding DTR up and no call setup to
+follow, so it needs DTR ignored and carrier detect held on. `--dip-preset
+dedicated-line` closes `result-codes`, `dtr-override`, and
+`carrier-detect-override`, and leaves `no-auto-answer` open so S0 keeps its
+flash default of 1 and the modem answers on the first ring:
+
+```sh
+python3 -m courier_emu run main211.xmf --instructions 12000000 \
+  --dip-preset dedicated-line --at ATI4
+```
+
+The firmware confirms all three in its own profile dump: `&C0`, `S14=000`, and
+`S00=001`.
+
+### Ring detection
+
+The answer machine at `0x70fb4` polls input port `0x14` bit `0x02` with a direct
+`in al, 0x14`, and every state in it waits on an edge of that bit, so a line
+that never changes level parks it in its first state forever. That bit is now
+modelled: an idle line is not ringing, and `--ring` drives it with a cadence.
+
+```sh
+python3 -m courier_emu run main211.xmf --instructions 40000000 \
+  --ring --at 'AT#CID=1' --summary
+```
+
+The harness has no wall clock, so the cadence is converted from milliseconds
+through the instruction count. The firmware calibrates that conversion itself:
+`0x70fe0` accepts a burst once the tick counter at `[0x1d50]` reaches the country
+minimum at `[0x1f5c]`, which this build loads with 180, and a
+2,000,000-instruction burst is exactly what takes that counter to 180. At a
+North American 2 s ring that puts one firmware tick at 10 ms and the instruction
+clock at 1,111 per millisecond.
+
+With that cadence the answer machine qualifies bursts (`0x70fe9`), raises the
+ring-indicate line (`0x70ff0`), and posts its ring message (`0x71026`) into the
+supervisor event queue at `0x02e0`. Two gates matter there:
+
+- `[0x094e]` is `#CID`, expanded from packed-config byte 11 of the parameter
+  sector, and both ring message sites skip the post when it is zero. `AT#CID=1`
+  enables them.
+- `[0x0287]` bit `0x10` gates the second ring path, and it reads zero here.
+
+What does **not** yet happen is the answer itself: the queued ring events are
+never acted on, with or without `--with-dsp`, so no `RING` reaches the DTE and
+the hook relay stays released. The consumer of that queue is the next thing to
+recover.
+
+### Answering
+
+`ATA` reaches the same `0x5dbe7` line-detector wait that `ATD` does. Since an
+answering seizure has no dial tone to find, the DAA qualifies detector byte
+`[0x0649]` on a connected line for `answer` and keeps requiring dial tone for
+`originate`:
+
+```sh
+python3 -m courier_emu run main211.xmf --instructions 40000000 \
+  --at ATA --daa-line quiet --summary
+```
+
+That turns `NO DIAL TONE` into `NO CARRIER`, which is the correct answer to
+answering into silence: the line is seized and qualified, and training then
+fails for the reason the SIP section describes. Treating `[0x0649]` as the
+line-side detector rather than a dial-tone-only counter is an inference from the
+shared wait, not something the image states.
 
 ### Board identification straps
 

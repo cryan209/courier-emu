@@ -6,9 +6,16 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
-from .daa import CourierDaa
+from .daa import CourierDaa, RingSource
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
-from .panel import DEFAULT_BOARD_ID, DEFAULT_DIP_CLOSED, STRAP_SENSE_BIT, CourierPanel
+from .panel import (
+    DEFAULT_BOARD_ID,
+    DEFAULT_DIP_CLOSED,
+    RING_DETECT_BIT,
+    RING_DETECT_PORT,
+    STRAP_SENSE_BIT,
+    CourierPanel,
+)
 from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
 
@@ -71,6 +78,7 @@ class RunResult:
     dsp_bridge: dict[str, Any] | None = None
     panel: dict[str, Any] | None = None
     nvram: dict[str, Any] | None = None
+    ring: dict[str, int] | None = None
     interrupt_vectors: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -96,6 +104,7 @@ class CourierMachine:
         dsp_tx_pcm: str | None = None,
         serial_input: bytes = b"",
         daa: CourierDaa | None = None,
+        ring: RingSource | None = None,
         sip: SipSession | None = None,
         nvram: CourierNvram | None = None,
         board_id: int | None = DEFAULT_BOARD_ID,
@@ -104,6 +113,7 @@ class CourierMachine:
     ) -> None:
         self.image = image
         self.nvram = nvram
+        self.ring = ring
         self.parameter_sector = parameter_sector
         self.panel = CourierPanel(
             board_id=board_id,
@@ -435,13 +445,17 @@ class CourierMachine:
             # timer countdown at 0000:0289 instead of using the delay helper.
             if self.fast_delays and address in (0x5DB9D, 0x5DBE7):
                 daa = self.dsp_bridge.daa if self.dsp_bridge is not None else None
-                if address == 0x5DBE7 and daa is not None and daa.dial_tone_present:
-                    if daa.dial_tone_qualified:
-                        # 0x0649 is the recovered five-hit dial-tone detector
-                        # counter consumed by the supervisor's originate loop.
+                if address == 0x5DBE7 and daa is not None and daa.detector_present:
+                    if daa.detector_qualified:
+                        # 0x0649 is the recovered five-hit line detector
+                        # counter, consumed by the supervisor's originate loop
+                        # and by the answer path that reaches the same wait.
                         _uc.mem_write(0x649, b"\x05")
-                        self._trace_serial("daa dial-tone-qualified 0649=05")
-                        self.dsp_bridge.begin_dialing()
+                        self._trace_serial(
+                            f"daa {daa.operation}-qualified 0649=05"
+                        )
+                        if daa.operation != "answer":
+                            self.dsp_bridge.begin_dialing()
                 else:
                     _uc.mem_write(0x289, b"\x00\x00")
                 self.accelerated_delays += 1
@@ -557,6 +571,16 @@ class CourierMachine:
                         value |= STRAP_SENSE_BIT
                     else:
                         value &= ~STRAP_SENSE_BIT
+                if port == RING_DETECT_PORT and size == 1:
+                    # The answer machine polls the ring detector here with a
+                    # direct `in al, 0x14` at 0x70fb4 and 0x70fc1. An idle
+                    # subscriber line is not ringing, and leaving the bit
+                    # floating high reads as a ring that never ends, which
+                    # parks that state machine in its first state forever.
+                    if self.ring is not None and self.ring.present(self.instructions):
+                        value |= RING_DETECT_BIT
+                    else:
+                        value &= ~RING_DETECT_BIT
                 if self.nvram is not None and port == 0x10 and size == 1:
                     # Board latch 0 reads back the settings EEPROM's ready and
                     # data-out pins; every other bit keeps its floating level.
@@ -730,6 +754,7 @@ class CourierMachine:
             dsp_bridge=bridge_result,
             panel=self.panel.status(),
             nvram=nvram_result,
+            ring=self.ring.status() if self.ring is not None else None,
             interrupt_vectors=interrupt_vectors,
         )
 
