@@ -179,8 +179,23 @@ into memory at `0x0ff00` — which is the window this harness already hooks.
 It also carries the ~6 KiB boot block above the application that an update image
 never replaces: the hardware setup tables, the copy of itself to physical zero,
 the power-on read of the settings EEPROM, the whole-flash CRC, and a second copy
-of the SDL loader. `courier_firmware_analysis.md` has the full account, including
-the cross-build confirmation of the latch driver and every option switch.
+of the SDL loader.
+
+`run` takes a ROM as well, booting it from its reset vector:
+
+```sh
+python3 -m courier_emu run IDSDL302.ROM --instructions 40000000 --int1-after 7
+```
+
+The peripheral timers are modelled from the instruction clock - the enable
+gate, the zero-compare-is-full-range rule, single-shot versus continuous, the
+sticky max-count bit, and the mask side of the interrupt controller - which is
+what carries the ROM past its timer self-test at `0x80444`. It then reaches a
+tick wait whose period this firmware calibrates from an external INT1 edge
+rather than from a timer alone; `--int1-after` supplies one.
+`courier_firmware_analysis.md` has the full account, including where that
+sequence still stops, the cross-build confirmation of the latch driver, and
+every option switch.
 
 ## Board latches, front panel, and NVRAM
 

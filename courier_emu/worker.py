@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
+from .images import load_image
 from .line import LineLink
 from .machine import CourierMachine
 from .nvram import CourierNvram
@@ -41,6 +42,7 @@ def main() -> int:
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
+    parser.add_argument("--int1-after", type=_number)
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
     parser.add_argument("--ring-cadence")
@@ -101,7 +103,7 @@ def main() -> int:
         )
 
     machine = CourierMachine(
-        XmfImage.load(args.image),
+        load_image(args.image),
         port_values=ports,
         runtime_port_values=runtime_ports,
         uart_ports=set(args.uart_port),
@@ -112,6 +114,7 @@ def main() -> int:
         serial_input=bytes.fromhex(args.serial_input_hex),
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
         ring=ring,
+        int1_after_ms=args.int1_after,
         nvram=CourierNvram.load(args.nvram) if args.nvram else None,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
         dip_closed=frozenset(args.dip),

@@ -6,7 +6,7 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
-from .daa import CourierDaa, RingSource
+from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .line import LineLink
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
 from .panel import (
@@ -19,6 +19,7 @@ from .panel import (
 )
 from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
+from .timers import INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
 
 
 ADDRESS_SPACE_SIZE = 0x100000
@@ -80,6 +81,7 @@ class RunResult:
     panel: dict[str, Any] | None = None
     nvram: dict[str, Any] | None = None
     ring: dict[str, int] | None = None
+    timers: dict[str, Any] | None = None
     interrupt_vectors: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -106,6 +108,7 @@ class CourierMachine:
         serial_input: bytes = b"",
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
+        int1_after_ms: int | None = None,
         sip: SipSession | None = None,
         line: LineLink | None = None,
         nvram: CourierNvram | None = None,
@@ -116,6 +119,12 @@ class CourierMachine:
         self.image = image
         self.nvram = nvram
         self.ring = ring
+        self.int1_after_ms = int1_after_ms
+        self.int1_delivered = False
+        # Measured from the unmask, not from reset: the handler reads the
+        # stopwatch the firmware starts just before it unmasks INT1, so this
+        # interval is what it calibrates the tick from.
+        self._int1_armed_at: int | None = None
         self.parameter_sector = parameter_sector
         self.panel = CourierPanel(
             board_id=board_id,
@@ -148,6 +157,14 @@ class CourierMachine:
         self._timer_in_handler = False
         self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
         self._daa_originate_event_posted = False
+        # Both firmwares reach the peripheral timers as memory, because the
+        # relocation register maps the control block to 0x0ff00.
+        # A ROM enters at the reset vector and dispatches its own software
+        # interrupts; an update payload is entered directly at the application.
+        self.emulate_interrupts = getattr(image, "emulates_interrupts", False)
+        self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
+        self._timer_interrupt_pending: int | None = None
+        self._external_interrupt_pending: int | None = None
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -155,6 +172,8 @@ class CourierMachine:
         self.interrupt: int | None = None
         self.accelerated_delays = 0
         self.milestones: list[str] = []
+        if with_dsp and not hasattr(image, "dsp_program_segments"):
+            raise ValueError("the DSP bridge needs an XMF payload, not a flash ROM")
         self.dsp_bridge = (
             CourierDspBridge(
                 image, rx_samples=dsp_rx_samples, daa=daa, sip=sip, line=line
@@ -218,7 +237,7 @@ class CourierMachine:
 
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
-        uc.mem_write(FLASH_PHYSICAL_BASE, self.image.data)
+        uc.mem_write(self.image.load_base, self.image.data)
         if self.parameter_sector is not None:
             # The parameter flash is a separate device from the XMF payload;
             # 0x7e07c searches four sectors from 0xf8000 upward.
@@ -534,6 +553,35 @@ class CourierMachine:
                 elif _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                     self._timer_irq_requested = True
                     _uc.emu_stop()
+            if self.emulate_interrupts and not self.instructions % TIMER_POLL_INSTRUCTIONS:
+                self.timers.tick(self.instructions)
+                interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
+                if (
+                    not self.int1_delivered
+                    and self.int1_after_ms is not None
+                    and self.timers.controller.enabled("int1")
+                    and self._int1_armed_at is None
+                ):
+                    self._int1_armed_at = self.instructions
+                if (
+                    not self.int1_delivered
+                    and self._int1_armed_at is not None
+                    and self.instructions - self._int1_armed_at
+                    >= self.int1_after_ms * INSTRUCTIONS_PER_MS
+                    and interrupts_on
+                    and self.timers.controller.enabled("int1")
+                    and self._external_interrupt_pending is None
+                ):
+                    self._external_interrupt_pending = INT1_VECTOR
+                    self.int1_delivered = True
+                    _uc.emu_stop()
+                elif (
+                    self._timer_interrupt_pending is None
+                    and self.timers.pending_interrupt() is not None
+                    and interrupts_on
+                ):
+                    self._timer_interrupt_pending = self.timers.take_interrupt()
+                    _uc.emu_stop()
             self._previous_address = address
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
@@ -603,6 +651,11 @@ class CourierMachine:
                 self.panel.observe_write(port, value, pc, self.instructions)
                 if self.nvram is not None and port == 0x10:
                     self.nvram.write_latch(value)
+            if 0xFF00 <= port <= 0xFFFF:
+                # The boot block programs the peripheral control block through
+                # I/O space, before the relocation register moves it into
+                # memory, so the same model has to see both.
+                self.timers.write(port, size, value, self.instructions)
             if self.dsp_bridge is not None:
                 self.dsp_bridge.write(port, size, value)
             if port in self.uart_ports:
@@ -629,14 +682,49 @@ class CourierMachine:
             self.interrupt = number
             _uc.emu_stop()
 
+        def dispatch_interrupt(number: int, *, software: bool = True) -> int:
+            """Take a real-mode software interrupt through the vector table.
+
+            The ROM's boot block copies itself over the bottom of memory, so
+            the first 0x400 bytes of that copy are the vector table it then
+            enters through.
+            """
+            ip = uc.reg_read(UC_X86_REG_IP)
+            cs = uc.reg_read(UC_X86_REG_CS)
+            ss = uc.reg_read(UC_X86_REG_SS)
+            sp = uc.reg_read(UC_X86_REG_SP)
+            flags = uc.reg_read(UC_X86_REG_FLAGS) & 0xFFFF
+            # `int n` is two bytes and resumes after itself; a hardware
+            # interrupt resumes at the instruction it interrupted.
+            resume = (ip + 2) & 0xFFFF if software else ip
+            for value in (flags, cs, resume):
+                sp = (sp - 2) & 0xFFFF
+                uc.mem_write((ss * 16 + sp) & 0xFFFFF, value.to_bytes(2, "little"))
+            uc.reg_write(UC_X86_REG_SP, sp)
+            vector = bytes(uc.mem_read(number * 4, 4))
+            offset = int.from_bytes(vector[:2], "little")
+            segment = int.from_bytes(vector[2:], "little")
+            if not software:
+                uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0200)
+            uc.reg_write(UC_X86_REG_CS, segment)
+            uc.reg_write(UC_X86_REG_IP, offset)
+            return (segment * 16 + offset) & 0xFFFFF
+
         def on_mmio_read(_uc: Any, _access: int, address: int, size: int, _value: int, _data: Any) -> None:
             self.mmio_counts[("read", address, size)] += 1
+            # The hook runs before the read is satisfied, so a timer register
+            # is answered by putting the modelled value where the read will
+            # find it. Everything else in the control block stays plain memory.
+            modelled = self.timers.read(address, size, self.instructions)
+            if modelled is not None:
+                _uc.mem_write(address, modelled.to_bytes(size, "little"))
             if len(self.mmio_events) < self.max_io_events:
                 value = int.from_bytes(_uc.mem_read(address, size), "little")
                 self.mmio_events.append(MmioEvent("read", address, size, value, current_pc()))
 
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
             self.mmio_counts[("write", address, size)] += 1
+            self.timers.write(address, size, value, self.instructions)
             if len(self.mmio_events) < self.max_io_events:
                 self.mmio_events.append(MmioEvent("write", address, size, value, current_pc()))
 
@@ -658,6 +746,23 @@ class CourierMachine:
                 # MiB as Unicorn's optional stop PC terminates the run at that
                 # boundary before Unicorn can apply real-mode wrapping.
                 uc.emu_start(begin, 0, count=instruction_limit - self.instructions)
+                if self.emulate_interrupts and self.interrupt is not None:
+                    begin = dispatch_interrupt(self.interrupt)
+                    self.interrupt = None
+                    continue
+                if self._external_interrupt_pending is not None:
+                    begin = dispatch_interrupt(
+                        self._external_interrupt_pending, software=False
+                    )
+                    self._external_interrupt_pending = None
+                    continue
+                if self._timer_interrupt_pending is not None:
+                    begin = dispatch_interrupt(
+                        self._timer_interrupt_pending, software=False
+                    )
+                    self._timer_interrupt_pending = None
+                    self.timer_interrupts += 1
+                    continue
                 if not (self._serial_irq_requested or self._timer_irq_requested):
                     break
                 if self._serial_irq_requested:
@@ -759,6 +864,7 @@ class CourierMachine:
             panel=self.panel.status(),
             nvram=nvram_result,
             ring=self.ring.status() if self.ring is not None else None,
+            timers=self.timers.status(),
             interrupt_vectors=interrupt_vectors,
         )
 

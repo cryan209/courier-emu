@@ -58,6 +58,10 @@ class XmfImage:
         return cls(source.resolve(), data)
 
     @property
+    def load_base(self) -> int:
+        return FLASH_PHYSICAL_BASE
+
+    @property
     def digest(self) -> str:
         return sha256(self.data).hexdigest()
 

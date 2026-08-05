@@ -85,6 +85,41 @@ class CourierRomTests(unittest.TestCase):
         self.assertEqual(described["boot_entry"], "fc00:1a21")
 
 
+@unittest.skipUnless(IMAGE.exists(), "no Courier ROM image available")
+class RomBootTests(unittest.TestCase):
+    def test_the_rom_boots_past_its_timer_self_test(self) -> None:
+        # 0x80432 enables timer 2 and 0x80444 spins until MAX COUNT. With the
+        # control block modelled as plain memory that bit never sets, and the
+        # ROM parks there for the rest of the run.
+        from courier_emu.machine import CourierMachine
+
+        machine = CourierMachine(CourierRom.load(IMAGE))
+        result = machine.run(40_000_000)
+        self.assertNotEqual(result.registers["ip"], 0x0444)
+        self.assertGreaterEqual(result.timers["timers"][2]["max_counts"], 1)
+        # The boot block ran: it programmed the chip selects through I/O space,
+        # relocated itself, and entered through its own vector table.
+        self.assertEqual(result.timers["timers"][0]["compare_a"], 25_200)
+        self.assertGreater(result.timers["controller"]["writes"], 0)
+
+    def test_the_boot_block_reads_the_settings_eeprom(self) -> None:
+        # An XMF update carries no boot block, which is why no boot-time NVRAM
+        # access shows up there. The ROM has one.
+        from courier_emu.machine import CourierMachine
+        from courier_emu.nvram import CourierNvram
+
+        nvram = CourierNvram()
+        machine = CourierMachine(CourierRom.load(IMAGE), nvram=nvram)
+        machine.run(6_000_000)
+        self.assertGreaterEqual(nvram.reads, 1)
+
+    def test_the_dsp_bridge_is_refused_for_a_rom(self) -> None:
+        from courier_emu.machine import CourierMachine
+
+        with self.assertRaises(ValueError):
+            CourierMachine(CourierRom.load(IMAGE), with_dsp=True)
+
+
 class RomFormatTests(unittest.TestCase):
     def test_an_update_payload_is_not_a_rom(self) -> None:
         with self.assertRaises(RomFormatError):

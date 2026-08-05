@@ -19,6 +19,7 @@ from .panel import (
     DIP_SWITCHES,
     USABLE_BOARD_IDS,
 )
+from .images import load_image
 from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
 
@@ -66,7 +67,12 @@ def _print_json(value: object) -> None:
 
 
 def _run_isolated(args: argparse.Namespace) -> int:
-    image = XmfImage.load(args.image)
+    image = load_image(args.image)
+    if args.with_dsp and not hasattr(image, "dsp_program_segments"):
+        raise ValueError(
+            f"{Path(args.image).name} is a flash ROM, which carries no separable "
+            "C52 payload for the DSP bridge to load"
+        )
     command = [
         sys.executable,
         "-m",
@@ -120,6 +126,8 @@ def _run_isolated(args: argparse.Namespace) -> int:
     for switch in closed:
         if switch != "none":
             command.extend(("--dip", switch))
+    if args.int1_after is not None:
+        command.extend(("--int1-after", str(args.int1_after)))
     if args.ring or args.ring_cadence:
         on_ms, off_ms = ring_cadence(args.ring_cadence)
         command.extend(("--ring-cadence", f"{on_ms}:{off_ms}"))
@@ -324,6 +332,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="close this board option switch; repeatable, and the first use "
         "replaces the default set. Use 'none' to leave every switch open. "
         "Default: " + ", ".join(sorted(DEFAULT_DIP_CLOSED)),
+    )
+    run.add_argument(
+        "--int1-after",
+        type=_number,
+        metavar="MS",
+        help="deliver the external INT1 edge a ROM calibrates its system tick "
+        "from, this many milliseconds after reset (what drives it on hardware "
+        "is not established; the default of 7 makes the calibrated tick 10 ms)",
     )
     run.add_argument(
         "--line-link",

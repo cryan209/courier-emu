@@ -959,24 +959,86 @@ physical unit.
 
 ### Booting it
 
-Mapped at `0x80000` with the reset vector as the entry, real-mode `int`
-handling, and the existing EEPROM model on port `0x10`, the ROM runs its reset
-stub, relocates itself, reads and initialises the EEPROM, completes the flash
-CRC, and jumps into the application — about 63 million instructions. It then
-stalls at `0x80444`:
+`courier-emu run IDSDL302.ROM` boots the ROM from its reset vector. The image
+type is detected from the file, the ROM maps where its own chip select says,
+and the harness dispatches real-mode software interrupts so the boot block can
+enter through the vector table it installs at physical zero.
+
+The peripheral timers are modelled from the instruction clock, which is what
+gets the ROM past its self-test:
 
 ```asm
-80432  mov word ptr [0xff46], 0xc000   ; T2CON: enable, continuous
-80438  mov word ptr [0xff42], 0        ; T2CMPA
+80432  mov word ptr [0xff46], 0xc000   ; T2CON: enable
+80438  mov word ptr [0xff42], 0        ; T2CMPA: a zero compare is 65,536
 8043e  mov word ptr [0xff40], 0        ; T2CNT
 80444  test word ptr [0xff46], 0x20    ; wait for MAX COUNT
 8044a  je 0x444
 ```
 
-That is a timer self-test, and the harness models the peripheral control block
-as plain RAM, so the max-count bit never sets. Modelling the 80186 timers
-properly — rather than the current fixed timer interrupt every 4,096
-instructions — is what this needs, and it would serve both firmwares.
+The model covers the enable gate (a new ENABLE is only taken when INHIBIT is
+set in the same write), the zero-compare-is-full-range rule this self-test
+depends on, single-shot versus continuous, and the sticky max-count bit. It
+also covers the mask side of the interrupt controller, which turns out to
+matter: the boot table writes `IMASK = 0x0079`, masking the timers, and
+delivering a timer interrupt through that mask lands in a handler that is only
+consistent later in the sequence.
+
+### The system tick is calibrated from an external interrupt
+
+With the timers modelled the ROM runs on to a different wait, at `0x80a52`:
+
+```asm
+80a52  push ax
+80a53  mov ah, byte ptr [0x12a]        ; the tick byte
+80a57  add ah, al                      ; al = how many ticks to wait
+80a59  cmp ah, byte ptr [0x12a]
+80a5d  jne 0xa59
+```
+
+Nothing advances that byte, and the reason is that this firmware does not run
+its tick from a fixed timer period at all. `0x9eb73` starts timer 1 as a
+stopwatch with a 54,166-tick timeout and unmasks INT1. The INT1 handler at
+`9ea4:0722` then does the calibration:
+
+```asm
+9f162  mov word ptr [0xff46], 0xe001   ; T2CON: enable, interrupt, continuous
+9f169  mov ax, word ptr [0xff38]       ; timer 1's count - the measured interval
+9f16c  rcr ax, 1
+9f16e  and ax, 0x7fff
+9f171  add ax, word ptr [0xff38]       ; one and a half times it
+9f175  mov word ptr [0xff42], ax       ; T2CMPA: the system tick period
+9f178  mov word ptr [0xff12], 0        ; unmask the timer interrupt
+9f183  mov word ptr [0xff3e], 0x6001   ; stop timer 1
+9f189  mov word ptr [0xff1a], 8        ; mask INT1 again
+```
+
+So timer 2 is the tick, and its period is one and a half times however long the
+first INT1 edge takes to arrive. What drives INT1 physically is not established
+here. `--int1-after MS` supplies one edge as a harness stimulus, the same way
+`--ring` supplies ring cadence, and with it the sequence runs: timer 1 stops
+with a count, timer 2 is programmed, the timer interrupt is unmasked, and a
+timer 2 tick is delivered through vector 19.
+
+Two things then stop it short of a running tick, both visible in a trace:
+
+- The measured interval comes out around 45,000 ticks, and one and a half times
+  that overflows sixteen bits, so the tick period lands at 2,112 ticks instead
+  of the intended value. The interval is set by how long the firmware keeps
+  interrupts disabled after starting the stopwatch, which is about 10,000
+  instructions here; whether that is faithful depends on an instruction-to-time
+  ratio calibrated against the 2002 build, not this one.
+- Code at `0x8e3e6` and `0x8e487` reuses timer 2 as a scratch delay - enable,
+  zero compare, poll max count - which clears the interrupt bit the tick needs.
+  On hardware something must sequence those against the tick; what, is not
+  recovered.
+
+The XMF path is deliberately left alone. An update image is entered at the
+application, past the boot block that programs the control block, and its
+delays are already served by the harness's calibrated helpers; answering its
+timer reads from the model instead puts its own timer interrupt service routine
+on a path it does not return from. Its writes are still tracked, so a run now
+reports what it programs: compares of 32,256, 40,624, and 65,535 on the three
+timers.
 
 ## Repro notes
 

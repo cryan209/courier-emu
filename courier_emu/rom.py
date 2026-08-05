@@ -128,6 +128,17 @@ class CourierRom:
         return sha256(self.data).hexdigest()
 
     @property
+    def load_base(self) -> int:
+        return self.base
+
+    # A ROM starts where the processor starts, not where an update payload is
+    # entered, and its boot block dispatches its own software interrupts.
+    entry_segment = 0xF000
+    entry_offset = 0xFFF0
+    entry_physical = RESET_VECTOR
+    emulates_interrupts = True
+
+    @property
     def base(self) -> int:
         return self.reset.base
 
