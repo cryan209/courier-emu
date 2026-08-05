@@ -197,6 +197,123 @@ rather than from a timer alone; `--int1-after` supplies one.
 sequence still stops, the cross-build confirmation of the latch driver, and
 every option switch.
 
+## ISDN Courier XMP images
+
+`Ie030002.xmp` is an ISDN Courier update payload, and it is a different animal
+from an XMF: no product text header, and an obfuscated body.
+
+```sh
+python3 -m courier_emu xmp-info Ie030002.xmp
+python3 -m courier_emu extract Ie030002.xmp extracted/Ie030002
+```
+
+| File range | Contents |
+|---|---|
+| `0x00000..0x0007f` | 128-byte header: `USR XMP\0` magic, three small fields, and a 0x70-byte table |
+| `0x00080..0xb807f` | 0xb8000-byte payload, every byte XOR `0x45` |
+
+The key falls out of the image without any code analysis. Erased flash still
+dominates the payload, and the pad byte reads `0xba`; `0xff ^ 0xba` is `0x45`.
+Decoding with it turns `0xff` back into the most common byte, and the result
+carries the VRTX kernel banner (`Copyright 1988, Ready Systems`) and the ISDN
+rate-adaptation strings (`SET_V110_ENTRY`, `V110_ATO`).
+
+The payload decodes to three programmed spans, the last being a two-byte word at
+the very top of flash:
+
+| Payload range | Size |
+|---|---|
+| `0x00000..0x5d320` | 381,728 |
+| `0x64000..0xaab0c` | 289,548 |
+| `0xb7ffe..0xb8000` | 2 |
+
+It is an 80386 image, and it says so at payload offset `0x38`, where it clears
+`dr0..dr3` and `dr7` — registers the 80186 supervisor does not have. The code
+around it programs a linear address into `dr0`, sets the local and global enable
+bits in `dr7`, and installs its own INT1 (`#DB`) handler at `4000:0148`, so the
+firmware drives hardware breakpoints as a normal runtime mechanism. Note that
+this is vector 1, distinct from the 80186's `INT1_VECTOR = 13` pin interrupt in
+`timers.py`.
+
+Nothing here executes yet. What is loaded is the container and the decoded body;
+what is not modelled is the board. Two things stand out from the decode:
+
+- Debug registers. Unicorn does not deliver `#DB` from guest-programmed `dr0..3`,
+  so the harness would have to match breakpoints itself.
+- The 0x70-byte header table at offset `0x10` is plaintext, not obfuscated, and
+  plainly structured — a handful of 16-bit values recur through it — but its
+  layout is not recovered, so `xmp-info` reports it verbatim as
+  `header_table_undecoded` rather than inventing fields for it.
+
+The load base is a modelling choice, as it is for an XMF. `FLASH_PHYSICAL_BASE`
+is set to `0x40000` because the boot code installs its INT1 handler in segment
+`0x4000`; the header's `load_hint` field reads `0x40`, which is consistent with
+that base in 4 KiB units, but nothing in the image confirms the unit.
+
+No protected-mode entry appears in the decoded payload — no `lgdt`, `lidt`,
+`lmsw`, or `mov cr` anywhere in it. This is 386 code running in real mode, using
+32-bit registers, `0x66`/`0x67` prefixes, and the debug registers.
+
+## ISDN Courier NAC images
+
+`Ie030002.nac` is the same firmware in a different container, and it is not
+obfuscated at all. It is **Intel HEX with the ASCII stripped out**: each record
+is a length byte, a big-endian 16-bit address, a type byte, and that many data
+bytes. The big-endian address is the giveaway — everything else in these images
+is little-endian, but Intel HEX writes its address big-endian even on x86.
+
+```sh
+python3 -m courier_emu nac-info Ie030002.nac
+python3 -m courier_emu extract Ie030002.nac extracted/Ie030002
+```
+
+| File range | Contents |
+|---|---|
+| `0x00000..0x0001f` | 32-byte header |
+| `0x00020..0xcd1a6` | Binary Intel HEX record stream |
+| `0xcd1a7..0xcd1a8` | Two trailing bytes, `e4 a0` |
+
+Header fields:
+
+| Offset | Contents |
+|---|---|
+| `0x03` | `u32` record-stream length — exactly file size minus header minus trailer |
+| `0x08` | Version triple `03 00 02`, matching the `Ie030002` file name: 3.0.2 |
+| `0x0f` | Product tag `IE(`, the same tag the `.sdl` loader carries |
+
+The record types are the Intel HEX ones:
+
+| Type | Count | Meaning |
+|---|---:|---|
+| `0x00` | 42,023 | Data |
+| `0x02` | 197 | Extended segment address, big-endian, scaled by 16 |
+| `0x03` | 1 | Start segment address, `0ce0:0000` |
+| `0x01` | 1 | End of file |
+
+Unlike ASCII Intel HEX there is no per-record checksum byte; parsing without one
+consumes the stream exactly, from the end of the header to the EOF record.
+
+The stream's very first record is a type `0x02` setting segment `0x4000`, so the
+image places itself at physical `0x40000` — the harness does not have to assume a
+base for a NAC the way it does for an XMF. That independently confirms the base
+the XMP section above had to infer from the boot code's INT1 handler.
+
+The two containers agree exactly. Flattening the NAC's 42,023 data records
+produces a `0xb8000` image at `0x40000` that is byte-for-byte identical to the
+XOR-decoded XMP payload, and the 82,879 bytes the NAC never paints are precisely
+the bytes that read as erased flash in the XMP. Two independently encoded
+containers reaching the same image is the strongest check available on both
+decodes, and `tests/test_nac.py` asserts it.
+
+What is not recovered: the two trailing bytes `e4 a0`. They are not a byte sum of
+the record stream and match none of the common CRC-16s (CCITT-FALSE, XMODEM, ARC,
+MODBUS, KERMIT, GENIBUS) over either the stream or the whole file, so `nac-info`
+reports them verbatim as `trailer_undecoded`.
+
+The start segment address `0ce0:0000` is physical `0xce00`, which is RAM well
+below the flash — the entry after the boot block relocates itself, consistent
+with the code at payload `0x300` loading `0x0ce0` into a segment register.
+
 ## Board latches, front panel, and NVRAM
 
 Every board output goes through one read-modify-write latch driver, recovered at

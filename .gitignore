@@ -42,3 +42,9 @@ artifacts/
 *.XMF
 *.xmd
 *.XMD
+*.xmp
+*.XMP
+*.nac
+*.NAC
+*.sdl
+*.SDL

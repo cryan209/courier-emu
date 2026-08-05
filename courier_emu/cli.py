@@ -20,8 +20,10 @@ from .panel import (
     USABLE_BOARD_IDS,
 )
 from .images import load_image
+from .nac import NacFormatError, NacImage
 from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
+from .xmp import XmpFormatError, XmpImage
 
 DEFAULT_LINE_SOCKET = "/tmp/courier-line.sock"
 from .dsp import run_dsp
@@ -242,7 +244,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rom_info.add_argument("image")
 
-    extract = subparsers.add_parser("extract", help="split the header, DSP, and supervisor")
+    xmp_info = subparsers.add_parser(
+        "xmp-info",
+        help="validate and describe an obfuscated ISDN Courier XMP image",
+    )
+    xmp_info.add_argument("image")
+
+    nac_info = subparsers.add_parser(
+        "nac-info",
+        help="validate and describe an ISDN Courier NAC record stream",
+    )
+    nac_info.add_argument("image")
+
+    extract = subparsers.add_parser(
+        "extract",
+        help="split an XMF into header, DSP, and supervisor, or unpack an XMP or NAC",
+    )
     extract.add_argument("image")
     extract.add_argument("directory")
 
@@ -502,9 +519,21 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "rom-info":
             _print_json(CourierRom.load(args.image).describe())
             return 0
+        if args.command == "xmp-info":
+            _print_json(XmpImage.load(args.image).describe())
+            return 0
+        if args.command == "nac-info":
+            _print_json(NacImage.load(args.image).describe())
+            return 0
         if args.command == "extract":
-            image = XmfImage.load(args.image)
-            paths = image.extract(args.directory)
+            try:
+                source: XmfImage | XmpImage | NacImage = XmfImage.load(args.image)
+            except XmfFormatError:
+                try:
+                    source = XmpImage.load(args.image)
+                except XmpFormatError:
+                    source = NacImage.load(args.image)
+            paths = source.extract(args.directory)
             _print_json({"files": [str(path.resolve()) for path in paths]})
             return 0
         if args.command == "run":
@@ -544,6 +573,14 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             return 0
-    except (OSError, XmfFormatError, RomFormatError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        XmfFormatError,
+        RomFormatError,
+        XmpFormatError,
+        NacFormatError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         parser.error(str(exc))
     return 1
