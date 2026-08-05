@@ -1197,27 +1197,51 @@ and skip the C5x register decode, so reading address `0x04` answers
 `m_data[0x04]` rather than `IMR`. **`IMR` is not zero.** It is `0x002a` out of
 reset and every sample ends with `0x0080` written to it from `0x81be`.
 
-### Interrupt 7 is enabled, and it is the thing nobody was raising
+### Interrupt 7 is enabled, and raising it re-runs the boot
 
-Raising each of the sixteen interrupts in turn, exactly one changes the run:
+Raising each of the sixteen interrupts in turn, exactly one changes the run —
+number 7, the TDM serial port. It looked at first like the datapump coming
+alive: executed instruction sites went from 167 to 521, most of the line-DAC
+words stopped being zero, and the C52 started writing its serial transmit
+register. It is not that. Counting where those instructions go:
 
-| | executed sites | line-DAC writes | non-zero | DXR writes |
+| | sites | instructions below `0x00d0` | `0x0010` entered | SPC writes |
 |---|---:|---:|---:|---:|
-| idle | 167 | 8,220 | 1 | 3 |
-| interrupt 7 driven | **521** | 7,343 | **4,999** | 13 |
-| interrupt 7, faster | 481 | 2,683 | 347 | **695** |
+| idle | 167 | 0 | 0 | 0 |
+| interrupt 7 driven | 521 | **5,895** | **5** | 15, from `00be`, `00c0`, `8189` |
 
-Three times as much of the program comes alive, two thirds of the line output
-stops being silence, and the C52 starts writing its serial transmit register.
-This is the TDM port — the C52's connection to the ASIC — and the harness has
-never raised its interrupt or fed `TRCV`.
+`PMST.IPTR` is zero, so interrupt 7 vectors to program `0x0010` — which is
+inside the reset code. The extra 354 sites are the boot path, the SPC and DXR
+writes are the boot's own, and the line output is the DC level boot leaves
+behind. Driving the interrupt partially reboots the C52.
 
-It is not yet a carrier. What reaches the line is a stuck DC level rather than a
-waveform, which is what an ISR fed no TDM frame would compute. And the vector
-it takes is wrong: `PMST.IPTR` is zero, so interrupt 7 vectors to program
-`0x0010`, which is inside the reset code above. Settling where this firmware's
-vector table actually is — and modelling the ASIC's TDM frame behind `TRCV` and
-`TDXR` — is what the datapump is waiting on.
+### There is no vector table in this image
+
+That collision is not a detail; it is the whole question. `PMST.IPTR` can only
+place the table on one of 32 two-kiloword boundaries, and a C5x table is 2 words
+per vector, normally a branch. Scoring all 32 legal bases for a run of
+consecutive two-word branches whose targets land inside a loaded segment gives
+the longest run as **one slot**, at `0xc800`. Relaxing the search to the whole
+image finds nothing table-shaped either — the longest runs are `0x519a` (14),
+`0x2184` (8) and `0xbb70` (7), and all three are ordinary sequential `CALL`
+code; `0xbb70` is seven identical `CALL 0xc881`.
+
+Nor is the area rewritten after boot. Over 600,000 instructions of startup the
+only program-memory-touching instruction executed is a single `BLPD` at
+`0x0030`, and `BLPD` reads program into data. No `TBLW`, no `BLDP`. The reset
+code stays on top of the vector area for the life of the run.
+
+So the vectors are not in the XMF. The reading that fits is that the C52 is in
+microcomputer mode, its program `0x0000..0x0fff` is on-chip ROM carrying both
+the vector table and the bootstrap that receives the download, and neither is in
+this image — which means the harness's assumption that the downloaded segment
+begins at program `0x0000` puts the downloaded init on top of the vectors.
+
+That is testable against a defect already noted here: `PMST` carries `MP/MC`,
+`OVLY`, `RAM` and `AVIS`, and this core parses all four and acts on none of
+them. `IPTR` and `BRAF` are used; the four that decide what program `0x0000`
+*is* are not. Until the C52's memory map is modelled, where the download lands
+is a guess, and every absolute address read out of the low bank inherits it.
 
 ### Two core defects found on that path
 

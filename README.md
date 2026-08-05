@@ -967,20 +967,27 @@ to sample through `[0x7e]:[0x7d]` and ACCB, holding `0x0555_0000` throughout —
 and `0xb4d4` turns out not to be code at all but a numeric table, so that
 conditional is not the way in.
 
-What the datapump is waiting on is an interrupt. The reset code at program
-`0x0000` sets `IMR = 0x002a` and clears `INTM`, and every sample ends with
-`0x0080` written to `IMR`; raising each of the sixteen interrupts in turn, only
-number 7 — the TDM serial port, the C52's connection to the ASIC — changes
-anything, and it changes a lot: executed instructions go from 167 to 521, the
-C52 starts writing its serial transmit register, and two thirds of the line
-output stops being silence. Nothing in the harness has ever raised it or fed
-`TRCV`.
+Interrupts are enabled — the reset code sets `IMR = 0x002a` and clears `INTM` —
+and of the sixteen, only number 7 changes anything when raised. That is not the
+datapump waking up: `PMST.IPTR` is zero, so the vector is program `0x0010`,
+which is inside the reset code, and driving the interrupt partially reboots the
+C52. Almost 6,000 of the instructions it adds are below `0x00d0`.
 
-It is not a carrier yet. What reaches the line is a stuck DC level, which is
-what an ISR handed no TDM frame would compute, and the vector it takes lands
-inside the reset code because `PMST.IPTR` is zero. Finding this firmware's real
-vector table and modelling the ASIC's TDM frame is the next step.
-`courier_firmware_analysis.md` has the listing and the measurements.
+There is no vector table in this image to point it anywhere better. `IPTR` can
+only place one on 32 two-kiloword boundaries; the longest run of consecutive
+two-word branches at any of them is a single slot, and nothing table-shaped
+exists anywhere else in the image either. The area is never rewritten: across
+600,000 instructions of startup the only program-memory instruction executed is
+one `BLPD`, which reads rather than writes.
+
+The reading that fits is that the C52 is in microcomputer mode, its program
+`0x0000..0x0fff` is on-chip ROM holding both the vector table and the bootstrap
+that receives the download, and neither is in this image — so the assumption
+that the downloaded segment begins at program `0x0000` puts the downloaded init
+on top of the vectors. The core parses `MP/MC`, `OVLY`, `RAM` and `AVIS` out of
+`PMST` and acts on none of them, so until the C52's memory map is modelled,
+where the download lands is a guess and every absolute address read out of the
+low bank inherits it. `courier_firmware_analysis.md` has the measurements.
 
 ## Minimal SIP dial-out
 
