@@ -1277,6 +1277,82 @@ being genuinely dormant in these builds rather than something the harness
 merely fails to trigger, since the parts of the firmware that must keep line
 time are not on it.
 
+### Pacing the chain from the DSP interrupt
+
+If the DSP frame interrupt is what keeps line time, the obvious thing to try is
+letting it pace the countdown chain too — deliver vector `0x0f` once per DSP
+interrupt and see what the firmware makes of it. Everything below is a scratch
+experiment; none of it is in the tree.
+
+It runs, and the firmware's own consistency check is what says so:
+
+| site | with the tick paced | before |
+|---|---:|---:|
+| `0x5c0fa` INT3 entry | 6,691 | 0 |
+| `0x5e40c` the poller | 6,691 | 0 |
+| `0x5c1b7` `mov byte [0x176], 0` | 6,691 | 0 |
+| `0x6ad11` the watchdog stamp | **0** | 5,969 |
+
+The mutual watchdog goes quiet for the first time. That is not luck: its two
+limits *bound the legal ratio*. The DSP interrupt has to arrive at least once
+in three ticks or the tick's side alarms, and the tick has to arrive at least
+once in twenty-five DSP interrupts or the DSP's side does. So ticks per DSP
+interrupt must lie between 1/25 and 3, and 1:1 sits inside that. The band is
+read out of the firmware; the choice of 1:1 within it is not, and remains a
+guess.
+
+Downstream, things that had never happened started happening. Host-to-board
+traffic gained `0084:3100` — the revision-gated register write at `0x5e551` —
+alongside `0080:0000` and `007c:0000`, the `si` read and the detector request.
+With the forged `[0x649]` still in place `ATDT5551234` answered `OK` where
+every previous run answered `NO CARRIER`.
+
+Removing the forgery is where it gets informative. With the poller asking and
+nothing answering, the firmware reports `NO DIAL TONE` — the correct answer for
+a line it cannot hear, reached through its own code rather than through ours.
+Answering `0x7c00` with a reading in the `1..0x60` band then increments
+`[0x649]` through the firmware's own path for the first time.
+
+### What parks the state chain
+
+It does not reach five hits, and the reason is not a stall. State `0x3023` —
+physical `0x5e603` — is a bare `ret`, a do-nothing idle state, and the chain is
+pointed at it deliberately. Of 1,657 dispatches in that run:
+
+```
+3023 (idle ret)          1,644
+2e44 send 0x7c00             3
+2e53 send 0x8000             3
+2e62 consume [0x285]         2
+2f5a gate block              2
+2eb7 send 0x7c00 (loop B)    1
+2ec6 send 0x8000  (loop B)   1
+2ed5 consume      (loop B)   1
+```
+
+So the chain armed, cycled through both request/consume loops, and was then
+parked. Fifteen sites write `0x3023` into `[0x65e]`, and two of them account for
+it: `0x65512`, the supervisor's main loop, and `0x5dbfa`, immediately after the
+detector wait. The chain is **scoped to a line operation** — armed at
+`0x5db6c`, `0x5dbb2` and `0x5dc11` when one begins, parked the moment the wait
+finishes or the supervisor returns to its command loop.
+
+That is correct behaviour, and it relocates what is left. The window closed
+because the detector never qualified, not because the pacing is wrong. Inside
+it the chain got about a dozen dispatches and landed one low-band reading
+across two consume passes, because a reply queued when the request is written
+is not necessarily visible when the consume state next runs. The remaining
+problem is therefore delivery timing — the same shape as the `0x02`/`0x03`
+handshake the bridge already models, where a reply has to be on the bus when
+the consumer polls rather than merely queued. Five hits inside the 500-decrement
+window is otherwise comfortable: at 1:1 with a prescaler of 3 they cost about
+fifteen dispatches.
+
+Two things this does not establish. The 1:1 ratio is a choice inside the legal
+band, not a measurement. And the experiment used revision `0x33`; with the
+default 4 the gate at `0x5e547` fails and `0084:3100` never fires, so the
+revision question is now load-bearing rather than cosmetic.
+
 ### Why this is the blocker for placing and answering calls
 
 Most of what a call needs is downstream of this one interrupt. Qualifying what
@@ -1305,6 +1381,14 @@ settled from these images alone. A RAM or state dump from a physical Courier,
 already the highest-leverage item under "Possible next steps", would settle it
 directly: read `[0x176]`, `[0x177]`, `[0x66c]` and the interrupt controller's
 mask on a running modem and the question answers itself.
+
+The pacing experiment above weakens one reading of that, though. If the chain
+were vestigial in these builds, running it should have produced nonsense;
+instead it put both watchdogs into their healthy state, sent the register write
+its own revision gate asks for, and answered a dial through its own code. That
+is not proof the board drives it from the DSP frame — only that no other
+configuration tried here leaves the firmware's own consistency checks
+satisfied.
 
 ## Possible next steps
 
