@@ -213,6 +213,10 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
         (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
     case 0x09: return uint16_t(m_brcr);
+    // TREG0 is memory-mapped at 0x0c, next to TREG1 and TREG2. Leaving it out
+    // splits it in two: LT and its relatives write the register while a read
+    // through the data space sees a cell nothing keeps up to date.
+    case 0x0c: return m_treg0;
     case 0x10: case 0x11: case 0x12: case 0x13:
     case 0x14: case 0x15: case 0x16: case 0x17: return m_ar[offset - 0x10];
     case 0x18: return m_indx; case 0x19: return m_arcr;
@@ -267,6 +271,7 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         m_pmst.mpmc = (value >> 3) & 1; m_pmst.ndx = (value >> 2) & 1;
         m_pmst.trm = (value >> 1) & 1; m_pmst.braf = value & 1; return;
     case 0x09: m_brcr = value; return;
+    case 0x0c: m_treg0 = value; return;
     case 0x0d: m_treg1 = value; return; case 0x0e: m_treg2 = value; return;
     case 0x0f: m_dbmr = value; return;
     case 0x10: case 0x11: case 0x12: case 0x13:

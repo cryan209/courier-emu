@@ -1050,6 +1050,71 @@ C52 code these images run. The remaining candidates are that the datapump entry
 lives in the downloaded low bank and is never entered here, or that the channel
 terminates in the ASIC rather than in the C52 at all.
 
+## The datapump is resident, idle, and gated on one bit
+
+Decoding a C5x image statically floods, because any word decodes; taking the
+instruction boundaries from a real run does not. On that basis the whole of
+what the C52 executes in steady state is **167 instructions**, and one pass of
+it is 169 instructions — about 6% of the 2,604 cycles a 25 MHz part has per
+9.6 kHz sample. It is entered per sample at `0x0cb1` and runs:
+
+```
+0cb1 (low bank)  ->  c1cd  ->  de89  ->  8c19  ->  b2e9  ->  c7f7
+                 ->  e24b  ->  b30b  ->  de9c  ->  8195  ->  a8c7  ->  back
+```
+
+The first thing that settles is that the **downloaded bank is entered**. Of the
+three program segments the image carries, only the low one (`0x0000..0x75d9`)
+is what the supervisor downloads, and the loop head at `0x0cb1` is inside it.
+The datapump is resident and running, not waiting to be started.
+
+### The gate
+
+Near the end of every pass:
+
+```
+a8c7  b5cc  LAR   AR5, #0xcc
+a8c8  bf09  LAR   AR1, #0x02ff
+a8ca  4b80  BIT   *, 4          ; bit 4 of [0x00cc]
+a8cb  e900  CC    0xb4d4, TC    ; never taken
+```
+
+`[0x00cc]` reads zero on every sample of every run, so `0xb4d4` is never
+entered. Setting bit 4 by hand is the first thing that has moved the datapump:
+
+| | line-DAC writes | non-zero samples | parked PC |
+|---|---:|---:|---|
+| untouched | 14,102 | 1 | `0x8195` (resident bank) |
+| `[0x00cc]` bit 4 set | 15,515 | 10 | `0x0bda3` (downloaded bank) |
+
+`[0x00cc]` is not an input latch, though. Tracing every data write into the
+frame block shows it written to zero on every sample from four sites — three in
+the `0xde89` prologue and `0x81a0`, which stores `[0x7d]` — and it sits one cell
+above `[0x00cb]`, the line-DAC source. It is the datapump's own status word,
+and it is zero because the datapump has nothing to say.
+
+### The receiver is gated off, not merely unsignalled
+
+Feeding the ASIC line input a 2100 Hz, 1800 Hz or 980 Hz tone at the confirmed
+9.6 kHz cadence, or noise, instead of silence leaves every counter identical:
+19,984 line-DAC writes, one of them non-zero, `[0x00cc]` never anything but
+zero, and the same parked PC. The datapump does not respond to signal at all
+until something commands it, which is consistent with the gate above and rules
+out "it is listening but hears nothing".
+
+### Two core defects found on that path
+
+- **TREG0 was not memory-mapped.** `LT` and its relatives wrote `m_treg0`
+  while a data-space access to `0x0c` saw a cell nothing updated, even though
+  its neighbours TREG1, TREG2 and DBMR were all mapped. Fixed. It is not on the
+  idle loop, so no result above changes.
+- **The BIO pin is unimplemented** — `GET_TP_CONDITION` answers "BIO low"
+  false unconditionally, which makes every conditional instruction that tests
+  it dead. There are 711 candidate sites in the image, including `0x0cc0`, a
+  `CCD` a few words past the loop head. None is reached: counting evaluated
+  opcodes over a run, idle and with the gate forced, gives **zero**. So the TODO
+  costs nothing today and would matter the moment a new state reaches one.
+
 ## Datapump is present & readable — but needs human-driven RE
 
 Confirmed by decoding real code: the DSP region contains genuine V.34/V.90

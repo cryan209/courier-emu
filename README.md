@@ -952,6 +952,26 @@ real channel — 2,274 two-word messages with a valid/ack handshake on port
 `0x1c`, and the `0x40..0x4e` window used only for the two program downloads —
 but whatever consumes it on the board is not the C52 code these images run.
 
+### What the datapump is doing instead
+
+Taking instruction boundaries from a run rather than decoding statically, the
+whole of what the C52 executes in steady state is 167 instructions, one pass is
+169, and the loop head is at `0x0cb1` — inside the bank the supervisor
+downloads. The datapump is resident and idle, not un-entered, and it uses about
+6% of the cycles a 25 MHz part has per 9.6 kHz sample.
+
+It idles behind one bit. Every pass ends with `BIT *, 4` on `[0x00cc]` and a
+`CC 0xb4d4` on the result, and `[0x00cc]` is zero on every sample of every run.
+Setting that bit by hand is the first thing that has moved it: the parked PC
+leaves the resident bank for `0x0bda3` in the downloaded one, and the line DAC
+produces its first output. `[0x00cc]` is the datapump's own status word rather
+than an input latch — it is written to zero every sample from four of its own
+sites, one cell above the DAC source at `[0x00cb]`.
+
+The receiver is gated off rather than listening: feeding the line input 2100,
+1800 or 980 Hz, or noise, instead of silence leaves every counter identical.
+`courier_firmware_analysis.md` has the listing and the measurements.
+
 ## Minimal SIP dial-out
 
 `--sip-server` attaches the DAA to a small UDP SIP user agent and enables both
