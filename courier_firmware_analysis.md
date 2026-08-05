@@ -1063,8 +1063,8 @@ while `int0` and the timer are unmasked, so that edge is one the board cannot
 take. Injecting it anyway changes call behavior: two linked instances answer
 `OK` where an undriven run reports `NO CARRIER`, and `NO CARRIER` is the
 correct answer for an `ATA` with no modelled DAA. The harness therefore
-honours the mask, `--tick-ms` delivers nothing while `int3` is masked, and
-`ATI10`/`ATI11` remain unfinished rather than finished by a fabricated edge.
+honours the mask: no edge is delivered on vector `0x0f` while `int3` is masked,
+and `ATI10`/`ATI11` remain unfinished rather than finished by a fabricated one.
 
 The likely real source is the DSP interrupt. Vector `0x0c` — INT0, unmasked —
 enters at `0x6ad00` and begins with a divider: `inc byte [0x176]`, compare
