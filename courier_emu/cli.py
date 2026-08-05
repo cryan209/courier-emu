@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from .parameters import FEATURE_BITS, ParameterSector, features_value
+from .codec import DAA_REVISION
 from .daa import RING_OFF_MS, RING_ON_MS, RING_START_MS
 from .line import MAX_SOCKET_PATH
 from .panel import (
@@ -112,6 +113,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.append("--daa-codec")
         command.extend(("--daa-codec-line", str(args.daa_codec_line)))
         command.extend(("--daa-codec-rate", str(args.daa_codec_rate)))
+        command.extend(("--daa-codec-revision", str(args.daa_codec_revision)))
     if args.line_link:
         command.extend(("--line-link", str(args.line_link)))
         if args.line_listen:
@@ -380,6 +382,15 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="HZ",
         help="sample rate programmed into register 40h; unsupported rates are "
         "rounded to the nearest the PLL offers (default 9600)",
+    )
+    run.add_argument(
+        "--daa-codec-revision",
+        type=_number,
+        default=DAA_REVISION,
+        metavar="WORD",
+        help="revision the codec reports at power up, which ATI7 prints as "
+        f"'DAA rev' (default {DAA_REVISION}; zero is what the firmware calls "
+        "a DAA failure)",
     )
     run.add_argument("--sip-server", metavar="HOST[:PORT]", help="send ATD calls via UDP SIP")
     run.add_argument(

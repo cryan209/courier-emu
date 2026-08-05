@@ -808,9 +808,13 @@ mailbox commands of an `ATDT` run carry `ffffffffffffffff`, so the `0xffff` the
 program reads is a value the host wrote. There is no spare port on the C52
 side: its only external reads are this window and the line ADC.
 
-The 80186 side has no read path either. Ports `0x40`..`0x4e` take ~7,550 writes
-each in the same run and **zero reads**, so the supervisor cannot observe a
-status byte from the DAA even in principle.
+The 80186 side has no register read path either. Ports `0x40`..`0x4e` take
+~7,550 writes each in the same run and **zero reads**, so the supervisor cannot
+poll a status byte out of the DAA even in principle.
+
+What it does have is the mailbox, and one of its messages is the DAA's
+identity. See "The DAA identity arrives as mailbox tag 0x7b" below: the
+supervisor is not blind to the part, it is told about it once.
 
 ### What the datasheet says the status should carry
 
@@ -871,12 +875,61 @@ line-side fields through its own control frames and numbers them differently,
 so an address in that module means "the register carrying this field", never a
 value the Courier's firmware emits.
 
-Since no firmware read path exists, the model is driven rather than polled: the
+Since no register read path exists, the model is driven rather than polled: the
 bridge hands it one ASIC service frame per 100 ms, feeds it hook state and line
 state from the behavioral DAA and the ring cadence from the ring source, and
 reports it under `dsp_bridge.codec`. It is where loop-current sense, ring
-qualification, frame lock, and the country settings now live; a firmware read
-path, if one is ever found, plugs into the same object.
+qualification, frame lock, and the country settings now live; a read path to
+those fields, if one is ever found, plugs into the same object.
+
+### The DAA identity arrives as mailbox tag 0x7b
+
+One thing the supervisor *is* told about the DAA is its revision, and `ATI7`
+prints it. The receive handler at `0x6ad5b` reads a tag from the mailbox
+header ports `0x58`/`0x5a`, rejects anything at or above `0x80`, and dispatches
+four identity tags, each taking its data word from `0x5e`/`0x5c`:
+
+| tag | destination | identified |
+|---|---|---|
+| `0x7b` | `[0x287]` | the DAA revision |
+| `0x7c` | `[0x283]` and `[0x285]` | no |
+| `0x7d` | `[0x27f]` | no |
+| `0x7e` | `[0x281]` | no |
+
+Three sites read `[0x287]` back:
+
+```
+0x77edb   mov ax, [0x287]          ; ATI7's "DAA rev", printed as four hex digits
+0x77ee3   cmp word [0x287], 0
+0x77ee8   jne  ...                 ; zero falls through to the inline string
+          " : DAA Failure (zero is Invalid)"
+0x8369d   cmp word [0x287], 4
+0x836a2   jne  ...                 ; 4 prints "00345302", anything else "XX345302"
+```
+
+So the firmware carries its own verdict on this word: zero is a failed DAA, and
+4 is the revision this build expects, because that is the value that turns the
+product ID from the placeholder `XX345302` into `00345302`. Nothing in the
+harness produced the message, so every run reported a DAA the firmware itself
+considered invalid:
+
+```
+Product ID             XX345302        DAA rev  0000
+```
+
+With `--daa-codec` the bridge queues tag `0x7b` carrying the modelled part's
+revision, and it does so on the **first** DSP download rather than the second.
+The coprocessor-ready pair `0x02`/`0x03` belongs to the dial/answer boundary; a
+part identifies itself at power up, before any call, and the identity has to be
+in place before the first `ATI7`. That run reports:
+
+```
+Product ID             00345302        DAA rev  0004
+```
+
+The remaining three tags are the obvious next thread: they are filled by the
+same handler from the same mailbox, so whatever they carry is board identity of
+the same kind.
 
 ### The C52 serial port is configured once and disabled
 

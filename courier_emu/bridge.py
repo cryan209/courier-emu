@@ -18,6 +18,12 @@ DSP_WINDOW_LAST = 0x4E
 DSP_WINDOW_STRIDE = 2
 DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
 
+# The supervisor's receive table stores this tag's data word at [0x287], which
+# is the DAA revision `ATI7` prints and which the product ID at 0x8369d
+# branches on. Its three neighbours -- 0x7c, 0x7d, 0x7e -- fill [0x283]/[0x285],
+# [0x27f] and [0x281] from the same handler and are still unidentified.
+DAA_IDENTITY_TAG = 0x7B
+
 
 @dataclass
 class BridgeStatus:
@@ -211,9 +217,19 @@ class CourierDspBridge:
                 self.bootstrap_match = self.bootstrap[:DSP_BOOT_SIZE] == self.expected_bootstrap
                 self.active = True
                 self.bootstraps += 1
-                self._runtime_mode = self.bootstraps >= 2
+                # A modelled codec reports itself at power up, so the mailbox
+                # has to carry traffic from the first download rather than
+                # from the dial/answer boundary.
+                self._runtime_mode = self.bootstraps >= 2 or self.codec is not None
                 self._runtime_ready = self._runtime_mode
-                if self._runtime_mode:
+                if self.codec is not None and self.bootstraps == 1:
+                    # The DAA identity is a power-up report, not a call event.
+                    # Without it [0x287] stays zero, which is the value the
+                    # firmware's own self-test calls invalid.
+                    self._queue_runtime_message(
+                        DAA_IDENTITY_TAG, self.codec.codec.revision
+                    )
+                if self.bootstraps >= 2:
                     # This board's active ISR accepts tags below 0x80. Its
                     # fallback receive table maps 0x02 and 0x03 to the two
                     # coprocessor-ready bits required by the call path.

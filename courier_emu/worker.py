@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import signal
 
-from .codec import CodecBringUp, SiliconDaa, nearest_sample_rate
+from .codec import DAA_REVISION, CodecBringUp, SiliconDaa, nearest_sample_rate
 from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .images import load_image
@@ -51,6 +51,7 @@ def main() -> int:
     parser.add_argument("--daa-codec", action="store_true")
     parser.add_argument("--daa-codec-line", type=int, choices=(1, 2), default=1)
     parser.add_argument("--daa-codec-rate", type=_number, default=9_600)
+    parser.add_argument("--daa-codec-revision", type=_number, default=DAA_REVISION)
     parser.add_argument("--ring-cadence")
     parser.add_argument("--ring-start", type=_number, default=0)
     parser.add_argument("--ring-count", type=_number, default=0)
@@ -118,7 +119,7 @@ def main() -> int:
     codec = None
     if args.daa_codec:
         codec = CodecBringUp(
-            SiliconDaa(args.daa_codec_line),
+            SiliconDaa(args.daa_codec_line, revision=args.daa_codec_revision),
             rate=nearest_sample_rate(args.daa_codec_rate),
         )
 

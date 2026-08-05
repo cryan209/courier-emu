@@ -117,6 +117,15 @@ RESET_VALUES: dict[int, int] = {
 # Chip identity is strapped, not reset: revision A1 of a chipset part.
 CHIP_ID_VALUE = 0x0011
 
+# The revision the ASIC reports to the supervisor at power up. This is a
+# board-level identity word rather than register 5Ah: the supervisor's receive
+# table stores tag 0x7b's data at [0x287], `ATI7` prints it as "DAA rev", and
+# the routine at 0x77eda appends " : DAA Failure (zero is Invalid)" when it is
+# zero. The value is read out of the firmware, not off a part -- 0x8369d
+# branches on [0x287] == 4 to print product ID "00345302" instead of the
+# placeholder "XX345302", so 4 is what this build expects to find.
+DAA_REVISION = 4
+
 # Frames of settling between "powered up" and "ready". The datasheet gives no
 # time, only step 4's instruction to poll, so this is the shortest schedule
 # that still makes the poll meaningful: the reference and the GPIO block come
@@ -146,10 +155,12 @@ class SiliconDaa:
     stored.
     """
 
-    def __init__(self, line: int = 1) -> None:
+    def __init__(self, line: int = 1, revision: int = DAA_REVISION) -> None:
         if line not in (1, 2):
             raise ValueError(f"a codec is line 1 or line 2, got {line}")
         self.line = line
+        # Reported to the supervisor at power up, not held in a register.
+        self.revision = revision & 0xFFFF
         # Line-side inputs, driven by whatever models the loop.
         self.off_hook = False
         self.line_connected = False
@@ -345,6 +356,7 @@ class SiliconDaa:
     def status(self) -> dict[str, object]:
         return {
             "line": self.line,
+            "revision": self.revision,
             "resets": self.resets,
             "frames": self.frames,
             "powered": self.powered,

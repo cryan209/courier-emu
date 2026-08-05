@@ -3,8 +3,8 @@ from __future__ import annotations
 from unittest.mock import patch
 import unittest
 
-from courier_emu.bridge import CourierDspBridge
-from courier_emu.codec import CodecBringUp, SiliconDaa
+from courier_emu.bridge import DAA_IDENTITY_TAG, CourierDspBridge
+from courier_emu.codec import DAA_REVISION, CodecBringUp, SiliconDaa
 from courier_emu.daa import CourierDaa, RingSource
 from courier_emu.line import LINE_FRAME_INSTRUCTIONS
 from courier_emu.xmf import DSP_BOOT_SIZE
@@ -259,6 +259,45 @@ class CodecTests(unittest.TestCase):
         self._frames(bridge, 2)
         self.assertFalse(bridge.codec.codec.ring_positive)
         self.assertFalse(bridge.codec.codec.ring_negative)
+
+    def test_the_codec_reports_its_revision_on_the_first_bootstrap(self) -> None:
+        # [0x287] is filled from tag 0x7b and is what ATI7 prints as "DAA rev";
+        # a real part reports it at power up, not at the dial/answer boundary,
+        # so one download has to be enough.
+        image = _Image()
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
+            bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, codec=CodecBringUp(SiliconDaa())
+            )
+            BridgeTests._bootstrap(bridge, image.program)
+
+        self.assertEqual(bridge.bootstraps, 1)
+        self.assertEqual(
+            list(bridge._runtime_inbound), [(DAA_IDENTITY_TAG, DAA_REVISION)]
+        )
+        # The coprocessor-ready pair still belongs to the second download.
+        self.assertEqual(bridge.read(0x1C, 1), 3)
+
+    def test_the_reported_revision_follows_the_part(self) -> None:
+        image = _Image()
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
+            bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, codec=CodecBringUp(SiliconDaa(revision=0))
+            )
+            BridgeTests._bootstrap(bridge, image.program)
+
+        # Zero is the value the firmware's own self-test calls invalid, and the
+        # model has to be able to present it.
+        self.assertEqual(list(bridge._runtime_inbound), [(DAA_IDENTITY_TAG, 0)])
+
+    def test_without_a_codec_the_mailbox_waits_for_the_second_download(self) -> None:
+        image = _Image()
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
+            bridge = CourierDspBridge(_Image())  # type: ignore[arg-type]
+            BridgeTests._bootstrap(bridge, image.program)
+
+        self.assertEqual(list(bridge._runtime_inbound), [])
+        self.assertFalse(bridge._runtime_mode)
 
     def test_a_bridge_without_a_codec_reports_none(self) -> None:
         with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):

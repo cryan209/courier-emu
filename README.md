@@ -248,13 +248,35 @@ neither processor can see the readiness byte step 4 waits on. The sequence
 belongs to the interposed ASIC — the arrangement AN16 section 1.3 describes —
 and `CodecBringUp` stands in for it, one service frame per 100 ms.
 
-Because there is no firmware read path, this drives the model rather than being
-read by the firmware: hook and line state come from the behavioral DAA, ring
+There is no register-level read path from the firmware, so the model is driven
+rather than polled: hook and line state come from the behavioral DAA, ring
 bursts from the ring source, and loop-current sense, ring detect, frame lock,
 and the country settings come out of the registers. `--daa-codec-line` selects
 which line the part is strapped as (deciding whether readiness reads `0x0f` or
 `0x33`), and `--daa-codec-rate` programs register `40h`, rounding to the
 nearest rate the PLL offers.
+
+One thing the firmware does read is the DAA's identity, and `ATI7` prints it:
+
+```sh
+./courier run main211.xmf --instructions 14000000 --daa-codec --at ATI7
+```
+
+```
+Product ID             00345302        without --daa-codec: XX345302
+DAA rev                0004            without --daa-codec: 0000
+```
+
+The supervisor's receive table stores mailbox tag `0x7b`'s data word at
+`[0x287]`. `ATI7` prints that word as `DAA rev`, the self-test at `0x77eda`
+appends `" : DAA Failure (zero is Invalid)"` when it is zero, and `0x8369d`
+branches on it being 4 to print product ID `00345302` rather than the
+placeholder `XX345302`. Nothing was producing that message, so the firmware
+reported a DAA it considered invalid. `--daa-codec` reports it on the first
+DSP download, since a real part identifies itself at power up rather than at
+the dial/answer boundary; `--daa-codec-revision` changes the value, and 0 will
+reproduce the failure path. The 4 is read out of the firmware's own product-ID
+branch, not measured off a part.
 
 ## Complete flash ROM images
 
@@ -840,8 +862,9 @@ capture firmware-generated result text. The ASIC line frame now transports
 9.6 kHz input/output samples and captures dial tones. Remaining device work is
 the original datapump command mailbox, complete 80186 peripheral timing, and
 unexercised C52 opcode forms. The silicon DAA's ring, loop-current, and frame
-lock state is modeled at register level under `--daa-codec`, but no firmware
-read path to it has been found, so nothing consumes it yet. The
+lock state is modeled at register level under `--daa-codec`; its revision
+reaches the firmware through mailbox tag `0x7b` and `ATI7`, but no read path to
+the line-side status fields has been found, so those are still unconsumed. The
 board latches, front-panel signal lines, and the Microwire settings EEPROM are
 modeled. What remains on the settings side is a recovered parameter-flash sector
 for `0xf8000` and front-panel legends for the unnamed indicator bits; there is no
