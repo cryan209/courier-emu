@@ -1218,22 +1218,81 @@ zero / `1..0x60` / above `0x60`, and the low band is what increments `[0x649]`
 — the five-hit detector byte the originate contract above depends on.
 
 So the harness's stand-ins are not filling in for a missing device. `[0x649]`,
-`[0x289]`, `[0x8d6]` and the `[0x14e]`/`[0x152]` delay pair are all counters
-this one handler services, and they are forged because the interrupt that would
-service them is switched off. Driving `int3` faithfully would retire all of
-them together; forging `[0x649]` in particular also keeps the poller from ever
+`[0x8d6]` and the `[0x14e]`/`[0x152]` delay pair are all counters this one
+handler services, and they are forged because the interrupt that would service
+them is switched off. Driving `int3` faithfully would retire all of them
+together; forging `[0x649]` in particular also keeps the poller from ever
 running, so no run has yet sent a `0x7c00` request or received a `0x7c` reply.
+
+`[0x289]` does **not** belong on that list, though an earlier revision of this
+section put it there. Its servicer is alive; see below.
+
+### Two clocks, not one
+
+Every countdown named above is decremented at exactly one site, and for all but
+one of them that site is inside the masked handler. Scanning the whole image
+for `inc`/`dec` against each of them gives a single exception:
+
+```
+[0x289]   sites in the INT3 handler: 0    elsewhere: 1  (0x6ade5)
+```
+
+`0x6ade5` is in the tail of the **DSP** interrupt, vector `0x0c`, which is
+unmasked and runs:
+
+```
+0x6add3   cmp word [0x161], 0
+0x6add8   je  0x6adde
+0x6adda   dec word [0x161]
+0x6adde   cmp word [0x289], 0
+0x6ade3   je  0x6ade9
+0x6ade5   dec word [0x289]
+0x6ade9   pop es ; popaw
+0x6adeb   mov word [0xff02], 0x8000     EOI
+0x6adf1   iret
+```
+
+That handler advances exactly three things: `[0x176]`, the watchdog counter
+above, and the two countdowns `[0x161]` and `[0x289]`. Nothing else.
+
+`[0x289]` is the detector wait — armed at `0x5db8d`, tested at `0x5dbe7`, and
+the interval the originate path spends waiting on the line. It is therefore on
+a **live** clock, and is being advanced in every run today. Over the same 30 M
+`ATDT` run as above:
+
+| site | executions |
+|---|---:|
+| `0x6ade5` `dec word [0x289]` | 6,616 |
+| `0x6adda` `dec word [0x161]` | 0 (never armed on this path) |
+| `0x5dbe7` the detector wait's compare | 15,416 |
+| `0x5dc4a` that wait timing out | 0 |
+
+`[0x161]` is a real timer too, armed from eleven sites and compared at
+fourteen; a dial simply does not use it.
+
+The split this implies fits the board better than a single time base would: the
+tick handles supervisor housekeeping, and the DSP frame interrupt handles what
+has to track line time. It is also a point in favour of the countdown chain
+being genuinely dormant in these builds rather than something the harness
+merely fails to trigger, since the parts of the firmware that must keep line
+time are not on it.
 
 ### Why this is the blocker for placing and answering calls
 
-Everything a call needs is downstream of this one interrupt. Seizing the line
-and qualifying what comes back is the `[0x649]` path; ring qualification is the
+Most of what a call needs is downstream of this one interrupt. Qualifying what
+comes back from a seizure is the `[0x649]` path; ring qualification is the
 `[0x647]`/`[0x648]` debounce on the tag `0x7e` ring bits, counted against the
 S-register at `[0x92a]`; the pre-dial interval is `[0x8d6]`; call progress runs
-through the same `[0x65e]` state chain. All of them are serviced by the handler
-on the masked vector, and every one the harness forges is a place where the
+through the same `[0x65e]` state chain. Those are serviced by the handler on
+the masked vector, and every one the harness forges is a place where the
 firmware stops telling us what the board would do and starts telling us what we
 told it.
+
+The exception narrows the problem usefully. The wait the originate path spends
+on the line, `[0x289]`, is on the live clock, so the call path is not uniformly
+dark: what is missing inside a wait that already works is the counter that wait
+is waiting on. That makes `[0x649]` the single counter standing between here
+and an originate that runs on the firmware's own terms.
 
 Four explanations for the mask have been tested and three are closed. It is not
 a condition the harness fails to meet: nothing in the image writes the register
