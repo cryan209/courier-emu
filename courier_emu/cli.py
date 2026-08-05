@@ -84,6 +84,26 @@ def _print_json(value: object) -> None:
     print(json.dumps(value, indent=2, sort_keys=True))
 
 
+def daa_codec_wanted(args: argparse.Namespace, image: object) -> bool:
+    """Resolve the codec's three-state flag against what the image can host.
+
+    The board has a DAA, so modelling it is the default. It rides on the DSP
+    bridge, though, and a flash ROM carries no separable C52 payload, so the
+    default gives way there rather than turning a plain `run` into an error.
+    An explicit `--daa-codec` still asks for the impossible and still says so.
+    """
+    if args.daa_codec is False:
+        return False
+    if hasattr(image, "dsp_program_segments"):
+        return True
+    if args.daa_codec:
+        raise ValueError(
+            f"{Path(args.image).name} is a flash ROM, which carries no separable "
+            "C52 payload for the DSP bridge the codec rides on"
+        )
+    return False
+
+
 def _worker_command(args: argparse.Namespace) -> list[str]:
     image = load_image(args.image)
     if args.with_dsp and not hasattr(image, "dsp_program_segments"):
@@ -91,6 +111,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
             f"{Path(args.image).name} is a flash ROM, which carries no separable "
             "C52 payload for the DSP bridge to load"
         )
+    daa_codec = daa_codec_wanted(args, image)
     command = [
         sys.executable,
         "-m",
@@ -107,9 +128,9 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or args.daa_codec:
+    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or daa_codec:
         command.append("--with-dsp")
-    if args.daa_codec:
+    if daa_codec:
         command.append("--daa-codec")
         command.extend(("--daa-codec-line", str(args.daa_codec_line)))
         command.extend(("--daa-codec-rate", str(args.daa_codec_rate)))
@@ -363,9 +384,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--daa-codec",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="model the silicon DAA as a register file and run the datasheet's "
-        "power-up procedure against it from the ASIC side",
+        "power-up procedure against it from the ASIC side. On by default for "
+        "images the DSP bridge can host, since the board has a DAA and ATI7 "
+        "reports a failure without one; --no-daa-codec turns it off",
     )
     run.add_argument(
         "--daa-codec-line",

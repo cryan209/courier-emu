@@ -218,14 +218,20 @@ unmodeled.
 
 ### The silicon DAA as a register file
 
-`--daa-codec` adds the line-interface chipset itself, as registers rather than
-behavior. The board carries an Si3021 and an Si3014; `docs/SI3038.PDF` is the
-AC'97 sibling of that pair and is the only published register map here, so the
-model uses its addresses for the shared line-side fields.
+The line-interface chipset itself is modeled as registers rather than behavior,
+and it is **on by default** — the board has a DAA, and `ATI7` reports a failure
+without one (below). `--no-daa-codec` turns it off; it also drops out on its own
+for a flash ROM, which carries no separable C52 payload for the DSP bridge the
+codec rides on. Modelling it costs about 20% of a run's wall time, since it
+brings the native C52 bridge up on runs that would not otherwise need it.
+
+The board carries an Si3021 and an Si3014; `docs/SI3038.PDF` is the AC'97
+sibling of that pair and is the only published register map here, so the model
+uses its addresses for the shared line-side fields.
 
 ```sh
 ./courier run main211.xmf --instructions 20000000 \
-  --daa-codec --daa-line dial-tone --at ATA --summary
+  --daa-line dial-tone --at ATA --summary
 ```
 
 `dsp_bridge.codec` then reports the whole register file, the readiness byte,
@@ -259,12 +265,12 @@ nearest rate the PLL offers.
 One thing the firmware does read is the DAA's identity, and `ATI7` prints it:
 
 ```sh
-./courier run main211.xmf --instructions 14000000 --daa-codec --at ATI7
+./courier run main211.xmf --instructions 14000000 --at ATI7
 ```
 
 ```
-Product ID             00345302        without --daa-codec: XX345302
-DAA rev                0004            without --daa-codec: 0000
+Product ID             00345302        with --no-daa-codec: XX345302
+DAA rev                0004            with --no-daa-codec: 0000
 ```
 
 The supervisor's receive table stores mailbox tag `0x7b`'s data word at
@@ -272,8 +278,9 @@ The supervisor's receive table stores mailbox tag `0x7b`'s data word at
 appends `" : DAA Failure (zero is Invalid)"` when it is zero, and `0x8369d`
 branches on it being 4 to print product ID `00345302` rather than the
 placeholder `XX345302`. Nothing was producing that message, so the firmware
-reported a DAA it considered invalid. `--daa-codec` reports it on the first
-DSP download, since a real part identifies itself at power up rather than at
+reported a DAA it considered invalid, which is why the codec is on by default
+rather than opt-in. The report goes out on the first DSP download, since a real
+part identifies itself at power up rather than at
 the dial/answer boundary; `--daa-codec-revision` changes the value, and 0 will
 reproduce the failure path. The 4 is read out of the firmware's own product-ID
 branch, not measured off a part.

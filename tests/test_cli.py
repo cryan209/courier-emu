@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from contextlib import redirect_stdout
 from io import StringIO
 import json
@@ -9,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from courier_emu.cli import main, ring_cadence
+from courier_emu.cli import daa_codec_wanted, main, ring_cadence
 from courier_emu.parameters import FEATURE_BITS, ParameterSector, features_value
 
 
@@ -333,6 +334,36 @@ class ConsoleTests(unittest.TestCase):
         self.assertEqual(result["console"]["dropped"], 0)
         self.assertGreater(result["console"]["sent"], 0)
         self.assertEqual(result["serial_input_remaining"], 0)
+
+
+class DaaCodecDefaultTests(unittest.TestCase):
+    """How the codec's three-state flag resolves against an image."""
+
+    @staticmethod
+    def _args(value: bool | None) -> argparse.Namespace:
+        return argparse.Namespace(daa_codec=value, image="image.xmf")
+
+    class _Payload:
+        def dsp_program_segments(self) -> list[tuple[int, bytes]]:
+            return [(0, b"")]
+
+    class _Rom:
+        pass
+
+    def test_a_payload_gets_the_codec_without_being_asked(self) -> None:
+        self.assertTrue(daa_codec_wanted(self._args(None), self._Payload()))
+        self.assertTrue(daa_codec_wanted(self._args(True), self._Payload()))
+
+    def test_the_opt_out_wins_everywhere(self) -> None:
+        self.assertFalse(daa_codec_wanted(self._args(False), self._Payload()))
+        self.assertFalse(daa_codec_wanted(self._args(False), self._Rom()))
+
+    def test_a_rom_drops_the_default_but_refuses_the_request(self) -> None:
+        # The default giving way keeps `run some.rom` working; an explicit
+        # request for something the image cannot host is still an error.
+        self.assertFalse(daa_codec_wanted(self._args(None), self._Rom()))
+        with self.assertRaises(ValueError):
+            daa_codec_wanted(self._args(True), self._Rom())
 
 
 if __name__ == "__main__":

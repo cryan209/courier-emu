@@ -917,8 +917,8 @@ considered invalid:
 Product ID             XX345302        DAA rev  0000
 ```
 
-With `--daa-codec` the bridge queues tag `0x7b` carrying the modelled part's
-revision, and it does so on the **first** DSP download rather than the second.
+The bridge now queues tag `0x7b` carrying the modelled part's revision, and it
+does so on the **first** DSP download rather than the second.
 The coprocessor-ready pair `0x02`/`0x03` belongs to the dial/answer boundary; a
 part identifies itself at power up, before any call, and the identity has to be
 in place before the first `ATI7`. That run reports:
