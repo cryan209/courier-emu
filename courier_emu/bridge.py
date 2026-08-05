@@ -24,6 +24,17 @@ DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
 # [0x27f] and [0x281] from the same handler and are still unidentified.
 DAA_IDENTITY_TAG = 0x7B
 
+# The line-detector poll the supervisor's countdown chain runs, and the tag
+# its reply comes back under. One state of the chain armed at 0x5db6c writes
+# 0x7c00 to the board and the state after it consumes the answer, which the
+# receive handler stores at [0x285]/[0x283]. That word is banded
+# zero / 1..0x60 / above 0x60, and the low band is what increments the
+# five-hit detector byte at [0x649]. The request carries the same tag back.
+DETECTOR_TAG = 0x7C
+# Any reading inside the low band does the same thing; the middle of it is
+# chosen so neither boundary is being relied on.
+DETECTOR_PRESENT_LEVEL = 0x30
+
 
 @dataclass
 class BridgeStatus:
@@ -36,6 +47,7 @@ class BridgeStatus:
     mailbox_windows: dict[str, int]
     runtime_messages: list[str]
     runtime_words_queued: int
+    detector_replies: int
     error: str | None
     dsp: dict[str, int | bool]
     dsp_host_ports: dict[str, dict[str, int]]
@@ -76,6 +88,7 @@ class CourierDspBridge:
         self.mailbox_windows: Counter[str] = Counter()
         self.runtime_messages: deque[str] = deque(maxlen=64)
         self.runtime_words_queued = 0
+        self.detector_replies = 0
         self._runtime_mode = False
         self._runtime_ready = False
         self._runtime_ready_delay = 0
@@ -150,6 +163,20 @@ class CourierDspBridge:
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
 
+    def _answer_runtime_request(self, header: int, _data: int) -> None:
+        """Answer a poll the supervisor's countdown chain has just sent.
+
+        Only the line detector is answered. Its request is the one the chain
+        repeats while a line operation is open, and answering it lets the
+        firmware count its own five hits instead of having the count written
+        underneath it.
+        """
+        if header & 0xFF != DETECTOR_TAG or self.daa is None:
+            return
+        level = DETECTOR_PRESENT_LEVEL if self.daa.detector_present else 0
+        self._queue_runtime_message(DETECTOR_TAG, level)
+        self.detector_replies += 1
+
     @staticmethod
     def handles(port: int) -> bool:
         return port in (0x1C, DSP_COMMAND_PORT, *DSP_RUNTIME_PORTS) or (
@@ -172,6 +199,7 @@ class CourierDspBridge:
                     words = (self._runtime_header, self._runtime_data)
                     self.runtime_words_queued += len(words)
                     self.runtime_messages.append(f"{words[0]:04x}:{words[1]:04x}")
+                    self._answer_runtime_request(*words)
             return
         if port == 0x1C:
             if self._runtime_mode:
@@ -422,6 +450,7 @@ class CourierDspBridge:
             mailbox_windows=dict(self.mailbox_windows.most_common()),
             runtime_messages=list(self.runtime_messages),
             runtime_words_queued=self.runtime_words_queued,
+            detector_replies=self.detector_replies,
             error=self.error,
             dsp=self.core.state(),
             dsp_host_ports=(

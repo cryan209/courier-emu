@@ -150,11 +150,17 @@ and every other firmware timeout waits forever.
 
 `--tick-ms MS` exists to experiment with that edge, but it honours the mask, so
 today it delivers nothing and the `ticks` count stays zero. That is deliberate:
-delivering the edge anyway does complete both pages, and also makes two linked
-instances answer `OK` to `ATA` where an undriven run reports `NO CARRIER` -
-which is the right answer with no modelled DAA. `courier_firmware_analysis.md`
-has the evidence and the likely real source, the DSP interrupt's divide-by-25
-at `0x6ad04`.
+an edge the firmware has switched off is one the board cannot take.
+
+`--tick-source dsp` is the other candidate, and it is the one worth running.
+It paces the chain off the DSP frame interrupt instead of off a period, which
+is the only arrangement that leaves both of the firmware's mutual watchdogs
+quiet - they bound the legal ratio to between 1/25 and 3 ticks per frame, and
+1:1 sits inside it. It is still off by default, because 1:1 within that band is
+a choice rather than a measurement. With it the diagnostics pages finish, the
+line-detector poller runs, and the harness stops forging the two counters that
+poller feeds; see "Two instances on one line" for what a linked pair does then.
+`courier_firmware_analysis.md` has the evidence.
 
 ## Talking to it while it runs
 
@@ -878,17 +884,73 @@ b NO CARRIER  frames=354 peer_off_hook=True
 
 It gets no further, and the reason is the one the SIP section describes rather
 than anything about the link. Over the same run each C52 wrote 271,869 line
-samples and **every one of them was zero**, while its command poll at external
-port `0x50` read `0xffff` 271,869 times. The supervisor sent 38 runtime control
-messages and the datapump never received a command, so neither side ever
-transmits a carrier for the other to hear. Recovering the supervisor-to-C52
-runtime latch protocol is what stands between this and two Couriers training
-against each other.
+samples and **every one of them was zero**, so neither side ever transmits a
+carrier for the other to hear. What has changed is where the search for the
+missing command goes next: the read at C52 program `0x8c1f` that earlier notes
+called the datapump's command poll is not one — see "The window word 0x50 is
+not the datapump's command port" below.
+
+### Pacing the supervisor's countdown chain
+
+`--tick-source dsp` takes both sides further, and is available on `run` too. It
+drives the supervisor's countdown chain from the DSP frame interrupt, one tick
+per frame, which is the only arrangement tried here that leaves both of the
+firmware's mutual watchdogs quiet. It is off by default: the 1:1 ratio is a
+choice inside the band those watchdogs allow rather than a measurement, and the
+edge it delivers is one the interrupt controller has masked.
+
+```sh
+./courier link main211.xmf --instructions 40000000 --tick-source dsp --summary
+```
+
+With the chain running, the line-detector poller the chain carries runs too.
+The bridge answers its `0x7c00` request with a reading in the low band, so the
+firmware counts its own five hits at `[0x649]`; whenever the chain is paced the
+harness stops writing that byte, and stops zeroing the `[0x289]` wait it is
+counted inside. `dsp_bridge.detector_replies` reports how many requests were
+answered.
+
+Both sides then leave command mode:
+
+```text
+a OK  ticks=9141 detector_replies=44 frames=357 peer_off_hook=True
+b OK  ticks=9141 detector_replies=44 frames=357 peer_off_hook=True
+```
+
+and swap the DTE callback table `acdf,1fce,a8d9` for `50ad,18e3,4cac`, which is
+a different front end from the command-line collector. `OK` is not a call
+result code, though, and there is still no carrier on the line behind it: this
+is the supervisor acting on state the harness supplied, not two modems that
+trained. The same option finishes `ATI11`, which previously stopped after
+"Modulation", and takes `ATI10` to its "Strike a key when ready" pager.
 
 The line carries no call setup, which is what a dedicated line is: both ends are
 connected and each simply sees the other seize. Ring cadence is modelled
 separately (`--ring`) and does not yet reach an answer, so an originate/answer
 call over the link is not available.
+
+### The window word `0x50` is not the datapump's command port
+
+The C52 has no external `IN` for `0x50` at all. Data addresses `0x50..0x5f` are
+reserved on a C5x, this core decodes them as external I/O, and the site at
+program `0x8c1f` is a `BIT @50, 6` inside the per-sample service routine. Its
+`TC` result is discarded by the `CLRC TC` at `0x8c3d` with no consumer in
+between, so the word is read and thrown away. Three checks say the same thing
+from the other side:
+
+- Presenting each of the twelve header values the supervisor actually sends at
+  window words `0x50`/`0x51` leaves a 3.4 M-instruction C52 run byte-identical
+  in every counter, including where it stops.
+- The C52's `IMR` is zero after boot, so no host interrupt can reach it either.
+- Applying all 2,274 of a run's runtime messages as `host_write(header, data)`
+  into C52 data space changes nothing.
+
+So there is no host-to-datapump command path in the resident program, and
+"recover the `0x58..0x5e` to C52 `0x50/0x51` valid/ack timing", which earlier
+notes named as the next step, is not it. The supervisor's runtime traffic is a
+real channel — 2,274 two-word messages with a valid/ack handshake on port
+`0x1c`, and the `0x40..0x4e` window used only for the two program downloads —
+but whatever consumes it on the board is not the C52 code these images run.
 
 ## Minimal SIP dial-out
 
@@ -919,10 +981,10 @@ SIP failure responses into Courier `BUSY`/`NO ANSWER` result codes.
 A live 6000-to-7800 validation completed Digest authentication, received
 `200 OK`, and carried 1,152 inbound and 507 outbound RTP packets, while the
 Courier still returned `NO CARRIER`. The supervisor emitted 30 two-word
-runtime control messages on ports `0x58..0x5e`, but the C52 command poll at
-external port `0x50` continued to read `0xffff`. The remaining blocker is the
-runtime supervisor-to-C52 host latch/acknowledgement protocol, not SIP duration
-or RTP transport.
+runtime control messages on ports `0x58..0x5e` and none of them reached a
+datapump. The blocker is below SIP rather than in its duration or RTP
+transport, and it is not the host-latch timing earlier notes named: see "The
+window word `0x50` is not the datapump's command port".
 
 The result includes CPU registers, the first 128 I/O/MMIO operations, complete
 per-address event counts, the hottest code addresses, and the final execution

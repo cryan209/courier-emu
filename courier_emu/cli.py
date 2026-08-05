@@ -34,7 +34,7 @@ DEFAULT_RUN_INSTRUCTIONS = 250_000
 # hours of emulated execution.
 CONSOLE_INSTRUCTIONS = 10_000_000_000
 from .dsp import run_dsp
-from .machine import SUGGESTED_TICK_MS
+from .machine import SUGGESTED_TICK_MS, TICK_SOURCES
 from .terminal import run_console
 
 
@@ -164,6 +164,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--parameter-flash", str(Path(args.parameter_flash).resolve())))
     if args.tick_ms is not None:
         command.extend(("--tick-ms", str(args.tick_ms)))
+    if args.tick_source:
+        command.extend(("--tick-source", args.tick_source))
     command.extend(("--board-id", args.board_id))
     if args.dip is not None and args.dip_preset:
         raise ValueError("use --dip or --dip-preset, not both")
@@ -249,6 +251,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
     ]
     if args.tick_ms is not None:
         command.extend(("--tick-ms", str(args.tick_ms)))
+    if args.tick_source:
+        command.extend(("--tick-source", args.tick_source))
     if listen:
         command.append("--line-listen")
     if args.summary:
@@ -485,6 +489,15 @@ def build_parser() -> argparse.ArgumentParser:
         "because it also changes call timing",
     )
     run.add_argument(
+        "--tick-source",
+        choices=TICK_SOURCES,
+        help="pace that same edge off the DSP frame interrupt instead of off "
+        "a period. This is the one arrangement that leaves both of the "
+        "firmware's mutual watchdogs quiet, and it runs the countdown chain "
+        "the line-detector poller lives on. Off by default: the 1:1 ratio is "
+        "a choice inside the band the watchdogs allow, not a measurement",
+    )
+    run.add_argument(
         "--parameter-flash",
         metavar="PATH",
         help="attach the 16 KiB parameter flash the update image does not "
@@ -626,6 +639,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     link.add_argument("--board-id", type=_board_id, default=str(DEFAULT_BOARD_ID))
     link.add_argument("--tick-ms", type=_number, default=None, metavar="MS")
+    link.add_argument(
+        "--tick-source",
+        choices=TICK_SOURCES,
+        help="pace the supervisor's countdown chain off the DSP frame "
+        "interrupt on both sides",
+    )
     link.add_argument(
         "--summary",
         action="store_true",

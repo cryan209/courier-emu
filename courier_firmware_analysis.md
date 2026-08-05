@@ -1004,13 +1004,51 @@ and exchanged 1,152 inbound / 507 outbound RTP packets, but the firmware still
 returned `NO CARRIER`.
 
 The failure is now localized below SIP. During that call the supervisor sent
-30 two-word runtime messages through ports `0x58..0x5e`. The resident C52 loop
-polls external port `0x50` (notably at program `0x8c1f`), but every observed
-read remained `0xffff`; none of those runtime headers reached the datapump.
-Incoming supervisor event tags `0x02`, `0x03`, `0x09`, and `0x4d` execute their
-recovered handlers, yet cannot compensate for the missing outbound host-latch
-protocol. Recovering the `0x58..0x5e` to C52 `0x50/0x51` valid/ack timing is the
-next required step before genuine answer-tone or carrier training can occur.
+30 two-word runtime messages through ports `0x58..0x5e`, and none of them
+reached the datapump. Incoming supervisor event tags `0x02`, `0x03`, `0x09`,
+and `0x4d` execute their recovered handlers, yet cannot compensate.
+
+An earlier revision of this section called the read at C52 program `0x8c1f` the
+datapump's command poll and named "recover the `0x58..0x5e` to C52 `0x50/0x51`
+valid/ack timing" as the next required step. That lead is closed; see below.
+
+### The window word `0x50` is not a command port
+
+There is no `IN` for port `0x50` anywhere in the C52 image. Data addresses
+`0x50..0x5f` are reserved on a C5x and this core decodes them as external I/O,
+which is what makes them appear in the I/O event log at all. The site is a
+single instruction:
+
+```
+8c19  0100  LAR   AR1, @00
+8c1a  1130  LACC  @30            ; TRCV
+8c1c  0320  LAR   AR3, @20       ; DRR
+8c1e  1130  LACC  @30
+8c1f  4650  BIT   @50, 6         ; TC = bit 9 of the host window word
+...
+8c24  0c80  OUT   *, 0xb2e5      ; the line DAC
+8c3d  be4a  CLRC  TC             ; and the bit is discarded here
+8c3e  7980  B     0xb2e9
+```
+
+`BIT` writes only `TC`, and nothing between `0x8c1f` and the `CLRC TC` at
+`0x8c3d` reads it. The word is read once per sample and thrown away. Three
+checks against the running core agree:
+
+| check | result |
+|---|---|
+| each of the 12 header values the supervisor sends, placed at window words `0x50`/`0x51`, over a 3.4 M-instruction run | byte-identical in every counter, including the stop PC |
+| `IMR` after boot | `0x0000` — no host interrupt can be taken |
+| all 2,274 runtime messages of a run applied as `host_write(header, data)` into C52 data space | no change |
+
+So the resident program has no host-to-datapump command path of any shape.
+What the supervisor's runtime channel *is* remains well defined — 2,274
+two-word messages in a 12 M-instruction run, with a valid/ack handshake on port
+`0x1c` (`in 0x1c` 2,279, `out 0x1c` 4,558), and the `0x40..0x4e` window used
+only for the two program downloads — but its consumer on the board is not the
+C52 code these images run. The remaining candidates are that the datapump entry
+lives in the downloaded low bank and is never entered here, or that the channel
+terminates in the ASIC rather than in the C52 at all.
 
 ## Datapump is present & readable — but needs human-driven RE
 
@@ -1281,8 +1319,8 @@ time are not on it.
 
 If the DSP frame interrupt is what keeps line time, the obvious thing to try is
 letting it pace the countdown chain too — deliver vector `0x0f` once per DSP
-interrupt and see what the firmware makes of it. Everything below is a scratch
-experiment; none of it is in the tree.
+interrupt and see what the firmware makes of it. This now ships as
+`--tick-source dsp`, off by default, on both `run` and `link`.
 
 It runs, and the firmware's own consistency check is what says so:
 
@@ -1312,6 +1350,17 @@ nothing answering, the firmware reports `NO DIAL TONE` — the correct answer fo
 a line it cannot hear, reached through its own code rather than through ours.
 Answering `0x7c00` with a reading in the `1..0x60` band then increments
 `[0x649]` through the firmware's own path for the first time.
+
+Both halves of that are now in the tree. The bridge answers the detector
+request whenever the DAA has something on the line — `dsp_bridge`
+`detector_replies` counts them, 44 in a 40 M-instruction linked run — and
+pacing the chain switches the harness's two forgeries off together: it neither
+writes `[0x649]` at `0x5dbe7` nor zeroes the `[0x289]` wait that count runs
+inside, because both are the firmware's own once the poller is alive. A linked
+pair then leaves command mode, swapping the DTE callback table `acdf,1fce,a8d9`
+for `50ad,18e3,4cac`, and answers `OK`. `OK` is not a call result code and the
+line behind it is still silent on both sides, so this is the supervisor acting
+on state the harness supplied rather than two modems that trained.
 
 ### What parks the state chain
 

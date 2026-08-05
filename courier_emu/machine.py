@@ -58,6 +58,14 @@ TICK_VECTOR = 0x0F
 # pair answers OK where an undriven run reports NO CARRIER, so which of
 # those is faithful is still open.
 SUGGESTED_TICK_MS = 10
+# The other candidate source, and the only one that leaves both of the
+# firmware's mutual watchdogs quiet: pace the chain off the DSP frame
+# interrupt instead of off a period. The two watchdogs bound the legal ratio
+# to between 1/25 and 3 ticks per DSP interrupt, and 1:1 sits inside it. This
+# is opt-in because the ratio is a choice within that band rather than a
+# measurement, and because it delivers an edge the interrupt controller has
+# masked - see "Pacing the chain from the DSP interrupt".
+TICK_SOURCES = ("dsp",)
 
 
 def attention_body(command: bytes) -> bytes | None:
@@ -152,6 +160,7 @@ class CourierMachine:
         parameter_sector: bytes | None = None,
         parameter_flash: ParameterFlash | None = None,
         tick_ms: int | None = None,
+        tick_source: str | None = None,
         console: SerialConsole | None = None,
     ) -> None:
         self.image = image
@@ -167,8 +176,13 @@ class CourierMachine:
         self.parameter_flash = parameter_flash
         self._service_resume = False
         self.tick_ms = tick_ms
+        if tick_source is not None and tick_source not in TICK_SOURCES:
+            choices = ", ".join(TICK_SOURCES)
+            raise ValueError(f"invalid tick source {tick_source!r}; choose {choices}")
+        self.tick_source = tick_source
         self.ticks = 0
         self._last_tick = 0
+        self._tick_owed = False
         self.panel = CourierPanel(
             board_id=board_id,
             dip_closed=DEFAULT_DIP_CLOSED if dip_closed is None else dip_closed,
@@ -605,6 +619,10 @@ class CourierMachine:
             if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8):
                 self._timer_in_handler = False
                 self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
+                if self.tick_source == "dsp":
+                    # One tick per DSP frame, taken after that handler's own
+                    # iret so the two never nest.
+                    self._tick_owed = True
             self.instructions += 1
             if self.console is not None and not self.instructions % self.console.poll_instructions:
                 typed = self.console.poll()
@@ -695,7 +713,15 @@ class CourierMachine:
                 self.accelerated_delays += 1
             # Command-mode initialization also waits directly on the 10 ms
             # timer countdown at 0000:0289 instead of using the delay helper.
-            if self.fast_delays and address in (0x5DB9D, 0x5DBE7):
+            # With the countdown chain paced, the poller that feeds [0x649] is
+            # running and the bridge answers it, so both the count and the
+            # wait it runs inside are the firmware's own. Writing either one
+            # here would only hide whether that path works.
+            if (
+                self.fast_delays
+                and self.tick_source is None
+                and address in (0x5DB9D, 0x5DBE7)
+            ):
                 daa = self.dsp_bridge.daa if self.dsp_bridge is not None else None
                 if address == 0x5DBE7 and daa is not None and daa.detector_present:
                     if daa.detector_qualified:
@@ -854,6 +880,22 @@ class CourierMachine:
                 # The board's periodic edge, which the supervisor's countdown
                 # chain hangs off. A ROM run reaches its own time base from
                 # the reset vector, so this stands in only for a payload run.
+                self._last_tick = self.instructions
+                self._external_interrupt_pending = TICK_VECTOR
+                self.ticks += 1
+                _uc.emu_stop()
+            if (
+                self._tick_owed
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and self._external_interrupt_pending is None
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+            ):
+                # The DSP-paced source deliberately does not consult the
+                # int3 mask: what it models is a board that generates this
+                # edge from the same source as the DSP frame rather than from
+                # the 80186 pin the firmware masked.
+                self._tick_owed = False
                 self._last_tick = self.instructions
                 self._external_interrupt_pending = TICK_VECTOR
                 self.ticks += 1
