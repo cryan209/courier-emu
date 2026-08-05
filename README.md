@@ -99,6 +99,63 @@ harness waits for `a8d9` and re-arms the collect flag at `0x1cee` bit `0x40`
 for each line, exactly as it does once at the main-loop milestone. That is
 what makes a second and third command answer.
 
+## The parameter flash, and storing a profile
+
+`AT&W` writes the working profile to the parameter store. That store is four
+4 KiB sectors at physical `0xf8000`, each ending in a 32-bit version at
+`0xffa` and a CRC-16/CCITT at `0xffe`; the search at `0x7e07c` checksums all
+four and keeps the highest version that verifies. `parameters.py` documents
+the layout, and the `parameters` subcommand builds a sector.
+
+The writer at `0x7dfa8` does not touch the part directly. It calls the boot
+block through `int 0x0a` with an ASCII service letter in `BL`:
+
+| service | meaning |
+|---|---|
+| `E` (0x45) | erase the 4 KiB sector selected by `ES` |
+| `W` (0x57) | program the word in `AX` at `ES:DI`, then advance `DI` |
+| `S` (0x53) | firmware-update path, not modelled |
+| `L` (0x4c) | block lock/select, not modelled |
+
+An XMF update image carries the application only, so in a run built from one
+that vector points at nothing and `AT&W` stops on the first call. `E` and `W`
+are answered by the harness when a part is attached, which is what `AT&W`
+needs and no more; `S` and `L` still stop the run rather than continue on a
+guess.
+
+```sh
+./courier run main211.xmf --parameter-flash board.flash --at ATS0=7 --at 'AT&W'
+./courier run main211.xmf --parameter-flash board.flash --at 'ATS0?'
+```
+
+The second run answers `007`. The file is created erased (`0xff`, which is
+what the blank check at `0x7e0e3` scans for), a 4 KiB file is accepted as the
+first sector, and the run reports a `flash` block with the erase and program
+counts and each sector's version and checksum validity. Storing repeatedly
+walks the sectors in turn and erases one to wrap, all driven by the
+firmware's own writer. `refused_bits` counts bits a program would have had to
+set rather than clear: it stays zero while the model and the firmware agree
+about what an erase leaves behind.
+
+With a stored profile attached, `ATI5` renders it rather than the empty-store
+page.
+
+## The time base, and what waits on it
+
+The supervisor arms countdowns and waits on them - `ATI11` gives itself 20
+ticks at `0x62d68` before printing an empty diagnostics page. Nothing drives
+them: the chain that decrements them is entered on vector `0x0f`, which this
+firmware keeps masked for the whole run, so `ATI10` and `ATI11` stop partway
+and every other firmware timeout waits forever.
+
+`--tick-ms MS` exists to experiment with that edge, but it honours the mask, so
+today it delivers nothing and the `ticks` count stays zero. That is deliberate:
+delivering the edge anyway does complete both pages, and also makes two linked
+instances answer `OK` to `ATA` where an undriven run reports `NO CARRIER` -
+which is the right answer with no modelled DAA. `courier_firmware_analysis.md`
+has the evidence and the likely real source, the DSP interrupt's divide-by-25
+at `0x6ad04`.
+
 ## Talking to it while it runs
 
 `--at` queues commands before boot. `--console` instead attaches this terminal
@@ -748,6 +805,27 @@ Product ID             XX345302
 Options                HST,V32bis,Terbo,VFC,V34+,V90,V92
 Clock Freq             25 Mhz
 Serial Number          12345678
+```
+
+The sector's first byte gates each unpacked field, applying it when the bit is
+clear, and `--flags` sets it. Bit 3 decides whether type1 reaches `[0x0a03]`,
+and `0x8339f` tests bit `0x04` of that byte before the `ATY15` case is even
+reachable — so the default `0x08` is why that command answers `ERROR`. A sector
+with bit 3 clear and type1 carrying `0x04` makes it print the factory switch
+page instead, which reports all ten option switches as the firmware reads them:
+
+```sh
+./courier parameters params.bin --serial 12345678 --flags 0
+./courier run main211.xmf --instructions 9000000 \
+  --parameter-sector params.bin --at ATY15
+```
+
+```text
+CURRENT DIPSWITCH SETTINGS
+DIPSWITCH #1   ON
+DIPSWITCH #2   OFF
+DIPSWITCH #3   ON
+...
 ```
 
 Feature bit 4 (value 16) is labelled x2 in archived notes for older Courier

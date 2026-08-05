@@ -21,6 +21,7 @@ from .panel import (
     USABLE_BOARD_IDS,
 )
 from .images import load_image
+from .isdn import IsdnMachine
 from .nac import NacFormatError, NacImage
 from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
@@ -33,6 +34,7 @@ DEFAULT_RUN_INSTRUCTIONS = 250_000
 # hours of emulated execution.
 CONSOLE_INSTRUCTIONS = 10_000_000_000
 from .dsp import run_dsp
+from .machine import SUGGESTED_TICK_MS
 from .terminal import run_console
 
 
@@ -158,6 +160,10 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--nvram", str(Path(args.nvram).resolve())))
     if args.parameter_sector:
         command.extend(("--parameter-sector", str(Path(args.parameter_sector).resolve())))
+    if args.parameter_flash:
+        command.extend(("--parameter-flash", str(Path(args.parameter_flash).resolve())))
+    if args.tick_ms is not None:
+        command.extend(("--tick-ms", str(args.tick_ms)))
     command.extend(("--board-id", args.board_id))
     if args.dip is not None and args.dip_preset:
         raise ValueError("use --dip or --dip-preset, not both")
@@ -241,6 +247,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--board-id",
         args.board_id,
     ]
+    if args.tick_ms is not None:
+        command.extend(("--tick-ms", str(args.tick_ms)))
     if listen:
         command.append("--line-listen")
     if args.summary:
@@ -308,6 +316,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="validate and describe an ISDN Courier NAC record stream",
     )
     nac_info.add_argument("image")
+
+    isdn_run = subparsers.add_parser(
+        "isdn-run",
+        help="execute the ISDN Courier 386 payload with its PC-AT peripherals",
+    )
+    isdn_run.add_argument("image")
+    isdn_run.add_argument("--instructions", type=_number, default=20_000_000)
+    isdn_run.add_argument(
+        "--entry",
+        default=None,
+        metavar="SEGMENT:OFFSET",
+        help="override the recovered initialiser at 4030:0000",
+    )
+    isdn_run.add_argument(
+        "--tick-irq",
+        type=_number,
+        default=None,
+        help="IRQ line the 8254's counter 0 drives; the sweep points at 10",
+    )
+    isdn_run.add_argument(
+        "--port",
+        action="append",
+        default=[],
+        metavar="PORT=VALUE",
+        help="seed an input port value; numbers accept 0x notation",
+    )
 
     extract = subparsers.add_parser(
         "extract",
@@ -439,6 +473,24 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="CODE",
         help="drive the four board identification straps with this 0-15 code, "
         f"or 'none' to leave them floating (default: {DEFAULT_BOARD_ID})",
+    )
+    run.add_argument(
+        "--tick-ms",
+        type=_number,
+        metavar="MS",
+        help="drive the board's periodic edge on vector 0x0f with this period "
+        "in milliseconds. The supervisor's countdown chain hangs off it, so "
+        "without it every firmware timeout waits forever and ATI10 and ATI11 "
+        f"never finish; {SUGGESTED_TICK_MS} makes them answer. Off by default "
+        "because it also changes call timing",
+    )
+    run.add_argument(
+        "--parameter-flash",
+        metavar="PATH",
+        help="attach the 16 KiB parameter flash the update image does not "
+        "carry, and answer the boot block's erase and program services with "
+        "it, so AT&W stores a profile that survives the run (created erased "
+        "if absent)",
     )
     run.add_argument(
         "--parameter-sector",
@@ -573,6 +625,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="option switches for both sides (default dedicated-line)",
     )
     link.add_argument("--board-id", type=_board_id, default=str(DEFAULT_BOARD_ID))
+    link.add_argument("--tick-ms", type=_number, default=None, metavar="MS")
     link.add_argument(
         "--summary",
         action="store_true",
@@ -596,6 +649,15 @@ def build_parser() -> argparse.ArgumentParser:
     parameters.add_argument("--type1", type=_number, default=30)
     parameters.add_argument("--type2", type=_number, default=7)
     parameters.add_argument("--version", type=_number, default=1)
+    parameters.add_argument(
+        "--flags",
+        type=_number,
+        default=0x08,
+        help="the gate byte at sector offset 0. Each field is applied "
+        "when its bit is clear: bit 0 feature decode, 1 country, 2 type2, "
+        "3 type1. Clearing bit 3 puts type1 in [0x0a03], whose bit 0x04 is "
+        "what makes ATY15 print the switch page (default 0x08)",
+    )
 
     dsp_run = subparsers.add_parser("dsp-run", help="execute the TMS320C52 firmware")
     dsp_run.add_argument("image")
@@ -630,6 +692,32 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "nac-info":
             _print_json(NacImage.load(args.image).describe())
             return 0
+        if args.command == "isdn-run":
+            try:
+                source: NacImage | XmpImage = NacImage.load(args.image)
+            except NacFormatError:
+                source = XmpImage.load(args.image)
+            ports: dict[int, int] = {}
+            for assignment in args.port:
+                key, separator, value = assignment.partition("=")
+                if not separator:
+                    raise ValueError(f"invalid port assignment: {assignment!r}")
+                ports[_number(key)] = _number(value)
+            entry = {}
+            if args.entry:
+                segment, separator, offset = args.entry.partition(":")
+                if not separator:
+                    raise ValueError(f"invalid entry point: {args.entry!r}")
+                entry = {
+                    "entry_segment": int(segment, 16),
+                    "entry_offset": int(offset, 16),
+                }
+            counter_irq = None if args.tick_irq is None else {0: args.tick_irq}
+            machine = IsdnMachine(
+                source, port_values=ports, counter_irq=counter_irq, **entry
+            )
+            _print_json(machine.run(args.instructions).to_dict())
+            return 0
         if args.command == "extract":
             try:
                 source: XmfImage | XmpImage | NacImage = XmfImage.load(args.image)
@@ -653,6 +741,7 @@ def main(argv: list[str] | None = None) -> int:
                 type2=args.type2,
                 serial=args.serial,
                 version=args.version,
+                flags=args.flags,
             )
             sector.save(args.output)
             result = sector.status()

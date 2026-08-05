@@ -48,3 +48,4 @@ artifacts/
 *.NAC
 *.sdl
 *.SDL
+nvram.sav

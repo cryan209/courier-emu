@@ -113,9 +113,14 @@ class ParameterSector:
     unused2: int = 0
     serial: str = ""
     version: int = 1
-    # The flags byte gates each unpacked field. Bit 3 keeps [0x0a03] at zero,
+    # The flags byte gates each unpacked field, applying it when the bit is
+    # clear: 0x7e01d feature decode, 0x7e03c country, 0x7e04f type2 into
+    # [0x0a04], 0x7e05c type1 into [0x0a03]. Bit 3 keeps [0x0a03] at zero,
     # which leaves the flash defaults going to the working profile at 0x08df
-    # rather than the stored profile at 0x095d.
+    # rather than the stored profile at 0x095d. It also decides whether the
+    # factory diagnostics exist: 0x8339f gates the ATY15 switch page on bit
+    # 0x04 of [0x0a03], so a sector with bit 3 clear and type1 bit 0x04 set
+    # is what makes that command answer instead of reporting ERROR.
     flags: int = 0x08
     packed_config: bytes = PACKED_CONFIG
     profile_image: bytes = PROFILE_IMAGE

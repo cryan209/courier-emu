@@ -9,6 +9,7 @@ import signal
 from .codec import DAA_REVISION, CodecBringUp, SiliconDaa, nearest_sample_rate
 from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
+from .flash import ParameterFlash
 from .images import load_image
 from .line import LineLink
 from .machine import CourierMachine
@@ -45,6 +46,8 @@ def main() -> int:
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
+    parser.add_argument("--parameter-flash")
+    parser.add_argument("--tick-ms", type=_number, default=None)
     parser.add_argument("--int1-after", type=_number)
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
@@ -141,6 +144,10 @@ def main() -> int:
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
         dip_closed=frozenset(args.dip),
         parameter_sector=load_sector(args.parameter_sector) if args.parameter_sector else None,
+        parameter_flash=ParameterFlash.load(args.parameter_flash)
+        if args.parameter_flash
+        else None,
+        tick_ms=args.tick_ms,
         sip=sip,
         line=line,
         console=console,

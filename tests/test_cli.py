@@ -305,6 +305,61 @@ class CliTests(unittest.TestCase):
 
 
 
+class ParameterFlashTests(unittest.TestCase):
+    def _run(self, path: Path, *commands: str) -> dict:
+        output = StringIO()
+        arguments = [
+            "run",
+            str(ROOT / "main211.xmf"),
+            "--instructions",
+            "12000000",
+            "--parameter-flash",
+            str(path),
+            "--summary",
+        ]
+        for command in commands:
+            arguments.extend(("--at", command))
+        with redirect_stdout(output):
+            result = main(arguments)
+        self.assertEqual(result, 0)
+        return json.loads(output.getvalue())
+
+    def test_a_stored_profile_survives_the_run_that_wrote_it(self) -> None:
+        # AT&W assembles a sector in RAM and asks the boot block to erase and
+        # program it. An update payload has no boot block, so the harness
+        # answers those two services itself; the proof that it answers them
+        # as the part would is that the firmware's own CRC over what it wrote
+        # checks out, and that its own reader finds the value again.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "parameter.flash"
+            stored = self._run(path, "ATS0=7", "AT&W")
+            self.assertEqual(stored["serial_text"], "\r\nOK\r\n\r\nOK\r\n")
+            sector = stored["flash"]["sectors"][0]
+            self.assertTrue(sector["checksum_valid"])
+            self.assertFalse(sector["erased"])
+            self.assertEqual(sector["version"], 1)
+            # Programming into an unerased word would mean the model and the
+            # firmware disagree about what an erase leaves behind.
+            self.assertEqual(stored["flash"]["refused_bits"], 0)
+
+            reopened = self._run(path, "ATS0?")
+            self.assertEqual(reopened["serial_text"], "\r\n007\r\n\r\nOK\r\n")
+
+    def test_a_second_store_moves_to_the_next_sector(self) -> None:
+        # The search at 0x7e07c keeps the highest version of four sectors, so
+        # the writer rotates rather than rewriting one in place.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "parameter.flash"
+            self._run(path, "ATS0=7", "AT&W")
+            second = self._run(path, "ATS0=8", "AT&W")
+            versions = [sector["version"] for sector in second["flash"]["sectors"][:2]]
+            self.assertEqual(versions, [1, 2])
+            self.assertTrue(
+                all(sector["checksum_valid"] for sector in second["flash"]["sectors"][:2])
+            )
+            self.assertEqual(second["flash"]["erases"], 0)
+
+
 class ConsoleTests(unittest.TestCase):
     def test_a_console_session_answers_while_it_runs(self) -> None:
         # stdin need not be a terminal: piping is the same live path, which

@@ -1390,6 +1390,95 @@ is not proof the board drives it from the DSP frame — only that no other
 configuration tried here leaves the firmware's own consistency checks
 satisfied.
 
+## The DTE front end the harness stands in for
+
+The board's UART front end is absent from a payload run, so the harness
+installs its callbacks at the main-loop milestone. Four further pieces of that
+same contract were recovered by driving a live console:
+
+- **Attention prefix.** `0x65f03` receives the assembled line, and the harness
+  strips the `AT`/`at` prefix there. The other half of the contract was
+  missing: a line with no prefix was passed through unchanged, so `I3` ran as
+  `ATI3`. The terminator advances the command state whatever was typed,
+  because that state machine sits downstream of the detector, so a completed
+  line without the prefix is now returned to command-line-ready with the
+  parser uncalled — no result code, nothing executed. `A/` and `A>` are the
+  detector's own two-character forms and are left alone.
+
+- **One command line at a time.** The state machine publishes itself as the
+  callback pointer at `0x02ac`: `a8d9` collects a line a character at a time,
+  the terminator advances it to `a910`, which parses and prints, and the
+  end-of-command path at `a8b1` clears the collector and returns to `a8d9`.
+  Bytes delivered into the `a910` window are assembled into a buffer nothing
+  goes on to parse — the firmware's own type-ahead flag at `0x1cf2` is what
+  carries a line across, and it is set by the front end. Holding input until
+  `a8d9` is what makes a second and third command answer.
+
+- **Collect versus keystroke.** At `0x662d0` the receive path tests the
+  collect flag `0x1cee` bit `0x40`: armed, it appends to the command buffer at
+  `0x1cf5`; clear, it takes `0x662d7` instead and sets bit `0x20`, the flag a
+  running command waits on for a keystroke. The help pages spin on that flag —
+  `test byte [0x1cee], 0x20`, nine sites in `main211`, one of them the
+  `0x73824` loop behind "Strike a key when ready". Arming the collector for
+  every delivered byte swallows those keystrokes as command text and the pager
+  never wakes.
+
+- **A reset rebuilds the table.** `ATZ` reloads the profile and rewrites the
+  callbacks to the board-less defaults. Installing the stand-in only once left
+  the DTE deaf afterwards: the next typed byte entered the receive ISR at
+  `0x5d5b0`, dispatched through the nulled callback into the fatal entry at
+  `5b5e:0000`, and blinked error `0x0b` for the rest of the session.
+
+Echo belongs to the same layer. The setting is `[0x092d]`, which `ATE0`/`ATE1`
+change and which the `no-echo` option switch leaves clear at `0x63e93`, so the
+harness echoes from the firmware's own byte rather than a flag of its own.
+
+## The parameter flash service the update image does not carry
+
+`AT&W` assembles a sector image in RAM and then calls the boot block through
+`int 0x0a` with an ASCII service letter in `BL`:
+
+| service | meaning |
+|---|---|
+| `E` (0x45) | erase the 4 KiB sector selected by `ES` |
+| `W` (0x57) | program the word in `AX` at `ES:DI`, then advance `DI` |
+| `S` (0x53) | firmware-update path |
+| `L` (0x4c) | block lock/select |
+
+The writer at `0x7dfa8` blank-checks the destination at `0x7e0e3` — 2,048
+words against `0xffff` — erases when that fails, then walks the assembled
+image a word at a time. An update payload has no boot block, so every one of
+those calls lands on a vector that is not there and `AT&W` stops on the first.
+The harness answers `E` and `W` against a modelled part; `S` and `L` still
+stop the run rather than continue on a guess.
+
+That the answers match the part is checked by the firmware itself: the sector
+it writes passes the CRC computed independently by `parameters.py`, its own
+reader finds the value again after a fresh boot, repeated stores rotate the
+four sectors and erase one to wrap, and no program ever tries to set a bit in
+an unerased word.
+
+`ATY15` is gated on this store rather than missing. `0x8339f` tests
+`[0x0a03]` bit `0x04` before the `cmp al, 0x0f` case is even reachable, and
+`[0x0a03]` is loaded at `0x7e05c` from sector offset `0x04` — type1 — only
+when the sector's flags bit 3 is clear. With a sector built that way the
+command prints the factory switch page, which reports all ten option switches
+and is an independent read on the board model.
+
+## Emulator core corrections
+
+Two defects in the C52 core were found by following the serial path:
+
+- **Indirect addressing modes 8 and 9 were missing.** The ARU field is bits
+  6-4 with bit 3 selecting the ARP update, so `100` is `*BR0-`, the
+  bit-reversed form. The service overlay reaches it at program `0xe581` once
+  the serial port answers a transmit-ready poll, and the core stopped dead
+  there. The core had `*BR0-` at modes `0x6`/`0x7`, which that encoding
+  reserves.
+- **The serial port had no status bits.** `SPC` read back exactly as written,
+  so `XRDY` and `RRDY` never set and a transmit handshake could not complete.
+  They are now answered from the port's state.
+
 ## Possible next steps
 
 1. **Live RAM/state dump from the physical modem** (highest leverage): if the
@@ -1409,6 +1498,17 @@ satisfied.
 4. **Correlate live** (needs a connected call): `ATI6`/`ATI11` Timing/Carrier
    Offset + echo vs. our DIL timing, to fork clock-recovery vs. constellation
    rejection.
+5. **Answer as the DAA at the ASIC boundary**: establish what the C52 reads
+   once per frame from external I/O `0x50` at program `0x8c1f` — the code that
+   consumes it, and which bits it tests — then drive it from the line model
+   instead of letting it float high. The datasheet fields above say what that
+   status should carry. The eight supervisor latches at `0x40`..`0x4e`, written
+   about 15,000 times each during a dial, are the other half of the same
+   boundary.
+6. **Trace the tick**: find how `[0x66c]` bit `0x80`, set by the DSP interrupt
+   every 25 entries, reaches the countdown chain at `0x5c0fa`. That would give
+   the supervisor a time base from the source the board actually has, and with
+   it every firmware timeout — including the `ATI10`/`ATI11` pages.
 
 ## Complete flash ROM — `IDSDL302.ROM`
 

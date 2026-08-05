@@ -184,6 +184,23 @@ uint16_t C5xCore::GET_ADDRESS()
 				UPDATE_ARP(nar);
 				break;
 			}
+			// The ARU field is bits 6-4 and bit 3 selects the ARP update, so
+			// 100 lands here: reverse-carry subtract, the bit-reversed
+			// addressing an FFT walks its butterflies with. The service
+			// overlay reaches it at program 0xe581 once the serial port
+			// answers its transmit-ready poll, which is why nothing had
+			// needed it before.
+			case 0x8:   // *BR0-        reverse-carry subtract INDX
+			{
+				reverse_add(true);
+				break;
+			}
+			case 0x9:   // *BR0-, ARn
+			{
+				reverse_add(true);
+				UPDATE_ARP(nar);
+				break;
+			}
 			case 0xa:   // *0-          ((CurrentAR) - INDX)
 			{
 				UPDATE_AR(arp, -m_indx);

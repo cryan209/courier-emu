@@ -12,6 +12,21 @@
 
 namespace courier {
 
+// Serial port control register bits. The firmware writes 0x40c8 at program
+// 0x00c0: receiver and transmitter out of reset, burst frame sync, and both
+// TXM and MCM clear, which makes the C52 a slave to an externally supplied
+// clock and frame sync. That is the arrangement the DAA chipset's own
+// documentation describes, with the board clocking the bus.
+//
+// The status bits below are the half this core did not model. Without them a
+// transmit handshake never completes: the firmware writes DXR twice at
+// program 0x00c2 and then waits forever for a readiness it is never told
+// about, which is exactly what the access counts showed.
+static constexpr uint16_t SPC_XRST = 1u << 6;   // transmitter out of reset
+static constexpr uint16_t SPC_RRST = 1u << 7;   // receiver out of reset
+static constexpr uint16_t SPC_RRDY = 1u << 10;  // a received word is waiting
+static constexpr uint16_t SPC_XRDY = 1u << 11;  // DXR can take another word
+
 [[noreturn]] static void fatalerror(const char *format, ...)
 {
     char buffer[512];
@@ -212,7 +227,17 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         }
         return m_serial.drr;
     case 0x21: return m_serial.dxr;
-    case 0x22: return m_serial.spc;
+    case 0x22: {
+        // The control bits read back as written; the two status bits are
+        // answered from the port's actual state. A slave transmitter whose
+        // clock comes from the board is ready again as soon as the shifter
+        // has taken the word, so readiness follows XRST rather than a frame
+        // this core does not run.
+        uint16_t value = m_serial.spc & uint16_t(~(SPC_XRDY | SPC_RRDY));
+        if (m_serial.spc & SPC_XRST) value |= SPC_XRDY;
+        if ((m_serial.spc & SPC_RRST) && !m_codec_rx.empty()) value |= SPC_RRDY;
+        return value;
+    }
     case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
     case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) | (m_timer.tddr & 0xf));
     case 0x28: case 0x37: return 0;
