@@ -980,6 +980,17 @@ exists anywhere else in the image either. The area is never rewritten: across
 600,000 instructions of startup the only program-memory instruction executed is
 one `BLPD`, which reads rather than writes.
 
+Nor in any other image here. All fifteen — six XMFs, four XMDs, the ISDN ROM,
+`.nac`, `.sdl` and `.xmp` — scanned in both byte orders come up empty once the
+handler word is required to vary; the long runs are filler or sequential `CALL`
+code. Every XMF's DSP payload instead begins at file `0x2f0` with reset code,
+identical across `main211`, `main2205` and `3453Bv2.1.1`, and a different
+variant in the four 2.3.x builds whose first act is an external write to I/O
+port `0x8057` and which programs different wait states (`PDWSR` `0x2000`
+against `0x000a`). So the vector area holding reset code is a property of every
+build in the tree, not a quirk of one image, and those wait-state values are
+the one direct statement about the memory map available here.
+
 The reading that fits is that the C52 is in microcomputer mode, its program
 `0x0000..0x0fff` is on-chip ROM holding both the vector table and the bootstrap
 that receives the download, and neither is in this image — so the assumption

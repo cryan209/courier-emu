@@ -1237,6 +1237,46 @@ the vector table and the bootstrap that receives the download, and neither is in
 this image — which means the harness's assumption that the downloaded segment
 begins at program `0x0000` puts the downloaded init on top of the vectors.
 
+### No image in the tree has one either
+
+The absence is not peculiar to `main211`. Scanning all fifteen images here — six
+XMFs, four XMDs, the ISDN ROM, `.nac`, `.sdl` and `.xmp` — in both byte orders
+for runs of two-word branch slots turns up nothing table-shaped anywhere. The
+apparent 15- and 16-slot runs in `SV25.XMD`, `SDL0430.XMD`, `SV_49.XMD` and
+`IDSDL302.XMD` are filler: one word repeated, `7d77`, `7a37` or `7077`. The
+runs in the XMFs are all the same sliding window over one block of sequential
+`CALL` code — `0xa624` in the 2.1/2.2 builds, `0x4554` in `main2205` — whose
+targets repeat rather than fan out. Requiring the handler word to vary leaves
+nothing.
+
+Nor would a C52 boot ROM be here to find: it is a TI mask ROM, not something
+USR ships in a firmware update.
+
+### What the family does share, and where it splits
+
+Every XMF's DSP payload starts at file `0x2f0` with reset code, in two variants:
+
+| build | opening |
+|---|---|
+| `main211`, `main2205`, `3453Bv2.1.1` | `LDP #0` · `SPLK #0xffff, @57` · `SPLK #0, @7a` · `SETC INTM` |
+| `2_3_33`, `MAIN_2.3.12/15/31` | `LDP #0xfe` · `SPLK #0xffff, @53` · **`OUT @53, 0x8057`** · `LDP #0` · `SPLK #0, @7a` · `SETC INTM` |
+
+The three older builds are byte-identical over their whole opening. The 2.3.x
+build differs in two ways worth following. Its very first act, before it sets
+wait states or anything else, is an external write of `0xffff` to I/O port
+`0x8057`. And it programs different wait states: `PDWSR` `0x2000` against
+`0x000a`, `IOWSR` `0x0101` against `0x0001`.
+
+That second difference is the interesting one, because `PDWSR` is a statement
+about the memory map rather than an inference from one: it carries the wait
+states each program and data region needs, so a datasheet decode of those two
+values says directly which regions these boards put off-chip. This core ignores
+writes to `PDWSR`, `IOWSR` and `CWSR`, so nothing here depends on them yet.
+
+Either way, the vector area holding reset code is a property of every build in
+the tree, across five years and two product lines, rather than a quirk of one
+image.
+
 ### The memory map, now modelled
 
 `PMST` carries `MP/MC`, `OVLY` and `RAM`, and this core parsed all three and
