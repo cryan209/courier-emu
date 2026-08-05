@@ -49,6 +49,11 @@ void C5xCore::reset()
     m_bmar = 0; m_brcr = 0; m_paer = m_pasr = 0;
     m_indx = m_dbmr = m_arcr = 0;
     m_st0 = {}; m_st1 = {}; m_pmst = {};
+    // MP/MC comes out of reset at the pin's level. This firmware's reset code
+    // preserves it - `APL #0x07f8, @07` keeps bit 3 and clears IPTR - so the
+    // pin decides what program 0x0000 is for the whole run.
+    m_pmst.mpmc = m_mpmc_pin;
+    m_map = {};
     m_st0.intm = 1;
     m_st1.c = 1; m_st1.hm = 1; m_st1.sxm = 1; m_st1.xf = 1;
     m_ifr = m_imr = 0;
@@ -85,6 +90,20 @@ void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origi
     std::copy_n(words, count, m_data.begin() + origin);
 }
 
+void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin)
+{
+    if (count > C5X_ROM_WORDS - origin)
+        throw std::out_of_range("boot ROM image exceeds the C52's on-chip ROM");
+    std::copy_n(words, count, m_rom.begin() + origin);
+    m_rom_present = true;
+}
+
+void C5xCore::set_mpmc_pin(uint16_t level)
+{
+    m_mpmc_pin = level ? 1 : 0;
+    m_pmst.mpmc = m_mpmc_pin;
+}
+
 void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 {
     m_io_read = std::move(read); m_io_write = std::move(write);
@@ -116,18 +135,90 @@ uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
 uint16_t C5xCore::data(uint16_t address) const { return m_data[address]; }
 void C5xCore::set_data(uint16_t address, uint16_t value) { m_data[address] = value; }
 
+C5xCore::MemoryMap C5xCore::memory_map() const
+{
+    m_map.mpmc_pin = m_mpmc_pin;
+    m_map.mpmc = m_pmst.mpmc;
+    m_map.ovly = m_pmst.ovly;
+    m_map.ram = m_pmst.ram;
+    m_map.cnf = m_st1.cnf;
+    m_map.iptr = m_pmst.iptr;
+    m_map.rom_present = m_rom_present;
+    return m_map;
+}
+
 void C5xCore::consume_cycles(unsigned cycles)
 {
     m_step_cycles += cycles;
     m_cycles += cycles;
 }
 
-uint16_t C5xCore::ROPCODE() { return m_program[m_pc++]; }
+C5xCore::Region C5xCore::program_region(uint16_t address) const
+{
+    // Microcomputer mode puts the on-chip boot ROM at the bottom of program
+    // space; microprocessor mode leaves the whole space off-chip. The
+    // single-access RAM sits above the ROM window and only appears when
+    // PMST.RAM says so.
+    if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
+    if (m_pmst.ram && address >= C5X_SARAM_PROGRAM_FIRST
+        && address < C5X_SARAM_PROGRAM_FIRST + C5X_SARAM_WORDS)
+        return Region::Saram;
+    return Region::External;
+}
+
+C5xCore::Region C5xCore::data_region(uint16_t address) const
+{
+    if (address < 0x60) return Region::Registers;
+    if (address >= C5X_B2_FIRST && address < C5X_B2_FIRST + C5X_B2_WORDS)
+        return Region::Daram;
+    // B0 leaves data space for program space when CNF is set; B1 does not
+    // move.
+    if (!m_st1.cnf && address >= C5X_B0_FIRST && address < C5X_B0_FIRST + C5X_B0_WORDS)
+        return Region::Daram;
+    if (address >= C5X_B1_FIRST && address < C5X_B1_FIRST + C5X_B1_WORDS)
+        return Region::Daram;
+    if (m_pmst.ovly && address >= C5X_SARAM_DATA_FIRST
+        && address < C5X_SARAM_DATA_FIRST + C5X_SARAM_WORDS)
+        return Region::Saram;
+    return Region::External;
+}
+
+uint16_t C5xCore::fetch(uint16_t address)
+{
+    switch (program_region(address)) {
+    case Region::Rom:
+        ++m_map.program_rom;
+        // An XMF carries the program the supervisor downloads and nothing
+        // else, so with no ROM supplied this window has no contents. Falling
+        // back to the downloaded image is what this harness has always done;
+        // counting the fetches is what says how much of a run rests on it.
+        if (!m_rom_present) { ++m_map.rom_holes; break; }
+        return m_rom[address];
+    case Region::Saram: ++m_map.program_saram; break;
+    default: ++m_map.program_external; break;
+    }
+    return m_program[address];
+}
+
+uint16_t C5xCore::ROPCODE() { return fetch(m_pc++); }
 void C5xCore::CHANGE_PC(uint16_t new_pc) { m_pc = new_pc; }
-uint16_t C5xCore::PM_READ16(uint16_t address) { return m_program[address]; }
-void C5xCore::PM_WRITE16(uint16_t address, uint16_t value) { m_program[address] = value; }
+uint16_t C5xCore::PM_READ16(uint16_t address) { return fetch(address); }
+void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
+{
+    if (program_region(address) == Region::Rom) {
+        if (m_rom_present) m_rom[address] = value;
+        return;
+    }
+    m_program[address] = value;
+}
 uint16_t C5xCore::DM_READ16(uint16_t address)
 {
+    switch (data_region(address)) {
+    case Region::Registers: ++m_map.data_registers; break;
+    case Region::Daram: ++m_map.data_daram; break;
+    case Region::Saram: ++m_map.data_saram; break;
+    default: ++m_map.data_external; break;
+    }
     return address < 0x60 ? cpuregs_r(address) : m_data[address];
 }
 void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)

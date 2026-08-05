@@ -51,6 +51,7 @@ class BridgeStatus:
     error: str | None
     dsp: dict[str, int | bool]
     dsp_host_ports: dict[str, dict[str, int]]
+    dsp_memory_map: dict[str, int | bool]
     serial_port: dict[str, int]
     dial_digits: str
     daa: dict[str, str | int | bool] | None
@@ -457,6 +458,9 @@ class CourierDspBridge:
                 self.core.io_port_stats()
                 if hasattr(self.core, "io_port_stats")
                 else {}
+            ),
+            dsp_memory_map=(
+                self.core.memory_map() if hasattr(self.core, "memory_map") else {}
             ),
             serial_port=self.core.serial_state(),
             dial_digits=self.dial_digits,

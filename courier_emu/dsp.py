@@ -101,6 +101,14 @@ class NativeC5x:
         lib.courier_c5x_step.argtypes = [
             ctypes.c_void_p, ctypes.c_uint64, ctypes.c_char_p, ctypes.c_size_t,
         ]
+        lib.courier_c5x_load_rom.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
+            ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
+        ]
+        lib.courier_c5x_set_mpmc_pin.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_get_memory_map.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
+        ]
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_host_write.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
@@ -158,6 +166,32 @@ class NativeC5x:
 
     def set_io(self, port: int, value: int) -> None:
         self.library.courier_c5x_set_io(self.handle, port, value)
+
+    def set_mpmc_pin(self, level: int) -> None:
+        """Drive the pin that decides what the C52's program 0x0000 is."""
+        self.library.courier_c5x_set_mpmc_pin(self.handle, int(level))
+
+    def load_rom(self, image: bytes, origin: int = 0) -> None:
+        """Supply the on-chip boot ROM, which no XMF carries."""
+        storage = (ctypes.c_uint8 * len(image)).from_buffer_copy(image)
+        error = ctypes.create_string_buffer(512)
+        if self.library.courier_c5x_load_rom(
+            self.handle, origin, storage, len(storage), error, len(error)
+        ):
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+
+    def memory_map(self) -> dict[str, int | bool]:
+        values = (ctypes.c_uint64 * 15)()
+        self.library.courier_c5x_get_memory_map(self.handle, values, len(values))
+        names = (
+            "mpmc_pin", "mpmc", "ovly", "ram", "cnf", "iptr", "rom_present",
+            "program_rom", "program_saram", "program_external",
+            "data_registers", "data_daram", "data_saram", "data_external",
+            "rom_holes",
+        )
+        state: dict[str, int | bool] = dict(zip(names, map(int, values), strict=True))
+        state["rom_present"] = bool(state["rom_present"])
+        return state
 
     def host_write(self, address: int, value: int) -> None:
         self.library.courier_c5x_host_write(

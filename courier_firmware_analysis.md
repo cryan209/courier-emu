@@ -1237,11 +1237,50 @@ the vector table and the bootstrap that receives the download, and neither is in
 this image — which means the harness's assumption that the downloaded segment
 begins at program `0x0000` puts the downloaded init on top of the vectors.
 
-That is testable against a defect already noted here: `PMST` carries `MP/MC`,
-`OVLY`, `RAM` and `AVIS`, and this core parses all four and acts on none of
-them. `IPTR` and `BRAF` are used; the four that decide what program `0x0000`
-*is* are not. Until the C52's memory map is modelled, where the download lands
-is a guess, and every absolute address read out of the low bank inherits it.
+### The memory map, now modelled
+
+`PMST` carries `MP/MC`, `OVLY` and `RAM`, and this core parsed all three and
+acted on none of them. It now decodes both spaces through the C52's map:
+
+| space | region | when |
+|---|---|---|
+| program | on-chip ROM, `0x0000..0x0fff` | `MP/MC` = 0 |
+| program | SARAM, `0x1000..0x1fff` | `PMST.RAM` |
+| program | external | otherwise |
+| data | memory-mapped registers, `0x0000..0x005f` | always |
+| data | DARAM B2 `0x0060`, B0 `0x0100` (unless `CNF`), B1 `0x0300` | always |
+| data | SARAM, `0x0800..0x17ff` | `PMST.OVLY` |
+| data | external | otherwise |
+
+`MP/MC` is a pin, not something an image records, so it is supplied to the core
+and defaults to 0 — the level this core has always presented when the firmware
+reads `PMST` back, and the firmware does read it. `courier_c5x_set_mpmc_pin`
+changes it; over a 1.5 M-instruction run either level ends at the same PC, so
+the bit costs almost nothing in behaviour and buys the accounting.
+
+There is no on-chip ROM to put in the window — no XMF carries one — so with none
+supplied the window still answers from the downloaded image, exactly as before,
+and the fetches are counted instead. That count is the size of the assumption.
+Over a 12 M-instruction `ATA`:
+
+```
+program_external 13,842,728    program_rom 693,322    rom_holes 693,322
+data_registers    1,176,533    data_daram 1,384,195   data_external 761,255
+```
+
+**4.8% of every program fetch in a run comes out of the window that would be
+on-chip ROM in microcomputer mode.** `courier_c5x_load_rom` takes one if a dump
+of the C52's ROM ever appears; until then `dsp_bridge.dsp_memory_map` reports
+the mode bits, the per-region counts and the hole count on every run, so the
+assumption is in the output rather than in the reader's head.
+
+`OVLY` and `RAM` both read zero for most of a run, which is its own oddity: the
+reset code sets them — `OPL #0x00b0, @07` — and they are cleared again later by
+the same writes that zero `IMR`, `IFR` and `PMST` from `0xb626`, `0xb65f`,
+`0xb667`, `0xb677` and `0xb67c`. A store that switches the part out of
+microcomputer mode and turns off its on-chip RAM mid-run is not something
+firmware does on purpose, so those sites are more evidence that the addresses
+the low bank computes are landing in the wrong place.
 
 ### Two core defects found on that path
 

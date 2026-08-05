@@ -14,6 +14,17 @@
 
 namespace courier {
 
+// TMS320C52 on-chip memory, from the C5x family map. The DARAM blocks sit at
+// the same data addresses across the family; the ROM and single-access RAM
+// sizes are the C52's.
+constexpr uint16_t C5X_ROM_WORDS = 0x1000;
+constexpr uint16_t C5X_SARAM_WORDS = 0x1000;
+constexpr uint16_t C5X_SARAM_PROGRAM_FIRST = 0x1000;
+constexpr uint16_t C5X_SARAM_DATA_FIRST = 0x0800;
+constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
+constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;
+constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
+
 class C5xCore {
 public:
     struct State {
@@ -60,6 +71,25 @@ public:
         uint16_t line_tx_last, line_tx_last_pc;
     };
 
+    // Where a C52 address lands. The parts that move are on-chip: the boot
+    // ROM appears in program space only in microcomputer mode, and the
+    // single-access RAM appears in program space under PMST.RAM and in data
+    // space under PMST.OVLY. Everything else is off-chip.
+    enum class Region { Rom, Saram, Daram, Registers, External };
+
+    struct MemoryMap {
+        // Sampled from the pin and the two mode bits, so a run can report
+        // which map it ran under rather than leaving it implied.
+        uint16_t mpmc_pin, mpmc, ovly, ram, cnf, iptr;
+        bool rom_present;
+        uint64_t program_rom, program_saram, program_external;
+        uint64_t data_registers, data_daram, data_saram, data_external;
+        // Fetches from on-chip ROM this harness does not have. An XMF carries
+        // the downloaded program and nothing else, so in microcomputer mode
+        // every one of these is a hole rather than a byte.
+        uint64_t rom_holes;
+    };
+
     using IoRead = std::function<uint16_t(uint16_t)>;
     using IoWrite = std::function<void(uint16_t, uint16_t)>;
 
@@ -67,6 +97,9 @@ public:
     void reset();
     void load_program(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
+    void load_rom(const uint16_t *words, std::size_t count, uint16_t origin = 0);
+    void set_mpmc_pin(uint16_t level);
+    MemoryMap memory_map() const;
     void set_io_callbacks(IoRead read, IoWrite write);
     void set_io(uint16_t port, uint16_t value);
     void host_write(uint16_t address, uint16_t value);
@@ -110,6 +143,15 @@ private:
     std::array<uint16_t, 65536> m_program{};
     std::array<uint16_t, 65536> m_data{};
     std::array<uint16_t, 65536> m_io{};
+    std::array<uint16_t, 0x1000> m_rom{};
+    bool m_rom_present = false;
+    // PMST.MPMC is preserved by this firmware's reset code rather than
+    // written, because on hardware it comes from a pin. Nothing in an image
+    // records the pin, so it is supplied here. Zero is what this core has
+    // always answered when the firmware reads PMST back, and the firmware
+    // does read it, so that stays the default until the pin is known.
+    uint16_t m_mpmc_pin = 0;
+    mutable MemoryMap m_map{};
     IoRead m_io_read;
     IoWrite m_io_write;
     std::vector<IoEvent> m_io_events;
@@ -157,6 +199,9 @@ private:
     unsigned m_step_cycles = 0;
 
     void consume_cycles(unsigned cycles);
+    Region program_region(uint16_t address) const;
+    Region data_region(uint16_t address) const;
+    uint16_t fetch(uint16_t address);
     uint16_t ROPCODE();
     void CHANGE_PC(uint16_t new_pc);
     uint16_t PM_READ16(uint16_t address);

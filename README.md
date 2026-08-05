@@ -984,10 +984,27 @@ The reading that fits is that the C52 is in microcomputer mode, its program
 `0x0000..0x0fff` is on-chip ROM holding both the vector table and the bootstrap
 that receives the download, and neither is in this image — so the assumption
 that the downloaded segment begins at program `0x0000` puts the downloaded init
-on top of the vectors. The core parses `MP/MC`, `OVLY`, `RAM` and `AVIS` out of
-`PMST` and acts on none of them, so until the C52's memory map is modelled,
-where the download lands is a guess and every absolute address read out of the
-low bank inherits it. `courier_firmware_analysis.md` has the measurements.
+on top of the vectors.
+
+### The C52 memory map
+
+The core used to parse `MP/MC`, `OVLY` and `RAM` out of `PMST` and act on none
+of them. It now decodes both spaces: program is on-chip ROM below `0x1000` when
+`MP/MC` is low, SARAM at `0x1000` under `PMST.RAM`, and external otherwise;
+data is registers below `0x0060`, DARAM at B2 `0x0060`, B0 `0x0100` (unless
+`CNF` moves it) and B1 `0x0300`, SARAM at `0x0800` under `PMST.OVLY`, and
+external otherwise.
+
+`MP/MC` is a pin rather than something an image records, so it is supplied to
+the core and defaults to low — the level this core has always presented when
+the firmware reads `PMST` back. No XMF carries an on-chip ROM, so with none
+supplied that window still answers from the downloaded image exactly as before;
+what is new is that the fetches are counted. Every run now reports
+`dsp_bridge.dsp_memory_map` with the mode bits, per-region access counts and
+the hole count, and over a 12 M-instruction `ATA` **4.8% of all program fetches
+come out of the window that would be on-chip ROM**. That is the size of the
+assumption, in the output rather than in the reader's head.
+`courier_firmware_analysis.md` has the rest of the measurements.
 
 ## Minimal SIP dial-out
 

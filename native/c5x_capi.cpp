@@ -44,6 +44,42 @@ int courier_c5x_load_program(
     }
 }
 
+int courier_c5x_load_rom(
+    void *handle, uint16_t origin, const uint8_t *bytes, std::size_t byte_count,
+    char *error, std::size_t error_size)
+{
+    try {
+        if (!handle || !bytes || (byte_count & 1)) throw std::runtime_error("invalid C5x ROM image");
+        std::vector<uint16_t> words(byte_count / 2);
+        for (std::size_t i = 0; i < words.size(); ++i)
+            words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
+        static_cast<C5xCore *>(handle)->load_rom(words.data(), words.size(), origin);
+        return 0;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return -1;
+    }
+}
+
+void courier_c5x_set_mpmc_pin(void *handle, int level)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_mpmc_pin(uint16_t(level));
+}
+
+void courier_c5x_get_memory_map(void *handle, uint64_t *values, std::size_t count)
+{
+    if (!handle || !values || count < 14) return;
+    auto map = static_cast<C5xCore *>(handle)->memory_map();
+    uint64_t result[] = {
+        map.mpmc_pin, map.mpmc, map.ovly, map.ram, map.cnf, map.iptr,
+        map.rom_present ? 1u : 0u,
+        map.program_rom, map.program_saram, map.program_external,
+        map.data_registers, map.data_daram, map.data_saram, map.data_external,
+    };
+    std::copy(std::begin(result), std::end(result), values);
+    if (count >= 15) values[14] = map.rom_holes;
+}
+
 int courier_c5x_step(void *handle, uint64_t count, char *error, std::size_t error_size)
 {
     try {
