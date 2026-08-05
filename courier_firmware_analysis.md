@@ -764,8 +764,145 @@ The emulator's behavioral DAA supplies a North American 350+440 Hz dial tone
 through the confirmed C52 line ADC, debounces five 100 ms frames, publishes the
 recovered `0x0649 = 5` event, removes dial tone, and starts DTMF at the active
 C52 DAC boundary. This advances the original supervisor to `OK`; a quiet or disconnected
-modeled line retains the original `NO DIAL TONE` path. The physical DAA
-IC/register identity and ring/loop-current event mapping remain unconfirmed.
+modeled line retains the original `NO DIAL TONE` path. The part is now
+identified from the board and its register semantics are known (below);
+what remains unconfirmed is the mapping from those fields onto the ASIC
+ports the firmware actually reads.
+
+## DAA chipset identity — Si3021 + Si3014
+
+The parts are read off the board: an **Si3014** on the line side at the phone
+jack, and an **Si3021** on the digital side near the CPU. That is a Silicon
+Laboratories two-chip silicon DAA, the serial-interface member of the family
+the Si3034/35/44/56 chipsets belong to. `docs/` carries the Si3038 datasheet
+(the AC'97 sibling, Si3024 + Si3014), AN16 (multiple-device support for the
+serial parts), and AN19 (layout).
+
+The topology matters more than the part number. AN16 section 1.3 is
+"ASIC Master with single Si3021/56 Slave": the Si3021 sits in slave mode while
+something other than a DSP supplies SCLK and FSYNC. Every measurement here
+agrees that this is the Courier's arrangement, with the ASIC as that master:
+
+- the C52 configures its own serial port as a **slave** and then switches it
+  off (below), so it never drives the bus;
+- the C52's entire view of the outside world is four ASIC external-I/O ports;
+- AN16 figure 1 routes the DAA's `FC/RGDT` ring-detect output to the DSP's
+  `INT0` pin, while the recovered ring detector on this board is an 80186
+  input latch bit (port `0x14`, bit `0x02`) — a board-level indication, not
+  the DSP pin, which is what an interposed ASIC implies.
+
+So a faithful DAA model does not answer on the C52 serial port. It has to
+answer where the firmware actually reads, which is the ASIC boundary:
+
+| surface | rate | state today |
+|---|---|---|
+| C52 external I/O `0x50` | 201,524 reads in a 30 M-instruction `ATDT` run, once per service frame, program `0x8c1f` | the host mailbox window's low word |
+| C52 external I/O `0x54` | twice per frame, program `0xb300`/`0xb304` — the line ADC | fed by the behavioral DAA |
+| C52 external I/O `0x56`/`0x57` | one write each at program `0x2b`/`0x02`, both `0xffff` | unmodelled |
+| 80186 ports `0x40`..`0x4e` | eight latches, ~7,550 writes each per `ATDT` run, never read | the host mailbox window |
+
+Port `0x50` was listed here as an open question — read once per frame and
+floating high because nothing drove it. It is not floating. The harness
+publishes the eight-byte host window into C52 I/O `0x50`..`0x53`, and both
+mailbox commands of an `ATDT` run carry `ffffffffffffffff`, so the `0xffff` the
+program reads is a value the host wrote. There is no spare port on the C52
+side: its only external reads are this window and the line ADC.
+
+The 80186 side has no read path either. Ports `0x40`..`0x4e` take ~7,550 writes
+each in the same run and **zero reads**, so the supervisor cannot observe a
+status byte from the DAA even in principle.
+
+### What the datasheet says the status should carry
+
+The Si3038 register map is AC'97-addressed and the serial parts number their
+registers differently, so these are the *fields* rather than addresses. They
+line up with what this project listed as unmodelled — ring qualification,
+loop-current loss, and billing tone — and are what `courier_emu/codec.py` now
+carries:
+
+| field | register | meaning |
+|---|---|---|
+| `LCS[3:0]` | 5Eh | loop current in 6 mA steps; 0 is under 0.4 mA, 1111 is over 155 mA |
+| `RDTP` / `RDTN` | 5Eh | ring detected, positive and negative half-cycles reported separately |
+| `BTD` (with `BTE`) | 5Eh / 5Ch | billing tone detected, off-hook held through the tone |
+| `FDT` | 5Eh | line-side to system-side frame lock |
+| `ROV` | 5Eh | receive overload |
+| `OHS` | 5Ch | on-hook speed, fast or slow |
+| `RT` | 5Ch | ring threshold, 11-22 or 17-33 V RMS |
+| `RZ` | 5Ch | ringer impedance, maximum or synthesized |
+| `DCT[1:0]`, `ACT` | 5Ch | DC termination (FCC / Japan / CTR21) and AC termination |
+| `DIAL`, `LIM[1:0]`, `VOL[1:0]` | 62h | DTMF headroom, current limit, line voltage trim |
+
+### The bring-up nobody on this board performs
+
+The datasheet's initialization procedure is a sequence with a handshake in the
+middle of it:
+
+1. write any value to `3Ch` — a register reset;
+2. program the sample rate in `40h`/`42h`;
+3. write `0x0000` to `3Eh` to power the part up;
+4. **poll `3Eh[7:0]`** until it reads `0x0f` (line 1) or `0x33` (line 2);
+5. program the GPIO registers `4Ch`..`54h`;
+6. program the DAC/ADC levels in `46h`/`48h`;
+7. program the country-specific line parameters in `5Ch` and `62h`.
+
+Step 4 is the discriminator. It requires a controller that can *read* the
+codec, and neither processor on this board has one: the 80186 only writes
+`0x40`..`0x4e`, and the C52's two external reads are the host window and the
+line ADC. Whatever runs this sequence is on the far side of the ASIC, which is
+exactly the arrangement AN16 section 1.3 describes and which the ring detector
+landing on an 80186 latch bit already implied.
+
+`courier_emu/codec.py` models that. `SiliconDaa` is the register file — reset
+defaults, the PLL's supported rate table, the readiness byte recomputed rather
+than latched, and register `5Eh` assembled from the line rather than stored —
+and `CodecBringUp` is the ASIC-side master that runs the seven steps against
+it. The ordering constraints are the model's, not decoration:
+
+- with the PLL left at zero the readiness poll never completes, because no
+  line-side communication happens at all, which is why step 2 precedes step 3;
+- the reference and GPIO come up a frame before the converters, so step 4's
+  poll reads `0x03` before it reads `0x0f`;
+- reaching a line-side register before the ISOcap barrier is up latches `CLE`
+  and drops the write, so an out-of-order bring-up leaves a trace.
+
+The register addresses are the Si3038's. The board's Si3021 reaches the same
+line-side fields through its own control frames and numbers them differently,
+so an address in that module means "the register carrying this field", never a
+value the Courier's firmware emits.
+
+Since no firmware read path exists, the model is driven rather than polled: the
+bridge hands it one ASIC service frame per 100 ms, feeds it hook state and line
+state from the behavioral DAA and the ring cadence from the ring source, and
+reports it under `dsp_bridge.codec`. It is where loop-current sense, ring
+qualification, frame lock, and the country settings now live; a firmware read
+path, if one is ever found, plugs into the same object.
+
+### The C52 serial port is configured once and disabled
+
+Tracing the C52's own writes to its memory-mapped registers gives the whole
+serial life of the program:
+
+```
+program 0x00be   SPC <- 0x0008    receiver and transmitter held in reset
+program 0x00c0   SPC <- 0x40c8    both out of reset, burst frame sync,
+                                  TXM = MCM = 0: externally clocked slave
+program 0x00c2   DXR <- 0x0001    prime the transmitter
+program 0x00c6   DXR <- 0x0001    prime again
+program 0x00cb   IMR <- 0x002a    unmask INT2, TINT and XINT
+program 0x8189   SPC <- 0x0000    shut the port down
+```
+
+`SPC = 0x40c8` is the slave configuration AN16 describes, and priming `DXR`
+twice with `XINT` unmasked is an interrupt-driven transmitter. The shutdown at
+`0x8189` is reached by an unconditional jump out of the boot block into the
+high bank — there is no condition to satisfy — and the enable word `0x40c8`
+occurs exactly **once** in the whole DSP image. Across every reachable path,
+including a full `ATDT123` on a dial-tone line, `SPC` stays zero and `DXR`
+keeps its three boot writes while `DRR` is read tens of thousands of times.
+
+This program therefore never opens the serial link. That is not the datapump
+mailbox gating it; nothing in the reachable image turns it back on.
 
 ## SIP line adapter
 

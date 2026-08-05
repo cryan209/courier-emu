@@ -4,7 +4,9 @@ from unittest.mock import patch
 import unittest
 
 from courier_emu.bridge import CourierDspBridge
-from courier_emu.daa import CourierDaa
+from courier_emu.codec import CodecBringUp, SiliconDaa
+from courier_emu.daa import CourierDaa, RingSource
+from courier_emu.line import LINE_FRAME_INSTRUCTIONS
 from courier_emu.xmf import DSP_BOOT_SIZE
 
 
@@ -201,6 +203,68 @@ class BridgeTests(unittest.TestCase):
         )
         bridge.clock_x86()
         self.assertEqual(len(bridge._runtime_inbound), 4)
+
+
+class CodecTests(unittest.TestCase):
+    @staticmethod
+    def _make(**arguments: object) -> CourierDspBridge:
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
+            return CourierDspBridge(  # type: ignore[arg-type]
+                _Image(), codec=CodecBringUp(SiliconDaa()), **arguments  # type: ignore[arg-type]
+            )
+
+    @staticmethod
+    def _frames(bridge: CourierDspBridge, count: int) -> None:
+        for _ in range(count * LINE_FRAME_INSTRUCTIONS):
+            bridge.clock_x86()
+
+    def test_bring_up_runs_without_the_dsp_being_downloaded(self) -> None:
+        # The codec hangs off the ASIC's serial bus, not the C52's, so it comes
+        # up from board reset rather than waiting on the DSP download.
+        bridge = self._make()
+        self.assertFalse(bridge.active)
+
+        self._frames(bridge, 3)
+
+        self.assertTrue(bridge.codec.complete)
+        self.assertTrue(bridge.codec.codec.ready)
+        self.assertTrue(bridge.codec.codec.link_up)
+
+    def test_a_seized_connected_line_reads_back_as_loop_current(self) -> None:
+        daa = CourierDaa("dial-tone")
+        bridge = self._make(daa=daa)
+        self._frames(bridge, 3)
+        self.assertEqual(bridge.codec.codec.loop_current_sense, 0)
+
+        daa.seize("answer")
+        self._frames(bridge, 1)
+
+        self.assertTrue(bridge.codec.codec.off_hook)
+        self.assertEqual(bridge.codec.codec.loop_current_sense, 4)
+
+        daa.release()
+        self._frames(bridge, 1)
+        self.assertEqual(bridge.codec.codec.loop_current_sense, 0)
+
+    def test_a_ring_burst_reaches_both_detectors(self) -> None:
+        ring = RingSource(on_ms=400, off_ms=400, start_ms=0)
+        bridge = self._make(ring=ring)
+        self._frames(bridge, 3)
+
+        # 100 ms frames against a 400 ms burst: the first three land inside the
+        # burst, and two more reach the silence after it.
+        self.assertTrue(bridge.codec.codec.ring_positive)
+        self.assertTrue(bridge.codec.codec.ring_negative)
+
+        self._frames(bridge, 2)
+        self.assertFalse(bridge.codec.codec.ring_positive)
+        self.assertFalse(bridge.codec.codec.ring_negative)
+
+    def test_a_bridge_without_a_codec_reports_none(self) -> None:
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
+            bridge = CourierDspBridge(_Image())  # type: ignore[arg-type]
+        bridge.clock_x86()
+        self.assertIsNone(bridge.status().codec)
 
 
 if __name__ == "__main__":

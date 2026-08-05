@@ -213,8 +213,48 @@ already-active C52. `--daa-line` enables the DSP bridge automatically:
 The original firmware then returns `OK` instead of `NO DIAL TONE`, and
 `dsp_bridge.daa` reports hook, line, detector, and generated-sample state. This
 is a firmware-derived behavioral DAA, not a claimed identification of the
-physical line-interface IC. Ring qualification, loop-current loss,
-busy/reorder tone, and carrier negotiation remain unmodeled.
+physical line-interface IC. Busy/reorder tone and carrier negotiation remain
+unmodeled.
+
+### The silicon DAA as a register file
+
+`--daa-codec` adds the line-interface chipset itself, as registers rather than
+behavior. The board carries an Si3021 and an Si3014; `docs/SI3038.PDF` is the
+AC'97 sibling of that pair and is the only published register map here, so the
+model uses its addresses for the shared line-side fields.
+
+```sh
+./courier run main211.xmf --instructions 20000000 \
+  --daa-codec --daa-line dial-tone --at ATA --summary
+```
+
+`dsp_bridge.codec` then reports the whole register file, the readiness byte,
+and the assembled line status:
+
+```
+"steps": ["register-reset", "sample-rate", "power-up", "ready",
+          "gpio", "levels", "line-interface"],
+"polls": 3,
+"readiness": "0x0f", "link_up": true,
+"loop_current_ma": 25, "loop_current_sense": 4,
+"line_status": "0x0050"          FDT set, LCS[3:0] = 4
+```
+
+The seven steps are the datasheet's initialization procedure, including its
+readiness poll, and nothing in the Courier's firmware performs them: the 80186
+writes ports `0x40`..`0x4e` thousands of times and never reads them, and the
+C52's only external reads are the host mailbox window and the line ADC, so
+neither processor can see the readiness byte step 4 waits on. The sequence
+belongs to the interposed ASIC — the arrangement AN16 section 1.3 describes —
+and `CodecBringUp` stands in for it, one service frame per 100 ms.
+
+Because there is no firmware read path, this drives the model rather than being
+read by the firmware: hook and line state come from the behavioral DAA, ring
+bursts from the ring source, and loop-current sense, ring detect, frame lock,
+and the country settings come out of the registers. `--daa-codec-line` selects
+which line the part is strapped as (deciding whether readiness reads `0x0f` or
+`0x33`), and `--daa-codec-rate` programs register `40h`, rounding to the
+nearest rate the PLL offers.
 
 ## Complete flash ROM images
 
@@ -798,8 +838,10 @@ byte-for-byte against the XMF C52 boot segment, and published to the native DSP
 through the recovered mailbox. The DTE serial path can inject commands and
 capture firmware-generated result text. The ASIC line frame now transports
 9.6 kHz input/output samples and captures dial tones. Remaining device work is
-the original datapump command mailbox, remaining DAA ring/loop/call-progress
-events, complete 80186 peripheral timing, and unexercised C52 opcode forms. The
+the original datapump command mailbox, complete 80186 peripheral timing, and
+unexercised C52 opcode forms. The silicon DAA's ring, loop-current, and frame
+lock state is modeled at register level under `--daa-codec`, but no firmware
+read path to it has been found, so nothing consumes it yet. The
 board latches, front-panel signal lines, and the Microwire settings EEPROM are
 modeled. What remains on the settings side is a recovered parameter-flash sector
 for `0xf8000` and front-panel legends for the unnamed indicator bits; there is no

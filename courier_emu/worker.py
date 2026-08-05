@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import signal
 
+from .codec import CodecBringUp, SiliconDaa, nearest_sample_rate
 from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .images import load_image
@@ -47,6 +48,9 @@ def main() -> int:
     parser.add_argument("--int1-after", type=_number)
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
+    parser.add_argument("--daa-codec", action="store_true")
+    parser.add_argument("--daa-codec-line", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--daa-codec-rate", type=_number, default=9_600)
     parser.add_argument("--ring-cadence")
     parser.add_argument("--ring-start", type=_number, default=0)
     parser.add_argument("--ring-count", type=_number, default=0)
@@ -111,6 +115,13 @@ def main() -> int:
             count=args.ring_count,
         )
 
+    codec = None
+    if args.daa_codec:
+        codec = CodecBringUp(
+            SiliconDaa(args.daa_codec_line),
+            rate=nearest_sample_rate(args.daa_codec_rate),
+        )
+
     machine = CourierMachine(
         load_image(args.image),
         port_values=ports,
@@ -123,6 +134,7 @@ def main() -> int:
         serial_input=bytes.fromhex(args.serial_input_hex),
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
         ring=ring,
+        codec=codec,
         int1_after_ms=args.int1_after,
         nvram=CourierNvram.load(args.nvram) if args.nvram else None,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),

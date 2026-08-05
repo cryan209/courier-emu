@@ -106,8 +106,12 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp or args.daa_line or args.sip_server or args.line_link:
+    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or args.daa_codec:
         command.append("--with-dsp")
+    if args.daa_codec:
+        command.append("--daa-codec")
+        command.extend(("--daa-codec-line", str(args.daa_codec_line)))
+        command.extend(("--daa-codec-rate", str(args.daa_codec_rate)))
     if args.line_link:
         command.extend(("--line-link", str(args.line_link)))
         if args.line_listen:
@@ -354,6 +358,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--daa-line",
         choices=("disconnected", "quiet", "dial-tone", "ringing"),
         help="attach a behavioral DAA line source (use dial-tone for an originating call)",
+    )
+    run.add_argument(
+        "--daa-codec",
+        action="store_true",
+        help="model the silicon DAA as a register file and run the datasheet's "
+        "power-up procedure against it from the ASIC side",
+    )
+    run.add_argument(
+        "--daa-codec-line",
+        type=int,
+        choices=(1, 2),
+        default=1,
+        help="which line the codec is strapped as, deciding its readiness code "
+        "(default 1, which polls for 0x0f)",
+    )
+    run.add_argument(
+        "--daa-codec-rate",
+        type=_number,
+        default=9_600,
+        metavar="HZ",
+        help="sample rate programmed into register 40h; unsupported rates are "
+        "rounded to the nearest the PLL offers (default 9600)",
     )
     run.add_argument("--sip-server", metavar="HOST[:PORT]", help="send ATD calls via UDP SIP")
     run.add_argument(

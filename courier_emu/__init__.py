@@ -1,11 +1,14 @@
 """USRobotics Courier firmware analysis and emulation helpers."""
 
+from .codec import CodecBringUp, SiliconDaa
 from .daa import CourierDaa
 from .sip import SipConfig, SipSession
 from .xmf import XmfFormatError, XmfImage
 
 __all__ = [
+    "CodecBringUp",
     "CourierDaa",
+    "SiliconDaa",
     "SipConfig",
     "SipSession",
     "XmfFormatError",

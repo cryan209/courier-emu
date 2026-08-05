@@ -4,7 +4,8 @@ from collections import Counter, deque
 from dataclasses import dataclass
 from typing import Any
 
-from .daa import CourierDaa, DAA_FRAME_SAMPLES
+from .codec import CodecBringUp
+from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import RateConverter, SipSession
@@ -37,6 +38,7 @@ class BridgeStatus:
     daa: dict[str, str | int | bool] | None
     sip: dict[str, str | int | bool | list[str]] | None
     line: dict[str, Any] | None = None
+    codec: dict[str, Any] | None = None
 
 
 class CourierDspBridge:
@@ -51,6 +53,8 @@ class CourierDspBridge:
         daa: CourierDaa | None = None,
         sip: SipSession | None = None,
         line: LineLink | None = None,
+        codec: CodecBringUp | None = None,
+        ring: RingSource | None = None,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -82,6 +86,10 @@ class CourierDspBridge:
         self.daa = daa
         self.sip = sip
         self.line = line
+        self.codec = codec
+        self.ring = ring
+        self._instructions = 0
+        self._codec_instructions = 0
         self._line_instructions = 0
         self._line_tx_index = 0
         self._line_rx_samples: deque[int] = deque()
@@ -264,6 +272,12 @@ class CourierDspBridge:
             self.core.set_io(0x50 + index // 2, word)
 
     def clock_x86(self) -> None:
+        self._instructions += 1
+        if self.codec is not None:
+            # The codec is on the ASIC's own serial bus, not the DSP's, so its
+            # bring-up runs from board reset rather than from the download that
+            # starts the C52.
+            self._service_codec()
         if not self.active or self.error:
             return
         if self._runtime_mode and not self._runtime_ready:
@@ -331,6 +345,28 @@ class CourierDspBridge:
         except RuntimeError as exc:
             self.error = str(exc)
 
+    def _service_codec(self) -> None:
+        """Advance the silicon DAA by one ASIC service frame.
+
+        The frame is the same 100 ms the line link and the DAA already count,
+        so the codec's settling and the line's audio share a time base.
+        """
+        self._codec_instructions += 1
+        if self._codec_instructions < LINE_FRAME_INSTRUCTIONS:
+            return
+        self._codec_instructions = 0
+        part = self.codec.codec
+        if self.daa is not None:
+            part.line_connected = self.daa.line_connected
+            part.set_hook(self.daa.off_hook)
+        if self.ring is not None:
+            # A 20 Hz ring fits both half cycles inside a 100 ms frame, so a
+            # burst shows on both detectors and silence on neither. Resolving
+            # RDTP from RDTN would need a frame shorter than the ring period.
+            present = self.ring.present(self._instructions)
+            part.set_ring(present, present)
+        self.codec.service()
+
     def _service_line(self) -> None:
         """Hand one frame to the far end and take its frame off the line.
 
@@ -382,6 +418,7 @@ class CourierDspBridge:
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
             line=self.line.status() if self.line is not None else None,
+            codec=self.codec.status() if self.codec is not None else None,
         )
 
     def save_tx_pcm(self, path: str) -> int:

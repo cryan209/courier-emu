@@ -6,6 +6,7 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
+from .codec import CodecBringUp
 from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .line import LineLink
@@ -113,6 +114,7 @@ class CourierMachine:
         serial_input: bytes = b"",
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
+        codec: CodecBringUp | None = None,
         int1_after_ms: int | None = None,
         sip: SipSession | None = None,
         line: LineLink | None = None,
@@ -184,7 +186,13 @@ class CourierMachine:
             raise ValueError("the DSP bridge needs an XMF payload, not a flash ROM")
         self.dsp_bridge = (
             CourierDspBridge(
-                image, rx_samples=dsp_rx_samples, daa=daa, sip=sip, line=line
+                image,
+                rx_samples=dsp_rx_samples,
+                daa=daa,
+                sip=sip,
+                line=line,
+                codec=codec,
+                ring=ring,
             )
             if with_dsp
             else None
