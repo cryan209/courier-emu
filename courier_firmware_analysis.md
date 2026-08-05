@@ -887,14 +887,30 @@ those fields, if one is ever found, plugs into the same object.
 One thing the supervisor *is* told about the DAA is its revision, and `ATI7`
 prints it. The receive handler at `0x6ad5b` reads a tag from the mailbox
 header ports `0x58`/`0x5a`, rejects anything at or above `0x80`, and dispatches
-four identity tags, each taking its data word from `0x5e`/`0x5c`:
+four DAA tags, each taking its data word from `0x5e`/`0x5c`:
 
-| tag | destination | identified |
-|---|---|---|
-| `0x7b` | `[0x287]` | the DAA revision |
-| `0x7c` | `[0x283]` and `[0x285]` | no |
-| `0x7d` | `[0x27f]` | no |
-| `0x7e` | `[0x281]` | no |
+| tag | destination | carries | requested by |
+|---|---|---|---|
+| `0x7b` | `[0x287]` | the DAA revision | — (sent unprompted) |
+| `0x7c` | `[0x283]` and `[0x285]` | the line reading `[0x649]` qualifies on | `0x7c00` |
+| `0x7d` | `[0x27f]` | unidentified | unidentified |
+| `0x7e` | `[0x281]` | a line-side register read | `0x8000` |
+
+`0x7e` is the one that names itself. An AT diagnostic at `0x82b64` matches the
+literal `"SI"`: with no argument it sends request `0x8000`, waits, and prints
+`[0x281]` under `"\r\nta_report_si_read="`; with a four-hex-digit argument it
+parses that into `BX` and sends command `0x0084`, the register **write**. The
+consumer at `0x5e576` then tests only bits 0 and 1 of `[0x281]`, each against
+its own four-hit debounce in `[0x647]`/`[0x648]`, and clears the word — which
+is `RDTN` and `RDTP`, the two ring-detect half-cycles of register `5Eh`,
+reported separately exactly as the datasheet describes. Both the read and the
+write are gated on `test byte [0x287], 0x10`, so the line-side revision decides
+whether the path is live at all.
+
+The supervisor already issues `0x0084` writes during an ordinary boot —
+`0084:1468` and `0084:1408`, plus `0084:0100` on a call — so this is not a
+diagnostic-only path. None of it runs in the harness today; see "The mask is
+set at boot and never cleared" below for why.
 
 Three sites read `[0x287]` back:
 
@@ -927,9 +943,22 @@ in place before the first `ATI7`. That run reports:
 Product ID             00345302        DAA rev  0004
 ```
 
-The remaining three tags are the obvious next thread: they are filled by the
-same handler from the same mailbox, so whatever they carry is board identity of
-the same kind.
+The revision itself is still a guess. 4 is read out of the product-ID branch,
+not off a part, and it does **not** have bit `0x10` set — so the value that
+gives the tidier product ID is also the one that leaves the `si` register path
+switched off. Register `5Ah` in the datasheet packs two chips' revisions into
+one word (`REVA[3:0]` system side, `REVB[3:0]` line side, `CBID` at bit 8, with
+`0010` = Rev B and `0011` = Rev C), which reads the two firmware tests as two
+different fields rather than a contradiction: `== 4` matches the whole word,
+`& 0x10` is `REVB` bit 0, separating a Rev C line side from a Rev B one. If
+`[0x287]` is that register, then a real board with a Rev C line side prints
+`XX345302`, and the placeholder is correct. Settling it needs the `si` path to
+run, which it cannot yet.
+
+`0x7d` is the one tag with no consumer found anywhere. Its only other
+appearance is a printer at `0x794de` that renders `[0x283]` `:` `[0x27f]` `:`
+byte `[0x64c]` as a colon triple; injecting marker values for all three tags
+and confirming delivery in the trace surfaced them on no reachable page.
 
 ### The C52 serial port is configured once and disabled
 
@@ -1012,6 +1041,138 @@ manually — seed from the FIR bank at `0x040F98` and the reference tables at pr
 `0x4450/0x5450`. Everything above (region, endianness, verified code site,
 candidate DIL tables, working `c25dis.py`) is the head-start. Alternatively, a
 live DSP dump from the modem sidesteps the base/overlay problem entirely.
+
+## The supervisor's time base is not driven
+
+The supervisor hangs its timeouts off a chain of countdowns serviced in one
+routine: `[0x15b]`, `[0x15d]`, `[0x174]`, `[0x738]`, `[0x73a]`, `[0x742]`,
+`[0x84f]`, `[0x1d74]`, `[0x2d4]` and `[0x32d]` are each decremented once per
+pass, several with a call when they reach zero. The chain is entered at
+`5b5e:0b1a` (physical `0x5c0fa`), which is the handler on **vector 0x0f** —
+INT3 on the 80186.
+
+In a payload run that routine never executes. `ATI11` is where it shows:
+`0x62d63` sets `[0x328]`, `0x62d68` arms `[0x32d]` with 20 ticks, and
+`0x62d6d` spins until either the flag clears or the count reaches zero. The
+command is written to give up gracefully; with no tick it waits forever, and
+the page stops after "Modulation". `ATI10` stops the same way.
+
+Delivering a periodic edge on vector `0x0f` does complete both pages — and is
+wrong. The interrupt controller shows `int3` **masked** for the entire run,
+while `int0` and the timer are unmasked, so that edge is one the board cannot
+take. Injecting it anyway changes call behavior: two linked instances answer
+`OK` where an undriven run reports `NO CARRIER`, and `NO CARRIER` is the
+correct answer for an `ATA` with no modelled DAA. The harness therefore
+honours the mask, `--tick-ms` delivers nothing while `int3` is masked, and
+`ATI10`/`ATI11` remain unfinished rather than finished by a fabricated edge.
+
+The likely real source is the DSP interrupt. Vector `0x0c` — INT0, unmasked —
+enters at `0x6ad00` and begins with a divider: `inc byte [0x176]`, compare
+against 25, and on reaching it `mov byte [0x66c], 0x80`. That same flag is set
+inside the countdown chain at `0x5c227` and cleared at `0x5c2b1`. A time base
+derived from the DSP frame clock also fits the board, where the frame clock is
+the only steady reference. The path from that flag into the chain is not yet
+traced.
+
+### The mask is set at boot and never cleared
+
+`int3` is not masked by a condition the harness fails to meet. The peripheral
+control block's setup table, written a word at a time by the `out` at
+`0x5ba06`, masks it outright:
+
+```
+out 0xff1e = 0x000b     INT3 control: priority 3, MSK (bit 3) set
+out 0xff08 = 0x0068     IMASK: INT0, INT2 and INT3 masked
+```
+
+Nothing writes either register again. Once the block is relocated into memory
+the firmware touches only `0xff16` (DMA1), `0xff18` (INT0, ten times) and
+`0xff1a` (INT1) — never `0xff1e`, never `0xff08`. The only post-boot accesses
+to IMASK anywhere in the image are two read-modify-writes, at `0x5f3b5` and
+`0x7a619`, and both are `or ax, 0x0004`: they set the DMA1 bit and preserve
+INT3's.
+
+The handler has no other way in, either. A byte-exhaustive sweep for `rel16`
+references across its whole 64 KiB segment finds no `call` and no `jmp` to
+`0x5c0fa`, nor to the second prologue at `0x5c178`. It is reachable only as a
+vector.
+
+Register offsets here are the **80C186EB/EC** map rather than the original
+80186's — IMASK at `+0x08`, the interrupt controls at `+0x18`..`+0x1e`, timer 0
+at `+0x30`..`+0x36`, and the chip selects at `+0xa0`..`+0xa8` as start/stop
+pairs, which is the shape `rom.py` decodes from the reset stub. Base `0xff00`
+is confirmed arithmetically: timer 0's max count of `0x7e00` is written to
+`0xff32`, and that is the 32,256 the timer model reports as `compare_a`.
+
+### The one enabled periodic source is a stub
+
+Timer 0 *is* unmasked, and fires — 2,842 timer interrupts in a 14 M-instruction
+run. Its handler, vector `0x08` at `5b5e:1246` (physical `0x5c826`), is:
+
+```
+0x5c826   c70602ff0080   mov word ptr [0xff02], 0x8000    EOI
+0x5c82c   cf             iret
+```
+
+Acknowledge and return. So the payload has no live periodic service at all:
+the source wired to the countdown chain is masked, and the source left enabled
+goes nowhere.
+
+### The same table is in every image here, including a boot block
+
+This is not an artifact of an update payload lacking its boot block. The
+identical setup table appears in every Courier firmware in the tree, with the
+same `1eff 0b00` entry:
+
+| image | table at |
+|---|---|
+| `main211.xmf`, `3453Bv2.1.1.xmf` | `0x1b908` |
+| `main2205.XMF` | `0x1b928` |
+| `MAIN_2.3.12/15/31.XMF`, `2_3_33.XMF` | `0x17ed8` |
+| `IDSDL302.ROM` | `0x326` |
+
+`IDSDL302.ROM` is a complete flash part, and `0x326` is inside its boot block.
+So the boot block masks INT3 too, unchanged from 2.1.1 through 2.3.33 and
+across two products. What the two images share is only this table: the
+byte-identical window around it is 62 bytes (−40..+22), and two entries just
+outside it already differ — `[0xff70]` is `0x8102` in the ROM against `0x814f`
+in `main211`, `[0xff60]` is `0x8082` against `0x80a7`. Same registers,
+board-specific values; the interrupt configuration is what does not vary.
+
+For contrast, the ISDN Courier's **386** payload has everything this one lacks.
+`Ie030002.nac` initialises the 8259 pair and takes 2,894 delivered interrupts
+in a 20 M-instruction run, programs all three 8254 counters as mode 2 rate
+generators at 641.5 Hz, 133.6 Hz and 33.4 Hz, and runs VRTX on top of them —
+5,822 `int 0x30` kernel calls in the same run. That is what a live time base on
+this hardware family looks like.
+
+### What the mask costs
+
+The handler's last act before its EOI is a call into the DAA:
+
+```
+0x5c69d   e86c1d         call 0x5e40c
+0x5c6a0   9af900d06a     lcall 0x6ad0, 0x00f9
+0x5c6a5   ff16dd06       call word ptr [0x6dd]
+...
+0x5c6b6   c70602ff0080   mov word ptr [0xff02], 0x8000
+0x5c6bc   cf             iret
+```
+
+`0x5e40c` is a prescaler — `inc [0x642]`, compare against `[0x640]`, and on
+wrap `call word ptr [0x65e]` — driving the state chain armed at `0x5db6c`
+(period 3), `0x5dbb2` (4) and `0x5dc11` (20). Those states send `0x7c00` and
+`0x8000` to the board and consume the replies, which arrive as mailbox tags
+`0x7c` into `[0x285]`/`[0x283]` and `0x7e` into `[0x281]`. `[0x285]` is banded
+zero / `1..0x60` / above `0x60`, and the low band is what increments `[0x649]`
+— the five-hit detector byte the originate contract above depends on.
+
+So the harness's stand-ins are not filling in for a missing device. `[0x649]`,
+`[0x289]`, `[0x8d6]` and the `[0x14e]`/`[0x152]` delay pair are all counters
+this one handler services, and they are forged because the interrupt that would
+service them is switched off. Driving `int3` faithfully would retire all of
+them together; forging `[0x649]` in particular also keeps the poller from ever
+running, so no run has yet sent a `0x7c00` request or received a `0x7c` reply.
 
 ## Possible next steps
 
