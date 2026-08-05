@@ -6,6 +6,7 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import CourierDspBridge
+from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .line import LineLink
 from .nvram import BIT_DATA, BIT_READY, CourierNvram
@@ -27,6 +28,9 @@ NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
+# How long to wait before offering the next typed byte again while the
+# command parser is busy with the line before it.
+COMMAND_BUSY_COOLDOWN = 256
 
 
 def attention_body(command: bytes) -> bytes | None:
@@ -75,6 +79,7 @@ class RunResult:
     serial_interrupts: int = 0
     timer_interrupts: int = 0
     serial_trace: list[str] = field(default_factory=list)
+    console: dict[str, int | bool] | None = None
     accelerated_delays: int = 0
     error: str | None = None
     dsp_bridge: dict[str, Any] | None = None
@@ -115,6 +120,7 @@ class CourierMachine:
         board_id: int | None = DEFAULT_BOARD_ID,
         dip_closed: frozenset[str] | None = None,
         parameter_sector: bytes | None = None,
+        console: SerialConsole | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -143,6 +149,8 @@ class CourierMachine:
         self.serial = bytearray()
         self.serial_truncated = False
         self.serial_rx: deque[int] = deque(serial_input)
+        self.console = console
+        self.stop_requested = False
         self.serial_interrupts = 0
         self.timer_interrupts = 0
         self.serial_trace: list[str] = []
@@ -194,6 +202,23 @@ class CourierMachine:
             self.serial.append(value & 0xFF)
         else:
             self.serial_truncated = True
+        if self.console is not None:
+            self.console.write(value)
+
+    @property
+    def _terminal_attached(self) -> bool:
+        """Whether the firmware should come up expecting terminal input.
+
+        The board's UART callbacks are installed once, as the supervisor
+        reaches its main loop. Queued input is known by then; a console's
+        first byte may still be minutes away, so an attached console counts
+        as input in its own right.
+        """
+        return bool(self.serial_rx) or self.console is not None
+
+    def request_stop(self) -> None:
+        """Ask the run to finish at the next instruction boundary."""
+        self.stop_requested = True
 
     def _trace_serial(self, event: str) -> None:
         if len(self.serial_trace) < MAX_SERIAL_TRACE_EVENTS:
@@ -334,6 +359,40 @@ class CourierMachine:
             self.timer_interrupts += 1
             return True
 
+        def command_line_pending(_uc: Any) -> bool:
+            """Whether the supervisor is still working through a command line.
+
+            The command state machine publishes its state as the callback
+            pointer at 0x02ac: a8d9 accepts a line a character at a time, and
+            the terminator advances it to a910, which parses the line and
+            emits the result. a910 accepts no new line - the firmware's own
+            type-ahead flag at 0x1cf2 is what carries one across, and that is
+            set by the DTE front-end this harness stands in for.
+
+            Delivering the next line's bytes into that window is what loses
+            them: the end-of-command path at a8b1 resets the state, so the
+            line is assembled into a buffer nothing goes on to parse. Holding
+            them until the state is ready again is what a terminal does, and
+            it is the same path the first line of a session already takes.
+            """
+            return int.from_bytes(_uc.mem_read(0x2AC, 2), "little") == 0xA910
+
+        def begin_command_line(_uc: Any) -> None:
+            """Arm the line collector for a line, as the main-loop hook does.
+
+            The collect flag at 0x1cee bit 0x40 is what makes the receive
+            path append to the command buffer at 0x1cf5. The end-of-command
+            path clears the whole byte, and the board layer that would set it
+            again for the next line is the one being stood in for here, so
+            without this a second line is received but never assembled.
+            """
+            flags = bytes(_uc.mem_read(0x1CEE, 1))[0]
+            if flags & 0x40:
+                return
+            _uc.mem_write(0x1CEE, bytes((flags | 0x40,)))
+            _uc.mem_write(0x1CF4, b"\x00")
+            self._trace_serial("collect 1cee|=40")
+
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             if (
                 address == 0x6AD6E
@@ -397,6 +456,17 @@ class CourierMachine:
                 self._timer_in_handler = False
                 self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
             self.instructions += 1
+            if self.console is not None and not self.instructions % self.console.poll_instructions:
+                typed = self.console.poll()
+                if typed:
+                    self.serial_rx.extend(typed)
+                    # Input that lands mid-cooldown would otherwise wait out a
+                    # transmit-side pause of up to 4096 instructions.
+                    self._serial_cooldown = min(self._serial_cooldown, 64)
+                if self.console.closed:
+                    self.stop_requested = True
+            if self.stop_requested:
+                _uc.emu_stop()
             self.executed[address] += 1
             self.last_addresses.append(address)
             if self.dsp_bridge is not None:
@@ -416,13 +486,13 @@ class CourierMachine:
                 # unset.
                 serial_callbacks = ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
                 for pointer, fallback in serial_callbacks:
-                    if pointer == 0x2A8 and self.serial_rx:
+                    if pointer == 0x2A8 and self._terminal_attached:
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
                     elif bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
-                if self.serial_rx:
+                if self._terminal_attached:
                     command_flags = bytes(_uc.mem_read(0x1CEE, 1))[0] | 0x40
                     _uc.mem_write(0x1CEE, bytes((command_flags,)))
                     # a8d9 is the supervisor's command-line-ready state: RX
@@ -529,8 +599,12 @@ class CourierMachine:
                     self._serial_cooldown -= 1
                 elif self.serial_rx:
                     if _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
-                        self._serial_irq_requested = True
-                        _uc.emu_stop()
+                        if command_line_pending(_uc):
+                            self._serial_cooldown = COMMAND_BUSY_COOLDOWN
+                        else:
+                            begin_command_line(_uc)
+                            self._serial_irq_requested = True
+                            _uc.emu_stop()
                 elif self._serial_tx_pump:
                     tx_callback = int.from_bytes(_uc.mem_read(0x2AA, 2), "little")
                     if tx_callback not in (0, 0x1FCE):
@@ -739,7 +813,7 @@ class CourierMachine:
         error: str | None = None
         try:
             begin = self.image.entry_physical
-            while self.instructions < instruction_limit:
+            while self.instructions < instruction_limit and not self.stop_requested:
                 # A real 80186 wraps segment:offset addresses at 20 bits.  In
                 # particular this firmware reaches F800:8000 (linear 1 MiB)
                 # during startup and continues at physical zero.  Passing 1
@@ -780,6 +854,8 @@ class CourierMachine:
                     self.serial_trace.append(f"resume {begin:05x}")
             if self.interrupt is not None:
                 status = "software-interrupt"
+            elif self.stop_requested:
+                status = "stop-requested"
             elif self.instructions < instruction_limit:
                 status = "stopped"
             elif "main-loop" in self.milestones:
@@ -836,6 +912,14 @@ class CourierMachine:
         if self.nvram is not None:
             nvram_result = self.nvram.status()
             self.nvram.save()
+        console_result = None
+        serial_trace = self.serial_trace
+        if self.console is not None:
+            console_result = self.console.summary()
+            self.console.close()
+            # A console session traces for as long as someone keeps typing,
+            # so report its tail rather than an unbounded transcript.
+            serial_trace = serial_trace[-MAX_SERIAL_TRACE_EVENTS:]
         return RunResult(
             status=status,
             instructions=self.instructions,
@@ -857,7 +941,8 @@ class CourierMachine:
             serial_input_remaining=len(self.serial_rx),
             serial_interrupts=self.serial_interrupts,
             timer_interrupts=self.timer_interrupts,
-            serial_trace=self.serial_trace,
+            serial_trace=serial_trace,
+            console=console_result,
             accelerated_delays=self.accelerated_delays,
             error=error,
             dsp_bridge=bridge_result,

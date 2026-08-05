@@ -4,7 +4,9 @@ import argparse
 import json
 import os
 from pathlib import Path
+import signal
 
+from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .images import load_image
 from .line import LineLink
@@ -48,7 +50,14 @@ def main() -> int:
     parser.add_argument("--ring-cadence")
     parser.add_argument("--ring-start", type=_number, default=0)
     parser.add_argument("--ring-count", type=_number, default=0)
+    parser.add_argument(
+        "--serial-fd",
+        type=int,
+        help="inherited descriptor carrying live terminal bytes both ways",
+    )
     args = parser.parse_args()
+
+    console = SerialConsole(args.serial_fd) if args.serial_fd is not None else None
 
     ports: dict[int, int] = {}
     for assignment in args.port:
@@ -121,7 +130,14 @@ def main() -> int:
         parameter_sector=load_sector(args.parameter_sector) if args.parameter_sector else None,
         sip=sip,
         line=line,
+        console=console,
     )
+    if console is not None:
+        # Detaching the terminal closes its end of the channel, which the
+        # console notices; a signal covers the case where the parent goes
+        # away without that, so either way the run still reports itself.
+        for number in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(number, lambda *_: machine.request_stop())
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))
     return 0
 

@@ -26,7 +26,13 @@ from .xmf import XmfFormatError, XmfImage
 from .xmp import XmpFormatError, XmpImage
 
 DEFAULT_LINE_SOCKET = "/tmp/courier-line.sock"
+DEFAULT_RUN_INSTRUCTIONS = 250_000
+# A console session ends when its terminal detaches rather than at a count,
+# so this only has to be further away than a session will reach: about four
+# hours of emulated execution.
+CONSOLE_INSTRUCTIONS = 10_000_000_000
 from .dsp import run_dsp
+from .terminal import run_console
 
 
 def _number(value: str) -> int:
@@ -64,11 +70,20 @@ def ring_cadence(value: str | None) -> tuple[int, int]:
     return _number(on_text or str(RING_ON_MS)), _number(off_text or str(RING_OFF_MS))
 
 
+def instruction_limit(args: argparse.Namespace) -> int:
+    """Resolve --instructions, which defaults by how the run is driven."""
+    if args.instructions is not None:
+        return args.instructions
+    if getattr(args, "console", False) or getattr(args, "serial_pty", False):
+        return CONSOLE_INSTRUCTIONS
+    return DEFAULT_RUN_INSTRUCTIONS
+
+
 def _print_json(value: object) -> None:
     print(json.dumps(value, indent=2, sort_keys=True))
 
 
-def _run_isolated(args: argparse.Namespace) -> int:
+def _worker_command(args: argparse.Namespace) -> list[str]:
     image = load_image(args.image)
     if args.with_dsp and not hasattr(image, "dsp_program_segments"):
         raise ValueError(
@@ -81,7 +96,7 @@ def _run_isolated(args: argparse.Namespace) -> int:
         "courier_emu.worker",
         str(image.path),
         "--instructions",
-        str(args.instructions),
+        str(instruction_limit(args)),
     ]
     for assignment in args.port:
         command.extend(("--port", assignment))
@@ -143,10 +158,21 @@ def _run_isolated(args: argparse.Namespace) -> int:
     serial_input += b"".join(value.encode("ascii") + b"\r" for value in args.at)
     if serial_input:
         command.extend(("--serial-input-hex", serial_input.hex()))
+    return command
 
+
+def _worker_environment(args: argparse.Namespace) -> dict[str, str]:
     environment = os.environ.copy()
     if args.libunicorn:
         environment["LIBUNICORN_PATH"] = str(Path(args.libunicorn).resolve())
+    return environment
+
+
+def _run_isolated(args: argparse.Namespace) -> int:
+    command = _worker_command(args)
+    environment = _worker_environment(args)
+    if args.console or args.serial_pty:
+        return run_console(args, command, environment)
     process = subprocess.run(command, text=True, capture_output=True, env=environment)
     if process.returncode != 0:
         if process.returncode < 0:
@@ -265,7 +291,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = subparsers.add_parser("run", help="execute the 80186 application entry")
     run.add_argument("image")
-    run.add_argument("--instructions", type=_number, default=250_000)
+    run.add_argument(
+        "--instructions",
+        type=_number,
+        default=None,
+        help=f"stop after this many instructions (default {DEFAULT_RUN_INSTRUCTIONS:,}, "
+        "or effectively unbounded for a console session)",
+    )
+    run.add_argument(
+        "--console",
+        action="store_true",
+        help="talk to the modem from this terminal while it runs: type AT "
+        "commands, Ctrl-] to detach. Input may also be piped in",
+    )
+    run.add_argument(
+        "--serial-pty",
+        action="store_true",
+        help="expose the DTE port as a pty device instead, for screen, "
+        "minicom, or anything else that drives a serial modem",
+    )
     run.add_argument(
         "--port",
         action="append",

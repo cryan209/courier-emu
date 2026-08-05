@@ -4,6 +4,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -120,6 +122,33 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run["status"], "main-loop")
         self.assertEqual(run["serial_text"], "")
         self.assertEqual(run["panel"]["dip_switches"]["result-codes"], "open")
+
+    def test_a_second_command_line_is_answered(self) -> None:
+        # The command state machine parses a line only from its ready state,
+        # and the end-of-command path resets the collector. Offering the next
+        # line while a8d9 is pending is what a terminal does, and both
+        # answers here are the firmware's own.
+        output = StringIO()
+        with redirect_stdout(output):
+            result = main(
+                [
+                    "run",
+                    str(ROOT / "main211.xmf"),
+                    "--instructions",
+                    "6000000",
+                    "--at",
+                    "ATI3",
+                    "--at",
+                    "ATI1",
+                    "--summary",
+                ]
+            )
+        self.assertEqual(result, 0)
+        run = json.loads(output.getvalue())
+        self.assertEqual(
+            run["serial_text"],
+            "\r\nUSRobotics Courier V.Everything EXT\r\n\r\nOK\r\n\r\nCE8E\r\n\r\nOK\r\n",
+        )
 
     def test_ring_cadence_defaults_either_half(self) -> None:
         self.assertEqual(ring_cadence(None), (2_000, 4_000))
@@ -271,6 +300,39 @@ class CliTests(unittest.TestCase):
         self.assertTrue(text.rstrip().endswith("OK"))
         # Bit 7 is the parity bit in this framing, not data.
         self.assertTrue(all(character < "\x80" for character in text))
+
+
+
+
+class ConsoleTests(unittest.TestCase):
+    def test_a_console_session_answers_while_it_runs(self) -> None:
+        # stdin need not be a terminal: piping is the same live path, which
+        # keeps this exercisable without a pty.
+        process = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "courier_emu",
+                "run",
+                str(ROOT / "main211.xmf"),
+                "--console",
+                "--instructions",
+                "4000000",
+                "--summary",
+            ],
+            input=b"ATI3\r",
+            capture_output=True,
+            cwd=ROOT,
+            timeout=600,
+        )
+        self.assertEqual(process.returncode, 0)
+        # stdout carries the modem, so a session can be redirected as itself.
+        self.assertIn(b"USRobotics Courier V.Everything EXT", process.stdout)
+        result = json.loads(process.stderr)
+        self.assertEqual(result["console"]["received"], 5)
+        self.assertEqual(result["console"]["dropped"], 0)
+        self.assertGreater(result["console"]["sent"], 0)
+        self.assertEqual(result["serial_input_remaining"], 0)
 
 
 if __name__ == "__main__":

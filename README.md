@@ -87,6 +87,52 @@ all-lowercase `AT` prefix and passes only the remaining command body to the
 banked parser. Captured output is capped at 64 KiB; `serial_truncated` reports
 when a diagnostic command exceeds that limit.
 
+A command line is offered to the firmware only from its command-line-ready
+state. The state machine publishes that as the callback pointer at `0x02ac`:
+`a8d9` collects a line a character at a time, the terminator advances it to
+`a910`, which parses the line and prints the result, and the end-of-command
+path at `a8b1` clears the collector and returns to `a8d9`. Bytes delivered
+into the `a910` window are assembled into a buffer nothing goes on to parse -
+the firmware's own type-ahead flag at `0x1cf2` is what would carry a line
+across, and it is set by the DTE front-end this harness stands in for. So the
+harness waits for `a8d9` and re-arms the collect flag at `0x1cee` bit `0x40`
+for each line, exactly as it does once at the main-loop milestone. That is
+what makes a second and third command answer.
+
+## Talking to it while it runs
+
+`--at` queues commands before boot. `--console` instead attaches this terminal
+to the DTE port for as long as the run lasts: type commands, watch the modem
+answer, `Ctrl-]` to detach. `--instructions` then defaults to effectively
+unbounded, so the session ends when you do.
+
+```sh
+./courier run main211.xmf --console
+./courier run main211.xmf --console --daa-line dial-tone --nvram board.eeprom
+```
+
+Everything the modem sends goes to stdout and the run's own report goes to
+stderr, so `--console > session.txt` captures exactly what the firmware said.
+Input may also be piped, which is the same live path without a terminal:
+
+```sh
+printf 'ATI3\rATI4\r' | ./courier run main211.xmf --console --instructions 9000000
+```
+
+`--serial-pty` exposes the same port as a pty device instead of attaching this
+terminal, for anything that drives a serial modem:
+
+```sh
+./courier run main211.xmf --serial-pty
+# serial console on /dev/ttys002
+screen /dev/ttys002
+```
+
+Both report a `console` block counting the bytes each way, what a terminal
+that stopped reading dropped, and whether the far end closed. Typed bytes are
+polled every 8,192 instructions - about a hundred times a second at the speed
+this core runs, which is roughly the real board's.
+
 Transmit bytes come from the 80186 integrated-UART feed. The routine at
 `5b5e:184b` loads the byte in `AL`, waits for transmit status bit `0x08` at
 `0xff66`, then applies the framing transform at `5b5e:1913` and writes the
