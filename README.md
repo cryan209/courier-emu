@@ -29,30 +29,39 @@ The DSP area is a segmented program image rather than one flat load:
 
 ## Usage
 
-No dependencies are needed to inspect or extract the firmware:
+Everything runs through the `./courier` launcher. There is nothing to install
+and no environment to activate: on first use it creates `.venv` beside the
+repository, installs the project into it, and from then on just starts the CLI.
 
 ```sh
-python3 -m courier_emu info main211.xmf
-python3 -m courier_emu extract main211.xmf extracted/main211
-python3 -m unittest discover -s tests -v
+./courier info main211.xmf
+./courier extract main211.xmf extracted/main211
+make test
 ```
+
+It uses `uv` when that is on `PATH` and falls back to `venv` plus `pip`
+otherwise. `PYTHON=<interpreter>` chooses the interpreter it builds the
+environment from (3.10 or later), `COURIER_EMU_VENV=<path>` moves the
+environment, and `make clean-venv` discards it. `./courier` may be run from any
+directory. If you would rather manage the environment yourself, install the
+project with `pip install -e '.[execute,disasm,dev]'` and use
+`python3 -m courier_emu` in place of `./courier` everywhere below.
 
 Execution uses Unicorn's 16-bit x86 core and runs in an isolated child process:
 
 ```sh
-python3 -m pip install '.[execute]'
-python3 -m courier_emu run main211.xmf --instructions 250000
-python3 -m courier_emu run main211.xmf --instructions 1000000 --summary
-python3 -m courier_emu run main211.xmf --instructions 7000000 --with-dsp --at AT --summary
+./courier run main211.xmf --instructions 250000
+./courier run main211.xmf --instructions 1000000 --summary
+./courier run main211.xmf --instructions 7000000 --with-dsp --at AT --summary
 ```
 
 The C52 runner has no third-party runtime dependency; it builds with the system
 C++17 compiler on first use:
 
 ```sh
-python3 -m courier_emu dsp-run main211.xmf
-python3 -m courier_emu dsp-run main211.xmf --trace 40
-python3 -m courier_emu dsp-run main211.xmf --port 0x50=0x1234
+./courier dsp-run main211.xmf
+./courier dsp-run main211.xmf --trace 40
+./courier dsp-run main211.xmf --port 0x50=0x1234
 ```
 
 With no supervisor or line-side events injected, `main211.xmf` reaches a
@@ -132,7 +141,7 @@ linear-PCM endpoints. Supply and capture mono signed-16 little-endian words
 after dial/answer activation with:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 9000000 --with-dsp \
+./courier run main211.xmf --instructions 9000000 --with-dsp \
   --dsp-rx-pcm line.s16le --dsp-tx-pcm reply.s16le --at ATDT123 --summary
 ```
 
@@ -151,7 +160,7 @@ recovered ASIC ADC, qualifies the supervisor's five-hit detector at RAM
 already-active C52. `--daa-line` enables the DSP bridge automatically:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 9000000 \
+./courier run main211.xmf --instructions 9000000 \
   --daa-line dial-tone --at ATDT123 --summary
 ```
 
@@ -166,7 +175,7 @@ busy/reorder tone, and carrier negotiation remain unmodeled.
 `rom-info` describes a whole flash part rather than an update payload:
 
 ```sh
-python3 -m courier_emu rom-info IDSDL302.ROM
+./courier rom-info IDSDL302.ROM
 ```
 
 An XMF carries only the application, so where it lives is a modelling choice. A
@@ -184,7 +193,7 @@ of the SDL loader.
 `run` takes a ROM as well, booting it from its reset vector:
 
 ```sh
-python3 -m courier_emu run IDSDL302.ROM --instructions 40000000 --int1-after 7
+./courier run IDSDL302.ROM --instructions 40000000 --int1-after 7
 ```
 
 The peripheral timers are modelled from the instruction clock - the enable
@@ -203,8 +212,8 @@ every option switch.
 from an XMF: no product text header, and an obfuscated body.
 
 ```sh
-python3 -m courier_emu xmp-info Ie030002.xmp
-python3 -m courier_emu extract Ie030002.xmp extracted/Ie030002
+./courier xmp-info Ie030002.xmp
+./courier extract Ie030002.xmp extracted/Ie030002
 ```
 
 | File range | Contents |
@@ -263,8 +272,8 @@ bytes. The big-endian address is the giveaway — everything else in these image
 is little-endian, but Intel HEX writes its address big-endian even on x86.
 
 ```sh
-python3 -m courier_emu nac-info Ie030002.nac
-python3 -m courier_emu extract Ie030002.nac extracted/Ie030002
+./courier nac-info Ie030002.nac
+./courier extract Ie030002.nac extracted/Ie030002
 ```
 
 | File range | Contents |
@@ -400,7 +409,7 @@ modem is genuinely silent, which is the real behaviour and used to be papered
 over by writing `[0x092f]` directly:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 4000000 --at AT --dip none
+./courier run main211.xmf --instructions 4000000 --at AT --dip none
 ```
 
 ### Dedicated-line operation
@@ -412,7 +421,7 @@ dedicated-line` closes `result-codes`, `dtr-override`, and
 flash default of 1 and the modem answers on the first ring:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 12000000 \
+./courier run main211.xmf --instructions 12000000 \
   --dip-preset dedicated-line --at ATI4
 ```
 
@@ -427,7 +436,7 @@ that never changes level parks it in its first state forever. That bit is now
 modelled: an idle line is not ringing, and `--ring` drives it with a cadence.
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 40000000 \
+./courier run main211.xmf --instructions 40000000 \
   --ring --at 'AT#CID=1' --summary
 ```
 
@@ -461,7 +470,7 @@ answering seizure has no dial tone to find, the DAA qualifies detector byte
 `originate`:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 40000000 \
+./courier run main211.xmf --instructions 40000000 \
   --at ATA --daa-line quiet --summary
 ```
 
@@ -526,7 +535,7 @@ Attach a persistent image with `--nvram`; it is created blank (all ones, like an
 unprogrammed part) when the file does not exist and written back after the run:
 
 ```sh
-python3 -m courier_emu run main211.xmf --instructions 7000000 \
+./courier run main211.xmf --instructions 7000000 \
   --at AT --nvram settings.nv --summary
 ```
 
@@ -607,9 +616,9 @@ firmware accepts. It carries the firmware's own power-on defaults for the packed
 config and profile image, so only the fields you set change:
 
 ```sh
-python3 -m courier_emu parameters params.bin --serial 12345678 \
+./courier parameters params.bin --serial 12345678 \
   --feature hst --feature fax --feature terbo --feature v34 --feature v90
-python3 -m courier_emu run main211.xmf --instructions 8000000 \
+./courier run main211.xmf --instructions 8000000 \
   --parameter-sector params.bin --at ATY14
 ```
 
@@ -658,7 +667,7 @@ emulated clock without either knowing how fast the other goes. Both sides get
 the `dedicated-line` option switches and answer:
 
 ```sh
-python3 -m courier_emu link main211.xmf --instructions 40000000 --summary
+./courier link main211.xmf --instructions 40000000 --summary
 ```
 
 `--a-at` and `--b-at` change what each side is told to do, and `run` takes
@@ -703,7 +712,7 @@ Keep the password out of command history by putting it in the environment:
 
 ```sh
 export COURIER_SIP_PASSWORD='your-password'
-python3 -m courier_emu run main211.xmf --instructions 12000000 \
+./courier run main211.xmf --instructions 12000000 \
   --sip-server pbx.example.net:5060 --sip-username 6001 \
   --sip-target 'sip:{number}@pbx.example.net' --at ATD123 --summary
 ```

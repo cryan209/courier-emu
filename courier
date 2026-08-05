@@ -1,0 +1,61 @@
+#!/bin/sh
+# Launcher for the Courier harness.
+#
+# Creates and updates a private virtualenv on first use, then runs the CLI:
+#
+#   ./courier info main211.xmf
+#   ./courier run main211.xmf --instructions 250000 --summary
+#   ./courier dsp-run main211.xmf
+#
+# Environment:
+#   COURIER_EMU_VENV   virtualenv location (default: <repo>/.venv)
+#   PYTHON             interpreter used to create it (default: python3)
+#   COURIER_EMU_SYNC   set to 0 to skip the dependency check entirely
+
+set -eu
+
+root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+venv=${COURIER_EMU_VENV:-$root/.venv}
+python=$venv/bin/python
+stamp=$venv/.courier-emu-deps
+extras='.[execute,disasm,dev]'
+
+fatal() {
+    printf '%s\n' "courier: $1" >&2
+    exit 1
+}
+
+create_venv() {
+    bootstrap=${PYTHON:-python3}
+    command -v "$bootstrap" >/dev/null 2>&1 ||
+        fatal "no $bootstrap on PATH; install Python 3.10 or later, or set PYTHON=<interpreter>"
+    "$bootstrap" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' ||
+        fatal "$bootstrap is older than Python 3.10; set PYTHON=<newer interpreter>"
+    printf 'courier: creating %s\n' "$venv" >&2
+    if command -v uv >/dev/null 2>&1; then
+        uv venv --python "$bootstrap" "$venv" >&2
+    else
+        "$bootstrap" -m venv "$venv" >&2
+    fi
+}
+
+install_deps() {
+    printf 'courier: installing dependencies into %s\n' "$venv" >&2
+    if command -v uv >/dev/null 2>&1; then
+        VIRTUAL_ENV=$venv uv pip install --quiet --editable "$root/$extras" >&2
+    else
+        "$python" -m pip install --quiet --upgrade pip >&2
+        "$python" -m pip install --quiet --editable "$root/$extras" >&2
+    fi
+    : >"$stamp"
+}
+
+if [ "${COURIER_EMU_SYNC:-1}" != 0 ]; then
+    [ -x "$python" ] || create_venv
+    # Reinstall when the venv is new or the dependency list has moved on.
+    [ -f "$stamp" ] && [ ! "$root/pyproject.toml" -nt "$stamp" ] || install_deps
+fi
+
+[ -x "$python" ] || fatal "no interpreter at $python; remove $venv and try again"
+
+exec "$python" -m courier_emu "$@"
