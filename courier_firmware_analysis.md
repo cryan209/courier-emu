@@ -843,6 +843,141 @@ live DSP dump from the modem sidesteps the base/overlay problem entirely.
    Offset + echo vs. our DIL timing, to fork clock-recovery vs. constellation
    rejection.
 
+## Complete flash ROM — `IDSDL302.ROM`
+
+A 1998 512 KiB ROM dump of a Courier V.Everything **external** (`$USR0100\\MODEM\\
+PNPC107\\Courier V.Everything EXT`, copyright through 1998). This is the whole
+part rather than an update payload, which settles several things `main211.xmf`
+could only leave as modelling choices. `courier-emu rom-info` recovers all of it
+from the image.
+
+### The image places itself
+
+The last sixteen bytes are the 80186 reset vector, and the stub there programs
+the chip select that decodes the ROM before it jumps:
+
+```asm
+ffff0  cli
+ffff1  mov dx, 0xffa4        ; UCS start, 80C186EB chip-select unit
+ffff4  mov ax, 0x8000
+ffff7  out dx, ax
+ffff8  jmp far 0xfc00:0x1a21
+```
+
+So the ROM occupies `0x80000..0xfffff`, and the boot block is entered at
+physical `0xfda21`. The boot stub then replays two setup tables — 36 word
+writes and 9 byte writes — which give the rest of the map:
+
+| register | value | meaning |
+|---|---|---|
+| `0xffa4`/`0xffa6` | `0x8000`/`0xffce` | flash `0x80000..0xffc00` |
+| `0xffa0`/`0xffa2` | `0x0000`/`0x200a` | RAM `0x00000..0x20000`, 128 KiB |
+| `0xffa8` | `0x10ff` | peripheral control block relocated into **memory** at `0x0ff00` |
+
+That last row is worth stating plainly: the harness already hooks memory
+`0xff00..0xffff` as the peripheral control block, and this is the firmware
+programming that relocation itself.
+
+The byte table seeds the board latches, and two of its values are exactly what
+the 2002 firmware's own boot writes: port `0x12` = `0x7f`, port `0x14` = `0xf5`.
+
+### The boot block the update image does not carry
+
+`main211.xmf` starts at the application; the ROM has ~6 KiB above it at
+`0xfbff0..0xfda69` that the update never replaces. It does, in order:
+
+1. programs the peripheral control block from the two tables,
+2. copies its own 0x1975 bytes to physical zero — the first 0x400 bytes of that
+   block are an interrupt vector table, so the copy installs the vectors and the
+   code together — and enters through `int 0x13`,
+3. polls input port `0x10` bit `0x08` with a timeout, then bit-bangs the
+   Microwire settings EEPROM,
+4. CRC-16s the whole flash a segment at a time,
+5. jumps into the application at `0x80000`.
+
+The CRC routine at relocated `0x03e0` is the same per-byte CCITT update
+recovered from `main211.xmf` at `0x72930` and implemented in
+`courier_emu/parameters.py`, confirmed across a four-year build gap.
+
+Step 3 qualifies a claim made from the update image alone. There is no
+boot-time NVRAM profile load in `main211.xmf` — but the code that reads the
+EEPROM at power-on is in the boot block, which an XMF update does not contain.
+Booting this ROM against the emulator's EEPROM model shows it reading word 0,
+finding `0xffff`, and programming it to `0x0000`: an unconfigured part being
+initialised.
+
+A second `SDL Xmodem file transfer` copy sits at `0xfc1db`, inside the boot
+block, which is where a recovery loader has to live.
+
+### The parameter sectors are the top of the same part
+
+The search at `0x7e07c` walks four 4 KiB sectors from `0xf8000`. In this image
+all of them read erased, so a dumped image cannot supply a parameter sector —
+it is written per-unit at manufacture. What the ROM does establish is that the
+region is not a separate part: it is the top of the same flash, immediately
+below the boot block.
+
+### Cross-build confirmation of the board model
+
+The ROM has the same latch driver, called the same way (`mov ax, mask << 8 |
+index; call`), with the same index encoding — read entry at `0x827d1`,
+set/clear at `0x82771`/`0x8279b`, shadow read at `0x82750`. Every board input
+the 2002 firmware reads is read here too:
+
+| signal | `main211.xmf` | `IDSDL302.ROM` |
+|---|---|---|
+| identification strap sense | 5 sites | 5 sites, same mask/index |
+| board option input `0x80`/port `0x10` | 1 site | 1 site |
+| DTR, port `0x12` bit `0x40` | 3 sites | 3 sites |
+| carrier-detect switch, port `0x14` bit `0x04` | `0x5e3cf` | `0x82876` |
+
+The carrier-detect handler is structurally identical: same mask, same shadow
+bit `0x20`, same `[0x652]`-equivalent flag bit, same setting byte cleared to
+zero for `&C0`.
+
+The option switches themselves move. This build reads seven of them from one
+port (index 3, masks `0x01`, `0x02`, `0x04`, `0x08`, `0x10`, `0x20`, `0x80`)
+where the 2002 firmware spreads the same functions across ports `0x10`, `0x12`,
+and `0x14`. Matching them by what each one writes:
+
+| function | ROM port/mask | `main211.xmf` port/mask |
+|---|---|---|
+| result codes displayed | `0x12` `0x01` | `0x14` `0x20` |
+| numeric result codes | `0x12` `0x02` | `0x10` `0x02` |
+| auto answer off (S0) | `0x12` `0x04` | `0x14` `0x10` |
+| echo off | `0x12` `0x08` | `0x12` `0x10` |
+| quiet in answer mode | `0x12` `0x10` | `0x12` `0x08` |
+| DTR override (S14) | `0x12` `0x20` | `0x12` `0x20` |
+| quiet, capability-gated | `0x12` `0x80` | `0x12` `0x80` |
+| carrier detect forced on | `0x14` `0x04` | `0x14` `0x04` |
+
+Two land on the same pin in both builds and one function per row is identical,
+so this is independent confirmation of what each switch *does*. It is not a
+switch numbering: the ROM's bit order does not follow the published switch
+numbers either, so which position on the case drives which pin still needs a
+physical unit.
+
+### Booting it
+
+Mapped at `0x80000` with the reset vector as the entry, real-mode `int`
+handling, and the existing EEPROM model on port `0x10`, the ROM runs its reset
+stub, relocates itself, reads and initialises the EEPROM, completes the flash
+CRC, and jumps into the application — about 63 million instructions. It then
+stalls at `0x80444`:
+
+```asm
+80432  mov word ptr [0xff46], 0xc000   ; T2CON: enable, continuous
+80438  mov word ptr [0xff42], 0        ; T2CMPA
+8043e  mov word ptr [0xff40], 0        ; T2CNT
+80444  test word ptr [0xff46], 0x20    ; wait for MAX COUNT
+8044a  je 0x444
+```
+
+That is a timer self-test, and the harness models the peripheral control block
+as plain RAM, so the max-count bit never sets. Modelling the 80186 timers
+properly — rather than the current fixed timer interrupt every 4,096
+instructions — is what this needs, and it would serve both firmwares.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under

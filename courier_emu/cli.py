@@ -19,6 +19,7 @@ from .panel import (
     DIP_SWITCHES,
     USABLE_BOARD_IDS,
 )
+from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
 
 DEFAULT_LINE_SOCKET = "/tmp/courier-line.sock"
@@ -226,6 +227,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     info = subparsers.add_parser("info", help="validate and describe an XMF image")
     info.add_argument("image")
+
+    rom_info = subparsers.add_parser(
+        "rom-info",
+        help="describe a complete flash ROM image and the map its reset stub sets up",
+    )
+    rom_info.add_argument("image")
 
     extract = subparsers.add_parser("extract", help="split the header, DSP, and supervisor")
     extract.add_argument("image")
@@ -476,6 +483,9 @@ def main(argv: list[str] | None = None) -> int:
             image = XmfImage.load(args.image)
             _print_json(image.describe())
             return 0
+        if args.command == "rom-info":
+            _print_json(CourierRom.load(args.image).describe())
+            return 0
         if args.command == "extract":
             image = XmfImage.load(args.image)
             paths = image.extract(args.directory)
@@ -518,6 +528,6 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             return 0
-    except (OSError, XmfFormatError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, XmfFormatError, RomFormatError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))
     return 1

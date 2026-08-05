@@ -161,6 +161,27 @@ is a firmware-derived behavioral DAA, not a claimed identification of the
 physical line-interface IC. Ring qualification, loop-current loss,
 busy/reorder tone, and carrier negotiation remain unmodeled.
 
+## Complete flash ROM images
+
+`rom-info` describes a whole flash part rather than an update payload:
+
+```sh
+python3 -m courier_emu rom-info IDSDL302.ROM
+```
+
+An XMF carries only the application, so where it lives is a modelling choice. A
+ROM ends with the 80186 reset vector, and the stub there programs the chip
+select that decodes the ROM before it jumps, so the image places itself. For the
+1998 Courier V.Everything external ROM that gives flash at `0x80000..0xffc00`,
+128 KiB of RAM at `0x00000..0x20000`, and the peripheral control block relocated
+into memory at `0x0ff00` — which is the window this harness already hooks.
+
+It also carries the ~6 KiB boot block above the application that an update image
+never replaces: the hardware setup tables, the copy of itself to physical zero,
+the power-on read of the settings EEPROM, the whole-flash CRC, and a second copy
+of the SDL loader. `courier_firmware_analysis.md` has the full account, including
+the cross-build confirmation of the latch driver and every option switch.
+
 ## Board latches, front panel, and NVRAM
 
 Every board output goes through one read-modify-write latch driver, recovered at
