@@ -964,12 +964,21 @@ It idles behind one bit. Every pass ends with `BIT *, 4` on `[0x00cc]` and a
 `CC 0xb4d4` on the result, and `[0x00cc]` is zero on every sample of every run.
 Setting that bit by hand is the first thing that has moved it: the parked PC
 leaves the resident bank for `0x0bda3` in the downloaded one, and the line DAC
-produces its first output. `[0x00cc]` is the datapump's own status word rather
-than an input latch — it is written to zero every sample from four of its own
-sites, one cell above the DAC source at `[0x00cb]`.
+produces its first output.
 
-The receiver is gated off rather than listening: feeding the line input 2100,
-1800 or 980 Hz, or noise, instead of silence leaves every counter identical.
+What sets `[0x00cc]` is the datapump itself. It is the low half of a 32-bit
+word carried from sample to sample through `[0x7e]:[0x7d]` and ACCB, rebuilt
+from those two cells at the end of every pass, and it holds `0x0555_0000` for
+the whole run — so bit 4 is clear and the gate stays shut. The line sample does
+reach the accumulator, and is then discarded: `LACB` at `0xb306` reloads ACC
+over the sum, and the cell it was stored in is overwritten from a program table
+before anything reads it. That is why feeding the line 2100, 1800 or 980 Hz, or
+noise, instead of silence leaves every counter identical.
+
+Nothing outside sets it either. Holding each of the 1,952 cells of the C52's
+on-chip data space in turn moves the run for eight, all of them the frame block
+or scratch. An idle datapump reads essentially nothing — not its RAM, not the
+line, not the host window, and not an interrupt, since `IMR` is zero.
 `courier_firmware_analysis.md` has the listing and the measurements.
 
 ## Minimal SIP dial-out

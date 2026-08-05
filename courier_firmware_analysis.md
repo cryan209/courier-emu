@@ -1087,11 +1087,56 @@ entered. Setting bit 4 by hand is the first thing that has moved the datapump:
 | untouched | 14,102 | 1 | `0x8195` (resident bank) |
 | `[0x00cc]` bit 4 set | 15,515 | 10 | `0x0bda3` (downloaded bank) |
 
-`[0x00cc]` is not an input latch, though. Tracing every data write into the
-frame block shows it written to zero on every sample from four sites — three in
-the `0xde89` prologue and `0x81a0`, which stores `[0x7d]` — and it sits one cell
-above `[0x00cb]`, the line-DAC source. It is the datapump's own status word,
-and it is zero because the datapump has nothing to say.
+### What sets `[0x00cc]`
+
+The datapump itself, from a value it carries around a closed loop. Tracing
+every data write into the frame block shows `[0x00cc]` written to zero on every
+sample from four sites — three in the `0xde89` prologue and `0x81a0` — and it
+sits one cell above `[0x00cb]`, the line-DAC source. `0x81a0` is the last of the
+four before the test, and single-stepping the block with signal on the line
+gives the whole chain:
+
+```
+b304  ADD  @54        ; ACC 00000000 -> ffffe605, the held ADC word
+b305  SACL @7f        ; [0x7f] = e605
+b306  LACB            ; ACC <- ACCB = 05550000, and the sample is gone
+b307  SACH @7e        ; [0x7e] = 0555
+b308  SACL @7d        ; [0x7d] = 0000
+...
+b30b  LACC @7e, 16    ; and the pass ends by rebuilding ACCB
+b30c  ADDS @7d        ;   from the same two cells
+b30d  SACB
+...
+81a0  SACL *          ; [0x00cc] = [0x7d]
+a8ca  BIT  *, 4       ; bit 4 of it
+```
+
+So `[0x00cc]` is the low half of a 32-bit word the datapump carries from sample
+to sample through `[0x7e]:[0x7d]` and ACCB. It holds `0x0555_0000` for the whole
+run — high half `0x0555`, low half zero — so bit 4 is clear and the gate stays
+shut.
+
+That also explains why signal changes nothing. The line sample *does* reach the
+accumulator at `0xb304` and *is* stored, to `[0x7f]` at `0xb305`. Then `LACB` at
+`0xb306` reloads ACC from ACCB and the sum is discarded, and `[0x7f]` itself is
+overwritten at `0x81b1` by a `TBLR` from a program table before anything reads
+it. The receive path is a dead end in this state by construction, not by
+accident of what the harness feeds it.
+
+Nothing outside can set the word either. Holding each cell of the C52's
+on-chip data space in turn — 1,952 of them — and comparing line-DAC counts, the
+serial registers, the parked PC and the cycle count moves the run for **eight**:
+
+| cell | what it is |
+|---|---|
+| `[0x00cb]`, `[0x00cc]` | the frame block's DAC source and the gate |
+| `[0x007f]` | the scratch cell the discarded sample lands in |
+| `[0x0082]` | perturbs the run without producing output |
+| `[0x037d]`, `[0x037e]`, `[0x03fd]`, `[0x03fe]` | the same `@7d`/`@7e` offsets on the DP pages `0xde9c` and `0xa8d0` select |
+
+An idle datapump reads essentially nothing: not its own RAM, not the line, not
+the host window, and not an interrupt — `IMR` is zero. Whatever starts it does
+not arrive through any input this build of the C52 is watching.
 
 ### The receiver is gated off, not merely unsignalled
 
