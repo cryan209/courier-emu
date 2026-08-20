@@ -112,11 +112,14 @@ public:
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
     void set_dtmf_digits(const char *digits, std::size_t count);
+    void set_v8_calling(bool enabled);
+    void set_v8_answering(bool enabled);
     uint16_t io(uint16_t port) const;
     uint16_t program(uint16_t address) const;
     uint16_t data(uint16_t address) const;
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
+    void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
     void step();
     void run(uint64_t instruction_limit);
     void set_data_trace(bool enabled) { m_trace_data_writes = enabled; }
@@ -196,6 +199,8 @@ private:
     uint16_t m_line_tx_last_pc = 0;
     std::string m_dtmf_digits;
     uint64_t m_dtmf_frame = 0;
+    enum class V8Mode { Off, Calling, Answering };
+    V8Mode m_v8_mode = V8Mode::Off;
     struct {
         uint16_t trcv = 0, tdxr = 0, tspc = 0, tcsr = 0, trta = 0, trad = 0;
         uint64_t trcv_reads = 0, tdxr_writes = 0, tspc_writes = 0, rx_consumed = 0;

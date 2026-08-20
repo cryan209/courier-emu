@@ -176,12 +176,15 @@ class NativeC5x:
         lib.courier_c5x_set_dtmf_digits.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t
         ]
+        lib.courier_c5x_set_v8_calling.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_v8_answering.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_data.restype = ctypes.c_uint16
         lib.courier_c5x_set_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+        lib.courier_c5x_set_pc.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_state.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
@@ -272,6 +275,12 @@ class NativeC5x:
         encoded = digits.encode("ascii")
         self.library.courier_c5x_set_dtmf_digits(self.handle, encoded, len(encoded))
 
+    def set_v8_calling(self, enabled: bool) -> None:
+        self.library.courier_c5x_set_v8_calling(self.handle, int(enabled))
+
+    def set_v8_answering(self, enabled: bool) -> None:
+        self.library.courier_c5x_set_v8_answering(self.handle, int(enabled))
+
     def io(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io(self.handle, port))
 
@@ -283,6 +292,9 @@ class NativeC5x:
 
     def interrupt(self, irq: int) -> None:
         self.library.courier_c5x_interrupt(self.handle, irq)
+
+    def set_pc(self, address: int) -> None:
+        self.library.courier_c5x_set_pc(self.handle, address)
 
     def state(self) -> dict[str, int | bool]:
         values = (ctypes.c_uint64 * 20)()

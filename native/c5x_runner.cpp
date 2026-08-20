@@ -58,6 +58,8 @@ int main(int argc, char **argv)
         uint64_t overlay_offset = 0xeea4, overlay_byte_count = 0x135c;
         uint64_t high_offset = 0x10200, high_byte_count = 0xb3e0;
         uint64_t limit = 1'000'000, trace_start = 0, trace_count = 0;
+        uint64_t force_pc_after = UINT64_MAX;
+        uint16_t force_pc = 0;
         std::vector<std::pair<uint16_t, uint16_t>> seeded_ports;
         for (int i = 2; i < argc; ++i) {
             std::string option = argv[i];
@@ -83,6 +85,11 @@ int main(int argc, char **argv)
             else if (option == "--instructions") limit = value;
             else if (option == "--trace-start") trace_start = value;
             else if (option == "--trace") trace_count = value;
+            else if (option == "--force-pc") {
+                if (value > 0xffff) throw std::runtime_error("forced PC exceeds 16 bits");
+                force_pc = uint16_t(value);
+            }
+            else if (option == "--force-pc-after") force_pc_after = value;
             else throw std::runtime_error("unknown option: " + option);
         }
         if ((byte_count | overlay_byte_count | high_byte_count) & 1)
@@ -127,6 +134,7 @@ int main(int argc, char **argv)
         std::string status = "instruction-limit", error;
         uint64_t executed = 0;
         for (; executed < limit; ++executed) {
+            if (executed == force_pc_after) core.set_pc(force_pc);
             auto before = core.state();
             if (executed >= trace_start && executed < trace_start + trace_count)
                 std::cerr << std::dec << executed << " pc=" << hex16(before.pc)

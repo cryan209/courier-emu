@@ -46,12 +46,16 @@ class BridgeStatus:
     mailbox_commands: int
     mailbox_windows: dict[str, int]
     runtime_messages: list[str]
+    runtime_message_counts: dict[str, int]
+    runtime_message_first_seen: dict[str, int]
+    runtime_message_first_pc: dict[str, str]
     runtime_words_queued: int
     detector_replies: int
     error: str | None
     dsp: dict[str, int | bool]
     dsp_host_ports: dict[str, dict[str, int]]
     dsp_memory_map: dict[str, int | bool]
+    asic: dict[str, Any]
     serial_port: dict[str, int]
     dial_digits: str
     daa: dict[str, str | int | bool] | None
@@ -88,7 +92,16 @@ class CourierDspBridge:
         self.mailbox_commands = 0
         self.mailbox_windows: Counter[str] = Counter()
         self.runtime_messages: deque[str] = deque(maxlen=64)
+        self.runtime_message_counts: Counter[str] = Counter()
+        self.runtime_message_first_seen: dict[str, int] = {}
+        self.runtime_message_first_pc: dict[str, str] = {}
         self.runtime_words_queued = 0
+        self.asic_registers: dict[int, int] = {}
+        self.asic_writes: Counter[int] = Counter()
+        self._asic_call_engine_started = False
+        self._asic_commit_edges = 0
+        self._asic_dsp_register_commits = 0
+        self._v8_armed = False
         self.detector_replies = 0
         self._runtime_mode = False
         self._runtime_ready = False
@@ -123,6 +136,10 @@ class CourierDspBridge:
         if text.startswith("A"):
             if self.daa is not None:
                 self.daa.seize("answer")
+            if self.active:
+                self._v8_armed = True
+                self.core.set_pc(0x2295)
+                self.core.set_v8_answering(True)
             return
         marker = text.find("D")
         if marker < 0:
@@ -164,6 +181,60 @@ class CourierDspBridge:
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
 
+    def _observe_asic_command(self, header: int, data: int) -> None:
+        """Apply the recovered board-command register protocol.
+
+        Registers 0x13..0x1f form the call-engine setup block. The firmware
+        finishes each block by taking register 0x1f from zero to bit 15 set.
+        Treat that edge as commit/start. The supervisor's receive table maps
+        ASIC replies 0x02 and 0x03 to its two coprocessor-ready latches, so a
+        real command engine reports both after accepting the first commit.
+        """
+        if not (0x13 <= header <= 0x1F or 0x7D <= header <= 0x84):
+            return
+        previous = self.asic_registers.get(header, 0)
+        self.asic_registers[header] = data
+        self.asic_writes[header] += 1
+        if header != 0x1F or previous & 0x8000 or not data & 0x8000:
+            return
+        self._asic_commit_edges += 1
+        # 0x13..0x1f are exactly the C52's AR3..BMAR memory-mapped control
+        # register range. The ASIC batches those writes and commits them with
+        # BMAR bit 15, rather than exposing an asynchronous host write in the
+        # middle of a DSP frame.
+        def c52_word(value: int) -> int:
+            # The 80186 publishes low/high bytes on separate ASIC lanes. The
+            # C52 side sees those lanes reversed: without the swap CBSR1 is
+            # 0x3000 and CBER1 0x0c08 (an impossible descending buffer), while
+            # the wired values are the coherent 0x0030..0x080c range.
+            return ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+
+        for register in (0x13, 0x15, 0x16, 0x19, 0x1A, 0x1B):
+            if register in self.asic_registers:
+                self.core.host_write(register, c52_word(self.asic_registers[register]))
+        self.core.host_write(0x1F, c52_word(data))
+        self._asic_dsp_register_commits += 1
+        if not self._v8_armed and self.dial_digits:
+            self._v8_armed = True
+            # The command commit is the real call boundary on main211; it does
+            # not perform the second bootstrap older notes expected.
+            self.core.set_pc(0x2295)
+            self.core.set_dtmf_digits(self.dial_digits)
+            self.core.set_v8_calling(True)
+        elif (
+            not self._v8_armed
+            and self.daa is not None
+            and self.daa.operation == "answer"
+        ):
+            self._v8_armed = True
+            self.core.set_pc(0x2295)
+            self.core.set_v8_answering(True)
+        if self._asic_call_engine_started:
+            return
+        self._asic_call_engine_started = True
+        self._queue_runtime_message(0x0002, 0x0000)
+        self._queue_runtime_message(0x0003, 0x0000)
+
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
 
@@ -185,7 +256,7 @@ class CourierDspBridge:
             and (port - DSP_WINDOW_FIRST) % DSP_WINDOW_STRIDE == 0
         )
 
-    def write(self, port: int, size: int, value: int) -> None:
+    def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
         if port in DSP_RUNTIME_PORTS and size == 1:
             self._runtime_mode = True
             if port == 0x58:
@@ -199,7 +270,13 @@ class CourierDspBridge:
                 if self.active:
                     words = (self._runtime_header, self._runtime_data)
                     self.runtime_words_queued += len(words)
-                    self.runtime_messages.append(f"{words[0]:04x}:{words[1]:04x}")
+                    message = f"{words[0]:04x}:{words[1]:04x}"
+                    self.runtime_messages.append(message)
+                    self.runtime_message_counts[message] += 1
+                    self.runtime_message_first_seen.setdefault(message, self._instructions)
+                    self._observe_asic_command(*words)
+                    if pc is not None:
+                        self.runtime_message_first_pc.setdefault(message, f"{pc:05x}")
                     self._answer_runtime_request(*words)
             return
         if port == 0x1C:
@@ -258,10 +335,10 @@ class CourierDspBridge:
                     self._queue_runtime_message(
                         DAA_IDENTITY_TAG, self.codec.codec.revision
                     )
-                if self.bootstraps >= 2:
-                    # This board's active ISR accepts tags below 0x80. Its
-                    # fallback receive table maps 0x02 and 0x03 to the two
-                    # coprocessor-ready bits required by the call path.
+                if self.bootstraps >= 2 and not self._asic_call_engine_started:
+                    # Compatibility for images that really do redownload at
+                    # the call boundary. Normal main211 calls instead receive
+                    # these ready reports when the 0x1f commit edge is seen.
                     self._queue_runtime_message(0x0002, 0x0000)
                     self._queue_runtime_message(0x0003, 0x0000)
                 self._publish_window()
@@ -450,6 +527,9 @@ class CourierDspBridge:
             mailbox_commands=self.mailbox_commands,
             mailbox_windows=dict(self.mailbox_windows.most_common()),
             runtime_messages=list(self.runtime_messages),
+            runtime_message_counts=dict(self.runtime_message_counts.most_common()),
+            runtime_message_first_seen=dict(self.runtime_message_first_seen),
+            runtime_message_first_pc=dict(self.runtime_message_first_pc),
             runtime_words_queued=self.runtime_words_queued,
             detector_replies=self.detector_replies,
             error=self.error,
@@ -462,6 +542,39 @@ class CourierDspBridge:
             dsp_memory_map=(
                 self.core.memory_map() if hasattr(self.core, "memory_map") else {}
             ),
+            asic={
+                "registers": {
+                    f"{register:02x}": value
+                    for register, value in sorted(self.asic_registers.items())
+                },
+                "writes": {
+                    f"{register:02x}": count
+                    for register, count in sorted(self.asic_writes.items())
+                },
+                "call_engine_started": self._asic_call_engine_started,
+                "v8_armed": self._v8_armed,
+                "commit_edges": self._asic_commit_edges,
+                "dsp_register_commits": self._asic_dsp_register_commits,
+                "dsp_registers": {
+                    f"{register:02x}": ((value & 0xFF) << 8) | (value >> 8)
+                    for register, value in sorted(self.asic_registers.items())
+                    if 0x13 <= register <= 0x1F
+                },
+                "control_82": self.asic_registers.get(0x82, 0),
+                "line_phase": {
+                    0x00: "idle",
+                    0x20: "enabled",
+                    0x60: "start-strobe",
+                    0xA0: "engine-held-enabled",
+                }.get(self.asic_registers.get(0x82, 0) & 0xE0, "unknown"),
+                # Names describe the sequencing recovered from the firmware.
+                # C52 reset is controlled by a separate 0xff56/download path;
+                # this hold belongs to the ASIC's line/call engine.
+                "line_enable": bool(self.asic_registers.get(0x82, 0) & 0x20),
+                "start_strobe": bool(self.asic_registers.get(0x82, 0) & 0x40),
+                "engine_hold": bool(self.asic_registers.get(0x82, 0) & 0x80),
+                "ring_indicate": bool(self.asic_registers.get(0x83, 0) & 1),
+            },
             serial_port=self.core.serial_state(),
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,

@@ -21,7 +21,11 @@ class _Image:
 class _Core:
     def __init__(self) -> None:
         self.queued: list[int] = []
+        self.host_writes: list[tuple[int, int]] = []
         self.dtmf = ""
+        self.v8_calling = False
+        self.v8_answering = False
+        self.pc: int | None = None
 
     def close(self) -> None:
         pass
@@ -35,6 +39,12 @@ class _Core:
     def step(self, _count: int) -> None:
         pass
 
+    def set_pc(self, address: int) -> None:
+        self.pc = address
+
+    def host_write(self, address: int, value: int) -> None:
+        self.host_writes.append((address, value))
+
     def state(self) -> dict[str, int | bool]:
         return {}
 
@@ -46,6 +56,12 @@ class _Core:
 
     def set_dtmf_digits(self, digits: str) -> None:
         self.dtmf = digits
+
+    def set_v8_calling(self, enabled: bool) -> None:
+        self.v8_calling = enabled
+
+    def set_v8_answering(self, enabled: bool) -> None:
+        self.v8_answering = enabled
 
     def line_tx_samples(self, _start: int = 0) -> list[int]:
         return []
@@ -174,6 +190,29 @@ class BridgeTests(unittest.TestCase):
         bridge.float_runtime_bus()
         self.assertEqual(bridge.read(0x1C, 1), 0xFF)
         self.assertEqual(bridge.status().runtime_messages, ["0084:1468"])
+
+    def test_asic_commit_edge_reports_both_coprocessors_ready_once(self) -> None:
+        image = _Image()
+        core = _Core()
+        with patch("courier_emu.bridge.NativeC5x", return_value=core):
+            bridge = CourierDspBridge(image)  # type: ignore[arg-type]
+            self._bootstrap(bridge, image.program)
+            for data in (0x0000, 0x8000, 0x0000, 0x8000):
+                for port, value in (
+                    (0x58, 0x1F),
+                    (0x5A, 0x00),
+                    (0x5C, data & 0xFF),
+                    (0x5E, data >> 8),
+                ):
+                    bridge.write(port, 1, value)
+
+        self.assertEqual(
+            list(bridge._runtime_inbound),
+            [(0x0002, 0x0000), (0x0003, 0x0000)],
+        )
+        self.assertTrue(bridge.status().asic["call_engine_started"])
+        self.assertEqual(bridge.status().asic["commit_edges"], 2)
+        self.assertEqual(core.host_writes, [(0x1F, 0x0080), (0x1F, 0x0080)])
 
     def test_connected_sip_queues_firmware_call_up_event_once(self) -> None:
         image = _Image()

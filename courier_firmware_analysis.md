@@ -1042,6 +1042,253 @@ checks against the running core agree:
 | all 2,274 runtime messages of a run applied as `host_write(header, data)` into C52 data space | no change |
 
 So the resident program has no host-to-datapump command path of any shape.
+
+A differential `AT`/`ATDT123` capture now narrows the board-side protocol much
+further.  The bridge reports a complete histogram plus the first 80186
+instruction and PC for each distinct message.  Plain command mode sends only
+12 words.  Dialling adds a one-time `0082:0060` transition and then repeatedly
+queues this 12-message block:
+
+```
+0082:0020  0082:0000  0015:0000  001f:0000
+0019:020d  0019:020d  0016:0000  0016:0000
+001a:3000  001b:0c08  0013:0001  001f:8000
+```
+
+The apparent send PCs identify two real transmit paths rather than C52 data
+writes.  `0x6ad47..0x6ad5f` emits the single pending word at `[0x02ca]`, while
+`0x6ae81..0x6aec3` walks a circular queue at `[0x02e0..0x030f]` using pointer
+`[0x02dc]`.  Thus the values below `0x80` are board/ASIC register commands;
+treating their headers as C52 data addresses was categorically the wrong
+model.  `0082:0060` is the first originate-mode transition.
+
+The producer is now recovered too.  The generic immediate sender is
+`0x5d76b`; if `[0x02cb]` is free it stores `AX` at `[0x02ca]`, otherwise it
+queues it.  The call at `0x5dc03`, immediately after the five-hit detector wait
+succeeds, enters ASIC routine `0x6ae51`:
+
+```
+6ae51  mov ah,82h
+6ae53  mov al,[1fab]       ; ASIC register-shadow byte
+6ae56  or  al,60h
+6ae58  and al,7bh          ; set 60, clear 84
+6ae5a  call update-shadow
+6ae5f  call send-immediate ; emits 82:60 with the default shadow
+6ae64  mov ah,82h
+6ae66  mov al,[1fab]
+6ae69  and al,3bh          ; clear 40,80,04; leaves 20 initially
+6ae6b  call update-shadow
+```
+
+The later `82:20` and `82:00` messages are therefore successive writes to the
+same ASIC control register, not arbitrary event tags.  The neighbouring init
+routine at `0x6adff` similarly publishes shadow bytes `[0x1faa..0x1fac]` as
+registers `0x7d`, `0x82`, and `0x83`, followed by two `0x84` words.  This pins
+`[0x1fab]` as register 0x82's software shadow and the call-progress routine at
+`0x5dbb0..0x5dc63` as the source of its originate transition.
+
+An `ATA` differential run takes the same `82:60 -> 82:20 -> 82:00` path, so
+these bits select common line-operation phases rather than originate versus
+answer modulation.  The emulator now exposes the shadowed block under
+`dsp_bridge.asic`: register values and write counts, decoded register `0x82`
+phase, and register `0x83` ring-indicate bit.
+
+The read/modify/write masks give the high bits of `0x82` useful individual
+semantics, rather than merely four opaque states:
+
+| bit | observed sequencing | inferred ASIC output |
+|---:|---|---|
+| `0x80` | set in held state `a0`, explicitly cleared before `60` | call-engine hold |
+| `0x40` | set only for `60`, then immediately removed from the shadow | start strobe |
+| `0x20` | present in `a0`, `60`, and `20`; cleared on shutdown | line/datapump enable |
+| `0x04` | explicitly cleared by both transition masks | unknown interlock |
+
+That makes the sequence `a0 -> 60 -> 20 -> 00` read as **engine held while
+enabled -> release hold plus start strobe -> enabled/run -> disabled**.  This
+is the first interpretation that explains every mask operation, the pulse-like
+lifetime of bit 6, and the common originate/answer path.  The emulator reports
+these as `engine_hold`, `start_strobe`, and `line_enable`.
+
+The supervisor code rules out two tempting interpretations.  C52 reset is a
+separate path at `0x69bf1..0x69c84`: it manipulates 80186 peripheral register
+`0xff56`, floats ports `0x1c/0x1e`, waits for both words to read `0xffff`, and
+then enters downloader `0x69cd2..0x69deb`.  Dynamic `ATD` and `ATA` runs execute
+that bootstrap once only; the `0x82` transition does not reset or redownload
+the C52.  Program loading/bank placement is likewise performed by the explicit
+eight-byte downloader using `[0x1fb2]/[0x1fb3]` and ports `0x40..0x4e`; no
+`0x82` shadow value is consulted anywhere in that path.
+
+Consequently `0x82` is not the C52 reset control and there is no code evidence
+that it selects a downloaded program bank.  Its placement after line-detector
+qualification, identical use by `ATD` and `ATA`, and shutdown at `0x5e5e8`
+identify it more narrowly as the ASIC's **line/call engine enable and start
+strobe**.  The initial `0xa0` is the engine's held/initialised state, not the
+C52's reset state.  The code and a feature differential settle an important naming point: there is
+no separate supervisor-side "enter V.92" command.  Two otherwise identical
+`ATDT123` runs, one with the full `hst,fax,terbo,v34,v90` parameter sector and
+one with only `hst`, emit the same call-engine stream value-for-value:
+
+```
+82:60 -> 82:20 -> 82:00
+13:01, 15:00, 1f:00, 19:020d (twice), 16:00 (twice),
+1a:3000, 1b:0c08, 13:01, 1f:8000
+```
+
+The V.90 feature bit changes product reporting and capability policy, while
+V.92 is printed unconditionally by this build; neither changes the ASIC call
+start.  The textual V.92 references elsewhere in the supervisor are reporting,
+configuration, and post-call diagnostics.  None feeds a distinct value into
+`[0x1fab]`, the queue helper, or the C52 downloader.
+
+Therefore what the supervisor code activates is the **generic automatic
+negotiation datapump**, at `0x5dc03 -> 0x6ae51 -> 82:60`.  V.92 must be selected
+later by that datapump from the V.8/V.8bis and training exchange with the far
+end, falling back through V.90/V.34 as appropriate.  There is no V.92-only
+entry point to call from the 80186.  The missing implementation is the ASIC
+consumer of the repeated `0x13/0x15/0x16/0x19/0x1a/0x1b/0x1f` block and the
+resulting DSP-side start/frame state; recovering that generic consumer is what
+will make the existing V.92 code reachable.
+
+### Where the command stream is consumed
+
+This can be bounded completely from the executable code even though the
+consumer's implementation is not present in the XMF.  The 80186 producer ends
+at four byte-wide output latches:
+
+```
+port 58 = command/header low
+port 5a = command/header high
+port 5c = argument low
+port 5e = argument high
+port 1c = valid/acknowledge state
+```
+
+After `OUT 5e,AL`, no 80186 routine dispatches the command locally.  The only
+software on the far side in the image is the C52, and it cannot be the
+consumer:
+
+- its downloaded program never executes an `IN` from these 80186 ports;
+- the eight-byte C52 window is the separate `0x40..0x4e` bootstrap surface;
+- applying every runtime pair as C52 data writes changes no execution state;
+- its only steady external reads are the reserved/frame word corresponding to
+  `0x50` and line ADC `0x54`; and
+- every tested command value at the former is discarded before `TC` is used.
+
+The receive direction proves the same topology.  The 80186 reads replies back
+from `0x58..0x5e`, including DAA identity and detector results that originate
+outside either processor, while bit 1 of port `0x1c` advertises them.  Thus the
+bidirectional queue terminates in the interposed Courier ASIC's hardware
+command engine.  It is not an omitted 80186 routine or a hidden entry in the
+downloaded C52 program.
+
+The code also constrains what that hardware engine does with the call block.
+Commands `0x13..0x1f` repeat while register `0x82.5` enables the engine;
+`0x82.6` starts it, and clearing `0x82.5` stops it.  The same ASIC is demonstrably
+the master of the Si3021 serial link and the source/sink of the C52's framed
+ADC/DAC words.  Therefore the consumer is the ASIC's line-frame/call state
+machine, which translates the queue into DAA transactions and DSP frame/control
+state.  Its gates or microcode are silicon and are absent from all supplied
+firmware files; the XMF contains only the producer and the downstream C52
+payload.
+
+A first behavioral implementation now consumes that block.  It stores
+registers `0x13..0x1f`, recognizes the observed `0x1f:0000 -> 0x1f:8000`
+rising edge as commit, starts the call engine once, and returns tags `0x02` and
+`0x03` because the recovered supervisor receive table maps those to its two
+coprocessor-ready latches.  Repeated commit edges are counted but do not repeat
+the ready reports.  In an 8 M-instruction `ATDT123` run the original firmware
+accepts both replies and changes its callbacks to `50ad,18e3,4cac`, with
+`[0x1cf0]=1`; the C52 still emits only its single startup nonzero sample.
+
+That result validates the guessed **command acceptance/ready** half of the ASIC
+contract while falsifying the idea that ready replies alone activate the
+modulation code.  The remaining guessed half must be DSP-facing frame/control
+state generated on commit; it cannot be replaced by another supervisor tag.
+
+There is a non-accidental DSP-side interpretation of the control block: every
+command number is a C52 memory-mapped control-register address.
+
+| command | C52 register | supplied value |
+|---:|---|---:|
+| `0x13` | `AR3` | `0001` |
+| `0x15` | `AR5` | `0000` |
+| `0x16` | `AR6` | `0000` |
+| `0x19` | `ARCR` | `020d` |
+| `0x1a` | `CBSR1` | `3000` |
+| `0x1b` | `CBER1` | `0c08` |
+| `0x1f` | `BMAR` | `0000 -> 8000` |
+
+The byte lanes need swapping at the ASIC/C52 boundary.  The unswapped pair
+`CBSR1=3000, CBER1=0c08` describes an impossible descending circular buffer;
+the physical C52 values are the coherent `CBSR1=0030, CBER1=080c`.  The whole
+batch therefore becomes `AR3=0100`, `ARCR=0d02`, `CBSR1=0030`, `CBER1=080c`,
+and `BMAR=0080`.  This is strong independent evidence that these are genuine
+C52 register lanes rather than command numbers that happen to overlap them.
+
+The behavioral consumer now batches those values and publishes them to the
+C52 atomically on the wire-level `BMAR=8000` (C52 `0080`) commit edge.  This is materially different
+from the earlier failed experiment that replayed every mailbox pair at
+arbitrary instruction boundaries: the ASIC owns the frame boundary and the
+`BMAR` transition is its commit marker.  A full run accepts 77 commits and
+remains stable, but still emits no carrier.  So this recovers one real-looking
+piece of DSP control state, while showing that the register batch alone is not
+the missing frame event.  The next control surface is the event accompanying
+the atomic register publication—most likely the ASIC's C52 frame/TDM edge or a
+program-memory block move selected by `BMAR`.
+
+There is now a bounded behavioral fallback at that boundary so calls produce a
+real V.8 result while the silicon-only edge is still being identified.  On the
+first accepted commit the ASIC model starts the already-recovered DTMF path and,
+after the final digit/gap, emits V.8 calling indicator at the real C52 DAC
+`OUT` boundary: 1300 Hz, 500 ms on / 500 ms off, at the recovered 9.6 kHz
+cadence.  An 8 M-instruction `ATDT123` capture contains 15,984 nonzero samples
+(previously one); spectral measurement of its post-dial windows has the 1300 Hz
+bin at 4.32 million versus the neighbouring 1200/1400 Hz leakage bins.  This is
+explicitly an ASIC behavioral reconstruction, not a claim that the silent C52
+has entered its internal V.8 routine yet.  It gives the line/link/SIP side the
+correct first V.8 stimulus and a reproducible signal against which to recover
+the answering and DSP-frame transitions.
+
+The computed call-engine entry is now pinned at C52 program `0x2295`.  Forcing
+that PC from the settled service state immediately executes `BLPD *BMAR`, then
+branches through `0xa9a9`, runs a substantial datapump initializer, and returns
+to the 169-instruction service cycle.  It originally stopped at two missing
+core operations; implementing the documented C5x `BLPD BMAR` and `MAC`
+semantics makes the whole path complete.  This is the first recovered
+call-time transition inside the original C52 rather than behavioral line
+synthesis.  The ASIC commit now enters `0x2295` after publishing
+`BMAR=0x0080`; a regression executes 5,000 instructions from that entry and
+requires it to return to stable line-frame output without an unsupported
+opcode.
+
+The answer side is implemented at the same boundary.  `ATA` arms ANSam on the
+already-active ASIC/C52 line frame: a 2100 Hz answer tone with 15 Hz amplitude
+modulation and 450 ms phase reversals.  An 8 M-instruction answer run now has
+39,171 nonzero words out of 56,607 writes instead of the single startup word;
+the spectral regression requires the 2100 Hz bin to exceed both 2000 and 2200
+Hz by 20x.  `dsp_bridge.asic.v8_armed` distinguishes runs where either CI or
+ANSam has been attached from runs that only initialized the call engine.
+
+The bridge reports `call_engine_started`, `commit_edges`,
+`dsp_register_commits`, and the complete latched command register block under
+`dsp_bridge.asic` so each subsequent DSP-side experiment is observable.
+
+The recovered responsibilities now make the ASIC boundary fairly tight:
+
+- arbitrate the 80186 command queue and interrupt/status handshake;
+- bootstrap the C52 through the eight-byte `0x40..0x4e` window;
+- master the Si3021 serial DAA and report its identity/status;
+- frame the 9.6 kHz ADC/DAC stream visible at C52 external I/O;
+- carry line detector and ring-indicate state; and
+- sequence a call through register `0x82` independently of whether the
+  supervisor selected originate or answer.
+
+Dynamic tracing also recovers queue helper `0x6b067` (`MOV [BX],AX` at
+`0x6b083`) and now records both its return address and the outer producer when
+a wrapper is used.  That separates detector polling (`0x6db4c/0x6db5b`), call
+control (`0x6cebc`), and other producers instead of attributing every command
+to the common sender.
+
 What the supervisor's runtime channel *is* remains well defined — 2,274
 two-word messages in a 12 M-instruction run, with a valid/ack handshake on port
 `0x1c` (`in 0x1c` 2,279, `out 0x1c` 4,558), and the `0x40..0x4e` window used
@@ -2087,6 +2334,34 @@ timer reads from the model instead puts its own timer interrupt service routine
 on a path it does not return from. Its writes are still tracked, so a run now
 reports what it programs: compares of 32,256, 40,624, and 65,535 on the three
 timers.
+
+## Older C51 SDL package and V.8 frame path
+
+The DOS `SDL_49.EXE` stores firmware in 16-byte records followed by a checksum,
+a `0x10` marker, and a 24-bit address token. `tools/unpack_sdl.py` removes that
+framing, joins continuation runs, decodes each module's `02 00 00 02` load
+descriptor, and reconstructs a sparse 1 MiB flash image. The C51 resident DSP
+image is loaded at program `0x8000`; call overlay 7 is downloaded to `0xb000`.
+The supervisor selects it with `[0x0d28]=7` and transfers it through ports
+`0x40..0x4e` under command/status port `0x1e`.
+
+Overlay 7's V.8 setup occupies `0xb4c5..0xb55c`, its dispatcher is
+`0xc529..0xc537`, and the state table is `0xc538..0xc5e9`. The indirect branch
+at `0xc537` reads callback word `[0x03c8]`; handlers beginning at `0xc5ea` and
+`0xc5f9` advance it through the table and reach the matched-filter code around
+`0xc9d9`. This path exposed and now has implementations for `MACD`, `SQRA`,
+`SQRS`, `SUB ...,16`, `NORM`, `ZALR`, `ABS`, and `SATH` in the native core.
+
+The older ASIC's line output is external C51 I/O port `0x006a`. Startup clears
+it at program `0x804e`, and the two runtime paths write samples at `0x81ea` and
+`0x8205`; the native sample collector now captures that port. The frame gate is
+`BITT @0x1f` at `0x81f5`, followed by a TC test. It alternates the two TDM
+phases and is consistent with one complete line sample at **9.6 kHz**, the same
+rate used by the later board. Forcing the ready bit can prove transport and
+capture nonzero words, but does not yet produce valid V.8 audio: without the
+C51 mask-ROM interrupt/vector and real ASIC phase word it alternates a control
+word and a held sample. Software `INTR` at `0xcfa6` marks the end of the frame
+work and presently reaches the absent low program-ROM vector.
 
 ## Repro notes
 

@@ -340,7 +340,17 @@ void C5xCore::op_invalid()
 
 void C5xCore::op_abs()
 {
-	fatalerror("TMS320C5x: unimplemented op abs at %08X\n", m_pc-1);
+	if (m_acc < 0) {
+		if (uint32_t(m_acc) == 0x80000000U) {
+			m_st0.ov = 1;
+			m_st1.c = 0;
+			m_acc = m_st0.ovm ? 0x7fffffff : int32_t(0x80000000U);
+		} else {
+			m_acc = -m_acc;
+			m_st1.c = (m_acc == 0) ? 1 : 0;
+		}
+	}
+	CYCLES(1);
 }
 
 void C5xCore::op_adcb()
@@ -634,7 +644,16 @@ void C5xCore::op_neg()
 
 void C5xCore::op_norm()
 {
-	fatalerror("TMS320C5x: unimplemented op norm at %08X\n", m_pc-1);
+	// Normalize one bit per execution. If bits 31 and 30 differ ACC is
+	// already normalized; otherwise shift left and apply the encoded ARU
+	// operation so a repeated NORM can count the shifts in an auxiliary
+	// register.
+	uint32_t acc = uint32_t(m_acc);
+	if (((acc >> 31) & 1) == ((acc >> 30) & 1)) {
+		m_acc = int32_t(acc << 1);
+		GET_ADDRESS();
+	}
+	CYCLES(1);
 }
 
 void C5xCore::op_or_mem()
@@ -745,7 +764,18 @@ void C5xCore::op_samm()
 
 void C5xCore::op_sath()
 {
-	fatalerror("TMS320C5x: unimplemented op sath at %08X\n", m_pc-1);
+	int count = m_treg1 & 0xf;
+	int64_t shifted = int64_t(m_acc) * (int64_t(1) << count);
+	if (shifted > INT32_MAX) {
+		m_st0.ov = 1;
+		m_acc = INT32_MAX;
+	} else if (shifted < INT32_MIN) {
+		m_st0.ov = 1;
+		m_acc = INT32_MIN;
+	} else {
+		m_acc = int32_t(shifted);
+	}
+	CYCLES(1);
 }
 
 void C5xCore::op_satl()
@@ -846,7 +876,10 @@ void C5xCore::op_sub_mem()
 
 void C5xCore::op_sub_s16_mem()
 {
-	fatalerror("TMS320C5x: unimplemented op sub s16 mem at %08X\n", m_pc-1);
+	uint16_t data = DM_READ16(GET_ADDRESS());
+	uint32_t value = uint32_t(data) << 16;
+	m_acc = SUB(uint32_t(m_acc), value, false);
+	CYCLES(1);
 }
 
 void C5xCore::op_sub_simm()
@@ -937,7 +970,9 @@ void C5xCore::op_xorb()
 
 void C5xCore::op_zalr()
 {
-	fatalerror("TMS320C5x: unimplemented op zalr at %08X\n", m_pc-1);
+	// Zero the low accumulator after rounding it into the high word.
+	m_acc = int32_t((uint32_t(m_acc) + 0x00008000U) & 0xffff0000U);
+	CYCLES(1);
 }
 
 void C5xCore::op_zap()
@@ -1409,7 +1444,18 @@ void C5xCore::op_bldp()
 
 void C5xCore::op_blpd_bmar()
 {
-	fatalerror("TMS320C5x: unimplemented op bpld bmar at %08X\n", m_pc-1);
+	uint16_t pfc = m_bmar;
+
+	while (m_rptc > -1)
+	{
+		uint16_t ea = GET_ADDRESS();
+		uint16_t data = PM_READ16(pfc);
+		DM_WRITE16(ea, data);
+		pfc++;
+		CYCLES(2);
+
+		m_rptc--;
+	};
 }
 
 void C5xCore::op_blpd_imm()
@@ -1688,12 +1734,26 @@ void C5xCore::op_lts()
 
 void C5xCore::op_mac()
 {
-	fatalerror("TMS320C5x: unimplemented op mac at %08X\n", m_pc-1);
+	uint16_t pma = ROPCODE();
+	uint16_t ea = GET_ADDRESS();
+	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_preg = int32_t(int16_t(PM_READ16(pma))) * int32_t(int16_t(DM_READ16(ea)));
+	CYCLES(2);
 }
 
 void C5xCore::op_macd()
 {
-	fatalerror("TMS320C5x: unimplemented op macd at %08X\n", m_pc-1);
+	uint16_t pma = ROPCODE();
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea);
+	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_preg = int32_t(int16_t(PM_READ16(pma))) * int32_t(int16_t(data));
+	// MACD builds a delay line while doing the same pipelined multiply and
+	// accumulate as MAC. The data operand is copied to the next higher data
+	// address; address-register modification, if any, has already happened in
+	// GET_ADDRESS and does not change the copy destination.
+	DM_WRITE16(uint16_t(ea + 1), data);
+	CYCLES(2);
 }
 
 void C5xCore::op_madd()
@@ -1791,12 +1851,16 @@ void C5xCore::op_spm()
 
 void C5xCore::op_sqra()
 {
-	fatalerror("TMS320C5x: unimplemented op sqra at %08X\n", m_pc-1);
+	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_preg = int32_t(int16_t(m_treg0)) * int32_t(int16_t(m_treg0));
+	CYCLES(1);
 }
 
 void C5xCore::op_sqrs()
 {
-	fatalerror("TMS320C5x: unimplemented op sqrs at %08X\n", m_pc-1);
+	m_acc = SUB(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_preg = int32_t(int16_t(m_treg0)) * int32_t(int16_t(m_treg0));
+	CYCLES(1);
 }
 
 void C5xCore::op_zpr()

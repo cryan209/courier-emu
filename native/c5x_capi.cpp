@@ -117,6 +117,16 @@ void courier_c5x_set_dtmf_digits(void *handle, const char *digits, std::size_t c
     if (handle && digits) static_cast<C5xCore *>(handle)->set_dtmf_digits(digits, count);
 }
 
+void courier_c5x_set_v8_calling(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_v8_calling(enabled != 0);
+}
+
+void courier_c5x_set_v8_answering(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_v8_answering(enabled != 0);
+}
+
 uint16_t courier_c5x_get_io(void *handle, uint16_t port)
 {
     return handle ? static_cast<C5xCore *>(handle)->io(port) : 0xffff;
@@ -135,6 +145,11 @@ void courier_c5x_set_data(void *handle, uint16_t address, uint16_t value)
 void courier_c5x_interrupt(void *handle, unsigned irq)
 {
     if (handle) static_cast<C5xCore *>(handle)->interrupt(irq);
+}
+
+void courier_c5x_set_pc(void *handle, uint16_t address)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_pc(address);
 }
 
 void courier_c5x_get_state(void *handle, uint64_t *values, std::size_t count)

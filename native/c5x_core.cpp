@@ -71,6 +71,7 @@ void C5xCore::reset()
     m_line_tx_last_pc = 0;
     m_dtmf_digits.clear();
     m_dtmf_frame = 0;
+    m_v8_mode = V8Mode::Off;
     m_idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
@@ -131,6 +132,14 @@ void C5xCore::set_dtmf_digits(const char *digits, std::size_t count)
 {
     m_dtmf_digits.assign(digits, count);
     m_dtmf_frame = 0;
+}
+void C5xCore::set_v8_calling(bool enabled)
+{
+    m_v8_mode = enabled ? V8Mode::Calling : V8Mode::Off;
+}
+void C5xCore::set_v8_answering(bool enabled)
+{
+    m_v8_mode = enabled ? V8Mode::Answering : V8Mode::Off;
 }
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
@@ -246,11 +255,14 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
-    if (port == 0xb2e5 && !m_dtmf_digits.empty()) value = dtmf_sample();
+    if (port == 0xb2e5 && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
+        value = dtmf_sample();
     m_io[port] = value;
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
-    // The complementary ASIC line-DAC sink is written once per service frame.
-    if (port == 0xb2e5) {
+    // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
+    // resident image uses external port 006a: startup clears it at 804e and
+    // the two per-frame output paths write samples at 81ea and 8205.
+    if (port == 0xb2e5 || port == 0x006a) {
         m_line_tx.push_back(value);
         if (value) ++m_line_tx_nonzero;
         m_line_tx_last_pc = uint16_t(m_pc - 1);
@@ -268,7 +280,25 @@ uint16_t C5xCore::dtmf_sample()
     frame -= lead;
     std::size_t index = std::size_t(frame / (tone + gap));
     uint64_t within = frame % (tone + gap);
-    if (index >= m_dtmf_digits.size() || within >= tone) return 0;
+    if (index >= m_dtmf_digits.size()) {
+        if (m_v8_mode == V8Mode::Off) return 0;
+        uint64_t v8_frame = frame - m_dtmf_digits.size() * (tone + gap);
+        constexpr double v8_pi = 3.14159265358979323846;
+        double phase = double(v8_frame) / double(sample_rate);
+        if (m_v8_mode == V8Mode::Calling) {
+            // V.8 calling indicator: 1300 Hz, 500 ms on / 500 ms off.
+            if (v8_frame % sample_rate >= sample_rate / 2) return 0;
+            return uint16_t(int16_t(std::lround(
+                9000.0 * std::sin(2.0 * v8_pi * 1300.0 * phase))));
+        }
+        // V.8 ANSam approximation: 2100 Hz answer tone, 15 Hz amplitude
+        // modulation, and the standard 450 ms phase reversals.
+        double reversal = ((v8_frame / 4320) & 1) ? -1.0 : 1.0;
+        double envelope = 0.8 + 0.2 * std::sin(2.0 * v8_pi * 15.0 * phase);
+        return uint16_t(int16_t(std::lround(
+            9000.0 * envelope * reversal * std::sin(2.0 * v8_pi * 2100.0 * phase))));
+    }
+    if (within >= tone) return 0;
 
     int low = 0, high = 0;
     switch (m_dtmf_digits[index]) {

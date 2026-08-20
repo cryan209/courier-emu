@@ -101,6 +101,8 @@ class RunResult:
     milestones: list[str] = field(default_factory=list)
     io_events: list[IoEvent] = field(default_factory=list)
     mmio_events: list[MmioEvent] = field(default_factory=list)
+    dsp_queue_writes: list[MmioEvent] = field(default_factory=list)
+    dsp_queue_write_counts: dict[str, int] = field(default_factory=dict)
     io_event_count: int = 0
     mmio_event_count: int = 0
     io_summary: dict[str, int] = field(default_factory=dict)
@@ -195,6 +197,8 @@ class CourierMachine:
         self.fast_delays = fast_delays
         self.io_events: list[IoEvent] = []
         self.mmio_events: list[MmioEvent] = []
+        self.dsp_queue_writes: list[MmioEvent] = []
+        self.dsp_queue_write_counts: Counter[str] = Counter()
         self.io_counts: Counter[tuple[str, int, int]] = Counter()
         self.mmio_counts: Counter[tuple[str, int, int]] = Counter()
         self.serial = bytearray()
@@ -692,9 +696,10 @@ class CourierMachine:
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
                 _uc.mem_write(0xFF46, (value | 0x20).to_bytes(2, "little"))
                 self.accelerated_delays += 1
-            # The line-state transition resets the coprocessor interface and
-            # waits here until both status words float to all ones. The next
-            # step is the second C52 program download for the call datapump.
+            # The coprocessor bootstrap resets its transfer interface and
+            # waits here until both status words float to all ones. Dynamic
+            # ATD/ATA traces reach this during startup only: calls manipulate
+            # ASIC register 0x82 but do not perform a second C52 download.
             if address == 0x69C61 and self.dsp_bridge is not None:
                 self.dsp_bridge.float_runtime_bus()
             # Firmware delay helpers either burn CX or wait for the timer ISR
@@ -976,7 +981,7 @@ class CourierMachine:
                 # memory, so the same model has to see both.
                 self.timers.write(port, size, value, self.instructions)
             if self.dsp_bridge is not None:
-                self.dsp_bridge.write(port, size, value)
+                self.dsp_bridge.write(port, size, value, pc)
             if port in self.uart_ports:
                 self._capture_serial(value)
             if (
@@ -1091,12 +1096,62 @@ class CourierMachine:
             if len(self.mmio_events) < self.max_io_events:
                 self.mmio_events.append(MmioEvent("write", address, size, value, current_pc()))
 
+        def on_dsp_queue_write(
+            _uc: Any, _access: int, address: int, size: int, value: int, _data: Any
+        ) -> None:
+            # The board-command producer writes a pending word at 0x02ca or
+            # entries in the 24-word ring at 0x02e0..0x030f. Keep this trace
+            # separate from peripheral MMIO so the producer PCs survive long
+            # runs whose ordinary I/O trace has already filled.
+            pc = current_pc()
+            source = ""
+            if pc in (0x5D79E, 0x6B083):
+                # These are the stores inside the pending-word and ring-queue
+                # helpers. Their saved near return addresses identify the
+                # actual command producers.
+                sp = _uc.reg_read(UC_X86_REG_SP)
+                ss = _uc.reg_read(UC_X86_REG_SS)
+                stack_skip = 4 if pc == 0x5D79E else 6
+                return_offset = int.from_bytes(
+                    _uc.mem_read(((ss << 4) + sp + stack_skip) & 0xFFFFF, 2), "little"
+                )
+                cs = _uc.reg_read(UC_X86_REG_CS)
+                caller = ((cs << 4) + return_offset) & 0xFFFFF
+                source = f" caller={caller:05x}"
+                if caller in (0x5D76A, 0x6B066):
+                    outer_skip = stack_skip + 2
+                    outer_offset = int.from_bytes(
+                        _uc.mem_read(((ss << 4) + sp + outer_skip) & 0xFFFFF, 2),
+                        "little",
+                    )
+                    outer_segment = cs
+                    if caller == 0x5D76A:
+                        outer_segment = int.from_bytes(
+                            _uc.mem_read(
+                                ((ss << 4) + sp + outer_skip + 2) & 0xFFFFF, 2
+                            ),
+                            "little",
+                        )
+                    source += (
+                        f" producer={((outer_segment << 4) + outer_offset) & 0xFFFFF:05x}"
+                    )
+            self.dsp_queue_write_counts[
+                f"pc={pc:05x}{source} address={address:04x} size={size} "
+                f"value={value:0{size * 2}x}"
+            ] += 1
+            self.dsp_queue_writes.append(
+                MmioEvent("write", address, size, value, pc)
+            )
+            if len(self.dsp_queue_writes) > self.max_io_events:
+                del self.dsp_queue_writes[0]
+
         uc.hook_add(UC_HOOK_CODE, on_code)
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
         uc.hook_add(UC_HOOK_INTR, on_interrupt)
         uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, 0xFF00, 0xFFFF)
+        uc.hook_add(UC_HOOK_MEM_WRITE, on_dsp_queue_write, None, 0x02CA, 0x030F)
 
         status = "instruction-limit"
         error: str | None = None
@@ -1226,6 +1281,8 @@ class CourierMachine:
             milestones=self.milestones,
             io_events=self.io_events,
             mmio_events=self.mmio_events,
+            dsp_queue_writes=self.dsp_queue_writes,
+            dsp_queue_write_counts=dict(self.dsp_queue_write_counts.most_common()),
             io_event_count=sum(self.io_counts.values()),
             mmio_event_count=sum(self.mmio_counts.values()),
             io_summary=self._summarize(self.io_counts),
