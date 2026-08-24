@@ -1287,7 +1287,15 @@ void C5xCore::op_ccd()
 
 void C5xCore::op_intr()
 {
-	fatalerror("TMS320C5x: unimplemented op intr at %08X\n", m_pc-1);
+	// INTR K is the software form of an interrupt acknowledge. The low five
+	// opcode bits select one of the 32 two-word vectors in the page selected
+	// by PMST.IPTR; the fetch has already advanced PC to the return address.
+	PUSH_STACK(m_pc);
+	m_st0.intm = 1;
+	save_interrupt_context();
+	CHANGE_PC(uint16_t((m_pmst.iptr << 11) | ((m_op & 0x1f) << 1)));
+	m_idle = false;
+	CYCLES(4);
 }
 
 void C5xCore::op_nmi()
@@ -1338,7 +1346,13 @@ void C5xCore::op_rete()
 
 void C5xCore::op_reti()
 {
-	fatalerror("TMS320C5x: unimplemented op reti at %08X\n", m_pc-1);
+	uint16_t pc = POP_STACK();
+	CHANGE_PC(pc);
+	restore_interrupt_context();
+	// Unlike RETE, RETI leaves interrupts globally disabled. INTM is not a
+	// context-shadowed bit, so force the state that the interrupt established.
+	m_st0.intm = 1;
+	CYCLES(4);
 }
 
 void C5xCore::op_trap()
@@ -1598,7 +1612,10 @@ void C5xCore::op_apl_imm()
 
 void C5xCore::op_cpl_dbmr()
 {
-	fatalerror("TMS320C5x: unimplemented op cpl dbmr at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea);
+	m_st1.tc = (data == m_dbmr) ? 1 : 0;
+	CYCLES(1);
 }
 
 void C5xCore::op_cpl_imm()

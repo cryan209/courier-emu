@@ -1,0 +1,33 @@
+******   U.S. Robotics Courier V.Everything V.92 update  ******
+
+**************************************
+*****   Manual Firmware update   *****
+*****  (All Operating Systems)  *****
+**************************************
+
+To send the new code to your modem, all you need is a terminal program that can send files
+using the XMODEM protocol. 
+
+Start your terminal program. Adjust the settings, if necessary, so you can send AT to your
+modem and get an OK response.
+Enter ATXMODEM. The modem should respond as follows:
+
+atxmodem
+Firmware Update
+---------------
+Options:
+(1) Read firmware
+(2) Write firmware
+ESCape Exits
+>
+
+Select "2" to begin updating the code. The modem will respond with:
+
+Ready to receive firmware update
+
+
+Send the "xmf" file to your modem using either the XMODEM-Checksum or XMODEM-CRC protocol. 
+After the transfer is complete, you will see a *TRANSFER SUCCESSFUL* message. 
+Press ESC. Modem will automatically reset. Firmware update is complete.
+
+

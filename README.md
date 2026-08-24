@@ -882,13 +882,13 @@ a NO CARRIER  frames=354 peer_off_hook=True
 b NO CARRIER  frames=354 peer_off_hook=True
 ```
 
-It gets no further, and the reason is the one the SIP section describes rather
-than anything about the link. Over the same run each C52 wrote 271,869 line
-samples and **every one of them was zero**, so neither side ever transmits a
-carrier for the other to hear. What has changed is where the search for the
-missing command goes next: the read at C52 program `0x8c1f` that earlier notes
-called the datapump's command poll is not one — see "The window word 0x50 is
-not the datapump's command port" below.
+It gets no further, but the original all-zero-DAC diagnosis is obsolete. The
+call overlay now loads at the ASIC service boundary, keeps IRQ 7 active, and
+produces role-dependent candidate TDM output while consuming peer words. The
+remaining issue is framing the overlay's `0xfffe/0xfffd` slots (and its native
+`TRCV/TDXR` activity) into the physical codec stream correctly enough for the
+caller to qualify the answer signal. See `courier_firmware_analysis.md` for the
+current slot trace.
 
 ### Pacing the supervisor's countdown chain
 

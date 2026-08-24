@@ -115,7 +115,7 @@ class CourierDaa:
         """
         if not self.off_hook or not self.line_connected:
             return False
-        if self.operation == "answer":
+        if self.operation in ("answer", "dialing"):
             return True
         return self.dial_tone_present
 

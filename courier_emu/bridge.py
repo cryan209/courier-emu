@@ -16,6 +16,18 @@ DSP_COMMAND_PORT = 0x1E
 DSP_WINDOW_FIRST = 0x40
 DSP_WINDOW_LAST = 0x4E
 DSP_WINDOW_STRIDE = 2
+# The downloaded low bank contains the C52 TDM transmit ISR at 0x0228. Its
+# branch vector itself is in unavailable customer mask ROM; match the ISR's
+# opening words before supplying that one recovered vector.
+C52_TDM_IRQ = 7
+C52_TDM_ISR = 0x0228
+C52_TDM_ISR_SIGNATURE = bytes.fromhex("ffbd5208b0bf030090bf")
+# Call overlay 7 is stored at b9c0 with branches already linked for c418. The
+# ASIC publishes that bank over c418..ce6f when it starts the datapump.
+C52_CALL_OVERLAY_SOURCE = 0xB9C0
+C52_CALL_OVERLAY_DESTINATION = 0xC418
+C52_CALL_OVERLAY_WORDS = C52_CALL_OVERLAY_DESTINATION - C52_CALL_OVERLAY_SOURCE
+C52_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e325c44d6988e325c4")
 DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
 
 # The supervisor's receive table stores this tag's data word at [0x287], which
@@ -82,6 +94,12 @@ class CourierDspBridge:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
         self.core = NativeC5x(image)
+        self._configure_frame_interrupt()
+        self._call_overlay = self._find_call_overlay()
+        self._call_overlay_active = False
+        self._call_resume_pending = False
+        self._call_resume_state: dict[str, int | bool] | None = None
+        self._dial_overlay_tx_target: int | None = None
         self.batch = batch
         self.window = bytearray(b"\xff" * 8)
         self.bootstrap = bytearray()
@@ -115,6 +133,7 @@ class CourierDspBridge:
         self._x86_ticks = 0
         self.rx_samples = list(rx_samples or [])
         self._rx_samples_queued = False
+        self._rx_samples_codec_queued = False
         self.dial_digits = ""
         self.daa = daa
         self.sip = sip
@@ -131,6 +150,104 @@ class CourierDspBridge:
         self._sip_rx_rate = RateConverter(8_000, 9_600)
         self._sip_rx_samples: deque[int] = deque()
 
+    def _find_call_overlay(self) -> bytes | None:
+        for origin, segment in self.image.dsp_program_segments():
+            first = (C52_CALL_OVERLAY_SOURCE - origin) * 2
+            size = C52_CALL_OVERLAY_WORDS * 2
+            if first < 0 or first + size > len(segment):
+                continue
+            overlay = segment[first : first + size]
+            if overlay.startswith(C52_CALL_OVERLAY_SIGNATURE):
+                return overlay
+        return None
+
+    def _activate_call_overlay(self, selector: int) -> None:
+        if self._call_overlay_active or self._call_overlay is None:
+            return
+        if not hasattr(self.core, "load_program"):
+            return
+        if hasattr(self.core, "schedule_call_overlay"):
+            self.core.schedule_call_overlay(
+                self._call_overlay, C52_CALL_OVERLAY_DESTINATION,
+                self._call_register_values(), selector,
+            )
+        else:
+            self.core.load_program(self._call_overlay, C52_CALL_OVERLAY_DESTINATION)
+            # The download window and running TDM latches share these pins.
+            for port in range(0x50, 0x60):
+                self.core.set_io(port, 0)
+            if hasattr(self.core, "set_call_tdm_active"):
+                self.core.set_call_tdm_active(True)
+        self._call_overlay_active = True
+        # main211 enters the call overlay after its only DSP bootstrap.  A
+        # pre-recorded line therefore cannot rely on the bootstrap path to
+        # publish its samples to the ASIC codec queue.
+        if (
+            self.rx_samples
+            and hasattr(self.core, "queue_codec_rx")
+            and not self._rx_samples_codec_queued
+        ):
+            self.core.queue_codec_rx(self.rx_samples)
+            self._rx_samples_codec_queued = True
+
+    @staticmethod
+    def _c52_word(value: int) -> int:
+        return ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
+
+    def _call_register_values(self) -> list[int]:
+        defaults = {
+            0x13: 0x0100,
+            0x15: 0x0000,
+            0x16: 0x0000,
+            0x19: 0x0D02,
+            0x1A: 0x0030,
+            0x1B: 0x080C,
+            0x1F: 0x0080,
+        }
+        return [
+            self._c52_word(self.asic_registers[register])
+            if register in self.asic_registers
+            else default
+            for register, default in defaults.items()
+        ]
+
+    def _publish_call_registers(self) -> None:
+        for register, value in zip(
+            (0x13, 0x15, 0x16, 0x19, 0x1A, 0x1B, 0x1F),
+            self._call_register_values(),
+            strict=True,
+        ):
+            self.core.host_write(register, value)
+
+    def _schedule_call_entry(self) -> None:
+        if hasattr(self.core, "schedule_line_frame_entry"):
+            self.core.schedule_line_frame_entry(0x2295)
+        else:
+            self.core.set_pc(0x2295)
+
+    def _resume_armed_call(self) -> None:
+        if not self._v8_armed:
+            return
+        self._call_resume_state = self.core.state()
+        answering = self.daa is not None and self.daa.operation == "answer"
+        selector = 0x0000 if answering else 0x0002
+        self._activate_call_overlay(selector)
+        if not hasattr(self.core, "schedule_call_overlay"):
+            self._publish_call_registers()
+            if hasattr(self.core, "set_data"):
+                self.core.set_data(0x006F, selector)
+        self._schedule_call_entry()
+        self._call_resume_pending = False
+
+    def _configure_frame_interrupt(self) -> None:
+        if (
+            hasattr(self.core, "configure_line_frame_interrupt")
+            and self.expected_bootstrap[
+                C52_TDM_ISR * 2 : C52_TDM_ISR * 2 + len(C52_TDM_ISR_SIGNATURE)
+            ] == C52_TDM_ISR_SIGNATURE
+        ):
+            self.core.configure_line_frame_interrupt(C52_TDM_IRQ, C52_TDM_ISR)
+
     def arm_dial_tones(self, command: bytes) -> None:
         text = command.decode("ascii", "ignore").upper()
         if text.startswith("A"):
@@ -138,8 +255,7 @@ class CourierDspBridge:
                 self.daa.seize("answer")
             if self.active:
                 self._v8_armed = True
-                self.core.set_pc(0x2295)
-                self.core.set_v8_answering(True)
+                self._call_resume_pending = True
             return
         marker = text.find("D")
         if marker < 0:
@@ -160,8 +276,12 @@ class CourierDspBridge:
     def begin_dialing(self) -> None:
         if self.daa is not None:
             self.daa.begin_dialing()
-        if self.active and self.dial_digits:
+        if self.active and self.dial_digits and not self._v8_armed:
             self.core.set_dtmf_digits(self.dial_digits)
+            written = int(self.core.serial_state().get("line_tx_writes", 0))
+            # 100 ms lead, then 100 ms tone + 50 ms gap per digit. Enter the
+            # datapump only after the ASIC dialer relinquishes the shared DAC.
+            self._dial_overlay_tx_target = written + 960 + 1_440 * len(self.dial_digits) + 1
         if self.sip is not None and self.dial_digits:
             self.sip.start_call(self.dial_digits)
 
@@ -198,37 +318,23 @@ class CourierDspBridge:
         if header != 0x1F or previous & 0x8000 or not data & 0x8000:
             return
         self._asic_commit_edges += 1
-        # 0x13..0x1f are exactly the C52's AR3..BMAR memory-mapped control
-        # register range. The ASIC batches those writes and commits them with
-        # BMAR bit 15, rather than exposing an asynchronous host write in the
-        # middle of a DSP frame.
-        def c52_word(value: int) -> int:
-            # The 80186 publishes low/high bytes on separate ASIC lanes. The
-            # C52 side sees those lanes reversed: without the swap CBSR1 is
-            # 0x3000 and CBER1 0x0c08 (an impossible descending buffer), while
-            # the wired values are the coherent 0x0030..0x080c range.
-            return ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
-
-        for register in (0x13, 0x15, 0x16, 0x19, 0x1A, 0x1B):
-            if register in self.asic_registers:
-                self.core.host_write(register, c52_word(self.asic_registers[register]))
-        self.core.host_write(0x1F, c52_word(data))
+        # These are C52 register lanes, but publishing them asynchronously
+        # corrupts a running datapump. The deferred overlay commit snapshots
+        # the complete block at the recovered ASIC service slot below.
         self._asic_dsp_register_commits += 1
         if not self._v8_armed and self.dial_digits:
             self._v8_armed = True
             # The command commit is the real call boundary on main211; it does
             # not perform the second bootstrap older notes expected.
-            self.core.set_pc(0x2295)
+            self._call_resume_pending = True
             self.core.set_dtmf_digits(self.dial_digits)
-            self.core.set_v8_calling(True)
         elif (
             not self._v8_armed
             and self.daa is not None
             and self.daa.operation == "answer"
         ):
             self._v8_armed = True
-            self.core.set_pc(0x2295)
-            self.core.set_v8_answering(True)
+            self._call_resume_pending = True
         if self._asic_call_engine_started:
             return
         self._asic_call_engine_started = True
@@ -248,6 +354,37 @@ class CourierDspBridge:
         level = DETECTOR_PRESENT_LEVEL if self.daa.detector_present else 0
         self._queue_runtime_message(DETECTOR_TAG, level)
         self.detector_replies += 1
+
+    def _maybe_queue_connected_event(self) -> None:
+        """Publish the datapump-up event after a line has trained.
+
+        SIP already supplies this event from its negotiated ``connected``
+        state.  A two-wire line has no separate signaling plane, so use the
+        recovered DSP evidence instead: both ends are off hook, the call
+        overlay is active, and the codec has exchanged at least half a second
+        of samples.  This keeps the supervisor's normal online callback in
+        charge of emitting CONNECT and switching the DTE to data mode.
+        """
+        if self._connected_event_queued or self.line is None:
+            return
+        if (
+            not self._call_overlay_active
+            or self.daa is None
+            or not self.daa.off_hook
+            or not self.line.peer_off_hook
+        ):
+            return
+        serial = self.core.serial_state()
+        if min(serial.get("codec_rx_consumed", 0), self.line.frames * 960) < 4_800:
+            return
+        # The supervisor floats the runtime window during the call-time DSP
+        # reload.  A real ASIC reasserts its ready latch when it publishes the
+        # datapump-up event; make that edge visible before queuing the reply.
+        self._runtime_mode = True
+        self._runtime_ready = True
+        self._queue_runtime_message(0x0009, 0x0000)
+        self._queue_runtime_message(0x004D, 0x0001)
+        self._connected_event_queued = True
 
     @staticmethod
     def handles(port: int) -> bool:
@@ -306,6 +443,9 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            self._configure_frame_interrupt()
+            self._call_overlay_active = False
+            self._call_resume_pending = self._v8_armed
             self.bootstrap = bytearray(self.window)
             self.bootstrap_match = None
             self.active = False
@@ -342,10 +482,17 @@ class CourierDspBridge:
                     self._queue_runtime_message(0x0002, 0x0000)
                     self._queue_runtime_message(0x0003, 0x0000)
                 self._publish_window()
+                # A line operation can request the datapump before the
+                # supervisor performs its call-time redownload. Let the new
+                # C52 execute its startup before reapplying that call.
+                self._call_resume_pending = self._v8_armed
                 # Feed a supplied ASIC line recording only after the
                 # supervisor's second bootstrap, the dial/answer boundary.
                 if self.bootstraps >= 2 and self.rx_samples and not self._rx_samples_queued:
                     self.core.queue_serial_rx(self.rx_samples)
+                    if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
+                        self.core.queue_codec_rx(self.rx_samples)
+                        self._rx_samples_codec_queued = True
                     self._rx_samples_queued = True
                 if (
                     self.bootstraps >= 2
@@ -389,6 +536,8 @@ class CourierDspBridge:
         return (word >> (8 * (lane & 1))) & 0xFF
 
     def _publish_window(self) -> None:
+        if self._call_overlay_active:
+            return
         for index in range(0, len(self.window), 2):
             word = self.window[index] | (self.window[index + 1] << 8)
             self.core.set_io(0x50 + index // 2, word)
@@ -432,15 +581,24 @@ class CourierDspBridge:
                 )
             if self.line is not None:
                 self._service_line()
+                self._maybe_queue_connected_event()
             if (
                 self.daa is not None
                 and self.daa.off_hook
                 and not self.rx_samples
             ):
                 serial = self.core.serial_state()
-                queued = serial.get("rx_queued", 0) - serial.get("rx_consumed", 0)
+                if self._call_overlay_active:
+                    queued = serial.get("codec_rx_queued", 0) - serial.get(
+                        "codec_rx_consumed", 0
+                    )
+                else:
+                    queued = serial.get("rx_queued", 0) - serial.get("rx_consumed", 0)
                 if queued < DAA_FRAME_SAMPLES:
-                    count = DAA_FRAME_SAMPLES * 2
+                    count = (
+                        DAA_FRAME_SAMPLES if self.line is not None
+                        else DAA_FRAME_SAMPLES * 2
+                    )
                     samples = self.daa.render(count)
                     if self._sip_rx_samples:
                         available = min(count, len(self._sip_rx_samples))
@@ -450,15 +608,25 @@ class CourierDspBridge:
                         available = min(count, len(self._line_rx_samples))
                         for index in range(available):
                             samples[index] = self._line_rx_samples.popleft()
-                    self.core.queue_serial_rx(samples)
+                    if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
+                        self.core.queue_codec_rx(samples)
+                    else:
+                        self.core.queue_serial_rx(samples)
                 if (
-                    self.bootstraps >= 2
-                    and self.dial_digits
+                    self.dial_digits
                     and self.daa.operation == "originate"
                     and self.daa.dial_tone_qualified
                 ):
                     self.begin_dialing()
+            if self._call_resume_pending:
+                self._resume_armed_call()
             self.core.step(dsp_steps)
+            if self._dial_overlay_tx_target is not None:
+                written = int(self.core.serial_state().get("line_tx_writes", 0))
+                if written >= self._dial_overlay_tx_target:
+                    self._dial_overlay_tx_target = None
+                    self._v8_armed = True
+                    self._call_resume_pending = True
             if self.sip is not None:
                 samples = self.core.line_tx_samples(self._sip_tx_index)
                 self._sip_tx_index += len(samples)
@@ -499,8 +667,13 @@ class CourierDspBridge:
         self._line_instructions += self.batch
         if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
             return
-        self._line_instructions = 0
         off_hook = self.daa is not None and self.daa.off_hook
+        available = len(self.core.line_tx_samples(self._line_tx_index))
+        if off_hook and available < LINE_FRAME_SAMPLES:
+            # Once seized, pace the two-wire line from the codec stream rather
+            # than the much faster calibrated supervisor instruction clock.
+            return
+        self._line_instructions = 0
         samples = self.core.line_tx_samples(self._line_tx_index)[:LINE_FRAME_SAMPLES]
         self._line_tx_index += len(samples)
         self.line.exchange(
@@ -513,9 +686,15 @@ class CourierDspBridge:
         )
         self._line_rx_samples.extend(self.line.receive_audio())
         if self.daa is not None:
-            # The far end going off hook is the whole of call setup on a
-            # dedicated line: there is loop current or there is not.
-            self.daa.line_state = "quiet" if self.line.peer_off_hook else "disconnected"
+            # The socket models the small exchange between the two DAAs. An
+            # originating seizure hears dial tone until the firmware starts
+            # dialing; after that, loop current follows the far-end hook.
+            if self.daa.operation == "originate":
+                self.daa.line_state = "dial-tone"
+            else:
+                self.daa.line_state = (
+                    "quiet" if self.line.peer_off_hook else "disconnected"
+                )
 
     def status(self) -> BridgeStatus:
         return BridgeStatus(
@@ -555,6 +734,10 @@ class CourierDspBridge:
                 "v8_armed": self._v8_armed,
                 "commit_edges": self._asic_commit_edges,
                 "dsp_register_commits": self._asic_dsp_register_commits,
+                "call_overlay_available": self._call_overlay is not None,
+                "call_overlay_active": self._call_overlay_active,
+                "call_resume_state": self._call_resume_state,
+                "connected_event_queued": self._connected_event_queued,
                 "dsp_registers": {
                     f"{register:02x}": ((value & 0xFF) << 8) | (value >> 8)
                     for register, value in sorted(self.asic_registers.items())

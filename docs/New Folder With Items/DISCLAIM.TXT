@@ -1,0 +1,12 @@
+
+   ********************** DISCLAIMER ***************************
+
+This SDL file is intented to be loaded on ALL international approved
+versions of the modem COURIER V.34 (V.Everything), thus excluding the
+US/Canada version.
+
+Due to the addition of the V.34+ modulation (33600bps), the APPROVAL of
+your MODEM MIGHT BE VOID OR CANCELLED depending upon the regulations of
+your local authorities.
+
+   *************************************************************

@@ -1,0 +1,288 @@
+
+    Образцы характеристик модемов. Убедитесь что с этими образцами программа
+    работает, корректно, набрав в командной строке:
+
+    RSVStat.exe specimen.txt
+
+    Всего здесь 3 статистики разных модемов:
+    1. Sportster 33600
+    2. Sportster 56K
+    3. Courier
+    Для правильной работы программы требуется чтобы ваш модем поддерживал
+  команды ATI4I6I11Y11 и выдавал что-то типа нижеследующего:
+
+U.S. Robotics Sportster Voice 33600 Fax Settings...
+
+   B0  E1  F1  M2  Q0  V1  X4  Y0
+   BAUD=115200  PARITY=N  WORDLEN=8
+   DIAL=PULSE  ON HOOK
+
+   &A3  &B1  &C1  &D2  &G0  &H1  &I1  &K1
+   &M4  &N0  &P1  &R2  &S0  &T5  &U0  &Y1
+
+   S00=000  S01=000  S02=043  S03=013  S04=010  S05=008  S06=002
+   S07=060  S08=002  S09=006  S10=014  S11=070  S12=050  S13=000
+   S15=000  S16=000  S18=000  S19=000  S21=010  S22=017  S23=019
+   S25=005  S27=000  S28=008  S29=020  S30=000  S31=128  S32=002
+   S33=032  S34=000  S35=000  S36=014  S38=000  S39=014  S40=007
+   S41=004
+
+   LAST DIALED #: P547582
+
+U.S. Robotics Sportster Voice 33600 Fax Link Diagnostics...
+
+Chars sent                  934      Chars Received           308789
+Chars lost                    0
+Octets sent                 742      Octets Received          315532
+Blocks sent                  37      Blocks Received            2710
+Blocks resent                 0
+
+Retrains Requested            0      Retrains Granted              0
+Line Reversals                0      Blers                        85
+Link Timeouts                 0      Link Naks                     0
+
+Data Compression       V42BIS 2048/32
+Equalization           Long
+Fallback               Enabled
+Protocol               LAPM
+Speed                  26400/26400
+Last Call              00:02:03
+
+Disconnect Reason is DTR dropped
+
+U.S. Robotics Sportster Voice 33600 Fax Link Diagnostics...
+
+Modulation                  V.34
+Carrier Freq     (Hz)       1959/1959
+Symbol Rate                 3429/3429
+Trellis Code                64S-4D/64S-4D
+Nonlinear Encoding          ON/ON
+Precoding                   ON/ON
+Shaping                     ON/ON
+Preemphasis      (-dB)      7/0
+Recv/Xmit Level  (-dBm)     19/13
+Near Echo Loss   (dB)       14
+Far Echo Loss    (dB)       51
+Carrier Offset   (Hz)       -2226
+Round Trip Delay (msec)     1
+Timing Offset    (ppm)      -2240
+SNR              (dB)       32
+Status :                    0000,0010,0000,0000,0000,0000,0000,0000
+
+
+Freq         Level (dB)
+
+150           21
+300           17
+450           16
+600           16
+750           16
+900           16
+1050          16
+1200          16
+1350          16
+1500          16
+1650          17
+1800          17
+1950          17
+2100          17
+2250          17
+2400          17
+2550          18
+2700          18
+2850          18
+3000          19
+3150          19
+3300          20
+3450          22
+3600          29
+3750          41
+OK
+
+Или такое:
+
+U.S. Robotics 56K Voice EXT Settings...
+
+   B0  E1  F1  L0  M3  Q0  V1  X5  Y0
+   BAUD=115200  PARITY=N  WORDLEN=8
+   DIAL=PULSE   ON HOOK
+
+   &A3  &B1  &C1  &D2  &H1  &I0  &K0
+   &M4  &N0  &P1  &R2  &S0  &T5  &U0  &Y1
+
+   S00=000  S01=000  S02=043  S03=013  S04=010  S05=008  S06=002
+   S07=060  S08=003  S09=006  S10=014  S11=070  S12=050  S13=000
+   S15=000  S16=000  S18=000  S19=000  S21=010  S22=017  S23=019
+   S25=005  S27=000  S28=008  S29=020  S30=000  S31=050  S32=002
+   S33=032  S34=000  S35=000  S36=014  S38=000  S39=011  S40=007
+   S41=004  S42=000
+
+   LAST DIALED #: P547582
+
+U.S. Robotics 56K Voice EXT Link Diagnostics...
+
+Chars sent                98437      Chars Received              958
+Chars lost                    0
+Octets sent               99205      Octets Received             958
+Blocks sent                 376      Blocks Received              32
+Blocks resent                16
+
+Retrains Requested            0      Retrains Granted              0
+Line Reversals                0      Blers                         0
+Link Timeouts                 0      Link Naks                     3
+
+Data Compression       NONE
+Equalization           Long
+Fallback               Enabled
+Protocol               LAPM
+Speed                  28800/28800
+Last Call              00:00:31
+
+Disconnect Reason is DTR dropped
+
+U.S. Robotics 56K Voice EXT Link Diagnostics...
+
+
+Modulation                  V.34
+Carrier Freq     (Hz)       1829/1920
+Symbol Rate                 3200/3200
+Trellis Code                64S-4D/64S-4D
+Nonlinear Encoding          ON/ON
+Precoding                   ON/ON
+Shaping                     ON/ON
+Preemphasis      (-dB)      6/0
+Recv/Xmit Level  (-dBm)     25/15
+Near Echo Loss   (dB)       27
+Far Echo Loss    (dB)       53
+Carrier Offset   (Hz)       -960
+Round Trip Delay (msec)     1
+Timing Offset    (ppm)      -2160
+SNR              (dB)       36
+Speed Shifts Up/Down        0/0
+Status :
+
+
+Freq         Level (dB)
+
+150           27
+300           24
+450           23
+600           23
+750           23
+900           23
+1050          23
+1200          23
+1350          23
+1500          23
+1650          23
+1800          23
+1950          23
+2100          23
+2250          24
+2400          24
+2550          24
+2700          24
+2850          24
+3000          25
+3150          26
+3300          26
+3450          28
+3600          35
+3750          47
+OK
+
+Для курьеров:
+
+USRobotics Courier V.Everything Settings...
+
+   B0  C1  E1  F1  L2  M0  Q0  V1  X7
+   BAUD=115200 PARITY=N  WORDLEN=8
+   DIAL=PULSE  ON HOOK   TIMER
+
+   &A3  &B1  &C1  &D2  &G0  &H1  &I0  &K1  &L0  &M4  &N0
+   &P0  &R2  &S0  &T5  &U0  &Y1  %N6  #CID=0
+
+   S00=000  S01=000  S02=043  S03=013  S04=010  S05=008  S06=002  S07=060
+   S08=002  S09=006  S10=014  S11=070  S12=050  S13=000  S14=000  S15=000
+   S16=000  S17=000  S18=000  S19=000  S20=000  S21=010  S22=017  S23=019
+   S24=150  S25=005  S26=001  S27=000  S28=008  S29=020  S30=000  S31=000
+   S32=009  S33=000  S34=000  S35=000  S36=000  S37=000  S38=000  S39=001
+   S40=000  S41=000  S42=126  S43=200  S44=015  S45=000  S46=000  S47=000
+   S48=000  S49=000  S50=000  S51=000  S52=000  S53=000  S54=064  S55=000
+   S56=000  S57=000  S58=000  S59=000  S60=000  S61=000  S62=000  S63=000
+   S64=000  S65=000  S66=000  S67=000  S68=000  S69=000  S70=000
+
+   LAST DIALED #: P355047
+
+
+USRobotics Courier V.Everything Link Diagnostics...
+
+Chars sent                 1492      Chars Received             7662
+Chars lost                    0
+Octets sent                1397      Octets Received            7848
+Blocks sent                  53      Blocks Received              84
+Blocks resent                 0
+
+Retrains Requested            0      Retrains Granted              0
+Line Reversals                0      Blers                         3
+Link Timeouts                 0      Link Naks                     0
+
+Data Compression       V42BIS 2048/32
+Equalization           Long
+Fallback               Enabled
+Protocol               LAPM SREJ 128/15
+Speed                  21600/21600
+Last Call              00:00:14
+
+Disconnect Reason is Illegal Command Code
+
+USRobotics Courier V.Everything Link Diagnostics...
+
+Modulation               V.34+
+Carrier Freq    ( Hz )   1800/1600
+Symbol Rate              2400/2400
+Trellis Code             64S-4D/64S-4D
+Nonlinear Encoding       ON/ON
+Precoding                OFF/ON
+Shaping                  OFF/OFF
+Preemphasis Index        3/2
+Recv/Xmit Level (-dBm)   23.4/7.8
+SNR             ( dB )   43.2
+Near Echo Loss  ( dB )   11.0
+Far Echo Loss   ( dB )   37.8
+Roundtrip Delay (msec)   0
+Timing Offset   ( ppm)   3072
+Carrier Offset  ( ppm)   233
+RX Upshifts              0
+RX Downshifts            0
+TX Speedshifts           0
+V.90 Status
+
+Freq     Level
+ 150     20
+ 300     17
+ 450     16
+ 600     16
+ 750     16
+ 900     17
+1050     18
+1200     18
+1350     19
+1500     20
+1650     21
+1800     22
+1950     22
+2100     23
+2250     24
+2400     24
+2550     25
+2700     26
+2850     26
+3000     27
+3150     27
+3300     28
+3450     29
+3600     29
+3750     30
+
+OK

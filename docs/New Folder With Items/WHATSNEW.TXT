@@ -1,0 +1,261 @@
+     This information is the same basic information released with the 
+     USA version released someweeks ago with some updates for the 
+     international versions.
+                   
+     Contents:
+     1. New features
+     2. Bug fixes and other enhancements
+     3. Current code information
+     4. Products affected
+     5.   - none -
+     6. How to upgrade to V.34 with 33.6K 
+     7. Changes to existing commands
+     8. New result codes
+     9. Technical software details
+     
+     
+     Section 1 - New Features:
+     
+     V.34 
+     V.34 (with 33.6K) is an addition to the original V.34 ITU spec, which 
+     at the time of this email has not been approved by the ITU. Approval 
+     is expected around March, 1996.
+     This addition adds two additional bit rates, 31200 and 33600. It also 
+     provides improved performance over V.34 in that higher bit rate 
+     connections are possible more of the time over certain types of line 
+     conditions. 
+     Most of the time you will get 2400bps or even 4800bps higher 
+     connection rates using this code on both ends of the connection 
+     versus the previous production codes.
+     
+     Selective Reject
+     Selective reject is an enhancement in LAPM operation that allows only 
+     the errored frame to be resent when a BLER occurs. Under non-selective 
+     reject LAPM, all non-acknowledged frames would have to be resent, 
+     which is anywhere from one frame to all the way up to the window size. 
+     Selective reject can greatly improve throughout on noisy phone lines.
+     
+     
+     Section 2 - Bug Fixes and Other Enhancements:
+     
+     Dial Security
+     Fixed CD lead going high too soon when in prompting mode.
+     Dial Security using Autopass now works. Also Prompting now works with 
+     incoming calls using 7/E/1. Previous code would only respond to 8/N/1 
+     parity.
+     
+     VFC
+     VFC has the 3429 symbol rate added. This improves overall connect 
+     speeds and line performance, especially on noisy channels. 
+     
+     V.34 Compatibility
+     V.8 has changes that make our modem more compatible with other brands 
+     of V.34 and VFC modems.
+     
+     V.32bis
+     Improvements in V.32bis retraining. Previous code would occasionally 
+     not retrain successfully, which resulted in "Unable to Retrain" 
+     disconnections. ASL Quick Retrains are now more robust.
+     
+     FAX
+     The DSP has all new fax code. Line performance is improved over 
+     previous code. Improved operation with Delrina Winfax software in 
+     Class 1 mode.
+     
+     HST
+     The occasional "dead air" problem has been fixed.
+     ("Dead air" means the modem goes off in answer mode with no answer 
+     sequence, just silence).
+     
+     Synchronous
+     31200 and 33600 are now supported in sync.
+     (Note that the top DTE rate for V.25bis remains at 19.2K).
+     
+     Call Selection
+     Previous code would occasionally leave the modem off-hook without any 
+     result codes or status after a handshake failure.
+     
+     LAPM
+     LAPM (which is a part of V.42), now supports larger block sizes.
+     The increased block size results in improved throughput due to lower 
+     protocol overhead. 
+     
+     I6 
+     The I6 "Protocol" field now displays the actual block and window 
+     sizes, and also indicates when Selective Reject has been negotiated. 
+     For example, a connection between two Couriers using the 7/12/95 code 
+     would show the I6 Protocol information as:
+        Protocol  LAPM SREJ 244/15
+     which means a LAPM connection, Selective Reject negotiated, using 244 
+     blocks per frame, and 15 frames per window.
+     
+     ARQ LED
+     The ARQ LED now blinks whenever BLERS are encountered. Previous code 
+     would blink the LED only when data was being retransmitted due to 
+     BLERs on the remote end of the link. Now that both conditions are 
+     being reported, you may see increased activity of the LED.
+     
+     MR LED
+     The MR LED now extinguishes whenever the modem is in a retrain 
+     condition. Previous code would extinguish the LED only if the remote 
+     modem requested the retrain.
+     
+     V.42 
+     A compatibility work around has been added so we work more reliably 
+     with Global Village RPI-based modems. 
+     
+     V.34
+     V.34 has had some tweaks and fixes. 
+     One tweak improves connectability with older Rockwell-based V.34 
+     modems. Some tweaks have been added that result in higher connect 
+     rates with Rockwell and AT&T based designs.
+     Line performance has been improved.
+     
+     V.22
+     V.22 is now more robust and has improved connectability. 
+     Forcing a retrain via ATO1 now works correctly.
+     
+     V.22bis
+     V.22bis is now more robust and has improved connectability. 
+     Using guard tone when in V.22bis answer mode no longer fails.
+     
+     S$ Help Screen
+     I11 help screen description states "Extended Link Screen" now.
+     
+     HO command
+     The AT command parsing code now works correctly when a command string 
+     has a H0 in it.
+     
+     
+     Section 3 - Current Code Information:
+     
+     File Name: SDLV34P.EXE
+     File Size: 361680 bytes
+     File Date: 7/19/95
+     Supervisor Date: 7/18/95   Supervisor Revision: 6.2.2 
+     DSP Date: 7/5/95           DSP Revision: 1.2.2 
+     Checksum: 76AE
+     
+     The SDLV34P.EXE file is attached to this email.
+     
+     
+     Section 4 - Products Affected
+     
+           CR V34 CCITT
+           CR V34 UK
+           CR V34 GERMANY
+           CR V34 FINLAND 
+           CR V34 BELGIUM
+           CR V34 AUSTRIA
+           CR V34 SWEDEN
+           CR V34 SWITZERLAND 
+           CR V34 ITALY
+           CR V34 NETHERLANDS 
+           CR V34 NORWAY
+           CR V34 CZECH REPUBLIC 
+           CR V34 DENMARK
+     
+        THIS SDL FILE WILL NOT WORK IN THE FOLLOWING PRODUCT(S):
+     
+           CR V34 FRANCE   
+   
+   
+     Section 6 - How to upgrade to V.34 with 33.6K
+     
+     The new code is free to the public, and will be distributed through 
+     our international sales channel/tech support.
+     
+     
+     Section 7 - Changes to Existing Commands:
+     
+     S56
+     S56, the command that allows disabling various V.FC and V.34 parameters, 
+     adds one new bit setting:
+     S56=32  Disable V.34 Plus
+     
+     &N
+     &N, the command that locks the DCE to DCE rate, adds two new commands: 
+     &N15 = 31200 bps
+     &N16 = 33600 bps
+     
+     S51
+     S51, a command that controls various items, adds one new bit setting: 
+     S51 = 64   Disable Selective Reject
+     
+     I6
+     I6, the Link Diagnostics screen, has an extended "Protocol" field 
+     which displays the actual block and window sizes, and also indicates 
+     when Selective Reject has been negotiated.
+     
+     &S
+     &S, the command that controls DSR handling, adds one new setting: &S5 
+     = CTS follows CD with DSR normal.
+     Note that the Manual (revision C) and Quick Reference Card (Revision 
+     B) already document this change. 
+     
+     
+     Section 8 - New Result Codes:
+     
+     There are new result codes that reflect the new bit rates, which are:
+     
+     151/CONNECT 31200
+     152/CONNECT 31200/ARQ
+     153/CONNECT 31200/V34
+     154/CONNECT 31200/ARQ/V34
+     155/CONNECT 33600
+     156/CONNECT 33600/ARQ
+     157/CONNECT 33600/V34
+     158/CONNECT 33600/ARQ/V34
+     
+     
+     Section 9 - Technical Software Details:
+     
+     V.34 with 33.6K
+     V34 adds two additional bit rates, 31200 and 33600. 
+     These new bit rates are realized by extending the number of encoded 
+     bits from 9 bits to 10 bits per symbol.
+     
+     The mapping of 10 bits per symbol allows one new data rate at each of 
+     the following symbol rates: 2743, 2800, 3000, and 3200. Two new data 
+     rates are provided at the symbol rate of 3429, including the new 
+     highest data rate of 33600 bps. No new data rate was provided for at 
+     the 2400 symbol rate. 
+     
+     The ability to transmit at the new data rates is identified by bit 25 
+     in INFO 0. If the bit is set that states that we have these new 
+     capabilities.
+     
+     The chart below shows that each symbol rate has an associated minimum 
+     and maximum bit rate associated with it. Using this code on both sides 
+     of the connection usually result in 2400bps higher connection rates 
+     compared to the 12/2/94 code.
+     
+     There is improved performance over V.34 in that higher bit rate 
+     connections are possible more of the time over certain types of line 
+     conditions. This assumes that the signal to noise ratio on the line is 
+     high enough to support the higher bit rate.
+     
+     V34 & VFC  V.34Plus
+     Symbol               Carrier      Bandwidth     Minimum    Maximum 
+     Rate    Protocol    Frequency   Requirements   Bit Rate   Bit Rate 
+     -----    ---------   ---------   ------------   --------   -------- 
+     2400    V.34        1600 Hz      400-2800 Hz     21600     21600      
+             V.34/VFC    1800 Hz      600-3000 Hz     21600     21600
+     
+     2743    V.34        1646 Hz      274-3018 Hz     24000     26400     
+             V.34/VFC    1829 Hz      457-3200 Hz     24000     26400
+     
+     2800    V.34        1680 Hz      280-3080 Hz     24000     26400     
+             V.34/VFC    1867 Hz      467-3267 Hz     24000     26400
+     
+     3000    V.34        1800 Hz      300-3300 Hz     26400     28800     
+             V.34        2000 Hz      500-3500 Hz     26400     28800 
+             VFC         1875 Hz      375-3376 Hz     26400
+     
+     3200    V.34        1829 Hz      229-3429 Hz     28800     31200     
+             V.34/VFC    1920 Hz      320-3520 Hz     28800     31200
+     
+     3429    V.34/VFC    1959 Hz      244-3674 Hz     28800     33600
+     
+     
+     

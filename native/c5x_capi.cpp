@@ -44,6 +44,26 @@ int courier_c5x_load_program(
     }
 }
 
+int courier_c5x_schedule_call_overlay(
+    void *handle, uint16_t origin, const uint8_t *bytes, std::size_t byte_count,
+    uint16_t entry, const uint16_t *registers, uint16_t selector,
+    char *error, std::size_t error_size)
+{
+    try {
+        if (!handle || !bytes || !registers || (byte_count & 1))
+            throw std::runtime_error("invalid C5x call overlay");
+        std::vector<uint16_t> words(byte_count / 2);
+        for (std::size_t i = 0; i < words.size(); ++i)
+            words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
+        static_cast<C5xCore *>(handle)->schedule_call_overlay(
+            origin, words.data(), words.size(), entry, registers, selector);
+        return 0;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return -1;
+    }
+}
+
 int courier_c5x_load_rom(
     void *handle, uint16_t origin, const uint8_t *bytes, std::size_t byte_count,
     char *error, std::size_t error_size)
@@ -147,6 +167,21 @@ void courier_c5x_interrupt(void *handle, unsigned irq)
     if (handle) static_cast<C5xCore *>(handle)->interrupt(irq);
 }
 
+void courier_c5x_configure_line_frame_interrupt(void *handle, unsigned irq, uint16_t vector)
+{
+    if (handle) static_cast<C5xCore *>(handle)->configure_line_frame_interrupt(irq, vector);
+}
+
+void courier_c5x_set_call_tdm_active(void *handle, int active)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_call_tdm_active(active != 0);
+}
+
+void courier_c5x_schedule_line_frame_entry(void *handle, uint16_t address)
+{
+    if (handle) static_cast<C5xCore *>(handle)->schedule_line_frame_entry(address);
+}
+
 void courier_c5x_set_pc(void *handle, uint16_t address)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_pc(address);
@@ -236,18 +271,19 @@ void courier_c5x_get_data_event(void *handle, std::size_t index, uint64_t *value
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 24) return;
+    if (!handle || !values || count < 28) return;
     auto serial = static_cast<C5xCore *>(handle)->serial_state();
     uint64_t result[] = {
         serial.drr, serial.dxr, serial.spc,
         serial.drr_reads, serial.dxr_writes, serial.spc_writes,
         serial.rx_consumed, serial.rx_queued,
+        serial.codec_rx_consumed, serial.codec_rx_queued,
         serial.last_drr_pc, serial.last_dxr_pc, serial.last_spc_pc,
         serial.trcv, serial.tdxr, serial.tspc,
         serial.trcv_reads, serial.tdxr_writes, serial.tspc_writes,
         serial.last_trcv_pc, serial.last_tdxr_pc, serial.last_tspc_pc,
-        serial.line_tx_writes, serial.line_tx_nonzero,
-        serial.line_tx_last, serial.line_tx_last_pc,
+        serial.line_tx_writes, serial.line_tx_nonzero, serial.line_frame_interrupts,
+        serial.line_tx_last, serial.line_tx_last_pc, serial.imr,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

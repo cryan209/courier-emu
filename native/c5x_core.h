@@ -65,12 +65,13 @@ public:
     struct SerialState {
         uint16_t drr, dxr, spc;
         uint64_t drr_reads, dxr_writes, spc_writes, rx_consumed, rx_queued;
+        uint64_t codec_rx_consumed, codec_rx_queued;
         uint16_t last_drr_pc, last_dxr_pc, last_spc_pc;
         uint16_t trcv, tdxr, tspc;
         uint64_t trcv_reads, tdxr_writes, tspc_writes;
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
-        uint64_t line_tx_writes, line_tx_nonzero;
-        uint16_t line_tx_last, line_tx_last_pc;
+        uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
+        uint16_t line_tx_last, line_tx_last_pc, imr;
     };
 
     // Where a C52 address lands. The two parts that move are the boot ROM,
@@ -119,6 +120,12 @@ public:
     uint16_t data(uint16_t address) const;
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
+    void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
+    void schedule_line_frame_entry(uint16_t address) { m_line_frame_entry = address; }
+    void schedule_call_overlay(uint16_t origin, const uint16_t *words,
+        std::size_t count, uint16_t entry, const uint16_t *registers,
+        uint16_t selector);
+    void set_call_tdm_active(bool active) { m_call_tdm_active = active; }
     void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
     void step();
     void run(uint64_t instruction_limit);
@@ -180,6 +187,22 @@ private:
     st1_t m_st1{};
     pmst_t m_pmst{};
     uint16_t m_ifr = 0, m_imr = 0;
+    std::array<uint16_t, 16> m_interrupt_vectors{};
+    int m_line_frame_irq = -1;
+    uint64_t m_line_frame_interrupts = 0;
+    uint64_t m_line_frame_next_cycle = 0;
+    unsigned m_line_frame_period = 258;
+    uint16_t m_line_frame_phase = 0;
+    uint32_t m_line_sample_phase = 0;
+    bool m_line_sample_due = false;
+    int64_t m_line_dac_sum = 0;
+    unsigned m_line_dac_count = 0;
+    bool m_call_tdm_active = false;
+    int m_line_frame_entry = -1;
+    uint16_t m_pending_overlay_origin = 0;
+    std::vector<uint16_t> m_pending_overlay;
+    std::array<uint16_t, 7> m_pending_call_registers{};
+    uint16_t m_pending_call_selector = 0;
     uint16_t m_pdwsr = 0xffff, m_iowsr = 0xffff, m_cwsr = 0x000e;
     uint16_t m_pcstack[8]{};
     int m_pcstack_ptr = 0;

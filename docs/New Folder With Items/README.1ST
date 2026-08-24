@@ -1,0 +1,20 @@
+Note: Before you install this upgrade to V.34+, please consult the section of
+your manual that explains how to use an SDL file.
+
+SDL file usage :
+
+ sdl [/c=n] [/i=n] [/a=n] [/b=n] [/?]
+      /c=n : Com Port where n = 1,2,3,4
+      /i=n : IRQ Number where n = 2,3,4,5,7
+      /a=n : Port Base Addr where n = Hex Address of Port
+      /b=n : Bit Rate Where n = 9600,19200,38400,57600,115200
+      /q   : Quiet switch for use with batch files
+      /?   : This message
+
+EXAMPLES   : The command to set SDL to com port 1 with a bit rate of 19200 :
+		  sdl /c=1 /b=19200 <cr>
+
+	     The command to set a custom port at com port 3 address but an
+	     IRQ at 2 :
+		  sdl /c=3 /i=2 <cr>
+

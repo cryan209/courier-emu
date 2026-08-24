@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch
 import unittest
 
@@ -7,7 +8,10 @@ from courier_emu.bridge import DAA_IDENTITY_TAG, CourierDspBridge
 from courier_emu.codec import DAA_REVISION, CodecBringUp, SiliconDaa
 from courier_emu.daa import CourierDaa, RingSource
 from courier_emu.line import LINE_FRAME_INSTRUCTIONS
-from courier_emu.xmf import DSP_BOOT_SIZE
+from courier_emu.xmf import DSP_BOOT_SIZE, XmfImage
+
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class _Image:
@@ -87,6 +91,46 @@ class _ConnectedSip:
 
 
 class BridgeTests(unittest.TestCase):
+    def test_deferred_call_overlay_enters_on_the_asic_service_slot(self) -> None:
+        daa = CourierDaa("quiet")
+        daa.seize("answer")
+        bridge = CourierDspBridge(
+            XmfImage.load(ROOT / "main211.xmf"), batch=1, daa=daa
+        )
+        try:
+            bridge.active = True
+            bridge.arm_dial_tones(b"ATA")
+            bridge.clock_x86()
+            bridge.core.step(100_000)
+            serial = bridge.core.serial_state()
+        finally:
+            bridge.close()
+
+        self.assertEqual(serial["imr"] & 0x80, 0x80)
+        self.assertGreater(serial["line_frame_interrupts"], 20)
+        self.assertGreater(serial["line_tx_nonzero"], 50)
+        self.assertEqual(serial["line_tx_last_pc"], 0x0238)
+
+    def test_supplied_audio_reaches_the_call_overlay_after_activation(self) -> None:
+        daa = CourierDaa("quiet")
+        daa.seize("answer")
+        bridge = CourierDspBridge(
+            XmfImage.load(ROOT / "main211.xmf"),
+            batch=1,
+            daa=daa,
+            rx_samples=[1200, -1200] * 960,
+        )
+        try:
+            bridge.active = True
+            bridge.arm_dial_tones(b"ATA")
+            bridge.clock_x86()
+            bridge.core.step(100_000)
+            serial = bridge.core.serial_state()
+        finally:
+            bridge.close()
+
+        self.assertGreater(serial["codec_rx_consumed"], 0)
+
     @staticmethod
     def _bootstrap(bridge: CourierDspBridge, program: bytes) -> None:
         for offset in range(0, len(program), 8):
@@ -212,7 +256,7 @@ class BridgeTests(unittest.TestCase):
         )
         self.assertTrue(bridge.status().asic["call_engine_started"])
         self.assertEqual(bridge.status().asic["commit_edges"], 2)
-        self.assertEqual(core.host_writes, [(0x1F, 0x0080), (0x1F, 0x0080)])
+        self.assertEqual(core.host_writes, [])
 
     def test_connected_sip_queues_firmware_call_up_event_once(self) -> None:
         image = _Image()

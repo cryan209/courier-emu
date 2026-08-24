@@ -152,6 +152,11 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
             ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
         ]
+        lib.courier_c5x_schedule_call_overlay.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
+            ctypes.c_size_t, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint16),
+            ctypes.c_uint16, ctypes.c_char_p, ctypes.c_size_t,
+        ]
         lib.courier_c5x_step.argtypes = [
             ctypes.c_void_p, ctypes.c_uint64, ctypes.c_char_p, ctypes.c_size_t,
         ]
@@ -184,6 +189,13 @@ class NativeC5x:
         lib.courier_c5x_get_data.restype = ctypes.c_uint16
         lib.courier_c5x_set_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+        lib.courier_c5x_configure_line_frame_interrupt.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint16
+        ]
+        lib.courier_c5x_set_call_tdm_active.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_schedule_line_frame_entry.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16
+        ]
         lib.courier_c5x_set_pc.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_state.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
@@ -227,6 +239,31 @@ class NativeC5x:
     def set_mpmc_pin(self, level: int) -> None:
         """Drive the pin that decides what the C52's program 0x0000 is."""
         self.library.courier_c5x_set_mpmc_pin(self.handle, int(level))
+
+    def load_program(self, image: bytes, origin: int) -> None:
+        """Publish a runtime DSP overlay into program space."""
+        storage = (ctypes.c_uint8 * len(image)).from_buffer_copy(image)
+        error = ctypes.create_string_buffer(512)
+        if self.library.courier_c5x_load_program(
+            self.handle, origin, storage, len(storage), error, len(error)
+        ):
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+
+    def schedule_call_overlay(
+        self, image: bytes, origin: int, registers: list[int], selector: int,
+        entry: int = 0x2295,
+    ) -> None:
+        """Publish and enter a call overlay at the recovered idle-frame ABI."""
+        storage = (ctypes.c_uint8 * len(image)).from_buffer_copy(image)
+        if len(registers) != 7:
+            raise ValueError("call overlay requires seven C52 registers")
+        register_words = (ctypes.c_uint16 * 7)(*registers)
+        error = ctypes.create_string_buffer(512)
+        if self.library.courier_c5x_schedule_call_overlay(
+            self.handle, origin, storage, len(storage), entry, register_words,
+            selector, error, len(error)
+        ):
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
 
     def load_rom(self, image: bytes, origin: int = 0) -> None:
         """Supply the on-chip boot ROM, which no XMF carries."""
@@ -293,6 +330,24 @@ class NativeC5x:
     def interrupt(self, irq: int) -> None:
         self.library.courier_c5x_interrupt(self.handle, irq)
 
+    def configure_line_frame_interrupt(self, irq: int, vector: int) -> None:
+        self.library.courier_c5x_configure_line_frame_interrupt(
+            self.handle, irq, vector
+        )
+
+    def set_call_tdm_active(self, active: bool) -> None:
+        self.library.courier_c5x_set_call_tdm_active(self.handle, int(active))
+
+    def schedule_line_frame_entry(self, address: int) -> None:
+        self.library.courier_c5x_schedule_line_frame_entry(self.handle, address)
+
+    def advance_to_frame_boundary(self, limit: int = 8_192) -> bool:
+        for _ in range(limit):
+            if self.state()["pc"] == 0xB2F6 and not self.io(0x52) & 3:
+                return True
+            self.step(1)
+        return self.state()["pc"] == 0xB2F6 and not self.io(0x52) & 3
+
     def set_pc(self, address: int) -> None:
         self.library.courier_c5x_set_pc(self.handle, address)
 
@@ -310,15 +365,17 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 24)()
+        values = (ctypes.c_uint64 * 28)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
             "rx_consumed", "rx_queued",
+            "codec_rx_consumed", "codec_rx_queued",
             "last_drr_pc", "last_dxr_pc", "last_spc_pc",
             "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
             "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
-            "line_tx_writes", "line_tx_nonzero", "line_tx_last", "line_tx_last_pc",
+            "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
+            "line_tx_last", "line_tx_last_pc", "imr",
         )
         return dict(zip(names, map(int, values), strict=True))
 

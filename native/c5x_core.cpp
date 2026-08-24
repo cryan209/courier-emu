@@ -57,6 +57,18 @@ void C5xCore::reset()
     m_st0.intm = 1;
     m_st1.c = 1; m_st1.hm = 1; m_st1.sxm = 1; m_st1.xf = 1;
     m_ifr = m_imr = 0;
+    m_interrupt_vectors.fill(0xffff);
+    m_line_frame_irq = -1;
+    m_line_frame_interrupts = 0;
+    m_line_frame_next_cycle = 0;
+    m_line_frame_phase = 0;
+    m_line_sample_phase = 0;
+    m_line_sample_due = false;
+    m_line_dac_sum = 0;
+    m_line_dac_count = 0;
+    m_call_tdm_active = false;
+    m_line_frame_entry = -1;
+    m_pending_overlay.clear();
     std::fill(std::begin(m_pcstack), std::end(m_pcstack), 0);
     m_pcstack_ptr = 0;
     m_rpt_start = m_rpt_end = 0;
@@ -85,6 +97,20 @@ void C5xCore::load_program(const uint16_t *words, std::size_t count, uint16_t or
 {
     if (count > 65536u - origin) throw std::out_of_range("program image exceeds C5x address space");
     std::copy_n(words, count, m_program.begin() + origin);
+}
+
+void C5xCore::schedule_call_overlay(uint16_t origin, const uint16_t *words,
+    std::size_t count, uint16_t entry, const uint16_t *registers,
+    uint16_t selector)
+{
+    if (count > 65536u - origin)
+        throw std::out_of_range("program overlay exceeds C5x address space");
+    m_pending_overlay_origin = origin;
+    m_pending_overlay.assign(words, words + count);
+    std::copy_n(registers, m_pending_call_registers.size(),
+        m_pending_call_registers.begin());
+    m_pending_call_selector = selector;
+    m_line_frame_entry = entry;
 }
 
 void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origin)
@@ -237,11 +263,18 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
     if (m_trace_data_writes)
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     if (address < 0x60) cpuregs_w(address, value); else m_data[address] = value;
+    // The polyphase ISR's 0xfffd result is the oversampled DAC word. Slot
+    // 0xffff is control; 0xfff8/0xfff9 hold the ADC delay pair.
+    if (m_call_tdm_active && address == 0xfffd
+        && uint16_t(m_pc - 1) == 0x0238) {
+        m_line_dac_sum += int16_t(value);
+        ++m_line_dac_count;
+    }
 }
 
 uint16_t C5xCore::IO_READ16(uint16_t port)
 {
-    // The Courier ASIC exposes the line ADC at external I/O port 0x54.
+    // The resident idle path exposes its line ADC at external I/O port 0x54.
     // main211 reads a frame at 0xb300 and rereads the held word at 0xb304.
     if (port == 0x54 && uint16_t(m_pc - 1) == 0xb300 && !m_line_rx.empty()) {
         m_io[port] = m_line_rx.front();
@@ -256,16 +289,18 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
     if (port == 0xb2e5 && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
-        value = dtmf_sample();
+        value = m_io[port];
     m_io[port] = value;
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
-    // resident image uses external port 006a: startup clears it at 804e and
-    // the two per-frame output paths write samples at 81ea and 8205.
-    if (port == 0xb2e5 || port == 0x006a) {
+    // resident image uses external port 006a at high program addresses. The
+    // C52's low-bank TDM ISR also writes 006a, but that is its control slot and
+    // must not be interleaved with line PCM.
+    uint16_t write_pc = uint16_t(m_pc - 1);
+    if (port == 0x006a && write_pc >= 0x8000) {
         m_line_tx.push_back(value);
         if (value) ++m_line_tx_nonzero;
-        m_line_tx_last_pc = uint16_t(m_pc - 1);
+        m_line_tx_last_pc = write_pc;
     }
     if (m_io_write) m_io_write(port, value);
 }
@@ -281,7 +316,13 @@ uint16_t C5xCore::dtmf_sample()
     std::size_t index = std::size_t(frame / (tone + gap));
     uint64_t within = frame % (tone + gap);
     if (index >= m_dtmf_digits.size()) {
-        if (m_v8_mode == V8Mode::Off) return 0;
+        if (m_v8_mode == V8Mode::Off) {
+            // The board-side dialer owns only the digit interval. Relinquish
+            // the DAC afterwards so the downloaded datapump, not this assist,
+            // supplies V.8 and all later modulation.
+            m_dtmf_digits.clear();
+            return 0;
+        }
         uint64_t v8_frame = frame - m_dtmf_digits.size() * (tone + gap);
         constexpr double v8_pi = 3.14159265358979323846;
         double phase = double(v8_frame) / double(sample_rate);
@@ -472,7 +513,10 @@ void C5xCore::check_interrupts()
     if (m_st0.intm || !m_ifr) return;
     for (unsigned irq = 0; irq < 16; ++irq) if (m_ifr & (1u << irq)) {
         m_st0.intm = 1; PUSH_STACK(m_pc);
-        m_pc = uint16_t((m_pmst.iptr << 11) | ((irq + 1) << 1));
+        uint16_t vector = m_interrupt_vectors[irq];
+        m_pc = vector != 0xffff
+            ? vector
+            : uint16_t((m_pmst.iptr << 11) | ((irq + 1) << 1));
         m_ifr &= ~(1u << irq); m_idle = false; save_interrupt_context(); return;
     }
 }
@@ -483,11 +527,46 @@ void C5xCore::interrupt(unsigned irq)
     check_interrupts();
 }
 
+void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
+{
+    if (irq >= 16) throw std::out_of_range("C5x line-frame interrupt number");
+    m_line_frame_irq = int(irq);
+    m_interrupt_vectors[irq] = vector;
+    m_line_frame_next_cycle = m_cycles + m_line_frame_period;
+}
+
 void C5xCore::step()
 {
     m_step_cycles = 0;
     if (m_idle) consume_cycles(1);
     else {
+        // The customer-ROM dispatcher publishes call state at the boundary
+        // immediately before the idle frame's ADC block. Waiting for this PC
+        // preserves the calling convention that overlapping entry 0x2295
+        // expects; entering on an arbitrary cycle corrupts IMR and stalls TDM.
+        if (
+            m_line_frame_entry >= 0 && !m_st0.intm && m_pc == 0xb2f6
+            && !(m_io[0x52] & 3)
+            && m_line_frame_next_cycle > m_cycles
+            && m_line_frame_next_cycle - m_cycles >= 128
+            && m_line_frame_next_cycle - m_cycles <= 192
+        ) {
+            if (!m_pending_overlay.empty()) {
+                std::copy(m_pending_overlay.begin(), m_pending_overlay.end(),
+                    m_program.begin() + m_pending_overlay_origin);
+                m_pending_overlay.clear();
+                std::fill(m_io.begin() + 0x50, m_io.begin() + 0x60, 0);
+                static constexpr uint16_t call_registers[] = {
+                    0x13, 0x15, 0x16, 0x19, 0x1a, 0x1b, 0x1f,
+                };
+                for (std::size_t index = 0; index < std::size(call_registers); ++index)
+                    DM_WRITE16(call_registers[index], m_pending_call_registers[index]);
+                m_data[0x006f] = m_pending_call_selector;
+                m_call_tdm_active = true;
+            }
+            CHANGE_PC(uint16_t(m_line_frame_entry));
+            m_line_frame_entry = -1;
+        }
         if (m_pmst.braf && m_pc == m_paer) {
             if (m_brcr > 0) CHANGE_PC(m_pasr);
             if (--m_brcr <= 0) m_pmst.braf = 0;
@@ -502,6 +581,54 @@ void C5xCore::step()
     if (--m_timer.psc <= 0) {
         m_timer.psc = m_timer.tddr;
         if (--m_timer.tim == 0) { m_timer.tim = m_timer.prd; interrupt(3); }
+    }
+    // The ASIC is the TDM clock master. Its edge continues while the DSP is
+    // inside an overlay and no longer executing the idle DAC loop, so cadence
+    // must come from elapsed C5x cycles rather than from observing an OUT.
+    if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
+        do m_line_frame_next_cycle += m_line_frame_period;
+        while (m_cycles >= m_line_frame_next_cycle);
+        // LAMM @52 at the ISR entry masks this ASIC word to two bits and
+        // indexes its four phase descriptors. Preserve any board status bits
+        // while advancing the slot number supplied by the frame master.
+        m_io[0x52] = uint16_t((m_io[0x52] & ~3u) | m_line_frame_phase);
+        m_line_frame_phase = uint16_t((m_line_frame_phase + 1) & 3);
+        // Convert the 25 MHz/258-cycle TDM slot stream to the 9.6 kHz line
+        // codec. The two most recent ADC words are held between boundaries.
+        m_line_sample_phase += m_line_frame_period * 9600u;
+        m_line_sample_due = m_line_sample_phase >= 25000000u;
+        if (m_line_sample_due) {
+            m_line_sample_phase -= 25000000u;
+            if (m_call_tdm_active) {
+                if (!m_codec_rx.empty()) {
+                    // The ASIC's polyphase input holds the newest and previous
+                    // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.
+                    m_data[0xfff9] = m_data[0xfff8];
+                    m_data[0xfff8] = m_codec_rx.front();
+                    m_codec_rx.pop_front();
+                    ++m_serial.rx_consumed;
+                }
+                if (m_line_dac_count) {
+                    int16_t sample = int16_t(
+                        m_line_dac_sum / int64_t(m_line_dac_count));
+                    m_line_tx.push_back(uint16_t(sample));
+                    if (sample) ++m_line_tx_nonzero;
+                    m_line_tx_last_pc = 0x0238;
+                    m_line_dac_sum = 0;
+                    m_line_dac_count = 0;
+                }
+            } else {
+                if (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off)
+                    m_io[0xb2e5] = dtmf_sample();
+                uint16_t sample = m_io[0xb2e5];
+                m_line_tx.push_back(sample);
+                if (sample) ++m_line_tx_nonzero;
+                m_line_tx_last_pc = 0x8c25;
+            }
+        }
+        unsigned irq = unsigned(m_line_frame_irq);
+        if (!m_st0.intm && (m_imr & (1u << irq))) ++m_line_frame_interrupts;
+        interrupt(irq);
     }
 }
 
@@ -527,12 +654,13 @@ C5xCore::SerialState C5xCore::serial_state() const
     return {m_serial.drr, m_serial.dxr, m_serial.spc,
         m_serial.drr_reads, m_serial.dxr_writes, m_serial.spc_writes,
         m_line_rx_consumed, m_line_rx.size(),
+        m_serial.rx_consumed, m_serial.rx_consumed + m_codec_rx.size(),
         m_serial.last_drr_pc, m_serial.last_dxr_pc, m_serial.last_spc_pc,
         m_tdm.trcv, m_tdm.tdxr, m_tdm.tspc,
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
-        m_line_tx.size(), m_line_tx_nonzero,
-        m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc};
+        m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
+        m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr};
 }
 
 } // namespace courier

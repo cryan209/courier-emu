@@ -243,14 +243,14 @@ class CliTests(unittest.TestCase):
             run["a"]["dsp_bridge"]["line"]["frames"],
             run["b"]["dsp_bridge"]["line"]["frames"],
         )
-        # The call is up at the line layer and no further: the C52 never gets a
-        # datapump command, so what either side puts on the line is silence -
-        # one non-zero word in a run of tens of thousands is the DAC's own
-        # startup value, not a carrier - and both report NO CARRIER.
+        # Both C52s enter the recovered call overlay and exchange current,
+        # nonzero polyphase audio rather than replaying an idle-DAC backlog.
         for side in ("a", "b"):
-            serial = run[side]["dsp_bridge"]["serial_port"]
-            self.assertLess(serial["line_tx_nonzero"], serial["line_tx_writes"] // 1000)
-            self.assertIn("NO CARRIER", run[side]["serial_text"])
+            bridge = run[side]["dsp_bridge"]
+            serial = bridge["serial_port"]
+            self.assertTrue(bridge["asic"]["call_overlay_active"])
+            self.assertGreater(serial["line_tx_nonzero"], 1_000)
+            self.assertGreater(serial["codec_rx_consumed"], 1_000)
 
     def test_synthesised_sector_reproduces_the_reported_dump(self) -> None:
         # A real parameter sector cannot be dumped, so this builds one carrying

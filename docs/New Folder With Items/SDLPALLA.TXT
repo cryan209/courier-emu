@@ -1,0 +1,16 @@
+SDLPALLA.EXE : ROM code for Courier V.34+ ALL INTERNATIONALS
+
+Connects up to 33.6 KBps !!!
+
+LHARC self-extracting file
+	
+Before you install this upgrade to V.34+, please consult the section of
+your manual that explains how to use an SDL file.
+
+This is the first official V.34+ code for the ALL INTERNATIONAL version EXCEPT
+US/CANADA version.
+
+Check your ATI7 screen for "product type : " line before downloading this code
+into your modem.
+
+US Robotics

@@ -1,0 +1,9 @@
+To update the firmware of your i-modem, open a terminal session with the following parameters: 8N1, 57600, hardware flow control. Type :
+
+AT [return]
+AT~X! [return]
+
+and then start the upload in xmodem mode of the .xmp file enclosed in this zip file.
+
+U.S.Robotics EMEA CSO
+10/07/01

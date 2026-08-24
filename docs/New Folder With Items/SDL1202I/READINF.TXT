@@ -1,0 +1,185 @@
+
+		U.S. ROBOTICS V.EVERYTHING INF README FILE
+
+
+UNIMODEM DRIVER
+
+The V.90 release of the V.Everything modem includes a new Unimodem 
+driver for Windows 95, Windows 98 and Windows NT 4.0. The Unimodem 
+driver for V.90 products is Mdm3cmcr.inf.
+
+
+	Go to Start --> Settings --> Control Panel
+
+	Double click Modems
+
+If your modem is already listed in your Control Panel, Modems 
+list, you will only need to update your information file to support 
+your V.90 modem. Skip to section UPDATING YOUR COURIER INFORMATION 
+FILE TO SUPPORT V.90.
+
+If your modem is not listed in Control Panel Modems, skip to 
+section INSTALLING YOUR COURIER INFORMATION FILE TO SUPPORT V.90.
+
+
+UPDATING YOUR COURIER INFORMATION FILE TO SUPPORT V.90.
+
+If your modem is already listed in your Control Panel, Modems 
+list, you will only need to update your information file to support 
+your V.90 modem. Skip to the section below that corresponds to your 
+operating system.
+
+
+WINDOWS 95
+
+Copy Mdm3cmcr.inf to a floppy disk and follow 
+the steps below.
+
+	1) Go to Start -->Settings --> Control Panel
+	2) Double click System.
+	3) Select the Device Manager tab.
+	4) Double click Modems.
+	5) Select your Courier and choose Properties.  
+
+           If there is a tab labeled Driver, select it.
+
+	   If there is no driver tab present, skip to section 
+	   INSTALLING YOUR COURIER INFORMATION FILE TO SUPPORT V.90.
+
+	6) Click the Update Driver button.
+
+	   A prompt will appear to search for the driver. Insert 
+	   the disk containing the INF files into your floppy drive.
+
+	7) Select Yes and click next.
+
+	   Windows will report that it found an updated driver and 
+	   list "Courier V.Everything (V.90&X2)".
+
+	8) Click on finish. Your modem will now be listed in Control 
+	   Panel Modems as a "Courier V.Everything (V.90&X2)".
+
+	The process of updating your information file is complete.
+
+
+WINDOWS 98
+
+Copy Mdm3cmcr.inf to a floppy disk and follow 
+the steps below.
+
+	1)  Go to Start -->Settings --> Control Panel
+	2)  Double click System.
+	3)  Select the Device Manager tab.
+	4)  Double click Modems.
+	5)  Select your Courier and choose Properties.  
+	6)  Select the Driver tab.
+	7)  Click the Update button.  This will start the Update 
+	    Device Wizard.
+	8)  Click Next.  
+	9)  Choose "Search for a better driver than the one your 
+	    device is using right now" and click Next.
+	10) Check the box for "floppy drive", insert the disk  
+	    containing the INF files into your floppy drive and 
+	    click Next.
+
+ 	    Windows will report that it found an updated driver and 
+	    list "Courier V.Everything (V.90&X2)".
+
+	11) Click on finish. Your modem will now be listed in Control 
+	    Panel Modems as a "Courier V.Everything (V.90&X2)".
+
+	The process of updating your information file is complete.
+
+
+WINDOWS NT
+
+Skip to section, INSTALLING YOUR COURIER INFORMATION FILE TO SUPPORT 
+V.90.
+
+
+INSTALLING YOUR COURIER INFORMATION FILE TO SUPPORT V.90
+
+Skip to the section below that corresponds to your operating system.
+
+WINDOWS 95 or WINDOWS 98
+
+Copy Mdm3cmcr.inf to a floppy disk and follow
+the steps below.
+
+	1)  On your Desktop, double-click My Computer.
+	2)  Double click the disk drive where Windows is installed 
+	    (usually C:)
+	3)  Double click the folder where Windows is installed 
+	    (usually Windows).
+	4)  Go to the View menu and select options. Choose the view 
+	    tab and select "show all files". Click OK.
+	5)  Double-click the INF folder.
+	6)  Insert the disk containing the INF files into your floppy 
+	    drive.
+	7)  Double-click My Computer. Double-click the floppy drive 
+	    (usually A:).
+	8)  From the floppy drive, select Mdm3cmcr.inf
+	    and drag it into the INF folder. If you 
+	    are prompted with a "Confirm File Replace" dialog box, 
+	    choose YES.
+	9)  Look in the INF folder for these files: DRVDATA.BIN and 
+	    DRVIDX.BIN.  Select both files by holding the <Ctrl> key 
+	    and left clicking on each file.  Go to File menu --> Delete
+	10) In the INF folder look for a file named CR230K.INF. If 
+	    the file is not present proceed to the next step. If the 
+	    file exists select it, go to File menu --> Delete.
+	11) Close all open windows.
+	12) Go to Start --> Settings -->Control Panel.
+	13) Double click Modems.
+	14) Highlight any Courier modems you have listed in that 
+	    screen and choose Remove.
+	15) Reboot your computer.
+	16) Windows should find new hardware and install your modem 
+	    as a Courier V.Everything (V.90&x2).
+
+	The process of updating your information file is complete.
+
+
+WINDOWS NT
+
+Copy Mdm3cmcr.inf to a floppy disk and follow the steps below.
+
+	1)  Go to Start -->Settings -->Control Panel
+	2)  Double click Modems.
+	3)  Select any Courier modems that are installed and click 
+	    Remove.
+	4)  Click Add. The Install New Modem window will appear.
+	5)  Check the box that says "Don't detect my modem; I will 
+	    select it from a list" and click Next.
+	6)  Insert the disk containing the INF files into your floppy 
+	    drive and choose "Have Disk".  You will be prompted for 
+	    the letter of your floppy drive (usually A:). Select the 
+	    appropriate drive and Click OK.
+	7)  If you have an external Courier select 
+	    "Courier V.Everything EXT (V.90&x2)".  If you have an 
+	    internal Courier select "Courier V.Everything INT 
+	    (V.90&x2)".  Click next.
+	8)  Select the COM port your modem is installed on and click 
+	    Next.
+	9)  Click OK to close Control Panel Modems.
+	10) Windows may inform you that the list of installed modems 
+	    has changed and that Dialup Networking needs to be 
+	    reconfigured. You can reconfigure Dialup Networking now.
+	11) Reboot your computer.
+
+	The process of updating your information file is complete.
+
+
+
+
+---------------------------------------------------------------------
+Copyright © 1998, 3Com Corporation. All rights reserved.
+Unless otherwise indicated, 3Com registered trademarks are registered 
+in the United States and may or may not be registered in other 
+countries.  3Com, Boundary Routing, LANplex, LinkBuilder, NETBuilder, 
+NETBuilder II, Parallel Tasking, EtherLink, SmartAgent, SuperStack, 
+TokenLink, TokenDisk, Transcend, and ViewBuilder are registered 
+trademarks of 3Com Corporation. EtherDisk, EtherLink II, FDDILink, 
+FMS, and NetProbe are trademarks of 3Com Corporation. 3ComFacts is a 
+service mark of 3Com.  Other brand and product names may be 
+registered trademarks or trademarks of their respective holders.
