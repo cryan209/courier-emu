@@ -90,14 +90,25 @@ class _ConnectedSip:
         return {"state": self.state}
 
 
-class _LinePeer:
-    peer_off_hook = True
-
-    def status(self) -> dict[str, object]:
-        return {"connected": True, "peer_off_hook": True}
-
-
 class BridgeTests(unittest.TestCase):
+    def test_qualified_answer_starts_native_call_engine(self) -> None:
+        daa = CourierDaa("ringing")
+        daa.seize("answer")
+        daa.qualified_samples = 5 * 960
+        bridge = CourierDspBridge(
+            XmfImage.load(ROOT / "main211.xmf"), batch=1, daa=daa
+        )
+        try:
+            bridge.active = True
+            bridge.clock_x86()
+            bridge.core.step(100_000)
+            serial = bridge.core.serial_state()
+        finally:
+            bridge.close()
+
+        self.assertTrue(bridge.status().asic["call_overlay_active"])
+        self.assertGreater(serial["line_frame_interrupts"], 0)
+
     def test_deferred_call_overlay_enters_on_the_asic_service_slot(self) -> None:
         daa = CourierDaa("quiet")
         daa.seize("answer")
@@ -107,6 +118,13 @@ class BridgeTests(unittest.TestCase):
         try:
             bridge.active = True
             bridge.arm_dial_tones(b"ATA")
+            # The ASIC, not the host DTMF timer, owns the call start.
+            for register, value in (
+                (0x13, 0x0100), (0x15, 0), (0x16, 0), (0x19, 0x0D02),
+                (0x1A, 0x0030), (0x1B, 0x080C),
+            ):
+                bridge._observe_asic_command(register, value)
+            bridge._observe_asic_command(0x1F, 0x8000)
             bridge.clock_x86()
             bridge.core.step(100_000)
             serial = bridge.core.serial_state()
@@ -130,6 +148,12 @@ class BridgeTests(unittest.TestCase):
         try:
             bridge.active = True
             bridge.arm_dial_tones(b"ATA")
+            for register, value in (
+                (0x13, 0x0100), (0x15, 0), (0x16, 0), (0x19, 0x0D02),
+                (0x1A, 0x0030), (0x1B, 0x080C),
+            ):
+                bridge._observe_asic_command(register, value)
+            bridge._observe_asic_command(0x1F, 0x8000)
             bridge.clock_x86()
             bridge.core.step(100_000)
             serial = bridge.core.serial_state()
@@ -248,6 +272,15 @@ class BridgeTests(unittest.TestCase):
         with patch("courier_emu.bridge.NativeC5x", return_value=core):
             bridge = CourierDspBridge(image)  # type: ignore[arg-type]
             self._bootstrap(bridge, image.program)
+            for port, value in (
+                (0x58, 0x82), (0x5A, 0x00), (0x5C, 0x60), (0x5E, 0x00)
+            ):
+                bridge.write(port, 1, value)
+            for register, value in (
+                (0x13, 0x0100), (0x15, 0), (0x16, 0), (0x19, 0x0D02),
+                (0x1A, 0x0030), (0x1B, 0x080C),
+            ):
+                bridge._observe_asic_command(register, value)
             for data in (0x0000, 0x8000, 0x0000, 0x8000):
                 for port, value in (
                     (0x58, 0x1F),
@@ -293,22 +326,6 @@ class BridgeTests(unittest.TestCase):
         )
         bridge.clock_x86()
         self.assertEqual(len(bridge._runtime_inbound), 4)
-
-    def test_line_call_boundary_queues_online_event(self) -> None:
-        image = _Image()
-        core = _Core()
-        with patch("courier_emu.bridge.NativeC5x", return_value=core):
-            bridge = CourierDspBridge(  # type: ignore[arg-type]
-                image, line=_LinePeer()  # type: ignore[arg-type]
-            )
-            bridge.active = True
-            bridge.arm_dial_tones(b"ATA")
-
-        self.assertEqual(
-            list(bridge._runtime_inbound),
-            [(0x0009, 0x0000), (0x004D, 0x0001)],
-        )
-        self.assertTrue(bridge.status().asic["connected_event_queued"])
 
 
 class CodecTests(unittest.TestCase):

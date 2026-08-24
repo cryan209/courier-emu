@@ -28,14 +28,6 @@ from .timers import INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
 ADDRESS_SPACE_SIZE = 0x100000
 NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
-DEFAULT_CONNECT_RATE = 9_600
-
-
-def connect_result(rate: int = DEFAULT_CONNECT_RATE) -> bytes:
-    """Return the DTE result line for the first supported carrier rate."""
-    if rate <= 0:
-        raise ValueError("connect rate must be positive")
-    return f"CONNECT {rate}".encode("ascii")
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 # How long to wait before offering the next typed byte again while the
@@ -119,8 +111,6 @@ class RunResult:
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
-    data_mode: bool = False
-    connect_rate: int | None = None
     data_rx_bytes: int = 0
     serial_truncated: bool = False
     serial_input_remaining: int = 0
@@ -214,8 +204,6 @@ class CourierMachine:
         self.mmio_counts: Counter[tuple[str, int, int]] = Counter()
         self.serial = bytearray()
         self.serial_truncated = False
-        self.data_mode = False
-        self.connect_rate: int | None = None
         self.data_rx_bytes = 0
         self.serial_rx: deque[int] = deque(serial_input)
         self.console = console
@@ -234,12 +222,14 @@ class CourierMachine:
         self._timer_in_handler = False
         self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
         self._daa_originate_event_posted = False
-        self._standalone_dial_handoff = False
         # Both firmwares reach the peripheral timers as memory, because the
         # relocation register maps the control block to 0x0ff00.
         # A ROM enters at the reset vector and dispatches its own software
         # interrupts; an update payload is entered directly at the application.
-        self.emulate_interrupts = getattr(image, "emulates_interrupts", False)
+        self.emulate_interrupts = (
+            getattr(image, "emulates_interrupts", False)
+            or image.supervisor_offset == 0x1B600
+        )
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
@@ -272,6 +262,17 @@ class CourierMachine:
             0x7E133: "startup-crc",
             0x65512: "main-loop",
         }
+        self._alternate_supervisor = image.supervisor_offset == 0x1B600
+        # main2205 keeps the same supervisor ABI but relocates several
+        # dispatcher routines.  These are the corresponding entry points
+        # recovered from its own call-table and transfer code.
+        if image.supervisor_offset == 0x1B600:
+            self._milestone_addresses.update({
+                0x5BA10: "supervisor-entry",
+                0x69FBA: "dsp-transfer",
+                0x656A5: "main-loop",
+                0x656AD: "main-loop",
+            })
 
     def _capture_serial(self, value: int) -> None:
         if len(self.serial) < MAX_SERIAL_BYTES:
@@ -575,9 +576,6 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
-            if self.data_mode and self.serial_rx:
-                self.data_rx_bytes += len(self.serial_rx)
-                self.serial_rx.clear()
             if (
                 address == 0x6AD6E
                 and self.dsp_bridge is not None
@@ -609,7 +607,7 @@ class CourierMachine:
             # is only accepted at 0x5ce66, just before the parity transform and
             # the write to the transmit register. Capture there so each byte is
             # recorded exactly once.
-            if self._serial_started and address == 0x5CE66:
+            if self._serial_started and address in (0x5CE66, 0x5CE6A):
                 raw = _uc.reg_read(UC_X86_REG_AX) & 0xFF
                 # The transform at 5b5e:1913 recomputes bit 7 as an even-parity
                 # bit whenever [0x26c6] is zero, then applies the [0x0936]
@@ -621,7 +619,12 @@ class CourierMachine:
                 self._trace_serial(f"fifo {terminal_value:02x} pc={current_pc():05x}")
             if address == 0x5D5B0 and len(self.serial_trace) < 64:
                 self.serial_trace.append("entered-uart-isr")
-            if self._serial_in_handler and self._previous_address in (0x5D608, 0x5D640):
+            if self._serial_in_handler and (
+                address in (0x5D613, 0x5D650, 0x5D656)
+                or self._previous_address in (
+                    0x5D608, 0x5D613, 0x5D640, 0x5D650, 0x5D656,
+                )
+            ):
                 self.serial_trace.append(f"iret {self._previous_address:05x}")
                 callbacks = bytes(_uc.mem_read(0x2A8, 6))
                 rx_callback = int.from_bytes(callbacks[:2], "little")
@@ -661,53 +664,6 @@ class CourierMachine:
             self.last_addresses.append(address)
             if self.dsp_bridge is not None and not self.stop_requested:
                 self.dsp_bridge.clock_x86()
-                if (
-                    self.dsp_bridge.active
-                    and not self._standalone_dial_handoff
-                    and self.dsp_bridge.daa is not None
-                    and self.dsp_bridge.line is None
-                    and self.dsp_bridge.sip is None
-                    and self.serial_rx
-                ):
-                    pending = bytes(self.serial_rx).strip().upper()
-                    if pending.startswith(b"ATD"):
-                        # The recovered supervisor does not reach its DTE RX
-                        # ISR on this image; bridge the explicit ATD into the
-                        # behavioral DAA at the same point where the missing
-                        # board handoff would deliver it.
-                        self._standalone_dial_handoff = True
-                        self.serial_rx.clear()
-                        self.dsp_bridge.arm_dial_tones(pending)
-                        if self.dsp_bridge.qualify_standalone_dial():
-                            self.serial_trace.append("host-daa: dial-tone-qualified")
-                if (
-                    not self.data_mode
-                    and self.dsp_bridge.status().asic["connected_event_queued"]
-                ):
-                    # The call-up mailbox pair has been consumed by the
-                    # supervisor, but the final online callback lives in the
-                    # missing board mask ROM. Keep the observable DTE
-                    # contract: CONNECT is the boundary after which bytes
-                    # are payload rather than command input.
-                    self.data_mode = True
-                    self.connect_rate = DEFAULT_CONNECT_RATE
-                    self._capture_serial(ord("\r"))
-                    self._capture_serial(ord("\n"))
-                    for value in connect_result(self.connect_rate):
-                        self._capture_serial(value)
-                    self._capture_serial(ord("\r"))
-                    self._capture_serial(ord("\n"))
-                    self.serial_trace.append("data-mode: CONNECT")
-                    if (
-                        self.console is None
-                        and self.dsp_bridge.line is None
-                        and self.dsp_bridge.sip is None
-                    ):
-                        # A standalone behavioral DAA has no peer to keep
-                        # clocking after the first carrier result. Return the
-                        # observable DTE boundary instead of entering the
-                        # firmware's unbounded online loop.
-                        self.stop_requested = True
             milestone = self._milestone_addresses.get(address)
             if milestone is not None and milestone not in self.milestones:
                 self.milestones.append(milestone)
@@ -729,7 +685,11 @@ class CourierMachine:
                 # go back in every time the firmware returns to its main loop
                 # without it. Installing it once left the DTE deaf for the
                 # rest of the session after the first ATZ.
-                serial_callbacks = ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
+                serial_callbacks = (
+                    ((0x2A8, 0xAE9B), (0x2AA, 0x1FB2), (0x2AE, 0xA420))
+                    if self._alternate_supervisor
+                    else ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
+                )
                 for pointer, fallback in serial_callbacks:
                     if pointer == 0x2A8 and self._terminal_attached:
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
@@ -744,8 +704,9 @@ class CourierMachine:
                     # event 8 (the configured terminator) advances it to a910,
                     # whose next dispatcher poll invokes the AT parser over
                     # the buffer at 1cf5.
-                    _uc.mem_write(0x2AC, (0xA8D9).to_bytes(2, "little"))
-                    self.serial_trace.append("callback 2ac=a8d9")
+                    ready_callback = 0x90D8 if self._alternate_supervisor else 0xA8D9
+                    _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
+                    self.serial_trace.append(f"callback 2ac={ready_callback:04x}")
                 self._serial_started = True
                 self._serial_tx_pump = not self.serial_rx
                 self._serial_empty_probes = 0
@@ -757,7 +718,9 @@ class CourierMachine:
             # The 80186 peripheral block has just been relocated to ff00. The
             # startup waits for timer/status bit 0x20, which a CPU-only core
             # cannot produce.
-            if self.fast_delays and address == 0x5BA29:
+            if self.fast_delays and address in (
+                0x5BA29, 0x5BA49, 0x69F16,
+            ):
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
                 _uc.mem_write(0xFF46, (value | 0x20).to_bytes(2, "little"))
                 self.accelerated_delays += 1
@@ -770,14 +733,16 @@ class CourierMachine:
             # Firmware delay helpers either burn CX or wait for the timer ISR
             # to advance the tick at 0000:0152. Advance both without inventing
             # asynchronous interrupts in the CPU-only harness.
-            if self.fast_delays and address == 0x5C0F3:
+            if self.fast_delays and address in (0x5C0F3, 0x5C0D4):
                 _uc.reg_write(UC_X86_REG_CX, 1)
                 self.accelerated_delays += 1
-            if self.fast_delays and address == 0x5C0E3:
+            if self.fast_delays and address in (0x5C0E3, 0x5C0C4):
                 ah = (_uc.reg_read(UC_X86_REG_AX) >> 8) & 0xFF
                 _uc.mem_write(0x152, bytes((ah,)))
                 self.accelerated_delays += 1
-            if self.fast_delays and address in (0x5D6E5, 0x5D70E, 0x5D734):
+            if self.fast_delays and address in (
+                0x5D6E5, 0x5D70E, 0x5D734, 0x5D6FB, 0x5D724, 0x5D74A
+            ):
                 cl = _uc.reg_read(UC_X86_REG_CX) & 0xFF
                 _uc.mem_write(0x14E, bytes((cl,)))
                 self.accelerated_delays += 1
@@ -821,15 +786,16 @@ class CourierMachine:
             # digits.  Reproduce the recovered event edge once per seizure.
             if (
                 address == 0x828AE
-                and not self._daa_originate_event_posted
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.daa is not None
                 and self.dsp_bridge.daa.off_hook
-                and self.dsp_bridge.daa.operation == "dialing"
+                and self.dsp_bridge.daa.detector_qualified
             ):
-                _uc.mem_write(0x1CF1, b"\x03")
-                self._daa_originate_event_posted = True
-                self._trace_serial("daa originate-event 1cf1=03")
+                daa = self.dsp_bridge.daa
+                if daa.operation == "dialing" and not self._daa_originate_event_posted:
+                    _uc.mem_write(0x1CF1, b"\x03")
+                    self._daa_originate_event_posted = True
+                    self._trace_serial("daa originate-event 1cf1=03")
             # Inter-digit cadence uses the timer word at 0000:0161.
             if self.fast_delays and address in (0x6355F, 0x822E0, 0x82342, 0x8235B):
                 _uc.mem_write(0x161, b"\x00\x00")
@@ -1018,7 +984,15 @@ class CourierMachine:
                     # subscriber line is not ringing, and leaving the bit
                     # floating high reads as a ring that never ends, which
                     # parks that state machine in its first state forever.
-                    if self.ring is not None and self.ring.present(self.instructions):
+                    peer_ringing = bool(
+                        self.dsp_bridge is not None
+                        and self.dsp_bridge.line is not None
+                        and self.dsp_bridge.line.peer_ringing
+                    )
+                    if (
+                        peer_ringing
+                        or (self.ring is not None and self.ring.present(self.instructions))
+                    ):
                         value |= RING_DETECT_BIT
                     else:
                         value &= ~RING_DETECT_BIT
@@ -1279,9 +1253,6 @@ class CourierMachine:
             status = "emulation-error"
             error = str(exc)
 
-        if self.data_mode and not error:
-            status = "data-mode"
-
         register_ids = {
             "ax": UC_X86_REG_AX,
             "bx": UC_X86_REG_BX,
@@ -1361,8 +1332,6 @@ class CourierMachine:
             hot_addresses=self.executed.most_common(20),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
-            data_mode=self.data_mode,
-            connect_rate=self.connect_rate,
             data_rx_bytes=self.data_rx_bytes,
             serial_truncated=self.serial_truncated,
             serial_input_remaining=len(self.serial_rx),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from courier_emu.machine import attention_body, connect_result
+from courier_emu.machine import attention_body
 
 
 class AttentionBodyTests(unittest.TestCase):
@@ -17,15 +17,6 @@ class AttentionBodyTests(unittest.TestCase):
 
     def test_mixed_case_prefix_is_rejected(self) -> None:
         self.assertIsNone(attention_body(b"AtY5"))
-
-
-class ConnectResultTests(unittest.TestCase):
-    def test_first_supported_rate_is_reported_in_dte_result(self) -> None:
-        self.assertEqual(connect_result(), b"CONNECT 9600")
-
-    def test_invalid_rate_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            connect_result(0)
 
 
 if __name__ == "__main__":

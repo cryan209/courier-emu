@@ -34,6 +34,7 @@ class XmfImage:
     path: Path
     data: bytes
     supervisor_offset: int = SUPERVISOR_OFFSET
+    entry_offset_value: int = ENTRY_OFFSET
 
     @classmethod
     def load(cls, path: str | Path) -> "XmfImage":
@@ -45,17 +46,29 @@ class XmfImage:
             )
         if not data.startswith(b"Courier V.Everything"):
             raise XmfFormatError("missing Courier V.Everything text header")
-        if data[SUPERVISOR_OFFSET : SUPERVISOR_OFFSET + len(ENTRY_SIGNATURE)] != ENTRY_SIGNATURE:
+        # 2.2.05 keeps the same DSP layout but moves the supervisor boundary
+        # by 0x20 bytes. Locate the invariant boot block, then derive the
+        # boundary instead of rejecting that otherwise compatible image.
+        boot_offset = data.find(BOOT_SIGNATURE, HEADER_SIZE)
+        if boot_offset < 0:
+            raise XmfFormatError("missing 80186 boot signature")
+        candidates = []
+        for entry_offset in (0x410, 0x4C0):
+            supervisor_offset = boot_offset - entry_offset
+            if supervisor_offset < HEADER_SIZE:
+                continue
+            credit_window = data[supervisor_offset : supervisor_offset + 0x600]
+            if b"INT80186 Modem Functions" in credit_window:
+                candidates.append((supervisor_offset, entry_offset))
+        if not candidates:
+            raise XmfFormatError("could not locate the 80186 supervisor boundary")
+        supervisor_offset, entry_offset = candidates[0]
+        entry = data[supervisor_offset : supervisor_offset + 4]
+        if entry not in (ENTRY_SIGNATURE[:4], b"GXE\n"):
             raise XmfFormatError(
-                f"missing 80186 entry signature at file offset {SUPERVISOR_OFFSET:#x}"
+                f"missing 80186 entry signature at file offset {supervisor_offset:#x}"
             )
-        boot_offset = SUPERVISOR_OFFSET + ENTRY_OFFSET
-        if data[boot_offset : boot_offset + len(BOOT_SIGNATURE)] != BOOT_SIGNATURE:
-            raise XmfFormatError(f"missing 80186 boot signature at file offset {boot_offset:#x}")
-        credit_window = data[SUPERVISOR_OFFSET : SUPERVISOR_OFFSET + 0x600]
-        if b"INT80186 Modem Functions" not in credit_window:
-            raise XmfFormatError("80186 supervisor identification string not found")
-        return cls(source.resolve(), data)
+        return cls(source.resolve(), data, supervisor_offset, entry_offset)
 
     @property
     def load_base(self) -> int:
@@ -93,7 +106,7 @@ class XmfImage:
         return (
             (DSP_BOOT_ORIGIN, self.data[DSP_BOOT_OFFSET:DSP_OVERLAY_OFFSET]),
             (DSP_OVERLAY_ORIGIN, self.data[DSP_OVERLAY_OFFSET:DSP_RESIDENT_OFFSET]),
-            (DSP_RESIDENT_ORIGIN, self.data[DSP_RESIDENT_OFFSET:SUPERVISOR_OFFSET]),
+            (DSP_RESIDENT_ORIGIN, self.data[DSP_RESIDENT_OFFSET:self.supervisor_offset]),
         )
 
     @property
@@ -105,11 +118,11 @@ class XmfImage:
 
     @property
     def entry_segment(self) -> int:
-        return ENTRY_SEGMENT
+        return (FLASH_PHYSICAL_BASE + self.supervisor_offset) >> 4
 
     @property
     def entry_offset(self) -> int:
-        return ENTRY_OFFSET
+        return self.entry_offset_value
 
     @property
     def entry_physical(self) -> int:

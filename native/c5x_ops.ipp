@@ -1666,12 +1666,21 @@ void C5xCore::op_splk()
 
 void C5xCore::op_xpl_dbmr()
 {
-	fatalerror("TMS320C5x: unimplemented op xpl dbmr at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea) ^ m_dbmr;
+	m_st1.tc = (data == 0) ? 1 : 0;
+	DM_WRITE16(ea, data);
+	CYCLES(1);
 }
 
 void C5xCore::op_xpl_imm()
 {
-	fatalerror("TMS320C5x: unimplemented op xpl imm at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t imm = ROPCODE();
+	uint16_t data = DM_READ16(ea) ^ imm;
+	m_st1.tc = (data == 0) ? 1 : 0;
+	DM_WRITE16(ea, data);
+	CYCLES(1);
 }
 
 void C5xCore::op_apac()
@@ -1775,12 +1784,25 @@ void C5xCore::op_macd()
 
 void C5xCore::op_madd()
 {
-	fatalerror("TMS320C5x: unimplemented op madd at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea);
+	uint16_t bmar_data = DM_READ16(m_bmar);
+	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_treg0 = data;
+	m_preg = int32_t(int16_t(data)) * int32_t(int16_t(bmar_data));
+	DM_WRITE16(uint16_t(ea + 1), data);
+	CYCLES(3);
 }
 
 void C5xCore::op_mads()
 {
-	fatalerror("TMS320C5x: unimplemented op mads at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea);
+	uint16_t bmar_data = DM_READ16(m_bmar);
+	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_treg0 = data;
+	m_preg = int32_t(int16_t(data)) * int32_t(int16_t(bmar_data));
+	CYCLES(3);
 }
 
 void C5xCore::op_mpy_mem()
