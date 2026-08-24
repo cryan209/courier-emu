@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -282,8 +283,14 @@ def _run_linked_pair(args: argparse.Namespace) -> int:
     side_b = subprocess.Popen(
         _link_side(args, args.b_at, listen=False), text=True, stdout=subprocess.PIPE
     )
-    output_a, _ = side_a.communicate()
-    output_b, _ = side_b.communicate()
+    # Drain both stdout pipes concurrently.  Waiting for A before reading B
+    # can deadlock once B's JSON report fills its pipe while A is blocked on
+    # the shared line socket.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result_a = pool.submit(side_a.communicate)
+        result_b = pool.submit(side_b.communicate)
+        output_a, _ = result_a.result()
+        output_b, _ = result_b.result()
     if side_a.returncode or side_b.returncode:
         print(
             f"linked run failed (a: {side_a.returncode}, b: {side_b.returncode})",

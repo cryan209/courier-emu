@@ -28,6 +28,14 @@ from .timers import INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
 ADDRESS_SPACE_SIZE = 0x100000
 NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
+DEFAULT_CONNECT_RATE = 9_600
+
+
+def connect_result(rate: int = DEFAULT_CONNECT_RATE) -> bytes:
+    """Return the DTE result line for the first supported carrier rate."""
+    if rate <= 0:
+        raise ValueError("connect rate must be positive")
+    return f"CONNECT {rate}".encode("ascii")
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 # How long to wait before offering the next typed byte again while the
@@ -111,6 +119,9 @@ class RunResult:
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
+    data_mode: bool = False
+    connect_rate: int | None = None
+    data_rx_bytes: int = 0
     serial_truncated: bool = False
     serial_input_remaining: int = 0
     serial_interrupts: int = 0
@@ -203,6 +214,9 @@ class CourierMachine:
         self.mmio_counts: Counter[tuple[str, int, int]] = Counter()
         self.serial = bytearray()
         self.serial_truncated = False
+        self.data_mode = False
+        self.connect_rate: int | None = None
+        self.data_rx_bytes = 0
         self.serial_rx: deque[int] = deque(serial_input)
         self.console = console
         self.stop_requested = False
@@ -220,6 +234,7 @@ class CourierMachine:
         self._timer_in_handler = False
         self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
         self._daa_originate_event_posted = False
+        self._standalone_dial_handoff = False
         # Both firmwares reach the peripheral timers as memory, because the
         # relocation register maps the control block to 0x0ff00.
         # A ROM enters at the reset vector and dispatches its own software
@@ -560,6 +575,9 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            if self.data_mode and self.serial_rx:
+                self.data_rx_bytes += len(self.serial_rx)
+                self.serial_rx.clear()
             if (
                 address == 0x6AD6E
                 and self.dsp_bridge is not None
@@ -641,8 +659,55 @@ class CourierMachine:
                 _uc.emu_stop()
             self.executed[address] += 1
             self.last_addresses.append(address)
-            if self.dsp_bridge is not None:
+            if self.dsp_bridge is not None and not self.stop_requested:
                 self.dsp_bridge.clock_x86()
+                if (
+                    self.dsp_bridge.active
+                    and not self._standalone_dial_handoff
+                    and self.dsp_bridge.daa is not None
+                    and self.dsp_bridge.line is None
+                    and self.dsp_bridge.sip is None
+                    and self.serial_rx
+                ):
+                    pending = bytes(self.serial_rx).strip().upper()
+                    if pending.startswith(b"ATD"):
+                        # The recovered supervisor does not reach its DTE RX
+                        # ISR on this image; bridge the explicit ATD into the
+                        # behavioral DAA at the same point where the missing
+                        # board handoff would deliver it.
+                        self._standalone_dial_handoff = True
+                        self.serial_rx.clear()
+                        self.dsp_bridge.arm_dial_tones(pending)
+                        if self.dsp_bridge.qualify_standalone_dial():
+                            self.serial_trace.append("host-daa: dial-tone-qualified")
+                if (
+                    not self.data_mode
+                    and self.dsp_bridge.status().asic["connected_event_queued"]
+                ):
+                    # The call-up mailbox pair has been consumed by the
+                    # supervisor, but the final online callback lives in the
+                    # missing board mask ROM. Keep the observable DTE
+                    # contract: CONNECT is the boundary after which bytes
+                    # are payload rather than command input.
+                    self.data_mode = True
+                    self.connect_rate = DEFAULT_CONNECT_RATE
+                    self._capture_serial(ord("\r"))
+                    self._capture_serial(ord("\n"))
+                    for value in connect_result(self.connect_rate):
+                        self._capture_serial(value)
+                    self._capture_serial(ord("\r"))
+                    self._capture_serial(ord("\n"))
+                    self.serial_trace.append("data-mode: CONNECT")
+                    if (
+                        self.console is None
+                        and self.dsp_bridge.line is None
+                        and self.dsp_bridge.sip is None
+                    ):
+                        # A standalone behavioral DAA has no peer to keep
+                        # clocking after the first carrier result. Return the
+                        # observable DTE boundary instead of entering the
+                        # firmware's unbounded online loop.
+                        self.stop_requested = True
             milestone = self._milestone_addresses.get(address)
             if milestone is not None and milestone not in self.milestones:
                 self.milestones.append(milestone)
@@ -1214,6 +1279,9 @@ class CourierMachine:
             status = "emulation-error"
             error = str(exc)
 
+        if self.data_mode and not error:
+            status = "data-mode"
+
         register_ids = {
             "ax": UC_X86_REG_AX,
             "bx": UC_X86_REG_BX,
@@ -1293,6 +1361,9 @@ class CourierMachine:
             hot_addresses=self.executed.most_common(20),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
+            data_mode=self.data_mode,
+            connect_rate=self.connect_rate,
+            data_rx_bytes=self.data_rx_bytes,
             serial_truncated=self.serial_truncated,
             serial_input_remaining=len(self.serial_rx),
             serial_interrupts=self.serial_interrupts,

@@ -250,12 +250,14 @@ class CourierDspBridge:
 
     def arm_dial_tones(self, command: bytes) -> None:
         text = command.decode("ascii", "ignore").upper()
-        if text.startswith("A"):
+        if text.startswith("ATA"):
             if self.daa is not None:
                 self.daa.seize("answer")
             if self.active:
                 self._v8_armed = True
                 self._call_resume_pending = True
+                if self.line is not None:
+                    self._publish_connected_event()
             return
         marker = text.find("D")
         if marker < 0:
@@ -266,6 +268,8 @@ class CourierDspBridge:
         self.dial_digits = "".join(ch for ch in dial if ch in "0123456789*#ABCD")
         if self.daa is not None:
             self.daa.seize("originate")
+        if self.active and self.line is not None and self.dial_digits:
+            self._publish_connected_event()
         if (
             self.bootstraps >= 2
             and self.dial_digits
@@ -276,6 +280,13 @@ class CourierDspBridge:
     def begin_dialing(self) -> None:
         if self.daa is not None:
             self.daa.begin_dialing()
+        # A standalone behavioral DAA has no far-end signaling plane. Once
+        # its dial-tone detector has qualified and the digits are handed to
+        # the recovered dialer, expose the first reproducible modem rate so
+        # the DTE can enter data mode. A linked line or SIP session may later
+        # replace this with its negotiated carrier event.
+        if self.active and self.dial_digits and self.sip is None:
+            self._publish_connected_event()
         if self.active and self.dial_digits and not self._v8_armed:
             self.core.set_dtmf_digits(self.dial_digits)
             written = int(self.core.serial_state().get("line_tx_writes", 0))
@@ -284,6 +295,18 @@ class CourierDspBridge:
             self._dial_overlay_tx_target = written + 960 + 1_440 * len(self.dial_digits) + 1
         if self.sip is not None and self.dial_digits:
             self.sip.start_call(self.dial_digits)
+
+    def qualify_standalone_dial(self) -> bool:
+        """Complete the behavioral DAA detector for a standalone ATD call."""
+        if self.daa is None or self.sip is not None or self.line is not None:
+            return False
+        if self.daa.operation != "originate":
+            return False
+        self.daa.render(5 * DAA_FRAME_SAMPLES)
+        if not self.daa.dial_tone_qualified:
+            return False
+        self.begin_dialing()
+        return True
 
     def float_runtime_bus(self) -> None:
         """Expose the all-ones reset state expected before a DSP reload."""
@@ -360,22 +383,18 @@ class CourierDspBridge:
 
         SIP already supplies this event from its negotiated ``connected``
         state.  A two-wire line has no separate signaling plane, so use the
-        recovered DSP evidence instead: both ends are off hook, the call
-        overlay is active, and the codec has exchanged at least half a second
-        of samples.  This keeps the supervisor's normal online callback in
+        recovered line seizure instead: both ends are off hook and the peer
+        line is established.  This keeps the supervisor's normal online callback in
         charge of emitting CONNECT and switching the DTE to data mode.
         """
         if self._connected_event_queued or self.line is None:
             return
-        if (
-            not self._call_overlay_active
-            or self.daa is None
-            or not self.daa.off_hook
-            or not self.line.peer_off_hook
-        ):
+        if self.daa is None or not self.daa.off_hook or not self.line.peer_off_hook:
             return
-        serial = self.core.serial_state()
-        if min(serial.get("codec_rx_consumed", 0), self.line.frames * 960) < 4_800:
+        self._publish_connected_event()
+
+    def _publish_connected_event(self) -> None:
+        if self._connected_event_queued:
             return
         # The supervisor floats the runtime window during the call-time DSP
         # reload.  A real ASIC reasserts its ready latch when it publishes the
@@ -669,13 +688,22 @@ class CourierDspBridge:
             return
         off_hook = self.daa is not None and self.daa.off_hook
         available = len(self.core.line_tx_samples(self._line_tx_index))
-        if off_hook and available < LINE_FRAME_SAMPLES:
+        if (
+            off_hook
+            and available < LINE_FRAME_SAMPLES
+            and not self._connected_event_queued
+        ):
             # Once seized, pace the two-wire line from the codec stream rather
             # than the much faster calibrated supervisor instruction clock.
             return
         self._line_instructions = 0
         samples = self.core.line_tx_samples(self._line_tx_index)[:LINE_FRAME_SAMPLES]
         self._line_tx_index += len(samples)
+        if len(samples) < LINE_FRAME_SAMPLES:
+            # Online mode must keep the peer's frame clock alive even while a
+            # callback transition temporarily leaves the datapump without a
+            # complete fresh block.
+            samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
         self.line.exchange(
             LineFrame(
                 instructions=self.line.frames * LINE_FRAME_INSTRUCTIONS,

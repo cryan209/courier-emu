@@ -90,6 +90,13 @@ class _ConnectedSip:
         return {"state": self.state}
 
 
+class _LinePeer:
+    peer_off_hook = True
+
+    def status(self) -> dict[str, object]:
+        return {"connected": True, "peer_off_hook": True}
+
+
 class BridgeTests(unittest.TestCase):
     def test_deferred_call_overlay_enters_on_the_asic_service_slot(self) -> None:
         daa = CourierDaa("quiet")
@@ -286,6 +293,22 @@ class BridgeTests(unittest.TestCase):
         )
         bridge.clock_x86()
         self.assertEqual(len(bridge._runtime_inbound), 4)
+
+    def test_line_call_boundary_queues_online_event(self) -> None:
+        image = _Image()
+        core = _Core()
+        with patch("courier_emu.bridge.NativeC5x", return_value=core):
+            bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, line=_LinePeer()  # type: ignore[arg-type]
+            )
+            bridge.active = True
+            bridge.arm_dial_tones(b"ATA")
+
+        self.assertEqual(
+            list(bridge._runtime_inbound),
+            [(0x0009, 0x0000), (0x004D, 0x0001)],
+        )
+        self.assertTrue(bridge.status().asic["connected_event_queued"])
 
 
 class CodecTests(unittest.TestCase):
