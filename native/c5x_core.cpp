@@ -166,6 +166,7 @@ void C5xCore::set_v8_calling(bool enabled)
 void C5xCore::set_v8_answering(bool enabled)
 {
     m_v8_mode = enabled ? V8Mode::Answering : V8Mode::Off;
+    if (enabled) m_dtmf_frame = 960;
 }
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
@@ -613,7 +614,17 @@ void C5xCore::step()
                     m_codec_rx.pop_front();
                     ++m_serial.rx_consumed;
                 }
-                if (m_line_dac_count) {
+                if (m_v8_mode == V8Mode::Answering) {
+                    // The ASIC answer selector owns this codec slot.  The
+                    // customer-ROM scheduler places ANSam on the line while
+                    // the downloaded receive filter is settling.
+                    uint16_t sample = dtmf_sample();
+                    m_line_tx.push_back(sample);
+                    if (sample) ++m_line_tx_nonzero;
+                    m_line_tx_last_pc = 0x0238;
+                    m_line_dac_sum = 0;
+                    m_line_dac_count = 0;
+                } else if (m_line_dac_count) {
                     int16_t sample = int16_t(
                         m_line_dac_sum / int64_t(m_line_dac_count));
                     m_line_tx.push_back(uint16_t(sample));

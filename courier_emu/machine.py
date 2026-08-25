@@ -122,6 +122,7 @@ class RunResult:
     accelerated_delays: int = 0
     error: str | None = None
     dsp_bridge: dict[str, Any] | None = None
+    supervisor_call_cells: dict[str, int] = field(default_factory=dict)
     panel: dict[str, Any] | None = None
     nvram: dict[str, Any] | None = None
     flash: dict[str, Any] | None = None
@@ -589,21 +590,57 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            if address in (0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
+                           0x6595B, 0x70F70, 0x70F83, 0x70F8D):
+                if self.dsp_bridge is not None and address == 0x6593F:
+                    self.dsp_bridge.set_completion_probe(True)
+                    latch = bytes(_uc.mem_read(0x0913, 1))[0]
+                    _uc.mem_write(0x0913, bytes((latch | 0x01,)))
+                elif self.dsp_bridge is not None and address == 0x65958:
+                    self.dsp_bridge.set_completion_probe(False)
+                if len(self.serial_trace) < 2048:
+                    cells = bytes(_uc.mem_read(0x027B, 2)).hex()
+                    self.serial_trace.append(
+                        f"call-gate {address:05x} cells={cells} "
+                        f"flags={_uc.reg_read(UC_X86_REG_FLAGS) & 0xffff:04x} "
+                        f"ff46={int.from_bytes(_uc.mem_read(0xff46, 2), 'little'):04x} "
+                        f"ff56={int.from_bytes(_uc.mem_read(0xff56, 2), 'little'):04x}"
+                    )
+            if address == 0x65C20 and bytes(_uc.mem_read(0x1CF1, 1))[0] == 0x0D:
+                # Event 0D's result handler starts with CMP AL,0; preserve
+                # the dispatcher contract when the periodic ASIC callback
+                # hands the event back to the supervisor.
+                _uc.reg_write(UC_X86_REG_AX, _uc.reg_read(UC_X86_REG_AX) & 0xFF00)
             if (
-                address == 0x5C540
+                address == 0x65560
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
-                and self.dsp_bridge.daa is not None
-                and self.dsp_bridge.daa.operation == "dialing"
                 and not self._daa_originate_event_posted
             ):
-                # 5c540 is the periodic call-state dispatch boundary. The
-                # carrier can qualify after the one-shot 828ae return, so the
-                # board event must be posted here when the state machine is
-                # still alive.
-                _uc.mem_write(0x1CF1, b"\x03")
+                if (
+                    bytes(_uc.mem_read(0x0681, 1))[0] != 0
+                    and int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
+                ):
+                    status = bytes(_uc.mem_read(0x09E4, 1))[0] & 0x0F
+                    cs = _uc.reg_read(UC_X86_REG_CS)
+                    table = ((cs << 4) + 0x2DA1) & 0xFFFFF
+                    value = int.from_bytes(
+                        _uc.mem_read(table + status * 2, 2), "little"
+                    )
+                    _uc.mem_write(0x0158, value.to_bytes(2, "little"))
+                    self._trace_serial(f"daa status-table 0158={value:04x}")
+                if (
+                    int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
+                ):
+                    return
+                # The auxiliary event table at 65832 maps event 3 to 658a7,
+                # which installs the A35F rate/completion callback in 02AC.
+                # Publish that callback before the main loop executes CALL
+                # [02AC]; writing 1CF1 here would select the unrelated main
+                # event table at 65c09.
+                _uc.mem_write(0x02AC, (0xA35F).to_bytes(2, "little"))
                 self._daa_originate_event_posted = True
-                self._trace_serial("daa originate-event 1cf1=03")
+                self._trace_serial("daa callback 02ac=a35f")
             if self._supervisor_23 and address == 0x62350:
                 length = bytes(_uc.mem_read(0x1D2C, 1))[0]
                 payload = bytes(_uc.mem_read(0x1D2D, min(length, 0x3C)))
@@ -1117,7 +1154,18 @@ class CourierMachine:
                     # data-out pins; every other bit keeps its floating level.
                     value = (value & ~(NVRAM_INPUT_BITS)) | self.nvram.read_latch()
             value &= mask
+            if (
+                self.dsp_bridge is not None
+                and getattr(self.dsp_bridge, "_completion_probe", False)
+                and port in (0x20, 0x1C, 0x1E)
+                and len(self.serial_trace) < 2048
+            ):
+                self.serial_trace.append(
+                    f"call-gate in{port:02x}={value:04x} pc={current_pc():05x}"
+                )
             self._record_io("in", port, size, value, current_pc())
+            if port in (0x5C, 0x5E) and self.dsp_bridge is not None and len(self.serial_trace) < 2048:
+                self.serial_trace.append(f"status-in {port:02x}={value:02x} pc={current_pc():05x}")
             return value
 
         def on_out(_uc: Any, port: int, size: int, value: int, _data: Any) -> None:
@@ -1241,6 +1289,30 @@ class CourierMachine:
             modelled = self.timers.read(address, size, self.instructions)
             if modelled is not None:
                 _uc.mem_write(address, modelled.to_bytes(size, "little"))
+            elif (
+                address == 0xFF5A
+                and size == 1
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and hasattr(self.dsp_bridge.core, "data")
+                and self.dsp_bridge.core.data(0x039F) & 0x0100
+            ):
+                # The supervisor's 7a59:1e7c completion wait samples ASIC
+                # latch ff5a. The C52 customer-ROM scheduler exposes the same
+                # completion edge as ready bit 8 in data cell 039f.
+                value = bytes(_uc.mem_read(address, size))[0] | 0x20
+                _uc.mem_write(address, bytes((value,)))
+                if len(self.serial_trace) < 2048:
+                    self.serial_trace.append("call-gate ff5a=20")
+            if (
+                self.dsp_bridge is not None
+                and getattr(self.dsp_bridge, "_completion_probe", False)
+                and len(self.serial_trace) < 2048
+            ):
+                value = int.from_bytes(_uc.mem_read(address, size), "little")
+                self.serial_trace.append(
+                    f"call-gate mmio {address:04x}={value:04x} pc={current_pc():05x}"
+                )
             if len(self.mmio_events) < self.max_io_events:
                 value = int.from_bytes(_uc.mem_read(address, size), "little")
                 self.mmio_events.append(MmioEvent("read", address, size, value, current_pc()))
@@ -1459,6 +1531,12 @@ class CourierMachine:
             accelerated_delays=self.accelerated_delays,
             error=error,
             dsp_bridge=bridge_result,
+            supervisor_call_cells={
+                f"{address:04x}": int.from_bytes(uc.mem_read(address, 2), "little")
+                for address in (0x0158, 0x027B, 0x027C, 0x0941, 0x094E, 0x094F, 0x0950,
+                                0x1CF0, 0x1CF1, 0x0681, 0x0682, 0x0683,
+                                0x1C77, 0x0283, 0x0285)
+            },
             panel=self.panel.status(),
             nvram=nvram_result,
             flash=flash_result,

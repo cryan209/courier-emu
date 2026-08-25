@@ -63,6 +63,7 @@ class BridgeStatus:
     mailbox_windows: dict[str, int]
     runtime_messages: list[str]
     runtime_message_counts: dict[str, int]
+    runtime_inbound_delivered: dict[str, int]
     runtime_message_first_seen: dict[str, int]
     runtime_message_first_pc: dict[str, str]
     runtime_words_queued: int
@@ -136,6 +137,7 @@ class CourierDspBridge:
         self._runtime_header = 0xFFFF
         self._runtime_data = 0xFFFF
         self._runtime_inbound: deque[tuple[int, int]] = deque()
+        self._runtime_inbound_delivered: Counter[str] = Counter()
         self._runtime_inbound_seen = False
         self._connected_event_queued = False
         self.error: str | None = None
@@ -161,6 +163,7 @@ class CourierDspBridge:
         self._sip_tx_rate = RateConverter(9_600, 8_000)
         self._sip_rx_rate = RateConverter(8_000, 9_600)
         self._sip_rx_samples: deque[int] = deque()
+        self._completion_probe = False
 
     def _observe_carrier_audio(self) -> None:
         """Detect the answer carrier in the real peer waveform.
@@ -406,6 +409,10 @@ class CourierDspBridge:
         """Return the board-to-supervisor message currently on the bus."""
         return self._runtime_inbound[0] if self._runtime_inbound else None
 
+    def set_completion_probe(self, active: bool) -> None:
+        """Expose the floating ASIC status bus during the rate probe."""
+        self._completion_probe = active
+
     @property
     def connected_event_queued(self) -> bool:
         """Whether the modeled ASIC has published the carrier-up edge."""
@@ -515,11 +522,15 @@ class CourierDspBridge:
         firmware count its own five hits instead of having the count written
         underneath it.
         """
-        if header & 0xFF != DETECTOR_TAG or self.daa is None:
-            return
-        level = DETECTOR_PRESENT_LEVEL if self.daa.detector_present else 0
-        self._queue_runtime_message(DETECTOR_TAG, level)
-        self.detector_replies += 1
+        tag = header & 0xFF
+        if tag == DETECTOR_TAG and self.daa is not None:
+            level = DETECTOR_PRESENT_LEVEL if self.daa.detector_present else 0
+            self._queue_runtime_message(DETECTOR_TAG, level)
+            self.detector_replies += 1
+        elif tag == 0x54 and self.active:
+            # 0x6fddd/0x6fe2b poll the call-side ASIC with tag 0x54; the
+            # receive callback consumes the reply by sampling ports 5e/5c.
+            self._queue_runtime_message(0x0054, 0x0000)
 
     def _publish_connected_event(self) -> None:
         if self._connected_event_queued:
@@ -530,7 +541,14 @@ class CourierDspBridge:
         self._runtime_mode = True
         self._runtime_ready = True
         self._queue_runtime_message(0x0009, 0x0000)
+        # The active runtime table carries status completion under 0x44;
+        # 0x4d is only present in the fallback table used during bring-up.
+        self._queue_runtime_message(0x0044, 0x0001)
+        # Keep the fallback status edge available as well: the resident
+        # supervisor consumes it after the active table has latched 0x44.
         self._queue_runtime_message(0x004D, 0x0001)
+        if self._call_overlay_active:
+            self._queue_runtime_message(0x001D, 0x0000)
         self._connected_event_queued = True
 
     @staticmethod
@@ -573,7 +591,8 @@ class CourierDspBridge:
                     and self._runtime_inbound
                     and self._runtime_inbound_seen
                 ):
-                    self._runtime_inbound.popleft()
+                    header, data = self._runtime_inbound.popleft()
+                    self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
                     self._runtime_inbound_seen = False
             return
         if DSP_WINDOW_FIRST <= port <= DSP_WINDOW_LAST:
@@ -669,6 +688,8 @@ class CourierDspBridge:
 
     def read(self, port: int, size: int) -> int | None:
         if port == 0x1C:
+            if self._completion_probe:
+                return (1 << (size * 8)) - 1
             if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
                 return (1 << (size * 8)) - 1
             # Bit 0 advertises one host-to-DSP transaction.  The host clears
@@ -679,6 +700,13 @@ class CourierDspBridge:
             return int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
         if port == DSP_COMMAND_PORT:
             return (1 << (size * 8)) - 1
+        if port in (0x5C, 0x5E) and self.active and hasattr(self.core, "io"):
+            # The ASIC exposes the C52's 16-bit status latch as high byte at
+            # 5E and low byte at 5C. These are the ports read by the
+            # supervisor's rate/status routine; they are not download-window
+            # lanes once the call datapump owns the bus.
+            word = self.core.io(0x5E)
+            return (word >> (8 if port == 0x5E else 0)) & 0xFF
         if port in DSP_RUNTIME_PORTS and self._runtime_inbound:
             header, data = self._runtime_inbound[0]
             word = header if port in (0x58, 0x5A) else data
@@ -897,6 +925,7 @@ class CourierDspBridge:
             mailbox_windows=dict(self.mailbox_windows.most_common()),
             runtime_messages=list(self.runtime_messages),
             runtime_message_counts=dict(self.runtime_message_counts.most_common()),
+            runtime_inbound_delivered=dict(self._runtime_inbound_delivered),
             runtime_message_first_seen=dict(self.runtime_message_first_seen),
             runtime_message_first_pc=dict(self.runtime_message_first_pc),
             runtime_words_queued=self.runtime_words_queued,
@@ -937,8 +966,12 @@ class CourierDspBridge:
                 },
                 "call_cells": {
                     f"{address:04x}": self.core.data(address)
-                    for address in (0x0304, 0x0B26, 0x039F, 0x03C8, 0x03CA, 0x03FE)
-                },
+                    for address in (
+                        0x0304, 0x035C, 0x039F, 0x03C8, 0x03CA, 0x03FE,
+                        0x069C, 0x0B26, 0x0B49, 0xFFF8, 0xFFF9, 0xFFFA,
+                        0xFFFD, 0xFFFE, 0xFFFF,
+                    )
+                } if hasattr(self.core, "data") else {},
                 "control_82": self.asic_registers.get(0x82, 0),
                 "line_phase": {
                     0x00: "idle",
