@@ -600,6 +600,11 @@ void C5xCore::step()
         if (m_line_sample_due) {
             m_line_sample_phase -= 25000000u;
             if (m_call_tdm_active) {
+                // The customer-ROM scheduler publishes the V.8 callback
+                // ready bit once per codec slot.  The downloaded image tests
+                // data cell 0x039f bit 8 before resuming that callback; the
+                // ASIC/TDM edge is the only producer of this bit.
+                m_data[0x039f] |= 0x0100;
                 if (!m_codec_rx.empty()) {
                     // The ASIC's polyphase input holds the newest and previous
                     // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.

@@ -470,7 +470,9 @@ void C5xCore::op_and_limm()
 
 void C5xCore::op_and_s16_limm()
 {
-	fatalerror("TMS320C5x: unimplemented op and s16 limm at %08X\n", m_pc-1);
+	uint16_t imm = ROPCODE();
+	m_acc &= uint32_t(imm) << 16;
+	CYCLES(2);
 }
 
 void C5xCore::op_andb()
@@ -1066,7 +1068,9 @@ void C5xCore::op_lar_limm()
 
 void C5xCore::op_ldp_mem()
 {
-	fatalerror("TMS320C5x: unimplemented op ldp mem at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	m_st0.dp = (DM_READ16(ea) & 0x01ff) << 7;
+	CYCLES(2);
 }
 
 void C5xCore::op_ldp_imm()
@@ -1150,7 +1154,20 @@ void C5xCore::op_banz()
 
 void C5xCore::op_banzd()
 {
-	fatalerror("TMS320C5x: unimplemented op banzd at %08X\n", m_pc-1);
+	uint16_t pma = ROPCODE();
+
+	if (m_ar[m_st0.arp] != 0)
+	{
+		delay_slot(m_pc);
+		CHANGE_PC(pma);
+		CYCLES(4);
+	}
+	else
+	{
+		CYCLES(2);
+	}
+
+	GET_ADDRESS();      // modify AR/ARP
 }
 
 void C5xCore::op_bcnd()
@@ -1693,7 +1710,10 @@ void C5xCore::op_apac()
 
 void C5xCore::op_lph()
 {
-	fatalerror("TMS320C5x: unimplemented op lph at %08X\n", m_pc-1);
+	uint16_t ea = GET_ADDRESS();
+	uint16_t data = DM_READ16(ea);
+	m_preg = (m_preg & 0x0000ffff) | (uint32_t(data) << 16);
+	CYCLES(1);
 }
 
 void C5xCore::op_lt()

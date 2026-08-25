@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from dataclasses import dataclass
+import math
 from typing import Any
 
 from .codec import CodecBringUp
@@ -96,6 +97,12 @@ class CourierDspBridge:
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
+        # The 2.3 supervisor downloads the shorter 0xcbc0-byte resident
+        # bootstrap; the 2.1/2.2 supervisors transfer the full segment.
+        self.bootstrap_target_size = (
+            0xCBC0 if getattr(image, "supervisor_offset", 0) == 0x17BB0
+            else DSP_BOOT_SIZE
+        )
         self.core = NativeC5x(image)
         self._configure_frame_interrupt()
         self._call_overlay = self._find_call_overlay()
@@ -147,10 +154,52 @@ class CourierDspBridge:
         self._line_instructions = 0
         self._line_tx_index = 0
         self._line_rx_samples: deque[int] = deque()
+        self._carrier_probe: deque[int] = deque()
+        self._carrier_probe_frames = 0
+        self._carrier_best_score = 0.0
         self._sip_tx_index = 0
         self._sip_tx_rate = RateConverter(9_600, 8_000)
         self._sip_rx_rate = RateConverter(8_000, 9_600)
         self._sip_rx_samples: deque[int] = deque()
+
+    def _observe_carrier_audio(self) -> None:
+        """Detect the answer carrier in the real peer waveform.
+
+        The resident C52 overlay supplies the line datapump, but the native
+        core does not yet implement its carrier detector.  The recovered
+        answer waveform is centred near 1.875 kHz at the 9.6 kHz codec rate;
+        accept that component (and the nominal 2.1 kHz ANSam component) only
+        after a full 100 ms frame and only on an originating call.
+        """
+        if (
+            self._connected_event_queued
+            or self._call_overlay_active is False
+            or self.daa is None
+            or self.daa.operation not in ("dialing", "answer")
+        ):
+            return
+        while len(self._carrier_probe) >= DAA_FRAME_SAMPLES:
+            samples = [self._carrier_probe.popleft() for _ in range(DAA_FRAME_SAMPLES)]
+            self._carrier_probe_frames += 1
+            energy = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+            if energy < 500:
+                continue
+            scores: list[float] = []
+            for frequency in (1300, 1875, 2100):
+                cosine = sum(
+                    sample * math.cos(2 * math.pi * frequency * index / 9600)
+                    for index, sample in enumerate(samples)
+                )
+                sine = sum(
+                    sample * math.sin(2 * math.pi * frequency * index / 9600)
+                    for index, sample in enumerate(samples)
+                )
+                scores.append(math.hypot(cosine, sine) / len(samples))
+            self._carrier_best_score = max(self._carrier_best_score, *scores)
+            threshold = 180 if self.daa.operation == "dialing" else 60
+            if max(scores) >= threshold:
+                self._publish_connected_event()
+                return
 
     def _find_call_overlay(self) -> bytes | None:
         matches: list[tuple[int, bytes]] = []
@@ -245,6 +294,10 @@ class CourierDspBridge:
         self._call_resume_state = self.core.state()
         answering = self.daa is not None and self.daa.operation == "answer"
         selector = 0x0000 if answering else 0x0002
+        if answering and hasattr(self.core, "set_v8_answering"):
+            self.core.set_v8_answering(True)
+        elif not answering and hasattr(self.core, "set_v8_calling"):
+            self.core.set_v8_calling(True)
         self._activate_call_overlay(selector)
         if not hasattr(self.core, "schedule_call_overlay"):
             self._publish_call_registers()
@@ -275,8 +328,16 @@ class CourierDspBridge:
         self._v8_armed = True
         self._call_resume_pending = True
         self._asic_call_engine_started = True
+        if self._call_overlay is not None and self.asic_registers.get(0x82) == 0x00A0:
+            # Answer uses the same ASIC release edge as originate; the
+            # supervisor leaves the line held while the detector qualifies.
+            self.asic_registers[0x82] = 0x0060
 
     def _configure_frame_interrupt(self) -> None:
+        if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
+            if hasattr(self.core, "configure_line_frame_interrupt"):
+                self.core.configure_line_frame_interrupt(5, 0x0206)
+            return
         if (
             hasattr(self.core, "configure_line_frame_interrupt")
             and self.expected_bootstrap[
@@ -303,6 +364,20 @@ class CourierDspBridge:
         self.dial_digits = "".join(ch for ch in dial if ch in "0123456789*#ABCD")
         if self.daa is not None:
             self.daa.seize("originate")
+            if self.line is not None and self.line.connected:
+                # A dedicated line link represents an already-present loop;
+                # the originating side hears central-office dial tone as soon
+                # as its hook relay seizes it, before the first frame exchange.
+                self.daa.line_state = "dial-tone"
+            if self.dial_digits and self.daa.dial_tone_present:
+                # The physical DAA continues sampling while the supervisor
+                # parses ATD.  Make the five-frame detector window available
+                # to the C52 before its short command-mode timeout expires.
+                samples = self.daa.render(DAA_FRAME_SAMPLES * 5)
+                if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
+                    self.core.queue_codec_rx(samples)
+                else:
+                    self.core.queue_serial_rx(samples)
         if (
             self.bootstraps >= 2
             and self.dial_digits
@@ -331,8 +406,45 @@ class CourierDspBridge:
         """Return the board-to-supervisor message currently on the bus."""
         return self._runtime_inbound[0] if self._runtime_inbound else None
 
+    @property
+    def connected_event_queued(self) -> bool:
+        """Whether the modeled ASIC has published the carrier-up edge."""
+        return self._connected_event_queued
+
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
+
+    def _maybe_start_asic_call_engine(self) -> None:
+        """Acknowledge a held call start once the line detector is ready."""
+        if (
+            self.asic_registers.get(0x82) != 0x00A0
+            or self._call_overlay is None
+            or self.daa is None
+            or not self.daa.detector_qualified
+        ):
+            return
+        # The supervisor publishes 0xa0 (held and line-enabled).  The ASIC
+        # owns the later release to 0x60; it can occur after the detector's
+        # debounce rather than on the same host write.
+        self.asic_registers[0x82] = 0x0060
+        if not self._asic_call_engine_started:
+            self._asic_call_engine_started = True
+            self._v8_armed = True
+            self._call_resume_pending = True
+            self._queue_runtime_message(0x0002, 0x0000)
+            self._queue_runtime_message(0x0003, 0x0000)
+
+    def _advance_asic_call_phase(self) -> None:
+        """Release the ASIC from start-strobe into its running phase."""
+        if (
+            self._asic_call_engine_started
+            and self._call_overlay_active
+            and self.asic_registers.get(0x82) == 0x0060
+        ):
+            # Firmware analysis recovered 0x60 as the start-strobe and 0x20
+            # as the enabled/running state.  The intermediate edge is owned
+            # by the ASIC, not emitted by the 80186 supervisor.
+            self.asic_registers[0x82] = 0x0020
 
     def _observe_asic_command(self, header: int, data: int) -> None:
         """Apply the recovered board-command register protocol.
@@ -348,6 +460,12 @@ class CourierDspBridge:
         previous = self.asic_registers.get(header, 0)
         self.asic_registers[header] = data
         self.asic_writes[header] += 1
+        if (
+            header == 0x82
+            and data == 0x00A0
+        ):
+            self._maybe_start_asic_call_engine()
+            return
         if header == 0x82 and data & 0x40 and not self._asic_call_engine_started:
             # The ASIC acknowledges the 0x82 start strobe before the
             # supervisor publishes the C52 register block.  The firmware
@@ -488,8 +606,11 @@ class CourierDspBridge:
         if not self.active:
             self.transfer_commands += 1
             self.bootstrap.extend(self.window)
-            if len(self.bootstrap) >= DSP_BOOT_SIZE:
-                self.bootstrap_match = self.bootstrap[:DSP_BOOT_SIZE] == self.expected_bootstrap
+            if len(self.bootstrap) >= self.bootstrap_target_size:
+                self.bootstrap_match = (
+                    self.bootstrap[:self.bootstrap_target_size]
+                    == self.expected_bootstrap[:self.bootstrap_target_size]
+                )
                 self.active = True
                 self.bootstraps += 1
                 # A modelled codec reports itself at power up, so the mailbox
@@ -529,6 +650,10 @@ class CourierDspBridge:
                     and self.daa is not None
                     and self.daa.operation == "originate"
                     and self.daa.dial_tone_qualified
+                    and (
+                        self._asic_call_engine_started
+                        or self._call_overlay is None
+                    )
                 ):
                     self.begin_dialing()
                 if (
@@ -544,6 +669,8 @@ class CourierDspBridge:
 
     def read(self, port: int, size: int) -> int | None:
         if port == 0x1C:
+            if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
+                return (1 << (size * 8)) - 1
             # Bit 0 advertises one host-to-DSP transaction.  The host clears
             # it after writing address/value; the board reasserts it after the
             # C52 has had a scheduling quantum to observe the new cell.
@@ -602,14 +729,14 @@ class CourierDspBridge:
                     # call-up handler at physical 0x6f85d. A nonzero low data
                     # byte then records the line state, raises the call flag,
                     # and enters the firmware's online setup.
-                    self._queue_runtime_message(0x0009, 0x0000)
-                    self._queue_runtime_message(0x004D, 0x0001)
-                    self._connected_event_queued = True
+                    self._publish_connected_event()
                 self._sip_rx_samples.extend(
                     self._sip_rx_rate.convert(self.sip.receive_audio())
                 )
             if self.line is not None:
                 self._service_line()
+            self._maybe_start_asic_call_engine()
+            self._advance_asic_call_phase()
             if (
                 self.daa is not None
                 and self.daa.off_hook
@@ -622,7 +749,18 @@ class CourierDspBridge:
                     )
                 else:
                     queued = serial.get("rx_queued", 0) - serial.get("rx_consumed", 0)
-                if queued < DAA_FRAME_SAMPLES:
+                # The physical DAA continues filling its receive FIFO while
+                # the supervisor is still bringing the datapump online. Keep
+                # enough board-side audio queued for the five-frame detector
+                # debounce; limiting this to one frame deadlocks alternate
+                # supervisors whose DSP reports no RX consumption during
+                # command parsing.
+                queue_limit = (
+                    DAA_FRAME_SAMPLES * 5
+                    if not self.daa.detector_qualified
+                    else DAA_FRAME_SAMPLES
+                )
+                if queued < queue_limit:
                     count = (
                         DAA_FRAME_SAMPLES if self.line is not None
                         else DAA_FRAME_SAMPLES * 2
@@ -644,6 +782,10 @@ class CourierDspBridge:
                     self.dial_digits
                     and self.daa.operation == "originate"
                     and self.daa.dial_tone_qualified
+                    and (
+                        self._asic_call_engine_started
+                        or self._call_overlay is None
+                    )
                 ):
                     self.begin_dialing()
             self._maybe_start_answer_engine()
@@ -696,6 +838,8 @@ class CourierDspBridge:
             off_hook
             and available < LINE_FRAME_SAMPLES
             and not self._call_overlay_active
+            and self.daa is not None
+            and self.daa.operation == "originate"
         ):
             # Before the call overlay is active, pace seizure from the codec
             # stream rather than the much faster calibrated supervisor clock.
@@ -722,7 +866,10 @@ class CourierDspBridge:
                 samples=samples,
             )
         )
-        self._line_rx_samples.extend(self.line.receive_audio())
+        incoming = self.line.receive_audio()
+        self._line_rx_samples.extend(incoming)
+        self._carrier_probe.extend(incoming)
+        self._observe_carrier_audio()
         if self.daa is not None:
             # The socket models the small exchange between the two DAAs. An
             # originating seizure hears dial tone until the firmware starts
@@ -734,7 +881,9 @@ class CourierDspBridge:
                     self.daa.line_state = "ringing"
                 else:
                     self.daa.line_state = (
-                        "quiet" if self.line.peer_off_hook else "disconnected"
+                        "quiet"
+                        if self.line.peer_off_hook or self.line.connected
+                        else "disconnected"
                     )
 
     def status(self) -> BridgeStatus:
@@ -779,10 +928,16 @@ class CourierDspBridge:
                 "call_overlay_active": self._call_overlay_active,
                 "call_resume_state": self._call_resume_state,
                 "connected_event_queued": self._connected_event_queued,
+                "carrier_probe_frames": self._carrier_probe_frames,
+                "carrier_best_score": round(self._carrier_best_score),
                 "dsp_registers": {
                     f"{register:02x}": ((value & 0xFF) << 8) | (value >> 8)
                     for register, value in sorted(self.asic_registers.items())
                     if 0x13 <= register <= 0x1F
+                },
+                "call_cells": {
+                    f"{address:04x}": self.core.data(address)
+                    for address in (0x0304, 0x0B26, 0x039F, 0x03C8, 0x03CA, 0x03FE)
                 },
                 "control_82": self.asic_registers.get(0x82, 0),
                 "line_phase": {

@@ -206,6 +206,7 @@ class CourierMachine:
         self.serial_truncated = False
         self.data_rx_bytes = 0
         self.serial_rx: deque[int] = deque(serial_input)
+        self._alternate_line = bytearray()
         self.console = console
         self.stop_requested = False
         self.serial_interrupts = 0
@@ -226,9 +227,10 @@ class CourierMachine:
         # relocation register maps the control block to 0x0ff00.
         # A ROM enters at the reset vector and dispatches its own software
         # interrupts; an update payload is entered directly at the application.
+        supervisor_offset = getattr(image, "supervisor_offset", None)
         self.emulate_interrupts = (
             getattr(image, "emulates_interrupts", False)
-            or image.supervisor_offset == 0x1B600
+            or supervisor_offset == 0x1B600
         )
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
         self._timer_interrupt_pending: int | None = None
@@ -262,16 +264,23 @@ class CourierMachine:
             0x7E133: "startup-crc",
             0x65512: "main-loop",
         }
-        self._alternate_supervisor = image.supervisor_offset == 0x1B600
+        self._alternate_supervisor = supervisor_offset == 0x1B600
+        self._supervisor_23 = supervisor_offset == 0x17BB0
         # main2205 keeps the same supervisor ABI but relocates several
         # dispatcher routines.  These are the corresponding entry points
         # recovered from its own call-table and transfer code.
-        if image.supervisor_offset == 0x1B600:
+        if supervisor_offset == 0x1B600:
             self._milestone_addresses.update({
                 0x5BA10: "supervisor-entry",
                 0x69FBA: "dsp-transfer",
+                0x69FD8: "dsp-transfer",
                 0x656A5: "main-loop",
                 0x656AD: "main-loop",
+            })
+        elif supervisor_offset == 0x17BB0:
+            self._milestone_addresses.update({
+                0x61CE2: "main-loop",
+                0x61D19: "main-loop",
             })
 
     def _capture_serial(self, value: int) -> None:
@@ -538,8 +547,10 @@ class CourierMachine:
             """
             if not self._terminal_attached:
                 return
-            length = bytes(_uc.mem_read(0x1CF4, 1))[0]
-            line = bytes(_uc.mem_read(0x1CF5, length)) if length else b""
+            length_address = 0x1D1C if self._alternate_supervisor else 0x1CF4
+            buffer_address = 0x1D1D if self._alternate_supervisor else 0x1CF5
+            length = bytes(_uc.mem_read(length_address, 1))[0]
+            line = bytes(_uc.mem_read(buffer_address, length)) if length else b""
             if attention_body(line) is not None or line[:2] in (
                 b"A/",
                 b"a/",
@@ -547,8 +558,9 @@ class CourierMachine:
                 b"a>",
             ):
                 return
-            _uc.mem_write(0x2AC, (0xA8D9).to_bytes(2, "little"))
-            _uc.mem_write(0x1CF4, b"\x00")
+            ready_callback = 0x90D8 if self._alternate_supervisor else 0xA8D9
+            _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
+            _uc.mem_write(length_address, b"\x00")
             self._trace_serial(f"discard {line!r}: no attention prefix")
 
         def begin_command_line(_uc: Any) -> None:
@@ -572,32 +584,60 @@ class CourierMachine:
             if flags & 0x40:
                 return
             _uc.mem_write(0x1CEE, bytes((flags | 0x40,)))
-            _uc.mem_write(0x1CF4, b"\x00")
+            length_address = 0x1D1C if self._alternate_supervisor else 0x1CF4
+            _uc.mem_write(length_address, b"\x00")
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             if (
+                address == 0x5C540
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and self.dsp_bridge.daa is not None
+                and self.dsp_bridge.daa.operation == "dialing"
+                and not self._daa_originate_event_posted
+            ):
+                # 5c540 is the periodic call-state dispatch boundary. The
+                # carrier can qualify after the one-shot 828ae return, so the
+                # board event must be posted here when the state machine is
+                # still alive.
+                _uc.mem_write(0x1CF1, b"\x03")
+                self._daa_originate_event_posted = True
+                self._trace_serial("daa originate-event 1cf1=03")
+            if self._supervisor_23 and address == 0x62350:
+                length = bytes(_uc.mem_read(0x1D2C, 1))[0]
+                payload = bytes(_uc.mem_read(0x1D2D, min(length, 0x3C)))
+                body = attention_body(payload)
+                if body is not None:
+                    _uc.mem_write(0x1D2D, body + b"\x00\x00")
+                    _uc.mem_write(0x1D2C, bytes((len(body),)))
+                    if self.dsp_bridge is not None:
+                        self.dsp_bridge.arm_dial_tones(body)
+            if (
                 address == 0x6AD6E
                 and self.dsp_bridge is not None
-                and self.dsp_bridge.pending_runtime_message() is not None
             ):
-                header, data = self.dsp_bridge.pending_runtime_message() or (0, 0)
                 callback = int.from_bytes(_uc.mem_read(0x2DA, 2), "little")
-                self._trace_serial(
-                    f"dsp-rx {header:04x}:{data:04x} callback={callback:04x}"
-                )
-            if self._serial_started and address == 0x65F03:
+                pending = self.dsp_bridge.pending_runtime_message()
+                if pending is not None:
+                    header, data = pending
+                    self._trace_serial(
+                        f"dsp-rx {header:04x}:{data:04x} callback={callback:04x}"
+                    )
+            if self._serial_started and address in (0x65F03, 0x65D42):
                 # The physical DTE front-end recognizes the attention prefix
                 # before handing a command body to this banked parser. Our
                 # direct UART ISR path bypasses that small state machine, so
                 # reproduce its observable contract here: the parser receives
                 # the bytes after an all-upper or all-lower "AT" prefix.
-                length = bytes(_uc.mem_read(0x1CF4, 1))[0]
-                command = bytes(_uc.mem_read(0x1CF5, length))
+                length_address = 0x1D1C if self._alternate_supervisor else 0x1CF4
+                buffer_address = 0x1D1D if self._alternate_supervisor else 0x1CF5
+                length = bytes(_uc.mem_read(length_address, 1))[0]
+                command = bytes(_uc.mem_read(buffer_address, length))
                 body = attention_body(command)
                 if body is not None:
-                    _uc.mem_write(0x1CF5, body + b"\x00\x00")
-                    _uc.mem_write(0x1CF4, bytes((len(body),)))
+                    _uc.mem_write(buffer_address, body + b"\x00\x00")
+                    _uc.mem_write(length_address, bytes((len(body),)))
                     self._trace_serial(f"attention body={body!r}")
                     if self.dsp_bridge is not None:
                         self.dsp_bridge.arm_dial_tones(body)
@@ -621,8 +661,13 @@ class CourierMachine:
                 self.serial_trace.append("entered-uart-isr")
             if self._serial_in_handler and (
                 address in (0x5D613, 0x5D650, 0x5D656)
+                or (self._supervisor_23 and address in (0x59BF2, 0x59C35))
                 or self._previous_address in (
                     0x5D608, 0x5D613, 0x5D640, 0x5D650, 0x5D656,
+                )
+                or (
+                    self._supervisor_23
+                    and self._previous_address in (0x59BEB, 0x59BF2, 0x59C2F, 0x59C35)
                 )
             ):
                 self.serial_trace.append(f"iret {self._previous_address:05x}")
@@ -688,23 +733,48 @@ class CourierMachine:
                 serial_callbacks = (
                     ((0x2A8, 0xAE9B), (0x2AA, 0x1FB2), (0x2AE, 0xA420))
                     if self._alternate_supervisor
-                    else ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
+                    else (
+                        ((0x2A8, 0xAEED), (0x2AA, 0x18F5), (0x2AE, 0x9138))
+                        if self._supervisor_23
+                        else ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
+                    )
                 )
                 for pointer, fallback in serial_callbacks:
-                    if pointer == 0x2A8 and self._terminal_attached:
+                    if (
+                        (pointer == 0x2A8 or (self._supervisor_23 and pointer == 0x2AA))
+                        and self._terminal_attached
+                    ):
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
                     elif bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
                 if self._terminal_attached:
+                    if self._alternate_supervisor:
+                        # 2.2.05 moved the command collector one byte block:
+                        # its RX callback tests [0x1d16].6 and compares the
+                        # terminator against [0x0903].
+                        _uc.mem_write(0x0903, b"\x0d")
+                        collector_state = bytes(_uc.mem_read(0x1D16, 1))[0]
+                        _uc.mem_write(0x1D16, bytes((collector_state | 0x40,)))
+                    if self._supervisor_23:
+                        # 2.3's RX callback compares the received byte with
+                        # this firmware-owned command terminator before it
+                        # dispatches the line parser. The board setup normally
+                        # supplies CR; the XMF lacks that EEPROM/peripheral
+                        # initialization path.
+                        _uc.mem_write(0x0905, b"\x0d")
+                        command_state = bytes(_uc.mem_read(0x1D26, 1))[0]
+                        _uc.mem_write(0x1D26, bytes((command_state | 0x40,)))
                     command_flags = bytes(_uc.mem_read(0x1CEE, 1))[0] | 0x40
                     _uc.mem_write(0x1CEE, bytes((command_flags,)))
-                    # a8d9 is the supervisor's command-line-ready state: RX
-                    # event 8 (the configured terminator) advances it to a910,
-                    # whose next dispatcher poll invokes the AT parser over
-                    # the buffer at 1cf5.
-                    ready_callback = 0x90D8 if self._alternate_supervisor else 0xA8D9
+                    # The 2.3 image enters its parser through the resident
+                    # command entry at A7A0; older supervisors use A8D9.
+                    ready_callback = (
+                        0xA420 if self._alternate_supervisor
+                        else 0xA7A0 if self._supervisor_23
+                        else 0xA8D9
+                    )
                     _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
                     self.serial_trace.append(f"callback 2ac={ready_callback:04x}")
                 self._serial_started = True
@@ -720,10 +790,21 @@ class CourierMachine:
             # cannot produce.
             if self.fast_delays and address in (
                 0x5BA29, 0x5BA49, 0x69F16,
+                0x6A035, 0x6A062, 0x6A08A, 0x6A0CF,
+                0x57FF9,
             ):
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
                 _uc.mem_write(0xFF46, (value | 0x20).to_bytes(2, "little"))
                 self.accelerated_delays += 1
+            # The 2.3 supervisor reuses bit 0x20 as a transfer-failure
+            # indication: its download loop aborts when the bit is set. The
+            # startup wait above needs the bit asserted once, but the
+            # subsequent status polls need the peripheral's ready state.
+            if self.fast_delays and self._supervisor_23 and address in (
+                0x66638, 0x666E0, 0x66720, 0x6675B, 0x66788, 0x667B0,
+            ):
+                value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
+                _uc.mem_write(0xFF46, (value & ~0x20).to_bytes(2, "little"))
             # The coprocessor bootstrap resets its transfer interface and
             # waits here until both status words float to all ones. Dynamic
             # ATD/ATA traces reach this during startup only: calls manipulate
@@ -733,12 +814,16 @@ class CourierMachine:
             # Firmware delay helpers either burn CX or wait for the timer ISR
             # to advance the tick at 0000:0152. Advance both without inventing
             # asynchronous interrupts in the CPU-only harness.
-            if self.fast_delays and address in (0x5C0F3, 0x5C0D4):
+            if self.fast_delays and address in (0x5C0F3, 0x5C0D4, 0x5868C):
                 _uc.reg_write(UC_X86_REG_CX, 1)
                 self.accelerated_delays += 1
-            if self.fast_delays and address in (0x5C0E3, 0x5C0C4):
+            if self.fast_delays and address in (0x5C0E3, 0x5C0C4, 0x5867C):
                 ah = (_uc.reg_read(UC_X86_REG_AX) >> 8) & 0xFF
                 _uc.mem_write(0x152, bytes((ah,)))
+                self.accelerated_delays += 1
+            if self.fast_delays and self._supervisor_23 and address in (0x59CD9, 0x59D02, 0x59D28):
+                cx = _uc.reg_read(UC_X86_REG_CX)
+                _uc.mem_write(0x14E, bytes((cx & 0xFF,)))
                 self.accelerated_delays += 1
             if self.fast_delays and address in (
                 0x5D6E5, 0x5D70E, 0x5D734, 0x5D6FB, 0x5D724, 0x5D74A
@@ -784,18 +869,6 @@ class CourierMachine:
             # online/originate path.  The CPU-only timer model has no producer
             # for that event, leaving ATD parked in command mode after the
             # digits.  Reproduce the recovered event edge once per seizure.
-            if (
-                address == 0x828AE
-                and self.dsp_bridge is not None
-                and self.dsp_bridge.daa is not None
-                and self.dsp_bridge.daa.off_hook
-                and self.dsp_bridge.daa.detector_qualified
-            ):
-                daa = self.dsp_bridge.daa
-                if daa.operation == "dialing" and not self._daa_originate_event_posted:
-                    _uc.mem_write(0x1CF1, b"\x03")
-                    self._daa_originate_event_posted = True
-                    self._trace_serial("daa originate-event 1cf1=03")
             # Inter-digit cadence uses the timer word at 0000:0161.
             if self.fast_delays and address in (0x6355F, 0x822E0, 0x82342, 0x8235B):
                 _uc.mem_write(0x161, b"\x00\x00")
@@ -808,6 +881,10 @@ class CourierMachine:
             # missing device rather than a calibrated delay, so the modeled DTE
             # reports itself ready regardless of --real-delays.
             if address == 0x5CE4E:
+                value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
+                if not value & 0x08:
+                    _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
+            if self._supervisor_23 and address == 0x59435:
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 if not value & 0x08:
                     _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
@@ -957,6 +1034,45 @@ class CourierMachine:
             ):
                 terminal_value = self.serial_rx.popleft()
                 value = serial_wire_value(terminal_value)
+                if self._alternate_supervisor or self._supervisor_23:
+                    if terminal_value in (10, 13):
+                        line = bytes(self._alternate_line)
+                        if self._alternate_supervisor:
+                            # The 2.2.05 supervisor retains the legacy
+                            # command parser's buffer even though its flash
+                            # boundary moved.  Keep both observed aliases in
+                            # sync until the callback table selects the
+                            # parser; the firmware still owns parsing/results.
+                            bounded = line[:0x3C]
+                            parsed = attention_body(bounded)
+                            if parsed is not None:
+                                bounded = parsed
+                            _uc.mem_write(0x1CF5, bounded + b"\x00\x00")
+                            _uc.mem_write(0x1CF4, bytes((len(bounded),)))
+                            _uc.mem_write(0x1D1D, bounded + b"\x00\x00")
+                            _uc.mem_write(0x1D1C, bytes((len(bounded),)))
+                            # The attention detector marks the completed
+                            # line for the relocated command parser here.
+                            _uc.mem_write(0x1D1A, b"\x01")
+                            _uc.mem_write(0x2AC, (0xAAB2).to_bytes(2, "little"))
+                        if self._supervisor_23:
+                            _uc.mem_write(0x1D2D, line + b"\x00\x00")
+                            _uc.mem_write(0x1D2C, bytes((min(len(line), 0x3C),)))
+                            # The 2.3 RX callback gates its terminator path
+                            # on bit 6 of the command-state byte. The normal
+                            # board front-end sets this while handing a line
+                            # to the supervisor; the XMF path has no such
+                            # front-end, so preserve the firmware contract
+                            # explicitly before the callback runs.
+                            state = bytes(_uc.mem_read(0x1D26, 1))[0]
+                            _uc.mem_write(0x1D26, bytes((state | 0x40,)))
+                        body = attention_body(line)
+                        if body is not None and self.dsp_bridge is not None:
+                            self.dsp_bridge.arm_dial_tones(body)
+                            self._trace_serial(f"alternate attention body={body!r}")
+                        self._alternate_line.clear()
+                    else:
+                        self._alternate_line.append(terminal_value)
                 terminator = bytes(_uc.mem_read(0x8E3, 1))[0]
                 self.serial_trace.append(
                     f"rx terminal={terminal_value:02x} wire={value:02x} "
@@ -1184,6 +1300,7 @@ class CourierMachine:
             if len(self.dsp_queue_writes) > self.max_io_events:
                 del self.dsp_queue_writes[0]
 
+
         uc.hook_add(UC_HOOK_CODE, on_code)
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
@@ -1191,7 +1308,6 @@ class CourierMachine:
         uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_dsp_queue_write, None, 0x02CA, 0x030F)
-
         status = "instruction-limit"
         error: str | None = None
         try:
