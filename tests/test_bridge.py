@@ -321,11 +321,12 @@ class BridgeTests(unittest.TestCase):
                 (0x0002, 0x0000),
                 (0x0003, 0x0000),
                 (0x0009, 0x0000),
+                (0x0044, 0x0001),
                 (0x004D, 0x0001),
             ],
         )
         bridge.clock_x86()
-        self.assertEqual(len(bridge._runtime_inbound), 4)
+        self.assertEqual(len(bridge._runtime_inbound), 5)
 
 
 class CodecTests(unittest.TestCase):

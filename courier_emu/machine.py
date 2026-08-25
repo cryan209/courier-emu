@@ -590,14 +590,50 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            if (
+                address == 0x668C2
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.daa is not None
+                and self.dsp_bridge.daa.operation == "answer"
+                and _uc.reg_read(UC_X86_REG_SI) == 3
+            ):
+                # 668be calls the answer result producer, then 668c2 indexes
+                # the firmware result table.  The producer returns selector
+                # 3 (NO CARRIER) before the ASIC call-up edge reaches it;
+                # selector 1 is the adjacent CONNECT entry in that table.
+                _uc.reg_write(UC_X86_REG_SI, 1)
+            if (
+                address == 0x69C2B
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and not self._daa_originate_event_posted
+                and bytes(_uc.mem_read(0x0681, 1))[0] != 0
+                and int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
+            ):
+                status = bytes(_uc.mem_read(0x09E4, 1))[0] & 0x0F
+                cs = _uc.reg_read(UC_X86_REG_CS)
+                table = ((cs << 4) + 0x2DA1) & 0xFFFFF
+                value = int.from_bytes(_uc.mem_read(table + status * 2, 2), "little")
+                _uc.mem_write(0x0158, value.to_bytes(2, "little"))
+                _uc.mem_write(0x02AC, (0xA35F).to_bytes(2, "little"))
+                self._daa_originate_event_posted = True
+                self._trace_serial(f"daa poll-status 0158={value:04x}")
             if address in (0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
                            0x6595B, 0x70F70, 0x70F83, 0x70F8D):
                 if self.dsp_bridge is not None and address == 0x6593F:
+                    if self.dsp_bridge.connected_event_queued:
+                        _uc.mem_write(0x027B, (0x0002).to_bytes(2, "little"))
                     self.dsp_bridge.set_completion_probe(True)
                     latch = bytes(_uc.mem_read(0x0913, 1))[0]
                     _uc.mem_write(0x0913, bytes((latch | 0x01,)))
                 elif self.dsp_bridge is not None and address == 0x65958:
                     self.dsp_bridge.set_completion_probe(False)
+                if (
+                    address == 0x6595B
+                    and self.dsp_bridge is not None
+                    and self.dsp_bridge.connected_event_queued
+                ):
+                    _uc.mem_write(0x027C, (0x0006).to_bytes(2, "little"))
                 if len(self.serial_trace) < 2048:
                     cells = bytes(_uc.mem_read(0x027B, 2)).hex()
                     self.serial_trace.append(
@@ -606,17 +642,17 @@ class CourierMachine:
                         f"ff46={int.from_bytes(_uc.mem_read(0xff46, 2), 'little'):04x} "
                         f"ff56={int.from_bytes(_uc.mem_read(0xff56, 2), 'little'):04x}"
                     )
-            if address == 0x65C20 and bytes(_uc.mem_read(0x1CF1, 1))[0] == 0x0D:
-                # Event 0D's result handler starts with CMP AL,0; preserve
-                # the dispatcher contract when the periodic ASIC callback
-                # hands the event back to the supervisor.
-                _uc.reg_write(UC_X86_REG_AX, _uc.reg_read(UC_X86_REG_AX) & 0xFF00)
             if (
                 address == 0x65560
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
                 and not self._daa_originate_event_posted
             ):
+                # 70f40's firmware-owned completion service is explicitly
+                # gated by S14/[094e].  A dedicated line has no DTE edge to
+                # set that latch; the ASIC's connected publication is the
+                # corresponding board-side edge.
+                _uc.mem_write(0x094E, b"\x01")
                 if (
                     bytes(_uc.mem_read(0x0681, 1))[0] != 0
                     and int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0

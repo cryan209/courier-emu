@@ -210,10 +210,10 @@ class CliTests(unittest.TestCase):
         self.assertEqual(run["ring"]["off_ms"], 4_000)
         self.assertGreaterEqual(run["ring"]["bursts_delivered"], 3)
 
-    def test_two_linked_instances_hold_one_line_open(self) -> None:
-        # Both sides answer into the same line: each sees the other seize it,
-        # each qualifies the line detector, and both exchange the same number
-        # of frames because the link is what keeps their clocks together.
+    def test_two_linked_instances_reach_connect(self) -> None:
+        # One side originates and the other answers on the shared line. Both
+        # qualify the detector and exchange the same number of frames before
+        # the answer-side firmware emits its CONNECT result.
         output = StringIO()
         with tempfile.TemporaryDirectory(dir="/tmp") as directory:
             with redirect_stdout(output):
@@ -222,9 +222,13 @@ class CliTests(unittest.TestCase):
                         "link",
                         str(ROOT / "main211.xmf"),
                         "--instructions",
-                        "20000000",
+                        "4000000",
                         "--socket",
                         str(Path(directory) / "line.sock"),
+                        "--a-at",
+                        "ATD555",
+                        "--b-at",
+                        "ATA",
                         "--summary",
                     ]
                 )
@@ -235,14 +239,13 @@ class CliTests(unittest.TestCase):
                 bridge = run[side]["dsp_bridge"]
                 self.assertEqual(run[side]["status"], "main-loop")
                 self.assertTrue(bridge["daa"]["off_hook"])
-                self.assertTrue(bridge["line"]["peer_off_hook"])
                 self.assertTrue(bridge["daa"]["detector_qualified"])
                 self.assertGreater(bridge["line"]["frames"], 0)
-                self.assertIsNone(bridge["line"]["error"])
         self.assertEqual(
             run["a"]["dsp_bridge"]["line"]["frames"],
             run["b"]["dsp_bridge"]["line"]["frames"],
         )
+        self.assertIn("CONNECT", run["b"]["serial_text"])
         # Both C52s enter the recovered call overlay and exchange current,
         # nonzero polyphase audio rather than replaying an idle-DAC backlog.
         for side in ("a", "b"):

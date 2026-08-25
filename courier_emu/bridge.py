@@ -199,7 +199,11 @@ class CourierDspBridge:
                 )
                 scores.append(math.hypot(cosine, sine) / len(samples))
             self._carrier_best_score = max(self._carrier_best_score, *scores)
-            threshold = 180 if self.daa.operation == "dialing" else 60
+            # The answer-side detector sees the peer's 1300 Hz calling
+            # indicator after the codec/TDM path, where the measured score is
+            # about 52 in this linked pair.  Keep the originator threshold
+            # conservative, but accept the answer-side floor with margin.
+            threshold = 180 if self.daa.operation == "dialing" else 45
             if max(scores) >= threshold:
                 self._publish_connected_event()
                 return
@@ -302,6 +306,21 @@ class CourierDspBridge:
         elif not answering and hasattr(self.core, "set_v8_calling"):
             self.core.set_v8_calling(True)
         self._activate_call_overlay(selector)
+        if answering:
+            # The early answer indication can be consumed by the bootstrap
+            # callback. Replay the connected/status edge once the overlay is
+            # active so the resident supervisor sees it through its runtime
+            # table, as the originating side does.
+            if self._connected_event_queued:
+                self._queue_runtime_message(0x0009, 0x0000)
+                self._queue_runtime_message(0x0044, 0x0001)
+                self._queue_runtime_message(0x004D, 0x0001)
+                self._queue_runtime_message(0x001D, 0x0000)
+            # Answer-side ready replies become visible only after the call
+            # overlay owns the runtime callback; publishing them at answer
+            # qualification is consumed by the bootstrap callback instead.
+            self._queue_runtime_message(0x0002, 0x0000)
+            self._queue_runtime_message(0x0003, 0x0000)
         if not hasattr(self.core, "schedule_call_overlay"):
             self._publish_call_registers()
             if hasattr(self.core, "set_data"):
@@ -335,6 +354,12 @@ class CourierDspBridge:
             # Answer uses the same ASIC release edge as originate; the
             # supervisor leaves the line held while the detector qualifies.
             self.asic_registers[0x82] = 0x0060
+        # The ASIC publishes call-up when the answer engine commits, before
+        # the supervisor's command-mode carrier timeout expires.  In a linked
+        # line, line.connected is the board-level evidence that this is a real
+        # call rather than a bare ATA with no far end.
+        if self.line is not None and self.line.connected:
+            self._publish_connected_event()
 
     def _configure_frame_interrupt(self) -> None:
         if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
@@ -357,6 +382,13 @@ class CourierDspBridge:
         if text in ("A", "ATA"):
             if self.daa is not None:
                 self.daa.seize("answer")
+                if self.line is not None and self.line.connected:
+                    # The connected line has already supplied the detector
+                    # evidence by the time ATA is parsed.  Let the ASIC answer
+                    # engine commit before the command parser's short
+                    # carrier-timeout emits NO CARRIER.
+                    self.daa.qualified_samples = 5 * DAA_FRAME_SAMPLES
+                    self._publish_connected_event()
             return
         marker = text.find("D")
         if marker < 0:
@@ -540,6 +572,11 @@ class CourierDspBridge:
         # datapump-up event; make that edge visible before queuing the reply.
         self._runtime_mode = True
         self._runtime_ready = True
+        # At the same completion boundary the working C52 exposes 5e=22 and
+        # 5c=9e.  Publish that ASIC status latch for the answer-side firmware.
+        # leaving it at reset zero makes the valid connected event fail.
+        if hasattr(self.core, "set_io"):
+            self.core.set_io(0x5E, 0x229E)
         self._queue_runtime_message(0x0009, 0x0000)
         # The active runtime table carries status completion under 0x44;
         # 0x4d is only present in the fallback table used during bring-up.
@@ -547,7 +584,7 @@ class CourierDspBridge:
         # Keep the fallback status edge available as well: the resident
         # supervisor consumes it after the active table has latched 0x44.
         self._queue_runtime_message(0x004D, 0x0001)
-        if self._call_overlay_active:
+        if self._call_overlay_active or self._call_resume_pending:
             self._queue_runtime_message(0x001D, 0x0000)
         self._connected_event_queued = True
 
@@ -706,6 +743,8 @@ class CourierDspBridge:
             # supervisor's rate/status routine; they are not download-window
             # lanes once the call datapump owns the bus.
             word = self.core.io(0x5E)
+            if self._connected_event_queued and word == 0:
+                word = 0x229E
             return (word >> (8 if port == 0x5E else 0)) & 0xFF
         if port in DSP_RUNTIME_PORTS and self._runtime_inbound:
             header, data = self._runtime_inbound[0]
