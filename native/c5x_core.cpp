@@ -641,6 +641,8 @@ void C5xCore::step()
                     m_data[0xfff8] = m_codec_rx.front();
                     int16_t input = int16_t(m_codec_rx.front());
                     m_codec_rx.pop_front();
+                    m_v8_rx_peak = std::max<uint16_t>(m_v8_rx_peak,
+                        uint16_t(std::abs(int(input))));
                     ++m_serial.rx_consumed;
                     m_v8_rx_window.push_back(input);
                     if (m_v8_rx_window.size() > 960) m_v8_rx_window.pop_front();
@@ -714,7 +716,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
-        m_v8_rx_state};
+        m_v8_rx_state, m_v8_rx_peak};
 }
 
 } // namespace courier
