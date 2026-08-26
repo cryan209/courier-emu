@@ -135,6 +135,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.append("--with-dsp")
     if args.force_online:
         command.append("--force-online")
+    if args.dsp_batch != 256:
+        command.extend(("--dsp-batch", str(args.dsp_batch)))
     if daa_codec:
         command.append("--daa-codec")
         command.extend(("--daa-codec-line", str(args.daa_codec_line)))
@@ -256,6 +258,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--tick-ms", str(args.tick_ms)))
     if args.tick_source:
         command.extend(("--tick-source", args.tick_source))
+    if args.dsp_batch != 256:
+        command.extend(("--dsp-batch", str(args.dsp_batch)))
     if listen:
         command.append("--line-listen")
     if args.summary:
@@ -428,6 +432,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--force-online",
         action="store_true",
         help="diagnostic only: publish CONNECT and enter DTE data mode at main-loop",
+    )
+    run.add_argument(
+        "--dsp-batch",
+        type=_number,
+        default=256,
+        metavar="N",
+        help="80186 instructions per native C52 scheduling batch (diagnostic; default 256)",
     )
     run.add_argument(
         "--daa-line",
@@ -624,6 +635,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     link.add_argument("image")
     link.add_argument("--instructions", type=_number, default=40_000_000)
+    link.add_argument("--dsp-batch", type=_number, default=256, metavar="N")
     link.add_argument(
         "--socket",
         default=DEFAULT_LINE_SOCKET,

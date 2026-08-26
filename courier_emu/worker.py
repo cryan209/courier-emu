@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--real-delays", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
+    parser.add_argument("--dsp-batch", type=_number, default=256)
     parser.add_argument("--daa-line", choices=DAA_LINE_STATES)
     parser.add_argument("--sip-server")
     parser.add_argument("--sip-target", default="")
@@ -154,6 +155,7 @@ def main() -> int:
         sip=sip,
         line=line,
         force_online=args.force_online,
+        dsp_batch=args.dsp_batch,
         console=console,
     )
     if console is not None:

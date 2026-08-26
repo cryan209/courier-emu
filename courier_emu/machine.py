@@ -169,6 +169,7 @@ class CourierMachine:
         tick_source: str | None = None,
         console: SerialConsole | None = None,
         force_online: bool = False,
+        dsp_batch: int = 256,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -262,6 +263,7 @@ class CourierMachine:
                 line=line,
                 codec=codec,
                 ring=ring,
+                batch=dsp_batch,
             )
             if with_dsp
             else None
