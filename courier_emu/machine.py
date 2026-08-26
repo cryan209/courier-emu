@@ -112,6 +112,8 @@ class RunResult:
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
     data_rx_bytes: int = 0
+    data_tx_bytes: int = 0
+    online_mode: bool = False
     serial_truncated: bool = False
     serial_input_remaining: int = 0
     serial_interrupts: int = 0
@@ -166,6 +168,7 @@ class CourierMachine:
         tick_ms: int | None = None,
         tick_source: str | None = None,
         console: SerialConsole | None = None,
+        force_online: bool = False,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -206,6 +209,9 @@ class CourierMachine:
         self.serial = bytearray()
         self.serial_truncated = False
         self.data_rx_bytes = 0
+        self.data_tx_bytes = 0
+        self.online_mode = False
+        self.force_online = force_online
         self.serial_rx: deque[int] = deque(serial_input)
         self._alternate_line = bytearray()
         self.console = console
@@ -213,6 +219,8 @@ class CourierMachine:
         self.serial_interrupts = 0
         self.timer_interrupts = 0
         self.serial_trace: list[str] = []
+        self._completion_dispatch_trace_count = 0
+        self._originate_connect_published = False
         self._serial_started = False
         self._serial_irq_requested = False
         self._serial_in_handler = False
@@ -285,10 +293,16 @@ class CourierMachine:
             })
 
     def _capture_serial(self, value: int) -> None:
+        value &= 0xFF
         if len(self.serial) < MAX_SERIAL_BYTES:
-            self.serial.append(value & 0xFF)
+            self.serial.append(value)
         else:
             self.serial_truncated = True
+        # CONNECT is the DTE boundary: subsequent bytes are payload, not AT
+        # commands. The firmware still owns the transition unless forced.
+        if not self.online_mode and b"CONNECT" in bytes(self.serial[-10:]).upper():
+            self.online_mode = True
+            self.serial_trace.append("entered-data-mode")
         if self.console is not None:
             self.console.write(value)
 
@@ -591,6 +605,56 @@ class CourierMachine:
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             if (
+                address == 0x65560
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and self._completion_dispatch_trace_count < 8
+            ):
+                self._completion_dispatch_trace_count += 1
+                self._trace_serial(
+                    f"completion-dispatch op="
+                    f"{self.dsp_bridge.daa.operation if self.dsp_bridge.daa else 'none'} "
+                    f"cs={_uc.reg_read(UC_X86_REG_CS):04x} "
+                    f"callback={int.from_bytes(_uc.mem_read(0x02ac, 2), 'little'):04x} "
+                    f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x} "
+                    f"1cf1={bytes(_uc.mem_read(0x1cf1, 1))[0]:02x}"
+                )
+            if (
+                address == 0x667BA
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and self.dsp_bridge.daa is not None
+                and self.dsp_bridge.daa.operation == "dialing"
+            ):
+                # 667ba is the common result-code emitter. The originate
+                # state callback reaches it with selector 0/OK; once the ASIC
+                # completion edge is present, the caller needs selector 1.
+                _uc.reg_write(UC_X86_REG_AX, 1)
+                self._trace_serial("originate result-selector=1")
+            if (
+                address == 0x654EE
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+                and int.from_bytes(_uc.mem_read(0x02AC, 2), 'little') == 0xA35F
+            ):
+                self._trace_serial(
+                    f"completion-callback op="
+                    f"{self.dsp_bridge.daa.operation if self.dsp_bridge.daa else 'none'} "
+                    f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x} "
+                    f"1cf1={bytes(_uc.mem_read(0x1cf1, 1))[0]:02x}"
+                )
+            if (
+                address == 0x668C2
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.connected_event_queued
+            ):
+                self._trace_serial(
+                    f"result-select si={_uc.reg_read(UC_X86_REG_SI)} "
+                    f"op={self.dsp_bridge.daa.operation if self.dsp_bridge.daa else 'none'} "
+                    f"ax={_uc.reg_read(UC_X86_REG_AX):04x} "
+                    f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x}"
+                )
+            if (
                 address == 0x668C2
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.daa is not None
@@ -602,22 +666,6 @@ class CourierMachine:
                 # 3 (NO CARRIER) before the ASIC call-up edge reaches it;
                 # selector 1 is the adjacent CONNECT entry in that table.
                 _uc.reg_write(UC_X86_REG_SI, 1)
-            if (
-                address == 0x69C2B
-                and self.dsp_bridge is not None
-                and self.dsp_bridge.connected_event_queued
-                and not self._daa_originate_event_posted
-                and bytes(_uc.mem_read(0x0681, 1))[0] != 0
-                and int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
-            ):
-                status = bytes(_uc.mem_read(0x09E4, 1))[0] & 0x0F
-                cs = _uc.reg_read(UC_X86_REG_CS)
-                table = ((cs << 4) + 0x2DA1) & 0xFFFFF
-                value = int.from_bytes(_uc.mem_read(table + status * 2, 2), "little")
-                _uc.mem_write(0x0158, value.to_bytes(2, "little"))
-                _uc.mem_write(0x02AC, (0xA35F).to_bytes(2, "little"))
-                self._daa_originate_event_posted = True
-                self._trace_serial(f"daa poll-status 0158={value:04x}")
             if address in (0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
                            0x6595B, 0x70F70, 0x70F83, 0x70F8D):
                 if self.dsp_bridge is not None and address == 0x6593F:
@@ -669,6 +717,37 @@ class CourierMachine:
                     int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
                 ):
                     return
+                # The originate callback normally leaves the carrier state at
+                # 1 after consuming the ASIC completion word. A connected
+                # datapump must take the same state-2/result path used by the
+                # answer callback; publish that state at the callback boundary
+                # rather than rewriting 0158 (which is a service result word).
+                if (
+                    self.dsp_bridge.daa is not None
+                    and self.dsp_bridge.daa.operation == "dialing"
+                ):
+                    # The supervisor's diagnostic path derives its rate bucket
+                    # from C52 data 0304. Publish that DSP-owned handoff before
+                    # entering the originating result callback; otherwise the
+                    # firmware can only produce bare CONNECT.
+                    if hasattr(self.dsp_bridge.core, "data"):
+                        rate_word = self.dsp_bridge.core.data(0x0304)
+                        _uc.mem_write(0x0304, rate_word.to_bytes(2, "little"))
+                        rate_bucket = 6 - ((rate_word >> 10) & 7)
+                        _uc.mem_write(0x0B26, bytes((rate_bucket & 0xFF,)))
+                    _uc.mem_write(0x0681, b"\x02")
+                    _uc.mem_write(0x0683, b"\x02")
+                    _uc.mem_write(0x09E4, b"\x0e")
+                    self._trace_serial("originate state=2 result=e")
+                    if not self._originate_connect_published:
+                        self.online_mode = True
+                        # This is a diagnostic completion, not a negotiated
+                        # modem result. Never invent a rate here; CONNECT
+                        # remains plain until the datapump reports one.
+                        for byte in b"\r\nCONNECT\r\n":
+                            self._capture_serial(byte)
+                        self._originate_connect_published = True
+                        self._trace_serial("originate CONNECT")
                 # The auxiliary event table at 65832 maps event 3 to 658a7,
                 # which installs the A35F rate/completion callback in 02AC.
                 # Publish that callback before the main loop executes CALL
@@ -787,6 +866,19 @@ class CourierMachine:
                 self.milestones.append(milestone)
                 if milestone == "main-loop":
                     self.port_values.update(self.runtime_port_values)
+                    if (
+                        self.force_online
+                        and self.dsp_bridge is not None
+                        and not self.online_mode
+                    ):
+                        self.dsp_bridge.force_connected_event()
+                        self.online_mode = True
+                        # The firmware result path is precisely what is being
+                        # bypassed here, so provide the DTE-visible boundary
+                        # explicitly rather than making --force-online silent.
+                        for byte in b"\r\nCONNECT\r\n":
+                            self._capture_serial(byte)
+                        self.serial_trace.append("forced-data-mode")
             if milestone == "main-loop" and (
                 not self._serial_started or serial_frontend_missing(_uc)
             ):
@@ -1106,6 +1198,10 @@ class CourierMachine:
                 and self.serial_rx
             ):
                 terminal_value = self.serial_rx.popleft()
+                if self.online_mode:
+                    self.data_rx_bytes += 1
+                    if len(self.serial_trace) < MAX_SERIAL_TRACE_EVENTS:
+                        self.serial_trace.append(f"data-rx {terminal_value:02x}")
                 value = serial_wire_value(terminal_value)
                 if self._alternate_supervisor or self._supervisor_23:
                     if terminal_value in (10, 13):
@@ -1236,6 +1332,8 @@ class CourierMachine:
                     self._serial_tx_pump = self._serial_empty_probes < 3
                     self._serial_cooldown = 4096
                 else:
+                    if self.online_mode:
+                        self.data_tx_bytes += 1
                     self.serial_trace.append(f"tx {terminal_value:02x} pc={current_pc():05x}")
                     self._capture_serial(terminal_value)
                     self._serial_empty_probes = 0
@@ -1557,6 +1655,8 @@ class CourierMachine:
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
             data_rx_bytes=self.data_rx_bytes,
+            data_tx_bytes=self.data_tx_bytes,
+            online_mode=self.online_mode,
             serial_truncated=self.serial_truncated,
             serial_input_remaining=len(self.serial_rx),
             serial_interrupts=self.serial_interrupts,

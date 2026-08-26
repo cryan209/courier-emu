@@ -279,6 +279,20 @@ is a firmware-derived behavioral DAA, not a claimed identification of the
 physical line-interface IC. Busy/reorder tone and carrier negotiation remain
 unmodeled.
 
+For isolating the DTE online path from datapump completion, the diagnostic
+`--force-online` option publishes the modeled completion edge once the main
+loop is reached and marks the console as data mode:
+
+```sh
+./courier run main211.xmf --instructions 12000000 --with-dsp \
+  --force-online --console
+```
+
+This does not claim that modem training succeeded. The result reports
+`online_mode`, `data_rx_bytes`, and `data_tx_bytes`; use it to test transparent
+post-CONNECT traffic while the real ASIC completion callback remains under
+investigation.
+
 ### The silicon DAA as a register file
 
 The line-interface chipset itself is modeled as registers rather than behavior,

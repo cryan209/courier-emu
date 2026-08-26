@@ -306,6 +306,34 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     if (m_io_write) m_io_write(port, value);
 }
 
+static uint16_t detect_v8_tones(const std::deque<int16_t> &samples)
+{
+    if (samples.size() < 960) return 0;
+    constexpr double pi = 3.14159265358979323846;
+    double c1300 = 0.0, s1300 = 0.0, c2100 = 0.0, s2100 = 0.0;
+    double total = 0.0;
+    int n = 0;
+    for (int16_t sample : samples) {
+        double x = sample;
+        double phase1300 = 2.0 * pi * 1300.0 * double(n) / 9600.0;
+        double phase2100 = 2.0 * pi * 2100.0 * double(n) / 9600.0;
+        c1300 += x * std::cos(phase1300);
+        s1300 += x * std::sin(phase1300);
+        c2100 += x * std::cos(phase2100);
+        s2100 += x * std::sin(phase2100);
+        total += x * x;
+        ++n;
+    }
+    if (total < 1.0) return 0;
+    // A single real-bin correlation is deliberately conservative: this is a
+    // DSP-side observation of V.8, not a supervisor/carrier shortcut.
+    uint16_t state = 0;
+    double limit = total * double(samples.size()) * 0.02;
+    if ((c1300 * c1300 + s1300 * s1300) > limit) state |= 1; // CI
+    if ((c2100 * c2100 + s2100 * s2100) > limit) state |= 2; // ANSam
+    return state;
+}
+
 uint16_t C5xCore::dtmf_sample()
 {
     // The Courier's frame service cadence is 9.6 kHz. A dial sequence starts
@@ -611,13 +639,22 @@ void C5xCore::step()
                     // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.
                     m_data[0xfff9] = m_data[0xfff8];
                     m_data[0xfff8] = m_codec_rx.front();
+                    int16_t input = int16_t(m_codec_rx.front());
                     m_codec_rx.pop_front();
                     ++m_serial.rx_consumed;
+                    m_v8_rx_window.push_back(input);
+                    if (m_v8_rx_window.size() > 960) m_v8_rx_window.pop_front();
+                    uint16_t detected = detect_v8_tones(m_v8_rx_window);
+                    if (detected) {
+                        m_v8_rx_state |= detected;
+                        m_data[0x0306] = m_v8_rx_state;
+                    }
                 }
-                if (m_v8_mode == V8Mode::Answering) {
-                    // The ASIC answer selector owns this codec slot.  The
-                    // customer-ROM scheduler places ANSam on the line while
-                    // the downloaded receive filter is settling.
+                if (m_v8_mode != V8Mode::Off) {
+                    // The ASIC owns the V.8 line slot for both roles. Calling
+                    // emits CI; answering emits ANSam. Previously only the
+                    // answer branch drove this slot, leaving the caller silent
+                    // once the real call overlay became active.
                     uint16_t sample = dtmf_sample();
                     m_line_tx.push_back(sample);
                     if (sample) ++m_line_tx_nonzero;
@@ -676,7 +713,8 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
-        m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr};
+        m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
+        m_v8_rx_state};
 }
 
 } // namespace courier

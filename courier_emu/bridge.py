@@ -159,6 +159,7 @@ class CourierDspBridge:
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
         self._carrier_best_score = 0.0
+        self._rate_trace_enabled = False
         self._sip_tx_index = 0
         self._sip_tx_rate = RateConverter(9_600, 8_000)
         self._sip_rx_rate = RateConverter(8_000, 9_600)
@@ -450,6 +451,10 @@ class CourierDspBridge:
         """Whether the modeled ASIC has published the carrier-up edge."""
         return self._connected_event_queued
 
+    def force_connected_event(self) -> None:
+        """Publish completion for validating the DTE online contract only."""
+        self._publish_connected_event()
+
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
 
@@ -469,6 +474,10 @@ class CourierDspBridge:
         if not self._asic_call_engine_started:
             self._asic_call_engine_started = True
             self._v8_armed = True
+            if hasattr(self.core, "trace_data_writes"):
+                # Keep only writes to the suspected rate/status handoff.
+                self.core.trace_data_writes(True)
+                self._rate_trace_enabled = True
             self._call_resume_pending = True
             self._queue_runtime_message(0x0002, 0x0000)
             self._queue_runtime_message(0x0003, 0x0000)
@@ -1003,10 +1012,14 @@ class CourierDspBridge:
                     for register, value in sorted(self.asic_registers.items())
                     if 0x13 <= register <= 0x1F
                 },
+                "rate_writes": [
+                    event for event in self.core.data_events()
+                    if event["address"] in (0x0304, 0x0306, 0x0308, 0x030A, 0x030C)
+                ][-32:] if self._rate_trace_enabled and hasattr(self.core, "data_events") else [],
                 "call_cells": {
                     f"{address:04x}": self.core.data(address)
                     for address in (
-                        0x0304, 0x035C, 0x039F, 0x03C8, 0x03CA, 0x03FE,
+                        0x0304, 0x0306, 0x035C, 0x039F, 0x03C8, 0x03CA, 0x03FE,
                         0x069C, 0x0B26, 0x0B49, 0xFFF8, 0xFFF9, 0xFFFA,
                         0xFFFD, 0xFFFE, 0xFFFF,
                     )

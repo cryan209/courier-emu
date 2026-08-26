@@ -32,6 +32,7 @@ def main() -> int:
     parser.add_argument("--uart-port", action="append", type=_number, default=[])
     parser.add_argument("--real-delays", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
+    parser.add_argument("--force-online", action="store_true")
     parser.add_argument("--daa-line", choices=DAA_LINE_STATES)
     parser.add_argument("--sip-server")
     parser.add_argument("--sip-target", default="")
@@ -152,6 +153,7 @@ def main() -> int:
         tick_source=args.tick_source,
         sip=sip,
         line=line,
+        force_online=args.force_online,
         console=console,
     )
     if console is not None:

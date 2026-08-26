@@ -131,8 +131,10 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or daa_codec:
+    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or daa_codec or args.force_online:
         command.append("--with-dsp")
+    if args.force_online:
+        command.append("--force-online")
     if daa_codec:
         command.append("--daa-codec")
         command.extend(("--daa-codec-line", str(args.daa_codec_line)))
@@ -421,6 +423,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--with-dsp",
         action="store_true",
         help="lock-step the native TMS320C52 core through the Courier host-port bridge",
+    )
+    run.add_argument(
+        "--force-online",
+        action="store_true",
+        help="diagnostic only: publish CONNECT and enter DTE data mode at main-loop",
     )
     run.add_argument(
         "--daa-line",
