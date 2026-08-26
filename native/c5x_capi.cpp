@@ -182,6 +182,11 @@ void courier_c5x_set_call_tdm_active(void *handle, int active)
     if (handle) static_cast<C5xCore *>(handle)->set_call_tdm_active(active != 0);
 }
 
+int courier_c5x_call_tdm_active(void *handle)
+{
+    return handle && static_cast<C5xCore *>(handle)->call_tdm_active() ? 1 : 0;
+}
+
 void courier_c5x_schedule_line_frame_entry(void *handle, uint16_t address)
 {
     if (handle) static_cast<C5xCore *>(handle)->schedule_line_frame_entry(address);

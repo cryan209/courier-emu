@@ -127,6 +127,7 @@ public:
         std::size_t count, uint16_t entry, const uint16_t *registers,
         uint16_t selector);
     void set_call_tdm_active(bool active) { m_call_tdm_active = active; }
+    bool call_tdm_active() const { return m_call_tdm_active; }
     void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
     void step();
     void run(uint64_t instruction_limit);

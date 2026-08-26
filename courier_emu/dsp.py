@@ -197,6 +197,8 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint16
         ]
         lib.courier_c5x_set_call_tdm_active.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_call_tdm_active.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_call_tdm_active.restype = ctypes.c_int
         lib.courier_c5x_schedule_line_frame_entry.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16
         ]
@@ -344,6 +346,9 @@ class NativeC5x:
 
     def set_call_tdm_active(self, active: bool) -> None:
         self.library.courier_c5x_set_call_tdm_active(self.handle, int(active))
+
+    def call_tdm_active(self) -> bool:
+        return bool(self.library.courier_c5x_call_tdm_active(self.handle))
 
     def schedule_line_frame_entry(self, address: int) -> None:
         self.library.courier_c5x_schedule_line_frame_entry(self.handle, address)

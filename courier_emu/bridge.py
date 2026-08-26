@@ -902,6 +902,14 @@ class CourierDspBridge:
             if self._call_resume_pending:
                 self._resume_armed_call()
             self.core.step(dsp_steps)
+            if (
+                not self._call_overlay_active
+                and hasattr(self.core, "call_tdm_active")
+                and self.core.call_tdm_active()
+            ):
+                # The native scheduler has now crossed the recovered entry
+                # ABI; only this edge publishes the overlay to bridge users.
+                self._call_overlay_active = True
             if self.sip is not None:
                 samples = self.core.line_tx_samples(self._sip_tx_index)
                 self._sip_tx_index += len(samples)
