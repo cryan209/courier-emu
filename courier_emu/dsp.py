@@ -187,6 +187,9 @@ class NativeC5x:
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_pc_trace_count.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_pc_trace_count.restype = ctypes.c_size_t
+        lib.courier_c5x_get_pc_trace.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
         lib.courier_c5x_get_data.restype = ctypes.c_uint16
         lib.courier_c5x_set_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
@@ -397,6 +400,15 @@ class NativeC5x:
             result.append(dict(zip(
                 ("address", "value", "pc", "instruction"), map(int, values), strict=True
             )))
+        return result
+
+    def pc_trace(self) -> list[dict[str, int]]:
+        count = int(self.library.courier_c5x_get_pc_trace_count(self.handle))
+        result = []
+        for index in range(count):
+            values = (ctypes.c_uint64 * 2)()
+            self.library.courier_c5x_get_pc_trace(self.handle, index, values, 2)
+            result.append({"pc": int(values[0]), "op": int(values[1])})
         return result
 
     def io_events(self) -> list[dict[str, int | bool]]:

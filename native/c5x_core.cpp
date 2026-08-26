@@ -90,6 +90,7 @@ void C5xCore::reset()
     m_io.fill(0xffff);
     m_io_events.clear();
     m_data_events.clear();
+    m_pc_trace.clear();
     m_trace_data_writes = false;
 }
 
@@ -606,6 +607,11 @@ void C5xCore::step()
         }
         uint16_t previous_pc = m_pc;
         m_op = ROPCODE();
+        if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
+            (previous_pc >= 0x0200 && previous_pc < 0x0300)) {
+            if (m_pc_trace.size() >= 512) m_pc_trace.pop_front();
+            m_pc_trace.push_back((uint32_t(previous_pc) << 16) | m_op);
+        }
         (this->*s_opcode_table[m_op >> 8])();
         if (m_rptc > 0 && previous_pc == m_rpt_end) { CHANGE_PC(m_rpt_start); --m_rptc; }
         else if (m_rptc <= 0) m_rptc = 0;

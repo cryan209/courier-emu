@@ -136,6 +136,7 @@ public:
     SerialState serial_state() const;
     const std::vector<IoEvent> &io_events() const { return m_io_events; }
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
+    const std::deque<uint32_t> &pc_trace() const { return m_pc_trace; }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
 
 private:
@@ -174,6 +175,7 @@ private:
     IoWrite m_io_write;
     std::vector<IoEvent> m_io_events;
     std::vector<DataEvent> m_data_events;
+    std::deque<uint32_t> m_pc_trace;
     bool m_trace_data_writes = false;
 
     uint16_t m_pc = 0, m_op = 0;
