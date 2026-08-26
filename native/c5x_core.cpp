@@ -654,6 +654,14 @@ void C5xCore::step()
                     if (detected) {
                         m_v8_rx_state |= detected;
                         m_data[0x0306] = m_v8_rx_state;
+                        // Stop the native V.8 bootstrap tone once the peer's
+                        // opposite indicator is present. From this edge on,
+                        // the downloaded C52 overlay owns CM/JM and later
+                        // negotiation; keeping the bootstrap generator active
+                        // would mask the firmware's own DAC output.
+                        if ((m_v8_mode == V8Mode::Calling && (detected & 2)) ||
+                            (m_v8_mode == V8Mode::Answering && (detected & 1)))
+                            m_v8_mode = V8Mode::Off;
                     }
                 }
                 if (m_v8_mode != V8Mode::Off) {
