@@ -84,6 +84,7 @@ void C5xCore::reset()
     m_dtmf_digits.clear();
     m_dtmf_frame = 0;
     m_v8_mode = V8Mode::Off;
+    m_tdm_rx_ready = false;
     m_idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
@@ -447,6 +448,7 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     case 0x37: return 0;
     case 0x30:
         ++m_tdm.trcv_reads; m_tdm.last_trcv_pc = uint16_t(m_pc - 1);
+        m_tdm_rx_ready = false;
         return m_tdm.trcv;
     case 0x31: return m_tdm.tdxr;
     case 0x32: return m_tdm.tspc;
@@ -653,6 +655,7 @@ void C5xCore::step()
                     // before the frame ISR reads it; previously only the
                     // native detector saw this sample.
                     m_tdm.trcv = m_codec_rx.front();
+                    m_tdm_rx_ready = true;
                     int16_t input = int16_t(m_codec_rx.front());
                     m_codec_rx.pop_front();
                     m_v8_rx_peak = std::max<uint16_t>(m_v8_rx_peak,

@@ -222,6 +222,7 @@ private:
     std::deque<uint16_t> m_line_rx;
     uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0, m_codec_rx_peak = 0;
     bool m_bio_low = false;
+    bool m_tdm_rx_ready = false;
     std::vector<uint16_t> m_line_tx;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
