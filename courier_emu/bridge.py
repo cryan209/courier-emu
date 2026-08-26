@@ -308,6 +308,10 @@ class CourierDspBridge:
             self.core.set_v8_answering(True)
         elif not answering and hasattr(self.core, "set_v8_calling"):
             self.core.set_v8_calling(True)
+        # Any line samples collected before the call overlay are call-progress
+        # audio, not V.8. Do not let them precede the first peer frame in the
+        # codec FIFO.
+        self._line_rx_samples.clear()
         self._activate_call_overlay(selector)
         if answering:
             # The early answer indication can be consumed by the bootstrap
@@ -843,19 +847,29 @@ class CourierDspBridge:
                         DAA_FRAME_SAMPLES if self.line is not None
                         else DAA_FRAME_SAMPLES * 2
                     )
-                    samples = self.daa.render(count)
+                    samples = []
                     if self._sip_rx_samples:
+                        samples = self.daa.render(count)
                         available = min(count, len(self._sip_rx_samples))
                         for index in range(available):
                             samples[index] = self._sip_rx_samples.popleft()
-                    if self._line_rx_samples:
+                    elif self._line_rx_samples:
+                        # Use the peer frame as the codec FIFO payload
+                        # directly. Mutating a freshly rendered DAA frame
+                        # obscured this handoff and left the DSP seeing the
+                        # near-zero DAA fallback during V.8.
                         available = min(count, len(self._line_rx_samples))
-                        for index in range(available):
-                            samples[index] = self._line_rx_samples.popleft()
+                        samples = [
+                            self._line_rx_samples.popleft()
+                            for _ in range(available)
+                        ]
+                        samples.extend([0] * (count - available))
                     elif self.line is not None:
                         # Do not build a FIFO of synthetic zeroes while the
                         # peer is still producing its first V.8 frame.
                         samples = []
+                    else:
+                        samples = self.daa.render(count)
                     if samples:
                         self._codec_queue_peak = max(
                             self._codec_queue_peak, max(abs(sample) for sample in samples)
@@ -962,7 +976,19 @@ class CourierDspBridge:
         incoming = self.line.receive_audio()
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
-        self._line_rx_samples.extend(incoming)
+            if (
+                (self._call_overlay_active or self._call_resume_pending)
+                and hasattr(self.core, "queue_codec_rx")
+            ):
+                # Deliver the peer frame at the line exchange boundary. This
+                # avoids losing the first CI/ANSam frames between the line
+                # socket service and the batched DSP scheduler.
+                self.core.queue_codec_rx(incoming)
+                self._codec_queue_peak = max(
+                    self._codec_queue_peak, max(abs(sample) for sample in incoming)
+                )
+            else:
+                self._line_rx_samples.extend(incoming)
         self._carrier_probe.extend(incoming)
         self._observe_carrier_audio()
         if self.daa is not None:
