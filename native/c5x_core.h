@@ -115,6 +115,7 @@ public:
     void set_dtmf_digits(const char *digits, std::size_t count);
     void set_v8_calling(bool enabled);
     void set_v8_answering(bool enabled);
+    void set_bio_low(bool enabled) { m_bio_low = enabled; }
     uint16_t io(uint16_t port) const;
     uint16_t program(uint16_t address) const;
     uint16_t data(uint16_t address) const;
@@ -218,6 +219,7 @@ private:
     std::deque<int16_t> m_v8_rx_window;
     std::deque<uint16_t> m_line_rx;
     uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0, m_codec_rx_peak = 0;
+    bool m_bio_low = false;
     std::vector<uint16_t> m_line_tx;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;

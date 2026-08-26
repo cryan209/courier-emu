@@ -660,8 +660,12 @@ void C5xCore::step()
                         // negotiation; keeping the bootstrap generator active
                         // would mask the firmware's own DAC output.
                         if ((m_v8_mode == V8Mode::Calling && (detected & 2)) ||
-                            (m_v8_mode == V8Mode::Answering && (detected & 1)))
+                            (m_v8_mode == V8Mode::Answering && (detected & 1))) {
                             m_v8_mode = V8Mode::Off;
+                            // The ASIC asserts BIO-low at the V.8 handoff;
+                            // this releases conditional CM/JM service code.
+                            m_bio_low = true;
+                        }
                     }
                 }
                 if (m_v8_mode != V8Mode::Off) {

@@ -290,8 +290,7 @@ bool C5xCore::GET_TP_CONDITION(int tp)
 	switch (tp)
 	{
 		case 0:     // BIO pin low
-			// TODO
-			return false;
+			return m_bio_low;
 
 		case 1:     // TC == 1
 			return m_st1.tc != 0;

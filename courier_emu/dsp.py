@@ -183,6 +183,7 @@ class NativeC5x:
         ]
         lib.courier_c5x_set_v8_calling.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_v8_answering.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_bio_low.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
@@ -317,6 +318,9 @@ class NativeC5x:
 
     def set_v8_answering(self, enabled: bool) -> None:
         self.library.courier_c5x_set_v8_answering(self.handle, int(enabled))
+
+    def set_bio_low(self, enabled: bool) -> None:
+        self.library.courier_c5x_set_bio_low(self.handle, int(enabled))
 
     def io(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io(self.handle, port))
