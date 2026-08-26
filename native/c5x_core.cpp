@@ -85,6 +85,7 @@ void C5xCore::reset()
     m_dtmf_frame = 0;
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
+    m_pending_answer_dispatch = false;
     m_idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
@@ -681,10 +682,18 @@ void C5xCore::step()
                         // would mask the firmware's own DAC output.
                         if ((m_v8_mode == V8Mode::Calling && (detected & 2)) ||
                             (m_v8_mode == V8Mode::Answering && (detected & 1))) {
+                            bool answer_handoff = (m_v8_mode == V8Mode::Answering);
                             m_v8_mode = V8Mode::Off;
-                            // The ASIC asserts BIO-low at the V.8 handoff;
-                            // this releases conditional CM/JM service code.
-                            m_bio_low = true;
+                            if (answer_handoff) {
+                                // Customer-ROM dispatch normally returns the
+                                // answer ISR into the call overlay. That ROM
+                                // is absent from the image, so synthesize the
+                                // recovered overlay callback entry.
+                                m_pending_answer_dispatch = true;
+                            }
+                            // BIO remains high during the call overlay. The
+                            // ISR's BIO-low conditional skips its NMI trap;
+                            // asserting it here strands the answer path.
                         }
                     }
                 }
@@ -720,6 +729,10 @@ void C5xCore::step()
         unsigned irq = unsigned(m_line_frame_irq);
         if (!m_st0.intm && (m_imr & (1u << irq))) ++m_line_frame_interrupts;
         interrupt(irq);
+        if (m_pending_answer_dispatch) {
+            m_pc = 0xc853;
+            m_pending_answer_dispatch = false;
+        }
     }
 }
 
