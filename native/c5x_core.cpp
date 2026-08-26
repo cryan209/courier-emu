@@ -271,8 +271,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
     if (address < 0x60) cpuregs_w(address, value); else m_data[address] = value;
     // The polyphase ISR's 0xfffd result is the oversampled DAC word. Slot
     // 0xffff is control; 0xfff8/0xfff9 hold the ADC delay pair.
-    if (m_call_tdm_active && address == 0xfffd
-        && uint16_t(m_pc - 1) == 0x0238) {
+    if (m_call_tdm_active && address == 0xfffd) {
         m_line_dac_sum += int16_t(value);
         ++m_line_dac_count;
     }
