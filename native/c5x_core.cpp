@@ -152,7 +152,11 @@ void C5xCore::queue_serial_rx(const uint16_t *samples, std::size_t count)
 }
 void C5xCore::queue_codec_rx(const uint16_t *samples, std::size_t count)
 {
-    for (std::size_t index = 0; index < count; ++index) m_codec_rx.push_back(samples[index]);
+    for (std::size_t index = 0; index < count; ++index) {
+        m_codec_rx.push_back(samples[index]);
+        m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,
+            uint16_t(std::abs(int16_t(samples[index]))));
+    }
 }
 void C5xCore::set_dtmf_digits(const char *digits, std::size_t count)
 {
@@ -716,7 +720,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
-        m_v8_rx_state, m_v8_rx_peak};
+        m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak};
 }
 
 } // namespace courier

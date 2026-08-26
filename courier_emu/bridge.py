@@ -156,6 +156,7 @@ class CourierDspBridge:
         self._line_instructions = 0
         self._line_tx_index = 0
         self._line_rx_samples: deque[int] = deque()
+        self._line_rx_peak = 0
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
         self._carrier_best_score = 0.0
@@ -943,6 +944,8 @@ class CourierDspBridge:
             )
         )
         incoming = self.line.receive_audio()
+        if incoming:
+            self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
         self._line_rx_samples.extend(incoming)
         self._carrier_probe.extend(incoming)
         self._observe_carrier_audio()
@@ -1043,7 +1046,10 @@ class CourierDspBridge:
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
-            line=self.line.status() if self.line is not None else None,
+            line=(
+                {**self.line.status(), "rx_peak": self._line_rx_peak}
+                if self.line is not None else None
+            ),
             codec=self.codec.status() if self.codec is not None else None,
         )
 

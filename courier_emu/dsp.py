@@ -365,7 +365,7 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 30)()
+        values = (ctypes.c_uint64 * 31)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
@@ -375,7 +375,7 @@ class NativeC5x:
             "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
             "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
             "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
-            "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak",
+            "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak", "codec_rx_peak",
         )
         return dict(zip(names, map(int, values), strict=True))
 

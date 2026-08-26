@@ -71,7 +71,7 @@ public:
         uint64_t trcv_reads, tdxr_writes, tspc_writes;
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
         uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
-        uint16_t line_tx_last, line_tx_last_pc, imr, v8_rx_state, v8_rx_peak;
+        uint16_t line_tx_last, line_tx_last_pc, imr, v8_rx_state, v8_rx_peak, codec_rx_peak;
     };
 
     // Where a C52 address lands. The two parts that move are the boot ROM,
@@ -217,7 +217,7 @@ private:
     std::deque<uint16_t> m_codec_rx;
     std::deque<int16_t> m_v8_rx_window;
     std::deque<uint16_t> m_line_rx;
-    uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0;
+    uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0, m_codec_rx_peak = 0;
     std::vector<uint16_t> m_line_tx;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
