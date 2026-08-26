@@ -76,6 +76,7 @@ class BridgeStatus:
     serial_port: dict[str, int]
     v8_io_events: list[dict[str, int | bool]]
     dsp_pc_trace: list[dict[str, int]]
+    dsp_data_events: list[dict[str, int]]
     dial_digits: str
     daa: dict[str, str | int | bool] | None
     sip: dict[str, str | int | bool | list[str]] | None
@@ -1093,6 +1094,11 @@ class CourierDspBridge:
                 if hasattr(self.core, "io_events") else []
             ),
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
+            dsp_data_events=(
+                [event for event in self.core.data_events()
+                 if event["address"] in (0xfffd, 0xfff8, 0xfff9)][-128:]
+                if hasattr(self.core, "data_events") else []
+            ),
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
