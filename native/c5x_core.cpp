@@ -86,6 +86,7 @@ void C5xCore::reset()
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
     m_pending_answer_dispatch = false;
+    m_call_context_valid = false;
     m_idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
@@ -606,6 +607,10 @@ void C5xCore::step()
                     DM_WRITE16(call_registers[index], m_pending_call_registers[index]);
                 m_data[0x006f] = m_pending_call_selector;
                 m_call_tdm_active = true;
+                // Preserve the complete post-entry register context for the
+                // synthesized answer callback.
+                m_call_context = state();
+                m_call_context_valid = true;
             }
             CHANGE_PC(uint16_t(m_line_frame_entry));
             m_line_frame_entry = -1;
@@ -730,7 +735,23 @@ void C5xCore::step()
         if (!m_st0.intm && (m_imr & (1u << irq))) ++m_line_frame_interrupts;
         interrupt(irq);
         if (m_pending_answer_dispatch) {
-            m_pc = 0xc853;
+            if (m_call_context_valid) {
+                m_acc = m_call_context.acc; m_accb = m_call_context.accb;
+                m_preg = m_call_context.preg;
+                m_treg0 = m_call_context.treg0; m_treg1 = m_call_context.treg1;
+                m_treg2 = m_call_context.treg2;
+                std::copy(m_call_context.ar.begin(), m_call_context.ar.end(), std::begin(m_ar));
+                m_st0.dp = m_call_context.dp; m_st0.arp = m_call_context.arp;
+                m_st0.intm = (m_call_context.flags >> 7) & 1;
+                m_st0.ovm = (m_call_context.flags >> 6) & 1;
+                m_st0.ov = (m_call_context.flags >> 5) & 1;
+                m_st1.sxm = (m_call_context.flags >> 4) & 1;
+                m_st1.c = (m_call_context.flags >> 3) & 1;
+                m_st1.tc = (m_call_context.flags >> 2) & 1;
+                m_st1.xf = (m_call_context.flags >> 1) & 1;
+                m_st1.cnf = m_call_context.flags & 1;
+            }
+            m_pc = 0x2295;
             m_pending_answer_dispatch = false;
         }
     }
