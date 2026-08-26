@@ -648,6 +648,11 @@ void C5xCore::step()
                     // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.
                     m_data[0xfff9] = m_data[0xfff8];
                     m_data[0xfff8] = m_codec_rx.front();
+                    // The TDM receive register and the polyphase ADC latch
+                    // are two views of the same ASIC slot. Populate TRCV
+                    // before the frame ISR reads it; previously only the
+                    // native detector saw this sample.
+                    m_tdm.trcv = m_codec_rx.front();
                     int16_t input = int16_t(m_codec_rx.front());
                     m_codec_rx.pop_front();
                     m_v8_rx_peak = std::max<uint16_t>(m_v8_rx_peak,
