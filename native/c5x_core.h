@@ -225,6 +225,7 @@ private:
     bool m_bio_low = false;
     bool m_tdm_rx_ready = false;
     bool m_pending_answer_dispatch = false;
+    bool m_answer_dispatch_active = false;
     State m_call_context{};
     bool m_call_context_valid = false;
     std::vector<uint16_t> m_line_tx;

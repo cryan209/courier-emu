@@ -86,6 +86,7 @@ void C5xCore::reset()
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
     m_pending_answer_dispatch = false;
+    m_answer_dispatch_active = false;
     m_call_context_valid = false;
     m_idle = false;
     m_instructions = m_cycles = 0;
@@ -620,6 +621,10 @@ void C5xCore::step()
             if (--m_brcr <= 0) m_pmst.braf = 0;
         }
         uint16_t previous_pc = m_pc;
+        if (m_answer_dispatch_active && previous_pc == 0xc853) {
+            m_data[0xfffa] = 0x9fdb;
+            m_data[0xfffe] = 12;
+        }
         m_op = ROPCODE();
         if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
             (previous_pc >= 0x0200 && previous_pc < 0x0300)) {
@@ -695,6 +700,7 @@ void C5xCore::step()
                                 // is absent from the image, so synthesize the
                                 // recovered overlay callback entry.
                                 m_pending_answer_dispatch = true;
+                                m_answer_dispatch_active = true;
                             }
                             // BIO remains high during the call overlay. The
                             // ISR's BIO-low conditional skips its NMI trap;
@@ -751,6 +757,10 @@ void C5xCore::step()
                 m_st1.xf = (m_call_context.flags >> 1) & 1;
                 m_st1.cnf = m_call_context.flags & 1;
             }
+            // Reconstruct the two ASIC TDM normalization latches normally
+            // initialized by the absent customer-ROM callback.
+            if (m_data[0xfffa] == 0) m_data[0xfffa] = 0x9fdb;
+            if (m_data[0xfffe] == 0) m_data[0xfffe] = 12;
             m_pc = 0x2295;
             m_pending_answer_dispatch = false;
         }
