@@ -157,6 +157,7 @@ class CourierDspBridge:
         self._line_tx_index = 0
         self._line_rx_samples: deque[int] = deque()
         self._line_rx_peak = 0
+        self._codec_queue_peak = 0
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
         self._carrier_best_score = 0.0
@@ -851,7 +852,22 @@ class CourierDspBridge:
                         available = min(count, len(self._line_rx_samples))
                         for index in range(available):
                             samples[index] = self._line_rx_samples.popleft()
-                    if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
+                    elif self.line is not None:
+                        # Do not build a FIFO of synthetic zeroes while the
+                        # peer is still producing its first V.8 frame.
+                        samples = []
+                    if samples:
+                        self._codec_queue_peak = max(
+                            self._codec_queue_peak, max(abs(sample) for sample in samples)
+                        )
+                    if (
+                        (self._call_overlay_active or self._call_resume_pending)
+                        and hasattr(self.core, "queue_codec_rx")
+                    ):
+                        # Hold the far-end waveform in the ASIC codec FIFO
+                        # across the call-entry boundary. Sending it through
+                        # the idle serial FIFO before the overlay is published
+                        # discarded the CI/ANSam burst the caller needs.
                         self.core.queue_codec_rx(samples)
                     else:
                         self.core.queue_serial_rx(samples)
@@ -1047,7 +1063,8 @@ class CourierDspBridge:
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
             line=(
-                {**self.line.status(), "rx_peak": self._line_rx_peak}
+                {**self.line.status(), "rx_peak": self._line_rx_peak,
+                 "codec_queue_peak": self._codec_queue_peak}
                 if self.line is not None else None
             ),
             codec=self.codec.status() if self.codec is not None else None,
