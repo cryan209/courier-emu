@@ -1096,7 +1096,7 @@ class CourierDspBridge:
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
             dsp_data_events=(
                 [event for event in self.core.data_events()
-                 if event["address"] in (0xfffd, 0xfff8, 0xfff9)][-128:]
+                 if event["address"] in (0x006f, 0x0304, 0x0306, 0x0308, 0x030a, 0x030c, 0x039f, 0x03c8, 0x03ca, 0x035c, 0x069c, 0x0b49)][-128:]
                 if hasattr(self.core, "data_events") else []
             ),
             dial_digits=self.dial_digits,
