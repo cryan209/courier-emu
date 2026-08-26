@@ -74,6 +74,7 @@ class BridgeStatus:
     dsp_memory_map: dict[str, int | bool]
     asic: dict[str, Any]
     serial_port: dict[str, int]
+    v8_io_events: list[dict[str, int | bool]]
     dial_digits: str
     daa: dict[str, str | int | bool] | None
     sip: dict[str, str | int | bool | list[str]] | None
@@ -1085,6 +1086,11 @@ class CourierDspBridge:
                 "ring_indicate": bool(self.asic_registers.get(0x83, 0) & 1),
             },
             serial_port=self.core.serial_state(),
+            v8_io_events=(
+                [event for event in self.core.io_events()
+                 if event["port"] in (0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E)][-64:]
+                if hasattr(self.core, "io_events") else []
+            ),
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,
             sip=self.sip.status() if self.sip is not None else None,
