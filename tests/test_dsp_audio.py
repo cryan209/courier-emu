@@ -116,6 +116,17 @@ class DspAudioTests(unittest.TestCase):
         self.assertEqual(max(low, key=low.get), 697)  # type: ignore[arg-type]
         self.assertEqual(max(high, key=high.get), 1209)  # type: ignore[arg-type]
 
+    def test_codec_peak_and_v8_diagnostics_cross_the_native_api(self) -> None:
+        with NativeC5x(XmfImage.load(ROOT / "main211.xmf")) as core:
+            core.queue_codec_rx([-32_768, 12_345])
+            state = core.serial_state()
+
+        self.assertEqual(state["codec_rx_peak"], 32_768)
+        self.assertEqual(state["v8_rx_state"], 0)
+        self.assertEqual(state["v8_rx_peak"], 0)
+        self.assertEqual(state["negotiation_loop_entries"], 0)
+        self.assertEqual(state["negotiation_loop_pc"], 0)
+
     def test_v8_calling_indicator_follows_dial_digits(self) -> None:
         with NativeC5x(XmfImage.load(ROOT / "main211.xmf")) as core:
             core.configure_line_frame_interrupt(7, 0x0228)

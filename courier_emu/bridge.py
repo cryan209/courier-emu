@@ -171,6 +171,54 @@ class CourierDspBridge:
         self._sip_rx_samples: deque[int] = deque()
         self._completion_probe = False
 
+    def _negotiation_audio_status(self) -> dict[str, int]:
+        """Summarize the latest codec frame at the V.8 signaling frequencies."""
+        written = self.core.serial_state().get("line_tx_writes", 0)
+        samples = self.core.line_tx_samples(max(0, written - DAA_FRAME_SAMPLES))
+        if not samples:
+            return {"samples": 0, "rms": 0}
+        status = {
+            "samples": len(samples),
+            "rms": round(math.sqrt(sum(sample * sample for sample in samples) / len(samples))),
+        }
+        for frequency in (980, 1180, 1300, 1875, 2100):
+            cosine = sum(
+                sample * math.cos(2 * math.pi * frequency * index / 9600)
+                for index, sample in enumerate(samples)
+            )
+            sine = sum(
+                sample * math.sin(2 * math.pi * frequency * index / 9600)
+                for index, sample in enumerate(samples)
+            )
+            status[f"hz_{frequency}"] = round(math.hypot(cosine, sine) / len(samples))
+        # CM and JM use the 300 bit/s V.21 low channel. A whole-frame DFT
+        # cancels as the modem changes symbols, so score its 32-sample symbols
+        # separately at the 980/1180 Hz mark and space frequencies.
+        fsk_symbols = {980: 0, 1180: 0}
+        fsk_strong = 0
+        for first in range(0, len(samples) - 31, 32):
+            symbol = samples[first : first + 32]
+            scores = {}
+            for frequency in fsk_symbols:
+                cosine = sum(
+                    sample * math.cos(2 * math.pi * frequency * index / 9600)
+                    for index, sample in enumerate(symbol)
+                )
+                sine = sum(
+                    sample * math.sin(2 * math.pi * frequency * index / 9600)
+                    for index, sample in enumerate(symbol)
+                )
+                scores[frequency] = 2 * math.hypot(cosine, sine) / len(symbol)
+            winner = max(scores, key=scores.get)  # type: ignore[arg-type]
+            fsk_symbols[winner] += 1
+            symbol_rms = math.sqrt(sum(sample * sample for sample in symbol) / len(symbol))
+            if symbol_rms and scores[winner] >= symbol_rms:
+                fsk_strong += 1
+        status["v21_mark_symbols"] = fsk_symbols[980]
+        status["v21_space_symbols"] = fsk_symbols[1180]
+        status["v21_strong_symbols"] = fsk_strong
+        return status
+
     def _observe_carrier_audio(self) -> None:
         """Detect the answer carrier in the real peer waveform.
 
@@ -305,6 +353,9 @@ class CourierDspBridge:
         if not self._v8_armed:
             return
         self._call_resume_state = self.core.state()
+        if hasattr(self.core, "trace_data_writes"):
+            self.core.trace_data_writes(True)
+            self._rate_trace_enabled = True
         answering = self.daa is not None and self.daa.operation == "answer"
         selector = 0x0000 if answering else 0x0002
         if answering and hasattr(self.core, "set_v8_answering"):
@@ -1063,6 +1114,7 @@ class CourierDspBridge:
                 "connected_event_queued": self._connected_event_queued,
                 "carrier_probe_frames": self._carrier_probe_frames,
                 "carrier_best_score": round(self._carrier_best_score),
+                "negotiation_audio": self._negotiation_audio_status(),
                 "dsp_registers": {
                     f"{register:02x}": ((value & 0xFF) << 8) | (value >> 8)
                     for register, value in sorted(self.asic_registers.items())
@@ -1072,11 +1124,16 @@ class CourierDspBridge:
                     event for event in self.core.data_events()
                     if event["address"] in (0x0304, 0x0306, 0x0308, 0x030A, 0x030C)
                 ][-32:] if self._rate_trace_enabled and hasattr(self.core, "data_events") else [],
+                "call_cell_writes": {
+                    f"{address:04x}": self.core.data_write_count(address)
+                    for address in (0x0306, 0x039F, 0xA51B, 0xA517, 0xD2A8, 0xFFF8, 0xFFF9)
+                } if hasattr(self.core, "data_write_count") else {},
                 "call_cells": {
                     f"{address:04x}": self.core.data(address)
                     for address in (
-                        0x0304, 0x0306, 0x035C, 0x039F, 0x03C8, 0x03CA, 0x03FE,
-                        0x069C, 0x0B26, 0x0B49, 0xFFF8, 0xFFF9, 0xFFFA,
+                        0x006F, 0x0304, 0x0306, 0x035C, 0x039F, 0x03C8, 0x03CA, 0x03FE,
+                        0x069C, 0x0B26, 0x0B49, 0xA51B, 0xD2A8,
+                        0xFFF8, 0xFFF9, 0xFFFA,
                         0xFFFD, 0xFFFE, 0xFFFF,
                     )
                 } if hasattr(self.core, "data") else {},
@@ -1104,7 +1161,8 @@ class CourierDspBridge:
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
             dsp_data_events=(
                 [event for event in self.core.data_events()
-                 if event["address"] in (0x006f, 0x0304, 0x0306, 0x0308, 0x030a, 0x030c, 0x039f, 0x03c8, 0x03ca, 0x035c, 0x069c, 0x0b49)][-128:]
+                 if (event["address"] in (0x006f, 0x0304, 0x0306, 0x0308, 0x030a, 0x030c, 0x039f, 0x03c8, 0x03ca, 0x035c, 0x069c, 0x0b49)
+                     or 0xa000 <= event["address"] <= 0xd2a8)][-128:]
                 if hasattr(self.core, "data_events") else []
             ),
             dial_digits=self.dial_digits,

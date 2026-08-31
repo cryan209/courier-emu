@@ -2478,6 +2478,105 @@ transition/callback after these filters, including the still-unmodeled
 ASIC-to-supervisor completion publication; native `TRCV/TDXR` is polled during
 initialization but does not carry the sustained stream.
 
+### The firmware route to CM/JM, and the word that blocks it
+
+The answer-side experiment that re-entered `0x2295` after detecting CI was
+wrong. `0x2295` is the one-time call initializer; entering it again discarded
+the live datapump context and eventually wrote zero to `IMR`. The downloaded
+overlay remains active across the CI/ANSam handoff. The ASIC now only stops its
+bootstrap tone and releases the overlay's callback-ready bit; it does not
+invent a second firmware entry.
+
+Following that route exposes the firmware's own V.8 state engine. Handler
+`0xc617` calls the indirect dispatcher at `0xc418` while timer 0 counts down.
+The dispatcher reads handler pointer `0xc617` from data register `0x48`. Once
+the countdown expires, the handler executes the setup through `0xc6bc` and
+enters the convolution/division loop at `0xc853`:
+
+```text
+c852  ZPR
+c853  BCNDd c853, GEQ
+c855  LTS   *+, AR2       ; delay slot
+c856  MPYU  *-, AR1       ; delay slot
+```
+
+The first operand pair is exact: data `0xa51b` is zero and data `0xd2a8` is
+one. Subsequent cells on both walks are zero. `ZPR` clears the first product,
+so `LTS` never reduces the positive accumulator; AR1 walks upward and AR2
+downward forever while IRQ 7 continues to service TDM. This is not a missing
+callback: it is the callback running on an absent data vector.
+
+Two bounded perturbations locate what is missing. Setting only `0xa51b` to
+`0xffff` lets the first invocation return and changes the active handler from
+`0xc617` to `0xc597`. Presenting `0xffff` across the walked range carries the
+firmware farther, through `0xc865`/`0xc872`. Copying program words into the
+range instead eventually branches through a zero handler and is decisively
+wrong. None of these perturbations is retained as a device model, and their
+audio is not evidence of CM or JM; they prove that the next input is an
+ASIC/external-data vector, not another PC, BIO edge, normalization constant, or
+supervisor message.
+
+The practical route to **CM/JM and beyond** is therefore:
+
+1. keep the call overlay and its `IMR=0x9880` context live after CI/ANSam;
+2. release callback-ready bit 8 at `0x039f` when the opposite bootstrap signal
+   qualifies;
+3. recover and publish the ASIC-produced external-data vector beginning at
+   `0xa51b` before `c617` dispatches the next state; and
+4. let `c418` advance the firmware handler table naturally, then publish its
+   completion/status word to the supervisor.
+
+The summary now reports `0xa51b`, `0xd2a8`, the role detector byte `0x0306`,
+and per-frame 980/1180 Hz V.21 scores. That makes a future vector experiment
+falsifiable: reaching a later PC is not enough; CM/JM must appear as strong
+300-bit/s V.21 low-channel symbols in firmware DAC output.
+
+### Publishing a guessed vector does not work
+
+The proposed next step above has now been executed, and it corrects one part of
+that conclusion: `0xa51b` is the first missing operand, but it is **not the
+start of one contiguous ASIC vector that can be reconstructed from the line
+samples**.
+
+The core now records every entry into the three identical numerical loops at
+`0xc7f7`, `0xc81a`, and `0xc853`, including accumulator, source address/value,
+and paired address/value. With the callback held low until native CI/ANSam
+qualification, the first firmware-owned entry is reproducibly:
+
+```text
+loop=c853  ACC=00007fef  source=a51b:0000  pair=d2a8:0001
+```
+
+The following models were then tried at the real read boundary:
+
+- a single `ffff` or Q15 `8000` at `a51b`;
+- the same value in the descending four-word cells `a51b`, `a517`, ...;
+- a contiguous block over the surrounding external-data range;
+- the latest 960 codec samples, both contiguous and four-phase interleaved;
+- program-space words mirrored into data space; and
+- a Q15 result returned directly to the source operand of all three loops.
+
+The first two let `c853` return, but later invocations request `a517` and other
+work cells. Filling those reaches `c81a`, whose next source is register `0035`
+(`TRAD`), then `ffd0`; forcing those reaches `c7f7`, whose source becomes
+`0000`. Constant-Q15 publication can keep all three routines executing, but it
+makes them cycle hundreds of thousands of times, eventually clears `IMR`, and
+produces no strong 980/1180 Hz symbols. Mirroring program words eventually
+branches through a zero handler. Raw codec history also reaches later loops but
+fails their fixed-point tests. These are clean falsifications, not candidate
+implementations, and none remains enabled.
+
+So the values are intermediate fixed-point work products with addresses passed
+by the firmware's state routines, not a wire-format sample or detector array.
+The absent customer-ROM/ASIC scheduler must run an upstream producer that
+constructs that workspace before releasing `039f.8`. The update firmware
+contains the consumers and coefficient tables but not that producer. There is
+no value-preserving way to synthesize it from the supplied images alone; a
+physical C52 data-memory capture at callback release, or the customer mask ROM,
+is required. The new loop diagnostics define the minimum useful capture:
+`ST0/ARP`, all AR registers, ACC/PREG/TREG0, and data around the reported source
+and pair for each of the three loop PCs.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under

@@ -167,6 +167,11 @@ void courier_c5x_set_data(void *handle, uint16_t address, uint16_t value)
     if (handle) static_cast<C5xCore *>(handle)->set_data(address, value);
 }
 
+uint64_t courier_c5x_get_data_write_count(void *handle, uint16_t address)
+{
+    return handle ? static_cast<C5xCore *>(handle)->data_write_count(address) : 0;
+}
+
 void courier_c5x_interrupt(void *handle, unsigned irq)
 {
     if (handle) static_cast<C5xCore *>(handle)->interrupt(irq);
@@ -308,6 +313,16 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.last_trcv_pc, serial.last_tdxr_pc, serial.last_tspc_pc,
         serial.line_tx_writes, serial.line_tx_nonzero, serial.line_frame_interrupts,
         serial.line_tx_last, serial.line_tx_last_pc, serial.imr,
+        serial.v8_rx_state, serial.v8_rx_peak, serial.codec_rx_peak,
+        serial.negotiation_loop_entries, serial.negotiation_loop_pc, serial.negotiation_source, serial.negotiation_pair,
+        serial.negotiation_source_value, serial.negotiation_pair_value,
+        uint32_t(serial.negotiation_acc),
+        serial.v8_dispatches, serial.v8_record, serial.v8_handler,
+        serial.v8_countdown, serial.v8_flags,
+        serial.negotiation_d76, serial.negotiation_d77,
+        serial.negotiation_d78, serial.negotiation_d79,
+        serial.negotiation_d26, serial.negotiation_indx,
+        serial.negotiation_arp, serial.negotiation_pm,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

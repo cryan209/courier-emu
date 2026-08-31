@@ -192,6 +192,8 @@ class NativeC5x:
         lib.courier_c5x_get_pc_trace.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
         lib.courier_c5x_get_data.restype = ctypes.c_uint16
         lib.courier_c5x_set_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
+        lib.courier_c5x_get_data_write_count.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_data_write_count.restype = ctypes.c_uint64
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
         lib.courier_c5x_configure_line_frame_interrupt.argtypes = [
             ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint16
@@ -377,7 +379,7 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 31)()
+        values = (ctypes.c_uint64 * 51)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
@@ -388,8 +390,19 @@ class NativeC5x:
             "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
             "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
             "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak", "codec_rx_peak",
+            "negotiation_loop_entries", "negotiation_loop_pc", "negotiation_source", "negotiation_pair", "negotiation_source_value",
+            "negotiation_pair_value", "negotiation_acc", "v8_dispatches",
+            "v8_record", "v8_handler", "v8_countdown", "v8_flags",
+            "negotiation_d76", "negotiation_d77", "negotiation_d78", "negotiation_d79",
+            "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
         )
-        return dict(zip(names, map(int, values), strict=True))
+        state = dict(zip(names, map(int, values), strict=True))
+        if state["negotiation_acc"] & 0x80000000:
+            state["negotiation_acc"] -= 0x100000000
+        return state
+
+    def data_write_count(self, address: int) -> int:
+        return int(self.library.courier_c5x_get_data_write_count(self.handle, address))
 
     def trace_data_writes(self, enabled: bool = True, *, clear: bool = True) -> None:
         if clear:

@@ -85,15 +85,23 @@ void C5xCore::reset()
     m_dtmf_frame = 0;
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
-    m_pending_answer_dispatch = false;
-    m_answer_dispatch_active = false;
-    m_call_context_valid = false;
+    m_v8_callback_ready = false;
+    m_negotiation_loop_active = false; m_negotiation_loop_entries = 0;
+    m_negotiation_loop_pc = m_negotiation_source = m_negotiation_pair = 0;
+    m_negotiation_source_value = m_negotiation_pair_value = 0; m_negotiation_acc = 0;
+    m_v8_dispatches = 0; m_v8_record = m_v8_handler = 0;
+    m_v8_countdown = m_v8_flags = 0;
+    m_negotiation_d76 = m_negotiation_d77 = 0;
+    m_negotiation_d78 = m_negotiation_d79 = 0;
+    m_negotiation_d26 = m_negotiation_indx = 0;
+    m_negotiation_arp = m_negotiation_pm = 0;
     m_idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
     m_io.fill(0xffff);
     m_io_events.clear();
     m_data_events.clear();
+    m_data_write_counts.fill(0);
     m_pc_trace.clear();
     m_trace_data_writes = false;
 }
@@ -277,8 +285,11 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
 }
 void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 {
-    if (m_trace_data_writes)
+    ++m_data_write_counts[address];
+    if (m_trace_data_writes) {
+        if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
+    }
     if (address < 0x60) cpuregs_w(address, value); else m_data[address] = value;
     // The polyphase ISR's 0xfffd result is the oversampled DAC word. Slot
     // 0xffff is control; 0xfff8/0xfff9 hold the ADC delay pair.
@@ -607,11 +618,8 @@ void C5xCore::step()
                 for (std::size_t index = 0; index < std::size(call_registers); ++index)
                     DM_WRITE16(call_registers[index], m_pending_call_registers[index]);
                 m_data[0x006f] = m_pending_call_selector;
+                m_v8_callback_ready = false;
                 m_call_tdm_active = true;
-                // Preserve the complete post-entry register context for the
-                // synthesized answer callback.
-                m_call_context = state();
-                m_call_context_valid = true;
             }
             CHANGE_PC(uint16_t(m_line_frame_entry));
             m_line_frame_entry = -1;
@@ -621,9 +629,28 @@ void C5xCore::step()
             if (--m_brcr <= 0) m_pmst.braf = 0;
         }
         uint16_t previous_pc = m_pc;
-        if (m_answer_dispatch_active && previous_pc == 0xc853) {
-            m_data[0xfffa] = 0x9fdb;
-            m_data[0xfffe] = 12;
+        if (previous_pc == 0xc418) {
+            ++m_v8_dispatches;
+            m_v8_record = uint16_t(m_acc);
+            m_v8_handler = m_data[0x48];
+            m_v8_countdown = m_data[0x4a];
+            m_v8_flags = m_data[0x4d];
+        }
+        bool negotiation_loop = previous_pc == 0xc7f7 || previous_pc == 0xc81a ||
+            previous_pc == 0xc853;
+        if (negotiation_loop && !m_negotiation_loop_active) {
+            m_negotiation_loop_active = true;
+            ++m_negotiation_loop_entries;
+            m_negotiation_loop_pc = previous_pc;
+            m_negotiation_source = m_ar[m_st0.arp];
+            m_negotiation_pair = m_ar[2];
+            m_negotiation_source_value = m_data[m_negotiation_source];
+            m_negotiation_pair_value = m_data[m_negotiation_pair];
+            m_negotiation_acc = m_acc;
+            m_negotiation_d76 = m_data[0x76]; m_negotiation_d77 = m_data[0x77];
+            m_negotiation_d78 = m_data[0x78]; m_negotiation_d79 = m_data[0x79];
+            m_negotiation_d26 = cpuregs_r(0x26); m_negotiation_indx = m_indx;
+            m_negotiation_arp = m_st0.arp; m_negotiation_pm = m_st1.pm;
         }
         m_op = ROPCODE();
         if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
@@ -632,6 +659,7 @@ void C5xCore::step()
             m_pc_trace.push_back((uint32_t(previous_pc) << 16) | m_op);
         }
         (this->*s_opcode_table[m_op >> 8])();
+        if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;
         if (m_rptc > 0 && previous_pc == m_rpt_end) { CHANGE_PC(m_rpt_start); --m_rptc; }
         else if (m_rptc <= 0) m_rptc = 0;
     }
@@ -658,11 +686,14 @@ void C5xCore::step()
         if (m_line_sample_due) {
             m_line_sample_phase -= 25000000u;
             if (m_call_tdm_active) {
-                // The customer-ROM scheduler publishes the V.8 callback
-                // ready bit once per codec slot.  The downloaded image tests
-                // data cell 0x039f bit 8 before resuming that callback; the
-                // ASIC/TDM edge is the only producer of this bit.
-                m_data[0x039f] |= 0x0100;
+                // The customer-ROM scheduler withholds the V.8 callback
+                // until the opposite bootstrap indicator has qualified. Once
+                // qualified it republishes the ready bit each codec slot.
+                if (m_v8_callback_ready) {
+                    m_data[0x039f] |= 0x0100;
+                } else {
+                    m_data[0x039f] &= uint16_t(~0x0100);
+                }
                 if (!m_codec_rx.empty()) {
                     // The ASIC's polyphase input holds the newest and previous
                     // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.
@@ -692,16 +723,9 @@ void C5xCore::step()
                         // would mask the firmware's own DAC output.
                         if ((m_v8_mode == V8Mode::Calling && (detected & 2)) ||
                             (m_v8_mode == V8Mode::Answering && (detected & 1))) {
-                            bool answer_handoff = (m_v8_mode == V8Mode::Answering);
+                            m_v8_callback_ready = true;
+                            m_data[0x039f] |= 0x0100;
                             m_v8_mode = V8Mode::Off;
-                            if (answer_handoff) {
-                                // Customer-ROM dispatch normally returns the
-                                // answer ISR into the call overlay. That ROM
-                                // is absent from the image, so synthesize the
-                                // recovered overlay callback entry.
-                                m_pending_answer_dispatch = true;
-                                m_answer_dispatch_active = true;
-                            }
                             // BIO remains high during the call overlay. The
                             // ISR's BIO-low conditional skips its NMI trap;
                             // asserting it here strands the answer path.
@@ -740,30 +764,6 @@ void C5xCore::step()
         unsigned irq = unsigned(m_line_frame_irq);
         if (!m_st0.intm && (m_imr & (1u << irq))) ++m_line_frame_interrupts;
         interrupt(irq);
-        if (m_pending_answer_dispatch) {
-            if (m_call_context_valid) {
-                m_acc = m_call_context.acc; m_accb = m_call_context.accb;
-                m_preg = m_call_context.preg;
-                m_treg0 = m_call_context.treg0; m_treg1 = m_call_context.treg1;
-                m_treg2 = m_call_context.treg2;
-                std::copy(m_call_context.ar.begin(), m_call_context.ar.end(), std::begin(m_ar));
-                m_st0.dp = m_call_context.dp; m_st0.arp = m_call_context.arp;
-                m_st0.intm = (m_call_context.flags >> 7) & 1;
-                m_st0.ovm = (m_call_context.flags >> 6) & 1;
-                m_st0.ov = (m_call_context.flags >> 5) & 1;
-                m_st1.sxm = (m_call_context.flags >> 4) & 1;
-                m_st1.c = (m_call_context.flags >> 3) & 1;
-                m_st1.tc = (m_call_context.flags >> 2) & 1;
-                m_st1.xf = (m_call_context.flags >> 1) & 1;
-                m_st1.cnf = m_call_context.flags & 1;
-            }
-            // Reconstruct the two ASIC TDM normalization latches normally
-            // initialized by the absent customer-ROM callback.
-            if (m_data[0xfffa] == 0) m_data[0xfffa] = 0x9fdb;
-            if (m_data[0xfffe] == 0) m_data[0xfffe] = 12;
-            m_pc = 0x2295;
-            m_pending_answer_dispatch = false;
-        }
     }
 }
 
@@ -796,7 +796,12 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
-        m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak};
+        m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak,
+        m_negotiation_loop_entries, m_negotiation_loop_pc, m_negotiation_source, m_negotiation_pair,
+        m_negotiation_source_value, m_negotiation_pair_value, m_negotiation_acc,
+        m_v8_dispatches, m_v8_record, m_v8_handler, m_v8_countdown, m_v8_flags,
+        m_negotiation_d76, m_negotiation_d77, m_negotiation_d78, m_negotiation_d79,
+        m_negotiation_d26, m_negotiation_indx, m_negotiation_arp, m_negotiation_pm};
 }
 
 } // namespace courier

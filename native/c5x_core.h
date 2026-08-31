@@ -72,6 +72,13 @@ public:
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
         uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
         uint16_t line_tx_last, line_tx_last_pc, imr, v8_rx_state, v8_rx_peak, codec_rx_peak;
+        uint64_t negotiation_loop_entries;
+        uint16_t negotiation_loop_pc, negotiation_source, negotiation_pair, negotiation_source_value, negotiation_pair_value;
+        int32_t negotiation_acc;
+        uint64_t v8_dispatches;
+        uint16_t v8_record, v8_handler, v8_countdown, v8_flags;
+        uint16_t negotiation_d76, negotiation_d77, negotiation_d78, negotiation_d79;
+        uint16_t negotiation_d26, negotiation_indx, negotiation_arp, negotiation_pm;
     };
 
     // Where a C52 address lands. The two parts that move are the boot ROM,
@@ -137,6 +144,7 @@ public:
     SerialState serial_state() const;
     const std::vector<IoEvent> &io_events() const { return m_io_events; }
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
+    uint64_t data_write_count(uint16_t address) const { return m_data_write_counts[address]; }
     const std::deque<uint32_t> &pc_trace() const { return m_pc_trace; }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
 
@@ -176,6 +184,7 @@ private:
     IoWrite m_io_write;
     std::vector<IoEvent> m_io_events;
     std::vector<DataEvent> m_data_events;
+    std::array<uint64_t, 65536> m_data_write_counts{};
     std::deque<uint32_t> m_pc_trace;
     bool m_trace_data_writes = false;
 
@@ -224,10 +233,19 @@ private:
     uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0, m_codec_rx_peak = 0;
     bool m_bio_low = false;
     bool m_tdm_rx_ready = false;
-    bool m_pending_answer_dispatch = false;
-    bool m_answer_dispatch_active = false;
-    State m_call_context{};
-    bool m_call_context_valid = false;
+    bool m_v8_callback_ready = false;
+    bool m_negotiation_loop_active = false;
+    uint64_t m_negotiation_loop_entries = 0;
+    uint16_t m_negotiation_loop_pc = 0, m_negotiation_source = 0, m_negotiation_pair = 0;
+    uint16_t m_negotiation_source_value = 0, m_negotiation_pair_value = 0;
+    int32_t m_negotiation_acc = 0;
+    uint64_t m_v8_dispatches = 0;
+    uint16_t m_v8_record = 0, m_v8_handler = 0;
+    uint16_t m_v8_countdown = 0, m_v8_flags = 0;
+    uint16_t m_negotiation_d76 = 0, m_negotiation_d77 = 0;
+    uint16_t m_negotiation_d78 = 0, m_negotiation_d79 = 0;
+    uint16_t m_negotiation_d26 = 0, m_negotiation_indx = 0;
+    uint16_t m_negotiation_arp = 0, m_negotiation_pm = 0;
     std::vector<uint16_t> m_line_tx;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
