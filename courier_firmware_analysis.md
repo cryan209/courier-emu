@@ -685,6 +685,18 @@ actively reversing the loader.
 
 ## 80188 memory architecture — the blocker for reading resident/overlay code
 
+**Recovery-loader update (2026-09-03):** the apparent setup-table obfuscation
+and post-bootstrap mapping break below are resolved for `SV25.XMD` by a chained
+128-byte XOR decode: initial payload key `0x55`, then the last decoded byte of
+each block becomes the next key. The decoded reset stub supports flash at
+`0x80000`; the recovery bootstrap copies its own `0x1b14` bytes into low RAM
+and enters through `INT 13h`. `courier recovery-run SV25.XMD` now executes that
+path through the full SDL prompt with emulated serial input. No speculative
+bank switch is needed on this path. See [the recovery harness documentation](docs/sv25-recovery.md)
+for evidence, input/flash-ID assumptions, and the observed CRC mismatch. The
+historical notes below remain relevant to the unresolved normal supervisor
+resident/overlay map, but their recovery decode conclusions are superseded.
+
 Tooling built and working:
 - **`c25dis.py`** (scratchpad) — faithful port of MAME's TMS320C25 disassembler
   (Tony La Porta table). Big-endian words. Verified correct.

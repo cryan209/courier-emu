@@ -1,0 +1,214 @@
+"""Small C5x ROM-read experiment and an offline 20 MHz download-path check.
+
+This emits a DSP kernel, not an SDL image. It cannot flash or contact a modem.
+The integrated launch/mailbox/serial experiment is in probe_transport.py;
+physical hardware behavior remains to be established.
+"""
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+from hashlib import sha256
+import json
+from pathlib import Path
+import struct
+
+ORIGIN = 0x8000
+BUFFER = 0x0300
+SAMPLE_WORDS = 32
+CONTROL = (0x1357, 0x2468, 0xA55A, 0x5AA5, 0x0000, 0xFFFF, 0x8001, 0x7FFE)
+HEADER = (0xC051, 1, 0, SAMPLE_WORDS, 0, 8, 0, 0)
+COMPLETE = 0xD00E
+
+
+@dataclass(frozen=True)
+class RomProbe:
+    words: tuple[int, ...]
+    control_address: int
+    halt_address: int
+
+    @property
+    def payload(self) -> bytes:
+        return struct.pack(f"<{len(self.words)}H", *self.words)
+
+    def dsp_program_segments(self):
+        return [(ORIGIN, self.payload)]
+
+
+def build_probe(*, mailbox: bool = False) -> RomProbe:
+    # Absolute addresses avoid dependencies on resident firmware's DP/ARP.
+    # The optional sender uses the reference's tag/data/strobe mailbox pattern.
+    words = [0xBE41, 0xBC06, 0x8B89]  # SETC INTM; LDP #6; MAR *,AR1
+    for index, value in enumerate(HEADER):
+        words.extend((0xAE00 | index, value))  # SPLK header word at DP|index
+    words.extend((0xBF09, BUFFER + len(HEADER)))
+    control_references = []
+    for source, count in ((None, len(CONTROL)), (0, SAMPLE_WORDS), (None, len(CONTROL))):
+        words.extend((0xBF80, source or 0))  # LACC #source
+        if source is None:
+            control_references.append(len(words) - 1)
+        words.extend((0xBB00 | (count - 1), 0xA6A0))  # RPT; TBLR *+
+    words.extend((0xAE04, COMPLETE))
+    if mailbox:
+        words.extend((0xAE7C, 0x5200, 0xBF09, BUFFER))
+        poll = ORIGIN + len(words)
+        # Reproduce the external-address read followed by the MMR read seen
+        # in the resident's 23f0 helper, without calling absent mask-ROM code.
+        words.extend((0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+                      0x907D, 0x4E7D, 0xE200, poll))
+        words.extend((0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+                      0x697C, 0xB801, 0x907C, 0xBFA0, 0x5238, 0xE308, poll))
+    halt = ORIGIN + len(words)
+    words.extend((0x7980, halt))  # B self, with interrupts masked
+    control_address = ORIGIN + len(words)
+    for index in control_references:
+        words[index] = control_address
+    words.extend(CONTROL)
+    while len(words) % 8:
+        words.append(0x8B00)  # transfer routine rounds to 16-byte chunks
+    return RomProbe(tuple(words), control_address, halt)
+
+
+def inspect_buffer(words: list[int]) -> dict:
+    expected_length = len(HEADER) + len(CONTROL) * 2 + SAMPLE_WORDS
+    if len(words) != expected_length:
+        raise ValueError(f"expected {expected_length} words")
+    before = words[8:16]
+    sample = words[16:48]
+    after = words[48:56]
+    valid = words[:4] == list(HEADER[:4]) and words[5:8] == list(HEADER[5:8])
+    valid = valid and words[4] == COMPLETE and before == list(CONTROL) and after == list(CONTROL)
+    return {"status": "sample-captured" if valid else "invalid-or-incomplete",
+            "control_before": before, "sample": sample, "control_after": after,
+            "complete": words[4] == COMPLETE,
+            "rom_access_proven": False,
+            "interpretation": "A valid buffer proves execution and program-RAM reads. A ROM sample still needs mapping/protection checks; all-zero/all-one data is inconclusive."}
+
+
+def simulate_probe(probe: RomProbe, *, rom_mapped: bool) -> dict:
+    from .dsp import NativeC5x
+    rom = tuple((0x1234 + i * 0x0193) & 0xFFFF for i in range(0x1000))
+    external = tuple((0xA55A ^ i * 0x0101) & 0xFFFF for i in range(SAMPLE_WORDS))
+    core = NativeC5x(probe)
+    try:
+        core.load_rom(struct.pack("<4096H", *rom))
+        core.load_program(struct.pack("<32H", *external), 0)
+        core.set_mpmc_pin(0 if rom_mapped else 1)
+        core.set_pc(ORIGIN)
+        for _ in range(200):
+            if core.state()["pc"] == probe.halt_address:
+                break
+            core.step(1)
+        else:
+            raise RuntimeError("probe did not complete")
+        result = inspect_buffer([core.data(BUFFER + i) for i in range(56)])
+        result.update(fixture="synthetic-rom" if rom_mapped else "external-program-memory",
+                      expected_sample=list(rom[:SAMPLE_WORDS] if rom_mapped else external),
+                      io_events=core.io_events())
+        result["sample_matches_fixture"] = result["sample"] == result["expected_sample"]
+        return result
+    finally:
+        core.close()
+
+
+def verify_download(image_path: str | Path, probe: RomProbe) -> dict:
+    """Run the reference's checksum and download loops on the probe bytes.
+
+    This exercises 80188 instructions and window strobes. Device ready bits
+    are synthetic; capturing the window does NOT prove the real DSP boot ROM
+    accepts the payload, launches it at 8000, or exposes the result buffer.
+    """
+    from unicorn import Uc, UcError, UC_ARCH_X86, UC_MODE_16, UC_HOOK_CODE, UC_HOOK_INSN
+    from unicorn import x86_const as r
+    from .rom import CourierRom
+    image = CourierRom.load(image_path)
+    anchors = {0xE447: "068bf02bc8d1e9", 0xE46E: "c606360e01c706370e4000",
+               0xE4B4: "b808a98ec0", 0x29080: "00bc57aeffff41be"}
+    for address, expected in anchors.items():
+        data = bytes.fromhex(expected)
+        if image.data[address:address + len(data)] != data:
+            raise ValueError(f"unsupported 20 MHz reference: anchor {address:#x}")
+    cpu = Uc(UC_ARCH_X86, UC_MODE_16)
+    cpu.mem_map(0, 0x20000)
+    cpu.mem_map(0x80000, 0x80000)
+    cpu.mem_write(0x80000, image.data)
+    # Substitute only the emulator's source window, never the input image.
+    cpu.mem_write(0xA9080, probe.payload)
+    window = bytearray(8)
+    captured = bytearray()
+    writes = []
+    checksum_sent = None
+    returned = False
+    def code(cpu, address, size, _):
+        nonlocal returned
+        if address == 0x80200:
+            returned = True
+            cpu.emu_stop()
+    def output(cpu, port, size, value, _):
+        nonlocal checksum_sent
+        writes.append({"pc": cpu.reg_read(r.UC_X86_REG_CS) * 16 + cpu.reg_read(r.UC_X86_REG_IP),
+                       "port": port, "size": size, "value": value})
+        if 0x40 <= port <= 0x4E and port % 2 == 0:
+            window[(port - 0x40) // 2] = value
+        elif port == 0x18 and value == 1:
+            captured.extend(window)
+        elif port == 0x18 and value == 4:
+            checksum_sent = int.from_bytes(window[:2], "little")
+    cpu.hook_add(UC_HOOK_CODE, code)
+    cpu.hook_add(UC_HOOK_INSN, output, None, 1, 0, r.UC_X86_INS_OUT)
+    cpu.hook_add(UC_HOOK_INSN, lambda *_: 7, None, 1, 0, r.UC_X86_INS_IN)
+    for entry in (0xE447, 0xE46E):
+        returned = False
+        for name, value in (("CS", 0x8000), ("IP", entry), ("DS", 0), ("SS", 0),
+                            ("SP", 0xF000), ("AX", 0), ("CX", len(probe.payload)), ("EFLAGS", 2)):
+            cpu.reg_write(getattr(r, "UC_X86_REG_" + name), value)
+        cpu.mem_write(0xF000, b"\x00\x02")
+        try:
+            cpu.emu_start(0x80000 + entry, 0x100000, count=10000)
+        except UcError as exc:
+            raise RuntimeError(f"reference transfer failed: {exc}") from exc
+        if not returned or cpu.reg_read(r.UC_X86_REG_EFLAGS) & 1:
+            raise RuntimeError(f"reference routine {entry:#x} did not return successfully")
+    expected_checksum = sum(probe.words) & 0xFFFF
+    return {"reference_sha256": image.digest, "source_file_unchanged": image.path.read_bytes() == image.data,
+            "captured_hex": captured.hex(), "matches_kernel": captured == probe.payload,
+            "checksum_sent": checksum_sent, "expected_checksum": expected_checksum,
+            "checksum_matches": checksum_sent == expected_checksum, "writes": writes,
+            "ready_bits": "IN returns 7 (synthetic)",
+            "hardware_launch_proven": False, "hardware_readback_proven": False}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--reference", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True,
+                        help="new output directory; must not already exist")
+    args = parser.parse_args()
+    if args.output.exists():
+        parser.error("output directory already exists; choose a new directory")
+    probe = build_probe()
+    # Verify before writing artifacts. mkdir without exist_ok prevents source
+    # collisions, accidental overwrites and ambiguous stale manifests.
+    result = {"hardware_tested": False, "uploadable_sdl_image": False,
+              "program_origin": ORIGIN, "result_buffer": BUFFER, "result_words": 56,
+              "kernel_sha256": sha256(probe.payload).hexdigest(),
+              "download": verify_download(args.reference, probe),
+              "simulations": [simulate_probe(probe, rom_mapped=m) for m in (True, False)],
+              "limitations": ["Raw C5x kernel only; do not send this file as an SDL update.",
+                              "Actual modem bootstrap entry and serial readback are not connected.",
+                              "C5x core models an unprotected C52 ROM; C51 size and mask-ROM protection are not tested.",
+                              "Reference IDSDL302 is a modified release, not a verified stock image."]}
+    if not result["download"]["matches_kernel"] or not result["download"]["checksum_matches"]:
+        raise RuntimeError("download verification failed")
+    if any(s["status"] != "sample-captured" or not s["sample_matches_fixture"] for s in result["simulations"]):
+        raise RuntimeError("kernel verification failed")
+    args.output.mkdir(parents=True)
+    (args.output / "probe-c5x.bin").write_bytes(probe.payload)
+    (args.output / "manifest.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps({"output": str(args.output.resolve()), "status": "offline-probe-verified",
+                      "hardware_tested": False, "uploadable_sdl_image": False}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

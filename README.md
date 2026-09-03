@@ -5,6 +5,29 @@ This repository contains a reproducible dual-core firmware harness for
 80186 supervisor in a 1 MiB instrumented address space, and runs the recovered
 TMS320C52 program with a standalone 16-bit fixed-point DSP core.
 
+For the older `SV25.XMD`, `./courier recovery-run SV25.XMD` runs a separate,
+read-only 80188 recovery-loader harness from flash `0x7dbc0` to the complete
+SDL Xmodem prompt. It reports every setup write, mapping observation, serial
+byte and stop condition as JSON. See [SV25 recovery harness](docs/sv25-recovery.md)
+for the recovered XMD block decode, memory map, peripheral assumptions and tests.
+The [DSP ROM-read diagnostic](docs/dsp-rom-probe.md) provides a C5x kernel
+and a RAM supervisor launcher for the 20.16 MHz reference. Its offline test
+executes reset/download, DSP mailbox output and supervisor serial readback.
+Hardware handshakes remain modeled; a physical RAM-load and launch mechanism
+is still unverified. The same document describes the read-only `ATGLK2` serial
+collector for the user's 20.16 MHz, 512 KiB, supervisor 7.3.14 modem:
+
+```sh
+.venv/bin/python -m courier_emu.flash_dump \
+  --device /dev/cu.usbserial-21210 --baud 115200 \
+  --output artifacts/courier-board-capture
+```
+
+It requires a new output directory, checks the modem identity and known reset
+vector, and verifies two matching reads of every 256-byte page before publishing
+a complete image. Raw replies and partial blocks are retained. This captures
+CPU-visible flash; DSP internal ROM requires a separate experiment.
+
 ## Recovered `main211.xmf` layout
 
 | File range | Contents |

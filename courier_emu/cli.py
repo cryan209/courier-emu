@@ -316,6 +316,15 @@ def build_parser() -> argparse.ArgumentParser:
     info = subparsers.add_parser("info", help="validate and describe an XMF image")
     info.add_argument("image")
 
+    recovery = subparsers.add_parser(
+        "recovery-run", help="trace the read-only SV25 80188 recovery loader to its SDL prompt"
+    )
+    recovery.add_argument("image")
+    recovery.add_argument("--instructions", type=_number, default=6_000_000)
+    recovery.add_argument("--no-serial-stimulus", action="store_true",
+                          help="stop at the command wait without supplying emulated AT~X! input")
+    recovery.add_argument("--libunicorn", help="directory containing a custom libunicorn library")
+
     rom_info = subparsers.add_parser(
         "rom-info",
         help="describe a complete flash ROM image and the map its reset stub sets up",
@@ -724,6 +733,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.command == "recovery-run":
+            if args.instructions <= 0:
+                raise ValueError("instruction limit must be positive")
+            command = [sys.executable, "-m", "courier_emu.recovery", args.image,
+                       "--instructions", str(args.instructions)]
+            if args.no_serial_stimulus:
+                command.append("--no-serial-stimulus")
+            environment = os.environ.copy()
+            if args.libunicorn:
+                environment["LIBUNICORN_PATH"] = str(Path(args.libunicorn).resolve())
+            # Keep native execution behind the same process boundary as run.
+            completed = subprocess.run(command, env=environment)
+            if completed.returncode < 0:
+                _print_json({"status": "native-error", "error":
+                             f"recovery worker terminated by signal {-completed.returncode}"})
+                return 1
+            return completed.returncode
         if args.command == "info":
             image = XmfImage.load(args.image)
             _print_json(image.describe())
