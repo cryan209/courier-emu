@@ -391,6 +391,11 @@ Reproduce the local audit from the repository root:
 .venv/bin/python artifacts/courier-board-21210-capture-01/audit_capture.py
 ```
 
+This requires the original capture output: the audit re-parses `responses/` and
+compares it against `blocks/`, and neither directory is tracked in git. See
+`artifacts/README.md`. The assembled image, `pages.jsonl` and the manifest
+hashes are tracked, so the image stays verifiable without them.
+
 `manifest.json` contains the capture identity and acquisition details;
 `audit.json` records the verification, bank hashes and differing ranges.
 The captured reset stub decodes to flash base `80000` and entry `fc00:11e9`.

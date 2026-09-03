@@ -1,0 +1,18 @@
+Repeat-read experiment, /dev/cu.usbserial-21210, 20.16 MHz unit, idle and on-hook.
+Purpose: distinguish stable registers from a streaming/FIFO register at 0x60-0x7e.
+
+atglk2i0060 -> 0B
+atglk2i0060 -> 0B
+atglk2i0060 -> 0B
+atglk2i0060 -> 0B
+atglk2i0060 -> 0B
+
+atglk2b0000 issued six times in succession. All six responses were byte-identical
+to artifacts/io-port-map/hardware-2016mhz/atglk2b.txt over the whole 0x00-0xff
+range, including every register in 0x60-0x7e:
+
+  0060    0B 00 00 00 78 00 09 00 8D 00 A3 00 E8 00 00 00
+  0070    AE 00 B6 00 97 00 51 00 51 00 06 00 4F 00 B3 00
+
+Result: repeated reads return identical values. The block does not behave as a
+FIFO.

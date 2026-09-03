@@ -1,0 +1,5994 @@
+[
+ {
+  "address": 1057,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 1071,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 1460,
+  "direction": "out",
+  "size": 1,
+  "port": 22,
+  "form": "dx"
+ },
+ {
+  "address": 1484,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 1611,
+  "direction": "out",
+  "size": 2,
+  "port": 139,
+  "form": "immediate"
+ },
+ {
+  "address": 1657,
+  "direction": "in",
+  "size": 2,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 1659,
+  "direction": "out",
+  "size": 1,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 4029,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4047,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4062,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4089,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4101,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4119,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4137,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4156,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 4172,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 4176,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 4184,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 4749,
+  "direction": "out",
+  "size": 2,
+  "port": 40,
+  "form": "immediate"
+ },
+ {
+  "address": 5247,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5251,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5280,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5289,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5295,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5305,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5310,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5331,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5335,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5362,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5366,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5413,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5422,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5456,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5460,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5468,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5478,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5506,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5510,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5520,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5530,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 5539,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5548,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 5843,
+  "direction": "in",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 5849,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 5853,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 7443,
+  "direction": "in",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 7453,
+  "direction": "in",
+  "size": 1,
+  "port": 10,
+  "form": "immediate"
+ },
+ {
+  "address": 7514,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 7528,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 7576,
+  "direction": "out",
+  "size": 1,
+  "port": 10,
+  "form": "immediate"
+ },
+ {
+  "address": 8172,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8176,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8228,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8232,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8240,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8244,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8247,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8251,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8305,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8309,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8317,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8321,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8324,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8328,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8385,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8389,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8397,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8401,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8404,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8408,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8430,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 8434,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 8465,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8469,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8477,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8481,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8484,
+  "direction": "in",
+  "size": 1,
+  "port": 98,
+  "form": "immediate"
+ },
+ {
+  "address": 8488,
+  "direction": "in",
+  "size": 1,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 8863,
+  "direction": "out",
+  "size": 2,
+  "port": 254,
+  "form": "immediate"
+ },
+ {
+  "address": 9336,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 9419,
+  "direction": "out",
+  "size": 2,
+  "port": 184,
+  "form": "immediate"
+ },
+ {
+  "address": 9489,
+  "direction": "in",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 9493,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 9507,
+  "direction": "in",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 9511,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 10134,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 10178,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 10220,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 12163,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 12224,
+  "direction": "in",
+  "size": 1,
+  "port": 128,
+  "form": "immediate"
+ },
+ {
+  "address": 12311,
+  "direction": "in",
+  "size": 2,
+  "port": 230,
+  "form": "immediate"
+ },
+ {
+  "address": 12313,
+  "direction": "out",
+  "size": 2,
+  "port": 232,
+  "form": "immediate"
+ },
+ {
+  "address": 12318,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 12319,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 12320,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 12321,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 14011,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 14036,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 14627,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 14897,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 16253,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 16671,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 16867,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 18100,
+  "direction": "out",
+  "size": 1,
+  "port": 10,
+  "form": "immediate"
+ },
+ {
+  "address": 18105,
+  "direction": "out",
+  "size": 1,
+  "port": 6,
+  "form": "immediate"
+ },
+ {
+  "address": 18109,
+  "direction": "out",
+  "size": 1,
+  "port": 8,
+  "form": "immediate"
+ },
+ {
+  "address": 18113,
+  "direction": "out",
+  "size": 1,
+  "port": 2,
+  "form": "immediate"
+ },
+ {
+  "address": 18117,
+  "direction": "out",
+  "size": 1,
+  "port": 4,
+  "form": "immediate"
+ },
+ {
+  "address": 18121,
+  "direction": "in",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 18125,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 18134,
+  "direction": "in",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 18138,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 18159,
+  "direction": "out",
+  "size": 1,
+  "port": 6,
+  "form": "immediate"
+ },
+ {
+  "address": 18163,
+  "direction": "out",
+  "size": 1,
+  "port": 8,
+  "form": "immediate"
+ },
+ {
+  "address": 18167,
+  "direction": "out",
+  "size": 1,
+  "port": 2,
+  "form": "immediate"
+ },
+ {
+  "address": 18171,
+  "direction": "out",
+  "size": 1,
+  "port": 4,
+  "form": "immediate"
+ },
+ {
+  "address": 18202,
+  "direction": "out",
+  "size": 1,
+  "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 19672,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 25933,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 26561,
+  "direction": "out",
+  "size": 1,
+  "port": 246,
+  "form": "immediate"
+ },
+ {
+  "address": 30658,
+  "direction": "in",
+  "size": 2,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 33603,
+  "direction": "in",
+  "size": 1,
+  "port": 194,
+  "form": "immediate"
+ },
+ {
+  "address": 33607,
+  "direction": "in",
+  "size": 1,
+  "port": 192,
+  "form": "immediate"
+ },
+ {
+  "address": 33620,
+  "direction": "out",
+  "size": 1,
+  "port": 196,
+  "form": "immediate"
+ },
+ {
+  "address": 33624,
+  "direction": "out",
+  "size": 1,
+  "port": 198,
+  "form": "immediate"
+ },
+ {
+  "address": 33626,
+  "direction": "in",
+  "size": 1,
+  "port": 194,
+  "form": "immediate"
+ },
+ {
+  "address": 33630,
+  "direction": "in",
+  "size": 1,
+  "port": 192,
+  "form": "immediate"
+ },
+ {
+  "address": 33669,
+  "direction": "out",
+  "size": 1,
+  "port": 196,
+  "form": "immediate"
+ },
+ {
+  "address": 33673,
+  "direction": "out",
+  "size": 1,
+  "port": 198,
+  "form": "immediate"
+ },
+ {
+  "address": 33675,
+  "direction": "in",
+  "size": 1,
+  "port": 194,
+  "form": "immediate"
+ },
+ {
+  "address": 33679,
+  "direction": "in",
+  "size": 1,
+  "port": 192,
+  "form": "immediate"
+ },
+ {
+  "address": 33707,
+  "direction": "out",
+  "size": 1,
+  "port": 196,
+  "form": "immediate"
+ },
+ {
+  "address": 33711,
+  "direction": "out",
+  "size": 1,
+  "port": 198,
+  "form": "immediate"
+ },
+ {
+  "address": 33713,
+  "direction": "in",
+  "size": 1,
+  "port": 194,
+  "form": "immediate"
+ },
+ {
+  "address": 33717,
+  "direction": "in",
+  "size": 1,
+  "port": 192,
+  "form": "immediate"
+ },
+ {
+  "address": 38066,
+  "direction": "out",
+  "size": 1,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 38152,
+  "direction": "out",
+  "size": 1,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 38278,
+  "direction": "in",
+  "size": 1,
+  "port": 185,
+  "form": "immediate"
+ },
+ {
+  "address": 41093,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41094,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41095,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41096,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41446,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41492,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 41540,
+  "direction": "in",
+  "size": 2,
+  "port": 166,
+  "form": "immediate"
+ },
+ {
+  "address": 41710,
+  "direction": "in",
+  "size": 1,
+  "port": 169,
+  "form": "immediate"
+ },
+ {
+  "address": 42042,
+  "direction": "out",
+  "size": 1,
+  "port": 175,
+  "form": "immediate"
+ },
+ {
+  "address": 46919,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 47455,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 47518,
+  "direction": "in",
+  "size": 2,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 47726,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 47905,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 50175,
+  "direction": "in",
+  "size": 2,
+  "port": 195,
+  "form": "immediate"
+ },
+ {
+  "address": 52626,
+  "direction": "in",
+  "size": 1,
+  "port": 127,
+  "form": "immediate"
+ },
+ {
+  "address": 52735,
+  "direction": "in",
+  "size": 1,
+  "port": 134,
+  "form": "immediate"
+ },
+ {
+  "address": 55993,
+  "direction": "out",
+  "size": 2,
+  "port": 252,
+  "form": "immediate"
+ },
+ {
+  "address": 57518,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58210,
+  "direction": "in",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 58216,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 58220,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 58240,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 58247,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58258,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58260,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58270,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58272,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58288,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 58295,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58314,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "dx"
+ },
+ {
+  "address": 58320,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58326,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "dx"
+ },
+ {
+  "address": 58333,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58402,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 58406,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58413,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 58417,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 58426,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 58432,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 58561,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58583,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 58587,
+  "direction": "out",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 58591,
+  "direction": "out",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 58595,
+  "direction": "out",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 58599,
+  "direction": "out",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 58603,
+  "direction": "out",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 58607,
+  "direction": "out",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 58611,
+  "direction": "out",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 58615,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58628,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58651,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58658,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58670,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58684,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58706,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 58713,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58719,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58729,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58764,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58796,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58804,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "dx"
+ },
+ {
+  "address": 58811,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58823,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 58840,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 58883,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 58906,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 58908,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59026,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59038,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 59042,
+  "direction": "out",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 59046,
+  "direction": "out",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 59050,
+  "direction": "out",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 59054,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59073,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59081,
+  "direction": "out",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 59085,
+  "direction": "out",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 59089,
+  "direction": "out",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 59093,
+  "direction": "out",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 59097,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59122,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59138,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 59191,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 59470,
+  "direction": "out",
+  "size": 2,
+  "port": 233,
+  "form": "immediate"
+ },
+ {
+  "address": 59787,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60213,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60243,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60328,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61201,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61342,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61417,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61547,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 62520,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 62571,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 62575,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 62581,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 62585,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 62604,
+  "direction": "in",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 62608,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 62648,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 62652,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 62697,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 62701,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 62770,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 62774,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 62785,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 62789,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 63027,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 63031,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 63441,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63447,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63450,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63454,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63464,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63471,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63476,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63480,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63587,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63623,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63630,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63635,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63639,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63668,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63674,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 63677,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63681,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63716,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63720,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63741,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63745,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63766,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63770,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63791,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63795,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63818,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63822,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63843,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63847,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63868,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63872,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63893,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63897,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63918,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63922,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63946,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63950,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 63976,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 63980,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64005,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64009,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64036,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64040,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64065,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64069,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64094,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64098,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64123,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64127,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64599,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 64605,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 64608,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 64612,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 64740,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 64924,
+  "direction": "in",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 64928,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 64944,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 64948,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 64993,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 64997,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 65003,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 65007,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 65050,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 65054,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 65637,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 67378,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 67547,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 67627,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 67670,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 70897,
+  "direction": "in",
+  "size": 1,
+  "port": 3,
+  "form": "immediate"
+ },
+ {
+  "address": 71205,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 71209,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 71358,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 71654,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 72432,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 72724,
+  "direction": "in",
+  "size": 1,
+  "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 73389,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73500,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73504,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 73524,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 73528,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 73588,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 73592,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 73598,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 73602,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 73629,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73635,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73639,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 73643,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 73667,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 73671,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 73710,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73716,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 73718,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 73722,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 73742,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 73746,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 74845,
+  "direction": "out",
+  "size": 1,
+  "port": 2,
+  "form": "immediate"
+ },
+ {
+  "address": 75400,
+  "direction": "in",
+  "size": 1,
+  "port": 4,
+  "form": "immediate"
+ },
+ {
+  "address": 75768,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 75839,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 76035,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 76113,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 76117,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 76123,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 76127,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 76167,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 76171,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 76962,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 76966,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 76998,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 77002,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 77013,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77017,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77037,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77041,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77077,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77081,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77087,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 77091,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 77098,
+  "direction": "in",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 77102,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 77111,
+  "direction": "out",
+  "size": 2,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 77124,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 77128,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 77164,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 77168,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 77176,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 77180,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 77201,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 77205,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 77269,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77273,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77289,
+  "direction": "in",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 77293,
+  "direction": "in",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 77308,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77312,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77316,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77320,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77336,
+  "direction": "in",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 77340,
+  "direction": "in",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 77355,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77359,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77363,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77367,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77383,
+  "direction": "in",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 77387,
+  "direction": "in",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 77402,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77406,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77410,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77414,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77427,
+  "direction": "in",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 77431,
+  "direction": "in",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 77446,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77450,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77454,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77458,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77471,
+  "direction": "in",
+  "size": 1,
+  "port": 82,
+  "form": "immediate"
+ },
+ {
+  "address": 77475,
+  "direction": "in",
+  "size": 1,
+  "port": 80,
+  "form": "immediate"
+ },
+ {
+  "address": 77490,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77494,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77498,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77502,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77515,
+  "direction": "in",
+  "size": 1,
+  "port": 86,
+  "form": "immediate"
+ },
+ {
+  "address": 77519,
+  "direction": "in",
+  "size": 1,
+  "port": 84,
+  "form": "immediate"
+ },
+ {
+  "address": 77534,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77538,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77549,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77553,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77572,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 77576,
+  "direction": "out",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 77581,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77585,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77589,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77593,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77612,
+  "direction": "out",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 77616,
+  "direction": "out",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 77621,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77625,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77629,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77633,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77652,
+  "direction": "out",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 77656,
+  "direction": "out",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 77661,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77665,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77669,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77673,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77689,
+  "direction": "out",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 77693,
+  "direction": "out",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 77698,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77702,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77706,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77710,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77726,
+  "direction": "out",
+  "size": 1,
+  "port": 80,
+  "form": "immediate"
+ },
+ {
+  "address": 77730,
+  "direction": "out",
+  "size": 1,
+  "port": 82,
+  "form": "immediate"
+ },
+ {
+  "address": 77735,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77739,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77743,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77747,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77763,
+  "direction": "out",
+  "size": 1,
+  "port": 84,
+  "form": "immediate"
+ },
+ {
+  "address": 77767,
+  "direction": "out",
+  "size": 1,
+  "port": 86,
+  "form": "immediate"
+ },
+ {
+  "address": 77772,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 77776,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 77792,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77796,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77802,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77806,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77812,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77816,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77824,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77828,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 77834,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 77838,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 78485,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 78491,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 78497,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 78501,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 78987,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 79446,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 79450,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 79456,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 80156,
+  "direction": "in",
+  "size": 2,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 80327,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 80331,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 80342,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 80346,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 80367,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 80371,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 80407,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 80411,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 80417,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 80421,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 80428,
+  "direction": "in",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 80432,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 80441,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 80445,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 80460,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 80464,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 80500,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 80504,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 80512,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 80516,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 80537,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 80541,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 80605,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80620,
+  "direction": "in",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 80624,
+  "direction": "in",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 80636,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80638,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80651,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 80653,
+  "direction": "in",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 80657,
+  "direction": "in",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 80669,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80671,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80683,
+  "direction": "in",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 80687,
+  "direction": "in",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 80699,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80701,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80713,
+  "direction": "in",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 80717,
+  "direction": "in",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 80729,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80731,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80743,
+  "direction": "in",
+  "size": 1,
+  "port": 82,
+  "form": "immediate"
+ },
+ {
+  "address": 80747,
+  "direction": "in",
+  "size": 1,
+  "port": 80,
+  "form": "immediate"
+ },
+ {
+  "address": 80759,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80761,
+  "direction": "in",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80773,
+  "direction": "in",
+  "size": 1,
+  "port": 86,
+  "form": "immediate"
+ },
+ {
+  "address": 80777,
+  "direction": "in",
+  "size": 1,
+  "port": 84,
+  "form": "immediate"
+ },
+ {
+  "address": 80789,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 80795,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80814,
+  "direction": "out",
+  "size": 1,
+  "port": 64,
+  "form": "immediate"
+ },
+ {
+  "address": 80818,
+  "direction": "out",
+  "size": 1,
+  "port": 66,
+  "form": "immediate"
+ },
+ {
+  "address": 80823,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80825,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80844,
+  "direction": "out",
+  "size": 1,
+  "port": 68,
+  "form": "immediate"
+ },
+ {
+  "address": 80848,
+  "direction": "out",
+  "size": 1,
+  "port": 70,
+  "form": "immediate"
+ },
+ {
+  "address": 80853,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80855,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80871,
+  "direction": "out",
+  "size": 1,
+  "port": 72,
+  "form": "immediate"
+ },
+ {
+  "address": 80875,
+  "direction": "out",
+  "size": 1,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 80880,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80882,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80898,
+  "direction": "out",
+  "size": 1,
+  "port": 76,
+  "form": "immediate"
+ },
+ {
+  "address": 80902,
+  "direction": "out",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 80907,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80909,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80925,
+  "direction": "out",
+  "size": 1,
+  "port": 80,
+  "form": "immediate"
+ },
+ {
+  "address": 80929,
+  "direction": "out",
+  "size": 1,
+  "port": 82,
+  "form": "immediate"
+ },
+ {
+  "address": 80934,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80936,
+  "direction": "in",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80952,
+  "direction": "out",
+  "size": 1,
+  "port": 84,
+  "form": "immediate"
+ },
+ {
+  "address": 80956,
+  "direction": "out",
+  "size": 1,
+  "port": 86,
+  "form": "immediate"
+ },
+ {
+  "address": 80961,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 80980,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 80986,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 80990,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81027,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81031,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81042,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81046,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81062,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81066,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81082,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81086,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81102,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81106,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81474,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81478,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 81522,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 81642,
+  "direction": "out",
+  "size": 2,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 81764,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 81768,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 82391,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 82857,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 82861,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 83140,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 83158,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83190,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83195,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83198,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83202,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 83214,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83218,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 83394,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83401,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83406,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83410,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 83432,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83439,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83442,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83446,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 83528,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83535,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 83538,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83542,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 83554,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 83558,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 84674,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 84678,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 84712,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 84716,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 84722,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 84726,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 84745,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 84778,
+  "direction": "out",
+  "size": 2,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 84780,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 84784,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 84966,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 85311,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 85315,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 85395,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 85464,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 85468,
+  "direction": "in",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 86106,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86119,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86169,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86195,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86345,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86371,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 87519,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 87526,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 87531,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 87535,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 87564,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 87570,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 87573,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 87577,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88157,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88164,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88169,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88173,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88202,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88208,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88211,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88215,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88422,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88428,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88431,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88435,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88505,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88512,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88517,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88521,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88536,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88542,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88545,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88549,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88652,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88659,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88662,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88666,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88678,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88682,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88770,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88794,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88801,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88806,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88810,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88838,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88845,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88848,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88852,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 88937,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88944,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 88947,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 88951,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 89427,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 89431,
+  "direction": "in",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 89475,
+  "direction": "out",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 89479,
+  "direction": "out",
+  "size": 1,
+  "port": 90,
+  "form": "immediate"
+ },
+ {
+  "address": 89485,
+  "direction": "out",
+  "size": 1,
+  "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 89489,
+  "direction": "out",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
+  "address": 89506,
+  "direction": "in",
+  "size": 1,
+  "port": 88,
+  "form": "immediate"
+ },
+ {
+  "address": 89541,
+  "direction": "out",
+  "size": 1,
+  "port": 28,
+  "form": "immediate"
+ },
+ {
+  "address": 89545,
+  "direction": "out",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
+ },
+ {
+  "address": 90100,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 90107,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 90110,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 90114,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 91384,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91391,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91394,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 91398,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 91809,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91816,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91819,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 91823,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 91903,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91909,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 91911,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 91915,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 92238,
+  "direction": "in",
+  "size": 2,
+  "port": 124,
+  "form": "immediate"
+ },
+ {
+  "address": 92287,
+  "direction": "in",
+  "size": 2,
+  "port": 124,
+  "form": "immediate"
+ },
+ {
+  "address": 92443,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 92608,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 92615,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 92618,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 92622,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 92675,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 92682,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 92685,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 92689,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 92781,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 93980,
+  "direction": "in",
+  "size": 1,
+  "port": 254,
+  "form": "immediate"
+ },
+ {
+  "address": 94047,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 94054,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 94059,
+  "direction": "out",
+  "size": 1,
+  "port": 24,
+  "form": "immediate"
+ },
+ {
+  "address": 94063,
+  "direction": "out",
+  "size": 1,
+  "port": 26,
+  "form": "immediate"
+ },
+ {
+  "address": 98698,
+  "direction": "out",
+  "size": 2,
+  "port": 105,
+  "form": "immediate"
+ },
+ {
+  "address": 98779,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 98986,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 99214,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 99444,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 99451,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 99902,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100165,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100197,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100237,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100262,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100302,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100505,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101098,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101131,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101161,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101168,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101175,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101182,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101279,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101298,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101299,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101322,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101323,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101345,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101360,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101367,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101514,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101564,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101697,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101704,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101713,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101746,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101793,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101810,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101840,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101851,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101925,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101959,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101966,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102127,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102128,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102166,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102233,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102240,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102270,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102288,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102306,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102324,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102342,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102349,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102356,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102672,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 102690,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 103152,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 103189,
+  "direction": "out",
+  "size": 1,
+  "port": 137,
+  "form": "immediate"
+ },
+ {
+  "address": 105261,
+  "direction": "in",
+  "size": 2,
+  "port": 135,
+  "form": "immediate"
+ },
+ {
+  "address": 105275,
+  "direction": "in",
+  "size": 2,
+  "port": 135,
+  "form": "immediate"
+ },
+ {
+  "address": 106851,
+  "direction": "out",
+  "size": 2,
+  "port": 79,
+  "form": "immediate"
+ },
+ {
+  "address": 107271,
+  "direction": "out",
+  "size": 2,
+  "port": 142,
+  "form": "immediate"
+ },
+ {
+  "address": 107296,
+  "direction": "out",
+  "size": 2,
+  "port": 142,
+  "form": "immediate"
+ },
+ {
+  "address": 107324,
+  "direction": "out",
+  "size": 2,
+  "port": 139,
+  "form": "immediate"
+ },
+ {
+  "address": 109232,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 109260,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 109344,
+  "direction": "in",
+  "size": 2,
+  "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 110630,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 111424,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 114411,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 114894,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 114895,
+  "direction": "in",
+  "size": 2,
+  "port": 59,
+  "form": "immediate"
+ },
+ {
+  "address": 115027,
+  "direction": "in",
+  "size": 2,
+  "port": 117,
+  "form": "immediate"
+ },
+ {
+  "address": 115047,
+  "direction": "in",
+  "size": 2,
+  "port": 117,
+  "form": "immediate"
+ },
+ {
+  "address": 115052,
+  "direction": "in",
+  "size": 2,
+  "port": 44,
+  "form": "immediate"
+ },
+ {
+  "address": 115111,
+  "direction": "in",
+  "size": 2,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 115161,
+  "direction": "in",
+  "size": 1,
+  "port": 228,
+  "form": "immediate"
+ },
+ {
+  "address": 115212,
+  "direction": "in",
+  "size": 1,
+  "port": 78,
+  "form": "immediate"
+ },
+ {
+  "address": 115217,
+  "direction": "in",
+  "size": 1,
+  "port": 44,
+  "form": "immediate"
+ },
+ {
+  "address": 119435,
+  "direction": "out",
+  "size": 1,
+  "port": 232,
+  "form": "immediate"
+ },
+ {
+  "address": 120017,
+  "direction": "out",
+  "size": 1,
+  "port": 232,
+  "form": "immediate"
+ },
+ {
+  "address": 120795,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 123467,
+  "direction": "in",
+  "size": 2,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 124538,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 124797,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 129102,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 130386,
+  "direction": "in",
+  "size": 1,
+  "port": 160,
+  "form": "immediate"
+ },
+ {
+  "address": 131849,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 137640,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 139590,
+  "direction": "in",
+  "size": 1,
+  "port": 80,
+  "form": "immediate"
+ },
+ {
+  "address": 140795,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 140802,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 140809,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 144066,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 144697,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 145039,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 146493,
+  "direction": "in",
+  "size": 1,
+  "port": 3,
+  "form": "immediate"
+ },
+ {
+  "address": 150197,
+  "direction": "in",
+  "size": 1,
+  "port": 147,
+  "form": "immediate"
+ },
+ {
+  "address": 154707,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 154745,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 155035,
+  "direction": "in",
+  "size": 2,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 157581,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 157613,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 158479,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159504,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 162133,
+  "direction": "in",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 162139,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 162143,
+  "direction": "out",
+  "size": 1,
+  "port": 0,
+  "form": "immediate"
+ },
+ {
+  "address": 162175,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 162298,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 162414,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 162422,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162456,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 162460,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162466,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162526,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 162535,
+  "direction": "in",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162591,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162602,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162607,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 162611,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162618,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162628,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162637,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162647,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162656,
+  "direction": "out",
+  "size": 1,
+  "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 162660,
+  "direction": "out",
+  "size": 1,
+  "port": 14,
+  "form": "immediate"
+ },
+ {
+  "address": 163398,
+  "direction": "in",
+  "size": 1,
+  "port": 18,
+  "form": "immediate"
+ },
+ {
+  "address": 164516,
+  "direction": "in",
+  "size": 1,
+  "port": 116,
+  "form": "immediate"
+ },
+ {
+  "address": 165698,
+  "direction": "out",
+  "size": 1,
+  "port": 18,
+  "form": "immediate"
+ },
+ {
+  "address": 165708,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165710,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165731,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165733,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165748,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165760,
+  "direction": "out",
+  "size": 1,
+  "port": 18,
+  "form": "immediate"
+ },
+ {
+  "address": 165762,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165777,
+  "direction": "out",
+  "size": 1,
+  "port": 18,
+  "form": "immediate"
+ },
+ {
+  "address": 165789,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165791,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165806,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165818,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165820,
+  "direction": "in",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 165835,
+  "direction": "out",
+  "size": 1,
+  "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 167840,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 167854,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 167918,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 167937,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 168007,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 168026,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 168559,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169140,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169205,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169215,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169221,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169227,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169243,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169303,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169311,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169575,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169690,
+  "direction": "out",
+  "size": 2,
+  "port": 191,
+  "form": "immediate"
+ },
+ {
+  "address": 169745,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 169902,
+  "direction": "out",
+  "size": 2,
+  "port": 191,
+  "form": "immediate"
+ }
+]

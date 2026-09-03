@@ -1,0 +1,23 @@
+{
+  "audit": "both live RAM passes match all saved page responses, blocks and hashes",
+  "bytes_per_pass": 65280,
+  "responses_verified": 514,
+  "changed_bytes": 44,
+  "sha256": [
+    "5e3f03971724027cf35246dfca8a61a2df01c655bced1d3f45c5beec7de49b33",
+    "e3889db731f9f897473f31c2cd94348f7f981dbec9d1db39f9633398bef0533a"
+  ],
+  "settings_cache_hex": "649603080b1a649603ef871def871def871d",
+  "settings_match_between_passes": true,
+  "decoded_settings": [
+    0,
+    30,
+    7,
+    30,
+    0,
+    0
+  ],
+  "excluded_physical_range": "0ff00..0ffff (peripheral registers)",
+  "atomic_snapshot": false,
+  "complete_eeprom_dump": false
+}

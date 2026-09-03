@@ -29,8 +29,14 @@ dist/
 *.dll
 *.exe
 
-# Emulator captures and diagnostic output
-artifacts/
+# Emulator captures and diagnostic output.
+# Primary evidence under artifacts/ is tracked: assembled ROM/RAM images,
+# manifests, audits, page hashes and hardware transcripts. The per-page
+# intermediates are not -- responses/ holds one raw serial reply per page and
+# blocks/ holds the 256-byte pages that the assembled images are built from,
+# together ~32 MB across ~8,200 files, all reconstructible from what is kept.
+artifacts/**/responses/
+artifacts/**/blocks/
 *.s16le
 *.pcm
 *.wav

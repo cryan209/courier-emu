@@ -1,0 +1,32 @@
+{
+  "source": "user-provided physical modem transcript; whitespace normalized",
+  "physical_start": "0xfff00",
+  "bytes": 256,
+  "terminal_status": "ERROR",
+  "terminal_error_cause": "unconfirmed",
+  "all_256_bytes_match_reference": false,
+  "differences": [
+    {
+      "physical_address": "0xffff9",
+      "hardware": "e9",
+      "reference": "21"
+    },
+    {
+      "physical_address": "0xffffa",
+      "hardware": "11",
+      "reference": "1a"
+    },
+    {
+      "physical_address": "0xffffd",
+      "hardware": "06",
+      "reference": "07"
+    }
+  ],
+  "reset_flash_base": "0x80000",
+  "hardware_boot_entry": "fc00:11e9",
+  "hardware_boot_physical": "0xfd1e9",
+  "reference_boot_entry": "fc00:1a21",
+  "reference_boot_physical": "0xfda21",
+  "trailing_byte_ffffd_meaning": "unconfirmed",
+  "full_flash_identity_proven": false
+}

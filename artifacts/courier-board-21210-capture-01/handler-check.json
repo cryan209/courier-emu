@@ -1,0 +1,29 @@
+{
+  "mode": "captured hardware handler; dispatcher and serial helpers bypassed",
+  "results": [
+    {
+      "command": "ATGLK2=8000:0000",
+      "rows": 16,
+      "bytes": 256,
+      "matches_expected_memory": true,
+      "remaining_cx": 1,
+      "next_byte": "0d",
+      "carry": 0,
+      "nonstack_writes": [],
+      "first_line": "8000:0000    BD 0B 00 E9 7C 0F 0D 0A 43 6F 70 79 72 69 67 68 ",
+      "last_line": "  8000:00F0    6E 20 53 74 61 72 6B 65 79 2C 20 4A 6F 65 20 46"
+    },
+    {
+      "command": "ATGLK2=8000",
+      "rows": 16,
+      "bytes": 256,
+      "matches_expected_memory": true,
+      "remaining_cx": 0,
+      "next_byte": "0d",
+      "carry": 0,
+      "nonstack_writes": [],
+      "first_line": "0000:8000    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ",
+      "last_line": "  0000:80F0    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+    }
+  ]
+}

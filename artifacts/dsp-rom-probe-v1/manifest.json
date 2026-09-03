@@ -1,0 +1,890 @@
+{
+  "hardware_tested": false,
+  "uploadable_sdl_image": false,
+  "program_origin": 32768,
+  "result_buffer": 768,
+  "result_words": 56,
+  "kernel_sha256": "0fe6c8f2a6074210e816f94a67fc2097994c0101438c8fd95a33fb1b71a6b1ef",
+  "download": {
+    "reference_sha256": "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5",
+    "source_file_unchanged": true,
+    "captured_hex": "41be06bc898b00ae51c001ae010002ae000003ae200004ae000005ae080006ae000007ae000009bf080380bf258007bba0a680bf00001fbba0a680bf258007bba0a604ae0ed080792380571368245aa5a55a0000ffff0180fe7f008b008b008b",
+    "matches_kernel": true,
+    "checksum_sent": 44223,
+    "expected_checksum": 44223,
+    "checksum_matches": true,
+    "writes": [
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 65
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 190
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 6
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 188
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 137
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 139
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 81
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 192
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 2
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 3
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 32
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 4
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 5
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 8
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 6
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 7
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 9
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 191
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 8
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 3
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 191
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 37
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 7
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 187
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 160
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 166
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 191
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 31
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 187
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 160
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 166
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 191
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 37
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 7
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 187
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 160
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 166
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 4
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 174
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 14
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 208
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 121
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 35
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 87
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 19
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 104
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 36
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 90
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 165
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582871,
+        "port": 64,
+        "size": 1,
+        "value": 165
+      },
+      {
+        "pc": 582875,
+        "port": 66,
+        "size": 1,
+        "value": 90
+      },
+      {
+        "pc": 582879,
+        "port": 68,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582883,
+        "port": 70,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582887,
+        "port": 72,
+        "size": 1,
+        "value": 255
+      },
+      {
+        "pc": 582891,
+        "port": 74,
+        "size": 1,
+        "value": 255
+      },
+      {
+        "pc": 582895,
+        "port": 76,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582899,
+        "port": 78,
+        "size": 1,
+        "value": 128
+      },
+      {
+        "pc": 582903,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582939,
+        "port": 64,
+        "size": 1,
+        "value": 254
+      },
+      {
+        "pc": 582946,
+        "port": 66,
+        "size": 1,
+        "value": 127
+      },
+      {
+        "pc": 582939,
+        "port": 68,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582946,
+        "port": 70,
+        "size": 1,
+        "value": 139
+      },
+      {
+        "pc": 582939,
+        "port": 72,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582946,
+        "port": 74,
+        "size": 1,
+        "value": 139
+      },
+      {
+        "pc": 582939,
+        "port": 76,
+        "size": 1,
+        "value": 0
+      },
+      {
+        "pc": 582946,
+        "port": 78,
+        "size": 1,
+        "value": 139
+      },
+      {
+        "pc": 582958,
+        "port": 24,
+        "size": 1,
+        "value": 1
+      },
+      {
+        "pc": 582994,
+        "port": 64,
+        "size": 1,
+        "value": 191
+      },
+      {
+        "pc": 583001,
+        "port": 66,
+        "size": 1,
+        "value": 172
+      },
+      {
+        "pc": 583007,
+        "port": 24,
+        "size": 1,
+        "value": 4
+      }
+    ],
+    "ready_bits": "IN returns 7 (synthetic)",
+    "hardware_launch_proven": false,
+    "hardware_readback_proven": false
+  },
+  "simulations": [
+    {
+      "status": "sample-captured",
+      "control_before": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "sample": [
+        4660,
+        5063,
+        5466,
+        5869,
+        6272,
+        6675,
+        7078,
+        7481,
+        7884,
+        8287,
+        8690,
+        9093,
+        9496,
+        9899,
+        10302,
+        10705,
+        11108,
+        11511,
+        11914,
+        12317,
+        12720,
+        13123,
+        13526,
+        13929,
+        14332,
+        14735,
+        15138,
+        15541,
+        15944,
+        16347,
+        16750,
+        17153
+      ],
+      "control_after": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "complete": true,
+      "rom_access_proven": false,
+      "interpretation": "A valid buffer proves execution and program-RAM reads. A ROM sample still needs mapping/protection checks; all-zero/all-one data is inconclusive.",
+      "fixture": "synthetic-rom",
+      "expected_sample": [
+        4660,
+        5063,
+        5466,
+        5869,
+        6272,
+        6675,
+        7078,
+        7481,
+        7884,
+        8287,
+        8690,
+        9093,
+        9496,
+        9899,
+        10302,
+        10705,
+        11108,
+        11511,
+        11914,
+        12317,
+        12720,
+        13123,
+        13526,
+        13929,
+        14332,
+        14735,
+        15138,
+        15541,
+        15944,
+        16347,
+        16750,
+        17153
+      ],
+      "io_events": [],
+      "sample_matches_fixture": true
+    },
+    {
+      "status": "sample-captured",
+      "control_before": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "sample": [
+        42330,
+        42075,
+        42840,
+        42585,
+        41310,
+        41055,
+        41820,
+        41565,
+        44370,
+        44115,
+        44880,
+        44625,
+        43350,
+        43095,
+        43860,
+        43605,
+        46410,
+        46155,
+        46920,
+        46665,
+        45390,
+        45135,
+        45900,
+        45645,
+        48450,
+        48195,
+        48960,
+        48705,
+        47430,
+        47175,
+        47940,
+        47685
+      ],
+      "control_after": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "complete": true,
+      "rom_access_proven": false,
+      "interpretation": "A valid buffer proves execution and program-RAM reads. A ROM sample still needs mapping/protection checks; all-zero/all-one data is inconclusive.",
+      "fixture": "external-program-memory",
+      "expected_sample": [
+        42330,
+        42075,
+        42840,
+        42585,
+        41310,
+        41055,
+        41820,
+        41565,
+        44370,
+        44115,
+        44880,
+        44625,
+        43350,
+        43095,
+        43860,
+        43605,
+        46410,
+        46155,
+        46920,
+        46665,
+        45390,
+        45135,
+        45900,
+        45645,
+        48450,
+        48195,
+        48960,
+        48705,
+        47430,
+        47175,
+        47940,
+        47685
+      ],
+      "io_events": [],
+      "sample_matches_fixture": true
+    }
+  ],
+  "limitations": [
+    "Raw C5x kernel only; do not send this file as an SDL update.",
+    "Actual modem bootstrap entry and serial readback are not connected.",
+    "C5x core models an unprotected C52 ROM; C51 size and mask-ROM protection are not tested.",
+    "Reference IDSDL302 is a modified release, not a verified stock image."
+  ]
+}

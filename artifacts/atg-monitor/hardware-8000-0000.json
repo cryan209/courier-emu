@@ -1,0 +1,11 @@
+{
+  "source": "user-provided physical modem transcript; whitespace normalized",
+  "physical_start": "0x80000",
+  "bytes": 256,
+  "sha256": "ecb384d81ffa62087bde0df4507be95fcfc5dffd339388be98ec76244790189f",
+  "all_256_bytes_match_reference": true,
+  "terminal_status": "ERROR",
+  "terminal_error_cause": "unconfirmed",
+  "full_flash_identity_proven": false,
+  "dsp_internal_rom_dumped": false
+}

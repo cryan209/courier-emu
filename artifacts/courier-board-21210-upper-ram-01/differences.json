@@ -1,0 +1,23 @@
+{
+  "changed_bytes": 17,
+  "physical_addresses": [
+    65758,
+    65759,
+    65760,
+    65761,
+    65762,
+    65764,
+    65766,
+    65768,
+    65828,
+    65829,
+    65830,
+    65835,
+    65857,
+    65858,
+    66547,
+    66562,
+    69041
+  ],
+  "meaning": "observed differences; matching bytes do not prove an atomic or immutable snapshot"
+}
