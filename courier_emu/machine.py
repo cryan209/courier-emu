@@ -23,6 +23,7 @@ from .panel import (
 from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
 from .timers import INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
+from .uart import EbSerial
 
 
 ADDRESS_SPACE_SIZE = 0x100000
@@ -265,6 +266,9 @@ class CourierMachine:
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
+        # A ROM reaches its DTE through the integrated serial unit in the
+        # control block rather than the payload's hand-modelled ports.
+        self.uart = EbSerial() if supervisor_offset is None else None
         # The ROM's serial engine runs off INT1 while the tick runs off INT3,
         # so the two cannot share one pending slot.
         self._int1_pending: int | None = None
@@ -1175,8 +1179,18 @@ class CourierMachine:
                 ):
                     self._timer_interrupt_pending = self.timers.take_interrupt()
                     _uc.emu_stop()
+                if (
+                    self.uart is not None
+                    and not self.uart.pending
+                    and self.uart.receive_enabled
+                    and self.serial_rx
+                    and interrupts_on
+                ):
+                    self.uart.deliver(self.serial_rx.popleft())
+                    _uc.emu_stop()
                 if interrupts_on and (
-                    self._external_interrupt_pending is not None
+                    self.uart is not None and self.uart.pending
+                    or self._external_interrupt_pending is not None
                     or self._int1_pending is not None
                     or self._timer_interrupt_pending is not None
                 ):
@@ -1496,6 +1510,8 @@ class CourierMachine:
             # is answered by putting the modelled value where the read will
             # find it. Everything else in the control block stays plain memory.
             modelled = self.timers.read(address, size, self.instructions)
+            if modelled is None and self.uart is not None:
+                modelled = self.uart.read(address, size)
             if modelled is not None:
                 _uc.mem_write(address, modelled.to_bytes(size, "little"))
             elif (
@@ -1534,6 +1550,10 @@ class CourierMachine:
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
             self.mmio_counts[("write", address, size)] += 1
             self.timers.write(address, size, value, self.instructions)
+            if self.uart is not None:
+                sent = self.uart.write(address, size, value)
+                if sent is not None:
+                    self._capture_serial(sent)
             if self.nvram is not None:
                 # The ROM's EEPROM driver shares one data line on port 2 pin 7:
                 # it drives the latch at ff5e while the direction bit in ff58 is
@@ -1637,6 +1657,11 @@ class CourierMachine:
                         self._external_interrupt_pending, software=False
                     )
                     self._external_interrupt_pending = None
+                    continue
+                if self.uart is not None and self.uart.pending:
+                    begin = dispatch_interrupt(
+                        self.uart.pending.popleft(), software=False
+                    )
                     continue
                 if self._int1_pending is not None:
                     begin = dispatch_interrupt(self._int1_pending, software=False)
