@@ -53,6 +53,14 @@ KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
 # without it every firmware timeout waits forever - ATI11 arms 20 ticks
 # at 0x62d68 and spins at 0x62d6d because they never elapse.
 TICK_VECTOR = 0x0F
+# The board ROM's time base is a different pin. Its boot table masks INT3 and
+# never clears it, but the serial state machine at 0x9eb73 installs INT1
+# handlers - vector 0x34, type 0x0d - at 0x9eb73 and 0x9eb91, and unmasks INT1
+# at 0x9eb79 and 0x9ebc4, on either side of arming timer 1. Delivering the
+# ROM's tick as INT3 instead left the state machine parked in the state that
+# vectors timer 1 at the wrapper at 0x9f19d, whose near call into the body at
+# 0x9eb73 meets that body's far return and lands in uninitialised RAM.
+ROM_TICK_VECTOR = 0x0D
 # The period that makes the countdowns elapse at a plausible rate. It is
 # not driven by default: supplying it changes call timing, and the linked
 # pair answers OK where an undriven run reports NO CARRIER, so which of
@@ -280,7 +288,13 @@ class CourierMachine:
             else None
         )
         self.dsp_tx_pcm = dsp_tx_pcm
-        self._milestone_addresses = {
+        # Every address constant below belongs to the update payload's map.
+        # A full board ROM loads at its own base and runs a different
+        # supervisor, so those constants land on unrelated code: left enabled
+        # they fabricate serial bytes and milestones, and the callback
+        # stand-in overwrites the ROM's own copied low-memory table.
+        self._payload_hooks = supervisor_offset is not None
+        self._milestone_addresses = {} if not self._payload_hooks else {
             0x5B9F0: "supervisor-entry",
             0x69D05: "dsp-transfer",
             0x7E133: "startup-crc",
@@ -679,8 +693,10 @@ class CourierMachine:
                 # 3 (NO CARRIER) before the ASIC call-up edge reaches it;
                 # selector 1 is the adjacent CONNECT entry in that table.
                 _uc.reg_write(UC_X86_REG_SI, 1)
-            if address in (0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
-                           0x6595B, 0x70F70, 0x70F83, 0x70F8D):
+            if self._payload_hooks and address in (
+                0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
+                0x6595B, 0x70F70, 0x70F83, 0x70F8D,
+            ):
                 if self.dsp_bridge is not None and address == 0x6593F:
                     if self.dsp_bridge.connected_event_queued:
                         _uc.mem_write(0x027B, (0x0002).to_bytes(2, "little"))
@@ -822,7 +838,11 @@ class CourierMachine:
                 terminal_value = raw & 0x7F if parity_framing else raw
                 self._capture_serial(terminal_value)
                 self._trace_serial(f"fifo {terminal_value:02x} pc={current_pc():05x}")
-            if address == 0x5D5B0 and len(self.serial_trace) < 64:
+            if (
+                self._payload_hooks
+                and address == 0x5D5B0
+                and len(self.serial_trace) < 64
+            ):
                 self.serial_trace.append("entered-uart-isr")
             if self._serial_in_handler and (
                 address in (0x5D613, 0x5D650, 0x5D656)
@@ -955,7 +975,7 @@ class CourierMachine:
                     )
                     _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
                     self.serial_trace.append(f"callback 2ac={ready_callback:04x}")
-                self._serial_started = True
+                self._serial_started = self._payload_hooks
                 self._serial_tx_pump = not self.serial_rx
                 self._serial_empty_probes = 0
                 self._serial_cooldown = 512
@@ -1186,13 +1206,11 @@ class CourierMachine:
                 >= self.tick_ms * INSTRUCTIONS_PER_MS
                 and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
             ):
-                # Deliberately not gated on the int3 mask. The boot table masks
-                # that source and never clears it, yet the hardware ticks, so
-                # honouring the mask here would withhold the one edge the ROM
-                # cannot boot without. Which board source really supplies it is
-                # not recovered - see the tick-chain notes in the analysis.
+                # INT1, not INT3: this is the source the ROM itself unmasks
+                # and installs handlers for, so the mask is honoured rather
+                # than bypassed. See ROM_TICK_VECTOR.
                 self._last_tick = self.instructions
-                self._external_interrupt_pending = TICK_VECTOR
+                self._external_interrupt_pending = ROM_TICK_VECTOR
                 self.ticks += 1
                 _uc.emu_stop()
             if (
