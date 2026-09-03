@@ -28,6 +28,15 @@ vector, and verifies two matching reads of every 256-byte page before publishing
 a complete image. Raw replies and partial blocks are retained. This captures
 CPU-visible flash; DSP internal ROM requires a separate experiment.
 
+For live CPU RAM, use `python -m courier_emu.ram_dump` with the same options
+and a new output directory. It preserves two passes through `00000..0feff`,
+skips the peripheral registers at `0ff00..0ffff`, reports changing bytes,
+and extracts the known EEPROM settings cache. See the same diagnostic document
+for the snapshot limitations and cached-settings layout.
+Add `--window upper` to investigate CPU addresses `10000..1ffff` instead;
+that mode also takes six bracketed comparisons with lower RAM to check for
+possible mirroring, without writing test patterns.
+
 ## Recovered `main211.xmf` layout
 
 | File range | Contents |

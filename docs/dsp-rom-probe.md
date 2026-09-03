@@ -365,6 +365,175 @@ separate blank banks from aliases. The artifact is a verified capture of the
 CPU-visible 512 KiB window under the running firmware's mapping. It does not
 yet include a separate dump of the DSP's internal ROM.
 
+## Live RAM capture
+
+```sh
+.venv/bin/python -m courier_emu.ram_dump \
+  --device /dev/cu.usbserial-21210 --baud 115200 \
+  --output artifacts/courier-board-21210-ram-01
+```
+
+The directory must be new. The collector verifies ATI7, including 64k RAM,
+and the known flash endpoint signatures. It reads physical `00000..0feff`
+in two sequential passes, then rechecks the flash endpoints. It sends only
+`AT`, `ATI7`, and canonical `ATGLK2=` memory reads. The host serial transport
+and response validation are shared with the flash collector; RAM access is
+an explicit opt-in and does not widen the default flash collector's range.
+
+Physical `0ff00..0ffff` is excluded because the firmware relocates its
+peripheral control block there. In particular, reading UART and status
+registers as if they were RAM could have side effects. The two output files,
+`ram-pass1.bin` and `ram-pass2.bin`, therefore each contain **65,280 bytes**,
+with file offset equal to physical address. They contain no fabricated
+padding for the excluded 256 bytes. The nominal 64 KiB RAM size is from ATI7;
+the capture does not establish inaccessible RAM beneath the peripheral
+window or aliases above the first 64 KiB CPU window.
+
+A pass is a live sequence of page reads, not an atomic snapshot. The modem
+continues running and the dump commands themselves change its command
+buffers, stack and other working memory. Differing data between passes is
+preserved and listed in `differences.json`; it is not retried until it agrees.
+Only malformed, incomplete or wrongly addressed replies trigger bounded
+retries. Raw responses, individual blocks, elapsed page-read times, hashes
+and the capture manifest are retained. Failure preserves partial data and
+marks the manifest incomplete; each pass file is published only after all
+its pages have been collected.
+
+The collector also extracts `0000:0752..0763` into two 18-byte
+`settings-cache-passN.bin` files. The physical firmware's reader at flash
+`e2e9` and EEPROM driver at `1401` match the reference: this RAM block caches
+EEPROM words **94..102** (byte offsets `bc..cd` in a little-endian word image).
+The settings decoder at `e237` likewise matches. Each three-byte record
+encodes three redundant copies; the manifest reports all decoded copies,
+whether a majority exists, the recovered value, and whether both captures
+of the block agree. No firmware decoder or EEPROM write routine is invoked
+on the modem. These 18 bytes are a cached subset, not a full EEPROM dump;
+uncaptured EEPROM words must not be presented as recovered data.
+
+The raw RAM images include live pointers, stack and transient state. They
+are useful evidence and sources for verified initialization data, not a
+demonstrated restore point to load wholesale into the emulator at reset.
+
+Tests: `python -m pytest tests/test_flash_dump.py tests/test_ram_dump.py -q`.
+
+### Completed RAM capture, 2026-09-03
+
+`artifacts/courier-board-21210-ram-01/` contains two complete 65,280-byte
+passes from `/dev/cu.usbserial-21210` at 115200 baud. Acquisition took
+139.44 seconds, with no malformed responses or retries. An offline audit
+checked all 510 RAM-page responses plus four flash-anchor responses against
+the stored blocks, assembled files and hashes. The modem's terminal result
+was `ERROR` after every complete response, as in the earlier flash capture.
+
+| Artifact | SHA-256 |
+|---|---|
+| `ram-pass1.bin` | `5e3f03971724027cf35246dfca8a61a2df01c655bced1d3f45c5beec7de49b33` |
+| `ram-pass2.bin` | `e3889db731f9f897473f31c2cd94348f7f981dbec9d1db39f9633398bef0533a` |
+| Each `settings-cache-passN.bin` | `e986a26abf57d5c64c426467bafaeb2f3667eeedce2c253c141d3e06a172c0f6` |
+
+The passes differ at 44 byte addresses, listed in `differences.json`.
+The cached settings block agrees exactly:
+
+```text
+RAM 0752..0763: 64 96 03 08 0b 1a 64 96 03 ef 87 1d ef 87 1d ef 87 1d
+Settings 1..6: 0, 30, 7, 30, 0, 0
+```
+
+All three redundant copies agree for every setting. In particular, setting
+3 is `7`, whose bit 0 satisfies the serial-output enable condition traced
+in the firmware. This supplies actual board data for the previously missing
+cached-settings records; it does not establish that the emulator now boots
+correctly, nor has the whole RAM image been applied as emulator state.
+
+The serial port closed after the capture. No upload or memory-write command
+was sent. Reproduce the saved-data audit with:
+
+```sh
+.venv/bin/python artifacts/courier-board-21210-ram-01/audit_capture.py
+```
+
+## Upper CPU memory window investigation
+
+```sh
+.venv/bin/python -m courier_emu.ram_dump \
+  --device /dev/cu.usbserial-21210 --baud 115200 --window upper \
+  --output artifacts/courier-board-21210-upper-ram-01
+```
+
+This explicit mode captures CPU physical `10000..1ffff` twice, 65,536 bytes
+per pass. File offset zero corresponds to physical `10000`. The known boot
+table sets the lower chip select from zero to `20000` (exclusive), but ATI7
+reports 64 KiB RAM. A chip-select range describes address decoding, not
+necessarily distinct installed storage. This experiment checks the previously
+uncaptured half of that range without writing test patterns or changing the
+mapping.
+
+The collector additionally reads six comparison groups at lower addresses
+`0000`, `0700`, `2000`, `8000`, `e000`, and `fe00`. In each group, it reads
+the lower page, the page `10000` bytes above it, then the lower page again.
+The report separates bytes stable between the two lower reads from changing
+bytes and counts how many stable bytes match the upper page. Such comparisons
+can support an alias interpretation without claiming to prove that the same
+physical RAM cells are selected.
+
+`0ff00..0ffff` remains excluded. The upper address `1ff00` is outside that
+relocated peripheral control block and is included in this window. Neither
+window mode reads arbitrary I/O ports. Default lower-RAM and flash captures
+keep their original address restrictions; upper access requires its own
+transport opt-in. The upper mode does not label bytes at offset `0752` as
+an EEPROM cache before establishing their relationship to lower RAM.
+
+The DSP has a separate program-memory execution context: the captured CPU
+download routines send code through `OUT` instructions at ports `40..5e`
+with transfer handshakes at `18`. Those routines match the reference. Finding
+data in the CPU's upper RAM window does not, by itself, establish a direct
+mapping to the DSP's working RAM or internal ROM.
+
+### Completed upper-window capture, 2026-09-03
+
+The capture in `artifacts/courier-board-21210-upper-ram-01/` completed in
+144.79 seconds. Each pass contains 65,536 bytes from physical `10000..1ffff`.
+All 534 saved responses (512 sweep pages, four flash endpoints and 18 alias
+comparison reads) passed the offline audit. There were no retries, uploads,
+or memory-write commands. All responses ended with `ERROR` after their
+complete data, as in the previous captures.
+
+| Artifact | SHA-256 |
+|---|---|
+| `ram-pass1.bin` | `e0f5f5dbb4bddf9f2a3cd1bb3584391278afa0b4ae8132d5c54258d0a9ebad6b` |
+| `ram-pass2.bin` | `44e4771ac50e1a71050baf6f13b891e4938036d5bbeb6b3fb84eeb94159a49a2` |
+
+Only 17 bytes differ between the two upper passes. Compared with the earlier
+lower `ram-pass2.bin`, each upper pass differs at 45 of the 65,280 comparable
+bytes; 249 of 255 whole pages match exactly. The known settings-cache bytes
+also match at the corresponding offset.
+
+Five fresh lower/upper/lower groups match completely: lower pages `0700`,
+`2000`, `8000`, `e000`, and `fe00`. For page `0000`, 244 byte positions agree
+between the bracketing lower reads, and 242 of those match the upper read.
+The two exceptions are offsets `fb` (lower `00`, upper `0f`) and `fe`
+(lower `04`, upper `f0`). These observations do not establish that the page
+was unchanged between observations or explain the remaining discrepancies.
+
+The extensive matching data strongly supports the interpretation that the
+upper window mirrors the 64 KiB supervisor RAM. A write-based alias test was
+not performed, so shared physical cells are not conclusively established.
+This capture provides no evidence that the upper window exposes a distinct
+DSP RAM bank. The DSP's separate RAM/execution context remains a different
+target for the mailbox/diagnostic investigation.
+
+The last upper page `1ff00..1ffff` also matches exactly between passes. It
+provides 256 bytes absent from the lower capture, whose `0ff00..0ffff`
+addresses were excluded as peripheral registers. Identifying that upper
+page as the underlying low RAM relies on the alias interpretation; it is
+not a captured peripheral-register snapshot.
+
+Reproduce the saved-data audit and comparisons with:
+
+```sh
+.venv/bin/python artifacts/courier-board-21210-upper-ram-01/audit_capture.py
+```
+
 ## Remaining hardware integration
 
 The supervisor code, DSP sender and serial parser now exist and execute

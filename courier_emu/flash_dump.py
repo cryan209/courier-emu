@@ -27,15 +27,21 @@ TERMINAL = re.compile(rb"(?:^|[\r\n])(OK|ERROR)[\r\n]+$")
 ROW = re.compile(r"([0-9A-F]{4}):([0-9A-F]{4})\s+((?:[0-9A-F]{2}\s+){15}[0-9A-F]{2})", re.I)
 
 
-def command_for(address: int) -> str:
-    if not BASE <= address < BASE + LENGTH or address % PAGE:
-        raise ValueError("only aligned pages in flash 80000..fffff may be read")
+def command_for(address: int, *, allow_ram: bool = False, allow_upper_ram: bool = False) -> str:
+    in_flash = BASE <= address < BASE + LENGTH
+    # The relocated peripheral control block occupies ff00..ffff. Reading it
+    # as RAM could consume UART data or acknowledge device status.
+    in_ram = allow_ram and 0 <= address < 0xFF00
+    in_upper_ram = allow_upper_ram and 0x10000 <= address < 0x20000
+    if not (in_flash or in_ram or in_upper_ram) or address % PAGE:
+        raise ValueError("address is outside the allowed aligned flash/RAM pages")
     segment = (address & 0xF0000) >> 4
     return f"ATGLK2={segment:04X}:{address & 0xFFFF:04X}"
 
 
-def parse_page(raw: bytes, address: int) -> tuple[bytes, str]:
-    command = command_for(address)
+def parse_page(raw: bytes, address: int, *, allow_ram: bool = False,
+               allow_upper_ram: bool = False) -> tuple[bytes, str]:
+    command = command_for(address, allow_ram=allow_ram, allow_upper_ram=allow_upper_ram)
     try:
         lines = [line.strip() for line in raw.decode("ascii").splitlines() if line.strip()]
     except UnicodeDecodeError as exc:
@@ -60,8 +66,11 @@ def parse_page(raw: bytes, address: int) -> tuple[bytes, str]:
 class SerialPort:
     """Small POSIX serial transport; preserves the host's original settings."""
 
-    def __init__(self, device: str, baud: int):
+    def __init__(self, device: str, baud: int, *, allow_ram: bool = False,
+                 allow_upper_ram: bool = False):
         self.device, self.baud = device, baud
+        self.allow_ram = allow_ram
+        self.allow_upper_ram = allow_upper_ram
         self.fd = None
         self.original = None
 
@@ -122,8 +131,9 @@ class SerialPort:
             if not match:
                 raise ValueError("command is not an allowed read operation")
             address = int(match[1], 16) * 16 + int(match[2], 16)
-            if command_for(address) != command:
-                raise ValueError("noncanonical flash address")
+            if command_for(address, allow_ram=self.allow_ram,
+                           allow_upper_ram=self.allow_upper_ram) != command:
+                raise ValueError("noncanonical memory address")
         data = (command + "\r").encode("ascii")
         deadline = time.monotonic() + timeout
         while data:
