@@ -1175,6 +1175,20 @@ class CourierMachine:
                 ):
                     self._timer_interrupt_pending = self.timers.take_interrupt()
                     _uc.emu_stop()
+                if interrupts_on and (
+                    self._external_interrupt_pending is not None
+                    or self._int1_pending is not None
+                    or self._timer_interrupt_pending is not None
+                ):
+                    # A source is queued but the run loop only dispatches when
+                    # emulation stops, and every branch that stops it is gated
+                    # on nothing being queued. One source left over from an
+                    # iteration that dispatched a different one therefore
+                    # wedged the run: no stop, so no dispatch, so no further
+                    # stop. Stop again while anything is outstanding. The
+                    # dispatch clears IF, so a handler still runs to its IRET
+                    # before the next source is delivered.
+                    _uc.emu_stop()
             if (
                 self._serial_started
                 and self.tick_ms
