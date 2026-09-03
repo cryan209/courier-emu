@@ -324,6 +324,48 @@ serial helpers, so the count defect is a likely explanation of the trailing
 continues using the demonstrated segmented-address form and validating every
 row; no alternative commands were sent to the modem for this investigation.
 
+### Complete selector table of the captured handler
+
+The two documented dump forms are not the whole dispatcher. Disassembling the
+`LK2` handler at flash `25ba9` in `courier-board.rom` recovers seven selectors.
+The prefix check is `cmp word ptr [si],'LK'` then `cmp byte ptr [si+2],'2'`;
+after `add si,3` / `sub cx,3`, `jcxz` leaves `BL` holding the outer `G` when the
+command ends there, so a bare `ATGLK2` matches no selector and falls through to
+the numeric forms below.
+
+| Suffix | Target | Operation |
+|---|---|---|
+| `=` | `26e20` | Memory byte dump, 16 rows of 16 bytes |
+| `R` | `26e8b` | Memory word dump, 16 rows of eight little-endian words |
+| `I` | inline `25c45` | Read one I/O port, print one hex byte |
+| `O` | inline `25c65` | Write one I/O port: `O<port>,<byte>` |
+| `B` | `26eec` | I/O port block dump, 16 rows of 16 ports |
+| `N` | inline `25c3d` | `or byte ptr [25e],1`; sets a flag, prints nothing |
+| `U` | inline `25c8d` | `clc; ret`; accepted and ignored |
+
+`26eec` begins exactly at the end of the byte/word reader range `[26e20,26eec)`
+that the earlier comparison against `IDSDL302.ROM` covered, which is why the
+port selectors were not previously recorded here. Their equivalence to the
+reference is unverified.
+
+The `B` routine parses one hexadecimal number into `DX`, then runs sixteen rows
+of sixteen `in al, dx` reads, printing two hex digits and a space per port and
+incrementing `DX` after each. It therefore reads 256 **consecutive I/O ports**
+unconditionally, with no address echo per row and no way to narrow the range.
+
+These three selectors operate on CPU **I/O space**, not on the DSP's program or
+data space, and not on CPU memory. They do not constitute a DSP dump path. Their
+value is that `0x40..0x5e` and `0x1c` — the ASIC bootstrap window and mailbox
+latches — are I/O-space addresses that `=` and `R` cannot reach at all.
+
+`I` and `B` are reads, but I/O reads are not inherently side-effect free: the
+supervisor's own receive path consumes mailbox replies by reading `58..5e`, and
+`B` sweeps those ports whether or not a reply is pending. Treat `B` as
+disruptive to a live call and to any in-flight mailbox transaction, unlike the
+memory dumps used by the flash and RAM collectors. `O` writes and is not a
+diagnostic read at all. None of these forms has yet been sent to the physical
+modem.
+
 ### Completed physical capture, 2026-09-03
 
 The requested modem was read successfully at `/dev/cu.usbserial-21210`,
@@ -533,6 +575,321 @@ Reproduce the saved-data audit and comparisons with:
 ```sh
 .venv/bin/python artifacts/courier-board-21210-upper-ram-01/audit_capture.py
 ```
+
+## CPU I/O port map
+
+The DSP dump path runs entirely through I/O space: the bootstrap window, the
+download strobes and the mailbox are all `IN`/`OUT` addresses that the `=` and
+`R` memory dumps cannot reach. This section records what the captured image
+shows about that space.
+
+### How the map was produced
+
+```sh
+python tools/io_port_scan.py \
+  artifacts/courier-board-21210-capture-01/courier-board.rom \
+  artifacts/io-port-map/board-21210
+```
+
+The output directory must be new. It writes `sites.json` (every accepted
+instruction site), `ports.json` (per-port access counts and site lists) and
+`manifest.json`.
+
+A linear sweep of a 512 KiB image desynchronizes inside the big-endian datapump
+and the coefficient table, so the scanner accepts an `IN`/`OUT` opcode only when
+at least four disassemblies started at earlier offsets converge on it, and it
+scans only `0x00000..0x29800`, `0x44000..0x7c000` and `0x7e000..0x80000`. Ports
+loaded into `DX` are resolved only when an immediate `mov dx` reaches the site
+with no intervening branch, call or non-immediate redefinition of `DX`.
+
+The run over the captured board image accepted **971 sites** and left **295
+`DX` sites unresolved**. Those unresolved sites are excluded from the table, so
+every count below is a lower bound. Consensus decoding is a heuristic, not a
+proof, and a site's existence does not make its path reachable at run time.
+
+### Bus shape
+
+Every densely used port is **even and byte-wide**, from `0x00` to `0x62`,
+suggesting a peripheral bank at a stride of two. The physical readback below
+confirms the stride and extends the bank to `0x7e`, giving 64 registers rather
+than the 50 the static sites alone reach. Sixteen-bit and odd-address forms do
+appear in the scan
+(`0x03`, `0x05`, `0x0d`, `0x11`, `0x1f`, `0x2d`, `0x4f`, `0x57`, `0xc3`), each at
+one or two isolated sites; they are more likely surviving decode noise than real
+registers, and none is corroborated by an emulator run. They are not listed as
+established below. The physical readback recorded further down supports this
+indirectly: no odd port is driven on real hardware, though that dump cannot by
+itself separate an unmapped odd port from a mapped one reading zero.
+
+### Established ports
+
+Attribution combines the site counts with the semantics the emulator already
+models (`courier_emu/panel.py`, `nvram.py`, `bridge.py`) and with the execution
+evidence in `courier_firmware_analysis.md`.
+
+| Port | Sites | Direction | Function |
+|---|---:|---|---|
+| `0x00` | 12 | r/w | DTE serial data path |
+| `0x0e` | 12 | write | Panel latch driver output |
+| `0x10` | 30 | r/w | Board latch 0: hook relay, off-hook, NVRAM strobe/data/chip-select/clock; reads return NVRAM ready and data-out |
+| `0x12` | 4 | r/w | Board latch 1: indicators, id-strap drive B; reads DTE DTR at bit `0x40` |
+| `0x14` | 20 | r/w | Board latch 2: carrier-detect pair, id-strap drives A/C/D; reads ring detect (`0x02`) and strap sense (`0x08`) |
+| `0x18` | 101 | r/w | DSP download strobe/status. `OUT 0x18,1` commits a four-word group, `OUT 0x18,4` submits the checksum; reads return ready bits |
+| `0x1a` | 86 | r/w | Second strobe/status register, paired with `0x18` |
+| `0x1c` | 26 | r/w | Mailbox valid/acknowledge. Bit 1 advertises a reply; supervisor acknowledges with `1c=02` |
+| `0x1e` | 28 | r/w | Mailbox command register |
+| `0x40`–`0x4e` | 59 | r/w | DSP bootstrap window A: eight byte latches carrying four payload words |
+| `0x50`–`0x5e` | 125 | r/w | Window B and the runtime mailbox. `0x58`/`0x5a` carry tag low/high, `0x5c`/`0x5e` data low/high |
+| `0x60`, `0x62` | 27 | read only | Third 16-bit read window, high byte at `0x62` and low at `0x60`. See below |
+
+The `0x40..0x4e` and `0x50..0x5e` split matches the alternating-window
+downloader at `e47b`: four words through the first bank with strobe 1, four
+through the second with strobe 2.
+
+### The `0x60`/`0x62` read window
+
+This pair is new to this document and is not modelled by the emulator. All 27
+sites fall in one routine at `01fe0..02128`, driven through an indirect
+continuation vector at `[0x02d3]` that each step rewrites to the address of the
+next step, dispatched by `call word ptr [0x2d3]` at `00674`. Every step reads a
+16-bit value as `in al,0x62` (high) then `in al,0x60` (low) and appends it to a
+buffer walked through `[0x08a2]`, with a countdown at `[0x02d1]`.
+
+The high-then-low byte pair is the same convention the supervisor uses on
+`5a`/`58` and `5e`/`5c`, so this is a third inbound 16-bit window in the same
+family rather than an unrelated device. Its producer is not identified. The
+vector is also written from `0423e` and `06d08`, which is where the question of
+what fills the buffer should be picked up.
+
+There is no write site at either port anywhere in the scanned regions, so this
+window is read-only to the CPU. That makes it a plausible inbound bulk path —
+which is exactly the shape a DSP readback needs — but nothing here shows the
+DSP as its source, and the routine has never been observed executing.
+
+### The `0xc0`–`0xc6` cluster
+
+A separate coherent block at `08332..083b5` sets `PACS` to `0xe000`, sets
+`[0xff18]` to `0x10`, then reads `0xc2`/`0xc0` and writes `0xc4`/`0xc6` while
+streaming `0x1554` words from segment `0xe000`. It is entered from an `AT`
+handler that first checks for the literal `L` at `08327`. Because it reprograms
+a chip select and drives an otherwise unused port bank, it should be treated as
+a device-programming path, not a diagnostic read, and it must not be invoked on
+the physical modem while its function is unknown.
+
+### Physical port-space readback
+
+`ATGLK2B` sweeps have now been taken from two idle units:
+
+| Unit | Device | Ports read | Source |
+|---|---|---|---|
+| 25 MHz | not recorded | `0x000..0x15f` | `artifacts/io-port-map/hardware-25mhz/` |
+| 20.16 MHz | `/dev/cu.usbserial-21210` | `0x000..0x2ff` | `artifacts/io-port-map/hardware-2016mhz/` |
+
+The 20.16 MHz unit is **the same board that produced `courier-board.rom`**, so
+its readback can be compared against the static analysis directly. The 25 MHz
+unit reports the same supervisor 7.3.14, DSP 3.0.13 and 03/13/98 dates, with
+512k flash and 64k RAM; only clock and serial number differ. Matching revision
+strings are not proof of identical firmware.
+
+Every response was 16 correctly addressed rows terminated by `OK`, not the
+trailing `ERROR` that every memory-dump page produced. That is consistent with
+the parser-count defect being specific to the `=` reader's colon handling, since
+`B` parses a single number and consumes no colon. `B` also reaches the **full
+16-bit I/O space**: it loads its parsed address into `DX` and never truncates.
+
+#### How an unmapped I/O read behaves
+
+The sweeps above `0x0100` read `00 01 02 01 04 01 ...`: even ports return the
+address low byte and **odd ports return the address high byte**. On the 80186's
+multiplexed bus the address is driven across `AD0..AD15` during T1, and with no
+device responding in T3 each byte lane holds the address byte belonging to that
+lane. An unmapped row therefore reads back as a clean ascending address pattern,
+which makes a `B` sweep a direct decoder probe: "nothing here", not "zeros here".
+
+#### Confirmed on two units: the bank is the 64 even ports `0x00`–`0x7e`
+
+Applying that model to all 768 ports read from the 20.16 MHz unit and all 352
+from the 25 MHz unit, **both units drive exactly the same 63 ports, `0x02`
+through `0x7e` even, and nothing else.** (Port `0x00` reads `00`, which
+coincides with its own address byte, so it is formally ambiguous; it is the DTE
+serial data port and is certainly mapped.) Everything from `0x80` to `0x2ff` is
+unmapped without exception.
+
+The peripheral bank is therefore 128 bytes of I/O space at a stride of two.
+Nothing drives the upper byte lane at any address, so accesses are byte-wide on
+even addresses; whether that is an 8-bit device bank or a decoder ignoring `A0`
+is not settled here. The odd and 16-bit sites in the static scan have no
+hardware support, and the scattered high-port sites address unmapped space on
+both units. The `0xc0`–`0xc6` cluster reads as unmapped, which fits the routine
+at `08332` reaching a device there only *because* it first reprograms `PACS` to
+`0xe000` and moves the peripheral window. That remains a reason not to invoke
+it blind.
+
+#### The bootstrap windows do not read back as written words
+
+An earlier revision of this document read the 25 MHz values at `0x40`–`0x5e`
+(`1a 00 17 00 55 00 1f 00`, `a8 00 d3 00 08 00 02 00`) as four little-endian
+words per window with zero high bytes, matching what the `e47b` downloader
+writes. **The second unit refutes that.** On the 20.16 MHz board the same ports
+read:
+
+| Ports | `40` | `42` | `44` | `46` | `48` | `4a` | `4c` | `4e` |
+|---|---|---|---|---|---|---|---|---|
+| 20.16 MHz | `00` | `ff` | `00` | `ff` | `00` | `ff` | `00` | `ff` |
+| 25 MHz | `1a` | `00` | `17` | `00` | `55` | `00` | `1f` | `00` |
+
+A strict `00`/`ff` alternation is not word data, and the two units disagree on
+every port in both windows. Reads of this window return status rather than the
+latch contents — consistent with the existing note that the emulator's synthetic
+ready bits stand in for `IN` here. The write-side four-word structure recovered
+from `e47b` is unaffected; what is withdrawn is the claim that a read confirms
+it. Which ports carry ready bits and which carry anything else is unresolved.
+
+#### Stable and varying registers
+
+Values identical on both units: `0x00`–`0x08` and `0x16` (`00`), `0x0c` (`60`),
+`0x0e` (`07`), `0x10` (`86`), `0x14` (`7e`), `0x18`/`0x1a` (`ff`), `0x1c` (`fd`,
+bit 1 clear — no mailbox reply pending, a coherent idle state), `0x1e` (`ff`),
+all of `0x20`–`0x3e` (`00`), `0x5a`/`0x5e` (`00`), and `0x60`/`0x62` (`0b 00`).
+
+Values differing between units: `0x0a` (`f7` vs `24`), `0x12` (`9a` vs `8a`, one
+bit apart in the indicator/strap latch), the whole of `0x40`–`0x58`, `0x5c`, and
+`0x64`–`0x7e`.
+
+`0x60` reading `0b` on both units, with `0x62` zero, is worth noting: under the
+high-at-`0x62` convention the reader at `01fe0` uses, that is a stable `0x000b`
+where the neighbouring registers vary freely. An identity or revision register
+is a plausible reading, and an unverified one.
+
+#### The `0x60`–`0x7e` block is live
+
+| Port | `60` | `62` | `64` | `66` | `68` | `6a` | `6c` | `6e` | `70` | `72` | `74` | `76` | `78` | `7a` | `7c` | `7e` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 20.16 MHz | `0b` | `00` | `78` | `09` | `8d` | `a3` | `e8` | `00` | `ae` | `b6` | `97` | `51` | `51` | `06` | `4f` | `b3` |
+| 25 MHz | `0b` | `00` | `ba` | `08` | `bd` | `3c` | `71` | `c6` | `fd` | `fd` | `7d` | `19` | `46` | `dd` | `e8` | `44` |
+
+Fourteen of the sixteen registers hold varied, non-trivial data that differs
+between units. The static scan found **no** resolvable site at any port from
+`0x64` upward. Something reaches these registers through the 295 unresolved `DX`
+sites, through code outside the scanned regions, or on read paths not yet
+located — see "Who reads `0x64`-`0x7e`" below, which establishes that no
+supervisor instruction reaches them at all, and the repeat experiment that shows
+the block is stable rather than streaming.
+
+#### Decoded but idle: `0x20`–`0x3e`
+
+Sixteen registers read `00` on both units, which is not their address byte, so
+they are driven rather than floating. The static scan attributes no confirmed
+site to any of them. They are mapped and either unused or write-only.
+
+### Who reads `0x64`–`0x7e`: nothing does
+
+The live block at `0x60`–`0x7e` raised the question of which code reaches it,
+with 295 `DX`-form sites unresolved by the first scan. That question is now
+closed, and the answer is negative.
+
+#### The `DX` form is never used for board ports
+
+Scanning the whole image for a validated `mov dx, imm16` whose immediate lies in
+the board range `0x0000..0x00ff` returns **zero sites**. Every `DX` load that
+reaches an `IN`/`OUT` carries a peripheral-control-block address (`0xff00`+) or
+comes from the register/value tables at `0x2c6` and `0x28ed8`, which the
+bootstrap walks with `lodsw` / `xchg dx,ax` / `out dx,ax`.
+
+So the unresolved `DX` sites cannot address the board bank at all, and the
+immediate-form scan is **complete** for ports `0x00`–`0x7f`. Hardening the
+scanner (six-vote boundaries, and rejecting an opcode preceded by a `9a`/`ea`
+far-pointer byte) brings it to 856 sites with 231 unresolved `DX`, none of which
+changes the board map.
+
+#### Every apparent access above `0x62` is a decoding artifact
+
+Across the whole image, 235 byte pairs look like an immediate `IN`/`OUT` at a
+port in `0x60`–`0x7f`. Of those, 26 are the genuine `0x60`/`0x62` reads in the
+`01fe0` state machine; most of the rest lie inside `0x29800..0x44000`, which is
+big-endian C5x datapump, not x86 code. Fifty-one fall in x86 regions, eight
+survive a six-vote boundary test, and **all eight are refuted by their raw
+bytes**:
+
+| Site | Apparent port | Actual bytes | Real instruction |
+|---|---|---|---|
+| `0cd92` | `7f` | `80 e4 7f` | `and ah, 0x7f` |
+| `26b03` | `75` | `9a e4 75 00 80` | `lcall 0x8000:0x75e4` |
+| `282a4` | `74` | `0a e4` `74 01` | `or ah,ah` then `jz` |
+| `1684e`, `1687f` | `7c` | `c7 06 b5 03 e5 7c` | `mov word ptr [0x3b5], 0x7ce5` |
+| `1c153`, `1c167` | `75` | `e8 6b e5` | `call rel16` displacement |
+| `1818a` | `69` | `44 6f e7 69 6e 20` | ASCII text |
+
+Three of them name odd ports, which the hardware readback already shows are
+undriven. The dominant artifact class is a far pointer to an offset whose low
+byte is `e4`–`e7`: `lcall 0x8000, 0x7ae4` assembles to `9a e4 7a 00 80`, and its
+middle two bytes read as `in al, 0x7a`. That single pattern accounts for the
+13-site "cluster" at `174d4..17654` that first looked like real code.
+
+**Conclusion: no instruction in the supervisor reads or writes any port from
+`0x64` to `0x7e`.** The only code touching the block is the `0x60`/`0x62` reader.
+
+#### Why recursive descent was not used
+
+An attempt to replace consensus decoding with recursive descent, seeded from the
+reset stub and iterated over far-call targets to a fixpoint, reached only 589
+instructions. This firmware dispatches through indirect vectors (`call word ptr
+[0x2d3]`, `jmp word ptr cs:[bx+0x107b]`) and register tables, so a static
+traversal stalls almost immediately. Consensus decoding over known code regions,
+with raw-byte confirmation of anything isolated, is the workable method here.
+
+#### What this implies about the block
+
+`0x64`–`0x7e` is driven with varied, unit-specific data that no firmware path
+reads. Two readings were open: sixteen distinct registers the firmware simply
+never uses, or **one streaming register aliased across the range**, since the
+`01fe0` machine reads `0x62` (high) then `0x60` (low) repeatedly and appends each
+word to a buffer walked through `[0x08a2]` — a FIFO read rather than a scan of
+distinct addresses.
+
+A read-only repeat experiment on the idle, on-hook 20.16 MHz unit settles it.
+`ATGLK2I0060` returned `0b` on five consecutive reads, and `ATGLK2B0000` issued
+six times in succession returned six byte-identical responses across the whole
+`0x00`–`0xff` range, `0x60`–`0x7e` included. The transcript is saved as
+`artifacts/io-port-map/hardware-2016mhz/repeat-stability.txt`.
+
+**The streaming reading is refuted.** Repeated reads do not pop, advance or
+otherwise disturb the block, so these are sixteen stable registers, and the
+`01fe0` machine's repeated reads of `0x60`/`0x62` are polling one register rather
+than draining a queue. That also removes the block from consideration as a bulk
+inbound path for a DSP readback: a register that returns the same value on every
+read cannot carry a stream.
+
+What remains is a stable, per-unit block that the firmware never reads. Its
+values differ between the two units while holding constant within each, which is
+the shape of identity or configuration state presented by the ASIC rather than
+live datapump status. That is an observation about its behavior, not an
+identification: nothing here shows what the values mean, what writes them, or
+whether any firmware path reads them through a mechanism this analysis cannot
+see. Reads of the block are cheap and non-disturbing, so it is safe to sample
+again under different conditions — off-hook, mid-call, after a reset — which is
+the obvious way to learn whether any of it tracks call state.
+
+### Reading the map on hardware
+
+The `B` selector dumps 256 consecutive I/O ports and takes a full 16-bit
+address, so `ATGLK2B0000` covers the whole peripheral bank and `ATGLK2B0100`
+and beyond probe for further decoded windows. It is a read of every port in the
+requested range, including the mailbox data registers whose reads the
+supervisor's own receive path treats as consuming, so it is only meaningful with
+the modem idle and on-hook, and it is not safe during a call or an in-flight
+mailbox transaction. Every sweep recorded above was taken on an idle unit.
+
+Because an unmapped port returns its own address byte, a `B` sweep distinguishes
+decoded from undecoded space directly, and a row that reads back as a clean
+ascending address pattern means "nothing here" rather than "zeros here".
+
+The emulator corroborates the low bank but not the rest: a 30 M-instruction
+`run` of the captured image reaches main-loop and touches only `0x00..0x1e`,
+`0x40..0x5e` and the boot-time PCB, because the flash image carries no separable
+C52 payload and the DSP bridge cannot be attached to it. `0x60`–`0x7e` and
+`0xc0`–`0xc6` were not executed in any run recorded here, so the live values in
+that block have no counterpart in the emulator's model.
 
 ## Remaining hardware integration
 
