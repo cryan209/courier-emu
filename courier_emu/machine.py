@@ -53,14 +53,15 @@ KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
 # without it every firmware timeout waits forever - ATI11 arms 20 ticks
 # at 0x62d68 and spins at 0x62d6d because they never elapse.
 TICK_VECTOR = 0x0F
-# The board ROM's time base is a different pin. Its boot table masks INT3 and
-# never clears it, but the serial state machine at 0x9eb73 installs INT1
-# handlers - vector 0x34, type 0x0d - at 0x9eb73 and 0x9eb91, and unmasks INT1
-# at 0x9eb79 and 0x9ebc4, on either side of arming timer 1. Delivering the
-# ROM's tick as INT3 instead left the state machine parked in the state that
-# vectors timer 1 at the wrapper at 0x9f19d, whose near call into the body at
-# 0x9eb73 meets that body's far return and lands in uninitialised RAM.
-ROM_TICK_VECTOR = 0x0D
+# The board ROM needs a second edge beside the tick. Both of its tick handlers
+# install on vector 0x3c - 0x80a70's countdown chain and 0x80ad9, which is what
+# increments the tick cell at [0x12a] - so TICK_VECTOR is its time base as it
+# always was. INT1 is a separate source: the serial state machine at 0x9eb73
+# installs INT1 handlers at vector 0x34 and unmasks INT1 at 0x9eb79 and
+# 0x9ebc4, on either side of arming timer 1. Without that edge the machine
+# stays in the one state that vectors timer 1 at the wrapper at 0x9f19d, whose
+# near call into the body at 0x9eb73 meets that body's far return and leaves
+# for uninitialised RAM at 0x3591.
 # The period that makes the countdowns elapse at a plausible rate. It is
 # not driven by default: supplying it changes call timing, and the linked
 # pair answers OK where an undriven run reports NO CARRIER, so which of
@@ -264,6 +265,9 @@ class CourierMachine:
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
+        # The ROM's serial engine runs off INT1 while the tick runs off INT3,
+        # so the two cannot share one pending slot.
+        self._int1_pending: int | None = None
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -1206,11 +1210,17 @@ class CourierMachine:
                 >= self.tick_ms * INSTRUCTIONS_PER_MS
                 and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
             ):
-                # INT1, not INT3: this is the source the ROM itself unmasks
-                # and installs handlers for, so the mask is honoured rather
-                # than bypassed. See ROM_TICK_VECTOR.
+                # The tick keeps the vector the ROM's own handlers install.
+                # INT1 rides alongside it whenever the firmware has that
+                # source unmasked - it is gated on the mask rather than
+                # bypassing it, unlike the tick.
                 self._last_tick = self.instructions
-                self._external_interrupt_pending = ROM_TICK_VECTOR
+                self._external_interrupt_pending = TICK_VECTOR
+                if (
+                    self._int1_pending is None
+                    and self.timers.controller.enabled("int1")
+                ):
+                    self._int1_pending = INT1_VECTOR
                 self.ticks += 1
                 _uc.emu_stop()
             if (
@@ -1613,6 +1623,10 @@ class CourierMachine:
                         self._external_interrupt_pending, software=False
                     )
                     self._external_interrupt_pending = None
+                    continue
+                if self._int1_pending is not None:
+                    begin = dispatch_interrupt(self._int1_pending, software=False)
+                    self._int1_pending = None
                     continue
                 if self._timer_interrupt_pending is not None:
                     begin = dispatch_interrupt(
