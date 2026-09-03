@@ -133,6 +133,13 @@
   "form": "immediate"
  },
  {
+  "address": 5230,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 5247,
   "direction": "out",
   "size": 1,
@@ -315,6 +322,20 @@
   "form": "immediate"
  },
  {
+  "address": 6208,
+  "direction": "out",
+  "size": 2,
+  "port": 59,
+  "form": "immediate"
+ },
+ {
+  "address": 6430,
+  "direction": "out",
+  "size": 2,
+  "port": 129,
+  "form": "immediate"
+ },
+ {
   "address": 7443,
   "direction": "in",
   "size": 1,
@@ -347,6 +368,13 @@
   "direction": "out",
   "size": 1,
   "port": 10,
+  "form": "immediate"
+ },
+ {
+  "address": 8164,
+  "direction": "out",
+  "size": 1,
+  "port": 31,
   "form": "immediate"
  },
  {
@@ -446,6 +474,13 @@
   "size": 1,
   "port": 96,
   "form": "immediate"
+ },
+ {
+  "address": 8376,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
  },
  {
   "address": 8385,
@@ -672,6 +707,34 @@
   "form": "dx"
  },
  {
+  "address": 12648,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 13137,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 13332,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 13691,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 14011,
   "direction": "out",
   "size": 1,
@@ -683,6 +746,13 @@
   "direction": "out",
   "size": 1,
   "port": 12,
+  "form": "immediate"
+ },
+ {
+  "address": 14065,
+  "direction": "out",
+  "size": 2,
+  "port": 10,
   "form": "immediate"
  },
  {
@@ -700,8 +770,36 @@
   "form": "dx"
  },
  {
+  "address": 15303,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 15422,
+  "direction": "in",
+  "size": 1,
+  "port": 233,
+  "form": "immediate"
+ },
+ {
+  "address": 15533,
+  "direction": "out",
+  "size": 2,
+  "port": 233,
+  "form": "immediate"
+ },
+ {
   "address": 16253,
   "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 16645,
+  "direction": "out",
   "size": 2,
   "port": null,
   "form": "dx"
@@ -719,6 +817,13 @@
   "size": 1,
   "port": null,
   "form": "dx"
+ },
+ {
+  "address": 17863,
+  "direction": "in",
+  "size": 1,
+  "port": 198,
+  "form": "immediate"
  },
  {
   "address": 18100,
@@ -819,9 +924,51 @@
   "form": "immediate"
  },
  {
+  "address": 18743,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 19672,
   "direction": "in",
   "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 20529,
+  "direction": "out",
+  "size": 2,
+  "port": 195,
+  "form": "immediate"
+ },
+ {
+  "address": 20669,
+  "direction": "out",
+  "size": 2,
+  "port": 195,
+  "form": "immediate"
+ },
+ {
+  "address": 24654,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 25018,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 25065,
+  "direction": "in",
+  "size": 1,
   "port": null,
   "form": "dx"
  },
@@ -840,11 +987,46 @@
   "form": "immediate"
  },
  {
+  "address": 26751,
+  "direction": "out",
+  "size": 1,
+  "port": 138,
+  "form": "immediate"
+ },
+ {
   "address": 30658,
   "direction": "in",
   "size": 2,
   "port": 5,
   "form": "immediate"
+ },
+ {
+  "address": 30716,
+  "direction": "in",
+  "size": 2,
+  "port": 37,
+  "form": "immediate"
+ },
+ {
+  "address": 31691,
+  "direction": "in",
+  "size": 2,
+  "port": 13,
+  "form": "immediate"
+ },
+ {
+  "address": 31741,
+  "direction": "in",
+  "size": 2,
+  "port": 13,
+  "form": "immediate"
+ },
+ {
+  "address": 31749,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
  },
  {
   "address": 33603,
@@ -966,6 +1148,20 @@
   "form": "immediate"
  },
  {
+  "address": 38309,
+  "direction": "in",
+  "size": 1,
+  "port": 195,
+  "form": "immediate"
+ },
+ {
+  "address": 41088,
+  "direction": "out",
+  "size": 1,
+  "port": 232,
+  "form": "immediate"
+ },
+ {
   "address": 41093,
   "direction": "in",
   "size": 1,
@@ -1029,7 +1225,28 @@
   "form": "immediate"
  },
  {
+  "address": 45294,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 46411,
+  "direction": "out",
+  "size": 2,
+  "port": 185,
+  "form": "immediate"
+ },
+ {
   "address": 46919,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 47337,
   "direction": "out",
   "size": 2,
   "port": null,
@@ -1057,7 +1274,21 @@
   "form": "dx"
  },
  {
+  "address": 47813,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 47905,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 48987,
   "direction": "out",
   "size": 2,
   "port": null,
@@ -1069,6 +1300,13 @@
   "size": 2,
   "port": 195,
   "form": "immediate"
+ },
+ {
+  "address": 51866,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
  },
  {
   "address": 52626,
@@ -1085,11 +1323,25 @@
   "form": "immediate"
  },
  {
+  "address": 52785,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 55993,
   "direction": "out",
   "size": 2,
   "port": 252,
   "form": "immediate"
+ },
+ {
+  "address": 56572,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
  },
  {
   "address": 57518,
@@ -1547,6 +1799,13 @@
   "form": "dx"
  },
  {
+  "address": 59469,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 59470,
   "direction": "out",
   "size": 2,
@@ -1557,6 +1816,20 @@
   "address": 59787,
   "direction": "in",
   "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60118,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60180,
+  "direction": "out",
+  "size": 2,
   "port": null,
   "form": "dx"
  },
@@ -1582,6 +1855,62 @@
   "form": "dx"
  },
  {
+  "address": 60479,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60506,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60585,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60865,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60919,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 60965,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61002,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61082,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 61201,
   "direction": "out",
   "size": 2,
@@ -1589,7 +1918,21 @@
   "form": "dx"
  },
  {
+  "address": 61222,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 61342,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 61360,
   "direction": "out",
   "size": 2,
   "port": null,
@@ -1608,6 +1951,13 @@
   "size": 2,
   "port": null,
   "form": "dx"
+ },
+ {
+  "address": 62516,
+  "direction": "in",
+  "size": 1,
+  "port": 30,
+  "form": "immediate"
  },
  {
   "address": 62520,
@@ -2184,6 +2534,20 @@
   "form": "dx"
  },
  {
+  "address": 65997,
+  "direction": "in",
+  "size": 1,
+  "port": 160,
+  "form": "immediate"
+ },
+ {
+  "address": 67246,
+  "direction": "in",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 67378,
   "direction": "in",
   "size": 1,
@@ -2192,6 +2556,13 @@
  },
  {
   "address": 67547,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 67582,
   "direction": "out",
   "size": 2,
   "port": null,
@@ -2210,6 +2581,27 @@
   "size": 2,
   "port": null,
   "form": "dx"
+ },
+ {
+  "address": 69786,
+  "direction": "in",
+  "size": 1,
+  "port": 162,
+  "form": "immediate"
+ },
+ {
+  "address": 69811,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 69957,
+  "direction": "out",
+  "size": 1,
+  "port": 232,
+  "form": "immediate"
  },
  {
   "address": 70897,
@@ -2233,6 +2625,13 @@
   "form": "immediate"
  },
  {
+  "address": 71333,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 71358,
   "direction": "out",
   "size": 1,
@@ -2243,6 +2642,20 @@
   "address": 71654,
   "direction": "out",
   "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 71845,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 72228,
+  "direction": "out",
+  "size": 2,
   "port": null,
   "form": "dx"
  },
@@ -2258,6 +2671,13 @@
   "direction": "in",
   "size": 1,
   "port": 5,
+  "form": "immediate"
+ },
+ {
+  "address": 72821,
+  "direction": "in",
+  "size": 2,
+  "port": 3,
   "form": "immediate"
  },
  {
@@ -2482,6 +2902,20 @@
   "direction": "in",
   "size": 1,
   "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 76403,
+  "direction": "in",
+  "size": 1,
+  "port": 139,
+  "form": "immediate"
+ },
+ {
+  "address": 76641,
+  "direction": "in",
+  "size": 1,
+  "port": 162,
   "form": "immediate"
  },
  {
@@ -3220,6 +3654,13 @@
   "form": "immediate"
  },
  {
+  "address": 77974,
+  "direction": "in",
+  "size": 1,
+  "port": 162,
+  "form": "immediate"
+ },
+ {
   "address": 78485,
   "direction": "in",
   "size": 1,
@@ -3273,6 +3714,13 @@
   "direction": "in",
   "size": 1,
   "port": 92,
+  "form": "immediate"
+ },
+ {
+  "address": 79837,
+  "direction": "in",
+  "size": 1,
+  "port": 162,
   "form": "immediate"
  },
  {
@@ -3780,6 +4228,13 @@
   "form": "immediate"
  },
  {
+  "address": 80976,
+  "direction": "in",
+  "size": 1,
+  "port": 94,
+  "form": "immediate"
+ },
+ {
   "address": 80980,
   "direction": "in",
   "size": 1,
@@ -3871,6 +4326,13 @@
   "form": "immediate"
  },
  {
+  "address": 81168,
+  "direction": "in",
+  "size": 2,
+  "port": 3,
+  "form": "immediate"
+ },
+ {
   "address": 81474,
   "direction": "in",
   "size": 1,
@@ -3913,11 +4375,25 @@
   "form": "immediate"
  },
  {
+  "address": 81903,
+  "direction": "in",
+  "size": 2,
+  "port": 3,
+  "form": "immediate"
+ },
+ {
   "address": 82391,
   "direction": "out",
   "size": 2,
   "port": null,
   "form": "dx"
+ },
+ {
+  "address": 82813,
+  "direction": "in",
+  "size": 2,
+  "port": 3,
+  "form": "immediate"
  },
  {
   "address": 82857,
@@ -4165,6 +4641,13 @@
   "form": "dx"
  },
  {
+  "address": 85290,
+  "direction": "in",
+  "size": 1,
+  "port": 162,
+  "form": "immediate"
+ },
+ {
   "address": 85311,
   "direction": "in",
   "size": 1,
@@ -4225,6 +4708,13 @@
   "direction": "in",
   "size": 1,
   "port": 20,
+  "form": "immediate"
+ },
+ {
+  "address": 86304,
+  "direction": "in",
+  "size": 1,
+  "port": 11,
   "form": "immediate"
  },
  {
@@ -4662,6 +5152,13 @@
   "form": "immediate"
  },
  {
+  "address": 90318,
+  "direction": "in",
+  "size": 1,
+  "port": 154,
+  "form": "immediate"
+ },
+ {
   "address": 91384,
   "direction": "out",
   "size": 1,
@@ -4823,6 +5320,13 @@
   "form": "immediate"
  },
  {
+  "address": 92776,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 92781,
   "direction": "in",
   "size": 2,
@@ -4865,6 +5369,13 @@
   "form": "immediate"
  },
  {
+  "address": 98650,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 98698,
   "direction": "out",
   "size": 2,
@@ -4873,6 +5384,13 @@
  },
  {
   "address": 98779,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 98918,
   "direction": "in",
   "size": 2,
   "port": null,
@@ -4907,7 +5425,21 @@
   "form": "dx"
  },
  {
+  "address": 99844,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 99902,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100086,
   "direction": "in",
   "size": 2,
   "port": null,
@@ -4949,9 +5481,30 @@
   "form": "dx"
  },
  {
+  "address": 100481,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 100505,
   "direction": "in",
   "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100539,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 100616,
+  "direction": "out",
+  "size": 1,
   "port": null,
   "form": "dx"
  },
@@ -5068,6 +5621,13 @@
   "form": "dx"
  },
  {
+  "address": 101586,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 101697,
   "direction": "in",
   "size": 2,
@@ -5118,6 +5678,13 @@
  },
  {
   "address": 101851,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 101862,
   "direction": "in",
   "size": 2,
   "port": null,
@@ -5257,6 +5824,13 @@
   "form": "immediate"
  },
  {
+  "address": 103196,
+  "direction": "out",
+  "size": 1,
+  "port": 138,
+  "form": "immediate"
+ },
+ {
   "address": 105261,
   "direction": "in",
   "size": 2,
@@ -5317,6 +5891,48 @@
   "direction": "in",
   "size": 2,
   "port": 74,
+  "form": "immediate"
+ },
+ {
+  "address": 110230,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 110267,
+  "direction": "in",
+  "size": 1,
+  "port": 232,
+  "form": "immediate"
+ },
+ {
+  "address": 110295,
+  "direction": "in",
+  "size": 1,
+  "port": 233,
+  "form": "immediate"
+ },
+ {
+  "address": 110491,
+  "direction": "in",
+  "size": 2,
+  "port": 96,
+  "form": "immediate"
+ },
+ {
+  "address": 110519,
+  "direction": "in",
+  "size": 1,
+  "port": 233,
+  "form": "immediate"
+ },
+ {
+  "address": 110616,
+  "direction": "in",
+  "size": 1,
+  "port": 235,
   "form": "immediate"
  },
  {
@@ -5383,10 +5999,24 @@
   "form": "immediate"
  },
  {
+  "address": 115138,
+  "direction": "in",
+  "size": 1,
+  "port": 44,
+  "form": "immediate"
+ },
+ {
   "address": 115161,
   "direction": "in",
   "size": 1,
   "port": 228,
+  "form": "immediate"
+ },
+ {
+  "address": 115176,
+  "direction": "in",
+  "size": 1,
+  "port": 44,
   "form": "immediate"
  },
  {
@@ -5398,6 +6028,13 @@
  },
  {
   "address": 115217,
+  "direction": "in",
+  "size": 1,
+  "port": 44,
+  "form": "immediate"
+ },
+ {
+  "address": 115233,
   "direction": "in",
   "size": 1,
   "port": 44,
@@ -5425,10 +6062,38 @@
   "form": "dx"
  },
  {
+  "address": 120997,
+  "direction": "in",
+  "size": 2,
+  "port": 254,
+  "form": "immediate"
+ },
+ {
+  "address": 122901,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 123467,
   "direction": "in",
   "size": 2,
   "port": 16,
+  "form": "immediate"
+ },
+ {
+  "address": 123477,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 123685,
+  "direction": "in",
+  "size": 1,
+  "port": 87,
   "form": "immediate"
  },
  {
@@ -5444,6 +6109,41 @@
   "size": 2,
   "port": null,
   "form": "dx"
+ },
+ {
+  "address": 124961,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 125174,
+  "direction": "in",
+  "size": 1,
+  "port": 87,
+  "form": "immediate"
+ },
+ {
+  "address": 125264,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 125349,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 128648,
+  "direction": "in",
+  "size": 1,
+  "port": 5,
+  "form": "immediate"
  },
  {
   "address": 129102,
@@ -5537,6 +6237,20 @@
   "form": "immediate"
  },
  {
+  "address": 153319,
+  "direction": "in",
+  "size": 2,
+  "port": 252,
+  "form": "immediate"
+ },
+ {
+  "address": 153801,
+  "direction": "in",
+  "size": 1,
+  "port": 45,
+  "form": "immediate"
+ },
+ {
   "address": 154707,
   "direction": "in",
   "size": 1,
@@ -5558,6 +6272,13 @@
   "form": "immediate"
  },
  {
+  "address": 155300,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
   "address": 157581,
   "direction": "in",
   "size": 2,
@@ -5575,6 +6296,55 @@
   "address": 158479,
   "direction": "in",
   "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159209,
+  "direction": "out",
+  "size": 1,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159303,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159327,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159410,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159434,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159486,
+  "direction": "out",
+  "size": 2,
+  "port": null,
+  "form": "dx"
+ },
+ {
+  "address": 159496,
+  "direction": "out",
+  "size": 2,
   "port": null,
   "form": "dx"
  },
@@ -5747,11 +6517,25 @@
   "form": "immediate"
  },
  {
+  "address": 163587,
+  "direction": "in",
+  "size": 1,
+  "port": 54,
+  "form": "immediate"
+ },
+ {
   "address": 164516,
   "direction": "in",
   "size": 1,
   "port": 116,
   "form": "immediate"
+ },
+ {
+  "address": 164735,
+  "direction": "in",
+  "size": 2,
+  "port": null,
+  "form": "dx"
  },
  {
   "address": 165698,

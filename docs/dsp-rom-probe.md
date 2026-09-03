@@ -793,19 +793,38 @@ The live block at `0x60`–`0x7e` raised the question of which code reaches it,
 with 295 `DX`-form sites unresolved by the first scan. That question is now
 closed, and the answer is negative.
 
-#### The `DX` form is never used for board ports
+#### The `DX` form and what it reaches
 
-Scanning the whole image for a validated `mov dx, imm16` whose immediate lies in
-the board range `0x0000..0x00ff` returns **zero sites**. Every `DX` load that
-reaches an `IN`/`OUT` carries a peripheral-control-block address (`0xff00`+) or
-comes from the register/value tables at `0x2c6` and `0x28ed8`, which the
-bootstrap walks with `lodsw` / `xchg dx,ax` / `out dx,ax`.
+An earlier revision of this section claimed the `DX` form was never used for
+board ports, on the strength of a scan that returned zero validated
+`mov dx, imm16` sites with a board-range immediate. **That was wrong**, and the
+error was in the scanner rather than the image: the consensus boundary test
+rejects genuine instructions preceded by short or irregular code. `mov dx, 0x40`
+at `0e3ad` sits after `push cx; pushf; cli` and draws only three converging
+predecessors, so a six-vote threshold discarded it. The threshold is back to
+four, and the tool now documents that absence from its output is not evidence of
+absence.
 
-So the unresolved `DX` sites cannot address the board bank at all, and the
-immediate-form scan is **complete** for ports `0x00`–`0x7f`. Hardening the
-scanner (six-vote boundaries, and rejecting an opcode preceded by a `9a`/`ea`
-far-pointer byte) brings it to 856 sites with 231 unresolved `DX`, none of which
-changes the board map.
+There are 60 raw `mov dx, imm<=0xff` candidates in the code regions. Tracing
+each forward through `add`/`sub`/`inc` on `DX`, fifteen reach an `IN`/`OUT`, and
+between them they address only:
+
+| Port | Sites | Context |
+|---|---:|---|
+| `0x16` | 1 | `005af` |
+| `0x18` | 1 | `0e3c4`, the DSP reset strobe |
+| `0x1c` | 1 | `0e3d3`, mailbox valid/ack |
+| `0x40` | 12 | `00fba`–`01039`, `0e377`, `0e3ad`, `0e54f`, `0e5b1` |
+
+Every one is a port the map already establishes, and none lies in `0x64`–`0x7e`.
+The remaining `DX` loads carry peripheral-control-block addresses (`0xff00`+) or
+come from the register/value tables at `0x2c6` and `0x28ed8`, which the bootstrap
+walks with `lodsw` / `xchg dx,ax` / `out dx,ax`.
+
+One residual gap is worth stating plainly: `DX` is also loaded **from memory**,
+as at `0e515` (`mov dx, word ptr [0xe37]`), which then walks `0x50`–`0x5e` by
+repeated `add dx,2` / `add dx,4`. A memory-sourced port cannot be bounded by
+static inspection alone, so the scan cannot be called complete for the bank.
 
 #### Every apparent access above `0x62` is a decoding artifact
 
@@ -831,8 +850,12 @@ byte is `e4`–`e7`: `lcall 0x8000, 0x7ae4` assembles to `9a e4 7a 00 80`, and i
 middle two bytes read as `in al, 0x7a`. That single pattern accounts for the
 13-site "cluster" at `174d4..17654` that first looked like real code.
 
-**Conclusion: no instruction in the supervisor reads or writes any port from
-`0x64` to `0x7e`.** The only code touching the block is the `0x60`/`0x62` reader.
+**Conclusion: no instruction found in the supervisor reads or writes any port
+from `0x64` to `0x7e`.** The only code touching the block is the `0x60`/`0x62`
+reader. This rests on the raw-byte refutation of every candidate above, not on
+the boundary heuristic. It is not a proof of absence: a `DX` loaded from memory,
+as the downloader does at `0e515`, could in principle reach those ports on a path
+this analysis cannot bound.
 
 #### Why recursive descent was not used
 
@@ -895,6 +918,87 @@ The emulator corroborates the low bank but not the rest: a 30 M-instruction
 C52 payload and the DSP bridge cannot be attached to it. `0x60`–`0x7e` and
 `0xc0`–`0xc6` were not executed in any run recorded here, so the live values in
 that block have no counterpart in the emulator's model.
+
+## How the DSP gets its program
+
+The DSP's program is not resident in the DSP. It is held in flash and
+**downloaded over the I/O ports at every boot**, which is both the CPU-to-DSP
+write path and the answer to how a feature like V.90 was ever added to a
+shipped modem: a firmware update replaces the flash image, and the flash image
+contains the datapump.
+
+### The write path
+
+`e47b` in the captured image is the downloader, and it writes to the DSP through
+the port bank:
+
+```text
+074f2..07507   quiesce, then call e370 (bootstrap/window setup)
+0750a  mov ax,8000    ; DSP entry, requested word address
+0750d  call e3aa      ; reset and request entry at DSP word 0x8000
+07510  mov ax,0       ; source offset
+07513  mov cx,d87c    ; end offset
+07516  call e47b      ; download
+```
+
+`e47b` sets `ES = 0xa908` (physical `0xa9080`, flash offset `0x29080`), takes the
+word count as `(CX-AX)/2`, and then loops: four words out through `0x40`, `0x42`,
+`0x44`, `0x46`, `0x48`, `0x4a`, `0x4c`, `0x4e` as low byte then high byte, strobe
+`OUT 0x18,1`, wait on `IN 0x18` bit 1; four more words through the second window
+based at `[0x0e37]`, walking `0x50`/`0x52`, `0x54`/`0x56`, `0x58`/`0x5a`,
+`0x5c`/`0x5e` by `add dx,2` and `add dx,4`, strobe `OUT 0x18,[0x0e36]`. When the
+count is exhausted it sends the 16-bit sum computed by `e447` through `0x40`/`0x42`,
+strobes `OUT 0x18,4`, and polls `IN 0x18` bit 4 for acceptance. `[0xff46]` bit
+`0x20` is the timeout escape on every wait.
+
+`e46e` is the same routine entered with `[0x0e36]=1` and `[0x0e37]=0x40`, so both
+halves go through window A; `e47b` uses `2` and `0x50` for the alternating form.
+
+This is what the port map calls "bootstrap window A and B". It is more usefully
+described as a **single 8-word write channel to the DSP**, handshaked on `0x18`.
+
+### The load base, now pinned
+
+The call site fixes what was previously an open hypothesis. `courier_firmware_analysis.md`
+records `file = 0x29800 + 2·prog` as unverified. The executable code gives a
+different and exact answer:
+
+- source flash `0x29080`, length `0xd87c` bytes = **27,710 words**
+- extent flash `0x29080..0x368fc`
+- entry requested at **DSP word `0x8000`**
+
+```text
+flash_offset = 0x29080 + 2 * (dsp_word - 0x8000)
+```
+
+Two independent checks agree. Flash `0x29080` is where the DSP reset code
+`LDP #0; SPLK #ffff,@57; SETC INTM` already sits, and it maps to word `0x8000`,
+the address `e3aa` requests. The resident sender at words `83d6..83ff` maps to
+flash `0x2982c..0x2987e`, inside the `[0x29080,0x29880)` startup/sender region
+identified separately. The older `0x29800 + 2·prog` hypothesis would have put
+word `0x8000` at `0x39800` and should be discarded.
+
+### What this means for the dump goal
+
+The consequence is that **the datapump is already in hand**. Flash
+`0x29080..0x368fc` of `courier-board.rom` is, byte for byte, what the DSP
+executes from word `0x8000`, and the mapping above makes it directly
+disassemblable. Reading it out of the DSP would recover a copy of something
+already captured.
+
+What remains unrecovered is narrower than "the DSP": it is the DSP's **internal
+boot ROM**, the mask-programmed code below word `0x8000` that implements the
+reset handshake, accepts this download, verifies the checksum and launches the
+image. That is what the probe kernel's read of program words `0x0000..0x001f`
+was aiming at, and it is the only part a physical readback can add.
+
+Two things are open. Only one call to `e47b` exists in the image, covering
+`0x29080..0x368fc`, while the datapump region is usually described as running to
+`0x44000`; how the remainder reaches the DSP, whether as overlays through the
+same channel or not at all, is not established here. And the `23f0` helper that
+the resident sender calls maps below word `0x8000` under the pinned base, which
+would place it inside the internal ROM rather than the downloaded image — worth
+confirming, since it would mean downloaded code calls into ROM entry points.
 
 ## Remaining hardware integration
 

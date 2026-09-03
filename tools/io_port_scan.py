@@ -8,6 +8,13 @@ into DX are resolved only when an immediate `mov dx` reaches the site without an
 intervening branch, call, or non-immediate redefinition of DX; anything else is
 reported unresolved rather than guessed.
 
+**This tool finds sites; it must never be used to prove one absent.** The
+consensus test has false negatives as well as false positives: a genuine
+instruction preceded by short or irregular code attracts few converging
+predecessors and is rejected. `mov dx, 0x40` at `0e3ad`, inside the DSP
+downloader, follows `push cx; pushf; cli` and draws only three votes. Any
+negative claim has to be settled against raw bytes, not against this output.
+
 Usage:
     python tools/io_port_scan.py <flash.rom> <output-dir>
 """
@@ -29,7 +36,7 @@ IMMEDIATE = {0xE4: ("in", 1), 0xE5: ("in", 2), 0xE6: ("out", 1), 0xE7: ("out", 2
 VIA_DX = {0xEC: ("in", 1), 0xED: ("in", 2), 0xEE: ("out", 1), 0xEF: ("out", 2)}
 
 BOUNDARY_LOOKBACK = 40
-BOUNDARY_VOTES = 6
+BOUNDARY_VOTES = 4
 DX_LOOKBACK = 80
 
 
@@ -138,6 +145,7 @@ def main() -> int:
         "assumptions": [
             "Immediate opcodes inside another instruction's displacement or immediate can still survive; confirm any isolated site against its raw bytes.",
             "Consensus decoding accepts an opcode as an instruction; it is not a proof.",
+            "The boundary test also rejects genuine instructions preceded by short or irregular code, so absence from this output is not evidence of absence.",
             "Unresolved DX sites are omitted from the port map, so counts are lower bounds.",
             "A site's existence does not mean the path is reachable at run time.",
         ],

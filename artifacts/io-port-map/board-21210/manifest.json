@@ -14,12 +14,13 @@
    "0x80000"
   ]
  ],
- "validated_sites": 856,
- "unresolved_dx_sites": 231,
- "boundary_votes": 6,
+ "validated_sites": 968,
+ "unresolved_dx_sites": 295,
+ "boundary_votes": 4,
  "assumptions": [
   "Immediate opcodes inside another instruction's displacement or immediate can still survive; confirm any isolated site against its raw bytes.",
   "Consensus decoding accepts an opcode as an instruction; it is not a proof.",
+  "The boundary test also rejects genuine instructions preceded by short or irregular code, so absence from this output is not evidence of absence.",
   "Unresolved DX sites are omitted from the port map, so counts are lower bounds.",
   "A site's existence does not mean the path is reachable at run time."
  ]
