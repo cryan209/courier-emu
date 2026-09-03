@@ -11,7 +11,7 @@ from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
 from .line import LineLink
-from .nvram import BIT_DATA, BIT_READY, CourierNvram
+from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .panel import (
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
@@ -242,6 +242,17 @@ class CourierMachine:
             getattr(image, "emulates_interrupts", False)
             or supervisor_offset == 0x1B600
         )
+        # A ROM's countdown chain hangs off TICK_VECTOR, and its own boot table
+        # masks that source, so nothing the modelled timers produce ever reaches
+        # it: the run parks in the delay at 0x8000:0a52 forever and never prints.
+        # Supplying the edge is opt-in through --tick-ms, for the same reason the
+        # payload stand-in is - it stands in for a board source that is not
+        # recovered, so a default run is left exactly as it was.
+        self._rom_tick = supervisor_offset is None and self.emulate_interrupts
+        # The ROM reaches the settings EEPROM over port pins rather than
+        # through board latch 0, so it needs its own front end onto the same
+        # 93C66 model. This holds the data pin the driver at 0x1401 last drove.
+        self._eeprom_data_in = False
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
@@ -1165,6 +1176,26 @@ class CourierMachine:
                 self.ticks += 1
                 _uc.emu_stop()
             if (
+                self._rom_tick
+                and self.tick_ms
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and self._external_interrupt_pending is None
+                and self._timer_interrupt_pending is None
+                and self.instructions - self._last_tick
+                >= self.tick_ms * INSTRUCTIONS_PER_MS
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+            ):
+                # Deliberately not gated on the int3 mask. The boot table masks
+                # that source and never clears it, yet the hardware ticks, so
+                # honouring the mask here would withhold the one edge the ROM
+                # cannot boot without. Which board source really supplies it is
+                # not recovered - see the tick-chain notes in the analysis.
+                self._last_tick = self.instructions
+                self._external_interrupt_pending = TICK_VECTOR
+                self.ticks += 1
+                _uc.emu_stop()
+            if (
                 self._tick_owed
                 and not self._serial_in_handler
                 and not self._timer_in_handler
@@ -1440,6 +1471,11 @@ class CourierMachine:
                 _uc.mem_write(address, bytes((value,)))
                 if len(self.serial_trace) < 2048:
                     self.serial_trace.append("call-gate ff5a=20")
+            if address == 0xFF5A and self.nvram is not None:
+                # Present the chip's DO on the same pin 7 the driver samples.
+                sampled = bytes(_uc.mem_read(address, size))
+                bit = 0x80 if self.nvram.read_latch() & BIT_DATA else 0x00
+                _uc.mem_write(address, bytes(((sampled[0] & 0x7F) | bit,)) + sampled[1:])
             if (
                 self.dsp_bridge is not None
                 and getattr(self.dsp_bridge, "_completion_probe", False)
@@ -1456,6 +1492,23 @@ class CourierMachine:
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
             self.mmio_counts[("write", address, size)] += 1
             self.timers.write(address, size, value, self.instructions)
+            if self.nvram is not None:
+                # The ROM's EEPROM driver shares one data line on port 2 pin 7:
+                # it drives the latch at ff5e while the direction bit in ff58 is
+                # clear, then sets that bit and samples the same pin at ff5a.
+                # Chip select and clock are ff56 bits 0x20 and 0x04. Translate
+                # those into the latch encoding the 93C66 model already speaks.
+                if address == 0xFF5E:
+                    self._eeprom_data_in = bool(value & 0x80)
+                elif address == 0xFF56:
+                    latch = 0
+                    if value & 0x20:
+                        latch |= BIT_CHIP_SELECT
+                    if value & 0x04:
+                        latch |= BIT_CLOCK
+                    if self._eeprom_data_in:
+                        latch |= BIT_DATA
+                    self.nvram.write_latch(latch)
             if len(self.mmio_events) < self.max_io_events:
                 self.mmio_events.append(MmioEvent("write", address, size, value, current_pc()))
 

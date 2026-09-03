@@ -645,12 +645,38 @@ Decoded recovery-loader status strings:
   `b7 f0 b2 fd d8 ec bc bd 4b 1f 37 13 ca 4a 4a 4a`, then `NHJ`, `NHCFG\r`,
   then `0x4A` fill to the end of the 128-byte block.
 - The 512 KiB payload begins immediately at file offset `0x80`.
-- Obvious checks did **not** match the first header words: byte sum, 16-bit word
-  sum, CRC-16/XMODEM, CRC-16/CCITT-FALSE, CRC-16/X.25, CRC-16/KERMIT, CRC-32,
-  and complemented variants over the header, payload, active `0x00000..0x44000`
-  range, supervisor range, recovery range, and DSP range. The loader's
-  `Calculating CRC...` therefore appears to use a USR-specific CRC/checksum or a
-  non-obvious region map rather than a simple whole-file CRC.
+- The varying header field is the 16-bit value at header offset `0x0A`. Across
+  ten `.XMD` images (`ID20_401/402/403`, `ID25_401/402/403`, `SDL0430`,
+  `SDL0430N`, `SV25`, `SV_49`) bytes `0x00..0x04`, `0x06..0x09` and `0x0C` are
+  identical and only `0x05` (two observed values, `0xec`/`0xed`) and `0x0A..0x0B`
+  change. A single sample cannot separate a constant from a checksum, which is
+  why earlier passes tested "the first header words" as a block.
+- The `0x0A` field is a real payload-dependent checksum, not a build serial:
+  `SDL0430.XMD` and `SDL0430N.XMD` differ in only 237 of 524,288 payload bytes
+  (0.05%) yet carry the unrelated values `0x76ea` and `0x8f31`. That avalanche
+  also rules out any additive construction.
+- What the `0x0A` field is **not**, established with init- and xorout-independent
+  tests (the GF(2)-affine property of CRCs and linearity of sums, so these
+  eliminate whole families rather than single configurations):
+  - additive byte and word sums, either endianness, over every prefix length;
+  - CRC-16 with **all 65,536 polynomials**, reflected and non-reflected, either
+    endian reading, over the full payload;
+  - the firmware's own CRC (see below) over `0x40000..0x77FFE`, `0..0x77FFE`,
+    `0..0x80000`, `0x40000..0x80000`, `0..0x44000`, `0x40000..0x78000`, and over
+    every prefix length with both init values.
+- It depends on payload content **below `0x40000`**. `SDL0430`, `SDL0430N` and
+  `SV_49` are byte-identical over flash `0x40000..0x77FFE` (all three checksum to
+  `0xd195` there) yet carry three different `0x0A` values, so the covered region
+  cannot include that range. Consistently, every small pairwise diff between
+  these images lies in `0x002c0..0x26f5c`.
+- The `0x0A` field is still unrecovered. It is a separate quantity from the CRC
+  the modem actually verifies, which *is* recovered — see "The application CRC
+  the loader verifies" below. Whether `0x0A` gates a flash at all, or is only
+  checked by USR's internal build tooling, is not established.
+- `ID_SDL20.EXE` does not contain the algorithm. The DOS downloader holds none of
+  the header magic (`b7f0b2fd`, `bcbd4b1f`), neither tag (`NRJ`, `NHCFG`), not a
+  16-byte run of the `0x4A` fill, and no chunk of the payload; its CRC strings are
+  all of the form `Modem reports bad CRC`. It streams the file and relays status.
 
 **Safety:** `AT~X!` should never be sent during normal diagnostics. If absolutely
 necessary, `T` appears to be a test/no-flash path, but it still enters the loader
@@ -2352,6 +2378,460 @@ timer reads from the model instead puts its own timer interrupt service routine
 on a path it does not return from. Its writes are still tracked, so a run now
 reports what it programs: compares of 32,256, 40,624, and 65,535 on the three
 timers.
+
+## The application CRC the loader verifies
+
+Recovered from `IDSDL302.ROM` and verified numerically. This is the value behind
+the loader's `Calculating CRC...`, the modem-side quantity the DOS downloader
+reports through `ERROR(%02d) Modem reports bad CRC`, and the check that decides
+whether a downloaded image is accepted.
+
+| Property | Value |
+|---|---|
+| Algorithm | reflected CRC-16/CCITT, poly `0x1021` (reflected `0x8408`), init `0xFFFF`, no final XOR |
+| Catalogue name | CRC-16/MCRF4XX (check `0x6f91` over `"123456789"`; the same routine with init `0x0000` gives KERMIT's `0x2189`) |
+| Region | flash `0x40000..0x77FFD`, i.e. `0x37FFE` bytes |
+| Stored as | little-endian 16-bit word at flash `0x77FFE` |
+| Verification | `IDSDL302.ROM` computes `0x53bc`; the word stored at `0x77FFE` is `0x53bc` |
+
+Code anchors, all bank offsets in the recovery loader at flash `0x7C000` (add
+`0x80000` for the physical address the harness reports, since the ROM's reset
+stub maps it at `0x80000..0xFFFFF`):
+
+| Bank offset | Role |
+|---|---|
+| `0x03e0` | byte-wise CRC update; state in `cs:[0x104]` |
+| `0x0a75` | loads and prints the `Calculating CRC` string at `0x0231` |
+| `0x0a83` | `call 0x14ce` |
+| `0x0ab0` | `mov cs:[0x104], 0xffff` — seeds the accumulator |
+| `0x0fdb` | phase 1: segments `0x8000..0xB000`, full 64 KiB each |
+| `0x1052` | `mov cs:[0x104], 0xffff` — resets the accumulator before phase 2 |
+| `0x1059` | phase 2: segments `0xC000..0xF000` |
+| `0x1060` | `mov cx, 0x7ffe` — the `F000` segment is walked two bytes short so the stored word excludes itself |
+| `0x1090` | `cmp ax, es:[si]` with `ES=0xF000`, `SI=0x7FFE` — computed against stored |
+
+The update step at `0x03e0` is a byte-swapped formulation of the reflected CCITT
+update rather than a table lookup:
+
+```
+mov di, ax              ; preserve caller AX; AL is the input byte
+mov dx, cs:[0x104]      ; DX = running CRC
+xor al, dl              ; AL = byte ^ (crc & 0xff)
+mov dl, al
+mov ah, 0               ; AX = t, zero-extended
+shl ax, 4               ; DX ^= t << 4
+xor dx, ax
+shr ax, 1
+xchg dl, dh             ; byte-swap the accumulator
+xor dx, ax              ; DX ^= t << 3
+shl ax, 4
+and ah, 7               ; AX = (t << 7) & 0x7ff
+xor dx, ax
+shl ax, 1
+xor dl, ah
+mov cs:[0x104], dx
+```
+
+Two corrections to earlier notes fall out of this:
+
+- **`0x14ce` is not a mailbox dispatch.** It sets `ES=0x8000` and writes `0x00f0`
+  to `es:[0]`. Under this ROM's own mapping, segment `0x8000` is physical
+  `0x80000`, which is the base of the flash array, and `0xF0` is the AMD/Fujitsu
+  `Am29F0x0` reset command that returns the device to read-array mode. It puts
+  the flash back into a readable state immediately before the CRC walk reads it.
+- **Segment `0x8000` is not RAM in this image.** Dumping physical
+  `0x80000..0x8FFFF` after a 40M-instruction harness run yields bytes identical to
+  `IDSDL302.ROM[0:0x10000]`, with zero differences. The "segment `0x8000` = the
+  64 KiB RAM" model belongs to the XMF analysis, where the update payload maps at
+  `0x40000`; it does not carry over to a complete flash part that maps itself at
+  `0x80000`. The code observed executing at `pc=0x804db` is ROM at file offset
+  `0x4db`, statically visible throughout.
+
+Caveats. The CRC is verified against exactly one image, and no other image here
+can corroborate it. The region also assumes the phase-2 path through `0x1052` is
+the one taken, though a numerical match over a `0x37FFE`-byte region is not
+plausibly coincidental.
+
+**No update image carries this field**, which is itself the most useful evidence
+about it. Twelve were checked: the ten `.XMD` payloads all hold `0x0000` at flash
+`0x77FFE`, and the two sparse flash images reconstructed by `tools/unpack_sdl.py`
+from `SDL_CS2.EXE` and `SDL_7666.EXE` hold `0xFFFF` (erased) there, with the CRC
+region itself 98% empty because those C51-era packages load to flash
+`0x00000..0x3C000`, below the region entirely. A scan of every trailer position in
+all ten `.XMD` payloads, for both a `0x40000` and a `0` start, found no
+self-consistent CRC anywhere; the hits it did return sit at or below the ~8
+coincidences expected by chance from 524,288 positions at 1-in-65,536, and the
+one repeated pair (`SDL0430` and `SV_49` at `0x7d24e`) is a single coincidence
+counted twice, since those two images differ only below `0x40000`. The same scan
+reproduces `('0x40000', '0x77ffe', '0x53bc')` on `IDSDL302.ROM`, so it does find
+the field when the field is present.
+
+This supports, without proving, that **the modem computes this CRC after
+programming and writes it to `0x77FFE` itself**, so it exists only in a flash part
+that has been programmed and read back, never in a download payload. That is
+consistent with `IDSDL302.ROM` being a dumped part, and with the address snooper
+at `0x0e90` latching values destined for `F000:7FFE`. The write path that would
+prove it has not been traced. If it holds, only another dumped ROM can ever
+corroborate the CRC — no update image will.
+
+Reproducing it needs no emulator; the routine above transcribed literally,
+seeded with `0xFFFF` and run over `rom[0x40000:0x77FFE]`, reproduces the stored
+word.
+
+## `ATI1` and the ATI dispatch table
+
+`ATI1` is documented as "the ROM checksum". It is **not** the download CRC above,
+and the two must not be confused: on the 20.16 MHz unit `ATI1` reports `1A11`
+while that image's download CRC is `53BC`. They do, however, cover the *same*
+region, which is useful mutual corroboration of that boundary.
+
+### Reference hardware
+
+Two Couriers were probed over serial to obtain these values. Both report
+`ATI0` = `5607` and supervisor `7.3.14` / DSP `3.0.13`, dated 03/13/98:
+
+| Unit | `ATI7` Clock Freq | `ATI1` | Matching image family |
+|---|---|---|---|
+| 20.16 MHz, US/Canada External | `20.16Mhz` | `1A11` | `IDSDL302.ROM` (carries `20.16Mhz`, no `25 Mhz`) |
+| 25 MHz, US/Canada External | `25 Mhz` | `49E2` | `SV25.XMD` family |
+
+`ATI7` on the 20.16 MHz unit matches `IDSDL302.ROM` on every field it prints, and
+those strings sit in one template block at `0x1a97a..0x1a9be`: `20.16Mhz`
+(108922), `512k` (108951), `7.3.14` (109069), `3.0.13` (109086), plus `03/13/98`
+(4197) and `US/Canada` (131118). That establishes the ROM as the correct *build*
+for that unit. It does **not** establish that the flash contents are identical —
+see the open question at the end of this section.
+
+### The dispatch table
+
+A table of 16-bit near offsets at file `0x25D9B`, immediately after the
+`[ ACCESS DENIED ]` string. Entries are `0xFFFF` for unimplemented commands. The
+bank base is `0x24D20`, derived by anchoring `ATI0`'s handler at file `0x25E05` —
+the code that tests bit `0x20` of `[0x089d]` to choose between the inline strings
+`5607` and `3367`, which is the same product-code selector noted earlier for
+`0x82e7d`.
+
+| Index | Offset | File | Index | Offset | File |
+|---|---|---|---|---|---|
+| `ATI0` | `0x10e5` | `0x25e05` | `ATI8` | `0x120b` | `0x25f2b` |
+| `ATI1` | `0x1104` | `0x25e24` | `ATI9` | `0xffff` | — |
+| `ATI2` | `0x1122` | `0x25e42` | `ATI10` | `0x10c1` | `0x25de1` |
+| `ATI3` | `0x114e` | `0x25e6e` | `ATI11` | `0x10ca` | `0x25dea` |
+| `ATI4` | `0x109d` | `0x25dbd` | `ATI12..14` | `0xffff` | — |
+| `ATI5` | `0x10a6` | `0x25dc6` | `ATI15` | `0x10d3` | `0x25df3` |
+| `ATI6` | `0x10af` | `0x25dcf` | `ATI16` | `0x10dc` | `0x25dfc` |
+| `ATI7` | `0x10b8` | `0x25dd8` | | | |
+
+Probing `ATI0..ATI16` on the 20.16 MHz unit returns `OK` for
+`0,1,2,3,4,5,6,7,10,11,15` and `ERROR` for `8,9,12,13,14,16`. That matches the
+table's `0xFFFF` pattern on 15 of 17 entries; `ATI8` and `ATI16` have handlers
+that exist but gate at runtime. The hardware pattern is what fixes the table's
+alignment — reading it from the wrong offset produces a plausible-looking but
+wrong table, so the support pattern should be used to re-confirm any similar
+table found in another image.
+
+`ATI4`, `ATI5`, `ATI6`, `ATI10`, `ATI11`, `ATI15` and `ATI16` are 9-byte stubs of
+the form `mov bx, 0x3560; call far 0x971b:0x59ce; ret`. `ATI7` has the same shape
+and the same `BX` but calls `0xc800:0x000c` instead. `BX` holds the *same
+constant* in all eight, so it is not the report selector; whatever distinguishes
+the reports is passed some other way (most likely the already-parsed command
+number in a variable) and is not established here.
+
+### The `ATI1` routine
+
+`ATI1`'s handler at file `0x25E24` is a thin wrapper:
+
+```
+push cx
+lcall 0x8000:0x9e11     ; CRLF
+lcall 0x8000:0x0836     ; compute the checksum, result in AX
+lcall 0x8000:0x9d76     ; print AX as four hex digits
+lcall 0x8000:0x9e11     ; CRLF
+pop cx
+ret
+```
+
+Segment `0x8000` is the ROM base (physical `0x80000`), so `0x8000:0x0836` is file
+offset `0x836`. `ATI2`, the RAM test, calls the neighbouring `0x808`.
+
+The routine at `0x836` is a far wrapper around `0x83a`, which zeroes `BX` and
+calls the helper at `0x860` once per segment for `0xC000`, `0xD000`, `0xE000` and
+`0xF000`, returning `BX` in `AX`. The helper walks `0x8000` words (64 KiB) per
+segment, except `0xF000` where `CX` is loaded with `0x3FFF` so it stops two bytes
+short. Each word is read with `lodsw`, split by `xor dx,dx; xchg dl,ah` into its
+low byte in `AX` and high byte in `DX`, and both are added to `BX`. There is no
+CRC and no final transform:
+
+> **`ATI1` = (sum of every byte over flash `0x40000..0x77FFD`) mod 2^16**
+
+The region is identical to the download CRC's, including the two-byte shortfall
+at the end of the `0xF000` segment.
+
+### Open: no image reproduces a unit's `ATI1`
+
+`IDSDL302.ROM` sums to `0xBD4A` against the 20.16 MHz unit's `1A11`, and
+`SV25.XMD` sums to `0x4828` against the 25 MHz unit's `49E2`. None of the ten
+`.XMD` payloads matches either unit either. Two explanations remain open:
+
+1. The summed region contains per-unit data — a serial number, country or
+   configuration bytes — in which case `ATI1` differs per unit by construction and
+   can never validate a generic image. `SV25.XMD` landing within 442 of its unit
+   is weakly consistent with this, though byte-sum distances are not reliable
+   evidence.
+2. The images genuinely differ from the units' flash contents.
+
+Distinguishing them is cheap: locate where the serial number (`0009540034268322`
+on the 20.16 MHz unit) is stored. If it falls inside `0x40000..0x77FFD`,
+explanation 1 is confirmed and `ATI1` is unusable for image validation.
+
+Until that is settled, `ATI7` agreement should be read as "same firmware build",
+not "same flash contents".
+
+## Why a ROM run emits nothing: the tick chain
+
+A `courier run IDSDL302.ROM` produces no serial output at all. The cause is not
+the UART model. Across 40M instructions the character emitter at `0x8000:0x15f0`,
+the hex-word printer at `0x9d76` and the newline routine at `0x9e11` are each
+entered **zero** times: the firmware never attempts to print, because boot never
+gets that far.
+
+The stall is a delay routine at `0x8000:0x0a52`:
+
+```
+mov ah, byte ptr [0x12a]   ; tick counter
+add ah, al                 ; target = now + N
+cmp ah, byte ptr [0x12a]   ; spin until reached
+jne  -6
+```
+
+Five entry points at `0x0a40`, `0x0a44`, `0x0a48`, `0x0a4c` and `0x0a50` select
+delays of `0x14`, `5`, `4`, `2` and `1` ticks. With the counter frozen the compare
+never succeeds: the two instructions at `0x0a59`/`0x0a5d` execute 17,233,307 times
+each, about 85% of the whole run.
+
+The counter chain, end to end:
+
+| Step | Evidence |
+|---|---|
+| `[0x12a]` is incremented at `0x0ae5` (`inc word ptr [0x12a]`) | the only such instruction in the image |
+| `0x0ae5` sits inside the ISR beginning `0x8000:0x0a70` (`sti; cld; pushaw; push es`) | — |
+| That ISR is installed on IVT vector `0x0F` | emulated IVT: `0x0f -> 8000:0a70` |
+| The harness gates this edge on its `int3` source | `SOURCE_CONTROL[0xFF1E]` in `timers.py` |
+| The boot block masks INT3 | `OUT 0xFF1E, 0x000B` at `pc=0xfda3e`; `0x08` is the mask bit |
+| The harness honours the mask and withholds the edge | `machine.py`, the `enabled("int3")` guard |
+
+Nothing else can reach the ISR: the image contains no `INT 0Fh` instruction, no
+near call or jump to `0x0a70`, and no stored far pointer to it (the single byte
+match for `70 0a 00 80` at file `0x3f1` falls inside unrelated code).
+
+**The harness's mask handling is correct here, and so is the standing observation
+that this firmware masks INT3.** Two traps are worth recording because both cost
+time:
+
+- **The peripheral control block is reached through I/O port space, not memory.**
+  The firmware programs it with `OUT`, so a Unicorn `UC_HOOK_MEM_WRITE` over
+  `0xFF00..0xFFFF` observes nothing and makes it look as though registers such as
+  `0xFF1E` are never written. Use the I/O hooks, or `io_events`, to see them.
+- **The part is an 80C186EB, not an original 80186, and its peripheral layout
+  differs.** Timers sit at `0xFF30..0xFF46` and the interrupt controller at
+  `0xFF08..0xFF1E`, where the original part puts timers at `0xFF50` and the
+  interrupt controller at `0xFF20..0xFF3E`. So `0xFF3E` is timer 1's control
+  register here (`0xE001` = EN|INH|INT|CONT), *not* INT3 control, and `0xFF1E` is
+  the int3 control register, not a timer. The map in `timers.py` is right;
+  reading these addresses against an original-80186 datasheet is a trap, and an
+  easy one to fall into twice.
+
+**Open question.** Because the vector assignments of the EB are not confirmed
+here, it is not established that IVT vector `0x0F` — where the tick ISR is
+installed — is in fact the source whose mask lives at `0xFF1E`. If on this part
+vector `0x0F` belongs to some other, unmasked source, then gating this edge on
+`int3` is the wrong gate and would explain why the emulated boot stalls where real
+hardware does not. Settle this from the 80C186EB documentation before changing
+`machine.py`: the guard there is deliberate and load-bearing for the XMF paths.
+
+### What forcing the counter shows
+
+Advancing `[0x12a]` artificially from a code hook drops the spin from 17,233,307
+executions to 384, and boot then runs to completion: it reaches the main service
+loop, `0x9237` calling `0xb3bc` and `0xb402` round-robin, ~781,000 times, idling
+normally. So the machine is far closer to working than "no serial output"
+suggests — one frozen counter accounts for the entire silence.
+
+It still prints nothing in that state because nothing prompts it. Queued serial
+input is never consumed: with `--serial-input-hex 415449310d` (`ATI1\r`) the run
+ends with `serial_input_remaining: 5` and `serial_interrupts: 0`. Serial input
+delivery is a second, independent gap.
+
+### The second gap: the serial front end is XMF-only
+
+Supplying the tick is necessary but not sufficient. Even with boot running to the
+main service loop, a ROM run still prints nothing and still consumes no input:
+`serial_interrupts` stays `0` and every queued byte remains (`--serial-input-hex
+415449310d` ends with `serial_input_remaining: 5`).
+
+The cause is a scope boundary in the harness rather than a defect. The serial
+front end in `machine.py` is keyed entirely to XMF images:
+
+| Component | Keyed to | Reached by a ROM? |
+|---|---|---|
+| arming triggers `0x65F03`, `0x65D42`, `0x5CE66`, `0x5CE6A` | XMF payload mapped at `0x40000` | no — a ROM maps at `0x80000` |
+| arming writes `0x1D26`, `0x1CEE`, `0x2AC` | XMF supervisor RAM layout | no |
+| `ready_callback` `0xA420` / `0xA7A0` / `0xA8D9` | `_alternate_supervisor` / `_supervisor_23`, both derived from `supervisor_offset` | no — `CourierRom` has no such attribute |
+
+`_serial_started` therefore never latches, so the interrupt injector never runs.
+Confirmed directly: on `IDSDL302.ROM`, `_serial_started` is `False` both before and
+after a 20M-instruction run, `serial_interrupts` is `0`, and all five input bytes
+are still queued. The two lone reads of port `0x00` in such a run are explained by
+the same fact — the firmware never reaches the point where it would poll the UART.
+
+So "a ROM run emits nothing" has **two** independent causes, not one: the frozen
+tick above, and this. Interactive AT operation on a ROM image is unimplemented
+rather than broken; the ROM path was built for boot and CRC analysis, which it
+does correctly. Supporting it means porting the front end: arming triggers at ROM
+addresses, and the ROM's own equivalents of those three RAM variables and the
+parser callback.
+
+### The ROM's own serial front end
+
+Porting the front end needs the ROM-side equivalents of the XMF variables above.
+These are now located.
+
+**Character sink.** `0x8000:0x15f0` is the emit-one-character primitive (`AL` holds
+the byte); its send path falls through to `0xf11a`, which is not a UART write at
+all but a gated buffer append:
+
+```
+test byte ptr [0xea7], 1     ; output enabled?
+stc / je   ret               ; no -> discard the character, return carry
+cmp  byte ptr [0x3424], 1    ; mode gate
+stc / jne  ret
+mov  bx, word ptr [0x3ca4]   ; output write pointer
+mov  byte ptr [bx], al
+inc  word ptr [0x3ca4]
+clc / ret
+```
+
+So `[0xea7]` bit 0 and `[0x3424] == 1` gate all output, and `[0x3ca4]` is the write
+pointer. On a harness run both gates are clear (`00` and `00`), so every character
+is silently dropped.
+
+This is **not** an independent fault. Exactly one instruction in the image sets
+that bit — `or byte ptr [0xea7], 1` at file `0x2171f` — and a 20M-instruction run
+never executes it, nor any instruction in the surrounding routine. The gate is
+downstream of the boot stall: get boot far enough and the firmware opens it
+itself. So a silent ROM run has two causes, not three — the frozen tick, and the
+XMF-only input path.
+
+**Init state machine.** Dispatched through the function pointer at `[0x298]`
+(`call word ptr [0x298]` at `0xf564`). Each state enqueues a command word into a
+ring buffer via `0xf65c` — write pointer `[0x29c]`, read pointer `[0x29a]`, buffer
+`0x29e..0x2cd`, wrapping at `0x2ce`, returning carry set when full — then waits
+some ticks and advances `[0x298]`. With the tick forced, a run reaches
+`[0x298] = 0x0150` with the ring write pointer advanced to `0x02a6`, i.e. the
+sequence really does progress; it is only ever the tick that stops it.
+
+**Receive side.** The timer 2 ISR (vector `0x13`) assembles input a bit at a time:
+it reads `[0xff5a]`, rotates, and shifts the bit into `[0xb59]` (`rcl al,3` then
+`rcr byte ptr [0xb59],1`), branching once a full byte has shifted through. Timer 1
+(vector `0x12`) calls the periodic service at segment offset `0x133`.
+
+**Tick calibration.** Vector `0x0D` — INT1, which is what `--int1-after` delivers —
+is the calibration ISR: it sets timer 2's control (`[0xff46] = 0xE001`), derives a
+compare value from timer 1's count (`[0xff38]`) and stores it to `[0xff42]`, then
+writes `[0xff12] = 0`, unmasking the timer. This is the "external interrupt that
+calibrates its tick" referred to in `InterruptController`'s docstring, now located.
+
+### Why boot still stops short: the settings EEPROM
+
+With the tick supplied (`--tick-ms`), a ROM run boots past the delay loops and
+idles in its main service loop, but still prints nothing. The reason is not a
+stall. The firmware has no valid configuration and correctly refuses to open its
+DTE port.
+
+The chain, every step of which was confirmed to execute:
+
+1. `0xe2e9` fills the nine-word block at `0x752` by calling the settings reader
+   nine times.
+2. `0xe237` decodes one setting: it indexes the pointer table at `0xe2a0`, reads a
+   three-byte record, and validates it.
+3. On failure it returns carry. At `0x0923` the boot does `mov al, 3; call ...;
+   jb skip; mov [0x695], al`, so a failed read leaves `[0x695]` zero.
+4. At `0x216f2`, `test byte ptr [0x695], 1` gates the whole block that ends in
+   `or byte ptr [0xea7], 1` at `0x2171f` - the instruction that opens output.
+5. `[0xea7]` bit 0 clear means the emitter at `0xf11a` discards every character.
+
+In a harness run the block at `0x752` reads back as all zeros, the four validation
+calls all fail, and output is never enabled. Supplying `--nvram` or
+`--parameter-sector` does not help, because neither feeds this path.
+
+**The chip is the one the harness already models, reached by a different driver.**
+`nvram.py` models a 93C66 (256 x 16 Microwire) on board latch 0, I/O port `0x10`,
+which is the driver an XMF uses (`5b5e:1801`). The ROM's driver, at `0x1401`, bangs
+the 80C186EB port pins instead:
+
+| Signal | Register and bit |
+|---|---|
+| chip select | `0xff56`, bit `0x20` - asserted once and held |
+| clock | `0xff56`, bit `0x04` - data is clocked on the rising edge |
+| data pin direction | `0xff58`, bit `0x80` - cleared to drive, set to sample |
+| data to the chip | `0xff5e`, bit `0x80` (the port 2 latch) |
+| data from the chip | `0xff5a`, bit `0x80` (the port 2 pin register) |
+
+These are one bidirectional data line on port 2 pin 7, not separate DI and DO
+pins: the driver writes it through the latch while `0xff58` bit `0x80` is clear,
+then sets that bit and samples the same pin through `0xff5a`. The bit numbers are
+`0x80` and not `0x01` - `rol al, 1` / `rcl bx, 1` moves the *top* bit of the port
+byte, which a casual reading of the routine gets backwards. Per command bit the
+driver writes the data bit, sets `0x20`, raises `0x04`, then lowers it.
+
+It clocks 12 bits out (`cx = 0x0c`) and 16 bits in (`cx = 0x10`): a dummy `0`, the
+start bit, opcode `10`, and eight address bits - a standard 93C66 read.
+
+**Address mapping.** The command word is built as `ax = 0x0600 | index` then
+`rol ax, 4`, where `index = (di - 0x696) / 2`. So RAM mirrors the EEPROM from
+`0x696`:
+
+```
+eeprom word = (ram address - 0x696) / 2
+```
+
+The settings block `0x752..0x763` is therefore EEPROM words 94..102. Those 18
+bytes hold six three-byte records, selected through the table at `0xe2a0`:
+
+| Setting | Record | Setting | Record |
+|---|---|---|---|
+| 1 | `0x761` | 4 | `0x758` |
+| 2 | `0x752` | 5 | `0x75b` |
+| 3 | `0x755` (gates output) | 6 | `0x75e` |
+
+The records are obfuscated rather than plain: the decoder at `0xe237` applies
+`ror 2` / `add 5`, `rol 1` / `sub 0x0f`, and `xor 0x1d`, so valid records can be
+constructed by running those backwards.
+
+Making a ROM run reach its banner therefore needs two things: the existing 93C66
+model given a second front end on those four pins, and words 94..102 populated
+with correctly encoded records. A blank EEPROM reads zeros, which is exactly the
+state that fails today.
+
+### The unresolved part
+
+The boot block masks INT3 early, so if the delay at `0x0a52` genuinely ran before
+something later unmasked it, real hardware would hang in exactly the same place —
+and it does not: the reference 20.16 MHz unit boots and answers `AT` normally.
+The likely reading is therefore **not** a defect in interrupt delivery but an
+earlier divergence: the emulated boot reaches a delay call before the tick source
+is enabled. Forcing the counter papers over that divergence rather than repairing
+it. Finding the branch where the emulated path leaves the hardware path is the
+open task, and it is tractable, because a working unit is available to compare
+against.
+
+### Incidental confirmation of the CRC region
+
+The same runs re-confirm the application CRC boundary from an independent
+direction. During power-on the ROM checksums itself with the routine copied into
+low RAM: addresses `0x3e0` and `0x106a` each execute exactly 229,374 times, which
+is `0x37FFE` — precisely the size of the region `0x40000..0x77FFD` recovered from
+the loader.
 
 ## Older C51 SDL package and V.8 frame path
 
