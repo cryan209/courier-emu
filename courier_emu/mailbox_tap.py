@@ -223,8 +223,26 @@ class MailboxTap:
 
     # -- message reconstruction -----------------------------------------
 
+    def _mailbox_open(self) -> bool:
+        """Whether these ports are currently the mailbox rather than the loader.
+
+        `0x58`-`0x5e` are shared: under the ROM's protocol they carry the upper
+        half of the cold-boot transfer window until the program is in, and only
+        become the mailbox afterwards. Without this gate a tap records the
+        datapump download - thousands of C5x opcodes read back as tags. The
+        bridge's own `active` flag is the same gate it uses to decide a message
+        has been sent, so defer to it rather than keeping a parallel guess.
+        """
+        active = getattr(self.bridge, "active", None)
+        return True if active is None else bool(active)
+
     def _observe(self, port: int, size: int, value: int, pc: int | None) -> None:
         if port not in MAILBOX_PORTS or size != 1:
+            return
+        if not self._mailbox_open():
+            # Drop any half-built header from the loader phase.
+            self._header = None
+            self._value = 0
             return
         value &= 0xFF
         if port == 0x58:

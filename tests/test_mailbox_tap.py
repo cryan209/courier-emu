@@ -29,8 +29,9 @@ class FakeCore:
 
 
 class FakeBridge:
-    def __init__(self, core: FakeCore | None = None) -> None:
+    def __init__(self, core: FakeCore | None = None, active: bool = True) -> None:
         self.core = core or FakeCore()
+        self.active = active          # False while the ports are the loader window
         self.writes: list[tuple[int, int, int, int | None]] = []
 
     def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
@@ -167,3 +168,26 @@ def test_report_and_rollup_mention_every_tag():
     assert summary["0x0021"]["arguments"] == ["0x0032", "0x0033"]
     text = tap.report()
     assert "0x0030" in text and "0x0021" in text and "per-tag rollup" in text
+
+
+def test_writes_are_ignored_while_the_ports_are_the_loader_window():
+    """0x58-0x5e carry the download until the bridge goes active.
+
+    Without this gate the tap records the datapump program as mailbox traffic:
+    an untapped ATDT run showed 3542 "messages" whose tags were C5x opcodes.
+    """
+    bridge = FakeBridge(active=False)
+    with MailboxTap(bridge) as tap:
+        send_pair(bridge, 0xBE42, 0xBF09)     # C5x opcodes, not a message
+        send_pair(bridge, 0x7A80, 0x8138)
+    assert tap.messages == []
+    assert len(bridge.writes) == 8            # still passed through
+
+
+def test_a_header_started_before_going_active_is_discarded():
+    bridge = FakeBridge(active=False)
+    with MailboxTap(bridge) as tap:
+        bridge.write(0x58, 1, 0x42, None)     # loader byte
+        bridge.active = True
+        send_pair(bridge, 0x0021, 0x0031)
+    assert [(m.tag, m.argument) for m in tap.messages] == [(0x21, 0x31)]

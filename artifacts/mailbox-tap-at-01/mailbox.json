@@ -1,0 +1,498 @@
+{
+  "line_rate": 9600,
+  "window": 512,
+  "samples": 1371,
+  "messages": [
+    {
+      "sequence": 0,
+      "tag": "0x007d",
+      "argument": "0x0028",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6ad5b",
+      "sample_index": 1338,
+      "audio": {
+        "samples": 33,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 1,
+      "tag": "0x0001",
+      "argument": "0x0000",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6ad5b",
+      "sample_index": 1341,
+      "audio": {
+        "samples": 30,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 2,
+      "tag": "0x0001",
+      "argument": "0x0000",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6ad5b",
+      "sample_index": 1344,
+      "audio": {
+        "samples": 27,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 3,
+      "tag": "0x000f",
+      "argument": "0x0600",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6aea5",
+      "sample_index": 1347,
+      "audio": {
+        "samples": 24,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 4,
+      "tag": "0x0001",
+      "argument": "0x0000",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6ad5b",
+      "sample_index": 1350,
+      "audio": {
+        "samples": 21,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 5,
+      "tag": "0x000f",
+      "argument": "0x1200",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6aea5",
+      "sample_index": 1353,
+      "audio": {
+        "samples": 18,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 6,
+      "tag": "0x0082",
+      "argument": "0x00a0",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "pc": "6ad5b",
+      "sample_index": 1356,
+      "audio": {
+        "samples": 15,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 7,
+      "tag": "0x0083",
+      "argument": "0x0002",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "pc": "6ad5b",
+      "sample_index": 1359,
+      "audio": {
+        "samples": 12,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 8,
+      "tag": "0x0084",
+      "argument": "0x1468",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "pc": "6aea5",
+      "sample_index": 1362,
+      "audio": {
+        "samples": 9,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 9,
+      "tag": "0x0084",
+      "argument": "0x1408",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "pc": "6aea5",
+      "sample_index": 1365,
+      "audio": {
+        "samples": 6,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 10,
+      "tag": "0x000f",
+      "argument": "0x1200",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6aea5",
+      "sample_index": 1368,
+      "audio": {
+        "samples": 3,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    },
+    {
+      "sequence": 11,
+      "tag": "0x0067",
+      "argument": "0x0000",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "pc": "6ad5b",
+      "sample_index": 1371,
+      "audio": {
+        "samples": 0,
+        "rms": 0.0,
+        "peaks": [
+          [
+            350,
+            0.0
+          ],
+          [
+            440,
+            0.0
+          ],
+          [
+            480,
+            0.0
+          ],
+          [
+            620,
+            0.0
+          ]
+        ],
+        "dtmf": null,
+        "progress": []
+      }
+    }
+  ],
+  "tags": {
+    "0x007d": {
+      "tag": "0x007d",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "count": 1,
+      "arguments": [
+        "0x0028"
+      ],
+      "first_pc": "6ad5b",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x0001": {
+      "tag": "0x0001",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "count": 3,
+      "arguments": [
+        "0x0000"
+      ],
+      "first_pc": "6ad5b",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x000f": {
+      "tag": "0x000f",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "count": 3,
+      "arguments": [
+        "0x0600",
+        "0x1200"
+      ],
+      "first_pc": "6aea5",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x0082": {
+      "tag": "0x0082",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "count": 1,
+      "arguments": [
+        "0x00a0"
+      ],
+      "first_pc": "6ad5b",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x0083": {
+      "tag": "0x0083",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "count": 1,
+      "arguments": [
+        "0x0002"
+      ],
+      "first_pc": "6ad5b",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x0084": {
+      "tag": "0x0084",
+      "kind": "tag+arg",
+      "dispatchable": false,
+      "count": 2,
+      "arguments": [
+        "0x1468",
+        "0x1408"
+      ],
+      "first_pc": "6aea5",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    },
+    "0x0067": {
+      "tag": "0x0067",
+      "kind": "tag+arg",
+      "dispatchable": true,
+      "count": 1,
+      "arguments": [
+        "0x0000"
+      ],
+      "first_pc": "6ad5b",
+      "dtmf": [],
+      "progress": [],
+      "peak_rms": 0.0
+    }
+  }
+}

@@ -1,0 +1,24 @@
+12 mailbox messages, 1371 line-transmit samples at 9600 Hz
+
+ seq     tag     arg     kind     pc   sample     rms  tone
+   0 0x0007d 0x00028  tag+arg  6ad5b     1338     0.0  silent
+   1 0x00001 0x00000  tag+arg  6ad5b     1341     0.0  silent
+   2 0x00001 0x00000  tag+arg  6ad5b     1344     0.0  silent
+   3 0x0000f 0x00600  tag+arg  6aea5     1347     0.0  silent
+   4 0x00001 0x00000  tag+arg  6ad5b     1350     0.0  silent
+   5 0x0000f 0x01200  tag+arg  6aea5     1353     0.0  silent
+   6 0x00082 0x000a0  tag+arg  6ad5b     1356     0.0  silent
+   7 0x00083 0x00002  tag+arg  6ad5b     1359     0.0  silent
+   8 0x00084 0x01468  tag+arg  6aea5     1362     0.0  silent
+   9 0x00084 0x01408  tag+arg  6aea5     1365     0.0  silent
+  10 0x0000f 0x01200  tag+arg  6aea5     1368     0.0  silent
+  11 0x00067 0x00000  tag+arg  6ad5b     1371     0.0  silent
+
+per-tag rollup:
+   0x0001 x3    dispatchable  peak-rms     0.0  args 0x0000                       -
+   0x000f x3    dispatchable  peak-rms     0.0  args 0x0600,0x1200                -
+   0x0084 x2        raw-word  peak-rms     0.0  args 0x1468,0x1408                -
+   0x007d x1    dispatchable  peak-rms     0.0  args 0x0028                       -
+   0x0082 x1        raw-word  peak-rms     0.0  args 0x00a0                       -
+   0x0083 x1        raw-word  peak-rms     0.0  args 0x0002                       -
+   0x0067 x1    dispatchable  peak-rms     0.0  args 0x0000                       -

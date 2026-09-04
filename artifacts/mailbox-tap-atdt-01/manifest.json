@@ -1,0 +1,18 @@
+{
+  "status": "complete",
+  "image": "main211.xmf",
+  "command": "ATDT123",
+  "instructions": 9000000,
+  "daa_line": "dial-tone",
+  "line_rate": 9600,
+  "messages": 1628,
+  "line_tx_samples": 13151,
+  "control": "artifacts/mailbox-tap-at-01 (same image, plain AT)",
+  "finding": "The mailbox carries a periodic service exchange, not per-digit commands. The AT control run produces the same seven tags with the same arguments and only 12 messages; the dial run repeats that cycle about 135 times while audio plays. No tag or argument distinguishes digit 1 from 2 from 3.",
+  "cycle": "per cycle: 3x {0x01, 0x0f, 0x84}, 1x {0x82, 0x83, 0x67}",
+  "caveat": "In this emulator the digits reach the C52 through bridge.set_dtmf_digits, not the mailbox, so a tap on the mailbox cannot attribute them. The tone attribution in report.txt is an artefact of window overlap: messages repeat every ~7 samples while a DTMF digit lasts thousands, so every window covers whatever is playing. Treat the per-tag tone column in this run as uninformative.",
+  "assumptions": [
+    "The ROM captures cannot run this: they carry no DSP program memory below 0x8000.",
+    "Temporal correlation is not causal attribution."
+  ]
+}
