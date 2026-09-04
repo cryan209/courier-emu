@@ -482,3 +482,22 @@ def test_the_encoder_input_is_an_and_of_four_cells_one_host_writable(rom: bytes)
     assert words(rom, 0xADC7, 4) == (0xBF09, 0xFFB0, 0xAE80, 0x7D7F)
     assert words(rom, 0xADCB, 4) == (0xBF09, 0xFFB3, 0xAE80, 0xFFFF)
     assert words(rom, 0xADCF, 2) == (0xBF09, 0xFF90)
+
+
+def test_the_23f0_accessor_is_installed_by_the_datapump_not_mask_rom(rom: bytes) -> None:
+    """The host-message accessor the dispatcher calls is downloaded, not ROM.
+
+    In the reset flow the datapump sets BMAR to 23f0 and block-loads three
+    words from image offset 80f5 into program 23f0..23f2. They decode as the
+    whole accessor - lacc * ; lamm * ; ret - so `1000..7fff` here is resident
+    program memory the datapump writes, and `calld 23f0` is not a call into
+    unrecovered mask ROM.
+    """
+    assert words(rom, 0x80A0, 7) == (
+        0xBF80, 0x23F0,     # lacc #23f0
+        0x881F,             # samm @1f      BMAR := 23f0
+        0x8B89,             # mar  *, ar1
+        0xBF09, 0x80F5,     # lar  ar1, #80f5
+        0xBB02)             # rpt  #02      -> three words
+    assert word(rom, 0x80A7) == 0x57A0                      # bldp *+
+    assert words(rom, 0x80F5, 3) == (0x1080, 0x0880, 0xEF00)   # lacc * ; lamm * ; ret

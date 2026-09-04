@@ -998,10 +998,28 @@ was aiming at, and it is the only part a physical readback can add.
 Two things are open. Only one call to `e47b` exists in the image, covering
 `0x29080..0x368fc`, while the datapump region is usually described as running to
 `0x44000`; how the remainder reaches the DSP, whether as overlays through the
-same channel or not at all, is not established here. And the `23f0` helper that
-the resident sender calls maps below word `0x8000` under the pinned base, which
-would place it inside the internal ROM rather than the downloaded image — worth
-confirming, since it would mean downloaded code calls into ROM entry points.
+same channel or not at all, is not established here.
+
+The `23f0` helper that the resident sender calls maps below word `0x8000` under
+the pinned base, which looked like a call into internal ROM. It is not: the
+datapump **installs** it. In the linear reset flow at `80a0`,
+
+```text
+80a0  lacc  #23f0
+80a2  samm  @1f            ; BMAR := 23f0
+80a4  lar   ar1, #80f5
+80a6  rpt   #02
+80a7  bldp  *+             ; program[23f0..23f2] := three words from the image
+```
+
+and the three words are `1080 0880 ef00`, which is `lacc * ; lamm * ; ret` —
+the whole accessor, recovered from the downloaded image. So `1000..7fff` is not
+mask ROM but resident program memory the datapump writes and then calls; the
+downloaded code does not call into ROM entry points. Its filters also *read*
+eleven addresses in `2100..2593` through `mac`, which are below the load base
+and absent from flash; whether those coefficients are installed the same way or
+are genuinely resident is not yet settled, but they are not part of the
+inaccessible mask ROM either.
 
 ## CPU port-space output latches
 
@@ -1622,10 +1640,12 @@ wrong, and the plan of writing DSP data `03e6` through the mailbox was never
 going to work — with or without the commit edge. That, not the missing strobe,
 is why `dsp-mailbox-write-01` and the queue runs saw nothing.
 
-**The host interface is not in the datapump.** `23f0` is below word `8000`, in
-the mask ROM, and the message cells are `ff57`, `ff5e` and `ff5f` in high data
-space. The datapump contains no `IN` instruction at all; everything the host
-sends arrives through mask-ROM helpers.
+**The host interface is not in the datapump's `8000+` image, but it is not mask
+ROM either.** The accessor at `23f0` is installed into low program memory at
+boot by the `bldp` at `80a7` and is recovered as `lacc * ; lamm * ; ret` (see
+"How the DSP gets its program"). The message cells are `ff57`, `ff5e` and
+`ff5f` in high data space. The datapump contains no `IN` instruction at all;
+everything the host sends arrives through this installed helper.
 
 **Twelve tags are unimplemented** — `4c`, `5b`-`5d`, `64`-`6b` — and their table
 entry is zero, so `bacc` would take the DSP to program word `0000`. Nothing
