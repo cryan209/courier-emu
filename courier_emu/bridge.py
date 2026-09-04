@@ -185,6 +185,10 @@ class CourierDspBridge:
         # the status report both read it.
         self.window = self._windows[self.transfer.first_strobe]
         self.checksum_submits = 0
+        # The C52 program word the supervisor asks the boot ROM to enter.
+        self.entry_word = image.dsp_program_segments()[0][0]
+        self.launched = False
+        self._last_state: dict[str, int | bool] | None = None
         self.bootstrap = bytearray()
         self.active = False
         self.bootstrap_match: bool | None = None
@@ -801,9 +805,15 @@ class CourierDspBridge:
             and strobe == self.transfer.checksum_strobe
         ):
             # The ROM's downloader submits its 16-bit word sum here and polls
-            # for acceptance. The transfer is already complete by length, so
-            # this is recorded rather than acted on.
+            # for acceptance. On the part, the DSP's boot ROM checks that sum
+            # and jumps to the entry the supervisor requested; that mask ROM
+            # is not available, so the jump is performed here instead. An
+            # update payload needs no equivalent: it carries a boot block at
+            # origin 0, so its reset address is program the core already has.
             self.checksum_submits += 1
+            if self.active and not self.launched and hasattr(self.core, "set_pc"):
+                self.core.set_pc(self.entry_word)
+                self.launched = True
             return
         if strobe not in self._windows:
             return
@@ -825,6 +835,9 @@ class CourierDspBridge:
             self.bootstrap = bytearray(window)
             self.bootstrap_match = None
             self.active = False
+            # A fresh core starts at its reset address again, so the entry the
+            # boot ROM would jump to has to be reapplied to this download.
+            self.launched = False
             self._runtime_mode = False
             self._runtime_ready = False
             self._runtime_ready_delay = 0
@@ -1193,7 +1206,7 @@ class CourierDspBridge:
             runtime_words_queued=self.runtime_words_queued,
             detector_replies=self.detector_replies,
             error=self.error,
-            dsp=self.core.state(),
+            dsp=self._core_state(),
             dsp_host_ports=(
                 self.core.io_port_stats()
                 if hasattr(self.core, "io_port_stats")
@@ -1290,9 +1303,25 @@ class CourierDspBridge:
                 output.write(int(sample).to_bytes(2, "little", signed=True))
         return len(samples)
 
+    def _core_state(self) -> dict[str, int | bool]:
+        """The C52's registers, from the last sample if the core is gone.
+
+        A run's summary is built after the machine has closed the bridge, and
+        a destroyed handle reports every register as zero. Reporting that as
+        the processor's final state said a datapump that had just executed
+        millions of instructions had never started.
+        """
+        if getattr(self.core, "handle", None) is None and self._last_state is not None:
+            return self._last_state
+        self._last_state = self.core.state()
+        return self._last_state
+
     def close(self) -> None:
         if self.sip is not None:
             self.sip.close()
         if self.line is not None:
             self.line.close()
+        # Sample before the handle goes, so a summary built afterwards still
+        # reports where the C52 actually got to.
+        self._last_state = self.core.state()
         self.core.close()
