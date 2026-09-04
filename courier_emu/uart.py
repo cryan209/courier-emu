@@ -46,6 +46,13 @@ CONTROL_RECEIVE_ENABLE = 0x20
 
 # The part's fixed serial interrupt types, confirmed against the live board's
 # vector table rather than assumed.
+# S0STS bit 1, receive data available.
+RECEIVE_READY = 0x02
+# S0STS bit 3, transmit buffer empty. The transmit routine at 0x81613 spins on
+# it before every byte it writes to S0TBUF. Nothing here queues a byte behind
+# another, so the transmitter is always ready.
+TRANSMIT_READY = 0x08
+
 RECEIVE_VECTOR = 0x14
 TRANSMIT_VECTOR = 0x15
 
@@ -61,6 +68,9 @@ class EbSerial:
     transmitted: int = 0
     received: int = 0
     pending: deque[int] = field(default_factory=deque)
+    # A character on the wire, not yet handed to the firmware.
+    holding: bool = False
+    receive_ready: bool = False
 
     @property
     def receive_enabled(self) -> bool:
@@ -69,9 +79,17 @@ class EbSerial:
     def read(self, address: int, size: int) -> int | None:
         """The value a read of `address` should find, or None if not ours."""
         if address == S0STS:
-            # Reading the status word is the acknowledge. Nothing is latched
-            # in it that this models, so it reads clean every time.
-            return 0
+            # Bit 1 is receive-data-available: the callback chain at [0x31f]
+            # requires it clear while it waits for the DTE handshake and set
+            # once a character has landed, which is what carries it to the
+            # node that posts the startup banner's event. The error bits are
+            # not modelled - see the module docstring.
+            ready = self.receive_ready
+            # The status word is read to clear, which is why the firmware
+            # reads it at sites that discard the value: those reads are the
+            # acknowledge. Taking the byte out of S0RBUF does not clear it.
+            self.receive_ready = False
+            return TRANSMIT_READY | (RECEIVE_READY if ready else 0)
         if address == S0RBUF:
             return self.receive_holding
         if address == S0CON:
@@ -96,9 +114,30 @@ class EbSerial:
             return value & 0xFF
         return None
 
+    def line_idle(self) -> bool:
+        """Whether the DTE handshake line is still at its unasserted level.
+
+        Bit 0 of port 0x14 is not the receive data line - the callback chain
+        at [0x31f] samples it about every 133,000 instructions, far too
+        slowly to catch a start bit. It is a level: 0x82b0f waits for it
+        unasserted, 0x82b2d for it asserted, and only then does the chain set
+        the debounce counter at [0x321] that ends in the startup banner.
+        0x826e7 busy-waits on the same pin.
+
+        The chain has to observe the unasserted level before the asserted
+        one, so the harness's terminal raises its handshake a fixed way into
+        the run rather than at reset - a terminal switched on after the modem
+        came up, which is the order the chain is written for. The machine
+        owns that timing; this only reports whether a character is waiting.
+        """
+        return self.received == 0 and not self.holding
+
+
+
     def deliver(self, byte: int) -> None:
         """Place a byte in the receive buffer and request its interrupt."""
         self.receive_holding = byte & 0xFF
+        self.receive_ready = True
         self.received += 1
         self.pending.append(RECEIVE_VECTOR)
 

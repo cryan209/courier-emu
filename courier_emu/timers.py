@@ -82,6 +82,7 @@ TIMER_VECTORS = (8, 18, 19)
 # calibration, and the tick that comes out of it is one and a half times it.
 # The default below therefore lands the tick at the 10 ms the answer machine's
 # ring qualification window independently points to.
+INT0_VECTOR = 12
 INT1_VECTOR = 13
 INT1_CALIBRATION_MS = 7
 
@@ -270,7 +271,9 @@ class TimerBlock:
     fast: bool = True
     answers_reads: bool = True
     timers: list[Timer] = field(default_factory=lambda: [Timer(index) for index in range(3)])
-    # Ticks granted beyond the instruction clock to satisfy a poll immediately.
+    # Ticks granted to satisfy polls immediately, counted for reporting only.
+    # The grant itself is applied to the polled timer's own origin, so it does
+    # not reach the shared clock - see `read`.
     granted: int = 0
     accelerated: int = 0
     reads: int = 0
@@ -280,7 +283,7 @@ class TimerBlock:
     _pending: list[int] = field(default_factory=list)
 
     def _tick(self, instructions: int) -> int:
-        return ticks_for(instructions) + self.granted
+        return ticks_for(instructions)
 
     def read(self, address: int, size: int, instructions: int) -> int | None:
         """Return the value at a timer register, or None if it is not one."""
@@ -301,7 +304,9 @@ class TimerBlock:
             # The grant moves only this timer's origin. Advancing a clock the
             # other two share would age them by the whole of every delay
             # anyone waits on, which is how a scratch delay ends up wrapping
-            # the timer another part of the firmware is measuring with.
+            # the timer another part of the firmware is measuring with - the
+            # ROM's timer 1 took its first max count 4.8 periods early that
+            # way, on a grant collected by polls of timer 0.
             remaining = timer.ticks_to_max_count()
             if remaining is not None:
                 timer.origin -= remaining

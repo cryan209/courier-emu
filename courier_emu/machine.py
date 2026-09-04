@@ -22,7 +22,7 @@ from .panel import (
 )
 from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
-from .timers import INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
+from .timers import INT0_VECTOR, INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
 from .uart import EbSerial
 
 
@@ -68,6 +68,23 @@ TICK_VECTOR = 0x0F
 # pair answers OK where an undriven run reports NO CARRIER, so which of
 # those is faithful is still open.
 SUGGESTED_TICK_MS = 10
+# The board's frame edge is the coprocessor's, far faster than the tick. The
+# true rate is the codec's and is not recovered, so this stands in at the
+# interrupt poll's own granularity - fast enough for the firmware's line
+# handshakes to resolve, and honest about not being the measured rate.
+FRAME_INSTRUCTIONS = 11_110
+# How long a character sits on the wire before the receiver takes it. Long
+# enough that the frame service sees the line low at least once.
+START_BIT_INSTRUCTIONS = 32_768
+# When the harness's terminal raises its handshake. Long enough after reset
+# that the ROM's callback chain has already sampled the line unasserted.
+DTE_READY_INSTRUCTIONS = 30_000_000
+# And when it starts sending. The chain wants the handshake asserted, then a
+# quiet spell, then a character: [0x321] counts thirty of its own polls down
+# to zero before it will take one, and [0x322] gives up after fifty. At the
+# frame rate above that window is roughly four to six and a half million
+# instructions after the handshake, so the first character lands inside it.
+DTE_TYPING_INSTRUCTIONS = DTE_READY_INSTRUCTIONS + 5_000_000
 # The other candidate source, and the only one that leaves both of the
 # firmware's mutual watchdogs quiet: pace the chain off the DSP frame
 # interrupt instead of off a period. The two watchdogs bound the legal ratio
@@ -272,6 +289,15 @@ class CourierMachine:
         # The ROM's serial engine runs off INT1 while the tick runs off INT3,
         # so the two cannot share one pending slot.
         self._int1_pending: int | None = None
+        # INT0 is the board's frame edge. The live board vectors it at
+        # 8f43:0000, the head of the service that reads the coprocessor ports
+        # at 0x58..0x5e and then drives the countdown callback at [0x31f] -
+        # the chain that eventually posts the startup banner's event. Nothing
+        # on the CPU side produces that edge, so a ROM run has to stand in for
+        # it the way it already stands in for the tick.
+        self._int0_pending: int | None = None
+        self._last_frame = 0
+        self._rx_started_at = 0
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -326,6 +352,31 @@ class CourierMachine:
                 0x61CE2: "main-loop",
                 0x61D19: "main-loop",
             })
+
+    def _dte_asserted(self) -> bool:
+        """Whether the harness's terminal has raised its handshake yet.
+
+        The ROM will not take a character until its callback chain has seen
+        this line unasserted and then asserted, so a terminal that is already
+        present at reset is one the chain never notices. The wait is measured
+        from reset rather than recovered from the board.
+        """
+        return (
+            self.instructions >= DTE_READY_INSTRUCTIONS
+            and (bool(self.serial_rx) or self.uart is not None and self.uart.received > 0)
+        )
+
+    def _int0_vector_installed(self, uc: Any) -> bool:
+        """Whether the firmware has put a handler behind the frame edge.
+
+        Delivering INT0 before the firmware has vectored it would enter
+        whatever the boot table left at type 0x0c, so the stand-in waits for
+        the firmware to claim it.
+        """
+        if not self._rom_tick:
+            return False
+        vector = bytes(uc.mem_read(INT0_VECTOR * 4, 4))
+        return any(vector)
 
     def _capture_serial(self, value: int) -> None:
         value &= 0xFF
@@ -1185,11 +1236,31 @@ class CourierMachine:
                     and self.uart.receive_enabled
                     and self.serial_rx
                     and interrupts_on
+                    and self.instructions >= DTE_TYPING_INSTRUCTIONS
                 ):
-                    self.uart.deliver(self.serial_rx.popleft())
-                    _uc.emu_stop()
+                    # Put the character on the wire before handing it over.
+                    # The ROM's callback chain watches the raw line for the
+                    # idle-then-start transition, so a byte that appeared in
+                    # the buffer with the line never having gone low is one
+                    # the chain cannot see.
+                    if not self.uart.holding:
+                        self.uart.holding = True
+                        self._rx_started_at = self.instructions
+                    elif self.instructions - self._rx_started_at >= START_BIT_INSTRUCTIONS:
+                        self.uart.holding = False
+                        self.uart.deliver(self.serial_rx.popleft())
+                        _uc.emu_stop()
+                if (
+                    self._int0_pending is None
+                    and interrupts_on
+                    and self.instructions - self._last_frame >= FRAME_INSTRUCTIONS
+                    and self._int0_vector_installed(_uc)
+                ):
+                    self._last_frame = self.instructions
+                    self._int0_pending = INT0_VECTOR
                 if interrupts_on and (
-                    self.uart is not None and self.uart.pending
+                    self._int0_pending is not None
+                    or self.uart is not None and self.uart.pending
                     or self._external_interrupt_pending is not None
                     or self._int1_pending is not None
                     or self._timer_interrupt_pending is not None
@@ -1249,6 +1320,7 @@ class CourierMachine:
                     and self.timers.controller.enabled("int1")
                 ):
                     self._int1_pending = INT1_VECTOR
+
                 self.ticks += 1
                 _uc.emu_stop()
             if (
@@ -1352,6 +1424,13 @@ class CourierMachine:
                         value |= STRAP_SENSE_BIT
                     else:
                         value &= ~STRAP_SENSE_BIT
+                if self.uart is not None and port == 0x14 and size == 1:
+                    # The raw receive line, which the ROM polls as well as
+                    # reading the buffer. Bit 0 is the mark/space level.
+                    if not self._dte_asserted():
+                        value |= 0x01
+                    else:
+                        value &= ~0x01
                 if port == RING_DETECT_PORT and size == 1:
                     # The answer machine polls the ring detector here with a
                     # direct `in al, 0x14` at 0x70fb4 and 0x70fc1. An idle
@@ -1657,6 +1736,10 @@ class CourierMachine:
                         self._external_interrupt_pending, software=False
                     )
                     self._external_interrupt_pending = None
+                    continue
+                if self._int0_pending is not None:
+                    begin = dispatch_interrupt(self._int0_pending, software=False)
+                    self._int0_pending = None
                     continue
                 if self.uart is not None and self.uart.pending:
                     begin = dispatch_interrupt(
