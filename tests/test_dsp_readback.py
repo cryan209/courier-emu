@@ -97,3 +97,53 @@ def test_an_arbitrary_program_address_reads_back_through_the_ports(target: int) 
         assert [core.io(port) for port in PORTS] == fixture[target : target + 4]
     finally:
         core.close()
+
+# The e732 loop, the second of the two readers. Its index and result cells both
+# sit at data page 7 in ordinary RAM, and its program address is unscaled.
+LOOP_READER = 0xE732
+LOOP_BASE = 0xE870
+LOOP_PAGE = 7
+LOOP_INDEX_CELL = LOOP_PAGE * 128 + 0x66   # 03e6
+LOOP_RESULT_CELL = LOOP_PAGE * 128 + 0x50  # 03d0
+
+
+@pytest.mark.skipif(not CAPTURE_ROM.exists(), reason="board ROM capture not present")
+def test_the_loop_reader_has_the_expected_shape() -> None:
+    words = payload_words(CourierRom.load(CAPTURE_ROM))
+    base = 0x8000
+    assert words[LOOP_READER - base] == 0x6966          # lacl @66
+    assert words[LOOP_READER + 1 - base] == 0xBF90      # add  #long
+    assert words[LOOP_READER + 2 - base] == LOOP_BASE   #      e870
+    assert words[LOOP_READER + 3 - base] == 0xA650      # tblr @50
+
+
+@pytest.mark.skipif(not CAPTURE_ROM.exists(), reason="board ROM capture not present")
+@pytest.mark.parametrize("target", (0x0000, 0x0100, 0x0800, 0x0EEE, 0x0FFF))
+def test_the_loop_reader_fetches_a_chosen_program_word(target: int) -> None:
+    """One entry of the loop reads the address its index cell selects.
+
+    The loop is entered at the read itself rather than at the initialiser
+    above it, which is what a host write to the index cell would have to
+    achieve: the initialiser sets the index to zero and each iteration
+    increments it, so a supplied value only survives for one read. That
+    timing is the open question this cannot settle - what it settles is that
+    the address is the cell's to choose, across the bank and unscaled.
+    """
+    from courier_emu.dsp import NativeC5x
+
+    rom = CourierRom.load(CAPTURE_ROM)
+    core = NativeC5x(rom)
+    try:
+        fixture = [(address ^ 0x5A5A) & 0xFFFF for address in range(ROM_WORDS)]
+        # ldp #7 ; b e732
+        fixture[:3] = [0xBC00 | LOOP_PAGE, 0x7980, LOOP_READER]
+        core.load_rom(b"".join(struct.pack("<H", word) for word in fixture), 0)
+        core.set_mpmc_pin(0)
+
+        core.set_data(LOOP_INDEX_CELL, (target - LOOP_BASE) & 0xFFFF)
+        core.set_pc(0)
+        core.step(6)
+
+        assert core.data(LOOP_RESULT_CELL) == fixture[target]
+    finally:
+        core.close()

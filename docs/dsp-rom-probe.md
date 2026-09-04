@@ -1347,12 +1347,29 @@ b4f9  lacl    @50
 b4fa  call    83c8, *         ; the word read above
 ```
 
-That is the whole path in resident code, with both ends addressable: write the
-index to data `03e6`, the datapump table-reads `e870 + index` into data `03d0`,
-and `03d0` is reported to the host under tag `8021` through the queue the
-supervisor already drains at CPU ports `58`-`5e`. Nothing has to be injected,
-the DSP is not reset, and every CPU-side register involved is one `ATGLK2I` and
-`ATGLK2O` can reach.
+That looked like the whole path in resident code. **Driving it in the emulator
+establishes only half of it, and the claim above is withdrawn.**
+
+The read half holds. `tests/test_dsp_readback.py` enters the loop at `e732`
+with page 7 selected and an index written to `03e6`, and the fixture word at
+`e870 + index` appears in `03d0`, for addresses across the bank. The address is
+the cell's to choose, unscaled.
+
+The send half does not compose. Driving the resident enqueue with the tag and
+then `@50` puts the tag in the ring and advances the write pointer twice, but
+the second push carries zero: after the first call the data page is not the one
+static analysis predicted, so `lacl @50` does not read `03d0`. Single-stepping
+shows the page entering `83c8` as 7 and leaving its `lst st0, @7d` as 3.
+
+Which of two things that is has not been determined. It may be a property of
+`83c8` - the C5x `sst` and `lst` address page zero regardless of the current
+page, so the routine's callers may be required to enter it with a page whose
+`@50` is not `03d0` at all. Or it may be that the modelled core does not round
+trip a status word through `sst` and `lst`, in which case it is an emulator
+defect that would corrupt the page for every firmware path through this queue,
+and worth finding for its own sake. Either way, the nearest preceding `ldp`
+is not sound evidence for the page in effect at `b4f9`, and the chain is not
+established end to end.
 
 Three of the four candidate sites do not work. `a484` is not an instruction at
 all - it is the `a665` immediate of the `splk` at `a483`, which the opcode scan
@@ -1364,11 +1381,14 @@ more. Only `e735` has a freely chosen index.
 
 - Whether the mailbox writes data memory on a board, as the core models it.
   Everything above rests on that.
+- Whether the read result reaches the host at all, per the withdrawal above.
+  The read half is verified; nothing yet carries `03d0` up the queue.
+- Whether the modelled core round trips a status word through `sst` and `lst`,
+  which decides whether the page behaviour above is firmware or emulator.
 - Reachability and timing. The `e732` loop rewrites its own index every
   iteration and runs seventeen times, so a host write lands for one read before
   being overwritten, and the loop runs when the datapump reaches it rather than
-  on demand. The read at `e735` and the send at `b4f2` are also in different
-  functions, so `03d0` has to survive between them.
+  on demand.
 - Whether the C5x optional ROM protection permits a table read of on-chip ROM by
   code executing from external memory. TI documents this in
   [SPRU056D, section 8.2.4](https://www.ti.com/lit/pdf/spru056). This one fails
