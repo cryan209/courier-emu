@@ -15,41 +15,96 @@ our DIL, never sends CPt" blocker — see `courier-retrains-after-dil` memory).
 | Product | **USRobotics Courier V.Everything** (banner at file `0x263B7`) |
 | Type | **SV = Supervisor** image, SDL/XMODEM-downloadable (`.XMD`) |
 
-## Processors (confirmed by the modem's own `ATUSR` easter egg)
+## Processors
+
+Supervisor CPU confirmed by the modem's own `ATUSR` easter egg; the DSP part
+number is corrected from the code, not the string — see below.
 
 ```
 INT80188 Modem Functions      -> supervisor CPU = Intel 80188 (16-bit x86)
-TMS32025 DSP Functions         -> datapump DSP  = TI TMS320C25 (16-bit fixed-point)
+TMS32025 DSP Functions         -> datapump DSP  = TI TMS320C5x (16-bit fixed-point)
 Copyright (c) 1988..1992 USRobotics
 ```
 
-So `SV25.XMD` (minus the 0x80 header) is **exactly 0x80000 = 512 KB = the full
-flash** — it contains BOTH the 80188 supervisor AND the TMS320C25 datapump.
+The `TMS32025` credit string is **not** the part number of the fitted DSP — it is
+a 1988–1992 copyright banner that outlived the hardware it was written for. The
+code in flash is **C5x**, not C25. Corrected 2026-09-05; before that this file
+took the string at face value. Evidence: the DSP init at flash `0x29080` is
+`SPLK #ffff,@57`, and `SPLK` does not exist on a C25 — it is a C5x addition. It
+is not a one-off: a little-endian sweep of the whole datapump decodes 1,824
+`SPLK`, 913 `XC`, 884 `RETCD`, 761 `LAMM`, 639 `SAMM`, 406 `BSAR`, 307 `SACB`
+and the delayed-branch forms `BD`/`CALLD`/`CCD`/`BCNDD` — none of which a C25 can
+encode. This matches the independent conclusion in
+[the DSP ROM probe notes](docs/dsp-rom-probe.md), which reached C5x from the same
+init sequence. It does not pin the exact C5x variant (C50/C51/C52).
+
+So `SV25.XMD` (minus the 0x80 header) is **exactly 0x80000 = 512 KB**, the size of
+the full flash, and it contains BOTH the 80188 supervisor AND the TMS320C5x
+datapump.
+
+**But an `.XMD` payload is not a byte-aligned copy of flash**, and this file
+previously assumed it was (corrected 2026-09-05). Measured: the code regions of
+`IDSDL302.XMD` and `IDSDL302.ROM` — same firmware name — are neither equal (6.5%)
+nor complements (3.8%). `.XMD` code entropy is 7.84–7.85 against 7.13 for the
+ROM, and a byte scan finds 303–353 printable strings in the first `0x29000`
+against 851 in the ROM, so the `.XMD` code payload is **transformed in some way
+not yet identified**. The x86/DSP boundary detector puts `SV25.XMD` at `0x2a2c0`
+(decoding to nothing resembling the init sequence) and finds no boundary at all
+in `IDSDL302.XMD`. Only the fill regions line up, as a straight complement:
+`0x44000–0x7C000` is 97.9% `ROM_byte == XMD_byte ^ 0xFF`. **Do not read `.XMD`
+offsets as flash offsets** until that transform is worked out.
 
 ## Image map
+
+Offsets below describe **flash as read from the device** (`IDSDL302.ROM` and the
+board captures in `artifacts/`), not `.XMD` offsets — see the caveat under
+[Processors](#processors) about why the two do not align.
 
 | file range | ~size | contents |
 |---|---|---|
 | `0x00000–0x00080` | 128 B | header: signature/checksum + `NHCFG` tag + `0x4A` fill |
-| `0x00000–0x29800` | ~166 KB | **Intel 80188 supervisor** (x86-16 byte code) + string/resource tables |
+| `0x00000–0x29080` | ~164 KB | **Intel 80188 supervisor** (x86-16 byte code) + string/resource tables |
 | `0x08000–0x0C000` | ~16 KB | word-structured pockets (DSP tables / small overlay) |
-| `0x29800–0x44000` | ~106 KB | **TMS320C25 DSP datapump** (16-bit words: code + tables + overlays) |
-| `0x44000–0x7C000` | ~224 KB | `0x00` fill (unused) |
+| `0x29080–0x43700` | ~106 KB | **TMS320C5x DSP datapump** (16-bit words: code + tables + overlays) |
+| `0x44000–0x7C000` | ~224 KB | **`0xFF` fill** (unused, erased flash) |
 | `0x7C000–0x7E000` | ~8 KB | DSP coefficient table (int32, ~-774 default taps) |
 
 Boundary is sharp: even/odd byte-distribution divergence (a word-vs-byte-code
-discriminator) is ~0.4 in the 80188 region and jumps to **0.68–0.79** at exactly
-`0x29800`. The C25 words are **big-endian** (high byte first). The DSP `B`/`CALL`
-(`FF80`/`FE80`) targets are consistent 16-bit code addresses; several exceed the
-region size, so the datapump is built as **multiple overlays** the supervisor
-swaps in per phase (V.34 startup / V.90 / command). **The DIL-analysis and
-constellation-design code — the logic that decides to send CP vs. abort to
-retrain — is TMS320C25 code in `0x29800–0x44000`.**
+discriminator) is ~0.4 in the 80188 region and jumps sharply at the boundary. That
+boundary is at **`0x29080`**, not `0x29800` as this file said before 2026-09-05 —
+an error of 0x780 bytes (960 words). Measured by C5x opcode-byte density in 64-byte
+steps, it sits at `0x29080` in both `IDSDL302.ROM` and the 7.3.14 board capture,
+and at `0x29140` in the 7.4.16 capture (the supervisor grew 0xC0 bytes and pushed
+the datapump later), so it is **per-image and must be re-measured, not assumed**.
+`0x29080` is also where the documented `LDP #0; SPLK #ffff,@57; SETC INTM` init
+sequence begins; `0x29800` lands mid-stream, 960 words into the datapump.
+
+The DSP words are **little-endian** (low byte first) — corrected
+2026-09-05; this file previously claimed big-endian, and every conclusion that
+rested on that reading is retracted below. Decisive evidence: the DSP
+initialization at flash `0x29080` reads, as little-endian C5x,
+`bc00 / ae57 ffff / be41` = `LDP #0; SPLK #ffff,@57; SETC INTM`, matching the
+sequence recorded in [the DSP ROM probe notes](docs/dsp-rom-probe.md). Big-endian
+yields `lar ar0, @3c` and garbage after. The old supporting claim — that
+big-endian `B`/`CALL` (`FF80`/`FE80`) targets looked like sane code addresses —
+does not survive counting: across the whole `0x29080–0x43700` region the aligned
+byte pair `ff 80` occurs **once** and `fe 80` **never**, so it was never evidence
+either way. The **multiple overlays** conclusion does stand, on independent
+grounds: the datapump is far larger than the 64K word program space, and a
+little-endian C5x disassembly of the DSP 3.1.2 tail at `0x41280` branches
+internally around a base near `0xdf70`, not linearly from the `0x8000` kernel.
+
+**The DIL-analysis and constellation-design code — the logic that decides to
+send CP vs. abort to retrain — is DSP code in `0x29080–0x43700`.**
 
 ## Format — NOT encrypted, NOT compressed
 
 Initial entropy (~7.8) and poor gzip ratio (~83%) *looked* like compression, but
-that's a red herring: the payload is **plaintext, uncompressed** code. The 80188
+that's a red herring for the flash image: it is **plaintext, uncompressed** code.
+(Note the ~7.8 figure is an `.XMD` measurement; flash itself measures 7.13 over
+the same x86 window. The conclusion in this section is established by the
+disassembly below, on flash, and stands — but it says nothing about `.XMD`, whose
+higher entropy is now believed to be a real transform. See above.) The 80188
 half is 16-bit x86; the high entropy comes from dense 5-byte far-calls
 (`9A seg:off`) interleaved with tables, not a transform. Disassembly heuristics
 (branch coherence) can't tell x86 code from data — 16-bit x86 is so dense that
@@ -70,9 +125,15 @@ Proof — disassembly at the banner-print site (file `0x263AF`):
 ### Layout
 - `0x00000–0x00080` — 8-byte signature/checksum (`b7 f0 b2 fd d8 ec bc bd`) + `NHCFG` tag + `0x4A` fill
 - `0x00080–0x44000` — active code + data + DSP tables (bank-switched x86)
-- `0x44000–0x7C000` — `0x00` fill (unused)
+- `0x44000–0x7C000` — **`0xFF` fill** (unused, erased flash)
 - `0x7C000–0x7E000` — DSP coefficient table (see below)
 - tail — mostly `0xFF`
+
+The fill byte was recorded as `0x00` here before 2026-09-05. That reading came
+from the `.XMD` files, where it is correct; **flash as read from the device is
+`0xFF`** — 100.0% of `0x44000–0x7C000` in the 7.3.14 board capture, 97.9% in
+`IDSDL302.ROM`. The distinction matters: `0xFF` is erased flash that was never
+programmed, `0x00` would be deliberately written zeros.
 
 ### Quirks
 - **Bank switching**: a 512 KB ROM can't fit one 64 KB segment. Near calls (`E8`)
@@ -370,13 +431,14 @@ fixed-point constants loaded into the datapump DSP (default/init taps).
 
 - **Supervisor**: Intel 80188 (16-bit x86). Uncompressed, plaintext, disassemblable
   as x86-16 — handles AT/S-registers, protocol sequencing, status/diagnostic
-  displays, and DSP overlay loading. Occupies `0x0–0x29800`.
-- **DSP datapump**: TI TMS320C25, big-endian 16-bit words, at `0x29800–0x44000`
+  displays, and DSP overlay loading. Occupies `0x0–0x29080` (`0x29140` in 7.4.16).
+- **DSP datapump**: TI TMS320C5x, **little-endian** 16-bit words, at `0x29080–0x43700`
   (~106 KB) plus tables at `0x08000–0x0C000` and `0x7C000`. Confirmed executable
-  (sane `B`/`CALL` targets), organized as multiple overlays. **This is where DIL /
-  constellation / retrain logic lives.** capstone has no C2x support — needs a
-  TMS320C2x disassembler (hand-rolled Python, or IDA's TMS320C2x processor module,
-  or a Ghidra C2x SLEIGH module).
+  (the init block decodes cleanly and 95% of its branch targets land in
+  `0x8000–0x8400`), organized as multiple overlays. **This is where DIL /
+  constellation / retrain logic lives.** capstone has no C5x support — use
+  [`tools/c5x_disasm.py`](tools/c5x_disasm.py) (in-repo, MAME-derived), or IDA's
+  TMS320C5x processor module.
 
 ### DSP-supervisor mailbox/status handoff
 
@@ -699,7 +761,11 @@ resident/overlay map, but their recovery decode conclusions are superseded.
 
 Tooling built and working:
 - **`c25dis.py`** (scratchpad) — faithful port of MAME's TMS320C25 disassembler
-  (Tony La Porta table). Big-endian words. Verified correct.
+  (Tony La Porta table). **Wrong on two counts: the instruction set is C5x, not
+  C25, and it was fed big-endian words**; the "verified correct" note referred to
+  the table port, not to the instruction set or the byte order. Use [`tools/c5x_disasm.py`](tools/c5x_disasm.py) with little-endian words
+  instead — it decodes the `0x29080` init block with zero undecoded words and 95%
+  of its branch targets inside `0x8000–0x8400`.
 - x86-16 **Capstone** disassembly installed locally under
   `/private/tmp/capstone-py`, plus recursive-descent from the confirmed banner
   code — follows only real control flow (avoids the "x86 decodes anything" trap).
@@ -754,7 +820,7 @@ to change the visible code/data mapping before it reaches the resident body.
   `[0x50]`/`[0x54]` scheduler slots in resident RAM or a banked overlay. The first
   useful emulator would feed bytes through the input interrupt path, stub
   `SS:[0xFF76]` / `SS:[0xFF78]` / `SS:[0xFF02]`, and trap output-result routines.
-- **Full modem emulation is a larger project.** That means 80188 + TMS320C25,
+- **Full modem emulation is a larger project.** That means 80188 + TMS320C5x,
   banked flash/RAM, DSP program/data overlays, serial/UART, DAA/line-side
   hardware, and timing-sensitive mailbox behavior. It is possible, but it is not
   the shortest path to interop diagnostics.
@@ -1699,21 +1765,30 @@ DIL-correlation machinery. The `mac` coefficient tables (e.g. file `0x320A0` =
 prog `0x4450`) hold 182 large-amplitude signed values — consistent with **DIL /
 probing reference sequences**, a strong candidate for the DIL-correlation input.
 
-**What automation can't do here** (verified, don't re-attempt):
-- Pin the DSP load/base address. `file = 0x29800 + 2·prog` is only a *hypothesis*:
+**What automation can't do here** — but note this block was written against the
+**wrong (big-endian) byte order**, so its "verified, don't re-attempt" force is
+gone; the findings below need re-deriving little-endian before they are trusted:
+- Pin the DSP load/base address. `file = 0x29080 + 2·prog` is only a *hypothesis*:
   it gave locally-plausible hits, but `prog 0x0000` isn't a reset branch, and
   recursive-descent produces identical floods under correct and wrong bases
-  (~46K insns, 7.9% invalid, 2 rets either way). C25 decodes arbitrary bytes, so
-  code-vs-data and base cannot be resolved statistically.
+  (~46K insns, 7.9% invalid, 2 rets either way). C5x decodes arbitrary bytes, so
+  code-vs-data and base cannot be resolved statistically. Re-run little-endian,
+  base detection is no longer hopeless: scoring candidate bases on branch targets
+  that land both in-region *and* on an instruction boundary gave a distinct peak
+  for the DSP 3.1.2 tail (`0xdf70`, 71.5%, next-best 65.3%). That is an inference,
+  not a proof — no overlay descriptor table confirming it has been found in the
+  x86 half.
 - Isolate the specific DIL/constellation-design routine. Needs a person who can
   recognise routine boundaries, coefficient tables, and algorithm shape.
 
-**Recommendation:** load `SV25.XMD` into **IDA** (has a TMS320C2x processor
-module) or Ghidra, region `0x29800–0x44000`, big-endian words, and drive it
+**Recommendation:** load `SV25.XMD` into **IDA** (has a TMS320C5x processor
+module) or Ghidra, region `0x29080–0x43700`, **little-endian** words, and drive it
 manually — seed from the FIR bank at `0x040F98` and the reference tables at prog
-`0x4450/0x5450`. Everything above (region, endianness, verified code site,
-candidate DIL tables, working `c25dis.py`) is the head-start. Alternatively, a
-live DSP dump from the modem sidesteps the base/overlay problem entirely.
+`0x4450/0x5450`. The region and the (now corrected) endianness are the reliable
+part of the head-start; the verified code site, candidate DIL tables and
+`c25dis.py` output all came from big-endian decoding and must be re-derived.
+Alternatively, a live DSP dump from the modem sidesteps the base/overlay problem
+entirely.
 
 ## The supervisor's time base is not driven
 
@@ -2172,7 +2247,7 @@ Two defects in the C52 core were found by following the serial path:
    static bank-mapping problem. Worth probing what debug AT commands this firmware
    supports (there are undocumented USR ones).
 2. **Interactive disassembler + human loop**: load the flash into IDA/Ghidra (IDA
-   has a TMS320C2x module) and resolve the boot/bank config manually, starting from
+   has a TMS320C5x module) and resolve the boot/bank config manually, starting from
    the verified banner anchor and the port `0x19/0x3E` I/O. This is patient,
    multi-session RE — not automatable here because of the decode-anything problem.
 3. **Mine the DSP data tables** (tractable now): the datapump region is

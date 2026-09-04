@@ -682,7 +682,7 @@ The output directory must be new. It writes `sites.json` (every accepted
 instruction site), `ports.json` (per-port access counts and site lists) and
 `manifest.json`.
 
-A linear sweep of a 512 KiB image desynchronizes inside the big-endian datapump
+A linear sweep of a 512 KiB image desynchronizes inside the little-endian datapump
 and the coefficient table, so the scanner accepts an `IN`/`OUT` opcode only when
 at least four disassemblies started at earlier offsets converge on it, and it
 scans only `0x00000..0x29800`, `0x44000..0x7c000` and `0x7e000..0x80000`. Ports
@@ -913,8 +913,8 @@ static inspection alone, so the scan cannot be called complete for the bank.
 
 Across the whole image, 235 byte pairs look like an immediate `IN`/`OUT` at a
 port in `0x60`–`0x7f`. Of those, 26 are the genuine `0x60`/`0x62` reads in the
-`01fe0` state machine; most of the rest lie inside `0x29800..0x44000`, which is
-big-endian C5x datapump, not x86 code. Fifty-one fall in x86 regions, eight
+`01fe0` state machine; most of the rest lie inside the datapump region, which is
+little-endian C5x code, not x86. Fifty-one fall in x86 regions, eight
 survive a six-vote boundary test, and **all eight are refuted by their raw
 bytes**:
 
