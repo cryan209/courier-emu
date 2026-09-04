@@ -1966,6 +1966,69 @@ delay slots (as the probe notes themselves record), so some count immediates rea
 a word off. The addressing is what is confirmed here, not each count — the counts
 are pinned by the emulator run in the probe notes.
 
+### The dial-digit handoff
+
+Traced 2026-09-05, and the answer has two halves that must not be confused.
+
+**In the emulator, digits do not touch the mailbox.** A differential run settles
+it: `ATDT111` and `ATDT999` on `main211.xmf` produce **byte-identical** mailbox
+streams - 1628 messages, same seven tags, same counts, same arguments, same
+order - while the line audio correctly differs, 451 windows detecting `1` against
+452 detecting `9`. The tap is working; the digits are simply not on that path.
+The cause is known and already recorded elsewhere in this file: `begin_dialing`
+in `courier_emu/bridge.py` calls `core.set_dtmf_digits`, handing the digits
+straight to the C52 and bypassing the supervisor's own dial code. That is the
+board-side model standing in for the unrecovered handoff, so this result says
+nothing about real firmware - it only proves the model short-circuits the path.
+
+What the mailbox carries during dialing is a **periodic service exchange**: per
+cycle, three of `{0x01, 0x0f, 0x84}` and one of `{0x82, 0x83, 0x67}`, repeated
+about 135 times. A plain `AT` control run emits the same seven tags with the same
+arguments and only 12 messages, so the cycle is not dial-specific either.
+
+**Statically, the real handoff looks like mailbox commands `0x20`/`0x21`.** In
+the 7.4.16 capture:
+
+| file | role |
+|---|---|
+| `0x22250` | dial-mode entry A: `[0xd74] = 0`, `[0x3bd5] = 8` |
+| `0x22254` | dial-mode entry B: `[0xd74] = 2`, `[0x3bd5] = 0` |
+| `0x21f49` | emitter reached from A |
+| `0x21fa0` | emitter reached from B |
+
+Both emitters run the same selector, so the mode cell picks the command:
+
+```asm
+mov  ax, 0x20
+test byte [0xd74], 2
+jne  .send
+mov  ax, 0x21          ; mode 0 -> command 0x21, mode 2 -> command 0x20
+.send:
+mov  bx, cs:[si]       ; per-call parameter
+mov  [0x2bc], bl
+mov  [0x2b4], bl
+lcall 8f46:01e4        ; the three-word {0xff00, tag, arg} sender
+```
+
+The two entries are called from four sites in the dial code in segment `0x9efe`
+- `0x20f14`, `0x20f70` (entry A) and `0x20fa5`, `0x213d5` (entry B) - each
+passing a far callback pointer (`mov dx, cs` with `si = 0x1be` or `di = 0x24f`;
+both offsets are code, not tables) and a selector in `ah`. `[0xd74]` is written
+with an immediate in only three places: those two entries and `0x0b80f`.
+
+**This is a candidate, not a proof.** What is established is that `0x20`/`0x21`
+are the per-dial-mode DSP commands on the dial path, and that neither appears in
+any emulator run - the tap saw only `0x01`, `0x0f`, `0x67`, `0x7d`, `0x82`,
+`0x83`, `0x84`. Whether `0x20`/`0x21` carry a digit per message, and what the
+`cs:[si]` parameter is, needs the path executed. The way to settle it is to stop
+`begin_dialing` short-circuiting and see whether the firmware reaches `0x21f7f`
+and what argument it sends - which is also exactly what would let the emulator
+generate DTMF from firmware rather than from the model.
+
+Note tags `0x82`, `0x83` and `0x84` exceed the DSP dispatcher's `0x7f` bound, so
+they are not dispatch tags and their meaning is unaccounted for. They are the
+only unexplained traffic in the service cycle.
+
 ### Two transfer engines
 
 Cold boot and runtime swap use different hardware paths:
