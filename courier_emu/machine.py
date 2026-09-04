@@ -76,6 +76,7 @@ FRAME_INSTRUCTIONS = 11_110
 # How long a character sits on the wire before the receiver takes it. Long
 # enough that the frame service sees the line low at least once.
 START_BIT_INSTRUCTIONS = 32_768
+RX_BIT_INSTRUCTIONS = 150
 # When the harness's terminal raises its handshake. Long enough after reset
 # that the ROM's callback chain has already sampled the line unasserted.
 DTE_READY_INSTRUCTIONS = 30_000_000
@@ -298,6 +299,7 @@ class CourierMachine:
         self._int0_pending: int | None = None
         self._last_frame = 0
         self._rx_started_at = 0
+        self._rx_edge_at = 0
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -1201,6 +1203,17 @@ class CourierMachine:
                 elif _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                     self._timer_irq_requested = True
                     _uc.emu_stop()
+            if (
+                self.uart is not None
+                and (self.uart.holding or self.serial_rx)
+                and self._int1_pending is None
+                and self.instructions >= self._rx_edge_at
+                and self.timers.controller.enabled("int1")
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+            ):
+                self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
+                self._int1_pending = INT1_VECTOR
+                _uc.emu_stop()
             if self.emulate_interrupts and not self.instructions % TIMER_POLL_INSTRUCTIONS:
                 self.timers.tick(self.instructions)
                 interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
@@ -1246,6 +1259,7 @@ class CourierMachine:
                     if not self.uart.holding:
                         self.uart.holding = True
                         self._rx_started_at = self.instructions
+                        self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
                     elif self.instructions - self._rx_started_at >= START_BIT_INSTRUCTIONS:
                         self.uart.holding = False
                         self.uart.deliver(self.serial_rx.popleft())

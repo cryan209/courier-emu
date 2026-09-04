@@ -110,9 +110,22 @@ class EbSerial:
             self.baud_count = value
         elif address == S0TBUF:
             self.transmitted += 1
-            self.pending.append(TRANSMIT_VECTOR)
+            self._request(TRANSMIT_VECTOR)
             return value & 0xFF
         return None
+
+    def _request(self, vector: int) -> None:
+        """Latch an interrupt request, once.
+
+        Each direction has one request latch on the part, not a queue. Letting
+        them stack put the banner's sixty-one transmit interrupts in front of
+        everything else, and the run loop dispatches one source per iteration:
+        the receive line's edge waited about sixty thousand instructions
+        behind them, by which time the rate measurement it carries is meanin-
+        gless.
+        """
+        if vector not in self.pending:
+            self.pending.append(vector)
 
     def line_idle(self) -> bool:
         """Whether the DTE handshake line is still at its unasserted level.
@@ -139,7 +152,7 @@ class EbSerial:
         self.receive_holding = byte & 0xFF
         self.receive_ready = True
         self.received += 1
-        self.pending.append(RECEIVE_VECTOR)
+        self._request(RECEIVE_VECTOR)
 
     def status(self) -> dict[str, Any]:
         return {
