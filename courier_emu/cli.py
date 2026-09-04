@@ -12,6 +12,7 @@ import sys
 from .parameters import FEATURE_BITS, ParameterSector, features_value
 from .codec import DAA_REVISION
 from .daa import RING_OFF_MS, RING_ON_MS, RING_START_MS
+from .exchange import EXCHANGE_OUTCOMES
 from .line import MAX_SOCKET_PATH
 from .panel import (
     BOARD_CAPABILITY,
@@ -131,7 +132,15 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--uart-port", str(port)))
     if args.real_delays:
         command.append("--real-delays")
-    if args.with_dsp or args.daa_line or args.sip_server or args.line_link or daa_codec or args.force_online:
+    if (
+        args.with_dsp
+        or args.daa_line
+        or args.sip_server
+        or args.line_link
+        or args.exchange
+        or daa_codec
+        or args.force_online
+    ):
         command.append("--with-dsp")
     if args.force_online:
         command.append("--force-online")
@@ -151,8 +160,19 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     daa_line = args.daa_line or ("dial-tone" if args.sip_server else None)
     if daa_line is None and args.line_link:
         daa_line = "disconnected"
+    # An exchange needs a DAA too, and starts it from a line with nothing on
+    # it: what the loop carries is the exchange's to decide from there.
+    if daa_line is None and args.exchange:
+        daa_line = "quiet"
     if daa_line:
         command.extend(("--daa-line", daa_line))
+    if args.exchange:
+        command.append("--exchange")
+        for entry in args.exchange_number:
+            command.extend(("--exchange-number", entry))
+        command.extend(("--exchange-outcome", args.exchange_outcome))
+        command.extend(("--exchange-answer-after", str(args.exchange_answer_after)))
+        command.extend(("--exchange-answer-tone", str(args.exchange_answer_tone)))
     if args.sip_server:
         command.extend(("--sip-server", args.sip_server))
         command.extend(("--sip-username", args.sip_username))
@@ -569,6 +589,44 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="share a two-wire line with another instance over this UNIX socket; "
         "implies --with-dsp and supersedes --daa-line",
+    )
+    run.add_argument(
+        "--exchange",
+        action="store_true",
+        help="put a modeled central office on the line instead of a fixed DAA "
+        "state: it plays dial tone, decodes the digits the modem dials into "
+        "the line, and returns ringback, busy or answer tone. Implies "
+        "--with-dsp",
+    )
+    run.add_argument(
+        "--exchange-number",
+        action="append",
+        default=[],
+        metavar="NUMBER=OUTCOME",
+        help="route one dialed number to " + ", ".join(EXCHANGE_OUTCOMES)
+        + "; repeatable",
+    )
+    run.add_argument(
+        "--exchange-outcome",
+        choices=EXCHANGE_OUTCOMES,
+        default="answer",
+        help="what the exchange does with a number it has no route for "
+        "(default answer)",
+    )
+    run.add_argument(
+        "--exchange-answer-after",
+        type=_number,
+        default=2,
+        metavar="RINGS",
+        help="ringback cycles before the far end picks up (default 2)",
+    )
+    run.add_argument(
+        "--exchange-answer-tone",
+        type=_number,
+        default=3_000,
+        metavar="MS",
+        help="how long the answered call carries 2100 Hz answer tone before "
+        "the exchange hands it to the far end (default 3000; 0 skips it)",
     )
     run.add_argument(
         "--line-listen",

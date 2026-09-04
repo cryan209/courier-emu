@@ -8,6 +8,7 @@ from typing import Any
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
+from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import RateConverter, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
@@ -133,6 +134,7 @@ class BridgeStatus:
     sip: dict[str, str | int | bool | list[str]] | None
     line: dict[str, Any] | None = None
     codec: dict[str, Any] | None = None
+    exchange: dict[str, Any] | None = None
 
 
 class CourierDspBridge:
@@ -149,6 +151,7 @@ class CourierDspBridge:
         line: LineLink | None = None,
         codec: CodecBringUp | None = None,
         ring: RingSource | None = None,
+        exchange: LineExchange | None = None,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -228,7 +231,11 @@ class CourierDspBridge:
         self.line = line
         self.codec = codec
         self.ring = ring
+        self.exchange = exchange
         self._instructions = 0
+        self._exchange_instructions = 0
+        self._exchange_tx_index = 0
+        self._exchange_rx_samples: deque[int] = deque()
         self._codec_instructions = 0
         self._line_instructions = 0
         self._line_tx_index = 0
@@ -540,6 +547,23 @@ class CourierDspBridge:
         self.dial_digits = "".join(ch for ch in dial if ch in "0123456789*#ABCD")
         if self.daa is not None:
             self.daa.seize("originate")
+            if self.exchange is not None:
+                # The exchange decides what the seizure hears; setting the
+                # line state here would be the harness answering its own
+                # question. The line does keep running while the supervisor
+                # parses ATD, though, so make the five-frame detector window
+                # available before the command-mode timeout expires - out of
+                # the exchange's own audio.
+                samples = self.exchange.service(
+                    True, [], DAA_FRAME_SAMPLES * 5
+                )
+                self.daa.line_state = self.exchange.line_state
+                self.daa.observe(len(samples))
+                if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
+                    self.core.queue_codec_rx(samples)
+                else:
+                    self.core.queue_serial_rx(samples)
+                return
             if self.line is not None and self.line.connected:
                 # A dedicated line link represents an already-present loop;
                 # the originating side hears central-office dial tone as soon
@@ -606,6 +630,16 @@ class CourierDspBridge:
             or self.daa is None
             or not self.daa.detector_qualified
         ):
+            return
+        if (
+            self.exchange is not None
+            and self.daa.operation in ("originate", "dialing")
+            and not self.exchange.connected
+        ):
+            # With a modeled line there is a call to wait for. The datapump
+            # starts when the exchange has put the two ends through, not when
+            # the line detector debounces - otherwise the modem answers its
+            # own seizure with V.8 and never dials.
             return
         # The supervisor publishes 0xa0 (held and line-enabled).  The ASIC
         # owns the later release to 0x60; it can occur after the detector's
@@ -967,6 +1001,11 @@ class CourierDspBridge:
 
     def clock_x86(self) -> None:
         self._instructions += 1
+        if self.exchange is not None:
+            # The loop and the exchange behind it exist from board reset, the
+            # same as the codec and before any DSP program is downloaded. A
+            # line that only rings once the C52 is up is not a line.
+            self._service_exchange()
         if self.codec is not None:
             # The codec is on the ASIC's own serial bus, not the DSP's, so its
             # bring-up runs from board reset rather than from the download that
@@ -1038,6 +1077,15 @@ class CourierDspBridge:
                         available = min(count, len(self._sip_rx_samples))
                         for index in range(available):
                             samples[index] = self._sip_rx_samples.popleft()
+                    elif self._exchange_rx_samples:
+                        # The exchange is the line: whatever it puts on the
+                        # loop is what the codec hears, tone or far end.
+                        available = min(count, len(self._exchange_rx_samples))
+                        samples = [
+                            self._exchange_rx_samples.popleft()
+                            for _ in range(available)
+                        ]
+                        samples.extend([0] * (count - available))
                     elif self._line_rx_samples:
                         # Use the peer frame as the codec FIFO payload
                         # directly. Mutating a freshly rendered DAA frame
@@ -1049,9 +1097,11 @@ class CourierDspBridge:
                             for _ in range(available)
                         ]
                         samples.extend([0] * (count - available))
-                    elif self.line is not None:
+                    elif self.line is not None or self.exchange is not None:
                         # Do not build a FIFO of synthetic zeroes while the
-                        # peer is still producing its first V.8 frame.
+                        # peer is still producing its first V.8 frame, and
+                        # never let the behavioral DAA's tone stand in for a
+                        # modeled line that has simply not filled yet.
                         samples = []
                     else:
                         samples = self.daa.render(count)
@@ -1075,7 +1125,12 @@ class CourierDspBridge:
                     and self.daa.operation == "originate"
                     and self.daa.dial_tone_qualified
                     and (
-                        self._asic_call_engine_started
+                        # A modeled line dials on its own dial tone. Waiting
+                        # for the ASIC call engine here would deadlock against
+                        # the engine, which now waits for the exchange to put
+                        # the call through.
+                        self.exchange is not None
+                        or self._asic_call_engine_started
                         or self._call_overlay is None
                     )
                 ):
@@ -1114,13 +1169,59 @@ class CourierDspBridge:
         if self.daa is not None:
             part.line_connected = self.daa.line_connected
             part.set_hook(self.daa.off_hook)
-        if self.ring is not None:
+        if self.exchange is not None:
+            # An attached exchange owns the ring cadence; the standalone ring
+            # source is the model for a line with no exchange behind it.
+            present = self.exchange.ringing
+            part.set_ring(present, present)
+        elif self.ring is not None:
             # A 20 Hz ring fits both half cycles inside a 100 ms frame, so a
             # burst shows on both detectors and silence on neither. Resolving
             # RDTP from RDTN would need a frame shorter than the ring period.
             present = self.ring.present(self._instructions)
             part.set_ring(present, present)
         self.codec.service()
+
+    def _service_exchange(self) -> None:
+        """Advance the modeled line by one ASIC frame.
+
+        This is the digital ATA path: the exchange takes the hook state and
+        the datapump's transmit block, and answers with what the loop carries
+        back. Nothing here reads the dialed number out of the firmware - the
+        exchange decodes it from the audio, so the DAA's line state follows a
+        call the firmware actually placed.
+        """
+        self._exchange_instructions += 1
+        if self._exchange_instructions < LINE_FRAME_INSTRUCTIONS:
+            return
+        self._exchange_instructions = 0
+        off_hook = self.daa is not None and self.daa.off_hook
+        samples = self.core.line_tx_samples(self._exchange_tx_index)[:LINE_FRAME_SAMPLES]
+        self._exchange_tx_index += len(samples)
+        incoming = self.exchange.service(off_hook, samples, LINE_FRAME_SAMPLES)
+        if incoming:
+            self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
+            if (
+                (self._call_overlay_active or self._call_resume_pending)
+                and hasattr(self.core, "queue_codec_rx")
+            ):
+                self.core.queue_codec_rx(incoming)
+                self._codec_queue_peak = max(
+                    self._codec_queue_peak, max(abs(sample) for sample in incoming)
+                )
+            else:
+                self._exchange_rx_samples.extend(incoming)
+        self._carrier_probe.extend(incoming)
+        self._observe_carrier_audio()
+        if self.daa is not None:
+            # The DAA reports what the exchange is presenting rather than a
+            # state the harness set for it. Dial tone therefore stays on the
+            # line until the modem's own digits take it off.
+            self.daa.line_state = self.exchange.line_state
+            # The five-hit line detector debounces on samples that arrived,
+            # and with an exchange attached they arrive from the exchange
+            # instead of from the DAA's own generator.
+            self.daa.observe(LINE_FRAME_SAMPLES)
 
     def _service_line(self) -> None:
         """Hand one frame to the far end and take its frame off the line.
@@ -1305,6 +1406,7 @@ class CourierDspBridge:
                 if self.line is not None else None
             ),
             codec=self.codec.status() if self.codec is not None else None,
+            exchange=self.exchange.status() if self.exchange is not None else None,
         )
 
     def save_tx_pcm(self, path: str) -> int:

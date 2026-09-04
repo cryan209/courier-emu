@@ -10,6 +10,7 @@ from .codec import CodecBringUp
 from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
+from .exchange import LineExchange
 from .line import LineLink
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .panel import (
@@ -189,6 +190,7 @@ class CourierMachine:
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
         codec: CodecBringUp | None = None,
+        exchange: LineExchange | None = None,
         int1_after_ms: int | None = None,
         sip: SipSession | None = None,
         line: LineLink | None = None,
@@ -326,6 +328,7 @@ class CourierMachine:
                 line=line,
                 codec=codec,
                 ring=ring,
+                exchange=exchange,
                 batch=dsp_batch,
             )
             if with_dsp

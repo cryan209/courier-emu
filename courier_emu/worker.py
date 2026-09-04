@@ -11,6 +11,7 @@ from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .flash import ParameterFlash
 from .images import load_image
+from .exchange import EXCHANGE_OUTCOMES, LineExchange
 from .line import LineLink
 from .machine import CourierMachine
 from .nvram import CourierNvram
@@ -53,6 +54,11 @@ def main() -> int:
     parser.add_argument("--tick-ms", type=_number, default=None)
     parser.add_argument("--tick-source", default=None)
     parser.add_argument("--int1-after", type=_number)
+    parser.add_argument("--exchange", action="store_true")
+    parser.add_argument("--exchange-number", action="append", default=[])
+    parser.add_argument("--exchange-outcome", choices=EXCHANGE_OUTCOMES, default="answer")
+    parser.add_argument("--exchange-answer-after", type=_number, default=2)
+    parser.add_argument("--exchange-answer-tone", type=_number, default=3_000)
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
     parser.add_argument("--daa-codec", action="store_true")
@@ -113,6 +119,21 @@ def main() -> int:
         line = LineLink(path=args.line_link, listen=args.line_listen)
         line.open()
 
+    exchange = None
+    if args.exchange:
+        directory: dict[str, str] = {}
+        for entry in args.exchange_number:
+            number, separator, outcome = entry.partition("=")
+            if not separator:
+                raise SystemExit(f"invalid exchange route: {entry!r}")
+            directory[number.strip()] = outcome.strip()
+        exchange = LineExchange(
+            directory=directory,
+            default_outcome=args.exchange_outcome,
+            answer_after_rings=args.exchange_answer_after,
+            answer_tone_ms=args.exchange_answer_tone,
+        )
+
     ring = None
     if args.ring_cadence:
         on_text, _, off_text = args.ring_cadence.partition(":")
@@ -165,6 +186,7 @@ def main() -> int:
         tick_source=args.tick_source,
         sip=sip,
         line=line,
+        exchange=exchange,
         force_online=args.force_online,
         dsp_batch=args.dsp_batch,
         console=console,

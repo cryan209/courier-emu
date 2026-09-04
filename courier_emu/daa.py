@@ -148,6 +148,18 @@ class CourierDaa:
         if self.off_hook and state in ("trying", "ringing", "connected", "failed"):
             self.operation = state
 
+    def observe(self, count: int) -> None:
+        """Count samples supplied by a modeled line rather than by `render`.
+
+        The detector debounce is a property of the line having been sampled,
+        not of this class having generated the samples. An exchange or a
+        linked peer feeding the codec directly still has to advance it.
+        """
+        if count <= 0 or not self.detector_present:
+            return
+        self.generated_samples += count
+        self.qualified_samples += count
+
     def render(self, count: int) -> list[int]:
         """Return signed 16-bit samples presented to the Courier line ADC."""
         if count <= 0:

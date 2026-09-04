@@ -925,6 +925,79 @@ returning `OK`. An external unit is therefore likely `--board-id 7`, which also
 changes the product code to the `A` suffixed form (`5608A`/`3368A`). Running
 `ATI` on real hardware settles it.
 
+## A modeled line: the digital ATA
+
+`--exchange` puts a central office on the subscriber loop instead of a fixed
+`--daa-line` state. It is the network side of one line, entirely in the codec
+sample stream - no loop current, no hybrid, no two-wire pair, which is what
+makes it digital rather than an analog terminal adapter. It watches the hook,
+plays the tones the loop would carry, **decodes the dialed number out of the
+audio the modem transmits**, and routes the call:
+
+```sh
+./courier run main211.xmf --exchange \
+  --exchange-number 5551212=answer --at "ATDT5551212" \
+  --instructions 120000000
+```
+
+```json
+"exchange": {
+  "state": "connected", "dialed": "5551212", "digits_decoded": "5551212",
+  "outcome": "answer", "rings_delivered": 2, "calls": 2
+}
+```
+
+Nothing hands it that number. The supervisor qualifies its line detector on the
+exchange's 350+440 Hz dial tone, the C52 puts DTMF on the line, and a Goertzel
+receiver in the exchange reads it back off the transmit stream. That is the
+difference from `--daa-line dial-tone`, which supplies a line state the harness
+chose and removes dial tone as soon as the model decides dialing has started -
+the gap recorded in `courier_firmware_analysis.md` under "What the dial
+sequencer is waiting on".
+
+Routing the same number to `busy` instead stops the call at the tone, with no
+`CONNECT`: `state=busy outcome=busy connected=false`. The firmware does not
+print `BUSY` for it - call-progress tone detection is the DSP's, and no run has
+reached it - so what the exchange proves here is the line, not the report.
+
+The states and what the loop carries in each:
+
+| state | line | leaves on |
+|---|---|---|
+| `idle` | silence, on hook | seizure |
+| `dial-tone` | 350+440 Hz continuous | first digit, or 16 s to reorder |
+| `collecting` | silence | `#`, a directory match, or 4 s interdigit |
+| `routing` | silence, 500 ms | the outcome for the number |
+| `ringback` | 440+480 Hz, 2 s on / 4 s off | answer after N rings |
+| `busy` | 480+620 Hz, 500/500 | hang up |
+| `reorder` | 480+620 Hz, 250/250 | hang up |
+| `answer-tone` | 2100 Hz | 3 s, then connected |
+| `connected` | whatever `peer_audio` supplies, else silence | release |
+| `ringing` | ring cadence toward the modem | the modem going off hook |
+
+`--exchange-number NUMBER=OUTCOME` routes one number to `answer`, `busy`,
+`reorder` or `no-answer`; `--exchange-outcome` sets what an unrouted number
+gets, `--exchange-answer-after` the ringback cycles before pickup, and
+`--exchange-answer-tone` how long 2100 Hz runs before the call is handed on.
+`LineExchange.ring()` offers an incoming call, which drives the codec's ring
+detectors directly rather than through `--ring`.
+
+Two things change in the bridge when an exchange is attached, both of them
+handing a decision back to the line. `arm_dial_tones` no longer sets the DAA's
+line state - the exchange decides what a seizure hears. And the ASIC call
+engine waits for the exchange to put the call through instead of starting on
+the line detector's debounce, because a datapump that starts at seizure emits
+V.8 calling tone over the dial tone and never dials at all. That is what a run
+does without the gate: 1300 Hz for ten seconds and reorder at the timeout.
+
+What the exchange does not model: loop current and its supervision, DTMF from
+anything but the modem's own transmit path, and any far end. A connected call
+is silent unless `peer_audio` is given something to return, so this reaches an
+answered call, not a trained one. Pulse dialing is implemented and tested, but
+only resolves at service blocks well under the 60 ms loop break - the bridge
+services the exchange at the 100 ms ASIC frame, so pulse digits are not
+available there.
+
 ## Two instances on one line
 
 `link` runs two instances sharing a two-wire line over a UNIX socket. Each side

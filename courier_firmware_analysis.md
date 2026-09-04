@@ -3561,6 +3561,46 @@ is required. The new loop diagnostics define the minimum useful capture:
 `ST0/ARP`, all AR registers, ACC/PREG/TREG0, and data around the reported source
 and pair for each of the three loop PCs.
 
+### Replacing the DAA layer with a modeled line
+
+The three-layer stand-in above is now two. `--exchange` attaches a modeled
+central office (`courier_emu/exchange.py`) that runs on the codec sample stream:
+it holds 350+440 Hz dial tone for as long as the loop is seized and undialed,
+decodes DTMF off the DSP's own transmit samples with a Goertzel receiver, and
+returns ringback, busy, reorder or 2100 Hz answer tone according to what was
+dialed. On `main211.xmf` with `ATDT5551212` routed to `answer`:
+
+```
+exchange: dialed=5551212 digits_decoded=5551212 outcome=answer
+          rings_delivered=2 state=connected
+serial:   OK / CONNECT
+```
+
+The middle layer - the DAA faking the line transition - is gone: the DAA's
+`line_state` now follows what the exchange presents, and its five-hit detector
+debounce counts samples the exchange actually delivered (`CourierDaa.observe`).
+The outer two remain. The bridge still parses `ATD` at the DTE level and still
+asks the C52 to emit the digits through `set_dtmf_digits`; what changed is that
+those digits now have to survive the line and be read back off it, and the
+firmware's dial tone is no longer withdrawn by the model at the moment dialing
+starts.
+
+Two orderings had to move for that to run, and both are line-side decisions the
+harness was previously making:
+
+- The ASIC call engine now waits for the exchange to connect the call rather
+  than starting on the detector debounce. Without that gate the datapump starts
+  at seizure and the transmit stream is a flat 1300 Hz V.8 calling tone for ten
+  seconds - the modem never dials, and the exchange correctly times out into
+  reorder. That run is the clearest evidence yet that the datapump entry is the
+  harness's, not the firmware's.
+- Dialing is released on the exchange's dial tone rather than on the call
+  engine having started, which would otherwise deadlock against the gate above.
+
+Still unresolved: the armed callback at `0x5d37f` is not what places this call.
+Reaching it needs the supervisor's own dial code at `0x85000`-`0x87000`, which
+no run has entered.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under
