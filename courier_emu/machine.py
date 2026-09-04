@@ -300,6 +300,7 @@ class CourierMachine:
         self._last_frame = 0
         self._rx_started_at = 0
         self._rx_edge_at = 0
+        self._rom_rx_bit = 0
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -1205,7 +1206,7 @@ class CourierMachine:
                     _uc.emu_stop()
             if (
                 self.uart is not None
-                and (self.uart.holding or self.serial_rx)
+                and self.uart.holding
                 and self._int1_pending is None
                 and self.instructions >= self._rx_edge_at
                 and self.timers.controller.enabled("int1")
@@ -1246,7 +1247,11 @@ class CourierMachine:
                 if (
                     self.uart is not None
                     and not self.uart.pending
-                    and self.uart.receive_enabled
+                    # The ROM deliberately disables the integrated receiver
+                    # while its timer/INT1 autobaud front end watches the raw
+                    # pin. A physical DTE can still put a character on that
+                    # pin; payload runs continue to require the UART enable.
+                    and (self.uart.receive_enabled or self._rom_tick)
                     and self.serial_rx
                     and interrupts_on
                     and self.instructions >= DTE_TYPING_INSTRUCTIONS
@@ -1260,6 +1265,7 @@ class CourierMachine:
                         self.uart.holding = True
                         self._rx_started_at = self.instructions
                         self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
+                        self._rom_rx_bit = 0
                     elif self.instructions - self._rx_started_at >= START_BIT_INSTRUCTIONS:
                         self.uart.holding = False
                         self.uart.deliver(self.serial_rx.popleft())
@@ -1431,6 +1437,15 @@ class CourierMachine:
                 if port in (0x10, 0x12, 0x14) and size == 1:
                     # A closed option switch pulls its latch input bit low.
                     value &= ~self.panel.dip_input(port)
+                if self.uart is not None and port == 0x12 and size == 1:
+                    # The ROM's latch table maps input selector 3 to port
+                    # 0x12. Bit 6 is the active-low DTE DTR input: an
+                    # attached terminal pulls it low, which opens the normal
+                    # receive path instead of installing the discard callback.
+                    if self._dte_asserted():
+                        value &= ~0x40
+                    else:
+                        value |= 0x40
                 if self.panel.board_id is not None and port == 0x14 and size == 1:
                     # The identification scan at 0x5bfc6 reads its sense line
                     # here while holding one drive line low.
@@ -1627,6 +1642,32 @@ class CourierMachine:
                 sampled = bytes(_uc.mem_read(address, size))
                 bit = 0x80 if self.nvram.read_latch() & BIT_DATA else 0x00
                 _uc.mem_write(address, bytes(((sampled[0] & 0x7F) | bit,)) + sampled[1:])
+            if address == 0xFF5A and self.uart is not None:
+                # Port 2 pin 5 is the physical serial receive line sampled by
+                # the ROM's timer ISR during autobaud. It idles at mark/high;
+                # presenting the reset value (low) fabricates an endless
+                # start bit, after which the ROM disables its receiver.
+                sampled = bytes(_uc.mem_read(address, size))
+                bit = 0x00 if self.uart.holding else 0x20
+                if (
+                    self.uart.holding
+                    and self.serial_rx
+                    and current_pc() in (0x9EDF9, 0x9EE35)
+                ):
+                    # Before enabling the 80C186 receiver, this ROM measures
+                    # and assembles the first character through timer 2. Feed
+                    # those eight sampling reads from the same queued byte,
+                    # least-significant bit first, exactly as its RCR loop
+                    # expects. Later characters arrive through S0RBUF.
+                    terminal_value = self.serial_rx[0]
+                    bit = ((terminal_value >> self._rom_rx_bit) & 1) << 5
+                    self._rom_rx_bit += 1
+                    if self._rom_rx_bit == 8:
+                        self.serial_rx.popleft()
+                        self.uart.holding = False
+                        self.uart.received += 1
+                        self._rom_rx_bit = 0
+                _uc.mem_write(address, bytes(((sampled[0] & 0xDF) | bit,)) + sampled[1:])
             if (
                 self.dsp_bridge is not None
                 and getattr(self.dsp_bridge, "_completion_probe", False)
@@ -1894,7 +1935,10 @@ class CourierMachine:
                 f"{address:04x}": int.from_bytes(uc.mem_read(address, 2), "little")
                 for address in (0x0158, 0x027B, 0x027C, 0x0941, 0x094E, 0x094F, 0x0950,
                                 0x1CF0, 0x1CF1, 0x0681, 0x0682, 0x0683,
-                                0x1C77, 0x0283, 0x0285)
+                                0x1C77, 0x0283, 0x0285, 0x026A, 0x0313,
+                                0x031A, 0x0607, 0x0695, 0x0EA7, 0x0B7C,
+                                0x0B7E, 0x0B88, 0x0A96, 0x033E, 0x3424,
+                                0x3CA4, 0x0298)
             },
             panel=self.panel.status(),
             nvram=nvram_result,
