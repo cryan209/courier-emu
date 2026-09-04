@@ -174,11 +174,11 @@ def words(rom: bytes, address: int, count: int) -> tuple[int, ...]:
 
 
 def test_the_dsp_reads_host_messages_from_asic_cells_not_data_memory(rom: bytes) -> None:
-    """`23f0` is below 8000, so the accessor is in the unrecovered mask ROM.
+    """`23f0` is installed program RAM, not part of the C52 ROM window.
 
     The dispatcher polls status cell `ff57`, and only if its low bit is set
     does it fetch the tag from `ff5e` and the value from `ff5f`. Those are
-    high data-space cells reached through a mask-ROM helper, not the ordinary
+    high data-space cells reached through the installed helper, not the ordinary
     data memory the native core's `host_write` pokes.
     """
     assert words(rom, DSP_RECEIVE, 10) == (
@@ -335,7 +335,8 @@ def test_only_032a_feeds_a_reader_and_it_is_clamped_to_six(rom: bytes) -> None:
         0xEF00)             # ret
     # Tag 41 clamps to thirteen against the same six-entry table, so indices
     # 6..12 fetch the following instruction words as routine addresses. Entry 6
-    # is 7a80, which is inside the mask ROM. Nothing may send it.
+    # is 7a80, outside both the downloaded image and the 0000..0fff mask-ROM
+    # window. Its installed contents are unknown, so nothing may send it.
     assert words(rom, word(rom, DISPATCH_TABLE + 0x41), 3) == (0x087A, 0xBA0D, 0xEF8C)
     assert words(rom, 0xC551, 6) == (0xCA5B, 0xCA68, 0xCA75, 0xCA82, 0xCA8F, 0xCA9C)
     assert word(rom, 0xC557) == 0x7A80 and 0x7A80 < DSP_ENTRY

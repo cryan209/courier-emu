@@ -1,9 +1,9 @@
 """Read the DSP's program space through the datapump's own table reader.
 
-The C52's mask ROM below word 8000 is the one part of this modem still
-unrecovered, and the routes to it all needed something the hardware does not
-offer: the ATGLK2 monitor cannot write memory, so a probe kernel cannot be
-placed, and the DSP's reset line is a CPU port pin rather than an I/O port.
+The C52's possible mask ROM at program words 0000..0fff is the one part of this
+modem still unrecovered, and the routes to it all needed something the hardware
+does not offer: the ATGLK2 monitor cannot write memory, so a probe kernel cannot
+be placed, and the DSP's reset line is a CPU port pin rather than an I/O port.
 
 The datapump already in the DSP contains a reader that needs none of that.
 At word 8151 it takes an index in the accumulator, computes a program address

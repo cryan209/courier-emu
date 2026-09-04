@@ -87,7 +87,9 @@ SECOND_QUERY_REPLY_TAG = 0x8069 & 0x7FFF
 # Only 032a feeds a table read at all, and both its writers clamp it below the
 # six-entry jump table it indexes. Tag 41's clamp is thirteen against that same
 # six entries, so values above five fetch instruction words as routine
-# addresses - entry six is 7a80, inside the mask ROM. Never send it.
+# addresses - entry six is 7a80, outside both the downloaded image and the
+# C52's 0000..0fff mask-ROM window. Its installed contents are unknown. Never
+# send it.
 HOST_WRITE_CELLS = {
     0x02: 0xFF62, 0x0F: 0x039D, 0x10: 0x03A6, 0x11: 0x03A6, 0x14: 0x03A6,
     0x17: 0x03A6, 0x19: 0x03AD, 0x1A: 0x0392, 0x1B: 0x03F1, 0x1F: 0x03AE,

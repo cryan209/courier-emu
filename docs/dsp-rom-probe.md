@@ -10,6 +10,72 @@ describes a modified 20.16 MHz release based on the stock 03/13/98 SDL. It adds
 configuration and memory-editing commands. Do not treat the reference ROM as
 an unmodified stock replacement for the user's modem.
 
+## Mask-ROM decision status
+
+The address range matters. A TMS320C52 has a **4K x 16-bit mask-programmable
+ROM at program words `0000..0fff`**. It does not have mask ROM throughout
+`0000..7fff`. The downloaded image starts at `8000`; lower addresses such as
+`23f0`, `2100..2593`, and `7a80` can be external or installed program RAM, but
+cannot be part of the C52 ROM array.
+
+TI's part data gives two independent mask options:
+
+1. Customer contents, including an optional boot loader, can be put in the ROM.
+2. A program-memory protection option can prevent instructions fetched from
+   off-chip memory, DARAM B0, external DMA, and the emulator from accessing
+   on-chip program memory.
+
+That produces three distinct questions rather than one:
+
+| Question | Current answer |
+|---|---|
+| Does a C52 die contain mask-ROM hardware? | Yes: 4K words at `0000..0fff`. The exact package marking still needs to be photographed to make the silicon identification physical rather than instruction-set inference. |
+| Is this unit's ROM programmed with the Courier bootstrap? | Strongly suggested, not yet hardware-proven. The unit accepts and starts a download at `8000` after reset, but an ASIC sequencer writing external DSP program RAM while the core is reset remains an architectural alternative. |
+| Can externally supplied code or JTAG read it? | Unknown until the mask-programmable protection option is tested on this unit. |
+
+### Non-destructive hardware discriminator
+
+The first board measurement should not modify flash or modem configuration:
+
+1. Photograph the DSP top marking and package orientation. Match it against the
+   C52/C52LC PJ or PZ pinout before attaching anything.
+2. Observe `MP/MC` at DSP reset. Low maps the internal ROM; high maps external
+   program memory. The pin is sampled only at reset, while the PMST bit can be
+   changed later by software.
+3. In parallel, observe `PS`, `STRB`, and enough address lines during reset. An
+   external program fetch at address zero supports `MP/MC=1`; no such fetch
+   while the download handshake executes supports internal ROM execution.
+
+Use high-impedance probes and verify the board voltage before connecting a
+debug probe. This establishes mapping without relying on the contents returned
+by an unverified read path.
+
+### Readout decision
+
+If the protection option is **not** programmed, readout is conventional. A
+C5x-compatible emulator can map the ROM by clearing PMST.MP/MC and read program
+`0000..0fff`; alternatively, a diagnostic executing at `8000` can use `TBLR`
+to copy those 4096 words into data memory and send them through the recovered
+mailbox. The existing probe below already performs the essential `TBLR` test
+on `0000..001f`, with known program-memory controls before and after it.
+
+If protection **is** programmed, TI specifies that an instruction fetched from
+off-chip memory reads invalid bus data for an on-chip program operand, and that
+the emulator cannot access on-chip program memory. The downloaded `8000` probe
+and ordinary JTAG dump then both fail by design. Code fetched from the protected
+ROM is the remaining non-invasive avenue: a boot-loader read command, table-read
+gadget, or control-flow flaw would be required. Failing that, recovery becomes
+a fault-injection or invasive-silicon problem rather than a software dump.
+
+The decisive controlled probe therefore compares the same low addresses in
+both mappings: first set PMST.MP/MC=1 and capture the external shadow, then set
+it to 0 and capture the internal window, with known reads from `8000` bracketing
+both. A stable, nonuniform internal sample distinct from the external control
+proves readable ROM. Uniform or bus-like data is not by itself proof of
+protection; it must be repeated and compared with bus traces and the external
+control. The current blocker is physical delivery/control of the probe or a
+C5x-compatible JTAG connection, not the `TBLR` read primitive.
+
 ## Reproducible offline probe
 
 ```sh
@@ -989,11 +1055,12 @@ executes from word `0x8000`, and the mapping above makes it directly
 disassemblable. Reading it out of the DSP would recover a copy of something
 already captured.
 
-What remains unrecovered is narrower than "the DSP": it is the DSP's **internal
-boot ROM**, the mask-programmed code below word `0x8000` that implements the
-reset handshake, accepts this download, verifies the checksum and launches the
-image. That is what the probe kernel's read of program words `0x0000..0x001f`
-was aiming at, and it is the only part a physical readback can add.
+What remains unrecovered is narrower than "the DSP": it is the DSP's possible
+**internal boot ROM**, the mask-programmed code at words `0x0000..0x0fff` that
+implements the reset handshake, accepts this download, verifies the checksum
+and launches the image. That is what the probe kernel's read of program words
+`0x0000..0x001f` was aiming at, and it is the only part a physical readback can
+add.
 
 Two things are open. Only one call to `e47b` exists in the image, covering
 `0x29080..0x368fc`, while the datapump region is usually described as running to
@@ -1244,7 +1311,8 @@ At program word `8151`, inside the payload this repository holds byte for byte:
 It takes an index in the accumulator, reads five consecutive **program** words
 at `816b + 5 * index`, and sends four of them to DSP I/O ports. Five is
 invertible modulo 65536 (`5 * 52429 == 1`), so an index exists for every
-address in the 16-bit program space, the mask ROM below `8000` included.
+address in the 16-bit program space, including the mask-ROM window at
+`0000..0fff` when it is mapped.
 
 Nine sites call it. Eight pass an immediate. The one at `9730` does not:
 
@@ -1771,10 +1839,10 @@ intersection is a single six-entry jump table behind a clamp.
 
 One hazard falls out of it. Tag `41`'s bound of thirteen is looser than the
 six-entry table it indexes, so indices `6..12` fetch the following instruction
-words as routine addresses. Entry six is `7a80`, which is below `8000` - inside
-the mask ROM. A DSP branching there is not a readback, it is an uncontrolled
-jump into unrecovered code, and nothing should send tag `41` with a value above
-five.
+words as routine addresses. Entry six is `7a80`, which is below the downloaded
+base but outside the C52's `0000..0fff` ROM window. It is still an uncontrolled
+jump into program memory whose installed contents are not established, and
+nothing should send tag `41` with a value above five.
 
 There is also a readback of `032a` to the host - `c622` and `c913` report its
 contents under tag `802f` - but neither site is reachable from any dispatch
