@@ -1271,13 +1271,104 @@ at `83d6` writes DSP ports `5e`/`5f` and the supervisor reads CPU ports
 `58`-`5e`, so the ASIC does bridge DSP I/O into CPU-readable registers, just not
 at matching numbers.
 
+### The mailbox queue, and a reader that does not reach it
+
+The sender at `83d6` drains a sixteen-word ring at data `0bd0`. What fills it is
+the routine at `83c8`:
+
+```text
+83c8  sst     st0, @7d
+83c9  ldp     #000
+83ca  lar     ar0, #0bd0
+83cc  lar     ar1, @78        ; write pointer
+83cd  sacl    *+              ; push the accumulator
+83ce  cmpr    eq              ; ... wrapping at sixteen
+83d1  sbrk    #10
+83d2  sar     ar1, @78
+```
+
+So `lacl <value>` then `call 83c8` reports any word to the host, and 85 sites do
+exactly that. It is a general send channel, and unlike the reader's own output
+ports it is the proven one: the supervisor reads its far end at CPU ports
+`58`-`5e` in ordinary operation.
+
+None of those 85 sites takes its value from `7d`, `7e` or `7f`, the cells the
+`8151` reader writes. That reader has no path to the host.
+
+### A second reader, with an unscaled index in RAM
+
+At `84d3` the same payload holds a better one:
+
+```text
+84d3  ldp     #007            ; @5b is absolute 03db
+84d6  lar     ar2, #ff80      ; destination pointer
+84d9  lacl    @5b
+84da  add     #860b           ; address = 860b + index, unscaled
+84dc  tblr    *+
+84dd  tblr    *+
+84de  add     #06
+84e0  tblr    *+
+84e1  tblr    *+, ar1
+```
+
+Two differences from `8151` that matter. The index is not multiplied, so the
+program address is simply `860b + index` and no modular inverse is involved. And
+its index cell sits at data page 7, absolute `03db`, which is ordinary RAM well
+clear of the memory-mapped registers below `0060` - so the data-page constraint
+recorded above does not apply to this site. Its results land at `ff80`, not in
+the queue, and the two `ldp #1ff` sites that touch that page write `fff8`, an
+ASIC call cell, rather than reading `ff80` back.
+
+### A complete resident read-and-report chain
+
+The chain that does close is at `e732`:
+
+```text
+e72e  splk    @66, #0000      ; index := 0
+e730  splk    @48, #e732      ; loop-back address
+e732  lacl    @66             ; index from a data cell
+e733  add     #e870           ; address = e870 + index, unscaled
+e735  tblr    @50             ; program word into @50
+e736  lacl    @66
+e737  add     #01
+e738  sacl    @66             ; index++
+e739  sub     #11             ; seventeen entries
+e73a  bd      e77a
+```
+
+The enclosing function is at data page 7, so the index is absolute `03e6` and
+the result `03d0`. Both are RAM. And `03d0` is the cell that `b4f2`, also at
+page 7, sends:
+
+```text
+b4f5  lacc    #00008021
+b4f7  call    83c8, *         ; tag
+b4f9  lacl    @50
+b4fa  call    83c8, *         ; the word read above
+```
+
+That is the whole path in resident code, with both ends addressable: write the
+index to data `03e6`, the datapump table-reads `e870 + index` into data `03d0`,
+and `03d0` is reported to the host under tag `8021` through the queue the
+supervisor already drains at CPU ports `58`-`5e`. Nothing has to be injected,
+the DSP is not reset, and every CPU-side register involved is one `ATGLK2I` and
+`ATGLK2O` can reach.
+
+Three of the four candidate sites do not work. `a484` is not an instruction at
+all - it is the `a665` immediate of the `splk` at `a483`, which the opcode scan
+matched by accident. `bc12` takes its address from control flow rather than a
+cell. `e7dc` masks its index to three bits, so it addresses eight words and no
+more. Only `e735` has a freely chosen index.
+
 ### What is still open
 
 - Whether the mailbox writes data memory on a board, as the core models it.
-- Whether the call site at `9731` is reachable with a data page whose `@5b`
-  lands in RAM.
-- How the reader's results could reach the CPU, given that its own ports do not
-  appear to. The sender's queue at data `0bd0` is the obvious candidate.
+  Everything above rests on that.
+- Reachability and timing. The `e732` loop rewrites its own index every
+  iteration and runs seventeen times, so a host write lands for one read before
+  being overwritten, and the loop runs when the datapump reaches it rather than
+  on demand. The read at `e735` and the send at `b4f2` are also in different
+  functions, so `03d0` has to survive between them.
 - Whether the C5x optional ROM protection permits a table read of on-chip ROM by
   code executing from external memory. TI documents this in
   [SPRU056D, section 8.2.4](https://www.ti.com/lit/pdf/spru056). This one fails
