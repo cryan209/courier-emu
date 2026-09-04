@@ -501,3 +501,42 @@ def test_the_23f0_accessor_is_installed_by_the_datapump_not_mask_rom(rom: bytes)
         0xBB02)             # rpt  #02      -> three words
     assert word(rom, 0x80A7) == 0x57A0                      # bldp *+
     assert words(rom, 0x80F5, 3) == (0x1080, 0x0880, 0xEF00)   # lacc * ; lamm * ; ret
+
+
+def test_the_other_five_bldp_shaped_words_are_table_data(rom: bytes) -> None:
+    """An exhaustive 57xx scan does not find five more program writers.
+
+    Seven payload words have BLDP's 57xx opcode byte.  The reset installer at
+    80a7 and the four-word hardware loader at 812b are instructions.  Each of
+    the other five is inside a table whose base is explicitly consumed as
+    data; decoding those words in isolation manufactures instructions out of
+    coefficients.
+    """
+    payload_words = words(rom, DSP_ENTRY, (0x368FC - DSP_LOAD_BASE) // 2)
+    shaped = {
+        DSP_ENTRY + offset
+        for offset, value in enumerate(payload_words)
+        if value >> 8 == 0x57
+    }
+    assert shaped == {0x80A7, 0x812B, 0x9685, 0xA29B, 0xA83A, 0xC3E7, 0xDC51}
+
+    # The five apparent sites belong to tables rooted at 967a, a29a, a82a,
+    # c3a4 and dc50.  These are representative executable references which
+    # pass the bases to table/constant consumers rather than branch to the
+    # embedded 57xx words.
+    assert words(rom, 0x94F7, 2) == (0xBF90, 0x967A)  # add  #967a
+    assert words(rom, 0xA130, 4) == (0xBF80, 0xA29A, 0x7E80, 0x87A8)
+    assert words(rom, 0xAB95, 2) == (0xAE7E, 0xA82A)  # splk @7e,#a82a
+    assert words(rom, 0xC20E, 2) == (0xBF80, 0xC3A4)  # lacc #c3a4
+    assert words(rom, 0xDB66, 2) == (0xBF80, 0xDC50)  # lacc #dc50
+
+    # The only computed-destination BLDP loads BMAR from external ASIC cell
+    # ff62, copies four words from ff58, advances BMAR, and publishes it back.
+    assert words(rom, 0x811B, 30) == (
+        0xBDFE, 0x6962, 0x881F, 0xBF09, 0xFF58, 0xBC00,
+        0xAE09, 0x0003, 0xBEC6, 0x812F,
+        0x7E80, 0x23F0, 0xBE41, 0x8B00, 0x8BA0, 0x907D,
+        0x577D, 0x081F, 0xB801, 0x881F, 0xBE40,
+        0xBDFE, 0xBF80, 0x0300, 0x8857, 0x7D80, 0x810B,
+        0x081F, 0x9062, 0xBE71,
+    )

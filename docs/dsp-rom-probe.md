@@ -1017,9 +1017,25 @@ the whole accessor, recovered from the downloaded image. So `1000..7fff` is not
 mask ROM but resident program memory the datapump writes and then calls; the
 downloaded code does not call into ROM entry points. Its filters also *read*
 eleven addresses in `2100..2593` through `mac`, which are below the load base
-and absent from flash; whether those coefficients are installed the same way or
-are genuinely resident is not yet settled, but they are not part of the
-inaccessible mask ROM either.
+and absent from flash.
+
+An exhaustive scan closes the apparent lead that five more `bldp` sites might
+install those coefficients. Seven payload words have the `57xx` opcode byte.
+Only two are instructions: the fixed `bldp *+` at `80a7` above, and the shared
+four-word loader at `812b`. The other five are words at `9685`, `a29b`, `a83a`,
+`c3e7` and `dc51`, embedded respectively in tables rooted at `967a`, `a29a`,
+`a82a`, `c3a4` and `dc50`. Executable code loads or adds those table bases;
+there is no branch into any of the five apparent sites. Treating each raw
+`57xx` word as an instruction was decoding coefficient data as code.
+
+The loader at `812b` is real but does not supply a statically recoverable
+target. It reads the initial BMAR value from external ASIC cell `ff62`, copies
+four words obtained through `ff58`, increments BMAR after each word, and writes
+the final value back to `ff62`. Nothing in the payload fixes that external
+starting value to `2100..2593`, and the five false-positive words provide no
+installation path. Thus the image proves only the explicit `23f0..23f2` write;
+whether the low filter coefficients are delivered through the ASIC loader or
+are already resident remains a hardware/runtime-state question.
 
 ## CPU port-space output latches
 
