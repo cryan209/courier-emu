@@ -1,0 +1,1657 @@
+{
+  "hardware_tested": false,
+  "uploadable_sdl_image": false,
+  "program_origin": 32768,
+  "result_buffer": 768,
+  "result_words": 56,
+  "mailbox_sender": true,
+  "kernel_sha256": "4c35001171fa9746dee7059cfcdb856f4690df54450df37fc9f01ff76f8437e4",
+  "download": {
+    "verified": false,
+    "reason": "explicitly skipped; Unicorn unavailable"
+  },
+  "simulations": [
+    {
+      "status": "mapping-samples-captured",
+      "control_before": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "external_sample": [
+        42330,
+        42075,
+        42840,
+        42585,
+        41310,
+        41055,
+        41820,
+        41565,
+        44370,
+        44115,
+        44880,
+        44625,
+        43350,
+        43095,
+        43860,
+        43605
+      ],
+      "internal_sample": [
+        4660,
+        5063,
+        5466,
+        5869,
+        6272,
+        6675,
+        7078,
+        7481,
+        7884,
+        8287,
+        8690,
+        9093,
+        9496,
+        9899,
+        10302,
+        10705
+      ],
+      "control_after": [
+        4951,
+        9320,
+        42330,
+        23205,
+        0,
+        65535,
+        32769,
+        32766
+      ],
+      "complete": true,
+      "samples_differ": true,
+      "rom_readable": true,
+      "interpretation": "Distinct stable samples prove that enabling the internal window changes the low program mapping. Equal, uniform, or bus-like samples are inconclusive without repeated captures and external-bus observation.",
+      "external_matches_fixture": true,
+      "internal_matches_fixture": true,
+      "protection_modeled": false,
+      "io_events": [
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 34
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20992,
+          "pc": 32830,
+          "instruction": 39
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 49234,
+          "pc": 32832,
+          "instruction": 40
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 42
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 51
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20993,
+          "pc": 32830,
+          "instruction": 56
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 2,
+          "pc": 32832,
+          "instruction": 57
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 59
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 68
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20994,
+          "pc": 32830,
+          "instruction": 73
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 32832,
+          "instruction": 74
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 76
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 85
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20995,
+          "pc": 32830,
+          "instruction": 90
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 16,
+          "pc": 32832,
+          "instruction": 91
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 93
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 102
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20996,
+          "pc": 32830,
+          "instruction": 107
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 53262,
+          "pc": 32832,
+          "instruction": 108
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 110
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 119
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20997,
+          "pc": 32830,
+          "instruction": 124
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 8,
+          "pc": 32832,
+          "instruction": 125
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 127
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 136
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20998,
+          "pc": 32830,
+          "instruction": 141
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 16,
+          "pc": 32832,
+          "instruction": 142
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 144
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 153
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 20999,
+          "pc": 32830,
+          "instruction": 158
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 32832,
+          "instruction": 159
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 161
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 170
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21000,
+          "pc": 32830,
+          "instruction": 175
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 4951,
+          "pc": 32832,
+          "instruction": 176
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 178
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 187
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21001,
+          "pc": 32830,
+          "instruction": 192
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 9320,
+          "pc": 32832,
+          "instruction": 193
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 195
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 204
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21002,
+          "pc": 32830,
+          "instruction": 209
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42330,
+          "pc": 32832,
+          "instruction": 210
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 212
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 221
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21003,
+          "pc": 32830,
+          "instruction": 226
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 23205,
+          "pc": 32832,
+          "instruction": 227
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 229
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 238
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21004,
+          "pc": 32830,
+          "instruction": 243
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 32832,
+          "instruction": 244
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 246
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 255
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21005,
+          "pc": 32830,
+          "instruction": 260
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 65535,
+          "pc": 32832,
+          "instruction": 261
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 263
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 272
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21006,
+          "pc": 32830,
+          "instruction": 277
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 32769,
+          "pc": 32832,
+          "instruction": 278
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 280
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 289
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21007,
+          "pc": 32830,
+          "instruction": 294
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 32766,
+          "pc": 32832,
+          "instruction": 295
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 297
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 306
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21008,
+          "pc": 32830,
+          "instruction": 311
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42330,
+          "pc": 32832,
+          "instruction": 312
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 314
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 323
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21009,
+          "pc": 32830,
+          "instruction": 328
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42075,
+          "pc": 32832,
+          "instruction": 329
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 331
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 340
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21010,
+          "pc": 32830,
+          "instruction": 345
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42840,
+          "pc": 32832,
+          "instruction": 346
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 348
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 357
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21011,
+          "pc": 32830,
+          "instruction": 362
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42585,
+          "pc": 32832,
+          "instruction": 363
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 365
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 374
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21012,
+          "pc": 32830,
+          "instruction": 379
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 41310,
+          "pc": 32832,
+          "instruction": 380
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 382
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 391
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21013,
+          "pc": 32830,
+          "instruction": 396
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 41055,
+          "pc": 32832,
+          "instruction": 397
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 399
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 408
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21014,
+          "pc": 32830,
+          "instruction": 413
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 41820,
+          "pc": 32832,
+          "instruction": 414
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 416
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 425
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21015,
+          "pc": 32830,
+          "instruction": 430
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 41565,
+          "pc": 32832,
+          "instruction": 431
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 433
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 442
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21016,
+          "pc": 32830,
+          "instruction": 447
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 44370,
+          "pc": 32832,
+          "instruction": 448
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 450
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 459
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21017,
+          "pc": 32830,
+          "instruction": 464
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 44115,
+          "pc": 32832,
+          "instruction": 465
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 467
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 476
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21018,
+          "pc": 32830,
+          "instruction": 481
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 44880,
+          "pc": 32832,
+          "instruction": 482
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 484
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 493
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21019,
+          "pc": 32830,
+          "instruction": 498
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 44625,
+          "pc": 32832,
+          "instruction": 499
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 501
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 510
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21020,
+          "pc": 32830,
+          "instruction": 515
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 43350,
+          "pc": 32832,
+          "instruction": 516
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 518
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 527
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21021,
+          "pc": 32830,
+          "instruction": 532
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 43095,
+          "pc": 32832,
+          "instruction": 533
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 535
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 544
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21022,
+          "pc": 32830,
+          "instruction": 549
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 43860,
+          "pc": 32832,
+          "instruction": 550
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 552
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 561
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21023,
+          "pc": 32830,
+          "instruction": 566
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 43605,
+          "pc": 32832,
+          "instruction": 567
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 569
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 578
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21024,
+          "pc": 32830,
+          "instruction": 583
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 4660,
+          "pc": 32832,
+          "instruction": 584
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 586
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 595
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21025,
+          "pc": 32830,
+          "instruction": 600
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 5063,
+          "pc": 32832,
+          "instruction": 601
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 603
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 612
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21026,
+          "pc": 32830,
+          "instruction": 617
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 5466,
+          "pc": 32832,
+          "instruction": 618
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 620
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 629
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21027,
+          "pc": 32830,
+          "instruction": 634
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 5869,
+          "pc": 32832,
+          "instruction": 635
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 637
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 646
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21028,
+          "pc": 32830,
+          "instruction": 651
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 6272,
+          "pc": 32832,
+          "instruction": 652
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 654
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 663
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21029,
+          "pc": 32830,
+          "instruction": 668
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 6675,
+          "pc": 32832,
+          "instruction": 669
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 671
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 680
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21030,
+          "pc": 32830,
+          "instruction": 685
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 7078,
+          "pc": 32832,
+          "instruction": 686
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 688
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 697
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21031,
+          "pc": 32830,
+          "instruction": 702
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 7481,
+          "pc": 32832,
+          "instruction": 703
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 705
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 714
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21032,
+          "pc": 32830,
+          "instruction": 719
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 7884,
+          "pc": 32832,
+          "instruction": 720
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 722
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 731
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21033,
+          "pc": 32830,
+          "instruction": 736
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 8287,
+          "pc": 32832,
+          "instruction": 737
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 739
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 748
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21034,
+          "pc": 32830,
+          "instruction": 753
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 8690,
+          "pc": 32832,
+          "instruction": 754
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 756
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 765
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21035,
+          "pc": 32830,
+          "instruction": 770
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 9093,
+          "pc": 32832,
+          "instruction": 771
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 773
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 782
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21036,
+          "pc": 32830,
+          "instruction": 787
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 9496,
+          "pc": 32832,
+          "instruction": 788
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 790
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 799
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21037,
+          "pc": 32830,
+          "instruction": 804
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 9899,
+          "pc": 32832,
+          "instruction": 805
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 807
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 816
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21038,
+          "pc": 32830,
+          "instruction": 821
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 10302,
+          "pc": 32832,
+          "instruction": 822
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 824
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 833
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21039,
+          "pc": 32830,
+          "instruction": 838
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 10705,
+          "pc": 32832,
+          "instruction": 839
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 841
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 850
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21040,
+          "pc": 32830,
+          "instruction": 855
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 4951,
+          "pc": 32832,
+          "instruction": 856
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 858
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 867
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21041,
+          "pc": 32830,
+          "instruction": 872
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 9320,
+          "pc": 32832,
+          "instruction": 873
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 875
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 884
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21042,
+          "pc": 32830,
+          "instruction": 889
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 42330,
+          "pc": 32832,
+          "instruction": 890
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 892
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 901
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21043,
+          "pc": 32830,
+          "instruction": 906
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 23205,
+          "pc": 32832,
+          "instruction": 907
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 909
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 918
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21044,
+          "pc": 32830,
+          "instruction": 923
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 32832,
+          "instruction": 924
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 926
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 935
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21045,
+          "pc": 32830,
+          "instruction": 940
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 65535,
+          "pc": 32832,
+          "instruction": 941
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 943
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 952
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21046,
+          "pc": 32830,
+          "instruction": 957
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 32769,
+          "pc": 32832,
+          "instruction": 958
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 960
+        },
+        {
+          "write": false,
+          "port": 87,
+          "value": 2,
+          "pc": 32823,
+          "instruction": 969
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 21047,
+          "pc": 32830,
+          "instruction": 974
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 32766,
+          "pc": 32832,
+          "instruction": 975
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 32834,
+          "instruction": 977
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Raw C5x kernel only; do not send this file as an SDL update.",
+    "Actual modem bootstrap entry and serial readback are not connected.",
+    "C5x core models an unprotected C52 ROM; C51 size and mask-ROM protection are not tested.",
+    "Reference IDSDL302 is a modified release, not a verified stock image."
+  ]
+}

@@ -44,6 +44,18 @@ def test_mapping_probe_rejects_equal_samples_as_inconclusive():
     assert not result["samples_differ"] and not result["rom_readable"]
 
 
+def test_mapping_probe_mailbox_form_sends_all_result_words():
+    probe = build_mapping_probe(mailbox=True)
+    result = simulate_mapping_probe(probe)
+    writes = [event for event in result["io_events"] if event["write"]]
+    assert len(probe.words) % 8 == 0
+    assert result["status"] == "mapping-samples-captured"
+    assert result["external_matches_fixture"] and result["internal_matches_fixture"]
+    assert len([event for event in writes if event["port"] == 0x5E]) == 56
+    assert len([event for event in writes if event["port"] == 0x5F]) == 56
+    assert len([event for event in writes if event["port"] == 0x57]) == 56
+
+
 def test_reference_cpu_transfers_every_probe_byte_and_checksum():
     pytest.importorskip("unicorn")
     if not REFERENCE.exists():

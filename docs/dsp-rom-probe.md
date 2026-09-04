@@ -80,6 +80,11 @@ python -m courier_emu.dsp_probe --mapping-test \
   --reference IDSDL302.ROM --output artifacts/dsp-rom-mapping-v1
 ```
 
+Add `--mailbox` when the loader's result path consumes the `5200..5237` tagged
+sender used by the integrated monitor. `--skip-download-verification` is an
+explicit fallback for hosts where Unicorn is unavailable or unusable; its
+manifest records that the supervisor transfer loop was not rechecked.
+
 Its 56-word result is header, known control, 16 external words from address
 zero, 16 internal-window words from address zero, and the repeated control.
 The current blocker is physical delivery/control of the probe or a

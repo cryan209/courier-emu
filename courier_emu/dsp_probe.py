@@ -91,11 +91,17 @@ def build_mapping_probe(*, mailbox: bool = False) -> RomProbe:
     control_references.append(len(words) - 1)
     words.extend((0xBB00 | (len(CONTROL) - 1), 0xA6A0))
 
+    # LMMR writes a data-memory value to a memory-mapped register. Keep the
+    # temporary just beyond the 56-word result buffer; SPLK alone would use DP
+    # and write ordinary data RAM rather than PMST.
+    mapping_temp = BUFFER + 56
     # PMST.MP/MC=1: low program addresses are external.
-    words.extend((0xAE07, 0x0008, 0xBF80, 0x0000,
+    words.extend((0xAE38, 0x0008, 0x8907, mapping_temp,
+                  0xBF80, 0x0000,
                   0xBB00 | (MAPPING_SAMPLE_WORDS - 1), 0xA6A0))
     # PMST.MP/MC=0: the C52's 0000..0fff ROM is mapped.
-    words.extend((0xAE07, 0x0000, 0xBF80, 0x0000,
+    words.extend((0xAE38, 0x0000, 0x8907, mapping_temp,
+                  0xBF80, 0x0000,
                   0xBB00 | (MAPPING_SAMPLE_WORDS - 1), 0xA6A0))
 
     words.extend((0xBF80, 0))
@@ -172,8 +178,9 @@ def simulate_mapping_probe(probe: RomProbe) -> dict:
     try:
         core.load_rom(struct.pack("<4096H", *rom))
         core.load_program(struct.pack(f"<{len(external)}H", *external), 0)
+        core.set_io(0x57, 2)  # ready level used only by mailbox-emitting probes
         core.set_pc(ORIGIN)
-        for _ in range(300):
+        for _ in range(2000):
             if core.state()["pc"] == probe.halt_address:
                 break
             core.step(1)
@@ -201,8 +208,9 @@ def simulate_probe(probe: RomProbe, *, rom_mapped: bool) -> dict:
         core.load_rom(struct.pack("<4096H", *rom))
         core.load_program(struct.pack("<32H", *external), 0)
         core.set_mpmc_pin(0 if rom_mapped else 1)
+        core.set_io(0x57, 2)  # ready level used only by mailbox-emitting probes
         core.set_pc(ORIGIN)
-        for _ in range(200):
+        for _ in range(2000):
             if core.state()["pc"] == probe.halt_address:
                 break
             core.step(1)
@@ -292,23 +300,33 @@ def main() -> int:
                         help="new output directory; must not already exist")
     parser.add_argument("--mapping-test", action="store_true",
                         help="compare MP/MC external and internal low mappings")
+    parser.add_argument("--mailbox", action="store_true",
+                        help="emit all 56 result words through the DSP mailbox")
+    parser.add_argument("--skip-download-verification", action="store_true",
+                        help="build after native C5x checks when Unicorn is unavailable")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("output directory already exists; choose a new directory")
-    probe = build_mapping_probe() if args.mapping_test else build_probe()
+    probe = (build_mapping_probe(mailbox=args.mailbox) if args.mapping_test else
+             build_probe(mailbox=args.mailbox))
     # Verify before writing artifacts. mkdir without exist_ok prevents source
     # collisions, accidental overwrites and ambiguous stale manifests.
+    download = ({"verified": False, "reason": "explicitly skipped; Unicorn unavailable"}
+                if args.skip_download_verification else
+                verify_download(args.reference, probe))
     result = {"hardware_tested": False, "uploadable_sdl_image": False,
               "program_origin": ORIGIN, "result_buffer": BUFFER, "result_words": 56,
+              "mailbox_sender": args.mailbox,
               "kernel_sha256": sha256(probe.payload).hexdigest(),
-              "download": verify_download(args.reference, probe),
+              "download": download,
               "simulations": ([simulate_mapping_probe(probe)] if args.mapping_test else
                               [simulate_probe(probe, rom_mapped=m) for m in (True, False)]),
               "limitations": ["Raw C5x kernel only; do not send this file as an SDL update.",
                               "Actual modem bootstrap entry and serial readback are not connected.",
                               "C5x core models an unprotected C52 ROM; C51 size and mask-ROM protection are not tested.",
                               "Reference IDSDL302 is a modified release, not a verified stock image."]}
-    if not result["download"]["matches_kernel"] or not result["download"]["checksum_matches"]:
+    if (not args.skip_download_verification and
+            (not download["matches_kernel"] or not download["checksum_matches"])):
         raise RuntimeError("download verification failed")
     if args.mapping_test:
         sample = result["simulations"][0]
