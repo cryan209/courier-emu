@@ -2148,6 +2148,23 @@ resume accessor reads its status word through the ARP-selected register, so the
 synthetic driver sets `LARP 1` before each pump - the context the real mailbox
 interrupt establishes on entry. It does not touch the counts.
 
+## How the host loads the DSP: supervisor side
+
+The supervisor-side counterpart to everything above — how code gets *into* the
+DSP in the first place — is worked out in
+[the firmware analysis](../courier_firmware_analysis.md#how-the-dsp-is-loaded-and-run):
+the loader routines at file `0xe370`-`0xe711`, the 9-entry overlay descriptor
+table, the four-image overlay map (resident kernel plus three demand-loaded
+overlays), and the two distinct transfer engines (`out 0x18` strobes for cold
+boot, `out 0x1e` for runtime swaps). Segment `0x8000` maps linearly to physical
+`0x80000`, so `8000:e447` is file `0xe447`.
+
+The resident kernel is overlay 5: flash `0x29140`-`0x36e8e` -> DSP
+`0x8000`-`0xeea6` in 7.4.16 (`0x29080`-`0x368fc` -> `0x8000`-`0xec3d` in 7.3.14).
+The handler addresses in this document all fall inside that range and decode
+correctly through `flash = 0x29140 + 2*(dsp - 0x8000)`, which cross-validates both
+analyses.
+
 ## Remaining hardware integration
 
 The supervisor code, DSP sender and serial parser now exist and execute

@@ -745,7 +745,7 @@ necessary, `T` appears to be a test/no-flash path, but it still enters the loade
 and waits for an XMODEM transfer, so use it only on a sacrificial unit or when
 actively reversing the loader.
 
-## 80188 memory architecture — the blocker for reading resident/overlay code
+## 80188 memory architecture (segment `0x8000` resolved — see retraction below)
 
 **Recovery-loader update (2026-09-03):** the apparent setup-table obfuscation
 and post-bootstrap mapping break below are resolved for `SV25.XMD` by a chained
@@ -774,11 +774,23 @@ What the recursive descent established:
 - The banner code (flash `0x26337`) runs **from flash** and makes far calls to a
   **resident code segment `0x8000`** (26 distinct target offsets `0x0A2C…0xF42C`,
   ~47 call sites). There is **no per-call bank-select `OUT`** before them.
-- `segment 0x8000` does **not** map linearly to flash `0x0`, `0x10000`, … (every
-  base tried yields garbage at the known routine offsets). Combined with the spec
-  ("512K Flash, **64K RAM**"), the model is: **segment `0x8000` = the 64 KB RAM**,
-  into which resident code is copied from flash by bootstrap/bank code assembled
-  from multiple flash sources, not one contiguous copy.
+- ~~`segment 0x8000` does **not** map linearly to flash~~ — **retracted
+  2026-09-05. It maps linearly after all: `physical = 0x80000 + offset`, so
+  `8000:xxxx` is simply file offset `xxxx`.** The earlier attempts appear to have
+  searched for a *flash base* to add, when the flash is already sited at physical
+  `0x80000` and the segment offset is the file offset directly. Evidence: of the
+  206 distinct far-call targets in `seg 0x8000` (1053 call sites), **84% begin
+  with three plausible-prologue instructions when read at `file == offset`**,
+  against a 41% noise floor at a deliberately wrong base — and the most-called
+  targets are textbook far-call trampolines, e.g. `0xe951` (211 sites) and
+  `0x8110` (107 sites) both decoding as `call bx ; retf`. The DSP loader block
+  independently corroborates it: `8000:e447` from
+  [the DSP ROM probe notes](docs/dsp-rom-probe.md) lands exactly on the DSP
+  checksum routine at file `0xe447`, and that code's own far call
+  `lcall 8f43:0224` resolves to file `0xf654`, a clean `call 0xf688 ; retf` thunk.
+  The "segment `0x8000` = the 64 KB RAM" model built on the old claim should be
+  treated as unsupported. See
+  [How the DSP is loaded and run](#how-the-dsp-is-loaded-and-run).
 - Hardware interface seen in real code: immediate `IN` from ports **`0x19`, `0x3E`**;
   `OUT` via `DX` at flash `0x26390/0x2D690`. Candidate DSP/UART/mailbox ports.
 
@@ -1765,21 +1777,13 @@ DIL-correlation machinery. The `mac` coefficient tables (e.g. file `0x320A0` =
 prog `0x4450`) hold 182 large-amplitude signed values — consistent with **DIL /
 probing reference sequences**, a strong candidate for the DIL-correlation input.
 
-**What automation can't do here** — but note this block was written against the
-**wrong (big-endian) byte order**, so its "verified, don't re-attempt" force is
-gone; the findings below need re-deriving little-endian before they are trusted:
-- Pin the DSP load/base address. `file = 0x29080 + 2·prog` is only a *hypothesis*:
-  it gave locally-plausible hits, but `prog 0x0000` isn't a reset branch, and
-  recursive-descent produces identical floods under correct and wrong bases
-  (~46K insns, 7.9% invalid, 2 rets either way). C5x decodes arbitrary bytes, so
-  code-vs-data and base cannot be resolved statistically. Re-run little-endian,
-  base detection is no longer hopeless: scoring candidate bases on branch targets
-  that land both in-region *and* on an instruction boundary gave a distinct peak
-  for the DSP 3.1.2 tail (`0xdf70`, 71.5%, next-best 65.3%). That is an inference,
-  not a proof — no overlay descriptor table confirming it has been found in the
-  x86 half.
+**What automation can't do here** — narrowed 2026-09-05. The DSP load/base
+problem below is **solved**; see [How the DSP is loaded and run](#how-the-dsp-is-loaded-and-run)
+for the descriptor table, the overlay map and the transfer protocol. What remains:
 - Isolate the specific DIL/constellation-design routine. Needs a person who can
   recognise routine boundaries, coefficient tables, and algorithm shape.
+- ~~Identify what drains the supervisor's command queue~~ — done, see
+  [the queue consumer](#the-queue-consumer-and-the-0x58-0x5e-mailbox).
 
 **Recommendation:** load `SV25.XMD` into **IDA** (has a TMS320C5x processor
 module) or Ghidra, region `0x29080–0x43700`, **little-endian** words, and drive it
@@ -1789,6 +1793,270 @@ part of the head-start; the verified code site, candidate DIL tables and
 `c25dis.py` output all came from big-endian decoding and must be re-derived.
 Alternatively, a live DSP dump from the modem sidesteps the base/overlay problem
 entirely.
+
+## How the DSP is loaded and run
+
+Established 2026-09-05 by diffing the two board captures (`artifacts/
+courier-board-21210-capture-01`, supervisor 7.3.14 / DSP 3.0.13, against
+`-capture-403`, 7.4.16 / 3.1.2) and disassembling the supervisor with capstone in
+16-bit mode. The diff is what makes this checkable: the DSP payload start moved
+`0x29080` -> `0x29140` between the two, so every constant that points at DSP code
+had to move with it, and each one below does.
+
+**Segment `0x8000` maps linearly to physical `0x80000`, i.e. file offset 0.** So
+`8000:e447` is file `0xe447`. This resolves the "segment 0x8000 does not map
+linearly" note elsewhere in this file for the DSP loader at least.
+
+### The loader routines
+
+File offsets; in 7.4.16 the whole block shifted **`+0x30`**.
+
+| routine | 7.3.14 | 7.4.16 | job |
+|---|---|---|---|
+| `dsp_bootstrap` | `0xe370` | `0xe3a0` | `fff8` request, 8x `0x0083` window words, strobes 1 then 2 |
+| `dsp_reset_entry` | `0xe3aa` | `0xe3da` | latch an address, pulse reset, poll for the DSP's ack |
+| `dsp_checksum` | `0xe447` | `0xe477` | 16-bit word sum of a payload range |
+| `dsp_dl_win40` | `0xe46e` | `0xe49e` | bulk downloader, window `0x40` (**no callers**) |
+| `dsp_dl_win50` | `0xe47b` | `0xe4ab` | bulk downloader, window `0x50` |
+| `overlay_dispatch` | `0xe5d5` | `0xe605` | runtime overlay swap, table-driven |
+| descriptor table | `0xe711` | `0xe741` | 6 bytes/entry, `cs:`-relative |
+
+### Cold boot
+
+Three sites do this (`0x47b`, `0x4ac`, and the reinit path at `0x7516`/`0x7567`),
+all with identical immediates:
+
+```asm
+call dsp_bootstrap
+mov  ax, 0x8000        ; DSP entry word address
+call dsp_reset_entry
+mov  ax, 0             ; source offset within the DSP segment
+mov  cx, 0xdd4e        ; source end   (0xd87c in 7.3.14)
+call dsp_dl_win50
+```
+
+`dsp_checksum`/`dsp_dl_*` treat `ax`/`cx` as byte offsets and derive the word
+count as `(cx-ax)/2`. Note `mov ax, 0` disassembles as `ax, 0`, not `ax, 0x0` — a
+filter that only accepts `0x`-prefixed immediates silently picks up the *entry
+address* from two instructions earlier and yields a wrong source base. That
+mistake was made and caught during this analysis.
+
+### The overlay descriptor table
+
+`overlay_dispatch` indexes the table by the **low nibble of the request byte at
+`[0xe3c]`**, stride 6:
+
+| field | meaning |
+|---|---|
+| `+0` | source start offset within the overlay's segment |
+| `+2` | source end offset; word count = `(end - start) / 2` |
+| `+4` | **DSP destination word address** |
+
+The source segment comes from a hardcoded compare chain immediately before the
+table: indices 6, 7 and 8 each carry their own segment, anything else falls
+through to the DSP base segment. Entries 0-4 are zeroed and 9-15 are past the end
+of the real table (they decode as garbage — the table is 9 entries, 54 bytes).
+
+**The map, 7.4.16** (7.3.14 in parentheses where it differs):
+
+| idx | segment | flash range | words | DSP range |
+|---|---|---|---|---|
+| 5 | `a914` (`a908`) | `0x29140-0x36e8e` | 28327 (27710) | `0x8000-0xeea6` |
+| 6 | `b6e9` (`b690`) | `0x36e90-0x3d0f4` | 12594 (11510) | `0x9d00-0xce31` |
+| 7 | `bd10` (`bc2f`) | `0x3d100-0x40b94` | 7498 (7499) | `0xb000-0xcd49` |
+| 8 | `c0ba` (`bfd9`) | `0x40ba0-0x44634` | 7498 (7350) | `0xdc00-0xf949` |
+
+Entry 5 is the resident kernel — its three fields reproduce the cold-boot
+immediates exactly, so **the cold boot is just overlay 5 pushed through the other
+transfer engine**. Overlays 6, 7 and 8 are demand-loaded and deliberately overlap
+the resident range; overlay 8 overlays the top of the kernel from `0xdf70` up and
+extends past its end.
+
+Requesting overlay **6 chains to 8**: the dispatcher loads 6, then writes `8` to
+`[0xe3c]` and falls back into the loader, so those two always arrive as a pair.
+
+Four checks, all exact, in both images:
+- entry 5 == the cold-boot immediates;
+- the four images partition the payload with only 2-12 byte alignment gaps;
+- overlay 8 ends exactly at the payload end (`0x44634`, and `0x436fc` in 7.3.14);
+- overlay 8's base `0xdc00` + 880 words == `0xdf70`, independently derived as the
+  load base of the 3.1.2 tail at file `0x41280` by branch-target scoring.
+
+Cumulative growth ahead of overlay 8 is `617 + 1084 - 1 = 1700` words, matching
+the `-1700..-1704` word relocation delta measured independently by diffing the
+payloads. **Most of the DSP 3.1.2 work is in overlay 6** (+1084 words), not in
+the tail.
+
+### The DSP receive side
+
+The host->DSP direction, traced 2026-09-05. Three facts shape it:
+
+**The resident kernel contains no `in` instruction at all.** A linear sweep of
+overlay 5 finds `out` to DSP-side I/O `005e`/`005f` (the sender at `83d3`-`83de`)
+and `0060` (the streamer emit at `849e`), but no port reads. The mailbox is not
+polled through an I/O port; it is read from **MMR `0x57`** via the datapump's own
+`23f0` accessor, and a status bit gates it — `bit 15, @7d` in 3.0.13, `bit 14`
+in 3.1.2.
+
+**The interrupt vector table is not in flash.** The init at `0x8012` does
+`apl @07, #07f8` then `opl @07, #00b0` with `DP = 0` (set at `0x8004`, no
+intervening `ldp`), so `@07` is genuinely PMST. Neither mask sets bits 15-11, so
+those end up clear; on the standard C5x PMST layout that field is **IPTR**, which
+puts the vector table at program `0x0000`. That is outside every loaded overlay —
+the supervisor never writes it. So the *first-level* mailbox ISR lives in memory
+the flash image does not supply (on-chip ROM, or low memory populated by
+something else), while the handler bodies below are in the loaded kernel. This is
+the same low window the DSP ROM probe samples as "thirty-two words at program
+addresses `0x0000..0x001f`", and it is squarely the open C52 mask-ROM question.
+The IPTR reading depends on the standard PMST bit assignment, which has not been
+confirmed against a datasheet here; the masks themselves are exact.
+
+**Dispatch is a table-indexed computed goto**, and its base is *per firmware
+build*. In 3.1.2 the chain at `0x839e` reads:
+
+```
+839e  lacl @7d          ; the received tag
+839f  sub  #7f
+83a0  retc gt           ; reject tag > 0x7f
+83a1  add  #00008468    ; acc = tag - 0x7f + 0x8468 = tag + 0x83e9
+83a3  tblr @7c          ; handler = program[0x83e9 + tag]
+83a5  bacc
+```
+
+| image | DSP rev | table base |
+|---|---|---|
+| capture-01 | 3.0.13 | **`0x8401`** (pinned by `tests/test_dsp_window_stream.py`, 8/8 tags) |
+| capture-403 | 3.1.2 | **`0x83e9`** (from the arithmetic above, 8/8 tags) |
+
+Both were verified by reading the table and checking each entry lands on the
+documented arm idiom — `ldp #007 ; retd ; splk @1e, #<stub>`, or `ldp #1ff` for
+the tags that point `fff8`. **Do not carry a table base between builds**: the two
+differ by `0x18` words and the handlers they point at by `0x19`, and comparing
+403's table against 3.0.13's handler list produces a spurious uniform offset. That
+mistake was made and caught here.
+
+So the full receive path is: mask-ROM vector at `0x0000` -> kernel ISR -> read MMR
+`0x57` through the `23f0` accessor -> tag into `@7d` -> `tblr` the per-build
+dispatch table -> handler arms a streamer or acts on the command. The host's
+`0xff00`-framed pair (command, then destination) arrives through this path, but
+**the kernel code that consumes a `0xff00` frame specifically has not been
+identified** — that claim remains open.
+
+### Cross-check against the DSP-side streamer work
+
+The overlay-5 map is confirmed independently, from the opposite direction, by the
+handler addresses in `tests/test_dsp_window_stream.py` and
+[the DSP ROM probe notes](docs/dsp-rom-probe.md) — those were derived by executing
+the datapump on the native C52 core, with no reference to any flash offset. Every
+address in that table (`8401` jump table, handlers `8489`-`8678`, engine `8684`,
+resume `847a`) falls inside overlay 5's DSP range, and reading them through
+`flash = 0x29140 + 2*(dsp - 0x8000)` produces exactly the documented code:
+
+- arm stub `8617` (tags 45/46/57) decodes as `splk *, #ff90 ; xc 2, tc ;
+  splk *, #ff00` — the runtime `ff90`/`ff00` selection on `tc` that the probe
+  notes describe. This is effectively a signature; it is not a coincidence.
+- handler `8489` decodes with `lar ar1, #030f` and its stub `848d` with
+  `lar ar1, #031c` — two of the six live call-state cells listed for tag `06`.
+- stub `8642` (tag 47) decodes with `splk *, #0019`; stub `8665` (tag 73) with
+  `splk @79, #f992`, adjacent to the documented `f993` source for tag `78`.
+
+Caveat on that last group: a *linear* decode started exactly at a labelled stub
+address is not always instruction-aligned, because several stubs sit in `retd`
+delay slots (as the probe notes themselves record), so some count immediates read
+a word off. The addressing is what is confirmed here, not each count — the counts
+are pinned by the emulator run in the probe notes.
+
+### Two transfer engines
+
+Cold boot and runtime swap use different hardware paths:
+
+| | cold boot (`dsp_dl_win50`) | runtime (`overlay_dispatch`) |
+|---|---|---|
+| data latches | `0x40-0x4e`, alternating with `0x50-0x5e` | `0x40-0x46`, then `0x48-0x4e` |
+| commit strobe | `out 0x18, 1` / `out 0x18, 2` | `out 0x1e, 1` / `out 0x1e, 2` |
+| checksum | `out 0x18, 4`, poll bit 2 | none |
+| finish | poll `in 0x18` bit 2 | `out 0x1e, 4` |
+| preemptible | no | yes — re-tests `[0xe3c]` every group |
+
+Runtime state bytes: `[0xe3c]` request (low nibble = index; nonzero = pending,
+cleared on completion), `[0xe3b]` watchdog countdown (`0xc8` at start, `0xfe`
+after ack), `[0xe39]` checksum accumulator, `[0xe36]`/`[0xe37]` boot-downloader
+window selector.
+
+### What actually loads DSP RAM
+
+Nothing loads a DSP *ROM*. The DSP's on-chip mask ROM **is** the loader, and
+every word that comes out of flash lands in DSP **program RAM**:
+
+1. `dsp_reset_entry` latches the destination address through ports `0x40`/`0x42`,
+   clears bit 1 of the GPIO word at `[0xff56]`, blasts `0xffff` at `0x18`/`0x1a`
+   and `0x1c`/`0x1e`, delays `0x1f4` loops, then toggles `[0xff56]` bit 1 back to
+   release reset.
+2. It then polls `in 0x1a:0x18` and `in 0x1e:0x1c` for `0xffff`/`0xffff` — an
+   **acknowledgement from the DSP** — and answers `out 0x1c, 2`.
+3. Only then does the supervisor stream any code.
+
+Step 2 is the load-bearing observation: something on the DSP is already executing
+and answering *before a single word of firmware has been sent*, so the responder
+must be on-chip — mask ROM or hardware bootstrap. The supervisor never writes DSP
+program memory directly; it hands words to that resident responder, which places
+them at the address given in step 1. Destination addresses are `0x8000-0xf949`,
+i.e. program space, and the kernel demonstrably executes from `0x8000`.
+
+For runtime overlays the DSP is already running, so the destination is delivered
+as a **mailbox message** rather than through the reset latches. `overlay_dispatch`
+loads the destination into `bx` and calls `8f43:0224` (file `0xf654`) with
+`ax = 2`, which enqueues three words — `{0xff00, 2, dest}` — into a 24-word
+circular queue at `0x29e-0x2cc`, head `[0x29a]`, tail `[0x29c]`, initialised at
+`0x1dce`. The bulk words then follow through the port-`0x1e` engine.
+
+### The queue consumer and the `0x58`-`0x5e` mailbox
+
+Resolved 2026-09-05 by searching for *writes to the queue head* `[0x29a]` — the
+producer advances the tail, so only the consumer touches the head. That yields 14
+sites: the initialiser at `0x1dce`, three copies of a two-word drainer
+(`0xf521`, `0x12cbb`, `0x139bc`), two interrupt-context single-word variants
+(`0x12d99`, `0x13ab4`, both ending `mov [0xff02], 0x8000` — the 80188 EOI
+register — then `iret`), and a dequeue-one-or-fail helper at `0xfd77`.
+
+Handoff runs through a **staging word at `[0x289]`**, whose idle sentinel is
+`0x7f3f`:
+
+```asm
+mov  ax, 0x7f3f
+xchg [0x289], ax       ; take whatever is staged, mark the slot idle
+cmp  ah, 0x7f
+je   idle              ; nothing was staged
+cmp  ah, 0xff
+jne  send_single
+call 0xf521            ; high byte 0xff -> two-word drainer
+```
+
+That is what the `0xff00` word the overlay dispatcher enqueues is for: **a frame
+marker, consumed by the staging logic and never transmitted**. It selects the
+two-word drainer, which sends the message's remaining two words — the command and
+the destination — as a pair:
+
+| queued word | destination |
+|---|---|
+| `0xff00` | consumed as a frame marker, not sent |
+| command (`2` for an overlay load) | low byte `out 0x58`, high byte `out 0x5a` |
+| DSP destination address | low byte `out 0x5c`, high byte `out 0x5e` |
+
+Ordinary traffic (high byte not `0xff`) is sent one word at a time through
+`0x58`/`0x5a` only. When the staging slot is found idle, `0x11f49` refills it from
+the queue via `0xfd77`, which returns carry set when head == tail. The whole pump
+is gated on bit 0 of `[0x285]`, set in the ISR from `in 0x1e`/`in 0x1c` bit 2 —
+the DSP's "I can accept a word" signal.
+
+This also settles that `0x5c`/`0x5e` is **bidirectional**: written here as the
+high half of a host->DSP message, and read at file `0x13d00` (high byte `0x5e`,
+low byte `0x5c`) as DSP->host status. Byte order is consistent in both
+directions — low byte on the even port, high byte on the odd one.
+
+So the destination address reaches the DSP as mailbox word 2 of a `0xff00`-framed
+message, and the resident kernel — already running — receives it and places the
+overlay words that follow through the port-`0x1e` bulk engine.
 
 ## The supervisor's time base is not driven
 
