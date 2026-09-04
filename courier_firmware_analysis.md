@@ -2057,6 +2057,64 @@ Note tags `0x82`, `0x83` and `0x84` exceed the DSP dispatcher's `0x7f` bound, so
 they are not dispatch tags and their meaning is unaccounted for. They are the
 only unexplained traffic in the service cycle.
 
+### What the dial sequencer is waiting on
+
+Traced 2026-09-05 on `main211.xmf` with `ATDT123`, using range-limited
+`UC_HOOK_CODE` probes installed by wrapping `Uc.hook_add` (the machine adds its
+own hooks inside `run`, so there is no other extension point). Every probe below
+was validated against a known-live region first: the same harness pointed at the
+mailbox consumer records 102,272 instructions and hits `0x6ad5b` 816 times,
+`0x6aea5` 812 times and the three-word sender `0x6b05f` 25 times.
+
+**The dial code is never entered at all.** Zero instructions execute in
+`0x85000`-`0x87000`, and of the 25 far-call sites elsewhere in the image that
+target that region, **none executes**. The firmware reaches the `main-loop`
+milestone and stays there.
+
+**But the AT handler does arm the dial.** Two cells differ from a plain `AT`
+control run:
+
+| cell | `ATDT123` | `AT` |
+|---|---|---|
+| `[0x298]` | `0x1d9f` | `0` |
+| `[0x1cf0]` | `1` | `0` |
+
+`[0x298]` holds a **near** callback pointer. It is read at `0x5beb3` with
+`CS = 0x5b5e`, which resolves to physical **`0x5d37f`** - and a probe over that
+routine shows it **never executes**. So the sequencer is armed and then never
+advanced.
+
+(Note `supervisor_call_cells` in a run result is the *final value* of each cell,
+not an invocation count. `"0298": 7583` is decimal `0x1d9f`, the pointer itself.)
+
+**What it is waiting for.** The DAA state at the end of the run:
+
+```
+operation=dialing  off_hook=True  line_state=dial-tone
+detector_qualified=True   dial_tone_present=False   dial_tone_qualified=False
+```
+
+The supervisor's five-hit detector is satisfied (`detector_qualified`), but
+dial tone is not present and never qualified. That is by construction: the
+behavioral DAA supplies 350+440 Hz only long enough to qualify the detector,
+then **removes central-office tone and starts the parsed digits on the C52
+itself**. So the condition that would advance the armed callback never arrives,
+and the firmware waits forever while the model completes the call around it.
+
+This is the full extent of the stand-in. It is not one short-circuit but three
+layers: the bridge parses the `ATD` text at the DTE level, the DAA fakes the
+line transition, and `set_dtmf_digits` supplies the audio. Removing only the
+third produces silence, which is what an earlier experiment showed.
+
+**To reach `0x20`/`0x21` the line has to be modelled, not the call.** Concretely:
+keep dial tone present and qualified until the firmware removes it, let the armed
+callback at `CS:0x1d9f` fire, and do not inject digits. Then the sequencer runs,
+the dial-mode entries are reached, and whether `0x20`/`0x21` carry one digit per
+message becomes an observation instead of an inference. What has *not* been
+established is which code invokes the callback and what exact predicate it
+tests - only that the callback is armed, is never entered, and that dial-tone
+qualification is the state the model withholds.
+
 ### Two transfer engines
 
 Cold boot and runtime swap use different hardware paths:
