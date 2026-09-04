@@ -346,8 +346,15 @@ class TimerBlock:
             # One request per max count, not one per poll: the request is the
             # edge, and the firmware acknowledges it through the interrupt
             # controller rather than by clearing a level.
-            if len(self._pending) < 8:
-                self._pending.append(TIMER_VECTORS[timer.index])
+            #
+            # Each timer latches its own request. Queueing them together, and
+            # capping the queue, let the fastest timer crowd the others out:
+            # the ROM's timer 2 raised eight requests and was delivered one,
+            # because timer 1 filled the queue between them, so the handover
+            # its handler performs never happened.
+            vector = TIMER_VECTORS[timer.index]
+            if vector not in self._pending:
+                self._pending.append(vector)
 
     def pending_interrupt(self) -> int | None:
         if not self.controller.enabled("timer"):
