@@ -2016,14 +2016,42 @@ passing a far callback pointer (`mov dx, cs` with `si = 0x1be` or `di = 0x24f`;
 both offsets are code, not tables) and a selector in `ah`. `[0xd74]` is written
 with an immediate in only three places: those two entries and `0x0b80f`.
 
-**This is a candidate, not a proof.** What is established is that `0x20`/`0x21`
-are the per-dial-mode DSP commands on the dial path, and that neither appears in
-any emulator run - the tap saw only `0x01`, `0x0f`, `0x67`, `0x7d`, `0x82`,
-`0x83`, `0x84`. Whether `0x20`/`0x21` carry a digit per message, and what the
-`cs:[si]` parameter is, needs the path executed. The way to settle it is to stop
-`begin_dialing` short-circuiting and see whether the firmware reaches `0x21f7f`
-and what argument it sends - which is also exactly what would let the emulator
-generate DTMF from firmware rather than from the model.
+**This is a candidate, not a proof**, and an attempt to execute it failed -
+usefully. What is established is that `0x20`/`0x21` are the per-dial-mode DSP
+commands on the dial path, and that neither appears in any emulator run: the tap
+saw only `0x01`, `0x0f`, `0x67`, `0x7d`, `0x82`, `0x83`, `0x84`.
+
+#### The firmware never reaches that code, and removing the injection does not help
+
+The same selector is in every image, so the site can be followed across them:
+
+| image | selector | mode cell |
+|---|---|---|
+| capture-403 (7.4.16) | file `0x21f72`, `0x21fb8` | `[0xd74]` |
+| capture-01 (7.3.14), `IDSDL302.ROM` | file `0x21e92`, `0x21ed8` | `[0xe88]` |
+| `main211.xmf` | file `0x46555`, `0x4659b` (physical `0x86555`) | `[0x2006]` |
+
+Neutralizing `core.set_dtmf_digits` and re-running `ATDT123` on `main211.xmf`
+confirmed the short-circuit was live - one interception, `'123'` - and changed
+nothing else: the same 1628 messages and the same seven tags, no `0x20`/`0x21`,
+and the DTMF audio gone (451 detections of `1` became one spurious window).
+
+That is a definite negative, and it needs no PC hook to read. Between the
+selector and the `lcall` that sends the message there is **no branch out** - the
+`jne` skips a single instruction - so reaching the selector implies sending. No
+`0x20`/`0x21` on the wire therefore means the firmware never reached `0x86555`.
+
+The reason is that the interception is not at `begin_dialing` at all. The bridge
+parses the AT command text itself (`courier_emu/bridge.py`, `text.find("D")`,
+strip `T`/`P`, filter to dial characters), seizes the DAA, and feeds the detector
+window. Dialing is modelled at the **DTE-command level**, above both the mailbox
+and the firmware's own dial sequencer, so the firmware is never asked to dial and
+`set_dtmf_digits` is only the audio half of a larger stand-in.
+
+So firmware-generated tones need the dial modelled at the line rather than at the
+command parser - letting the supervisor drive the DAA itself - not a one-line
+change. Until then `0x20`/`0x21` stay a static candidate: what the `cs:[si]`
+parameter is, and whether one message carries one digit, is still unexecuted.
 
 Note tags `0x82`, `0x83` and `0x84` exceed the DSP dispatcher's `0x7f` bound, so
 they are not dispatch tags and their meaning is unaccounted for. They are the
