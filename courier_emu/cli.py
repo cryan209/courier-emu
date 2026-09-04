@@ -163,6 +163,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
             command.extend(("--sip-target", args.sip_target))
     if args.nvram:
         command.extend(("--nvram", str(Path(args.nvram).resolve())))
+    if args.nvram_fixture:
+        command.extend(("--nvram-fixture", args.nvram_fixture))
     if args.parameter_sector:
         command.extend(("--parameter-sector", str(Path(args.parameter_sector).resolve())))
     if args.parameter_flash:
@@ -608,10 +610,18 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help="stop after this many rings (default 0, ring until the run ends)",
     )
-    run.add_argument(
+    nvram_source = run.add_mutually_exclusive_group()
+    nvram_source.add_argument(
         "--nvram",
         metavar="PATH",
         help="attach the 512-byte board settings EEPROM image (created if absent)",
+    )
+    nvram_source.add_argument(
+        "--nvram-fixture",
+        choices=("idsdl302",),
+        metavar="NAME",
+        help="attach a deterministic, in-memory settings EEPROM fixture; "
+        "idsdl302 seeds only words 94 through 102 from the recovered six records",
     )
     run.add_argument(
         "--dsp-rx-pcm",

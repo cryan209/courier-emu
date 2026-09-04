@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from courier_emu.cli import daa_codec_wanted, main, ring_cadence
+from courier_emu.cli import _worker_command, build_parser, daa_codec_wanted, main, ring_cadence
 from courier_emu.parameters import FEATURE_BITS, ParameterSector, features_value
 
 
@@ -18,6 +18,25 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CliTests(unittest.TestCase):
+    def test_idsl302_nvram_fixture_is_forwarded_to_the_worker(self) -> None:
+        args = build_parser().parse_args(
+            ["run", str(ROOT / "IDSDL302.ROM"), "--nvram-fixture", "idsdl302"]
+        )
+        command = _worker_command(args)
+        self.assertIn("--nvram-fixture", command)
+        self.assertEqual(command[command.index("--nvram-fixture") + 1], "idsdl302")
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                [
+                    "run",
+                    str(ROOT / "IDSDL302.ROM"),
+                    "--nvram-fixture",
+                    "idsdl302",
+                    "--nvram",
+                    "settings.nv",
+                ]
+            )
+
     def test_info(self) -> None:
         output = StringIO()
         with redirect_stdout(output):

@@ -11,7 +11,10 @@ from courier_emu.nvram import (
     BIT_READY,
     NVRAM_BYTES,
     CourierNvram,
+    encode_idsl302_record,
+    encode_idsl302_settings,
 )
+from courier_emu.ram_dump import decode_settings
 
 
 class MicrowireBus:
@@ -138,6 +141,29 @@ class CourierNvramTest(unittest.TestCase):
             path.write_bytes(b"\xff" * 16)
             with self.assertRaises(ValueError):
                 CourierNvram.load(path)
+
+    def test_idsl302_record_encoder_reverses_all_three_decoders(self) -> None:
+        for value in (0, 1, 7, 30, 0xFF):
+            record = encode_idsl302_record(value)
+            # Put the record at setting 2's physical position; the decoder's
+            # pointer order then exposes all three independently decoded copies.
+            records = decode_settings(record + encode_idsl302_record(0) * 5)
+            decoded = records[1]
+            self.assertEqual(decoded["decoded_copies"], [value] * 3)
+            self.assertTrue(decoded["all_copies_agree"])
+
+    def test_idsl302_fixture_programs_only_words_94_through_102(self) -> None:
+        device = CourierNvram.idsl302_fixture()
+        encoded = encode_idsl302_settings()
+        self.assertEqual(encoded.hex(), "649603080b1a649603ef871def871def871d")
+        self.assertEqual(device.data[94 * 2 : 103 * 2], encoded)
+        self.assertEqual(device.data[:94 * 2], b"\xff" * (94 * 2))
+        self.assertEqual(device.data[103 * 2 :], b"\xff" * (NVRAM_BYTES - 103 * 2))
+        decoded = decode_settings(encoded)
+        self.assertEqual([record["value"] for record in decoded], [0, 30, 7, 30, 0, 0])
+
+    def test_default_device_remains_blank(self) -> None:
+        self.assertEqual(CourierNvram().data, b"\xff" * NVRAM_BYTES)
 
 
 if __name__ == "__main__":

@@ -763,6 +763,18 @@ unprogrammed part) when the file does not exist and written back after the run:
   --at AT --nvram settings.nv --summary
 ```
 
+For a deterministic `IDSDL302.ROM` boot, the recovered six-record settings
+cache can instead be attached in memory. This leaves every EEPROM word except
+94 through 102 erased, and does not alter the blank `--nvram` behavior:
+
+```sh
+./courier run IDSDL302.ROM --instructions 60000000 \
+  --tick-ms 10 --nvram-fixture idsl302 --at AT --summary
+```
+
+The fixture reverses all three byte encodings used for each redundant record;
+it is mutually exclusive with a persistent `--nvram` image.
+
 `nvram` in the result reports reads, writes, erases, the write-enable latch, the
 programmed words, and a command trace.
 

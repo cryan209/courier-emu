@@ -45,6 +45,7 @@ def main() -> int:
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
     parser.add_argument("--nvram")
+    parser.add_argument("--nvram-fixture", choices=("idsdl302",))
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
@@ -129,6 +130,16 @@ def main() -> int:
             rate=nearest_sample_rate(args.daa_codec_rate),
         )
 
+    if args.nvram and args.nvram_fixture:
+        raise SystemExit("--nvram and --nvram-fixture are mutually exclusive")
+    nvram = (
+        CourierNvram.load(args.nvram)
+        if args.nvram
+        else CourierNvram.idsl302_fixture()
+        if args.nvram_fixture == "idsdl302"
+        else None
+    )
+
     machine = CourierMachine(
         load_image(args.image),
         port_values=ports,
@@ -143,7 +154,7 @@ def main() -> int:
         ring=ring,
         codec=codec,
         int1_after_ms=args.int1_after,
-        nvram=CourierNvram.load(args.nvram) if args.nvram else None,
+        nvram=nvram,
         board_id=None if args.board_id == "none" else int(args.board_id, 0),
         dip_closed=frozenset(args.dip),
         parameter_sector=load_sector(args.parameter_sector) if args.parameter_sector else None,

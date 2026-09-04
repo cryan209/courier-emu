@@ -33,6 +33,35 @@ OPCODE_ERASE = 3
 
 MAX_TRACE_EVENTS = 256
 
+# IDSDL302 copies EEPROM words 94..102 into RAM 0752..0763.  Its six
+# settings records are three redundant, differently obfuscated bytes, stored
+# in the physical order 2, 3, 4, 5, 6, 1.  These values were recovered from a
+# running 20.16 MHz Courier; setting 3 is the bit field that permits the ROM
+# to open its DTE output.
+IDSDL302_SETTINGS_WORD = 94
+IDSDL302_SETTINGS = (0, 30, 7, 30, 0, 0)
+IDSDL302_RECORD_ORDER = (1, 2, 3, 4, 5, 0)
+
+
+def encode_idsl302_record(value: int) -> bytes:
+    """Reverse the three byte transformations in IDSDL302's e237 decoder."""
+    if not 0 <= value <= 0xFF:
+        raise ValueError(f"an IDSDL302 setting must be one byte, got {value}")
+
+    # Decoder copies: ror(a, 2) + 5, rol(b, 1) - 0x0f, c xor 0x1d.
+    first = (value - 5) & 0xFF
+    first = ((first << 2) | (first >> 6)) & 0xFF
+    second = (value + 0x0F) & 0xFF
+    second = ((second >> 1) | (second << 7)) & 0xFF
+    return bytes((first, second, value ^ 0x1D))
+
+
+def encode_idsl302_settings(values: tuple[int, ...] = IDSDL302_SETTINGS) -> bytes:
+    """Encode the six records in their nine-word EEPROM storage order."""
+    if len(values) != 6:
+        raise ValueError(f"IDSDL302 needs six settings, got {len(values)}")
+    return b"".join(encode_idsl302_record(values[index]) for index in IDSDL302_RECORD_ORDER)
+
 
 @dataclass
 class CourierNvram:
@@ -90,6 +119,15 @@ class CourierNvram:
     def set_word(self, address: int, value: int) -> None:
         index = (address % NVRAM_WORDS) * 2
         self.data[index : index + 2] = (value & 0xFFFF).to_bytes(2, "little")
+
+    @classmethod
+    def idsl302_fixture(cls) -> CourierNvram:
+        """Return an erased EEPROM seeded only with the recovered boot settings."""
+        device = cls()
+        start = IDSDL302_SETTINGS_WORD * 2
+        encoded = encode_idsl302_settings()
+        device.data[start : start + len(encoded)] = encoded
+        return device
 
     def _trace(self, event: str) -> None:
         if len(self.trace) < MAX_TRACE_EVENTS:
