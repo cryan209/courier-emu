@@ -79,6 +79,10 @@ START_BIT_INSTRUCTIONS = 32_768
 RX_BIT_INSTRUCTIONS = 150
 # When the harness's terminal raises its handshake. Long enough after reset
 # that the ROM's callback chain has already sampled the line unasserted.
+# How far past the later of a ROM's DSP reset and download entries those
+# routines run. Both and their handshake waits sit inside the resulting span;
+# e3aa..e67b in the captured board image, whose block ends at e597.
+ROM_DOWNLOADER_SPAN = 0x200
 DTE_READY_INSTRUCTIONS = 30_000_000
 # And when it starts sending. The chain wants the handshake asserted, then a
 # quiet spell, then a character: [0x321] counts thirty of its own polls down
@@ -309,7 +313,9 @@ class CourierMachine:
         self.accelerated_delays = 0
         self.milestones: list[str] = []
         if with_dsp and not hasattr(image, "dsp_program_segments"):
-            raise ValueError("the DSP bridge needs an XMF payload, not a flash ROM")
+            raise ValueError(
+                "the DSP bridge needs an image that carries a C52 payload"
+            )
         self.dsp_bridge = (
             CourierDspBridge(
                 image,
@@ -325,6 +331,20 @@ class CourierMachine:
             else None
         )
         self.dsp_tx_pcm = dsp_tx_pcm
+        # The physical span of a ROM's DSP reset and download routines, from
+        # the call site that names both rather than from a constant. Inside it,
+        # timer 2's max-count bit is a handshake timeout rather than a delay's
+        # completion, so the model must not grant it - see the read hook.
+        download = getattr(image, "dsp_download", None)
+        self._rom_transfer_span = (
+            (
+                image.base + min(download.reset, download.downloader),
+                image.base + max(download.reset, download.downloader)
+                + ROM_DOWNLOADER_SPAN,
+            )
+            if download is not None
+            else None
+        )
         # Every address constant below belongs to the update payload's map.
         # A full board ROM loads at its own base and runs a different
         # supervisor, so those constants land on unrelated code: left enabled
@@ -1617,7 +1637,16 @@ class CourierMachine:
             # The hook runs before the read is satisfied, so a timer register
             # is answered by putting the modelled value where the read will
             # find it. Everything else in the control block stays plain memory.
-            modelled = self.timers.read(address, size, self.instructions)
+            # Both of a ROM's DSP transfer routines escape every handshake
+            # wait on timer 2's max count, so the acceleration that hands that
+            # bit to a calibrated delay at its first poll would report a
+            # transfer failure instead. The XMF supervisor's download loop has
+            # the same collision, handled by address above.
+            span = self._rom_transfer_span
+            grant = span is None or not span[0] <= current_pc() < span[1]
+            modelled = self.timers.read(
+                address, size, self.instructions, grant=grant
+            )
             if modelled is None and self.uart is not None:
                 modelled = self.uart.read(address, size)
             if modelled is not None:

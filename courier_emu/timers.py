@@ -285,8 +285,16 @@ class TimerBlock:
     def _tick(self, instructions: int) -> int:
         return ticks_for(instructions)
 
-    def read(self, address: int, size: int, instructions: int) -> int | None:
-        """Return the value at a timer register, or None if it is not one."""
+    def read(
+        self, address: int, size: int, instructions: int, *, grant: bool = True
+    ) -> int | None:
+        """Return the value at a timer register, or None if it is not one.
+
+        `grant` declines the max-count acceleration below. The bit is a
+        calibrated delay's completion in most of the firmware, but the DSP
+        transfer routines reuse it as their handshake timeout, where granting
+        it at the first poll reports a failure that never happened.
+        """
         entry = TIMER_REGISTERS.get(address)
         if entry is None:
             return None
@@ -294,7 +302,13 @@ class TimerBlock:
         timer = self.timers[index]
         self.reads += 1
         timer.advance(self._tick(instructions))
-        if name == "control" and self.fast and self.answers_reads and not timer.control & CONTROL_MAX_COUNT:
+        if (
+            name == "control"
+            and grant
+            and self.fast
+            and self.answers_reads
+            and not timer.control & CONTROL_MAX_COUNT
+        ):
             # Both firmwares busy-wait on MAX COUNT for their calibrated
             # delays. Granting the wait at the first poll is the same
             # acceleration the harness already applies to the delay helpers,

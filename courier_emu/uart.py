@@ -44,14 +44,34 @@ REGISTERS = (B0CMP, B0CNT, S0CON, S0STS, S0RBUF, S0TBUF)
 # S0CON bit 5 enables the receiver. The ROM writes 0x21 - mode 1 plus this.
 CONTROL_RECEIVE_ENABLE = 0x20
 
+# S0STS bit assignments, from Figure 10-14 of the 80C186EB user's manual
+# (270830-003, page 10-16). The figure's fields sit above a reserved bit 0, so
+# every name is one place higher than a plain reading of the field list gives:
+# CTS 1, OE 2, TXE 3, FE 4, TI 5, RI 6, RB8/PE 7, DBRK0 8, DBRK1 9.
+#
+# Four firmware uses corroborate that offset, and none of them parses under the
+# unshifted reading: the pre-transmit spin at 0x81603 waits on mask 8 (TXE, not
+# FE); 0x9f03e skips a receive when mask 0x10 is set (FE, not TI); 0x8181e and
+# 0x81892 test mask 0x300 (DBRK0/DBRK1, i.e. BREAK from the DTE); and the
+# transmit ISR's second-byte write at 0x819f1 gates on mask 2.
+#
+# CTS is the complement of the CTS pin, which the DTE drives with RTS. It is
+# not cleared by reading the register.
+CLEAR_TO_SEND = 0x02
+# TXE, set when SxTBUF and the shift register are both empty. The transmit
+# routine at 0x81613 spins on it before every byte it writes to S0TBUF, and
+# the ISR uses it to decide whether a second byte can follow immediately.
+# Nothing here queues a byte behind another, so the transmitter is always
+# ready. Accessing S0STS does not clear TXE.
+TRANSMIT_READY = 0x08
+# RI, set when a character has been placed in S0RBUF. This board's receive is
+# interrupt driven off the vector below and no firmware path polls RI, which
+# is why an earlier revision of this module could label bit 1 as receive-ready
+# without a run detecting the error.
+RECEIVE_READY = 0x40
+
 # The part's fixed serial interrupt types, confirmed against the live board's
 # vector table rather than assumed.
-# S0STS bit 1, receive data available.
-RECEIVE_READY = 0x02
-# S0STS bit 3, transmit buffer empty. The transmit routine at 0x81613 spins on
-# it before every byte it writes to S0TBUF. Nothing here queues a byte behind
-# another, so the transmitter is always ready.
-TRANSMIT_READY = 0x08
 
 RECEIVE_VECTOR = 0x14
 TRANSMIT_VECTOR = 0x15
@@ -71,6 +91,17 @@ class EbSerial:
     # A character on the wire, not yet handed to the firmware.
     holding: bool = False
     receive_ready: bool = False
+    # The CTS pin's asserted state, which a real DTE drives with RTS.
+    #
+    # Nothing here models the host side of the Plug and Play handshake, so
+    # this is raised with each delivered character and consumed by the status
+    # read, reproducing exactly the edge timing that the pre-correction model
+    # produced from this bit. That keeps the [0x31f] chain advancing, but it
+    # is a stand-in: the real sequence is the DTE dropping DTR on port 0x14
+    # bit 0 and asserting RTS 30 to 50 ticks later, and until the terminal
+    # model drives those two lines the chain is reached by the right bit for
+    # the wrong reason. On the part, reading the register does not clear CTS.
+    clear_to_send: bool = False
 
     @property
     def receive_enabled(self) -> bool:
@@ -79,17 +110,28 @@ class EbSerial:
     def read(self, address: int, size: int) -> int | None:
         """The value a read of `address` should find, or None if not ours."""
         if address == S0STS:
-            # Bit 1 is receive-data-available: the callback chain at [0x31f]
-            # requires it clear while it waits for the DTE handshake and set
-            # once a character has landed, which is what carries it to the
-            # node that posts the startup banner's event. The error bits are
-            # not modelled - see the module docstring.
+            # The callback chain at [0x31f] is the Plug and Play external COM
+            # device enumeration: it wants DTR dropped and then CTS asserted,
+            # and posts event 0x0e, which emits the PnP identifier string. An
+            # earlier revision reached the same node by treating bit 1 as
+            # receive-data-available, because asserting it does advance the
+            # chain - as CTS, not as data. Bit 1 is driven from the modelled
+            # DTE's handshake instead. The error bits are not modelled - see
+            # the module docstring.
             ready = self.receive_ready
-            # The status word is read to clear, which is why the firmware
-            # reads it at sites that discard the value: those reads are the
+            # RI and TI are read to clear, which is why the firmware reads the
+            # register at sites that discard the value: those reads are the
             # acknowledge. Taking the byte out of S0RBUF does not clear it.
+            # CTS and TXE are not cleared by the read.
             self.receive_ready = False
-            return TRANSMIT_READY | (RECEIVE_READY if ready else 0)
+            cts, self.clear_to_send = self.clear_to_send, False
+            # RI is deliberately not asserted. This board's receive is
+            # interrupt driven off RECEIVE_VECTOR and no firmware path polls
+            # RI, so leaving it clear keeps the model's observable behaviour
+            # identical to the revision that had the bit map wrong, rather
+            # than introducing an untested status bit alongside the fix.
+            del ready
+            return TRANSMIT_READY | (CLEAR_TO_SEND if cts else 0)
         if address == S0RBUF:
             return self.receive_holding
         if address == S0CON:
@@ -151,6 +193,8 @@ class EbSerial:
         """Place a byte in the receive buffer and request its interrupt."""
         self.receive_holding = byte & 0xFF
         self.receive_ready = True
+        # Stand-in for the DTE's RTS; see the field's comment.
+        self.clear_to_send = True
         self.received += 1
         self._request(RECEIVE_VECTOR)
 
@@ -159,6 +203,7 @@ class EbSerial:
             "control": f"{self.control:#06x}",
             "baud_compare": f"{self.baud_compare:#06x}",
             "receive_enabled": self.receive_enabled,
+            "clear_to_send": self.clear_to_send,
             "received": self.received,
             "transmitted": self.transmitted,
         }

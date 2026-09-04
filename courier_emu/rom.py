@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+import re
 import struct
 from typing import Any
 
@@ -44,6 +45,66 @@ RELOCATION_MEMORY_BIT = 0x1000
 APPLICATION_OFFSET = 0
 APPLICATION_SIGNATURE = b"INT80186 Modem Functions"
 APPLICATION_SIGNATURE_WINDOW = 0x600
+
+# The DSP holds no resident program. The supervisor downloads one over the I/O
+# ports at every boot, which is why a flash image carries the datapump and why
+# a feature could be added to a shipped modem by replacing the image.
+#
+# The call site that starts that download names every parameter the extraction
+# needs, so none of them is hardcoded: the 25 MHz supervisor keeps the same
+# payload at a different offset behind the same instructions, and a fixed
+# offset recovered from one image silently reads the wrong bytes out of another.
+#
+#     mov ax, 8000        ; entry, as a C52 program word address
+#     call <reset>        ; reset the part and request that entry
+#     mov ax, <start>     ; first source offset within the window below
+#     mov cx, <end>       ; one past the last
+#     call <downloader>
+#
+# and, inside the downloader, the source window itself:
+#
+#     mov ax, <segment>
+#     mov es, ax
+#
+# Two independent checks agree on the result for the captured 20.16 MHz board:
+# the C52 reset code sits at the offset this derives, and the resident mailbox
+# sender lands inside the startup region identified separately.
+DSP_ENTRY_WORD = 0x8000
+DSP_CALL_SITE = re.compile(rb"\xb8(..)\xe8(..)\xb8(..)\xb9(..)\xe8(..)", re.S)
+DSP_SOURCE_WINDOW = re.compile(rb"\xb8(..)\x8e\xc0", re.S)
+# How far into the downloader to look for its own source window, and the span
+# the call site and downloader both live in. Both are near calls, so caller and
+# callee share one code segment.
+DSP_DOWNLOADER_WINDOW = 0x120
+CODE_SEGMENT_SIZE = 0x10000
+
+
+@dataclass(frozen=True)
+class DspDownload:
+    """Where a ROM keeps its C52 program, read out of the code that sends it."""
+
+    call_site: int
+    reset: int
+    downloader: int
+    source_segment: int
+    offset: int
+    length: int
+    entry_word: int
+
+    @property
+    def end(self) -> int:
+        return self.offset + self.length
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "call_site": f"{self.call_site:#07x}",
+            "reset": f"{self.reset:#07x}",
+            "downloader": f"{self.downloader:#07x}",
+            "source_segment": f"{self.source_segment:#06x}",
+            "flash_range": f"{self.offset:#07x}..{self.end:#07x}",
+            "words": self.length // 2,
+            "entry_word": f"{self.entry_word:#06x}",
+        }
 
 
 def _address(register: int) -> int:
@@ -141,6 +202,78 @@ class CourierRom:
     @property
     def base(self) -> int:
         return self.reset.base
+
+    @property
+    def dsp_download(self) -> "DspDownload | None":
+        """The C52 payload's location, recovered from the download call site.
+
+        A supervisor calls the downloader from more than one place - the
+        captured board has three - so candidates are compared on what they say
+        about the payload rather than on where they were found. A disagreement
+        there means the byte pattern matched something that is not this call
+        site, and a guess between two answers would hand the DSP the wrong
+        program rather than fail visibly, so it raises instead.
+        """
+        candidates: list[DspDownload] = []
+        for match in DSP_CALL_SITE.finditer(self.data[:CODE_SEGMENT_SIZE]):
+            entry, _, start, end, _ = (
+                struct.unpack("<H", match[index])[0] for index in range(1, 6)
+            )
+            if entry != DSP_ENTRY_WORD or end <= start:
+                continue
+            reset = (
+                match.start(2) + 2 + struct.unpack("<h", match[2])[0]
+            ) & 0xFFFF
+            target = (
+                match.start(5) + 2 + struct.unpack("<h", match[5])[0]
+            ) & 0xFFFF
+            window = DSP_SOURCE_WINDOW.search(
+                self.data[target : target + DSP_DOWNLOADER_WINDOW]
+            )
+            if window is None:
+                continue
+            segment = struct.unpack("<H", window[1])[0]
+            offset = (segment << 4) - self.base + start
+            length = end - start
+            if offset < 0 or offset + length > len(self.data) or length % 2:
+                continue
+            candidates.append(
+                DspDownload(
+                    match.start(), reset, target, segment, offset, length, entry
+                )
+            )
+        if not candidates:
+            return None
+        def payload(download: DspDownload) -> tuple[int, ...]:
+            return (
+                download.source_segment,
+                download.offset,
+                download.length,
+                download.entry_word,
+            )
+
+        if any(payload(other) != payload(candidates[0]) for other in candidates[1:]):
+            raise RomFormatError(
+                "the DSP download call site matched with conflicting parameters; "
+                "refusing to choose between them"
+            )
+        return candidates[0]
+
+    def dsp_program_segments(self) -> tuple[tuple[int, bytes], ...]:
+        """Return the C52 program-memory origin and bytes the ROM downloads.
+
+        One segment, unlike an XMF's three: a ROM's supervisor makes a single
+        download call, so what it sends is one contiguous run of words at the
+        entry it requests. Whether the rest of the datapump region reaches the
+        DSP by some other path is not established.
+        """
+        download = self.dsp_download
+        if download is None:
+            raise RomFormatError(
+                "no DSP download call site found; this ROM's C52 payload "
+                "cannot be located, so it cannot be attached to a DSP"
+            )
+        return ((download.entry_word, self.data[download.offset : download.end]),)
 
     def at(self, physical: int, count: int) -> bytes:
         """Read from the ROM by physical address."""
@@ -254,4 +387,7 @@ class CourierRom:
             },
             "peripheral_writes": self.peripheral_writes(),
             "parameter_sectors": self.parameter_sectors,
+            "dsp_download": (
+                self.dsp_download.describe() if self.dsp_download else None
+            ),
         }

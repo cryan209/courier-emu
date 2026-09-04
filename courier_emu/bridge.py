@@ -34,6 +34,57 @@ C52_CALL_OVERLAY_WORDS = C52_CALL_OVERLAY_DESTINATION - C52_CALL_OVERLAY_SOURCE
 C52_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e3")
 DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
 
+# A supervisor sends the C52 program through one of two transfer protocols,
+# and they are not compatible enough to merge. An update payload's supervisor
+# strobes eight bytes at a time from one window on port 0x1e. A flash ROM's
+# downloader at e47b alternates two windows, strobing 0x40..0x4e with 1 and
+# 0x50..0x5e with 2, both on port 0x18, and finishes by submitting its word
+# checksum with 4.
+#
+# The collision that forces a profile rather than a union: 0x58..0x5e are the
+# runtime mailbox registers in both protocols, but in the ROM's they are also
+# the upper half of the second transfer window. Nothing in a single write
+# distinguishes the two uses, so the download's own completion does - before
+# the program is in, those ports are window lanes; after it, they are the
+# mailbox. That is the order the hardware runs them in.
+ROM_COMMAND_PORT = 0x18
+ROM_CHECKSUM_STROBE = 4
+# The value e3aa writes to 0x1c as it leaves, on both its paths.
+ENTRY_REQUEST_COMPLETE = 2
+
+
+@dataclass(frozen=True)
+class TransferProfile:
+    """How a supervisor moves program words into the DSP."""
+
+    name: str
+    command_port: int
+    # Strobe value to the base port of the window it commits.
+    windows: tuple[tuple[int, int], ...]
+    checksum_strobe: int | None
+    # Whether the runtime mailbox registers double as transfer window lanes.
+    mailbox_shares_window: bool
+
+    @property
+    def first_strobe(self) -> int:
+        return self.windows[0][0]
+
+    def lanes(self) -> dict[int, tuple[int, int]]:
+        """Map each window port to the strobe that commits it and its lane."""
+        return {
+            base + lane * DSP_WINDOW_STRIDE: (strobe, lane)
+            for strobe, base in self.windows
+            for lane in range(8)
+        }
+
+
+XMF_TRANSFER = TransferProfile(
+    "xmf", DSP_COMMAND_PORT, ((1, DSP_WINDOW_FIRST),), None, False
+)
+ROM_TRANSFER = TransferProfile(
+    "rom", ROM_COMMAND_PORT, ((1, 0x40), (2, 0x50)), ROM_CHECKSUM_STROBE, True
+)
+
 # The supervisor's receive table stores this tag's data word at [0x287], which
 # is the DAA revision `ATI7` prints and which the product ID at 0x8369d
 # branches on. Its three neighbours -- 0x7c, 0x7d, 0x7e -- fill [0x283]/[0x285],
@@ -101,12 +152,24 @@ class CourierDspBridge:
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
-        # The 2.3 supervisor downloads the shorter 0xcbc0-byte resident
-        # bootstrap; the 2.1/2.2 supervisors transfer the full segment.
-        self.bootstrap_target_size = (
-            0xCBC0 if getattr(image, "supervisor_offset", 0) == 0x17BB0
-            else DSP_BOOT_SIZE
+        # A ROM locates its payload through its own download call site, which
+        # an update payload has no need of; that is what tells the two
+        # transfer protocols apart here.
+        self.transfer = (
+            ROM_TRANSFER if hasattr(image, "dsp_download") else XMF_TRANSFER
         )
+        if self.transfer is ROM_TRANSFER:
+            # A ROM's supervisor makes one download call covering the whole
+            # payload, so the transfer is complete only once all of it has
+            # arrived. There is no shorter resident bootstrap to recognize.
+            self.bootstrap_target_size = len(self.expected_bootstrap)
+        else:
+            # The 2.3 supervisor downloads the shorter 0xcbc0-byte resident
+            # bootstrap; the 2.1/2.2 supervisors transfer the full segment.
+            self.bootstrap_target_size = (
+                0xCBC0 if getattr(image, "supervisor_offset", 0) == 0x17BB0
+                else DSP_BOOT_SIZE
+            )
         self.core = NativeC5x(image)
         self._configure_frame_interrupt()
         self._call_overlay = self._find_call_overlay()
@@ -114,7 +177,14 @@ class CourierDspBridge:
         self._call_resume_pending = False
         self._call_resume_state: dict[str, int | bool] | None = None
         self.batch = batch
-        self.window = bytearray(b"\xff" * 8)
+        self._lanes = self.transfer.lanes()
+        self._windows = {
+            strobe: bytearray(b"\xff" * 8) for strobe, _ in self.transfer.windows
+        }
+        # The first window keeps the old name; the bootstrap recognition and
+        # the status report both read it.
+        self.window = self._windows[self.transfer.first_strobe]
+        self.checksum_submits = 0
         self.bootstrap = bytearray()
         self.active = False
         self.bootstrap_match: bool | None = None
@@ -657,15 +727,20 @@ class CourierDspBridge:
             self._queue_runtime_message(0x001D, 0x0000)
         self._connected_event_queued = True
 
-    @staticmethod
-    def handles(port: int) -> bool:
-        return port in (0x1C, DSP_COMMAND_PORT, *DSP_RUNTIME_PORTS) or (
-            DSP_WINDOW_FIRST <= port <= DSP_WINDOW_LAST
-            and (port - DSP_WINDOW_FIRST) % DSP_WINDOW_STRIDE == 0
+    def handles(self, port: int) -> bool:
+        return (
+            port in (0x1C, self.transfer.command_port, *DSP_RUNTIME_PORTS)
+            or port in self._lanes
         )
 
     def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
-        if port in DSP_RUNTIME_PORTS and size == 1:
+        if (
+            port in DSP_RUNTIME_PORTS
+            and size == 1
+            # Under the ROM's protocol these ports carry the upper transfer
+            # window until the program is in, and the mailbox only after.
+            and not (self.transfer.mailbox_shares_window and not self.active)
+        ):
             self._runtime_mode = True
             if port == 0x58:
                 self._runtime_header = (self._runtime_header & 0xFF00) | (value & 0xFF)
@@ -688,6 +763,18 @@ class CourierDspBridge:
                     self._answer_runtime_request(*words)
             return
         if port == 0x1C:
+            if (
+                self.transfer.checksum_strobe is not None
+                and not self.active
+                and size == 1
+                and (value & 0xFF) == ENTRY_REQUEST_COMPLETE
+            ):
+                # A ROM's supervisor sets its transfer window up before it
+                # requests the entry, and that setup goes through the same
+                # window and strobes as the program does - eight 0083 words on
+                # the captured board. The entry request ends here, so whatever
+                # the window carried before it was configuration, not program.
+                self.bootstrap.clear()
             if self._runtime_mode:
                 if not (value & 1):
                     self._runtime_ready = False
@@ -701,14 +788,31 @@ class CourierDspBridge:
                     self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
                     self._runtime_inbound_seen = False
             return
-        if DSP_WINDOW_FIRST <= port <= DSP_WINDOW_LAST:
-            lane = (port - DSP_WINDOW_FIRST) // DSP_WINDOW_STRIDE
-            if 0 <= lane < len(self.window):
-                self.window[lane] = value & 0xFF
+        placement = self._lanes.get(port)
+        if placement is not None:
+            strobe, lane = placement
+            self._windows[strobe][lane] = value & 0xFF
             return
-        if port != DSP_COMMAND_PORT or size != 1 or (value & 0xFF) != 1:
+        if port != self.transfer.command_port or size != 1:
             return
-        if self.active and bytes(self.window) == self.expected_bootstrap[:8]:
+        strobe = value & 0xFF
+        if (
+            self.transfer.checksum_strobe is not None
+            and strobe == self.transfer.checksum_strobe
+        ):
+            # The ROM's downloader submits its 16-bit word sum here and polls
+            # for acceptance. The transfer is already complete by length, so
+            # this is recorded rather than acted on.
+            self.checksum_submits += 1
+            return
+        if strobe not in self._windows:
+            return
+        window = self._windows[strobe]
+        if (
+            strobe == self.transfer.first_strobe
+            and self.active
+            and bytes(window) == self.expected_bootstrap[:8]
+        ):
             # The supervisor re-enters its DSP download routine for a line
             # operation. Recognize the program's first transfer window; port
             # 0x1c also carries ordinary handshakes and is not a reset signal
@@ -718,7 +822,7 @@ class CourierDspBridge:
             self._configure_frame_interrupt()
             self._call_overlay_active = False
             self._call_resume_pending = self._v8_armed
-            self.bootstrap = bytearray(self.window)
+            self.bootstrap = bytearray(window)
             self.bootstrap_match = None
             self.active = False
             self._runtime_mode = False
@@ -730,7 +834,7 @@ class CourierDspBridge:
             return
         if not self.active:
             self.transfer_commands += 1
-            self.bootstrap.extend(self.window)
+            self.bootstrap.extend(window)
             if len(self.bootstrap) >= self.bootstrap_target_size:
                 self.bootstrap_match = (
                     self.bootstrap[:self.bootstrap_target_size]
@@ -804,7 +908,10 @@ class CourierDspBridge:
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
             return int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
-        if port == DSP_COMMAND_PORT:
+        if port == self.transfer.command_port:
+            # The downloader polls this port for the boot ROM's ready and
+            # acceptance bits between groups. They are synthesized, as the
+            # boot ROM that drives them is not available.
             return (1 << (size * 8)) - 1
         if port in (0x5C, 0x5E) and self.active and hasattr(self.core, "io"):
             # The ASIC exposes the C52's 16-bit status latch as high byte at

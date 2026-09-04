@@ -113,11 +113,54 @@ class RomBootTests(unittest.TestCase):
         machine.run(6_000_000)
         self.assertGreaterEqual(nvram.reads, 1)
 
-    def test_the_dsp_bridge_is_refused_for_a_rom(self) -> None:
+    def test_a_rom_yields_the_c52_payload_its_supervisor_downloads(self) -> None:
+        """A ROM does carry a separable payload; it just is not laid out.
+
+        This replaces a test that asserted the bridge is refused for a ROM.
+        That was true only while the payload's location was unknown: the
+        download call site names it, so the extraction is derived rather than
+        assumed, and the values below are the ones the call site yields for
+        this image.
+        """
         from courier_emu.machine import CourierMachine
 
-        with self.assertRaises(ValueError):
-            CourierMachine(CourierRom.load(IMAGE), with_dsp=True)
+        rom = CourierRom.load(IMAGE)
+        download = rom.dsp_download
+        self.assertIsNotNone(download)
+        self.assertEqual(download.entry_word, 0x8000)
+        self.assertEqual(download.source_segment, 0xA908)
+        self.assertEqual((download.offset, download.end), (0x29080, 0x368FC))
+        self.assertEqual(download.length // 2, 27710)
+
+        (origin, segment), = rom.dsp_program_segments()
+        self.assertEqual(origin, 0x8000)
+        self.assertEqual(segment, rom.data[0x29080:0x368FC])
+        # The C52 reset code the load base was pinned against.
+        self.assertEqual(segment[:6], bytes.fromhex("00bc57aeffff"))
+
+        machine = CourierMachine(rom, with_dsp=True)
+        self.assertIsNotNone(machine.dsp_bridge)
+
+    def test_the_supervisor_downloads_the_payload_through_the_bridge(self) -> None:
+        """The ROM's own download reaches the DSP, byte for byte.
+
+        Every word travels through the modelled ports: e3aa's reset and entry
+        request, then e47b alternating its two windows on port 0x18. Nothing
+        here hands the payload to the bridge directly.
+        """
+        from courier_emu.machine import CourierMachine
+
+        rom = CourierRom.load(IMAGE)
+        machine = CourierMachine(rom, with_dsp=True)
+        machine.run(20_000_000)
+        bridge = machine.dsp_bridge
+        self.assertTrue(bridge.active)
+        self.assertEqual(bridge.bootstraps, 1)
+        self.assertIs(bridge.bootstrap_match, True)
+        # 27,710 words in eight-byte groups, and the checksum strobe after.
+        self.assertEqual(bridge.checksum_submits, 1)
+        received = bytes(bridge.bootstrap[:bridge.bootstrap_target_size])
+        self.assertEqual(received, rom.data[0x29080:0x368FC])
 
 
 class RomFormatTests(unittest.TestCase):

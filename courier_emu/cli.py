@@ -101,8 +101,8 @@ def daa_codec_wanted(args: argparse.Namespace, image: object) -> bool:
         return True
     if args.daa_codec:
         raise ValueError(
-            f"{Path(args.image).name} is a flash ROM, which carries no separable "
-            "C52 payload for the DSP bridge the codec rides on"
+            f"{Path(args.image).name} carries no separable C52 payload for the "
+            "DSP bridge the codec rides on"
         )
     return False
 
@@ -111,8 +111,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     image = load_image(args.image)
     if args.with_dsp and not hasattr(image, "dsp_program_segments"):
         raise ValueError(
-            f"{Path(args.image).name} is a flash ROM, which carries no separable "
-            "C52 payload for the DSP bridge to load"
+            f"{Path(args.image).name} carries no separable C52 payload for the "
+            "DSP bridge to load"
         )
     daa_codec = daa_codec_wanted(args, image)
     command = [
