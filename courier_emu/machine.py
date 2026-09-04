@@ -305,6 +305,7 @@ class CourierMachine:
         self._rx_started_at = 0
         self._rx_edge_at = 0
         self._rom_rx_bit = 0
+        self._rom_dte_opened = False
         self._previous_address: int | None = None
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
@@ -961,6 +962,34 @@ class CourierMachine:
                     # iret so the two never nest.
                     self._tick_owed = True
             self.instructions += 1
+            if (
+                self._rom_tick
+                and not self._rom_dte_opened
+                and self._terminal_attached
+                and self.instructions >= DTE_READY_INSTRUCTIONS
+                and bytes(_uc.mem_read(0x0695, 1))[0] & 1
+            ):
+                # The ROM's board/DSP startup normally posts the event whose
+                # handler at 0x8246b changes the serial state from startup to
+                # command mode and opens the buffered DTE channel. A ROM run
+                # has no executable C52 attached, so complete that hardware-
+                # facing half once the firmware has accepted its EEPROM
+                # settings and a DTE exists. Command parsing and result-code
+                # generation remain in the ROM.
+                _uc.mem_write(0x033E, b"\x02")
+                flags = bytes(_uc.mem_read(0x0B88, 1))[0]
+                _uc.mem_write(0x0B88, bytes((flags | 0x40,)))
+                _uc.mem_write(0x0B7E, b"\x00")
+                _uc.mem_write(0x0B7F, (0x9B0A).to_bytes(2, "little"))
+                output = bytes(_uc.mem_read(0x0EA7, 1))[0]
+                _uc.mem_write(0x0EA7, bytes((output | 0x01,)))
+                _uc.mem_write(0x3424, b"\x01")
+                _uc.mem_write(0x3CA4, (0x3800).to_bytes(2, "little"))
+                _uc.mem_write(0x0050, b"\x23\x0f\x00\x80")
+                self.uart.control = 0x21
+                self._rom_dte_opened = True
+            if self._rom_dte_opened and address == 0x815F0:
+                self._capture_serial(_uc.reg_read(UC_X86_REG_AX) & 0xFF)
             if self.console is not None and not self.instructions % self.console.poll_instructions:
                 typed = self.console.poll()
                 if typed:
@@ -1275,6 +1304,10 @@ class CourierMachine:
                     and self.serial_rx
                     and interrupts_on
                     and self.instructions >= DTE_TYPING_INSTRUCTIONS
+                    and (
+                        not self._rom_tick
+                        or int.from_bytes(_uc.mem_read(0x026A, 2), "little") == 0x9A06
+                    )
                 ):
                     # Put the character on the wire before handing it over.
                     # The ROM's callback chain watches the raw line for the
@@ -1288,6 +1321,13 @@ class CourierMachine:
                         self._rom_rx_bit = 0
                     elif self.instructions - self._rx_started_at >= START_BIT_INSTRUCTIONS:
                         self.uart.holding = False
+                        if self._rom_dte_opened:
+                            # Temporary autobaud handlers reuse type 0x14.
+                            # Once the board-side open event has completed,
+                            # the received character belongs at the ROM's
+                            # final integrated-UART ISR.
+                            _uc.mem_write(0x0050, b"\x23\x0f\x00\x80")
+                            self.uart.control = 0x21
                         self.uart.deliver(self.serial_rx.popleft())
                         _uc.emu_stop()
                 if (
@@ -1462,7 +1502,7 @@ class CourierMachine:
                     # 0x12. Bit 6 is the active-low DTE DTR input: an
                     # attached terminal pulls it low, which opens the normal
                     # receive path instead of installing the discard callback.
-                    if self._dte_asserted():
+                    if self._terminal_attached:
                         value &= ~0x40
                     else:
                         value |= 0x40
@@ -1474,9 +1514,12 @@ class CourierMachine:
                     else:
                         value &= ~STRAP_SENSE_BIT
                 if self.uart is not None and port == 0x14 and size == 1:
-                    # The raw receive line, which the ROM polls as well as
-                    # reading the buffer. Bit 0 is the mark/space level.
-                    if not self._dte_asserted():
+                    # DTR is high while an ordinary terminal remains
+                    # attached. The serial-PnP state machine deliberately
+                    # looks for a high-to-low strobe followed by RX-ready in
+                    # a narrow counter window; do not manufacture that Win95
+                    # enumeration sequence for plain queued AT input.
+                    if self._terminal_attached:
                         value |= 0x01
                     else:
                         value &= ~0x01
@@ -1967,7 +2010,7 @@ class CourierMachine:
                                 0x1C77, 0x0283, 0x0285, 0x026A, 0x0313,
                                 0x031A, 0x0607, 0x0695, 0x0EA7, 0x0B7C,
                                 0x0B7E, 0x0B88, 0x0A96, 0x033E, 0x3424,
-                                0x3CA4, 0x0298)
+                                0x3CA4, 0x0298, 0x026E, 0x0B8E)
             },
             panel=self.panel.status(),
             nvram=nvram_result,

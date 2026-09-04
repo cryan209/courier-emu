@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from courier_emu.dsp_probe import (
-    COMPLETE, CONTROL, HEADER, build_probe, inspect_buffer, simulate_probe, verify_download,
+    COMPLETE, CONTROL, HEADER, build_mapping_probe, build_probe, inspect_buffer,
+    inspect_mapping_buffer, simulate_mapping_probe, simulate_probe, verify_download,
 )
 
 REFERENCE = Path(__file__).resolve().parents[1] / "IDSDL302.ROM"
@@ -21,6 +22,26 @@ def test_probe_reads_rom_and_distinguishes_external_mapping():
         assert result["complete"]
         assert result["io_events"] == []
         assert not result["rom_access_proven"]
+
+
+def test_mapping_probe_switches_between_external_and_internal_program_zero():
+    probe = build_mapping_probe()
+    result = simulate_mapping_probe(probe)
+    assert result["status"] == "mapping-samples-captured"
+    assert result["control_before"] == result["control_after"] == list(CONTROL)
+    assert result["external_matches_fixture"]
+    assert result["internal_matches_fixture"]
+    assert result["samples_differ"] and result["rom_readable"]
+    assert not result["protection_modeled"]
+    assert result["io_events"] == []
+
+
+def test_mapping_probe_rejects_equal_samples_as_inconclusive():
+    words = list((0xC052, 2, 0, 16, COMPLETE, 8, 16, 0))
+    words += list(CONTROL) + [0xAAAA] * 16 + [0xAAAA] * 16 + list(CONTROL)
+    result = inspect_mapping_buffer(words)
+    assert result["status"] == "mapping-samples-captured"
+    assert not result["samples_differ"] and not result["rom_readable"]
 
 
 def test_reference_cpu_transfers_every_probe_byte_and_checksum():

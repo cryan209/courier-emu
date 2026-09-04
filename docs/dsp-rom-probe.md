@@ -73,7 +73,16 @@ it to 0 and capture the internal window, with known reads from `8000` bracketing
 both. A stable, nonuniform internal sample distinct from the external control
 proves readable ROM. Uniform or bus-like data is not by itself proof of
 protection; it must be repeated and compared with bus traces and the external
-control. The current blocker is physical delivery/control of the probe or a
+control. Generate this raw takeover kernel with:
+
+```sh
+python -m courier_emu.dsp_probe --mapping-test \
+  --reference IDSDL302.ROM --output artifacts/dsp-rom-mapping-v1
+```
+
+Its 56-word result is header, known control, 16 external words from address
+zero, 16 internal-window words from address zero, and the repeated control.
+The current blocker is physical delivery/control of the probe or a
 C5x-compatible JTAG connection, not the `TBLR` read primitive.
 
 ## Reproducible offline probe
