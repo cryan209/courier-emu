@@ -1173,6 +1173,116 @@ establish is that bit 2 is not wired into anything the supervisor can observe
 through I/O space, and that the write/restore cycle disturbs nothing else.
 Whether the bit is visible on the front panel was not checked on this run.
 
+## Reading DSP program space with the datapump's own table reader
+
+Every route to the C52's mask ROM above needed something the hardware does not
+offer. The `ATGLK2` monitor has no memory-write selector on either unit, so a
+probe kernel cannot be placed; and the DSP's reset line is `P1LTCH` bit 1 at
+`0xff56`, a CPU port pin in memory space, so the boot ROM cannot be put back
+into the state where it would accept one.
+
+The datapump already running in the DSP needs none of that.
+
+### The reader
+
+At program word `8151`, inside the payload this repository holds byte for byte:
+
+```text
+8151  sacl    @7d
+8152  add     @7d, 2        ; acc = index + (index << 2) = index * 5
+8153  add     #816b         ; + table base
+8155  tblr    @7d           ; program-memory read
+8156  add     #01
+8157  tblr    @7e
+8158  out     @7d, 0068
+815a  out     @7e, 0069
+815c  add     #01
+815d  tblr    @7d
+815e  add     #01
+815f  tblr    @7e
+8160  out     @7d, 006b
+8162  out     @7e, 006c
+8164  add     #01
+8165  tblr    @7f
+```
+
+It takes an index in the accumulator, reads five consecutive **program** words
+at `816b + 5 * index`, and sends four of them to DSP I/O ports. Five is
+invertible modulo 65536 (`5 * 52429 == 1`), so an index exists for every
+address in the 16-bit program space, the mask ROM below `8000` included.
+
+Nine sites call it. Eight pass an immediate. The one at `9730` does not:
+
+```text
+9730  lacl    @5b
+9731  call    8151, *
+```
+
+`@5b` is a data cell, and the runtime mailbox writes data memory: the native
+core models a host write as a C52 data-space address followed by the value to
+place there. That model is inferred from paired firmware routines rather than
+measured on a board, which is one of the open questions below.
+
+### What the emulator establishes
+
+`tests/test_dsp_readback.py` drives the reader against a known fixture loaded
+into the modelled on-chip ROM. An address selected by writing one data cell
+comes back on the ports, for addresses across the bank. A second test pins the
+reader by its instructions and reads the table base out of the image, so a
+different firmware fails the test rather than silently exercising nothing.
+
+One constraint surfaced there applies to hardware equally. `@5b` is a direct,
+data-page-relative address; at page 0 it resolves to `005b`, inside the
+memory-mapped register range that occupies data addresses below `0060`, where
+a write does not reach a cell the reader can read back. Whatever page the
+datapump is on when it reaches `9731` has to put `@5b` in real RAM. The test's
+stub selects page 2 and stands in for that reachability question.
+
+### The output ports are not the CPU's `0x64`-`0x7e` block
+
+The reader's four sends go to DSP ports `68`, `69`, `6b` and `6c`, and the port
+map above records CPU ports `0x64`-`0x7e` holding stable, unit-specific values
+that no supervisor instruction reads. The numbers invited the reading that one
+is the other. It is not.
+
+A read-only sample of the 20.16 MHz unit, saved as
+`artifacts/dsp-port-sample-01/`, read `ATGLK2I0068` twelve times and swept
+`0x64`-`0x7e` eight times. Port `0x68` returned `8d` on every read and the whole
+block was identical on every round, and identical to the sweep recorded earlier
+in this document. Nothing moved.
+
+Stale reader output would have explained that, since the immediate-index callers
+run at startup and an idle unit would hold whatever the last one left. It does
+not: no five consecutive payload words have low bytes or high bytes matching the
+observed `78 09 8d a3 e8`, and a looser search for a table-aligned entry
+carrying `8d` and `e8` in the right slots found two candidates among about 1,400
+alignments, which is not far from chance.
+
+The structural objection is the decisive one. Two of the reader's four ports are
+**odd**, and the physical sweep established that the CPU's peripheral bank is 63
+ports at even addresses `0x02`-`0x7e` with odd addresses undecoded. A port for
+port mapping cannot hold. The `0x64`-`0x7e` block stays what it was: stable
+per-unit state with no located reader.
+
+This refutes one guess about where the words emerge. It says nothing about the
+reader, which works, and nothing about whether the DSP's I/O writes reach the
+CPU by some other correspondence - the mailbox proves they do. The DSP's sender
+at `83d6` writes DSP ports `5e`/`5f` and the supervisor reads CPU ports
+`58`-`5e`, so the ASIC does bridge DSP I/O into CPU-readable registers, just not
+at matching numbers.
+
+### What is still open
+
+- Whether the mailbox writes data memory on a board, as the core models it.
+- Whether the call site at `9731` is reachable with a data page whose `@5b`
+  lands in RAM.
+- How the reader's results could reach the CPU, given that its own ports do not
+  appear to. The sender's queue at data `0bd0` is the obvious candidate.
+- Whether the C5x optional ROM protection permits a table read of on-chip ROM by
+  code executing from external memory. TI documents this in
+  [SPRU056D, section 8.2.4](https://www.ti.com/lit/pdf/spru056). This one fails
+  silently, and no offline work can settle it.
+
 ## Remaining hardware integration
 
 The supervisor code, DSP sender and serial parser now exist and execute
