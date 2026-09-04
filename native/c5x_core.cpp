@@ -154,9 +154,12 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 void C5xCore::set_io(uint16_t port, uint16_t value) { m_io[port] = value; }
 void C5xCore::host_write(uint16_t address, uint16_t value)
 {
-    // The board runtime mailbox presents a C52 data-space address followed by
-    // the value to place there.  Use the normal data-memory decoder because
-    // low addresses are memory-mapped CPU registers on the C52.
+    // NOT the board's protocol.  A real mailbox tag is a command index into
+    // the jump table at program word 8401, bounded at 7f, and only 27 of its
+    // handlers store the host's word - each at one fixed address.  See
+    // docs/dsp-rom-probe.md, "A repeatable host write".  This entry point is
+    // kept as a direct way to seed modelled state, and callers must not read
+    // it as evidence that a host can write an arbitrary data cell.
     DM_WRITE16(address, value);
 }
 void C5xCore::queue_serial_rx(const uint16_t *samples, std::size_t count)

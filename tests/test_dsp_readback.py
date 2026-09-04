@@ -11,7 +11,12 @@ as `8151_TABLE + 5 * index`, table-reads five consecutive program words, and
 sends four of them out to I/O ports 68, 69, 6b and 6c. Because 5 is invertible
 modulo 65536, some index reaches every address in the 16-bit program space -
 including the mask ROM. One of its nine callers loads that index from a data
-cell rather than an immediate, and the runtime mailbox writes data memory.
+cell rather than an immediate.
+
+Getting a host-chosen index into that cell is the open problem. The mailbox
+does not do it: hardware and `test_mailbox_protocol.py` establish that a tag is
+a command index into a jump table, and none of the 27 handlers that store the
+host's word targets an index cell either reader uses.
 
 What this proves is the arithmetic and the reader: against a known fixture in
 the on-chip ROM, an address chosen by a data cell comes back on the ports.

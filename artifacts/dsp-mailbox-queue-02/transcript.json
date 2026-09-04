@@ -1,0 +1,518 @@
+[
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATI7",
+    "raw": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        03/13/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         7.3.14\r\nDSP rev                3.0.13\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001E",
+    "raw": "ATGLK2I001E\r\r\nFF\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O0058,D0",
+    "raw": "ATGLK2O0058,D0\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005A,0B",
+    "raw": "ATGLK2O005A,0B\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005C,35",
+    "raw": "ATGLK2O005C,35\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005E,21",
+    "raw": "ATGLK2O005E,21\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,01",
+    "raw": "ATGLK2O001C,01\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O0058,79",
+    "raw": "ATGLK2O0058,79\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005A,00",
+    "raw": "ATGLK2O005A,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005C,D0",
+    "raw": "ATGLK2O005C,D0\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005E,0B",
+    "raw": "ATGLK2O005E,0B\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,01",
+    "raw": "ATGLK2O001C,01\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O0058,78",
+    "raw": "ATGLK2O0058,78\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005A,00",
+    "raw": "ATGLK2O005A,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005C,D1",
+    "raw": "ATGLK2O005C,D1\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005E,0B",
+    "raw": "ATGLK2O005E,0B\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,01",
+    "raw": "ATGLK2O001C,01\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001E",
+    "raw": "ATGLK2I001E\r\r\nFF\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n77\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n02\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  }
+]

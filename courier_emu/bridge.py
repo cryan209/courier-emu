@@ -415,6 +415,12 @@ class CourierDspBridge:
             self._call_register_values(),
             strict=True,
         ):
+            # The board's own dispatcher at DSP word 839b treats a tag as an
+            # index into a 121-entry jump table, not as a destination address,
+            # and discards anything above 7f. Hardware confirms it: see
+            # docs/dsp-rom-probe.md, "A repeatable host write". This call is
+            # therefore a convenience for seeding the modelled C52's call
+            # registers, not a model of the board's write path.
             self.core.host_write(register, value)
 
     def _schedule_call_entry(self) -> None:
@@ -915,9 +921,14 @@ class CourierDspBridge:
                 return (1 << (size * 8)) - 1
             if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
                 return (1 << (size * 8)) - 1
-            # Bit 0 advertises one host-to-DSP transaction.  The host clears
-            # it after writing address/value; the board reasserts it after the
-            # C52 has had a scheduling quantum to observe the new cell.
+            # Bit 0 is the board's standing request for a host-to-DSP word.
+            # The captured supervisor's mailbox interrupt at 0fda9 answers it
+            # by writing the status back to 1c, and clears the bit first only
+            # on the path that had nothing to send - so on hardware the commit
+            # is the bit written back *set*, and an idle unit reads 1c as fd
+            # forever because the request stands unanswered.  This model
+            # commits on the 0x5e write instead and uses the bit only to pace
+            # the C52's next quantum; the two agree on ordering, not polarity.
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
             return int(self._runtime_ready) | (2 if self._runtime_inbound else 0)

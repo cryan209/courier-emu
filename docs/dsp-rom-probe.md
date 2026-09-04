@@ -670,8 +670,9 @@ what fills the buffer should be picked up.
 
 There is no write site at either port anywhere in the scanned regions, so this
 window is read-only to the CPU. That makes it a plausible inbound bulk path —
-which is exactly the shape a DSP readback needs — but nothing here shows the
-DSP as its source, and the routine has never been observed executing.
+which is exactly the shape a DSP readback needs. **Its producer is now
+identified as the DSP**; see "The `0x60`/`0x62` window: producer identified"
+below.
 
 ### The `0xc0`–`0xc6` cluster
 
@@ -1315,9 +1316,18 @@ Two differences from `8151` that matter. The index is not multiplied, so the
 program address is simply `860b + index` and no modular inverse is involved. And
 its index cell sits at data page 7, absolute `03db`, which is ordinary RAM well
 clear of the memory-mapped registers below `0060` - so the data-page constraint
-recorded above does not apply to this site. Its results land at `ff80`, not in
-the queue, and the two `ldp #1ff` sites that touch that page write `fff8`, an
-ASIC call cell, rather than reading `ff80` back.
+recorded above does not apply to this site.
+
+Its results land at `ff80`. That was recorded here as a dead end, on the
+grounds that nothing reads `ff80` back. **That is wrong**: the `splk @1e, #8617`
+on this routine's first line arms a streamer over exactly that block, and a
+hardware run has now carried these words to the host. See "The `0x60`/`0x62`
+window" below.
+
+One correction to the reading of the four `tblr *+` above: the post-increment
+applies to the auxiliary register, not the accumulator, so each pair re-reads a
+single address. The words are `860b + index` twice and `860b + index + 6`
+twice, which is what the board returned.
 
 ### A complete resident read-and-report chain
 
@@ -1347,29 +1357,35 @@ b4f9  lacl    @50
 b4fa  call    83c8, *         ; the word read above
 ```
 
-That looked like the whole path in resident code. **Driving it in the emulator
-establishes only half of it, and the claim above is withdrawn.**
+That is the whole path, and driving it in the emulator confirms it end to end -
+but only after fixing a defect in the modelled core, which is worth recording
+because it had been corrupting the data page for every firmware path through
+this queue.
 
-The read half holds. `tests/test_dsp_readback.py` enters the loop at `e732`
-with page 7 selected and an index written to `03e6`, and the fixture word at
-`e870 + index` appears in `03d0`, for addresses across the bank. The address is
-the cell's to choose, unscaled.
+The read half held immediately. Entering the loop at `e732` with page 7 selected
+and an index written to `03e6` puts the fixture word at `e870 + index` into
+`03d0`, for addresses across the bank.
 
-The send half does not compose. Driving the resident enqueue with the tag and
-then `@50` puts the tag in the ring and advances the write pointer twice, but
-the second push carries zero: after the first call the data page is not the one
-static analysis predicted, so `lacl @50` does not read `03d0`. Single-stepping
-shows the page entering `83c8` as 7 and leaving its `lst st0, @7d` as 3.
+The send half did not, at first: the enqueue took the tag and advanced its write
+pointer twice, but the second push carried zero, because after the first call
+the data page was 3 rather than the 7 it entered with. That was not a property
+of `83c8`. The core holds the data page pre-shifted, as `LDP` stores it and the
+address decode uses it, but `op_sst_st0` packed that shifted value straight into
+the status word's nine-bit page field and `op_lst_st0` unpacked it without
+shifting back. The two errors did not cancel: saving page 7 restored page 3.
+Correcting both, a status word round trips, and the chain composes.
 
-Which of two things that is has not been determined. It may be a property of
-`83c8` - the C5x `sst` and `lst` address page zero regardless of the current
-page, so the routine's callers may be required to enter it with a page whose
-`@50` is not `03d0` at all. Or it may be that the modelled core does not round
-trip a status word through `sst` and `lst`, in which case it is an emulator
-defect that would corrupt the page for every firmware path through this queue,
-and worth finding for its own sake. Either way, the nearest preceding `ldp`
-is not sound evidence for the page in effect at `b4f9`, and the chain is not
-established end to end.
+With that fixed, entering the real send site at `b4f5` with page 7 selected puts
+tag `8021` and the word the `e732` loop read into the ring. `tests/test_dsp_readback.py`
+covers the round trip, each half, and the two together. The stub in those tests
+selects the data page and calls the send site, which is what reaching it in
+normal flow would do; it supplies no value and copies nothing itself.
+
+So: write the index to data `03e6`, the datapump table-reads `e870 + index` into
+`03d0`, and `03d0` is reported to the host under tag `8021` through the queue
+the supervisor drains at CPU ports `58`-`5e`. Nothing is injected, the DSP is
+not reset, and every CPU-side register in the path is one `ATGLK2I` and
+`ATGLK2O` can reach.
 
 Three of the four candidate sites do not work. `a484` is not an instruction at
 all - it is the `a665` immediate of the `splk` at `a483`, which the opcode scan
@@ -1379,12 +1395,12 @@ more. Only `e735` has a freely chosen index.
 
 ### What is still open
 
-- Whether the mailbox writes data memory on a board, as the core models it.
-  Everything above rests on that.
-- Whether the read result reaches the host at all, per the withdrawal above.
-  The read half is verified; nothing yet carries `03d0` up the queue.
-- Whether the modelled core round trips a status word through `sst` and `lst`,
-  which decides whether the page behaviour above is firmware or emulator.
+- ~~Whether the mailbox writes data memory on a board, as the core models it.~~
+  **Answered, and negatively.** A tag is a command index into a jump table,
+  not an address, and only 27 handlers store the host's word - each at one
+  fixed cell, none of them an index either reader uses. See "A repeatable host
+  write" below. Everything above rested on this, and the read chains now need
+  another way in.
 - Reachability and timing. The `e732` loop rewrites its own index every
   iteration and runs seventeen times, so a host write lands for one read before
   being overwritten, and the loop runs when the datapump reaches it rather than
@@ -1393,6 +1409,567 @@ more. Only `e735` has a freely chosen index.
   code executing from external memory. TI documents this in
   [SPRU056D, section 8.2.4](https://www.ti.com/lit/pdf/spru056). This one fails
   silently, and no offline work can settle it.
+- How the host write is committed, and where a reply is observable. The section
+  below answers both from the supervisor's own interrupt.
+
+## The supervisor's half of the mailbox
+
+Everything above describes the DSP side. Driving that chain from a serial
+session needs the CPU side, and a first hardware attempt made without it,
+`artifacts/dsp-mailbox-write-01/`, wrote the four data registers and saw
+nothing move. The supervisor's own mailbox interrupt says why, and the
+supporting assertions are in `tests/test_mailbox_protocol.py`.
+
+### Locating the code
+
+The mailbox is **interrupt `0x0c`**, and the captured RAM's vector table points
+it at `8f43:0000`, which is file offset `0f430`. Every near offset the
+supervisor stores in its receive vector `[0x298]` is relative to that segment.
+The interrupt itself is at `0fda9`.
+
+### The interrupt
+
+```text
+0fda9  sti ; pushaw ; push es ; es := ds
+0fdb0  in al, 1e ; mov ah, al
+0fdb4  in al, 1c
+0fdb6  and ax, 7          ; three status bits, all from port 1c
+0fdb9  mov [0x285], ax
+0fdbd  test [0x285], 1    ; bit 0: the board wants a word
+0fdc5  mov ax, 7f3f ; xchg [0x289], ax   ; take the pending word, mark empty
+0fdcc  cmp ah, 7f -> nothing to send
+0fdd1  cmp ah, ff -> the long form at f521
+0fddb  out 58, tag ; out 5a, 0 ; out 5c, data ; out 5e, 0
+0fdf5  and [0x285], fffe  ; nothing-to-send path, and only this path
+0fdfa  test [0x285], 2    ; bit 1: a word is waiting to be read
+0fe02   -> 0fd9c: in al,5a ; mov ah,al ; in al,58 ; clc ; call [0x298]
+0fe04  test [0x285], 4    ; bit 2: lcall 8000:0674, the 60/62 window reader
+0fe17  mov ax, [0x285] ; out 1c, al ; out 1e, ah
+```
+
+Three things follow, and the third is the one the earlier attempt missed.
+
+**The wire format was right.** An outbound message is a 16-bit tag word on
+`58`/`5a` and a 16-bit value on `5c`/`5e`, low byte at the lower port. That is
+what `dsp-mailbox-write-01` wrote. The compact path at `0fddb` is a one-byte
+tag and a one-byte value, zeroing the two high lanes; the variant at `12cbb`
+sends two full words out of a ring at `029e..02cd`, so both halves really are
+16 bits wide. This is also the first direct support for the core's
+`host_write(address, value)` model: the tag word is the destination.
+
+**Reads and writes are separate latches.** The interrupt writes `58`/`5a` for
+outbound and reads the same addresses for inbound, and the hardware attempt
+read back `58`/`5a` unchanged after writing them. So an `ATGLK2I` of these
+ports observes the *board's* side, not the host's - which is exactly what a
+readback wants.
+
+**Bit 0 is a standing request, and answering it is the commit.** The interrupt
+ends by writing the status word back to `1c` and `1e`. Only the path that had
+nothing to send clears bit 0 first, so writing that bit back **set** is what
+says a word was placed in the window. The idle unit reads `1c` as `fd` on
+every one of the twenty polls in `dsp-mailbox-write-01` - bit 0 permanently
+asserted - because the supervisor in command mode never has traffic and never
+answers. A host driving these ports through `ATGLK2O` has to supply that edge
+itself:
+
+```text
+ATGLK2O0058,<tag lo>   ATGLK2O005A,<tag hi>
+ATGLK2O005C,<val lo>   ATGLK2O005E,<val hi>
+ATGLK2O001E,00         ATGLK2O001C,01
+```
+
+The earlier attempt stopped after the fourth line. This is a hypothesis with
+good support, not a demonstrated write: bit 0's polarity is read off one
+firmware path, and no board has yet been asked.
+
+### Where a reply lands: nowhere, and it does not matter
+
+The receive vector `[0x298]` is not a single handler but a per-state one, and
+every one of them has the same shape - load a tag byte table, a handler word
+table and a count, then jump to the shared dispatcher at `0f78a`, which does a
+`repne scasb` for the inbound tag and, **on a miss, returns without storing
+anything**.
+
+Command mode installs the table at `0f852`, eleven tags:
+
+```text
+76 05 06 04 12 13 88 89 0d 0e 83
+```
+
+The resident report at `b4f5` carries tag `8021`, and the DSP's sender masks
+bit 15 off at `83e8`, so it arrives as `21`. That is not in the table. In
+command mode the supervisor discards it.
+
+That is survivable, because the handlers which do want a value read `5c`/`5e`
+themselves rather than being handed one - the ASIC holds the inbound word in
+those registers until the next message. So the readback channel is
+`ATGLK2I005C` and `ATGLK2I005E`, polled directly, with no supervisor
+cooperation required and nothing to find in RAM.
+
+### A smaller first experiment than the ROM read
+
+The `e732` chain has a reachability problem the mailbox does not: the loop
+rewrites its own index every iteration and only runs when the datapump reaches
+it. A failed run cannot distinguish "the host write never landed" from "the
+loop never ran", which is precisely the ambiguity `dsp-mailbox-write-01` is
+stuck in.
+
+The queue itself is a cleaner target. The sender at `83d6` drains the ring at
+data `0bd0` between a read pointer at `@79` and a write pointer at `@78`, all
+at page 0 and all ordinary RAM. Three host writes -
+
+```text
+0bd0 := <a value whose low byte is not one of the eleven tags>
+0079 := 0bd0
+0078 := 0bd1
+```
+
+- leave the sender a message to drain the next time it runs, with no
+dependence on any other datapump code path. If `5c`/`5e` then show the value,
+the host write reaches DSP data memory, the ring is where the disassembly says,
+and the readback channel works, all in one observation. If they do not, the
+failure is the mailbox write itself and nothing else.
+
+The cost is that it resets both ring pointers, discarding anything the DSP had
+queued. On an idle unit in command mode that is nothing.
+
+### Running it
+
+`courier_emu/dsp_mailbox.py` issues exactly the sequence above. It writes only
+the six mailbox registers; `0x10`, `0x12` and `0x14`, which carry the hook relay
+and the NVRAM strobe, are refused by the transport itself, and there is no
+memory write, flash operation or upload anywhere in it. The wire sequence and
+those refusals are pinned offline in `tests/test_dsp_mailbox.py`.
+
+```sh
+python -m courier_emu.dsp_mailbox --device /dev/cu.usbserial-21210 \
+  --experiment queue --target 1234 --output artifacts/dsp-mailbox-queue-01
+```
+
+Then, only if that reports a reply:
+
+```sh
+python -m courier_emu.dsp_mailbox --device /dev/cu.usbserial-21210 \
+  --experiment read --target 0100 --output artifacts/dsp-mailbox-read-01
+```
+
+The `read` form has not been run. Both write I/O ports on a live modem, and
+the hazard is that a mistimed mailbox commit desynchronizes the datapump; a
+power cycle is the recovery, and nothing here can reach flash.
+
+### Completed queue run, 2026-09-04: one change, not attributable
+
+`artifacts/dsp-mailbox-queue-01/` seeded `0bd0` with `1234` and rewound both
+ring pointers, with the commit. Port `58` moved from `08` to `77` and stayed
+there. That is the first time any host write to this board has changed
+anything, and the temptation is to call it the seeded word arriving. It is not.
+
+Three discriminators, recorded in `artifacts/dsp-mailbox-queue-01/followups/`:
+
+- The run repeated with seed `2135` (`artifacts/dsp-mailbox-queue-02/`) changed
+  nothing. `58` stayed `77`. The value does not follow the seed, and a word
+  arriving from the ring would have carried `35`.
+- Further messages with other tags and values, each committed, moved nothing;
+  neither did a commit with no data write before it. So the read side is not
+  echoing the host's writes, and the commit alone is not the trigger.
+- A read-only watch of 114 samples over 75 seconds found the four registers
+  completely static, so the register does not drift on its own.
+
+`58` has now read `06` in the earlier `ATGLK2B` sweep, `08` at the start of the
+queue run, and `77` from the first commit onward. Something changed once and
+has not changed since. **The queue seeding is not demonstrated**, and the
+honest reading is that answering the board's standing bit-0 request for the
+first time advanced some ASIC state once, by a mechanism this experiment does
+not identify. The modem answered `AT` and `ATI7` normally throughout and after.
+
+What this does settle is smaller but real: the commit edge is not inert. The
+earlier attempt without it (`dsp-mailbox-write-01`) produced no change at all
+under the same polling, and this one produced a persistent one. The next step
+is to find a host write whose effect is unambiguous and repeatable, which the
+ring seeding was supposed to be and is not.
+
+## A repeatable host write, and what a tag actually is
+
+The queue run's ambiguity is resolved, and not in its favour. The DSP's own
+host-message dispatcher is at program word `839b`, and it settles what a
+mailbox message means.
+
+```text
+839b  ldp   #000
+839c  setc  intm
+839d  calld 23f0 ; lar ar1, #ff57     ; read the ASIC status cell
+83a2  sacl  @7d
+83a3  bit   15, @7d                   ; TI numbering: the low bit
+83a4  retc  ntc                       ; nothing pending
+83a6  calld 23f0 ; lar ar1, #ff5e     ; the tag
+83ad  calld 23f0 ; lar ar1, #ff5f     ; the value
+83b2  sacl  @7a
+83b3  lacl  #01 ; samm @57            ; acknowledge
+83b5  lacl  @7d
+83b6  sub   #7f
+83b7  retc  gt                        ; any tag above 7f is discarded
+83b8  add   #8480
+83ba  tblr  @7c                       ; program[tag + 8401]
+83bc  bacc
+```
+
+Three consequences.
+
+**A tag is a command index, not an address.** It selects one of 121 handlers
+from a jump table at program `8401`, and anything above `7f` never reaches the
+table. So the `host_write(address, value)` shape the native core models is
+wrong, and the plan of writing DSP data `03e6` through the mailbox was never
+going to work — with or without the commit edge. That, not the missing strobe,
+is why `dsp-mailbox-write-01` and the queue runs saw nothing.
+
+**The host interface is not in the datapump.** `23f0` is below word `8000`, in
+the mask ROM, and the message cells are `ff57`, `ff5e` and `ff5f` in high data
+space. The datapump contains no `IN` instruction at all; everything the host
+sends arrives through mask-ROM helpers.
+
+**Twelve tags are unimplemented** — `4c`, `5b`-`5d`, `64`-`6b` — and their table
+entry is zero, so `bacc` would take the DSP to program word `0000`. Nothing
+should ever send them.
+
+### Two commands with predictable replies
+
+Tag `07`'s handler at `84cb` is three instructions:
+
+```text
+84cb  calld 83c8 ; lacc #8031        ; enqueue the report tag
+84cf  bd    83c8 ; ldp #010 ; lacc @18   ; tail-enqueue data 0818
+```
+
+It consumes no host data, writes nothing and changes no state. The sender at
+`83e8` masks bit 15 off, so the CPU's inbound register must read `31`.
+
+Tag `62`'s handler at `c4b4` sums a sample buffer, clamps the result between
+`0a` and `15`, and reports it under `8069`, then returns. Predicted register:
+`69`.
+
+Tags `0b`, `2c`, `2d`, `31` and `6c`-`6f` all reach a bare `ret` at `8222`, so
+they are a true null control: a committed message that the board acts on in no
+way whatsoever.
+
+### Completed command runs, 2026-09-04
+
+`artifacts/dsp-mailbox-command-01/` sent `0b, 07, 0b, 07`:
+
+```text
+tag 0b  predicted 58=77  observed 58=77 5c=02     (unchanged, as a no-op must be)
+tag 07  predicted 58=31  observed 58=31 5c=00
+tag 0b  predicted 58=31  observed 58=31 5c=00
+tag 07  predicted 58=31  observed 58=31 5c=00
+```
+
+`artifacts/dsp-mailbox-command-02/` sent `0b, 62, 07, 62, 07, 0b`, and every
+prediction held in both directions:
+
+```text
+tag 62  predicted 58=69  observed 58=69 5c=15
+tag 07  predicted 58=31  observed 58=31 5c=00
+tag 62  predicted 58=69  observed 58=69 5c=15
+tag 07  predicted 58=31  observed 58=31 5c=00
+```
+
+**This is the repeatable host write.** The predictions were fixed from the
+disassembly before the runs, the null control separates the tag's content from
+the act of committing, and the register follows the tag in both directions
+rather than latching once. `5c=15` is a bonus: `15` is the upper clamp `c502`
+writes, so the reply carries that handler's own constant.
+
+It also retrospectively vindicates the commit edge. Without `1c` bit 0 written
+back set, nothing moved; with it, a three-instruction handler runs on demand.
+
+### What the host can write, and what it still cannot
+
+Following every handler gives the full set of tags that store the host's own
+word at a fixed DSP address — the real write primitive, recorded as
+`HOST_WRITE_CELLS` in `courier_emu/dsp_mailbox.py` and checked against the
+image in `tests/test_mailbox_protocol.py`. There are 27 destinations, tag `42`
+at `b05e` being the cleanest: `smmr @7a, #0346 ; ret`.
+
+Neither `03db`, the index of the unscaled reader at `84d3`, nor `03e6`, the
+index of the `e732` loop, is among them.
+
+### Does any writable cell feed a reader? One does, and it is clamped
+
+`03dc`, tag `40`'s destination, is one word off the `84d3` reader's index and
+invited the question. It is not an index at all: two of its three readers bulk
+zero a block starting there (`rpt #1b` and `rpt #0f` with `sach *+`), and the
+third treats `03dc`/`03dd` as the high and low halves of a 32-bit accumulator.
+
+Taking it generally instead: the payload has 186 table-read sites, and
+intersecting all of them against all 27 writable cells leaves exactly one.
+
+```text
+c549  lar   ar1, #032a
+c54b  lacc  *
+c54c  add   #c551
+c54e  tblr  @4d          ; program[032a + c551], and no mask anywhere
+```
+
+Two sites compute it, `c54e` and `c828`, and tag `33` reaches the first. So a
+complete chain does exist - tag `41` or `39` writes the cell, tag `33` performs
+the read - and the address arithmetic is unmasked, which is what an arbitrary
+program read needs.
+
+The clamp is what closes it. Both writers test the host's word before storing:
+
+```text
+c7f1  lamm  @7a ; sub #06 ; retc geq ; smmr @7a, #032a ; ret    (tag 39)
+b061  lamm  @7a ; sub #0d ; retc geq ; ...                      (tag 41)
+```
+
+`LAMM` zero-extends - TI documents it, and `op_lamm` in `native/c5x_ops.ipp`
+implements it that way - so a large host word cannot come out negative and slip
+past the `retc geq`. Tag `39` admits `0..5`, tag `41` admits `0..12`.
+
+And the read is not a data read. `c551` is a six-entry table of routine
+addresses, `ca5b ca68 ca75 ca82 ca8f ca9c`, and `tblr @4d` fetches a jump
+target that the following code arms. The word never travels back to the host,
+so even the twelve addresses tag `41` reaches are not observable.
+
+**So: no host-writable cell yields a program read of the mask ROM.** The
+intersection is a single six-entry jump table behind a clamp.
+
+One hazard falls out of it. Tag `41`'s bound of thirteen is looser than the
+six-entry table it indexes, so indices `6..12` fetch the following instruction
+words as routine addresses. Entry six is `7a80`, which is below `8000` - inside
+the mask ROM. A DSP branching there is not a readback, it is an uncontrolled
+jump into unrecovered code, and nothing should send tag `41` with a value above
+five.
+
+There is also a readback of `032a` to the host - `c622` and `c913` report its
+contents under tag `802f` - but neither site is reachable from any dispatch
+table handler, so it cannot be used to confirm a write either.
+
+### One emulator disagreement this creates
+
+`courier_emu/bridge.py` treats the write of port `0x5e` as the commit and reads
+bit 0 of `1c` as "the board is ready", clearing its readiness when the host
+writes the bit back as **zero**. That is the opposite polarity to the
+supervisor's interrupt. The model's ordering is right and its own tests define
+its contract, so it is left as it is and the disagreement is recorded rather
+than resolved; a board would settle it.
+
+## The `0x60`/`0x62` window: producer identified
+
+The port map recorded this pair as a third inbound 16-bit window whose
+"producer is not identified", and flagged it as the shape a DSP readback needs.
+It is the DSP, and the whole path is now traced on both sides.
+
+### The DSP end
+
+```text
+84b7  out   *, 0060        ; one word from [ar1]
+84b9  retd
+84ba  lacl  #04
+84bb  samm  @57            ; raise ASIC status bit 2
+```
+
+That `4` is the bit the CPU reads as `0x1c` bit 2, and bit 2 is what the
+supervisor's mailbox interrupt answers by calling the chain vector `[0x2d3]`.
+The two halves are the same handshake seen from opposite ends.
+
+Resumption is symmetric. At `847a` the DSP polls the same status cell it polls
+for host messages, testing a different bit:
+
+```text
+847c  calld 23f0 ; lar ar1, #ff57
+8482  bit   13, @7d        ; TI numbering: bit 2
+8483  retc  ntc
+8484  lar   ar1, #039e
+8486  lacc  *
+8487  retc  eq             ; no streamer armed
+8488  bacc
+```
+
+So `039e` is a resume vector, and the host pumps the stream by acknowledging
+`1c` bit 2 — the exact counterpart of bit 0 committing a mailbox message.
+
+### It is a generic block streamer
+
+The routine at `8684` walks a source pointer in `ffb8` and a count in `ffb9`,
+emitting one word per handshake. Each armed variant sets those two cells:
+
+| Entry | Source | Count |
+|---|---|---:|
+| `8617` | `ff80` | 16 |
+| `8627` | `ff90` or `ff00` | 32 or 17 |
+| `8642` | `ffc0` | 12 |
+| `8652` | `ffc0` | 25 |
+| `8665` | `[fff8]` | 103 |
+| `8678` | `[fff8]` | 5 |
+
+Two of them take the source from a cell rather than an immediate, which is the
+interesting shape: a streamer whose address is data. `fff8` is written by the
+firmware's own `ldp #1ff ; splk @78, #...` sites, with `0a40` and `f993`.
+
+### The CPU end
+
+`[0x2d3]` is a one-step-per-interrupt state machine; each step rewrites the
+vector and reads one word as `in al,0x62` then `in al,0x60`. Four sub-chains
+fill buffers at `08a4`, `09c2`, `08f2` and `0946`, each bounded by its own
+length byte, and the terminal state at `200c` is a bare `ret`. The supervisor's
+own trigger is at `6d08`:
+
+```text
+6d08  mov [0x2d3], 0x1fdb      ; arm the chain at its start
+6d0e  mov al, 0x3f             ; data byte
+6d10  mov ah, 6                ; tag 06
+6d12  lcall 8f43:0228          ; enqueue the message
+```
+
+`8f43:0228` is the outbound ring enqueue at `0f65c`, which pushes `ah:al` into
+the ring at `029e..02cd`. So the supervisor arms its own receiver and then asks
+the DSP for the stream with an ordinary mailbox command.
+
+### Completed stream probe, 2026-09-04
+
+`artifacts/dsp-window-stream-01/` read the chain state first, which is the
+safety gate: `[0x2d3]` was `20fa`, a known setup step that reads no port, the
+four buffers were zero, and the relevant bound `[0x942]` was `0x20`, so any
+fill was limited to 32 words.
+
+Sending tag `06` moved nothing — ports `60`/`62` stayed `0b`/`00` across eight
+polls, and the chain vector, header and buffers were unchanged. That is the
+correct result, not a failure: tag `06`'s handler only arms.
+
+```text
+8489  ldp   #007
+848a  retd
+848b  splk  @1e, #848d         ; 039e := the streamer's first step
+```
+
+It stores a resume address and returns. Nothing is emitted until the host
+acknowledges `1c` bit 2 and `847a` resumes through `039e`.
+
+### Completed pump runs, 2026-09-04: the window carries program memory
+
+Pumping is one `ATGLK2O001C,04` per word. `artifacts/dsp-window-pump-01/` armed
+tag `06` and pumped ten times. Port `60` moved off the `0b` it had held all
+session, `1c` went `fd` to `f9` on the eighth pump - bit 2 clearing as the
+streamer ran out - but every word read `0000`. Tag `06`'s sources are idle
+call-state cells, so that is consistent with the channel working and with the
+cells being empty, and it does not distinguish the two.
+
+Tag `46` does distinguish them, because its first four words are program memory
+and the payload image says exactly what they must be. `ae12` yields `0..5`, so
+there are six candidate tuples, and the run has to land on one of them.
+
+`artifacts/dsp-window-pump-02/`, eighteen pumps:
+
+```text
+0708 0708 0960 0960 0000 0000 0000 0000 0390 006E 0000 F6B2 033F 0326 0000 0000
+1c: fd x16, then f9
+```
+
+`0708` is program word `860b` and `0960` is `8611`. That is the index-0 tuple,
+and it held. Three things fall out of it:
+
+- **The `0x60`/`0x62` window carries DSP program memory to the host.** The
+  words came off a physical board through `ATGLK2I`, and they match the flash
+  image at addresses computed beforehand.
+- Sixteen words arrived and bit 2 cleared on the seventeenth pump, matching the
+  `splk *, #0010` count the streamer is armed with.
+- The prediction was first written as `860b + index` at offsets `0, 1, 7, 8`,
+  and the board returned each address twice instead. `tblr *+` post-increments
+  the auxiliary register, not the accumulator, so a pair of them re-reads one
+  address. The offsets are `0, 0, 6, 6`. The hardware corrected the reading.
+
+`artifacts/dsp-window-pump-03/` repeated it. The two runs are identical except
+word twelve, `F6B2` against `F708` - a live measurement in the computed part of
+the block, with the program words stable.
+
+So the readback channel is complete and verified end to end: arm with a mailbox
+tag, pump with `1c` bit 2, read the words at `60`/`62`. What is missing is only
+the index.
+
+### The index cannot be widened, and this closes the route
+
+`03db` has one writer, `ae98`, and it stores what `ae12` returns. `ae12` is a
+**six-way priority encoder**:
+
+```text
+ae12  call  ade8
+ae14  sacl  @7d
+ae15  bit   10, @7d ; lacl #05 ; retc tc      ; TI bit 10 is bit 5
+ae18  bit   11, @7d ; lacl #04 ; retc tc
+ae1b  bit   12, @7d ; lacl #03 ; retc tc
+ae1e  bit   13, @7d ; lacl #02 ; retc tc
+ae21  bit   14, @7d ; lacl #01 ; retc tc
+ae24  lacl  #00 ; ret
+```
+
+It tests five bits, highest first, and falls through to zero. **Its output is
+`0..5` by construction**, so no control over its input can widen the range. The
+reader's address is confined to `860b..8610` by the shape of the encoder, not
+by a clamp that might be bypassed. That is a stronger negative than the one
+recorded for `032a`, and it closes the `84d3` route regardless of what feeds it.
+
+The input was still worth tracing, because it turns out to be partly ours:
+
+```text
+ade8  lar  ar1, #ffb0
+adea  lacc *+          ; ffb0
+adeb  and  *+          ; ffb1
+adec  and  *+          ; ffb2
+aded  and  *+          ; ffb3
+adee  sacl *           ; -> ffb4
+```
+
+`ffb1` is host-writable through tag `48`, whose handler is `smmr @7a, #ffb1 ;
+ret` with no range test at all - the only completely unclamped write found so
+far. And `ffb2` is derived from `ffb1` in turn, at `a58a`/`a540`, so two of the
+four terms move together under one host write.
+
+It does not help. An AND only clears bits, and the other two terms are loaded
+by a call-setup routine:
+
+```text
+adc7  lar ar1, #ffb0 ; splk *, #7d7f
+adcb  lar ar1, #ffb3 ; splk *, #ffff
+adcf  lar ar1, #ff90 ; lacc #f000 ; rpt #1f ; sacl *+
+```
+
+That routine also fills `ff90..ffaf`, so it is call setup, not something an
+idle unit has run. `artifacts/dsp-window-index-01/` tested it directly: tag
+`48` with `ffff`, then tag `46` armed and pumped, and the first four words came
+back `0708 0708 0960 0960` - index `0` again. With the host's term all ones and
+the result still zero, at least one of `ffb0`, `ffb2` and `ffb3` carries no
+bits `1..5` on an idle modem, exactly as the call-setup reading predicts.
+
+What this does leave is a demonstrated unclamped host write into the DSP's high
+data space, which is worth keeping in view for its own sake.
+
+### Bearing on the mask ROM
+
+Tag `46` is the closest this comes. Its handler table-reads four **program**
+words and then arms the streamer over them:
+
+```text
+84d4  splk  @1e, #8617         ; arm: 16 words from ff80
+84d6  lar   ar2, #ff80
+84d9  lacl  @5b                ; the index at 03db
+84da  add   #860b              ; unmasked
+84dc  tblr  *+  ...            ; four program words into ff80..ff83
+```
+
+The arithmetic is unmasked, so the index reaches any 16-bit program address,
+the mask ROM included, and the streamer then carries the result to the host.
+Every piece a dump needs is present except control of the index.
+
+`03db` has exactly two writers. `9773` only reads it, and `ae98` writes it -
+reachable from tag `54` - but the value comes from `ae12`, which bit-scans a
+status word and returns **0 to 5**. Not the host's word, and not arbitrary.
+
+So the window is a real bulk readback channel, host-armable and host-pumpable,
+but every streamer source is a fixed block and the one program-sourced streamer
+has an internally chosen six-value index. The sharpest remaining lead is
+`ffb8`/`fff8`: a streamer whose source address lives in a data cell would be an
+arbitrary DSP **data** read if that cell could be reached, and the host-writable
+set includes `fff0`, `fff1`, `fff2` and `fff3` - adjacent to `fff8`, but not it.
 
 ## Remaining hardware integration
 
@@ -1416,5 +1993,7 @@ That question remains a hardware experiment once launch and readback work.
 Tests:
 
 ```sh
-python -m pytest tests/test_dsp_probe.py tests/test_probe_transport.py -q
+python -m pytest tests/test_dsp_probe.py tests/test_probe_transport.py \
+  tests/test_dsp_readback.py tests/test_mailbox_protocol.py \
+  tests/test_dsp_mailbox.py -q
 ```

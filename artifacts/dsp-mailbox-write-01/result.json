@@ -1,0 +1,46 @@
+{
+  "target": "0x0100",
+  "index_cell": "0x03e6",
+  "index": "0x1890",
+  "ati7": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        03/13/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         7.3.14\r\nDSP rev                3.0.13\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "before": {
+    "1C": "FD",
+    "1E": "FF",
+    "58": "08",
+    "5A": "00",
+    "5C": "02",
+    "5E": "00"
+  },
+  "polls": [
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD",
+    "FD"
+  ],
+  "reply": null,
+  "after": {
+    "1C": "FD",
+    "1E": "FF",
+    "58": "08",
+    "5A": "00",
+    "5C": "02",
+    "5E": "00"
+  },
+  "modem_responds_after": true
+}

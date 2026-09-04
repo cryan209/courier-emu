@@ -1,0 +1,486 @@
+[
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATI7",
+    "raw": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        03/13/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         7.3.14\r\nDSP rev                3.0.13\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nF9\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001E",
+    "raw": "ATGLK2I001E\r\r\nFF\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n31\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "page 00200",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00800",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "ATGLK2O0058,46",
+    "raw": "ATGLK2O0058,46\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005A,00",
+    "raw": "ATGLK2O005A,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005C,3F",
+    "raw": "ATGLK2O005C,3F\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O005E,00",
+    "raw": "ATGLK2O005E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,01",
+    "raw": "ATGLK2O001C,01\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n10\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n07\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n08\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n07\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n08\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n09\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n60\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n09\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n60\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n03\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n90\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n6E\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\nF7\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n08\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n03\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n3F\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n03\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n26\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nFD\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nF9\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001E,00",
+    "raw": "ATGLK2O001E,00\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2O001C,04",
+    "raw": "ATGLK2O001C,04\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0062",
+    "raw": "ATGLK2I0062\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0060",
+    "raw": "ATGLK2I0060\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nF9\r\nOK\r\n"
+  },
+  {
+    "cmd": "page 00200",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00800",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "ATGLK2I001C",
+    "raw": "ATGLK2I001C\r\r\nF9\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I001E",
+    "raw": "ATGLK2I001E\r\r\nFF\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I0058",
+    "raw": "ATGLK2I0058\r\r\n31\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005A",
+    "raw": "ATGLK2I005A\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005C",
+    "raw": "ATGLK2I005C\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATGLK2I005E",
+    "raw": "ATGLK2I005E\r\r\n00\r\nOK\r\n"
+  },
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  }
+]

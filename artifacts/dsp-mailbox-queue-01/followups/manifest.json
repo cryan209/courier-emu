@@ -1,0 +1,33 @@
+{
+  "purpose": "Discriminate the 58: 08 -> 77 transition seen in the first commit run",
+  "device": "/dev/cu.usbserial-21210",
+  "unit": "20.16 MHz, supervisor 7.3.14, DSP 3.0.13",
+  "memory_write_commands": false,
+  "firmware_upload": false,
+  "ports_written": ["58", "5A", "5C", "5E", "1C", "1E"],
+  "observations": [
+    {
+      "test": "further mailbox writes with other tags/values, each committed",
+      "sequence": ["tag=aa55 val=1234 commit", "tag=0042 val=beef commit",
+                   "tag=00ff val=0001 no-commit", "commit-only"],
+      "result": "58=77 5a=00 5c=02 5e=00 unchanged throughout",
+      "conclusion": "the read side does not echo what the host writes, and a commit alone moves nothing"
+    },
+    {
+      "test": "the queue experiment repeated with a different seed",
+      "artifact": "artifacts/dsp-mailbox-queue-02/",
+      "seed": "2135",
+      "result": "no change; 58 stayed 77 across 24 polls",
+      "conclusion": "the value 77 does not follow the seed, so the first run's change was not the seeded word arriving"
+    },
+    {
+      "test": "read-only idle watch, no writes at all",
+      "duration_seconds": 75,
+      "samples": 114,
+      "result": "58=77 5a=00 5c=02 5e=00 on every sample",
+      "conclusion": "the register does not drift on its own, so the one transition was not spontaneous"
+    }
+  ],
+  "standing": "58 read 06 in the earlier ATGLK2B sweep, 08 at the start of queue-01, and 77 from the first commit onward. Something changed once and has not changed since. The mechanism is not established and the queue seeding is not demonstrated.",
+  "modem_healthy_after": true
+}
