@@ -53,9 +53,10 @@ class FakePort:
     def __init__(self, unstable=False):
         self.commands = []
         self.unstable = unstable
+        first, reset = dump.TARGETS[("7.3.14", "3.0.13")]
         self.pages = {
-            0x80000: dump.FIRST + bytes(256 - len(dump.FIRST)),
-            0x80100: bytes(240) + dump.RESET,
+            0x80000: first + bytes(256 - len(first)),
+            0x80100: bytes(240) + reset,
         }
 
     def drain(self):
@@ -105,3 +106,22 @@ def test_disagreeing_reads_never_publish_a_complete_image(tmp_path, monkeypatch)
 def test_wrong_target_identity_rejected():
     with pytest.raises(ValueError, match="ATI7 does not match"):
         dump.validate_identity(b"Courier\r\nClock Freq 25Mhz\r\nOK\r\n")
+
+
+def test_known_firmware_targets_are_selected_by_revision():
+    stock = (b"Courier\r\nClock Freq 20.16Mhz\r\nFlash ROM 512k\r\n"
+             b"Supervisor rev 7.3.14\r\nDSP rev 3.0.13\r\nOK\r\n")
+    idsdl = (b"Courier\r\nClock Freq 20.16Mhz\r\nFlash ROM 512k\r\n"
+             b"Supervisor rev 7.4.16\r\nDSP rev 3.1.2\r\nOK\r\n")
+    assert dump.validate_identity(stock)[1] == ("7.3.14", "3.0.13")
+    assert dump.validate_identity(idsdl)[1] == ("7.4.16", "3.1.2")
+    # The two builds end with different reset vectors, so the anchor check
+    # cannot pass for a board running firmware it was not selected for.
+    assert dump.TARGETS[("7.3.14", "3.0.13")] != dump.TARGETS[("7.4.16", "3.1.2")]
+
+
+def test_unknown_firmware_is_refused_rather_than_guessed():
+    other = (b"Courier\r\nClock Freq 20.16Mhz\r\nFlash ROM 512k\r\n"
+             b"Supervisor rev 9.9.9\r\nDSP rev 1.2.3\r\nOK\r\n")
+    with pytest.raises(ValueError, match="unknown firmware"):
+        dump.validate_identity(other)

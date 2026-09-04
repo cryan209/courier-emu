@@ -1,0 +1,55 @@
+{
+  "image_sha256": "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5",
+  "preserved_sha256": "f3a8b01373d5e51223b8fffa95727bac4a4605477dba7ca0bacd34a9b31fe958",
+  "image_type": 4,
+  "record_chunk": 128,
+  "stream_bytes": 527803,
+  "payload_bytes": 507902,
+  "erased_spans": [
+    [
+      524288,
+      131072
+    ],
+    [
+      655360,
+      131072
+    ],
+    [
+      786432,
+      131072
+    ],
+    [
+      917504,
+      98304
+    ],
+    [
+      1032192,
+      16384
+    ]
+  ],
+  "protected_spans": [
+    [
+      1015808,
+      8192
+    ],
+    [
+      1024000,
+      8192
+    ]
+  ],
+  "expected_crc": 38189,
+  "stored_crc_in_image": 21436,
+  "model_result": 23,
+  "model_result_text": "record stream ended",
+  "model_bytes_written": 507902,
+  "model_mismatches": 0,
+  "handshake": {
+    "knock": "024507486d580908",
+    "host_sends_after_id": [
+      "image_type",
+      "crc_high",
+      "crc_low"
+    ]
+  },
+  "generated": "2026-09-04T12:16:54.511512+00:00"
+}

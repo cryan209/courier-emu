@@ -1,0 +1,626 @@
+
+						To the Russian programmers
+						Is devoted....
+
+
+			Version 3.02				 06.06.98
+
+      The wearing is made on a basis SDL 13/03/98 (US/Canada)
+         containing support of protocols X2 and V90 (56K)
+
+        Specially is adapted for operation on Russian lines
+               Including modems INTERNATIONAL!
+
+Is added: the additional registers of set-up BUSY, DIALTONE, RINGING, RING
+          adjustment S39 (level of a transmitt signal) on ALL countries,
+          register of fixing UTR are entered, the change of the code of
+          country and all other parameters on ATCxx = is allowed, change of
+          the serial number of the modem, on sound during retrains, adjustment
+          of levels DTMF of a set, level of the fax, preservation S14, the
+          truncated short commands of choice of the connection protocol are
+          added, the indicator of speed of connection is introduced on HS Led.
+
+ !!! Attention, after flood filling by this SDL, set command of the 
+     AT&F1, AT+SF, AT&W    Differently work Dialtone, Busy will be not possible.
+
+I. Loading SDL.
+
+** ATTENTION !  ONLY FOR MODEMS With Clock Freq = 20.16Mhz on ATI7 **
+
+   The loading of this SDL in modem do use Xmodem, if the previous SDL 
+   supports it :)
+       AT ~ X!
+        <Or> if you use SDL without it of support (for example 1995) you 
+       it is possible to load ROM variant of SDL, use the FreeLSD.exe utility,
+       but to do it under multitask OS it is not recommended.
+     For loading it is ROM variant,you be able to use a batch file "! Go.bat "
+       if to correct in it number COM of port on used by you.
+     The installation of the modem in Windows 95 is made through "mdmcrv90.inf"
+      the file, according to the documentation from 3COM.
+
+In detail about IDSDL:
+
+   1. The change of the serial number of the modem (at any time, any number of
+      times)  command of  AT~S-mmddyy-XXXXXXXXXXXX 
+      where is : mm - month, dd - day, yy-year of this SDL, 
+                 XXXXXXXXXXXX - serial number (any characters).
+
+   2. It is authorized to use commands ATCxx=yy
+    2.1 Example:  you possibly change the modem country:
+
+        ATGN < - though it also is not necessary
+        ATC10 = x, where x can have of significance:
+         0 = USA/Canada	    10 = New Zealand
+	 1 = Japan 	    11 = Czechoslovakia
+	 2 = Finland	    12 = Belgium
+	 3 = Sweden	    13 = Denmark
+	 4 = UK		    14 = Australia
+	 5 = Norway	    15 = France
+	 6 = Switzerland    16 = Germany
+	 7 = Netherlands    17 = International
+	 8 = South Africa   18 = Austria
+	 9 = Italy	    19 = Ireland 
+	ATNX < - it is necessary
+
+    2.2 Exampe:  inclusion of protocol X2 and V90
+
+	ATGN
+	ATC8 = 31
+	ATNX (modem nothing will answer)
+
+	AT&F1
+	AT&W
+	ATZ
+
+    3. The adjustment of a level of a signal by the register s39 for want
+        of any codes of country (including US/Canada) is allowed.
+        Register can accept significance: 1 max. - 29 min!!!
+
+    4. Setup of additional parameters by the AT command + S
+	AT+SAn  - assignment of significance to the boolean register
+	AT+S?   - View of all additional registers and their significances.
+	AT+S$   - View of the help on additional + S register and command.
+	AT+SF   - Setup in additional registers of the defaults.
+	AT+Sn=m - assignment to the register "n" of decimal significance "m".
+        AT+Sn=? - View extended regisrer.
+
+
+II. Detailed: (all significances in the decimal system of calculation)
+
+	+S1 - installation of hold time in ms. Between adjacent digits for
+               want of set of number, can accept significance from 0 up to 127.
+		Default - 70.
+
+	To type digit consisting from more than 10 impulses, it is necessary to
+	 place time of a pause between digits same, as well as time between
+	 impulses in one digit.
+	Specifying in number "/" "," or other characters of a pause it is
+         possible to type numbers from arbitrary number of digits with an
+	 arbitrary amount of impulses in each digit.
+        In this case ATDP99/12/999 command will result in a set of three digits
+	 consisting from 18, the 3-rd and 27 impulses.
+
+	+S2 - installation of duration break/make for want of set of digit.
+	 The significance 0 - by default, same duration will be for want
+         of significance hexdecimal 8Ch (this is 140 in decimal):
+           where 8 - is a duration of impulse,
+                 C - duration of a pause between impulses.
+           It is possible to reduce at that and other but in reasonable limits.
+           Translate the turned out significance in the decimal form and bring
+            in this register.
+
+	 +S3 Management of recognition Busy/Dialtone prior to the beginning a
+             set of number.
+		Appointment separate bit:
+		    20- to make filtering after processing
+		    10- to make filtering before processing
+		     8 - To clear bits on a mask 8Fh in hexdecimal (standard )
+		     4 - To clear bits on a mask 73h (in addition) 
+                         junior 2 bits - code of the function:
+			0 - Nothing to change
+			1 - Bit noise - > bit tone, noise to erase
+			2 - Bit noise + bit tone - > bit tone
+			3 - To erase bit noise
+
+	The filtering allows selected and erase only single impulses. I.e. if
+         with DSP the sequence [02 01 02 02] will come, after filtering the
+         sequence [02 02 02 02] will be received. However, codes
+         [ 02 02 01 01 02 02] will be transformed in [02 02 02 01 01 02].
+
+	+S4 Management of recognition Busy/Dialtone after a beginning of a
+             set of number. 
+            Appointment of bits is similar to the register +S3.
+
+   5.1 Technique of tuning of parameters Dialtone/Busy/Ringing
+
+       Establish the additional registers AT+S3=0, AT+S4=0
+       Establish ATX7.
+       Turn On a mode of issue of the additional debug information ATY4.
+       Turn On sound of the modem and connect modem to a line.
+
+   5.1.1. Tuning Dialtone
+
+       After a set of the ATD command you will see on the screen a sequence of
+        digits.
+       Bit 0 (the code 1) displays availability any of noise on a line.
+        Will be further named "Bit noice".  
+       Bit 1 (the code 2) displays availability of a signal with frequency
+        425 Гц, i.e. Signal Dialtone/Busy/Ringing.
+        Will be further named "Bit tone ".
+
+	- If at you telephone station is normal, you will see streaming 02.
+	  In this case +S3 set in 0.
+
+	- If you see zero, it means, that your modem cannot detect any signal
+           on a line, is probably on yours telephone station parameters of
+           signals very much differ from generally accepted standart on
+           frequency or amplitude.
+	  In that case it is possible to try to achieve "02" changing
+           significance of the register.
+	 AT+S15, it is possible to use a number 0,1,2,4,8,16,32,64,128
+	 (For example at me on coordinate telephone station all is caught
+          only for want of AT+S15=4)
+
+	- If you see units, it means, that your modem detects Dialtone as
+	   a stranger of noise.
+	  Then it is necessary to place AT+S3 in 1 (for want of it bit
+           "noise" the tone "will move in bit") or in 2 (for want of it bit
+           "noise" will be added to bit "tone").
+
+	- If you see "03", it means, that your modem except for Dialton'а
+ 	   finds out also noise (or the level of a signal in a line hardly
+	   is overestimated) It is possible отсечь bit noise (to write down
+	   the code 3 in  AT+S3 ).
+          Here the brief table of possible variants: codes the Register "+S3"
+		02 set 0
+		00 adjust AT+S15
+		01 set 1 or 2
+		03 set 1 or 2 or 3
+
+	If the codes periodically vary:
+		02/03  set 2 or 3
+		02/01  set   2
+		03/01  set   1
+
+	- If in a sequence of codes there are codes more than 3, it is possible
+	   them mask with the help of bits 2 and (or) 3 in the register "+S3"
+           (adding to for significance of a mask 4 or 8)
+
+	The register AT+S4 is adjusted similarly.
+
+	5.1.2.  Tuning Busy
+
+	The principle is similar to tuning Dialtone.
+	Before the beginning of tuning it is necessary to place the register
+         AT+S4=0 to give the command of a set of own number (or other, certainly
+         occupied number).
+         In time to hooters there should be двойки, for want of to pause - zero.
+	- If so it also is - all wonderfully.
+	- If there is only 0 - that a problem,it is possible again to return to
+	  adjustment + S15 and to try it to pick up (at the same time of it pay
+          attention to normal work DIALTONE) If nothing is received, it is
+	  necessary to select from two variants, that it is more important or
+	  more preferable: DIALTONE or BUSY :(
+
+	Possible variants:
+
+	0/1 - Dialtone is detected as noise. In AT+S4 it is possible to put
+		significances 1 or 2 
+	0/3 - Diatlone is detected as tone with impurity of noise.
+		In + S4 it is possible to put significances 1, 2 or 3.
+	1/3 - On a line constantly there is a noise. In +S4 it is possible to
+		put significance 3.
+	2/3 - The modem determines noise, as Dialtone, and Dialtone as noise.
+		In +S4 it is possible to put significance 1.
+	1/2 - In pauses the modem detects noise. In +S4 it is possible to put
+		significance 3, in some cases 1.
+
+	The main purpose of all these customizations - to achieve, that for
+	 want of Dialtone on the screen were removed двойки without impurity
+	 of other digits,for want of Busy and Ringing alternating "02" and zero.
+
+	If for want of Busy the alternating "00" and "02" are removed, and the
+	 employment is not defined, it is necessary to adjust of duration with
+	 the help of the registers AT+S5, +S6, +S7, +S8.
+	For want of RINGING the registers +S9, +S10, +S11 similarly act.
+
+	Pay attention, that +S3 influences definition of signals up to a set
+	 of first digit, and +S4 - later.
+
+	+S5 - Minimum time of one signal BUSY (in 1/20 ms.).
+		Standard significance - 10.
+
+	+S6 - Maximum time of one signal BUSY.
+		Standard significance - 35.
+
+	+S7 - Minimum time of a pause between signals BUSY.
+		Standard significance - 4.
+
+	+S8 - Maximum time of a pause between signals BUSY.
+		Standard significance - 255.
+
+	+S9 - Minimum time of one signal RINGING.
+		Standard significance - 9.
+
+	+S10 - Maximum time of one signal RINGING.
+		Standard significance - 125.
+
+	+S11 - Minimum time of a pause between signals RINGING.
+		Standard significance - 75.
+
+	+S12 - Maximum number of the messages RINGING from the modem, on which
+	     expiration NO ANSWER. For want of 0 - the counter is switched off.
+
+	+S13 - Level of a signal (sensitivity) for recognition DIALTONE
+		Standard significance - 525 (w)
+
+	+S15 - Modifier of recognition DIALTONE
+		Standard significance - 0
+
+	+S16 - Level of a signal for a leased line.
+		 Standard significance - 16384 (w)
+
+	+S18 - is reserved (is not used yet)
+
+	+S20 - Target level of the fax (w)
+		 Standard significance - 16384 (w)
+
+	+S22 - Level (sensitivity) of detecting DTMF
+                 Standard significance - 525 (w)
+
+	+S24 - Level of a signal of a voice-frequency set DTMF,
+		for the first frequency.
+		 Standard significance - 13000 (w)
+
+	+S26 - Level of a signal of a voice-frequency set DTMF,
+		for the second frequency
+		 Standard significance - 3080 (w)
+
+	+S28 - UTR bugfix (w) the constant, 
+		is used for fixing an error "Unable To Retrain" can be
+		useful on bad lines.
+		 Standard significance - 7000 (w) USR puts - 1400
+
+	+S30 - Minimum time of one period of a bell RING
+		 Standard significance - 24
+
+	+S31 - Maximum time of one period of a bell RING
+		 Standard significance - 180
+
+	+S32 - RING/Pause ratio 
+		 Standard significance - 1024 (w)
+
+	+S34 - Speed which for want of will be lit the indicator HS on the
+		 external modem beginning with speed 2400!
+		00 - Is not used (works under the standard USR, Default)
+		03 - 2400
+		04 - 4800
+		05 - 7200
+		06 - 9600
+		07 - 12000
+		08 - 14400
+		09 - 16800
+		10 - 19200
+		11 - 21600
+		12 - 24000
+		13 - 26400
+		14 - 28800
+		15 - 31200
+		16 - 33600
+
+* Note: 1.(W) - means the two-byte register, can accept (0-65535), all other
+		registers byte (0-255)
+	2. All of duration of signals, in terms of on 20 msec.
+
+   6. Logical switches (n = 0 or n = 1)
+
+    AT+SAn - Tutn ON / Turn OFF sound during switching the speeds and retrains
+    during the connect.
+	"n" can accept significances:
+		0 - Disable sound during switching the speeds and retrains
+		      during the connect.
+		1 - Enable sound during switching the speeds and retrains
+	  	      during the connect.
+
+    AT+SBn - modificator of sound during retrains.
+	"n" can accept significances:
+		0 - Turn On sound only retrain.
+		1 - Turn On of any changes (for example change of speed)
+
+    AT+SCn - to "not put"/"to put" a handset for want of to diagnostics
+	 NO DIAL TONE.
+	"n" can accept significances:
+		0 - Standard processing NO DIAL TONE (to put a handset)
+		1 - The changed processing NO DIAL TONE (to not put a handset)
+
+	Is applied on the loaded telephone stations. If for want of removal of a
+	handset for a set of number the modem has not heard DIALTONE (as has
+	coincided with a source bell), the modem will issue NO DIAL TONE,
+	but will not hang up,if after that to give ATA it will try to
+	place connection. In FIDO T-Mail it is made 'AnswerOn RING NO DIAL TONE'.
+
+     AT+SDn - Modifier of recognition of long hooters
+		0 - Standard mode
+		1 - To recognize long hooters (more than 1.5 sec.) as BUSY
+
+     AT + SMn - Speaker management of the modem in a mode OFF Line
+                0 - Speaker to switch off
+	        1 - Speaker to switch on
+       * This team is not remembered, but allows to include Speaker of the modem
+         And to listen to a telephone line, for example for presence of
+         conversation on parallel to the telephone device.
+       * This team does not make go off hook.            
+
+     7. Command of choice of the protocol of connection. 	
+
+	AT+SSA - Automatic choice of the protocol (everyone are allowed, Default)
+	AT+SSF - V.FC the protocol
+	AT+SSH - HST the protocol
+	AT+SST - V.32Terbo
+	* If the remote modem is not capable will incorporate on the
+	  established protocol, the connection on V.22bis (2400bps) or break
+	  of connection is possible.
+
+      8. Brief statistics on connection: the ATI9 command.
+
+      9. HELP: the ATI13 command.
+
+     10. Support of editing commands of memory ATG, ATGLK2
+
+     11. AT%T - Recognition DTMF of codes 
+        If the team AT%T will be given, it will be executed by a standard image.
+        (Recognition and seal half-scientific DTMF of codes).
+        If the ambassador %T there will be additional symbols, is caused 
+        Extended %T
+    * Independent go off hook these teams do not make.
+
+        11.1 Complete format of the extended team:
+
+ /* Syntax of teams extended DTMF, according to the standard */
+ /*                  Konstantin Norvatoff                    */
+                          
+        %T + [time] passwd? Cmd1:cmd2
+
+        Time - Waiting Time DTMF of codes (in seconds).
+               If for this time, with the help DTMF, from ph. of a line will be
+               The correct password is received, the team cmd1 will be executed,
+               Team cmd2 differently will be executed. 
+               In a waiting time, any symbol, received yours,
+	 Of the computer through a COM-port, will interrupt expectation with a
+         conclusion Message ERROR.
+
+        Passwd - sequence of codes of the password.
+	 If the code incoincident with the password, check will be accepted
+	 Will begin at first (without any notices) and will be
+	 Before the expiration of a waiting time "time" will proceed.
+                The number of mistakes is not limited.
+
+        Cmd1, cmd2 - usual teams (without prefix AT). 
+		 If this line consists only of decimal figures, 
+                She(it) is interpeted as number of the message 
+	 (for example, it is possible to force the modem to give out
+          the message VOICE (12)).
+
+         Symbols "?" And ":" -space key.
+         Have of plus in a team specifies the sanction, of removed,
+          To operate by a level of a signal of the transmitter through
+          the register S39,
+         In this case at reception DTMF of a code ''('.')
+          The following two codes (we shall name them x and y) will be
+          interpeted as Decimal number. The meaning(importance) x*10 + y 
+          will be brought in the register S39.
+         Limiting meanings(importance) 1... 29, in case of an output for limits it
+          range the team will be ignored.
+         Allows calling "to order" a demanded level of a target signal.
+
+
+        Example:
+
+        %T[10] - coincides with %T, but in 10 seconds the analysis DTMF will be
+                 Is stopped and OK will be removed.
+
+        %T5 - will be indefinite to be expected a code 5. At input of a code will be given
+                Diagnostics OK.
+
+        %T[10]5
+               - Too, but the code 5 should be entered during 10 seconds.
+                If for this time it will not be entered, diagnostics is 
+		given out ERROR.
+
+	 %T+[10]5
+               - Is similar previous, but the management S39 is authorized
+
+        %T5?I1 - At input of a code 5 the team i1 will be executed.
+
+        %T[3]7?I2
+               - If for 3 seconds the code 7 will be entered, will be executed
+                The team i2, differently will be deduced(removed) the 
+                message ERROR.
+
+        %T[20]123?A:X1DP!32
+               - If for 20 seconds the code 123 will be entered, the modem will
+                 begin to execute a team ATA, differently it will execute flash
+                 and will type code 32 pulses metod by a set.
+
+        %T[14]123?A:12
+               - If for 14 seconds the code 123 will be entered, the modem will
+               begin to execute a team ATA, differently it will deduce the 
+               message VOICE or number 12 (if the mode of the numerical answers
+               on ATV0) is included.
+
+      * The team does not make go off hook independently,
+        In most cases sequence should be
+               ATH1%T [...].
+      * Upon termination of connection (at use of an opportunity of the order S39),
+        The modem is necessary init, for example on ATZ, for reset
+        The changed meaning of the register S39.
+
+---------------------------------------------------------------------------
+
+   Additions:
+	- If you do not use the protocol "USR X2 and V90", for acceleration
+           of a procedure handshake it is desirable them to prohibit through
+           S58.0=1 and S58.5=1
+	- In wearing there is an interesting register S58.1 of "Bler monitor",
+           the installation S58.1=1 can sometimes help on bad communication
+           lines.
+	- And self-test on AT&T1 коннект can be 28800, but for want of of real
+	   communication on V34 +, коннект reaches up to 33600.
+	- Remind to you, that in this wearing there is built-in USR a ATY16
+	   command, for review is peak - frequent the characteristics of a line.
+	- All numerical significances - only in the decimal system, as yet
+	   rarity the users, who don't know about existence hexadecimal :)
+
+ Good luck to you, yes good CONNECT !
+
+  P.S.The given SDL is distributed as FREEWARE, i.e. is completely free, of any
+       responsibility for damage I do not carry.
+
+The wishes and offers are accepted нетмэйлом on 2:5040/6.21 E-Mail id@redcom.ru
+             ftp://ftp.redcom.ru/pub/support/hardware/USR/
+
+		Russia, Khabarovsk, ( Igor Diagilev ).
+
+--------------------------------------------------------------------------
+  The list known bug's of base 3COM SDL, not eliminated by me in IDSDL.
+
+	1. For want of to operation on protocol VFC, SNR in statistics ATI11 is
+	   incorrectly removed.
+	2. Significance RX Level in ATI11 for want of loud signal incorrect.
+	3. Problem with incoming ring on protocol HST.
+	4. Impossibility to disable V34, use of the S58 register.
+
+--------------------------------------------------------------------------
+ History
+	 * As base wearing is used 13/03/98 *
+	 * With support of protocols X2 and V90 *
+
+06.06.98 Version 3.02
+       * For modems with Clock Freq = 20.16MHz.
+       * Functionally analog to version 3.02i. 
+        - the algorithm of loading доп changed. The registers in importance by
+          default.
+          Now team AT and Fn automatically carries out AT+SF, but only
+          Once, after installation IDSDL with the version distinct from
+          Loaded earlier.
+          In all other cases of a team AT and Fn and AT+SF are carried out is
+          independent and by standard image.
+         - the opportunity of viewing of importance separately taken extended
+           register added.
+          Syntax: AT+Sn=?, where n-number extended register.
+	 - the register of an adjustment minimal RING/Pause ratio of a bell
+          RING +S32 added
+         - the team AT+SMn for speaker management of the modem in OFF Line
+	   added.
+         - the support of recognition extended DTMF for organization added
+          Password connect and order of a level of a signal prior to the
+          beginning connection.
+         (Syntax of teams extended DTMF, according to the standard 
+          Konstantin Norvatoff (2:5030/163.44), for what to him a huge thank).
+
+06.06.98 Version 3.02i
+       * For modems with Clock Freq = 25MHz.
+       * Functionally analog to version 3.02. 
+         - the team AT + SMn for speaker management of the modem in OFF Line
+           added.
+         - the support of recognition extended DTMF for organization added
+          Password connect and order of a level of a signal prior to the
+          beginning connection.
+         (Syntax of teams extended DTMF, according to the standard 
+          Konstantin Norvatoff (2:5030/163.44), for what to him a huge thank).
+
+19.05.98 Version 3.01i
+       * For modems with Clock Freq = 25MHz.
+         Includes all functions of version 3.01, with the following additions:
+        - the algorithm of loading extended changed. The registers in importance
+          by default.
+          Now team AT and Fn automatically carries out AT+SF, but only
+          Once, after installation IDSDL with the version distinct from
+          Loaded earlier.
+          In all other cases of a team AT and Fn and AT + SF are carried out
+          is independent both by standard image.
+         - the opportunity of viewing of importance separately taken extended
+	  register added
+          Syntax: AT+Sn=?, where n-number extended register.
+	 - the register of an adjustment minimal RING/Pause ratio of a bell
+          RING +S32 added
+
+19.04.98 Version 3.01
+         The syntax of commands of a short choice of the protocol for 
+         compatibility is changed with FIDO- soft.
+         The commands of a type AT+SSn now can be used before a set of number.
+	 The processing AT+S3, AT+S4 is corrected.
+	 The AT and Fn command -loading of installations by default, is combined
+         with AT+SF also loads also additional registers.
+
+22.03.98 Version 3.00
+         Carry of version 2.45 on new base wearing with V90.
+	 The registers of fixing of an error "Retransmitt Limit" are removed.
+	 The error in a procedure of processing RINGING is corrected.
+	 The error in processing the AT command + S@A is corrected.
+
+--------------------------------------- -----------------------------------
+	 * As base wearing is used 31/07/97 *
+	 * With support of protocol X2 *
+		
+21.03.98 Version 2.45 
+         the commands of short installation of the protocol of
+	 connection AT+S@ are added the indicator of source speed of connection is
+	 added (is introduced on HS Led). The errors in a conclusion of statistics
+	 ATI11 are corrected.
+
+18.02.98 Version 2.44
+	 The register AT+SDn is added. The incorrect processing ATM0 is
+         corrected.
+
+28.10.97 Version 2.43i For modems with Clock Freq = 25MHz.
+	 Functional analogue version 2.43
+
+28.10.97 Version 2.43 
+	 the algorithm of the task of a level of a target signal
+	 for US/Canada is changed, now S39 is taken into account during all
+	 session of connection, in addition were changed coefficients.
+	 The adjustment of the counter of attempts for Retransmit is entered
+	 (allows to keep connection on bad lines).
+	 The support of commands ATGW - editing of memory is added (requires
+	 the cautious circulation).
+	 The error in processing AT%E = 3 is corrected.
+	 The register +S18 is reserved.
+
+29.09.97 Version 2.41i For modems with Clock Freq = 25MHz.
+	 Functional analogue version 2.41
+
+29.09.97 Version 2.41
+	 the registers +S30 are added, +S31 of set-up RING the
+	 error in the handler +S28 is corrected
+
+26.09.97 Version 2.40i For modems with Clock Freq = 25MHz.
+	 Is a functional copy of version 2.40, for 20.16MHz of models.
+
+25.09.97 Version 2.40
+         the subroutines of input-output are copied, the support
+	 of the two-byte registers is added. The new registers
+         (+S16 are added... +S28).
+	 The possibility of record of the standard register S14 in NVRAM (for
+	 the holders Sportster is added) the error in processing the register
+	 +S12 is corrected, appeared in premature issue NO ANSWER.
+
+10.09.97 Version 2.31
+	 is corrected an error in a procedure of definition
+	 RINGING presenting to reboot of the modem for want of it definition.
+
+06.09.97 Version 2.30 Test.
+---------------------------------------------------------------------
+Gratitude:
+
+           In the given wearing are used (in my processing)
+      IDEAS, THEIR REALIZATION, And FRAGMENT DOCUMENTATION
+   from the following wearings:
+	1. SDL (c) 3COM 13/03/98 Original
+	2. KN _ SDL (c) Konstantin Norvatoff (2:5030/163.44)
+	3. AT _ SDL (c) Anton Parfyonov (2:5020/929)
+	4. SDL (c) USR 31/07/97 Original
+
+    I bring of the gratitude to their authors.!
+    Especially Konstantin Norvatoff.
+----------------------------------------------------------------------

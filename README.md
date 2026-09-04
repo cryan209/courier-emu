@@ -28,6 +28,16 @@ vector, and verifies two matching reads of every 256-byte page before publishing
 a complete image. Raw replies and partial blocks are retained. This captures
 CPU-visible flash; DSP internal ROM requires a separate experiment.
 
+The [boot-block flash loader](docs/sdl-boot-block.md) documents the downloader
+FreeLSD and SDL.EXE talk to, and `python -m courier_emu.sdl_download` implements
+the host side for a raw 512 KiB image. Building and checking a record stream is
+offline; the report gives the CRC to hand the modem, the blocks the download
+erases, the two parameter blocks it never erases, and the result of replaying
+the stream through a model of the loader's own state machine. The wire exchange
+is transcribed from the disassembly and has not been run against hardware, and
+the loader is only reachable after a reset that fails the flash CRC or matches
+the bootstrap DIP-switch combination.
+
 For live CPU RAM, use `python -m courier_emu.ram_dump` with the same options
 and a new output directory. It preserves two passes through `00000..0feff`,
 skips the peripheral registers at `0ff00..0ffff`, reports changing bytes,

@@ -21,8 +21,25 @@ import termios
 import time
 
 BASE, LENGTH, PAGE = 0x80000, 0x80000, 0x100
-FIRST = bytes.fromhex("BD 0B 00 E9 7C 0F 0D 0A")
-RESET = bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00")
+# Known targets, each an ATI7 revision pair with the first flash bytes and the
+# reset vector that build ends with. The anchors are derived from the images
+# themselves, not guessed: stock 7.3.14 from the 2026-09-03 capture, and IDSDL
+# 4.03 from the decoded ID20_403.XMD payload.
+TARGETS = {
+    ("7.3.14", "3.0.13"): (
+        bytes.fromhex("BD 0B 00 E9 7C 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00".replace(" ", "")),
+    ),
+    # IDSDL 4.03 installed over AT~X!. The first bytes come from the image, but
+    # the reset vector is still the stock one: the application's XMODEM updater
+    # does not erase or program the boot block, so ID20_403.XMD's own loader at
+    # fc00:1a21 is never written. Confirmed on hardware 2026-09-05, where
+    # f000:fff0 still reads the 7.3.14 vector after a successful 4.03 install.
+    ("7.4.16", "3.1.2"): (
+        bytes.fromhex("BD 0B 00 E9 AD 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00".replace(" ", "")),
+    ),
+}
 TERMINAL = re.compile(rb"(?:^|[\r\n])(OK|ERROR)[\r\n]+$")
 ROW = re.compile(r"([0-9A-F]{4}):([0-9A-F]{4})\s+((?:[0-9A-F]{2}\s+){15}[0-9A-F]{2})", re.I)
 
@@ -157,15 +174,22 @@ class SerialPort:
         return bytes(response)
 
 
-def validate_identity(raw: bytes) -> str:
+def validate_identity(raw: bytes) -> tuple[str, tuple[str, str]]:
+    """Confirm the board is one of the known targets, and say which one."""
     text = raw.decode("ascii")
-    expected = (r"Courier", r"Clock Freq\s+20\.16Mhz", r"Flash ROM\s+512k",
-                r"Supervisor rev\s+7\.3\.14", r"DSP rev\s+3\.0\.13")
+    expected = (r"Courier", r"Clock Freq\s+20\.16Mhz", r"Flash ROM\s+512k")
     if not all(re.search(pattern, text, re.I) for pattern in expected):
-        raise ValueError("ATI7 does not match the requested 20.16 MHz / 512k / 7.3.14 / 3.0.13 target")
+        raise ValueError("ATI7 does not match the requested 20.16 MHz / 512k target")
+    supervisor = re.search(r"Supervisor rev\s+(\S+)", text, re.I)
+    dsp = re.search(r"DSP rev\s+(\S+)", text, re.I)
+    if supervisor is None or dsp is None:
+        raise ValueError("ATI7 does not report both revisions")
+    target = (supervisor[1], dsp[1])
+    if target not in TARGETS:
+        raise ValueError(f"unknown firmware {target[0]} / {target[1]}; add it to TARGETS first")
     if not TERMINAL.search(raw) or TERMINAL.search(raw)[1] != b"OK":
         raise ValueError("incomplete or failed ATI7 response")
-    return text
+    return text, target
 
 
 def collect(port, output: Path) -> dict:
@@ -226,13 +250,16 @@ def collect(port, output: Path) -> dict:
             raise RuntimeError("modem did not answer AT with OK at the selected baud")
         identity = port.query("ATI7")
         (output / "ati7.txt").write_bytes(identity)
-        report["identity"] = validate_identity(identity)
+        report["identity"], target = validate_identity(identity)
+        report["firmware"] = {"supervisor": target[0], "dsp": target[1]}
+        first, reset = TARGETS[target]
         print(json.dumps({"event": "identity-confirmed", "device": port.device}), flush=True)
         # Check the two pages the user already demonstrated before bulk reads.
         anchors = {BASE: page(BASE), BASE + LENGTH - PAGE: page(BASE + LENGTH - PAGE)}
-        if not anchors[BASE].startswith(FIRST) or anchors[BASE + LENGTH - PAGE][-16:] != RESET:
-            raise RuntimeError("flash anchors differ from the user's confirmed hardware captures")
-        print(json.dumps({"event": "anchors-confirmed", "reset_entry": "fc00:11e9"}), flush=True)
+        if not anchors[BASE].startswith(first) or anchors[BASE + LENGTH - PAGE][-16:] != reset:
+            raise RuntimeError("flash anchors differ from the anchors recorded for this firmware")
+        entry = f"fc00:{int.from_bytes(reset[9:11], 'little'):04x}"
+        print(json.dumps({"event": "anchors-confirmed", "reset_entry": entry}), flush=True)
         image = bytearray()
         with (output / "pages.jsonl").open("x") as log:
             for address in range(BASE, BASE + LENGTH, PAGE):

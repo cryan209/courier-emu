@@ -1,0 +1,38 @@
+{
+  "status": "complete",
+  "device": "/dev/cu.usbserial-21210",
+  "baud": 115200,
+  "started_utc": "2026-09-04T12:49:23.546787+00:00",
+  "physical_start": 524288,
+  "length": 524288,
+  "page_bytes": 256,
+  "copies_required_per_page": 2,
+  "pages_verified": 2048,
+  "terminal_status_counts": {
+    "OK": 4101
+  },
+  "failed_attempts": [
+    {
+      "address": 892672,
+      "attempt": 1,
+      "error": "expected exactly 16 rows followed by OK or ERROR"
+    }
+  ],
+  "firmware_writes": false,
+  "firmware_upload": false,
+  "assumptions": [
+    "CPU addresses 80000..fffff expose the 512 KiB flash at runtime.",
+    "Identical repeated reads establish capture consistency, not the absence of bank aliases.",
+    "DSP internal ROM is outside the scope of this CPU-memory capture."
+  ],
+  "elapsed_seconds": 1096.15,
+  "identity": "\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "firmware": {
+    "supervisor": "7.4.16",
+    "dsp": "3.1.2"
+  },
+  "image": "courier-board.rom",
+  "sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "anchors_rechecked": true,
+  "finished_utc": "2026-09-04T13:07:39.662521+00:00"
+}

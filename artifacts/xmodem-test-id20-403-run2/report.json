@@ -1,0 +1,50 @@
+{
+  "image": "docs/New Folder With Items/ID20D403/ID20_403.XMD",
+  "image_sha256": "18d2f4fb057c6fc7550685e24265cb67419459a63ccf4737e7b8f342b817b6e8",
+  "image_bytes": 524416,
+  "device": "/dev/cu.usbserial-21210",
+  "baud": 57600,
+  "answer": "T",
+  "started": "2026-09-04T12:35:15.463253+00:00",
+  "blocks": 4097,
+  "mode": "crc",
+  "retries": 0,
+  "eot_reply": 6,
+  "result_text": "\r\n\r\nSDL Xmodem file transfer completed.\r\nCalculating CRC... OK\r\nResetting modem... OK\r\n",
+  "crc_ok": true,
+  "status": "complete",
+  "transcript": [
+    {
+      "at": "2026-09-04T12:35:16.032701+00:00",
+      "step": "hello",
+      "saw": "\r\nOK\r\n"
+    },
+    {
+      "at": "2026-09-04T12:35:16.081449+00:00",
+      "step": "prompt",
+      "saw": "\r\n\r\nSDL Xmodem file transfer - (Y)es (N)o (T)est >"
+    },
+    {
+      "at": "2026-09-04T12:35:16.099495+00:00",
+      "step": "answered",
+      "answer": "T",
+      "saw": "T\r\n* Test mode - Flash ROM will not be modified *\r\nBegin Xmodem file transfer now.\r\nC"
+    },
+    {
+      "at": "2026-09-04T12:35:21.097561+00:00",
+      "step": "handshake",
+      "mode": "crc"
+    },
+    {
+      "at": "2026-09-04T12:37:32.930060+00:00",
+      "step": "eot",
+      "reply": 6
+    },
+    {
+      "at": "2026-09-04T12:37:39.964861+00:00",
+      "step": "result",
+      "saw": "\r\n\r\nSDL Xmodem file transfer completed.\r\nCalculating CRC... OK\r\nResetting modem... OK\r\n"
+    }
+  ],
+  "finished": "2026-09-04T12:37:40.471365+00:00"
+}

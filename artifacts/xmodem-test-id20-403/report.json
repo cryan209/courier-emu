@@ -1,0 +1,49 @@
+{
+  "image": "docs/New Folder With Items/ID20D403/ID20_403.XMD",
+  "image_sha256": "18d2f4fb057c6fc7550685e24265cb67419459a63ccf4737e7b8f342b817b6e8",
+  "image_bytes": 524416,
+  "device": "/dev/cu.usbserial-21210",
+  "baud": 57600,
+  "answer": "T",
+  "started": "2026-09-04T12:31:19.880005+00:00",
+  "blocks": 4097,
+  "mode": "crc",
+  "retries": 0,
+  "eot_reply": 6,
+  "result_text": "",
+  "status": "complete",
+  "transcript": [
+    {
+      "at": "2026-09-04T12:31:20.451945+00:00",
+      "step": "hello",
+      "saw": "\r\nOK\r\n"
+    },
+    {
+      "at": "2026-09-04T12:31:20.500679+00:00",
+      "step": "prompt",
+      "saw": "\r\n\r\nSDL Xmodem file transfer - (Y)es (N)o (T)est >"
+    },
+    {
+      "at": "2026-09-04T12:31:20.518749+00:00",
+      "step": "answered",
+      "answer": "T",
+      "saw": "T\r\n* Test mode - Flash ROM will not be modified *\r\nBegin Xmodem file transfer now.\r\nC"
+    },
+    {
+      "at": "2026-09-04T12:31:25.515861+00:00",
+      "step": "handshake",
+      "mode": "crc"
+    },
+    {
+      "at": "2026-09-04T12:33:37.484110+00:00",
+      "step": "eot",
+      "reply": 6
+    },
+    {
+      "at": "2026-09-04T12:33:38.486385+00:00",
+      "step": "result",
+      "saw": ""
+    }
+  ],
+  "finished": "2026-09-04T12:33:38.992334+00:00"
+}
