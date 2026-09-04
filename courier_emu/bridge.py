@@ -185,6 +185,9 @@ class CourierDspBridge:
         # the status report both read it.
         self.window = self._windows[self.transfer.first_strobe]
         self.checksum_submits = 0
+        # The C52 program word the supervisor asks the boot ROM to enter.
+        self.entry_word = image.dsp_program_segments()[0][0]
+        self.launched = False
         self.bootstrap = bytearray()
         self.active = False
         self.bootstrap_match: bool | None = None
@@ -801,9 +804,15 @@ class CourierDspBridge:
             and strobe == self.transfer.checksum_strobe
         ):
             # The ROM's downloader submits its 16-bit word sum here and polls
-            # for acceptance. The transfer is already complete by length, so
-            # this is recorded rather than acted on.
+            # for acceptance. On the part, the DSP's boot ROM checks that sum
+            # and jumps to the entry the supervisor requested; that mask ROM
+            # is not available, so the jump is performed here instead. An
+            # update payload needs no equivalent: it carries a boot block at
+            # origin 0, so its reset address is program the core already has.
             self.checksum_submits += 1
+            if self.active and not self.launched and hasattr(self.core, "set_pc"):
+                self.core.set_pc(self.entry_word)
+                self.launched = True
             return
         if strobe not in self._windows:
             return
@@ -825,6 +834,9 @@ class CourierDspBridge:
             self.bootstrap = bytearray(window)
             self.bootstrap_match = None
             self.active = False
+            # A fresh core starts at its reset address again, so the entry the
+            # boot ROM would jump to has to be reapplied to this download.
+            self.launched = False
             self._runtime_mode = False
             self._runtime_ready = False
             self._runtime_ready_delay = 0
