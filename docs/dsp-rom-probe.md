@@ -2089,6 +2089,65 @@ has an internally chosen six-value index. The sharpest remaining lead is
 arbitrary DSP **data** read if that cell could be reached, and the host-writable
 set includes `fff0`, `fff1`, `fff2` and `fff3` - adjacent to `fff8`, but not it.
 
+## The fixed-block streamers, enumerated and count-verified
+
+The port map's arm-entry table lists six generic streamer variants by their
+`ffb8`/`ffb9` source and count, but not which host tag reaches each, nor whether
+a source block holds program memory or live data. Following the jump table at
+program `8401` through each handler settles both, and driving the datapump's own
+streamer engine on the native C52 core confirms the counts against the arm-stub
+immediates. `tests/test_dsp_window_stream.py` pins the result.
+
+| Tag | Handler | Arm stub | Source | Words | What it exposes |
+|---|---|---|---|---:|---|
+| `06` | `8489` | `848d` | `0307 03ba 0385 030f 031c 0be6` | 6 | Six discrete live call-state cells (a custom per-word streamer, not the `8684` engine) |
+| `45` | `8623` | `8627` | `ff90` **or** `ff00` | 32 / 17 | Live data block; `@1f` bit 10 (`tc`) picks the variant at runtime |
+| `46` | `84d3` | `8617` | `ff80` | 16 | First four words table-read from **program** `860b..8610`; the rest live `ff84..ff8f` |
+| `47` | `863e` | `8642` | `ffc0` | 12 | Live data `ffc0..ffcb` |
+| `57` | `8517` | `8617` | `ff80` | 16 | **Program** words near `85ff`/`8611` plus derived status |
+| `58` | `864e` | `8652` | `ffc0` | 25 | Live data `ffc0..ffd8`; also sets `fff8 := 0a40` |
+| `73` | `865e` | `8665` | `[fff8]` = `0a40` | 103 | Live DSP data RAM `0a40..0aa6` |
+| `78` | `8671` | `8678` | `[fff8]` = `f993` | 5 | Live DSP data `f993..f997` |
+
+Tags `73` and `78` do both jobs from one handler: `ldp #1ff ; splk @78,#imm`
+points `fff8` (page `1ff` puts `@78` at `fff8`), then `ldp #007 ; retd ;
+splk @1e,#stub` arms the `[fff8]` streamer with the arm landing in the `retd`
+delay slot - the same idiom as tag `06` at `8489`.
+
+### The count-verified emulator run, 2026-09-05
+
+The run installs the `23f0` accessor, arms one tag through its jump-table
+handler, and then pumps the resume path `847a` one word at a time, exactly as a
+host does with `ATGLK2O001C,04`, counting writes to port `0x60`. Tag `46` is the
+anchor: it emits `0708 0708 0960 0960 0000...`, identical to the physical
+`dsp-window-pump-02` capture, so the same harness's counts for the others are
+trustworthy. Every count equalled its arm-stub immediate, `ffb8` advanced by
+exactly that many cells, and `[039e]` cleared to `0000` at the end - the
+streamer disarms cleanly rather than chaining into the `ff18` continuation.
+
+| Tag | Data words | `ffb8` walk | `[ffb9]` immediate |
+|---|---:|---|---:|
+| `46` | 16 | `ff80` → `ff90` | `0x10` |
+| `47` | 12 | `ffc0` → `ffcc` | `0x0c` |
+| `73` | 103 | `0a40` → `0aa7` | `0x67` |
+| `78` | 5 | `f993` → `f998` | `0x05` |
+
+Two details the run fixed. First, **the stream's first pumped word is the count
+itself**, not payload: the arm stub's opening `bd 84b7` emits with `ar1` still
+at `ffb9`, so word 0 reads `0010`/`000c`/`0067`/`0005`. A host driver should
+pump `count + 1` times and discard word 0. Second, the emit path's "pump me
+again" flag and the resume path's poll both resolve to data `0057` in the model
+(the accessor's `lamm *` masks the ASIC address to page 0), so `0057` bit 2 is
+the handshake cell. The words came back zero here only because the source blocks
+are live call-state RAM that an idle core has not filled; the addressing is what
+is confirmed, exactly as for tag `06` on hardware.
+
+One divergence from a board, recorded so it is not mistaken for a streamer
+property: the minimal `47`/`73`/`78` handlers return with `ARP = 0`, and the
+resume accessor reads its status word through the ARP-selected register, so the
+synthetic driver sets `LARP 1` before each pump - the context the real mailbox
+interrupt establishes on entry. It does not touch the counts.
+
 ## Remaining hardware integration
 
 The supervisor code, DSP sender and serial parser now exist and execute
@@ -2113,5 +2172,5 @@ Tests:
 ```sh
 python -m pytest tests/test_dsp_probe.py tests/test_probe_transport.py \
   tests/test_dsp_readback.py tests/test_mailbox_protocol.py \
-  tests/test_dsp_mailbox.py -q
+  tests/test_dsp_mailbox.py tests/test_dsp_window_stream.py -q
 ```
