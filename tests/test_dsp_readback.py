@@ -147,3 +147,80 @@ def test_the_loop_reader_fetches_a_chosen_program_word(target: int) -> None:
         assert core.data(LOOP_RESULT_CELL) == fixture[target]
     finally:
         core.close()
+
+SEND_SITE = 0xB4F5          # lacc #8021 ; call 83c8 ; lacl @50 ; call 83c8
+SEND_TAG = 0x8021
+QUEUE = 0x0BD0              # the sixteen-word ring, the base 83ca loads into ar0
+QUEUE_POINTER = 0x78        # its write pointer, at data page 0
+
+
+def test_the_core_round_trips_a_status_word() -> None:
+    """`sst st0` then `lst st0` must restore the data page it saved.
+
+    The core holds the page pre-shifted, as LDP stores it and the address
+    decode uses it, so packing it into the status word needs a shift back out
+    and unpacking needs one in. Neither was applied, and the two errors did
+    not cancel: saving page 7 restored page 3. Every firmware path through a
+    routine that preserves its caller's status - the mailbox enqueue at 83c8
+    among them - was silently landing on the wrong data page afterwards.
+    """
+    from courier_emu.dsp import NativeC5x
+
+    rom = CourierRom.load(CAPTURE_ROM)
+    core = NativeC5x(rom)
+    try:
+        page = 7
+        # ldp #7 ; sst st0, @7d ; ldp #0 ; lst st0, @7d ; b self
+        program = [0xBC00 | page, 0x8E7D, 0xBC00, 0x0E7D, 0x7980, 0x0004]
+        image = [0] * ROM_WORDS
+        image[: len(program)] = program
+        core.load_rom(b"".join(struct.pack("<H", word) for word in image), 0)
+        core.set_mpmc_pin(0)
+        core.set_pc(0)
+        core.step(2)
+        saved = core.state()["dp"]
+        assert saved == page * 128
+        core.step(3)
+        assert core.state()["dp"] == saved
+    finally:
+        core.close()
+
+
+@pytest.mark.skipif(not CAPTURE_ROM.exists(), reason="board ROM capture not present")
+@pytest.mark.parametrize("target", (0x0100, 0x0800, 0x0ABC))
+def test_a_read_word_reaches_the_mailbox_queue(target: int) -> None:
+    """The whole resident path: index in, program word out through the queue.
+
+    Both halves are the firmware's own. The stub only selects the data page
+    and calls the send site, which is what reaching it in normal flow would
+    do; it supplies no value and copies nothing.
+    """
+    from courier_emu.dsp import NativeC5x
+
+    rom = CourierRom.load(CAPTURE_ROM)
+    core = NativeC5x(rom)
+    try:
+        fixture = [(address ^ 0x5A5A) & 0xFFFF for address in range(ROM_WORDS)]
+        core.set_mpmc_pin(0)
+
+        # ldp #7 ; b e732
+        fixture[:3] = [0xBC00 | LOOP_PAGE, 0x7980, LOOP_READER]
+        core.load_rom(b"".join(struct.pack("<H", w) for w in fixture), 0)
+        core.set_data(LOOP_INDEX_CELL, (target - LOOP_BASE) & 0xFFFF)
+        core.set_pc(0)
+        core.step(6)
+        assert core.data(LOOP_RESULT_CELL) == fixture[target]
+
+        # ldp #7 ; mar *, ar1 ; call b4f5 ; b self
+        fixture[:6] = [0xBC00 | LOOP_PAGE, 0x8B89, 0x7A80, SEND_SITE, 0x7980, 0x0005]
+        core.load_rom(b"".join(struct.pack("<H", w) for w in fixture), 0)
+        for cell in range(QUEUE, QUEUE + 16):
+            core.set_data(cell, 0)
+        core.set_data(QUEUE_POINTER, QUEUE)
+        core.set_pc(0)
+        core.step(120)
+
+        assert core.data(QUEUE) == SEND_TAG
+        assert core.data(QUEUE + 1) == fixture[target]
+    finally:
+        core.close()

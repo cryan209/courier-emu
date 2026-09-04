@@ -2019,7 +2019,8 @@ void C5xCore::op_lst_st0()
 	m_st0.ov = (value >> 12) & 1;
 	m_st0.ovm = (value >> 11) & 1;
 	// INTM is deliberately unaffected by LST #0.
-	m_st0.dp = value & 0x1ff;
+	// m_st0.dp is held pre-shifted, as LDP stores it and GET_ADDRESS uses it.
+	m_st0.dp = (value & 0x1ff) << 7;
 	CYCLES(2);
 }
 
@@ -2175,7 +2176,7 @@ void C5xCore::op_sst_st0()
 	uint16_t ea = GET_ADDRESS();
 	m_st0.dp = saved_dp;
 	uint16_t value = uint16_t((m_st0.arp << 13) | (m_st0.ov << 12) |
-		(m_st0.ovm << 11) | 0x0400 | (m_st0.intm << 9) | m_st0.dp);
+		(m_st0.ovm << 11) | 0x0400 | (m_st0.intm << 9) | (m_st0.dp >> 7));
 	DM_WRITE16(ea, value);
 	CYCLES(1);
 }
