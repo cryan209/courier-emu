@@ -363,8 +363,10 @@ supervisor's own receive path consumes mailbox replies by reading `58..5e`, and
 `B` sweeps those ports whether or not a reply is pending. Treat `B` as
 disruptive to a live call and to any in-flight mailbox transaction, unlike the
 memory dumps used by the flash and RAM collectors. `O` writes and is not a
-diagnostic read at all. None of these forms has yet been sent to the physical
-modem.
+diagnostic read at all. `I` and `B` have since been sent to idle units, and `O`
+has since been used to strobe individual output-latch bits; see "CPU port-space
+output latches" below, which supersedes this paragraph's statement that none of
+these forms had been issued.
 
 ### Completed physical capture, 2026-09-03
 
@@ -999,6 +1001,177 @@ same channel or not at all, is not established here. And the `23f0` helper that
 the resident sender calls maps below word `0x8000` under the pinned base, which
 would place it inside the internal ROM rather than the downloaded image — worth
 confirming, since it would mean downloaded code calls into ROM entry points.
+
+## CPU port-space output latches
+
+The `ATGLK2O` selector writes CPU I/O ports, so the three output latches at
+ports `0x10`, `0x12` and `0x14` are directly drivable from the AT interface.
+This section records their mechanism, the confirmed function of each driven
+bit, and the hazards. Unlike everything above it, part of this is **physical
+write evidence**: `O` commands were sent to a modem. That is the first time a
+write of any kind has been issued to a unit in this investigation, and it
+supersedes the standing statement elsewhere in this document that only `AT`,
+`ATI7` and `ATGLK2=` reads have ever been sent.
+
+### Mechanism
+
+Two helpers in `courier-board.rom` drive the latches, `0x2771` (set bits) and
+`0x279b` (clear bits), with the port table at `0x27c7`. `AH` is the bit mask and
+`AL` a descriptor whose bit 3 must be set; `AL & 3` selects both the port and a
+RAM shadow byte:
+
+| `AL` | Port | Shadow |
+|---|---|---|
+| `08` | `0x10` | `[0x30e]` |
+| `09` | `0x12` | `[0x30f]` |
+| `0a` | `0x14` | `[0x310]` |
+| `0b` | `0x12` | `[0x311]` — no call site uses it |
+
+The latches are **write-only**. Reading ports `0x10`/`0x12`/`0x14` returns input
+signals, not the latch contents, which is why the firmware keeps shadows and
+performs a `cli`-protected read-modify-write against them. Initialization at
+`0x2728` fills `0x30e..0x312` with `0xff`, then forces `[0x30e]=0xfe` and
+`[0x30f]=0x7f`.
+
+The captured idle RAM of the 20.16 MHz unit
+(`artifacts/courier-board-21210-ram-01/ram-pass1.bin`, confirmed by `pass2`)
+holds `fe 7d f5 ff` at `0x30e..0x311`. Those values are readable live with
+`ATGLK2=0000:0300`, bytes `0x0e..0x11` of the page.
+
+Nothing reads `[0x310]`, and there is no direct `out 0x14` in that code bank, so
+port `0x14` holds whatever is written until the next helper call touches it.
+
+### The `O` selector does not read-modify-write
+
+`O` is a bare `out dx,al` of the byte supplied. It writes all eight bits, and it
+does not update the firmware's shadow. Two consequences:
+
+- A single-bit poke must be composed by hand from the current shadow value.
+  `ATGLK2O0014,40` does not set bit 6; it clears the other seven.
+- After a write, the shadow and the latch disagree. The firmware believes its
+  shadow, so it will not restore the latch on its own; a bit left flipped stays
+  flipped until an explicit write or a power cycle. This was observed: setting
+  port `0x12` bit 1 turned MR off and it remained off.
+
+The firmware's own read-modify-write is interrupt-protected. A read of the
+shadow followed by a separate `O` write is not atomic against it.
+
+### Confirmed function of the driven bits
+
+Bit functions below were established by strobing single bits on a physical unit
+and observing the front panel; they are user-reported observations, not captured
+transcripts. Port `0x14` is active low: `0` lights the indicator.
+
+| Port | Bit | Function | Evidence |
+|---|---|---|---|
+| `0x14` | 0 | CD lamp | observed |
+| `0x14` | 1 | CS lamp (lit at idle) | observed |
+| `0x14` | 2 | — | no driver located |
+| `0x14` | 3 | driven, no visible effect | `0x22d6`/`0x22f3` |
+| `0x14` | 4 | AA lamp | observed |
+| `0x14` | 5 | ARQ lamp | observed |
+| `0x14` | 6 | HS lamp | observed |
+| `0x14` | 7 | SYN lamp | observed |
+| `0x12` | 1 | MR lamp (lit at idle) | observed |
+| `0x12` | 3 | untested | `0x267d`/`0x269d`, gated on `[0xdfd]` |
+| `0x12` | 4 | analog path: audible pop | observed |
+| `0x12` | 5 | untested | `0x25d0`, gated on `[0x693] & 6` |
+| `0x12` | 7 | forced low at init, no driver | `0x2737` |
+| `0x10` | 0 | CD line to the DTE | `0x92b1`/`0x9380` set on connect, `0x93a2`/`0x93d9`/`0x96a7` clear on teardown, all gated on `[0x5b4] & 2`; `0x0b45` clears on timer expiry |
+| `0x10` | 3, 5, 6 | serial EEPROM bit-bang | `0x1490`..`0x15a5` |
+
+Port `0x14` bit 0 driving the CD *lamp* while port `0x10` bit 0 drives the CD
+*line* is consistent: `&C` controls the line, the lamp follows carrier. The
+panel indicators with no latch bit — RD, SD, TR, RS — are the ones expected to
+be wired to the UART and control lines in hardware.
+
+### Port `0x10` is not safe to write
+
+`0x1490` starts from `[0x30e]`, forces bit 5 high and bit 3 low, `out 0x0e,0x6f`
+to select, then toggles bit 6 as a clock with `in al,0x10` reading data back;
+`0x1540` restores the shadow and writes `out 0x0e,7`. That is a bit-banged
+serial EEPROM — the store holding the modem's saved profiles. The same pattern
+recurs at `0x27a6e..0x27b64` in another bank.
+
+These bits are driven by direct `out 0x10` writes that bypass the helper API, so
+a scan of helper call sites does not see them. An arbitrary byte written to port
+`0x10` can clock the NVRAM interface. **Do not write port `0x10`.**
+
+### What the self-test routine covers
+
+`0x26a8` walks a nine-entry table at `cs:0x26f2`, calls clear on every entry,
+delays, then calls set on every entry with interrupts masked. It is reached by
+`lcall 8000:26a4` from a dispatcher at `0x26247` when the parsed value is `5`;
+the AT syntax that reaches that dispatcher has not been identified.
+
+| Entry | `AX` | Port | Bit |
+|---|---|---|---|
+| 0 | `1009` | `0x12` | 4 |
+| 1 | `400a` | `0x14` | 6 |
+| 2 | `100a` | `0x14` | 4 |
+| 3 | `010a` | `0x14` | 0 |
+| 4 | `0108` | `0x10` | 0 |
+| 5 | `0209` | `0x12` | 1 |
+| 6 | `020a` | `0x14` | 1 |
+| 7 | `800a` | `0x14` | 7 |
+| 8 | `200a` | `0x14` | 5 |
+
+This table was the basis for choosing which bits to strobe: the firmware drives
+each of them in both directions itself, so doing so by hand reaches no state the
+firmware does not. That argument survives, but the accompanying reading that the
+group is purely front-panel does not — entry 0 produced an audible pop, so the
+routine is a broader self-test than a lamp test. Entry 4 is on port `0x10` and
+should be excluded on the NVRAM grounds above despite appearing here.
+
+Port `0x12` bits 3 and 5 are driven by the firmware but are **not** in this
+table, so they lack that cover, and the latch is now known to reach the analog
+path.
+
+### Bearing on the DSP
+
+No bit that the firmware drives is a DSP control line. Every driven bit above
+resolves to a front-panel indicator, a DTE control line, the NVRAM interface or
+the analog path.
+
+That is not the same as establishing that the latch bank contains no DSP
+control. Port `0x14` bit 2, port `0x12` bits 0, 2 and 6, and port `0x10` bits 1,
+2, 4 and 7 have no located driver, and absence of a driver is not evidence that
+nothing is wired to the pin. The positive evidence that DSP reset is elsewhere
+is `0xe3ab`/`0xe429` driving `[0xff56]` bit 1 directly, which is a CPU port pin
+rather than an ASIC latch; that argument covers reset specifically and does not
+exclude some other DSP-related strap or enable.
+
+Port `0x14` bit 2 is the best remaining candidate for a blind probe: it sits on
+the latch whose other seven bits are all confirmed panel or DTE signals, with no
+NVRAM lines and no analog surprise so far. From shadow `f5` the strobe byte is
+`f1` and the restore is `f5`. A DSP disturbed by such a poke is recoverable by
+power cycle, since the datapump is downloaded from flash at every boot; the
+risk in that experiment is the latch, not the DSP.
+
+### Port `0x14` bit 2 probed, 2026-09-04
+
+The probe was run on the 20.16 MHz unit (`/dev/cu.usbserial-21210`, serial
+`0009540034268322`, the board that produced `courier-board.rom`). Live shadows
+read `fe 7d f5 ff`, matching the earlier RAM capture exactly, so the strobe was
+`f1` and the restore `f5`.
+
+Sequence: `AT`, `ATI7`, `ATGLK2=0000:0300`, two `ATGLK2B0000` sweeps, the
+`ATGLK2O0014,F1` write, two more sweeps, `ATGLK2O0014,F5`, two more sweeps.
+Each phase required two byte-identical sweeps before being accepted, and the
+restore was issued from a `finally` block. No flash, NVRAM or upload command was
+sent. Saved as `artifacts/io-latch-bit2-01/`.
+
+**Result: zero of the 256 ports changed while bit 2 was held low**, and the
+post-restore sweep is byte-identical to the baseline. Because port `0x14` has no
+refresh path, the bit genuinely stayed low across both intervening sweeps rather
+than being restored underneath the measurement.
+
+This is a null result about *feedback*, not about function. An `ATGLK2B` sweep
+sees only what the CPU can read back; a latch bit routed to a DSP pin, a lamp or
+an analog gate would not appear in the peripheral bank at all. What it does
+establish is that bit 2 is not wired into anything the supervisor can observe
+through I/O space, and that the write/restore cycle disturbs nothing else.
+Whether the bit is visible on the front panel was not checked on this run.
 
 ## Remaining hardware integration
 

@@ -1,0 +1,13 @@
+{
+  "ati7": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        03/13/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         7.3.14\r\nDSP rev                3.0.13\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "shadows": {
+    "30e": 254,
+    "30f": 125,
+    "310": 245,
+    "311": 255
+  },
+  "strobe": 241,
+  "restore": 245,
+  "diff_before_during": [],
+  "diff_before_after": []
+}
