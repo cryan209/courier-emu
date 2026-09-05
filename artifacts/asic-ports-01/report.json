@@ -1,0 +1,7425 @@
+{
+  "assumptions": [
+    "A sweep takes seconds, so a port carrying a 9.6 kHz signal reads as an arbitrary sample, not a waveform. `volatile` means the port moved between reads, not that it is audio.",
+    "Ports are read one at a time and never simultaneously, so nothing here relates two ports' values at one instant.",
+    "`constant` is only constant across the states sampled here; the modem was never off hook and never on a call.",
+    "Reading a mailbox port may consume state the firmware was about to read, so its values are not purely observational."
+  ],
+  "captured": "2026-09-05T07:41:46.850963+00:00",
+  "decode_limit": "FF",
+  "decoded_ports": [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "0A",
+    "0B",
+    "0C",
+    "0D",
+    "0E",
+    "0F",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "1A",
+    "1B",
+    "1C",
+    "1D",
+    "1E",
+    "1F",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "2A",
+    "2B",
+    "2C",
+    "2D",
+    "2E",
+    "2F",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "3A",
+    "3B",
+    "3C",
+    "3D",
+    "3E",
+    "3F",
+    "40",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "4A",
+    "4B",
+    "4C",
+    "4D",
+    "4E",
+    "4F",
+    "50",
+    "51",
+    "52",
+    "53",
+    "54",
+    "55",
+    "56",
+    "57",
+    "58",
+    "59",
+    "5A",
+    "5B",
+    "5C",
+    "5D",
+    "5E",
+    "5F",
+    "60",
+    "61",
+    "62",
+    "63",
+    "64",
+    "65",
+    "66",
+    "67",
+    "68",
+    "69",
+    "6A",
+    "6B",
+    "6C",
+    "6D",
+    "6E",
+    "6F",
+    "70",
+    "71",
+    "72",
+    "73",
+    "74",
+    "75",
+    "76",
+    "77",
+    "78",
+    "79",
+    "7A",
+    "7B",
+    "7C",
+    "7D",
+    "7E",
+    "7F",
+    "81",
+    "83",
+    "85",
+    "87",
+    "89",
+    "8B",
+    "8D",
+    "8F",
+    "91",
+    "93",
+    "95",
+    "97",
+    "99",
+    "9B",
+    "9D",
+    "9F",
+    "A1",
+    "A3",
+    "A5",
+    "A7",
+    "A9",
+    "AB",
+    "AD",
+    "AF",
+    "B1",
+    "B3",
+    "B5",
+    "B7",
+    "B9",
+    "BB",
+    "BD",
+    "BF",
+    "C1",
+    "C3",
+    "C5",
+    "C7",
+    "C9",
+    "CB",
+    "CD",
+    "CF",
+    "D1",
+    "D3",
+    "D5",
+    "D7",
+    "D9",
+    "DB",
+    "DD",
+    "DF",
+    "E1",
+    "E3",
+    "E5",
+    "E7",
+    "E9",
+    "EB",
+    "ED",
+    "EF",
+    "F1",
+    "F3",
+    "F5",
+    "F7",
+    "F9",
+    "FB",
+    "FD",
+    "FF"
+  ],
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "kinds": {
+    "alias": 65,
+    "constant": 187,
+    "state": 3,
+    "volatile": 1
+  },
+  "passes": 4,
+  "ports": {
+    "00": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "01": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "02": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "03": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "04": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "05": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "06": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "07": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "08": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "09": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "0A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "F7"
+        ],
+        "idle": [
+          "F7"
+        ],
+        "loopback": [
+          "F7"
+        ]
+      }
+    },
+    "0B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "0C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "60"
+        ],
+        "idle": [
+          "60"
+        ],
+        "loopback": [
+          "60"
+        ]
+      }
+    },
+    "0D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "0E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "07"
+        ],
+        "idle": [
+          "07"
+        ],
+        "loopback": [
+          "07"
+        ]
+      }
+    },
+    "0F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "10": {
+      "bits_seen_changing": "00",
+      "group": "latch",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "86"
+        ],
+        "idle": [
+          "86"
+        ],
+        "loopback": [
+          "86"
+        ]
+      }
+    },
+    "11": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "12": {
+      "bits_seen_changing": "00",
+      "group": "latch",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "8A"
+        ],
+        "idle": [
+          "8A"
+        ],
+        "loopback": [
+          "8A"
+        ]
+      }
+    },
+    "13": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "14": {
+      "bits_seen_changing": "00",
+      "group": "latch",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "7E"
+        ],
+        "idle": [
+          "7E"
+        ],
+        "loopback": [
+          "7E"
+        ]
+      }
+    },
+    "15": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "16": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "17": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "18": {
+      "bits_seen_changing": "3F",
+      "group": "",
+      "kind": "volatile",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "C0",
+          "C6",
+          "C7"
+        ]
+      }
+    },
+    "19": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "1A": {
+      "bits_seen_changing": "3F",
+      "group": "",
+      "kind": "state",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "C0"
+        ]
+      }
+    },
+    "1B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "1C": {
+      "bits_seen_changing": "04",
+      "group": "mailbox",
+      "kind": "state",
+      "values": {
+        "after": [
+          "FD"
+        ],
+        "idle": [
+          "FD"
+        ],
+        "loopback": [
+          "F9"
+        ]
+      }
+    },
+    "1D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "1E": {
+      "bits_seen_changing": "04",
+      "group": "mailbox",
+      "kind": "state",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FB"
+        ]
+      }
+    },
+    "1F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "20": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "21": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "22": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "23": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "24": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "25": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "26": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "27": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "28": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "29": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "2F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "30": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "31": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "32": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "33": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "34": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "35": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "36": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "37": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "38": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "39": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "3F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "40": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "41": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "42": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "43": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "44": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "45": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "46": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "47": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "48": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "49": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "4A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "4B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "4C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "4D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "4E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "4F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "50": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "51": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "52": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "53": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "54": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "55": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "56": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "FF"
+        ],
+        "idle": [
+          "FF"
+        ],
+        "loopback": [
+          "FF"
+        ]
+      }
+    },
+    "57": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "58": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "20"
+        ],
+        "idle": [
+          "20"
+        ],
+        "loopback": [
+          "20"
+        ]
+      }
+    },
+    "59": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "5A": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "5B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "5C": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "0E"
+        ],
+        "idle": [
+          "0E"
+        ],
+        "loopback": [
+          "0E"
+        ]
+      }
+    },
+    "5D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "5E": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "5F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "60": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "4B"
+        ],
+        "idle": [
+          "4B"
+        ],
+        "loopback": [
+          "4B"
+        ]
+      }
+    },
+    "61": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "62": {
+      "bits_seen_changing": "00",
+      "group": "mailbox",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "63": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "64": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "78"
+        ],
+        "idle": [
+          "78"
+        ],
+        "loopback": [
+          "78"
+        ]
+      }
+    },
+    "65": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "66": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "09"
+        ],
+        "idle": [
+          "09"
+        ],
+        "loopback": [
+          "09"
+        ]
+      }
+    },
+    "67": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "68": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "8F"
+        ],
+        "idle": [
+          "8F"
+        ],
+        "loopback": [
+          "8F"
+        ]
+      }
+    },
+    "69": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "6A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "A7"
+        ],
+        "idle": [
+          "A7"
+        ],
+        "loopback": [
+          "A7"
+        ]
+      }
+    },
+    "6B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "6C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "E8"
+        ],
+        "idle": [
+          "E8"
+        ],
+        "loopback": [
+          "E8"
+        ]
+      }
+    },
+    "6D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "6E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "6F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "70": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "AA"
+        ],
+        "idle": [
+          "AA"
+        ],
+        "loopback": [
+          "AA"
+        ]
+      }
+    },
+    "71": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "72": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "B6"
+        ],
+        "idle": [
+          "B6"
+        ],
+        "loopback": [
+          "B6"
+        ]
+      }
+    },
+    "73": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "74": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "97"
+        ],
+        "idle": [
+          "97"
+        ],
+        "loopback": [
+          "97"
+        ]
+      }
+    },
+    "75": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "76": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "51"
+        ],
+        "idle": [
+          "51"
+        ],
+        "loopback": [
+          "51"
+        ]
+      }
+    },
+    "77": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "78": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "51"
+        ],
+        "idle": [
+          "51"
+        ],
+        "loopback": [
+          "51"
+        ]
+      }
+    },
+    "79": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "7A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "06"
+        ],
+        "idle": [
+          "06"
+        ],
+        "loopback": [
+          "06"
+        ]
+      }
+    },
+    "7B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "7C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "4F"
+        ],
+        "idle": [
+          "4F"
+        ],
+        "loopback": [
+          "4F"
+        ]
+      }
+    },
+    "7D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "7E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "B3"
+        ],
+        "idle": [
+          "B3"
+        ],
+        "loopback": [
+          "B3"
+        ]
+      }
+    },
+    "7F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "80": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "80"
+        ],
+        "idle": [
+          "80"
+        ],
+        "loopback": [
+          "80"
+        ]
+      }
+    },
+    "81": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "82": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "82"
+        ],
+        "idle": [
+          "82"
+        ],
+        "loopback": [
+          "82"
+        ]
+      }
+    },
+    "83": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "84": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "84"
+        ],
+        "idle": [
+          "84"
+        ],
+        "loopback": [
+          "84"
+        ]
+      }
+    },
+    "85": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "86": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "86"
+        ],
+        "idle": [
+          "86"
+        ],
+        "loopback": [
+          "86"
+        ]
+      }
+    },
+    "87": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "88": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "88"
+        ],
+        "idle": [
+          "88"
+        ],
+        "loopback": [
+          "88"
+        ]
+      }
+    },
+    "89": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "8A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "8A"
+        ],
+        "idle": [
+          "8A"
+        ],
+        "loopback": [
+          "8A"
+        ]
+      }
+    },
+    "8B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "8C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "8C"
+        ],
+        "idle": [
+          "8C"
+        ],
+        "loopback": [
+          "8C"
+        ]
+      }
+    },
+    "8D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "8E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "8E"
+        ],
+        "idle": [
+          "8E"
+        ],
+        "loopback": [
+          "8E"
+        ]
+      }
+    },
+    "8F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "90": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "90"
+        ],
+        "idle": [
+          "90"
+        ],
+        "loopback": [
+          "90"
+        ]
+      }
+    },
+    "91": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "92": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "92"
+        ],
+        "idle": [
+          "92"
+        ],
+        "loopback": [
+          "92"
+        ]
+      }
+    },
+    "93": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "94": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "94"
+        ],
+        "idle": [
+          "94"
+        ],
+        "loopback": [
+          "94"
+        ]
+      }
+    },
+    "95": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "96": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "96"
+        ],
+        "idle": [
+          "96"
+        ],
+        "loopback": [
+          "96"
+        ]
+      }
+    },
+    "97": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "98": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "98"
+        ],
+        "idle": [
+          "98"
+        ],
+        "loopback": [
+          "98"
+        ]
+      }
+    },
+    "99": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "9A": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "9A"
+        ],
+        "idle": [
+          "9A"
+        ],
+        "loopback": [
+          "9A"
+        ]
+      }
+    },
+    "9B": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "9C": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "9C"
+        ],
+        "idle": [
+          "9C"
+        ],
+        "loopback": [
+          "9C"
+        ]
+      }
+    },
+    "9D": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "9E": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "9E"
+        ],
+        "idle": [
+          "9E"
+        ],
+        "loopback": [
+          "9E"
+        ]
+      }
+    },
+    "9F": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "A0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "A0"
+        ],
+        "idle": [
+          "A0"
+        ],
+        "loopback": [
+          "A0"
+        ]
+      }
+    },
+    "A1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "A2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "A2"
+        ],
+        "idle": [
+          "A2"
+        ],
+        "loopback": [
+          "A2"
+        ]
+      }
+    },
+    "A3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "A4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "A4"
+        ],
+        "idle": [
+          "A4"
+        ],
+        "loopback": [
+          "A4"
+        ]
+      }
+    },
+    "A5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "A6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "A6"
+        ],
+        "idle": [
+          "A6"
+        ],
+        "loopback": [
+          "A6"
+        ]
+      }
+    },
+    "A7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "A8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "A8"
+        ],
+        "idle": [
+          "A8"
+        ],
+        "loopback": [
+          "A8"
+        ]
+      }
+    },
+    "A9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "AA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "AA"
+        ],
+        "idle": [
+          "AA"
+        ],
+        "loopback": [
+          "AA"
+        ]
+      }
+    },
+    "AB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "AC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "AC"
+        ],
+        "idle": [
+          "AC"
+        ],
+        "loopback": [
+          "AC"
+        ]
+      }
+    },
+    "AD": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "AE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "AE"
+        ],
+        "idle": [
+          "AE"
+        ],
+        "loopback": [
+          "AE"
+        ]
+      }
+    },
+    "AF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "B0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "B0"
+        ],
+        "idle": [
+          "B0"
+        ],
+        "loopback": [
+          "B0"
+        ]
+      }
+    },
+    "B1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "B2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "B2"
+        ],
+        "idle": [
+          "B2"
+        ],
+        "loopback": [
+          "B2"
+        ]
+      }
+    },
+    "B3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "B4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "B4"
+        ],
+        "idle": [
+          "B4"
+        ],
+        "loopback": [
+          "B4"
+        ]
+      }
+    },
+    "B5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "B6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "B6"
+        ],
+        "idle": [
+          "B6"
+        ],
+        "loopback": [
+          "B6"
+        ]
+      }
+    },
+    "B7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "B8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "B8"
+        ],
+        "idle": [
+          "B8"
+        ],
+        "loopback": [
+          "B8"
+        ]
+      }
+    },
+    "B9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "BA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "BA"
+        ],
+        "idle": [
+          "BA"
+        ],
+        "loopback": [
+          "BA"
+        ]
+      }
+    },
+    "BB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "BC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "BC"
+        ],
+        "idle": [
+          "BC"
+        ],
+        "loopback": [
+          "BC"
+        ]
+      }
+    },
+    "BD": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "BE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "BE"
+        ],
+        "idle": [
+          "BE"
+        ],
+        "loopback": [
+          "BE"
+        ]
+      }
+    },
+    "BF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "C0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "C0"
+        ],
+        "idle": [
+          "C0"
+        ],
+        "loopback": [
+          "C0"
+        ]
+      }
+    },
+    "C1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "C2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "C2"
+        ],
+        "idle": [
+          "C2"
+        ],
+        "loopback": [
+          "C2"
+        ]
+      }
+    },
+    "C3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "C4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "C4"
+        ],
+        "idle": [
+          "C4"
+        ],
+        "loopback": [
+          "C4"
+        ]
+      }
+    },
+    "C5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "C6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "C6"
+        ],
+        "idle": [
+          "C6"
+        ],
+        "loopback": [
+          "C6"
+        ]
+      }
+    },
+    "C7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "C8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "C8"
+        ],
+        "idle": [
+          "C8"
+        ],
+        "loopback": [
+          "C8"
+        ]
+      }
+    },
+    "C9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "CA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "CA"
+        ],
+        "idle": [
+          "CA"
+        ],
+        "loopback": [
+          "CA"
+        ]
+      }
+    },
+    "CB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "CC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "CC"
+        ],
+        "idle": [
+          "CC"
+        ],
+        "loopback": [
+          "CC"
+        ]
+      }
+    },
+    "CD": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "CE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "CE"
+        ],
+        "idle": [
+          "CE"
+        ],
+        "loopback": [
+          "CE"
+        ]
+      }
+    },
+    "CF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "D0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "D0"
+        ],
+        "idle": [
+          "D0"
+        ],
+        "loopback": [
+          "D0"
+        ]
+      }
+    },
+    "D1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "D2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "D2"
+        ],
+        "idle": [
+          "D2"
+        ],
+        "loopback": [
+          "D2"
+        ]
+      }
+    },
+    "D3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "D4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "D4"
+        ],
+        "idle": [
+          "D4"
+        ],
+        "loopback": [
+          "D4"
+        ]
+      }
+    },
+    "D5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "D6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "D6"
+        ],
+        "idle": [
+          "D6"
+        ],
+        "loopback": [
+          "D6"
+        ]
+      }
+    },
+    "D7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "D8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "D8"
+        ],
+        "idle": [
+          "D8"
+        ],
+        "loopback": [
+          "D8"
+        ]
+      }
+    },
+    "D9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "DA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "DA"
+        ],
+        "idle": [
+          "DA"
+        ],
+        "loopback": [
+          "DA"
+        ]
+      }
+    },
+    "DB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "DC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "DC"
+        ],
+        "idle": [
+          "DC"
+        ],
+        "loopback": [
+          "DC"
+        ]
+      }
+    },
+    "DD": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "DE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "DE"
+        ],
+        "idle": [
+          "DE"
+        ],
+        "loopback": [
+          "DE"
+        ]
+      }
+    },
+    "DF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "E0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "E0"
+        ],
+        "idle": [
+          "E0"
+        ],
+        "loopback": [
+          "E0"
+        ]
+      }
+    },
+    "E1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "E2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "E2"
+        ],
+        "idle": [
+          "E2"
+        ],
+        "loopback": [
+          "E2"
+        ]
+      }
+    },
+    "E3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "E4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "E4"
+        ],
+        "idle": [
+          "E4"
+        ],
+        "loopback": [
+          "E4"
+        ]
+      }
+    },
+    "E5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "E6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "E6"
+        ],
+        "idle": [
+          "E6"
+        ],
+        "loopback": [
+          "E6"
+        ]
+      }
+    },
+    "E7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "E8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "E8"
+        ],
+        "idle": [
+          "E8"
+        ],
+        "loopback": [
+          "E8"
+        ]
+      }
+    },
+    "E9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "EA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "EA"
+        ],
+        "idle": [
+          "EA"
+        ],
+        "loopback": [
+          "EA"
+        ]
+      }
+    },
+    "EB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "EC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "EC"
+        ],
+        "idle": [
+          "EC"
+        ],
+        "loopback": [
+          "EC"
+        ]
+      }
+    },
+    "ED": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "EE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "EE"
+        ],
+        "idle": [
+          "EE"
+        ],
+        "loopback": [
+          "EE"
+        ]
+      }
+    },
+    "EF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "F0": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "F0"
+        ],
+        "idle": [
+          "F0"
+        ],
+        "loopback": [
+          "F0"
+        ]
+      }
+    },
+    "F1": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "F2": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "F2"
+        ],
+        "idle": [
+          "F2"
+        ],
+        "loopback": [
+          "F2"
+        ]
+      }
+    },
+    "F3": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "F4": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "F4"
+        ],
+        "idle": [
+          "F4"
+        ],
+        "loopback": [
+          "F4"
+        ]
+      }
+    },
+    "F5": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "F6": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "F6"
+        ],
+        "idle": [
+          "F6"
+        ],
+        "loopback": [
+          "F6"
+        ]
+      }
+    },
+    "F7": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "F8": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "F8"
+        ],
+        "idle": [
+          "F8"
+        ],
+        "loopback": [
+          "F8"
+        ]
+      }
+    },
+    "F9": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "FA": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "FA"
+        ],
+        "idle": [
+          "FA"
+        ],
+        "loopback": [
+          "FA"
+        ]
+      }
+    },
+    "FB": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "FC": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "FC"
+        ],
+        "idle": [
+          "FC"
+        ],
+        "loopback": [
+          "FC"
+        ]
+      }
+    },
+    "FD": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    },
+    "FE": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "alias",
+      "values": {
+        "after": [
+          "FE"
+        ],
+        "idle": [
+          "FE"
+        ],
+        "loopback": [
+          "FE"
+        ]
+      }
+    },
+    "FF": {
+      "bits_seen_changing": "00",
+      "group": "",
+      "kind": "constant",
+      "values": {
+        "after": [
+          "00"
+        ],
+        "idle": [
+          "00"
+        ],
+        "loopback": [
+          "00"
+        ]
+      }
+    }
+  },
+  "raw": {
+    "after": [
+      {
+        "00": null,
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      }
+    ],
+    "idle": [
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "FF",
+        "19": "00",
+        "1A": "FF",
+        "1B": "00",
+        "1C": "FD",
+        "1D": "00",
+        "1E": "FF",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      }
+    ],
+    "loopback": [
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "C6",
+        "19": "00",
+        "1A": "C0",
+        "1B": "00",
+        "1C": "F9",
+        "1D": "00",
+        "1E": "FB",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "C0",
+        "19": "00",
+        "1A": "C0",
+        "1B": "00",
+        "1C": "F9",
+        "1D": "00",
+        "1E": "FB",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "C0",
+        "19": "00",
+        "1A": "C0",
+        "1B": "00",
+        "1C": "F9",
+        "1D": "00",
+        "1E": "FB",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      },
+      {
+        "00": "00",
+        "01": "00",
+        "02": "00",
+        "03": "00",
+        "04": "00",
+        "05": "00",
+        "06": "00",
+        "07": "00",
+        "08": "00",
+        "09": "00",
+        "0A": "F7",
+        "0B": "00",
+        "0C": "60",
+        "0D": "00",
+        "0E": "07",
+        "0F": "00",
+        "10": "86",
+        "11": "00",
+        "12": "8A",
+        "13": "00",
+        "14": "7E",
+        "15": "00",
+        "16": "00",
+        "17": "00",
+        "18": "C7",
+        "19": "00",
+        "1A": "C0",
+        "1B": "00",
+        "1C": "F9",
+        "1D": "00",
+        "1E": "FB",
+        "1F": "00",
+        "20": "00",
+        "21": "00",
+        "22": "00",
+        "23": "00",
+        "24": "00",
+        "25": "00",
+        "26": "00",
+        "27": "00",
+        "28": "00",
+        "29": "00",
+        "2A": "00",
+        "2B": "00",
+        "2C": "00",
+        "2D": "00",
+        "2E": "00",
+        "2F": "00",
+        "30": "00",
+        "31": "00",
+        "32": "00",
+        "33": "00",
+        "34": "00",
+        "35": "00",
+        "36": "00",
+        "37": "00",
+        "38": "00",
+        "39": "00",
+        "3A": "00",
+        "3B": "00",
+        "3C": "00",
+        "3D": "00",
+        "3E": "00",
+        "3F": "00",
+        "40": "00",
+        "41": "00",
+        "42": "FF",
+        "43": "00",
+        "44": "00",
+        "45": "00",
+        "46": "FF",
+        "47": "00",
+        "48": "00",
+        "49": "00",
+        "4A": "FF",
+        "4B": "00",
+        "4C": "00",
+        "4D": "00",
+        "4E": "FF",
+        "4F": "00",
+        "50": "00",
+        "51": "00",
+        "52": "FF",
+        "53": "00",
+        "54": "00",
+        "55": "00",
+        "56": "FF",
+        "57": "00",
+        "58": "20",
+        "59": "00",
+        "5A": "00",
+        "5B": "00",
+        "5C": "0E",
+        "5D": "00",
+        "5E": "00",
+        "5F": "00",
+        "60": "4B",
+        "61": "00",
+        "62": "00",
+        "63": "00",
+        "64": "78",
+        "65": "00",
+        "66": "09",
+        "67": "00",
+        "68": "8F",
+        "69": "00",
+        "6A": "A7",
+        "6B": "00",
+        "6C": "E8",
+        "6D": "00",
+        "6E": "00",
+        "6F": "00",
+        "70": "AA",
+        "71": "00",
+        "72": "B6",
+        "73": "00",
+        "74": "97",
+        "75": "00",
+        "76": "51",
+        "77": "00",
+        "78": "51",
+        "79": "00",
+        "7A": "06",
+        "7B": "00",
+        "7C": "4F",
+        "7D": "00",
+        "7E": "B3",
+        "7F": "00",
+        "80": "80",
+        "81": "00",
+        "82": "82",
+        "83": "00",
+        "84": "84",
+        "85": "00",
+        "86": "86",
+        "87": "00",
+        "88": "88",
+        "89": "00",
+        "8A": "8A",
+        "8B": "00",
+        "8C": "8C",
+        "8D": "00",
+        "8E": "8E",
+        "8F": "00",
+        "90": "90",
+        "91": "00",
+        "92": "92",
+        "93": "00",
+        "94": "94",
+        "95": "00",
+        "96": "96",
+        "97": "00",
+        "98": "98",
+        "99": "00",
+        "9A": "9A",
+        "9B": "00",
+        "9C": "9C",
+        "9D": "00",
+        "9E": "9E",
+        "9F": "00",
+        "A0": "A0",
+        "A1": "00",
+        "A2": "A2",
+        "A3": "00",
+        "A4": "A4",
+        "A5": "00",
+        "A6": "A6",
+        "A7": "00",
+        "A8": "A8",
+        "A9": "00",
+        "AA": "AA",
+        "AB": "00",
+        "AC": "AC",
+        "AD": "00",
+        "AE": "AE",
+        "AF": "00",
+        "B0": "B0",
+        "B1": "00",
+        "B2": "B2",
+        "B3": "00",
+        "B4": "B4",
+        "B5": "00",
+        "B6": "B6",
+        "B7": "00",
+        "B8": "B8",
+        "B9": "00",
+        "BA": "BA",
+        "BB": "00",
+        "BC": "BC",
+        "BD": "00",
+        "BE": "BE",
+        "BF": "00",
+        "C0": "C0",
+        "C1": "00",
+        "C2": "C2",
+        "C3": "00",
+        "C4": "C4",
+        "C5": "00",
+        "C6": "C6",
+        "C7": "00",
+        "C8": "C8",
+        "C9": "00",
+        "CA": "CA",
+        "CB": "00",
+        "CC": "CC",
+        "CD": "00",
+        "CE": "CE",
+        "CF": "00",
+        "D0": "D0",
+        "D1": "00",
+        "D2": "D2",
+        "D3": "00",
+        "D4": "D4",
+        "D5": "00",
+        "D6": "D6",
+        "D7": "00",
+        "D8": "D8",
+        "D9": "00",
+        "DA": "DA",
+        "DB": "00",
+        "DC": "DC",
+        "DD": "00",
+        "DE": "DE",
+        "DF": "00",
+        "E0": "E0",
+        "E1": "00",
+        "E2": "E2",
+        "E3": "00",
+        "E4": "E4",
+        "E5": "00",
+        "E6": "E6",
+        "E7": "00",
+        "E8": "E8",
+        "E9": "00",
+        "EA": "EA",
+        "EB": "00",
+        "EC": "EC",
+        "ED": "00",
+        "EE": "EE",
+        "EF": "00",
+        "F0": "F0",
+        "F1": "00",
+        "F2": "F2",
+        "F3": "00",
+        "F4": "F4",
+        "F5": "00",
+        "F6": "F6",
+        "F7": "00",
+        "F8": "F8",
+        "F9": "00",
+        "FA": "FA",
+        "FB": "00",
+        "FC": "FC",
+        "FD": "00",
+        "FE": "FE",
+        "FF": "00"
+      }
+    ]
+  },
+  "skip_mailbox": false,
+  "states": [
+    "idle",
+    "loopback",
+    "after"
+  ],
+  "target": {
+    "dsp": "3.1.2",
+    "supervisor": "7.4.16"
+  }
+}

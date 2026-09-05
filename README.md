@@ -38,10 +38,12 @@ firmware tick is 5.000 ms: the board measures 1.000031 seconds per `S18` unit
 over twelve `&T1` runs, both builds convert S-register seconds to ticks by
 multiplying by 200, and both program 80186 Timer 0 for exactly 5 ms on their
 own crystal - `0x6270` at 20.16 MHz and `0x7e00` at 25.8048 MHz, which also
-identifies `main211` as the 25.8048 MHz build. Audio reaches the DSP on the
-C5x serial port, `DRR`/`DXR`, with the codec as clock master and no TDM
-register used anywhere; a port sweep during `AT&T8` analogue loopback shows no
-CPU port carrying samples. And the C52's mask ROM is not what the modem
+identifies `main211` as the 25.8048 MHz build. A port sweep during `AT&T8` analogue
+loopback shows no CPU port carrying samples, so the 80186 is not in the audio
+path; where it goes on the DSP side is still open, and an earlier claim here
+that it arrives on the C5x serial port is withdrawn — at run time the DSP polls
+`DRR`, `TRCV` and the ASIC's own ports together, and never transmits on either
+serial port after reset. And the C52's mask ROM is not what the modem
 executes - the firmware supplies program words `0000..75d9`, including the
 reset code, and programs external-memory wait states — and the supervisor's own
 download stream, which the bridge checks rather than assumes, matches that
@@ -56,6 +58,14 @@ the DSP download window, the codec bring-up, the line detector and the missing
 tone generator are all in that one package. The `40.320 MHz` oscillator also
 confirms CLKOUT is 20.16 MHz, which is the last thing the tick derivation
 needed.
+
+[Modelling the 20.16 MHz ASIC](docs/asic-port-map.md) reads that gate array's
+port space off the running board with `python -m courier_emu.asic_probe`, which
+writes nothing. Only even addresses are decoded, the decode stops at `0x7f`
+(above it the bus just returns the address), and the idle default is `0x00` -
+where the harness returns `0xff` for any port it does not model. The measured
+map is `courier_emu.asic_ports`; it is published rather than wired in, and it
+does not fix the ROM transmit bug.
 
 The constants that rested on the old calibration have been moved with it:
 `INSTRUCTIONS_PER_MS` 1,111 -> 4,348, `SUGGESTED_TICK_MS` 10 -> 5, and
