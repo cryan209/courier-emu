@@ -1,6 +1,7 @@
 import json
 
 import pytest
+import courier_emu.flash_dump as fd
 
 from courier_emu import flash_dump as dump
 
@@ -154,3 +155,19 @@ def test_call_results_terminate_a_dial_wait():
                   b"\r\nBUSY\r\n", b"\r\nOK\r\n"):
         assert dump.CALL_TERMINAL.search(reply), reply
     assert dump.CALL_TERMINAL.search(b"\r\nCONNECT 33600\r\n") is None
+
+
+def test_segment_offset_maps_flat_onto_the_flash():
+    """No bank switching: the capture manifests record physical_start 0x80000,
+    and `A000:9200` is the notation the ATGLK2= reads use for physical a9200."""
+    assert fd.physical(0xA000, 0x9200) == 0xA9200
+    assert fd.file_offset(0xA000, 0x9200) == 0xA9200 - fd.BASE
+    # Segment 8000 is the base of the window, so its offsets are file offsets.
+    assert fd.file_offset(0x8000, 0x1EED) == 0x1EED
+    # The same physical address, reached by a different encoding.
+    assert fd.file_offset(0x8F46, 0x01E4) == fd.file_offset(0x8000, 0xF644)
+
+
+def test_an_address_outside_the_flash_is_refused():
+    with pytest.raises(ValueError, match='outside the flash'):
+        fd.file_offset(0x0000, 0x0400)      # low RAM

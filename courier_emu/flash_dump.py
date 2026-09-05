@@ -67,6 +67,29 @@ CALL_TERMINAL = re.compile(
 ROW = re.compile(r"([0-9A-F]{4}):([0-9A-F]{4})\s+((?:[0-9A-F]{2}\s+){15}[0-9A-F]{2})", re.I)
 
 
+def physical(segment: int, offset: int) -> int:
+    """The 80186 real-mode address a `segment:offset` pair names.
+
+    The captures use this notation - `ATGLK2=A000:9200` reads physical
+    `0xa9200` - and so does every far pointer in the image. There is no bank
+    switching to undo: the flash is flat across `BASE..BASE+LENGTH`, which is
+    what `physical_start` in the capture manifests records.
+    """
+    return ((segment << 4) + offset) & 0xFFFFF
+
+
+def file_offset(segment: int, offset: int) -> int:
+    """Where `segment:offset` lands in a captured flash image.
+
+    Raises for an address outside the flash window, which is what a pointer
+    into RAM or the peripheral block looks like.
+    """
+    address = physical(segment, offset)
+    if not BASE <= address < BASE + LENGTH:
+        raise ValueError(f"{segment:04x}:{offset:04x} is {address:05x}, outside the flash")
+    return address - BASE
+
+
 def command_for(address: int, *, allow_ram: bool = False, allow_upper_ram: bool = False) -> str:
     in_flash = BASE <= address < BASE + LENGTH
     # The relocated peripheral control block occupies ff00..ffff. Reading it

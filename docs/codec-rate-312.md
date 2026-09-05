@@ -86,7 +86,7 @@ register at runtime. That is the mechanism a rate change would use.
 
 **Not established: that the supervisor uses it.** See below.
 
-## What the senders carry, and why the list is incomplete
+## What the senders carry
 
 The supervisor has two enqueue paths, and the second one is why an earlier
 enumeration missed the dial tags:
@@ -96,27 +96,62 @@ enumeration missed the dial tags:
 | three-word | `f678` | `ff00`, then tag in `AX`, then argument in `BX` |
 | one-word | `f64c` | a single word, `(tag << 8) \| data` |
 
-The one-word format is confirmed by the dial marker: two sites load `AX` with
+The one-word format is confirmed by the dial marker: sites load `AX` with
 `1600` and call it, which is tag `16` with argument `0`, exactly as
 `courier_firmware_analysis.md` describes the dial conversation.
 
-Tags observed across both paths, from same-segment immediate loads: `01, 05,
-08, 16, 34, 35, 40, 42, 49, 4a, 53, 54, 56, 75`. Tag `2c` is not among them, and
-no site anywhere loads it as an immediate before either call.
+Both routines have far-call thunks at `0f644` and `0f648`, and most callers use
+them. Resolving those needed the address mapping in
+[flash-addressing.md](flash-addressing.md); scanning for the offset field alone
+finds none, because the thunk is reached as `8f46:01e4`. With it, the visible
+send sites go from 23 to 137:
 
-That is not evidence of absence. The enumeration is incomplete in two known
-ways. Some sites build the tag rather than loading it - `10cb4` reads a nibble
-of `[0x9a5]`, indexes a table at `1831` with `xlat`, and sends it as tag `40`'s
-argument. More importantly both routines have far-call thunks at `0f644` and
-`0f648`, so there are callers in other segments, and the flash is banked - the
-captures address it as `A000:`/`B000:` - so file offsets are not linear
-segment:offset and those callers cannot be found by scanning for a byte pattern.
-Resolving the bank mapping is what would finish this.
+| path | tags observed |
+|---|---|
+| three-word | `02 0f 10 11 12 17 19 1a 1b 1c 1d 1e 1f 21 2a` **`2c`** `30 32 33 36 37 39 3b 3c 48 50 51 52 70 71 73 74 76 77 78` |
+| one-word | `01 05 06 0a 0c 0e 15 16 2a 3d 3e 3f 40 41 43 44 4a 4b 4f 55` |
 
-A rate change may also simply live where it is hardest to see. V.34 and V.PCM
-startup would have no reason to reprogram the codec before phase 3, so the
-sending code is likely inside the training state machine rather than on the dial
-path - and that is the part most likely to sit in a banked overlay.
+Five sites build the tag rather than loading it and are not in those lists.
+
+## Tag `2c` is sent - but it does not carry the rate
+
+Three sites send it, each `mov ax, 0x2c` immediately before the far call:
+
+| site | argument |
+|---|---|
+| `4a893` | `bx = 0405` |
+| `4a8c1` | `bx = 0409` |
+| `49a3c` | `bh = 4`, `bl` computed as two 2-bit fields, each forced non-zero |
+
+All three write **register 4**. None touches registers 1 or 2. And in the DSP
+image only the six reset sites call `8138` at all - a scan of every
+`lacc #0nnn ; call 8138` pair in program `8000..f000` returns exactly those six.
+
+So on this firmware the codec's divider registers are written **once, at DSP
+reset, and never again**. The runtime path exists and is used, but for
+register 4, whose two 2-bit fields look like gain rather than rate.
+
+## Which leaves a real contradiction
+
+Three things cannot all be true:
+
+1. The dial path runs at 7200 Hz. Constrained hard by DTMF tolerance, as above.
+2. Registers 1 and 2 are set once at reset and never changed.
+3. This unit does x2 and V.90, which need at least 8000 Hz.
+
+Something in that list is wrong, and this document does not know which. The
+candidates, in the order worth testing:
+
+* **A second DSP program.** The supervisor downloads DSP code, and a datapump
+  image with its own initialisation would reprogram the dividers on load without
+  any tag `2c` traffic. Only one codec init exists in *this* payload, but the
+  payload extracted from this flash is one segment at origin `0x8000`, and
+  whether another image is downloaded for the datapump is not settled here.
+* **Register 4 is not only gain.** If it carries a rate or filter select, the
+  three sends above are the rate change and the reading of them is wrong.
+* **The register numbering.** The whole `(register << 8) | data` reading rests
+  on the reset sequence looking like registers 1-6 in order, which is suggestive
+  rather than decoded.
 
 ## What would settle it
 
