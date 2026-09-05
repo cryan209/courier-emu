@@ -1,0 +1,33 @@
+{
+  "what": "First code executed on the physical Courier by this project: a 19-byte routine placed in RAM and hooked onto the firmware's tick.",
+  "device": "/dev/cu.usbserial-21210",
+  "board": {"supervisor": "7.4.16", "dsp": "3.1.2", "firmware": "ID_SDL 4.03d", "clock": "20.16MHz"},
+  "routine": {
+    "bytes": "509c1e31c08ed8ff06003b1f9d58ea770a0080",
+    "base": "0x03a77",
+    "counter": "0x03b00",
+    "read_back_matched": true
+  },
+  "hook": {
+    "vector": "0x0f",
+    "cell_written": "0x3e (segment only)",
+    "from": "0x8000", "to": "0x0300",
+    "atomic": "one word write; the offset 0x0a77 is valid under both segments, so the board never holds a half-updated far pointer"
+  },
+  "result": {
+    "increments": 702,
+    "seconds": 3.510,
+    "per_second": 200.0,
+    "implied_tick_ms": 5.000
+  },
+  "cleanup": {
+    "disarmed": "ATGLK2W3E,8000; vector 0f reads 77 0A 00 80 again",
+    "ram_restored": "pages 03a00 and 03b00 back to entirely zero",
+    "health": "AT -> OK, ATI7 -> 7.4.16"
+  },
+  "limits": [
+    "The counter was sampled by page reads about 270 ms apart, so the rate is a fit over 3.5 s rather than an instantaneous measure.",
+    "This measures the rate at which vector 0x0f is delivered, which is the supervisor's countdown-chain tick. It is the same quantity the S-register conversion and Timer 0 max count describe, but it is not a direct measurement of Timer 0.",
+    "Nothing was written outside 0x3a77..0x3a89, 0x3b00..0x3b01 and the vector segment cell at 0x3e."
+  ]
+}
