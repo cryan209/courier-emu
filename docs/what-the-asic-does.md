@@ -104,9 +104,28 @@ the ASIC:
 * **The line detector.** The supervisor counts its own five qualifying hits at
   `[0x649]`, but the reading it counts arrives from outside; the harness has to
   answer the `0x7c` poll by hand.
-* **The tone generator.** This is why `--exchange` still hears silence when the
-  firmware dials: the supervisor issues the digit commands correctly and
-  nothing renders them onto the line.
+**Not the tone generator, though this document first said so.** The README's
+"the tone generator is the ASIC's" does not survive checking. Dialling a digit
+sends `0x16:0000`, three constant lanes `0x19:020d`, `0x1a:3000`, `0x1b:0c08`,
+the keypad index on `0x13`, then `0x16:0000` when the tone ends - and those
+three lanes are host-write tags whose handlers store into **DSP data memory**,
+at `0x03ad`, `0x0392` and `0x03f1`. The tone parameters go to the C52, so the
+synthesiser is the datapump's. What `--exchange` hears silence from is the
+harness's C52 not reaching that code, not a generator living somewhere
+unmodelled.
+
+The tones themselves, from the firmware's own dial path:
+
+| tone | where it is decided |
+|---|---|
+| DTMF, all 16 keys | `0x6353c` maps characters to keypad indices: `0`-`9` pass through, `#` to `0x0a`, `*` to `0x0b`, `A`-`D` to `0x0c`-`0x0f` |
+| tone duration | S11, held at `[0x8e9]` by the countdown at `0x82342` |
+| interdigit gap | the same countdown less `0x30`, at `0x8235b` |
+| pulse dialling | `0x822a3`, a break/make loop - no tone at all |
+
+and the call-progress tones it has to *recognise* rather than emit, which
+`exchange.py` models: dial tone 350+440, ringback 440+480, busy and reorder
+480+620, answer tone 2100.
 
 There is a fourth, smaller one: the DAA's identity reaches the supervisor as
 mailbox tag `0x7b`, once. The firmware is not blind to the line-interface part,

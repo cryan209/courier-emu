@@ -1060,9 +1060,15 @@ here rather than executed, because its firmware is in the missing ASIC/customer
 ROM: it answers the `0x7c` poll with a low-band reading while the loop carries
 tone, and the supervisor counts its own five hits.
 
-**Nothing renders the digits.** The tone generator is the ASIC's, and it is not
-modeled, so `dsp_bridge.exchange.dialed` - what the line actually heard - stays
-empty while `ATDT5551212` is dialed. What the run does report is the sequence
+**Nothing renders the digits.** `dsp_bridge.exchange.dialed` - what the line
+actually heard - stays empty while `ATDT5551212` is dialed. This was recorded
+here as "the tone generator is the ASIC's", and that is wrong: the three
+constant lanes the dial path sends alongside each digit, `0x19`, `0x1a` and
+`0x1b`, are host-write tags whose handlers store into **DSP data memory** at
+`0x03ad`, `0x0392` and `0x03f1`. The tone parameters go to the C52, so the
+synthesiser is the datapump's, and what is missing is the harness reaching that
+code rather than an unmodelled generator elsewhere. See
+[what the ASIC does](docs/what-the-asic-does.md). What the run does report is the sequence
 of commands the supervisor issued:
 
 ```text
