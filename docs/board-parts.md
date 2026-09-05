@@ -126,7 +126,57 @@ So the AC0x is initialised and then not driven. Two readings fit:
 
 Nothing here chooses between them.
 
-### Which board has which part is not recorded
+### The generations differ in the firmware, but not the way expected
+
+The models, as the user gives them: a 20 MHz Courier of roughly 1994-97, a
+25 MHz V.Everything V.90 of 1998-2000, and a 25 MHz "business" Courier from
+2000 with a V.92 update.
+
+The AC0x code is a searchable signature, so which images carry it is a fact
+rather than an inference. Locating each image's DSP payload by an anchor they
+all share - `splk @2a,#0010 ; splk @28,#000a ; splk @29,#0001`, the wait-state
+sequence - and then searching for the codec code:
+
+| image | clock / flash | payload at | AC0x code |
+|---|---|---|---|
+| `main211.xmf` (2003) | 25.8048 MHz, 736 KiB | `0x002fe` | **yes** |
+| board, ID_SDL 4.03 | 20.16 MHz, 512 KiB | `0x2914a` | no |
+| board, stock 7.3.14 | 20.16 MHz, 512 KiB | `0x2908a` | no |
+| `IDSDL302.ROM` | 20.16 MHz, 512 KiB | `0x2908a` | no |
+
+The anchor lands at `0x29080` in the two stock 20.16 MHz images, which is where
+`courier_firmware_analysis.md` independently says the DSP payload starts - so
+the method is checked, and the negatives are real rather than a search that
+missed.
+
+Instead of the AC0x path, both 20.16 MHz builds configure **`TSPC`** (`0x32`,
+the TDM serial port control register) at program `0x008a`. `main211` does not,
+anywhere in program `0000..2000`.
+
+So there is a genuine architectural split between generations, and it is
+visible in the firmware. **Its direction is the opposite of "older TI, newer
+Si"**, at least across the two generations that can be compared: the
+DSP-driven TI codec path is in the *newest* image, and the oldest builds set up
+the TDM port instead.
+
+That is consistent with the photograph rather than at odds with it. The
+20.16 MHz board carries a TI AC01 whose own firmware never drives it from the
+DSP - which is what an ASIC mastering the codec looks like, and is reading 1
+above.
+
+`main211`'s place in the lineup is inferred, not read off a version string: its
+payload is 736 KiB where both V.Everything boards report 512 KiB of flash, and
+the file is dated 2003. That points at the business Courier.
+
+**The middle generation is untested.** `SV25.XMD` cannot be searched raw - the
+shared anchor is absent from it and from `ID20_403.XMD`, and since flashing
+`ID20_403.XMD` produced a capture that *does* contain the anchor, the `.XMD`
+container is record-framed rather than flat. Testing the 1998-2000 V.90 build
+means de-framing that container first. The 2000+ V.92 image is also out of
+reach here: `docs/New Folder With Items/USR03232004/` is a compressed
+InstallShield package and no extractor is installed.
+
+### Which board has which part is still not recorded
 
 `courier_firmware_analysis.md` says the Si3014/Si3021 pair was "read off the
 board" - line side at the phone jack, digital side near the CPU - but does not
