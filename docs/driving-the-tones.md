@@ -7,6 +7,15 @@ experiment can be judged before it is run.
 
 Nothing here has been executed. It is a plan with its evidence attached.
 
+**Written against DSP 3.0.13. Two of its load-bearing claims do not survive the
+move to the board's 3.1.2, and the experiment below should not be run as
+written.** The tag `0x06` window does not carry any cell of the 3.1.2 audio
+path, so its diff cannot see a tone; and blocker 3's "tag `0x13` is not traced"
+is now out of date - `13` enters `ee20` and is fully traced in
+[mailbox-312-comparison.md](mailbox-312-comparison.md). See
+[window-312-baseline.md](window-312-baseline.md) for the measured baseline, the
+seventh streamed word, and the corrected chain vector.
+
 ## Driving: six mailbox messages
 
 The supervisor's own dial path is not a waveform, it is a short conversation

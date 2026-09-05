@@ -105,20 +105,41 @@ SIMPLE_WRITE_TAG = 0x42
 # routine address decoded from instruction words, one of them in the mask ROM.
 UNSAFE_WRITES = {0x41: range(6, 13)}
 
-# The 60/62 window. The DSP's sender at 84b7 is `out *, 0060` followed by
-# `lacl #04 ; samm @57`, and that 4 is the status bit the CPU reads as 1c bit 2
-# - which its mailbox interrupt answers by calling the chain vector [0x2d3].
-# So the window's producer is the DSP, one word per interrupt, and tag 06
-# (handler 8489) is what starts it. The supervisor's own trigger at 6d08 arms
-# [0x2d3] and then sends exactly this tag with this data byte.
+# The 60/62 window. The DSP's sender - 84b7 in 3.0.13, 849e in 3.1.2 - is
+# `out *, 0060` followed by `lacl #04 ; samm @57`, and that 4 is the status bit
+# the CPU reads as 1c bit 2, which the mailbox interrupt answers by calling the
+# chain vector: [0x2d3] under supervisor 7.3.14, [0x01cd] under 7.4.16. So the
+# window's producer is the DSP, one word per interrupt, and tag 06 - handler
+# 8489 in 3.0.13, 8470 in 3.1.2 - is what starts it. The supervisor's own
+# trigger arms the vector and then sends exactly this tag with this data byte:
+# 6d08 in 7.3.14, 6d52 in 7.4.16. See STREAM_PROFILES and CHAIN_PROFILES.
 STREAM_TAG, STREAM_DATA = 0x06, 0x3F
 # Acknowledging bit 2 is what resumes the DSP through 039e and makes it emit
 # the next word, exactly as bit 0 commits a mailbox message.
 PUMP_ACK = 0x04
 # Tag 06's streamer sends these DSP data cells in order, one per pump, then
-# enters a loop at 84ab. The values are live state, so what is predictable is
+# enters a loop. The values are live state, so what is predictable is
 # the sequence's existence and length, not its contents.
 STREAM_SOURCES = (0x0307, 0x03BA, 0x0385, 0x030F, 0x031C, 0x0BE6)
+# The streamer does not stop at those six. Its last step calls a packer that
+# reads DP-007 cells 0381 and 0383, NORMs the sum, and leaves an exponent and
+# mantissa in scratch cell 007d, which is then streamed like any other source.
+# So a pump run carries a seventh word that is computed rather than a cell
+# read. Both board images do this; the six-entry list above was incomplete.
+STREAM_DERIVED = 0x007D
+STREAM_DERIVED_INPUTS = (0x0381, 0x0383)
+
+# Where that streamer lives, per DSP revision. The handler and the `out *, 0060`
+# site move between builds; the six sources, the packer and the scratch cell do
+# not - verified by disassembling both captured board images. Tag 46 is
+# deliberately absent for 3.1.2: its handler moved to 84ba and reads a different
+# table, so PROGRAM_STREAM_BASE and the 03db index are not established there.
+STREAM_PROFILES = {
+    "3.0.13": {"handler": 0x8489, "streamer": 0x84B7, "packer": 0x84BC,
+               "arms": (STREAM_TAG, 0x46)},
+    "3.1.2": {"handler": 0x8470, "streamer": 0x849E, "packer": 0x84A3,
+              "arms": (STREAM_TAG,)},
+}
 
 # Tag 46 arms the same streamer over ff80, but fills ff80..ff83 first with four
 # PROGRAM words table-read from 860b + the index at 03db. That index is not
@@ -155,15 +176,46 @@ def predicted_program_words(payload: dict[int, int]) -> dict[int, tuple[int, ...
     }
 WINDOW_PORTS = (0x60, 0x62)
 # The chain state and the four buffers it fills, all readable with ATGLK2=.
-CHAIN_COUNTDOWN, CHAIN_VECTOR, CHAIN_HEADER = 0x02D1, 0x02D3, 0x02D5
-CHAIN_BUFFERS = {0x08A4: (0x08A0, 0x08A1, 0x08A2), 0x09C2: (0x09BE, 0x09BF, 0x09C0),
-                 0x08F2: (0x08EE, 0x08EF, 0x08F0), 0x0946: (0x0942, 0x0943, 0x0944)}
-# Every address the chain parks or steps at, so a run can say whether the
-# vector it found was one of them rather than something stale.
-CHAIN_STEPS = (0x1FDB, 0x1FE6, 0x200C, 0x201E, 0x202A, 0x2037, 0x205A, 0x206B,
-               0x2077, 0x2084, 0x20AA, 0x20BB, 0x20C7, 0x20D4, 0x20FA, 0x210B,
-               0x2117, 0x2124)
-CHAIN_PARKED = 0x200C       # a bare `ret`
+# These are supervisor addresses, and they move between builds. 7.4.16's set
+# was derived from the captured images rather than assumed: `mov [cell], imm`
+# writes whose immediate is a nearby code address pick out the self-chaining
+# vector uniquely - 14 of them on 02D3 in 7.3.14, 14 on 01CD in 7.4.16, with
+# the code shifted a constant +0x32 and the arm site moving 6d08 -> 6d52. The
+# countdown and header keep their offsets either side of the vector, and each
+# is referenced the same number of times inside the chain region (3 and 2).
+# The buffers were mapped by reading 7.4.16 at the same instruction offsets,
+# a constant -0x10C, with the length/count/pointer trio intact at -4/-3/-2.
+CHAIN_PROFILES = {
+    "7.3.14": {
+        "countdown": 0x02D1, "vector": 0x02D3, "header": 0x02D5,
+        "parked": 0x200C,   # a bare `ret`
+        "steps": (0x1FDB, 0x1FE6, 0x200C, 0x201E, 0x202A, 0x2037, 0x205A, 0x206B,
+                  0x2077, 0x2084, 0x20AA, 0x20BB, 0x20C7, 0x20D4, 0x20FA, 0x210B,
+                  0x2117, 0x2124),
+        "buffers": {0x08A4: (0x08A0, 0x08A1, 0x08A2),
+                    0x09C2: (0x09BE, 0x09BF, 0x09C0),
+                    0x08F2: (0x08EE, 0x08EF, 0x08F0),
+                    0x0946: (0x0942, 0x0943, 0x0944)},
+    },
+    "7.4.16": {
+        "countdown": 0x01CB, "vector": 0x01CD, "header": 0x01CF,
+        "parked": 0x203E,   # a bare `ret`, 200C + 0x32
+        "steps": (0x200D, 0x2018, 0x203E, 0x2050, 0x205C, 0x2069, 0x208C, 0x209D,
+                  0x20A9, 0x20B6, 0x20DC, 0x20ED, 0x20F9, 0x2106, 0x212C, 0x213D,
+                  0x2149, 0x2156),
+        "buffers": {0x0798: (0x0794, 0x0795, 0x0796),
+                    0x08B6: (0x08B2, 0x08B3, 0x08B4),
+                    0x07E6: (0x07E2, 0x07E3, 0x07E4),
+                    0x083A: (0x0836, 0x0837, 0x0838)},
+    },
+}
+# The 7.3.14 names stay, because everything written against them means 7.3.14.
+CHAIN_COUNTDOWN = CHAIN_PROFILES["7.3.14"]["countdown"]
+CHAIN_VECTOR = CHAIN_PROFILES["7.3.14"]["vector"]
+CHAIN_HEADER = CHAIN_PROFILES["7.3.14"]["header"]
+CHAIN_BUFFERS = CHAIN_PROFILES["7.3.14"]["buffers"]
+CHAIN_STEPS = CHAIN_PROFILES["7.3.14"]["steps"]
+CHAIN_PARKED = CHAIN_PROFILES["7.3.14"]["parked"]
 
 # DSP data addresses, all at page 0 and all ordinary RAM above the C5x's
 # memory-mapped registers.
@@ -233,6 +285,7 @@ class Session:
     def __init__(self, port: MailboxPort) -> None:
         self.port = port
         self.transcript: list[dict] = []
+        self.chain_profile = CHAIN_PROFILES["7.3.14"]
 
     def command(self, text: str) -> bytes:
         raw = self.port.query(text)
@@ -263,7 +316,13 @@ class Session:
     def chain(self) -> dict:
         """The 60/62 chain's vector, countdown, header and four buffers."""
         import struct
-        pages = {base: self.page(base) for base in (0x200, 0x800, 0x900)}
+        profile = self.chain_profile
+        countdown, vector_cell = profile["countdown"], profile["vector"]
+        header_cell, buffers = profile["header"], profile["buffers"]
+        pages = {base: self.page(base) for base in sorted(
+            {cell & 0xF00 for cell in (countdown, vector_cell, header_cell)}
+            | {cell & 0xF00 for buffer, trio in buffers.items()
+               for cell in (buffer, buffer + 14, *trio)})}
 
         def word(address: int) -> int:
             return struct.unpack_from("<H", pages[address & 0xF00], address & 0xFF)[0]
@@ -272,16 +331,16 @@ class Session:
             return pages[address & 0xF00][address & 0xFF]
 
         return {
-            "vector": f"{word(CHAIN_VECTOR):04X}",
-            "countdown": f"{byte(CHAIN_COUNTDOWN):02X}",
-            "header": [f"{word(CHAIN_HEADER + 2 * i):04X}" for i in range(6)],
+            "vector": f"{word(vector_cell):04X}",
+            "countdown": f"{byte(countdown):02X}",
+            "header": [f"{word(header_cell + 2 * i):04X}" for i in range(6)],
             "buffers": {
                 f"{buffer:04X}": {
                     "length": f"{byte(length):02X}", "count": f"{byte(count):02X}",
                     "pointer": f"{word(pointer):04X}",
                     "words": [f"{word(buffer + 2 * i):04X}" for i in range(8)],
                 }
-                for buffer, (length, count, pointer) in CHAIN_BUFFERS.items()
+                for buffer, (length, count, pointer) in buffers.items()
             },
         }
 
@@ -332,6 +391,26 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
     }
     session.command("AT")
     report["identity"] = validate_identity(session.command("ATI7"))
+    _, revision = report["identity"]
+    supervisor, dsp_revision = revision
+    if supervisor not in CHAIN_PROFILES:
+        raise ValueError(f"the 60/62 chain is not decoded for supervisor {supervisor}")
+    session.chain_profile = CHAIN_PROFILES[supervisor]
+    report["chain_profile"] = {"supervisor": supervisor,
+                               "vector_cell": f"{session.chain_profile['vector']:04X}"}
+    no_op_tags = NO_OP_TAGS
+    if revision == ("7.4.16", "3.1.2"):
+        from .mailbox_compare import NOOPS
+        no_op_tags = NOOPS
+        if not (experiment == "command"
+                or (experiment == "pump" and arm in STREAM_PROFILES["3.1.2"]["arms"])):
+            raise ValueError("this experiment is decoded for DSP 3.0.13, not 3.1.2")
+    if experiment == "command":
+        # Validate the entire sequence before the first port write. In 3.1.2,
+        # former no-op 0b selects a real handler at ec63.
+        for tag in tags or []:
+            if tag not in (QUERY_TAG, SECOND_QUERY_TAG, *no_op_tags):
+                raise ValueError(f"tag {tag:02x} has no verified outcome for DSP {revision[1]}")
     baseline = session.window()
     report["before"] = baseline
 
@@ -363,7 +442,19 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
         if arm not in ARM_TAGS:
             raise ValueError(f"tag {arm:02x} does not arm the streamer; refused")
         if arm == STREAM_TAG:
+            profile = STREAM_PROFILES.get(dsp_revision)
+            if profile is None:
+                raise ValueError(f"tag 06's streamer is not decoded for DSP {dsp_revision}")
+            report["stream_profile"] = {
+                "revision": dsp_revision,
+                "handler": f"{profile['handler']:04X}",
+                "streamer": f"{profile['streamer']:04X}",
+                "packer": f"{profile['packer']:04X}"}
             report["expected_sources"] = [f"{cell:04X}" for cell in STREAM_SOURCES]
+            report["expected_derived_word"] = {
+                "cell": f"{STREAM_DERIVED:04X}",
+                "inputs": [f"{cell:04X}" for cell in STREAM_DERIVED_INPUTS],
+                "why": "packed by the streamer's last step; not a plain cell read"}
         else:
             report["expected_program_words"] = {
                 str(index): [f"{value:04X}" for value in tuple_]
@@ -372,7 +463,7 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
         report["before_window"] = session.ports(WINDOW_PORTS)
         report["before_chain"] = session.chain()
         vector = int(report["before_chain"]["vector"], 16)
-        report["vector_is_a_known_step"] = vector in CHAIN_STEPS
+        report["vector_is_a_known_step"] = vector in session.chain_profile["steps"]
         if not report["vector_is_a_known_step"]:
             raise RuntimeError(
                 f"chain vector {vector:04x} is not a step of the known chain; "
@@ -428,7 +519,7 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
         report["before_window"] = session.ports(WINDOW_PORTS)
         report["before_chain"] = session.chain()
         vector = int(report["before_chain"]["vector"], 16)
-        report["vector_is_a_known_step"] = vector in CHAIN_STEPS
+        report["vector_is_a_known_step"] = vector in session.chain_profile["steps"]
         if not report["vector_is_a_known_step"]:
             raise RuntimeError(
                 f"chain vector {vector:04x} is not a step of the known chain; "
@@ -453,7 +544,7 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
         for tag in tags or []:
             if tag > MAX_TAG:
                 raise ValueError(f"tag {tag:02x} is above 7f; the dispatcher rejects it")
-            if tag not in expected and tag not in NO_OP_TAGS:
+            if tag not in expected and tag not in no_op_tags:
                 raise ValueError(f"tag {tag:02x} has no predicted outcome; refused")
             predicted = expected.get(tag, standing)
             session.send(tag, 0x0000)
@@ -462,8 +553,8 @@ def run(session: Session, *, experiment: str, target: int, rounds: int,
             actual = int(observed["58"], 16)
             steps.append({
                 "tag": f"{tag:02X}",
-                "kind": "no-op (handler is a bare ret at 8222)"
-                        if tag in NO_OP_TAGS else "query",
+                "kind": "no-op (handler is a bare ret)"
+                        if tag in no_op_tags else "query",
                 "predicted_58": f"{predicted:02X}",
                 "observed": observed,
                 "held": actual == predicted,
@@ -525,7 +616,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="pump: TAG,VALUE hex sent before arming")
     parser.add_argument("--arm", default="06",
                         help="pump: which tag arms the streamer, 06 or 46")
-    parser.add_argument("--tags", default="0B,07,0B,07",
+    parser.add_argument("--tags", default="2D,07,2D,07",
                         help="command: the tag sequence to send, hex, comma separated")
     parser.add_argument("--rounds", type=int, default=24)
     args = parser.parse_args(argv)

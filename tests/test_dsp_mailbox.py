@@ -3,6 +3,7 @@
 What matters about this tool is the exact sequence it puts on the wire and the
 ports it will refuse, since both are aimed at a live modem.
 """
+import pathlib
 import pytest
 
 from courier_emu import dsp_mailbox as mb
@@ -126,3 +127,81 @@ def _with_identity(query):
         return query(command, timeout)
 
     return gate
+
+
+def _current_session():
+    port = FakePort()
+    query = _with_identity(port.query)
+    def current(command, timeout=4.0):
+        return query(command, timeout).replace(b'7.3.14', b'7.4.16').replace(b'3.0.13', b'3.1.2')
+    port.query = current
+    return mb.Session(port)
+
+
+def test_current_firmware_rejects_old_noop_before_any_write():
+    session = _current_session()
+    with pytest.raises(ValueError, match='no verified outcome'):
+        mb.run(session, experiment='command', target=0, rounds=1, tags=[7, 0x0B])
+    assert not any(c.startswith('ATGLK2O') for c in session.port.commands)
+
+
+def test_current_firmware_rejects_the_program_window_before_any_write():
+    """Tag 46 moved to 84ba in 3.1.2 and reads a different table, so
+    PROGRAM_STREAM_BASE and the 03db index are not established there."""
+    session = _current_session()
+    with pytest.raises(ValueError, match='not 3.1.2'):
+        mb.run(session, experiment='pump', target=0, rounds=1, arm=0x46)
+    assert not any(c.startswith('ATGLK2O') for c in session.port.commands)
+
+
+def test_current_firmware_admits_the_data_window():
+    """Tag 06's streamer is decoded for 3.1.2, so the gate must let it past.
+    It still fails on the fake port's page reads - just not as a refusal."""
+    session = _current_session()
+    with pytest.raises(Exception) as caught:
+        mb.run(session, experiment='pump', target=0, rounds=1, arm=0x06)
+    assert 'not 3.1.2' not in str(caught.value)
+    assert not any(c.startswith('ATGLK2O') for c in session.port.commands)
+
+
+def test_the_chain_profile_follows_the_supervisor():
+    assert mb.CHAIN_PROFILES['7.4.16']['vector'] == 0x01CD
+    assert mb.CHAIN_PROFILES['7.3.14']['vector'] == mb.CHAIN_VECTOR == 0x02D3
+    # Same shape either side: the 7.4.16 set was mapped from 7.3.14's, not guessed.
+    for name in ('steps', 'buffers'):
+        assert len(mb.CHAIN_PROFILES['7.4.16'][name]) == len(mb.CHAIN_PROFILES['7.3.14'][name])
+    assert mb.CHAIN_PROFILES['7.4.16']['parked'] == mb.CHAIN_PARKED + 0x32
+    for buffer, trio in mb.CHAIN_PROFILES['7.4.16']['buffers'].items():
+        assert trio == (buffer - 4, buffer - 3, buffer - 2)
+
+
+def test_every_admitted_firmware_has_a_chain_profile():
+    """validate_identity's TARGETS gate runs first, so an unknown build never
+    reaches the chain check. This is what keeps the two lists from drifting."""
+    from courier_emu.flash_dump import TARGETS
+    for supervisor, _ in TARGETS:
+        assert supervisor in mb.CHAIN_PROFILES
+
+
+@pytest.mark.parametrize('revision, image', [
+    ('3.0.13', 'courier-board-21210-capture-01'),
+    ('3.1.2', 'courier-board-21210-capture-403'),
+])
+def test_stream_profiles_match_the_captured_images(revision, image):
+    """Tag 06's streamer, in both board images: six cell reads, then a call to
+    a packer that NORMs 0381 and 0383 into scratch 007d and streams that too.
+    The seventh word is why STREAM_SOURCES alone under-counts the sequence."""
+    rom = pathlib.Path(f'artifacts/{image}/courier-board.rom')
+    if not rom.exists():
+        pytest.skip(f'{image} is not in this working tree')
+    from courier_emu.rom import CourierRom
+    from courier_emu.mailbox_compare import program
+    words = program(CourierRom.load(rom))
+    profile = mb.STREAM_PROFILES[revision]
+    body = words[profile['handler']:profile['handler'] + 0x30]
+    for cell in mb.STREAM_SOURCES:
+        assert cell in body, f'{cell:04x} is not loaded by the {revision} streamer'
+    assert profile['packer'] in body        # the calld target
+    assert 0xB100 | mb.STREAM_DERIVED in body   # `lar ar1, #7d`, one word
+    packer = words[profile['packer']:profile['packer'] + 8]
+    assert packer[0] == 0xBC07              # ldp #007, so @01/@03 are 0381/0383

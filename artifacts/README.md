@@ -17,8 +17,10 @@ hashes and assumptions; treat that file as the authority for what a capture is.
 | `dsp-mailbox-command-01/`, `dsp-mailbox-command-02/` | The repeatable host write: null-control and query tags, every inbound-register prediction fixed from the disassembly beforehand and held |
 | `dsp-window-pump-01/` | Tag `06` armed and pumped; the channel responds, but its sources are empty on an idle unit |
 | `dsp-window-pump-02/`, `dsp-window-pump-03/` | Tag `46` pumped: sixteen words, the first four DSP **program** memory matching the flash image at addresses predicted beforehand |
+| `dsp-window-pump-312-01/` | The tag `06` window on the 3.1.2 board: seven words, all zero on an idle unit, with `1c` bit 2 marking the sequence length. The run that re-derived the 7.4.16 chain vector `[0x01cd]` and confirmed it live |
 | `dsp-window-index-01/` | Tag `48` writing `ffb1` all-ones before arming tag `46`: the index stays `0`, since the other AND terms are call-setup state |
 | `dsp-window-stream-01/` | The `0x60`/`0x62` chain's live state, and tag `06` shown to arm the DSP streamer without emitting |
+| `host-ram-rate-01/` | Timed re-reads of the host RAM pages that move on an idle unit, with a rate fitted to every 16-bit cell. One counter, `0x012a` at 200.00 Hz - the 5 ms tick. Nothing runs at an audio rate |
 | `io-latch-bit2-01/` | Port `0x14` bit 2 probe |
 | `dsp-rom-probe-v1/`, `dsp-rom-transport-v*/` | Offline probe and transport builds; no hardware involved |
 
