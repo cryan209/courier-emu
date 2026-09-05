@@ -31,6 +31,20 @@ vector, and verifies two matching reads of every 256-byte page before publishing
 a complete image. Raw replies and partial blocks are retained. This captures
 CPU-visible flash; DSP internal ROM requires a separate experiment.
 
+[The hardware tick, the audio path, and the DSP's low program
+memory](docs/hardware-timebase-and-audio-path.md) settles three things the
+harness had been carrying as assumptions, each from more than one source. One
+firmware tick is 5.000 ms: the board measures 1.000031 seconds per `S18` unit
+over twelve `&T1` runs, both builds convert S-register seconds to ticks by
+multiplying by 200, and both program 80186 Timer 0 for exactly 5 ms on their
+own crystal - `0x6270` at 20.16 MHz and `0x7e00` at 25.8048 MHz, which also
+identifies `main211` as the 25.8048 MHz build. Audio reaches the DSP on the
+C5x serial port, `DRR`/`DXR`, with the codec as clock master and no TDM
+register used anywhere; a port sweep during `AT&T8` analogue loopback shows no
+CPU port carrying samples. And the C52's mask ROM is not what the modem
+executes - the firmware supplies program words `0000..75d9`, including the
+reset code, and programs external-memory wait states.
+
 The [boot-block flash loader](docs/sdl-boot-block.md) documents the downloader
 FreeLSD and SDL.EXE talk to, and `python -m courier_emu.sdl_download` implements
 the host side for a raw 512 KiB image. Building and checking a record stream is

@@ -1,0 +1,101 @@
+{
+  "command_overhead_seconds": 0.159912,
+  "fit": {
+    "intercept_seconds": 7.843439,
+    "samples": 12,
+    "seconds_per_s18_unit": 1.000031,
+    "worst_residual_seconds": 0.003048
+  },
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "runs": [
+    {
+      "attempt": 0,
+      "raw_seconds": 10.005059,
+      "reply": "AT&T1\r\r\nCONNECT 28800/ARQ\r\n",
+      "s18": 2,
+      "seconds": 9.845147
+    },
+    {
+      "attempt": 1,
+      "raw_seconds": 10.004738,
+      "reply": "AT&T1\r\r\nCONNECT 28800/ARQ\r\n",
+      "s18": 2,
+      "seconds": 9.844827
+    },
+    {
+      "attempt": 2,
+      "raw_seconds": 10.000552,
+      "reply": "\ufffd\u0000\ufffd",
+      "s18": 2,
+      "seconds": 9.84064
+    },
+    {
+      "attempt": 0,
+      "raw_seconds": 12.002483,
+      "reply": "\ufffd\ufffd\u001c",
+      "s18": 4,
+      "seconds": 11.842571
+    },
+    {
+      "attempt": 1,
+      "raw_seconds": 12.000429,
+      "reply": "\ufffd\u0000\ufffd\ufffd",
+      "s18": 4,
+      "seconds": 11.840517
+    },
+    {
+      "attempt": 2,
+      "raw_seconds": 12.005141,
+      "reply": "\ufffd\u0000\ufffd",
+      "s18": 4,
+      "seconds": 11.845229
+    },
+    {
+      "attempt": 0,
+      "raw_seconds": 16.005433,
+      "reply": "\ufffd\u0000\ufffd",
+      "s18": 8,
+      "seconds": 15.845521
+    },
+    {
+      "attempt": 1,
+      "raw_seconds": 16.005418,
+      "reply": "\ufffd\u001c\u001c",
+      "s18": 8,
+      "seconds": 15.845506
+    },
+    {
+      "attempt": 2,
+      "raw_seconds": 16.004441,
+      "reply": "\ufffd\u0000\ufffd\ufffd",
+      "s18": 8,
+      "seconds": 15.844529
+    },
+    {
+      "attempt": 0,
+      "raw_seconds": 20.004579,
+      "reply": "\ufffd\u0000\ufffd",
+      "s18": 12,
+      "seconds": 19.844667
+    },
+    {
+      "attempt": 1,
+      "raw_seconds": 20.003318,
+      "reply": "\ufffd\u0000\ufffd",
+      "s18": 12,
+      "seconds": 19.843406
+    },
+    {
+      "attempt": 2,
+      "raw_seconds": 20.001074,
+      "reply": "\ufffd\ufffd\ufffd\u001c",
+      "s18": 12,
+      "seconds": 19.841162
+    }
+  ],
+  "s18_restored_to": 0,
+  "target": {
+    "dsp": "3.1.2",
+    "supervisor": "7.4.16"
+  }
+}

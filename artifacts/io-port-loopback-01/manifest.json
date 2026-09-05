@@ -1,0 +1,14 @@
+{
+  "device": "/dev/cu.usbserial-21210",
+  "baud": 115200,
+  "board": {"supervisor": "7.4.16", "dsp": "3.1.2", "clock": "20.16MHz"},
+  "method": "ATGLK2I00<pp> read of I/O ports 0x00..0x7f, three passes idle, three passes during AT&T8 analogue loopback with self-test, two passes after AT&T0",
+  "writes": "none; every command sent was a read, AT, ATI7, ATS18=0 (already 0), AT&T8, AT&T0",
+  "self_test_result": "000 errors, so the modulator/analogue/demodulator path ran",
+  "finding": "Only 0x18, 0x1a, 0x1c and 0x1e differ between idle and active audio, and all four are mailbox handshake/status registers. No CPU I/O port carries audio samples.",
+  "limits": [
+    "A sweep takes seconds, so it cannot resolve a 9.6 kHz signal; it establishes which ports change state, not their waveform.",
+    "Ports are read one at a time and are not sampled simultaneously.",
+    "Absence of change in a port is not proof it is unrelated to audio, only that it holds no host-visible sample."
+  ]
+}
