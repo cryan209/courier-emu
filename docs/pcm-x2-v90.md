@@ -104,10 +104,9 @@ report blocks, with reasons beside them like `x2 disabled on local modem` and
 ## Overlay 8 holds two receivers
 
 It is two state machines, not one. The image splits into an **e-family** around
-`e4c5`-`eaff` and an **f-family** around `f442`-`f94a`, and the pair leaves the
-mark two builds from one source leave: runs of identical code far apart at a
-consistent offset. `courier_emu.datapumps.receiver_twins` finds ten of at least
-ten words, among them
+`e4c5`-`eaff` and an **f-family** around `f442`-`f94a`. They share subroutine
+bodies verbatim - `courier_emu.datapumps.receiver_twins` finds ten runs of at
+least ten identical words far apart at a consistent offset, among them
 
 ```text
 e9be-e9cb  ==  f7eb-f7f8    (+0xe2d)
@@ -116,9 +115,10 @@ e9f2-e9ff  ==  f821-f82e    (+0xe2f)
 e59f-e5b3  ==  f4e2-f4f6    (+0xf43)
 ```
 
-Only 158 of 7,498 words repeat verbatim; the rest of each family is its own
-tables and constants. Both call the same lower-level helpers - `e019`, `e356`,
-`8766`, `8797` - so what is doubled is the sequencing, not the arithmetic.
+Only 158 of 7,498 words repeat verbatim, and at the best alignment of the two
+spans just 46 words of 1,536 match, so this is not one state machine built
+twice: it is two sequences that call the same helpers - `e019`, `e356`, `8766`,
+`8797` - and diverge in what they do with them.
 
 **The fork is one bit.** At `de0b`, at the top of the image's dispatch:
 
@@ -156,6 +156,48 @@ needs: `819d` assembles each sample from **two 8-bit halves** with saturation -
 codewords - where `81bb` interpolates and writes port `0x6a`. The two commands
 that select the PCM sample path, `4d` and `4f`, differ *only* in the receiver
 bit. Bit 9 is set and cleared by another pair, at `dccd` and `dcde`.
+
+## What the two families differ in
+
+`courier_emu.datapumps.receiver_families` reads the four differences out of the
+image.
+
+| | e-family (`e4c5`) | f-family (`f442`) |
+|---|---|---|
+| equalizer installed at `@0a` | `e055`, **96 taps** | `e047`, **64 taps**, then `e055` later |
+| its adaptation at `@16` | `e08c` | `e079`, `e0be`, then `e08c` |
+| phase hooks at `0x03cd` | `ae72`, `ae7b`, `ae64` | `ae57`, `ae60`, `ae31` |
+| `0xfff4` bits tested | 3, 6 | 3, **13**, 14, 15 |
+| into the V.34 core | `a35e` | `a35e`, `a661`, `c56a`, `c5e0`, `c91c`, `c961`, `c9fc` |
+
+**The equalizer.** `e047` is a 64-tap `mac` against the coefficient bank at
+`fba0` with a two-tap section after it; `e055` is a 96-tap `macd` with 14-tap
+and 6-tap sections and a different bank. `e079` adapts the 64-tap bank,
+`e08c` and `e0be` the 96-tap one, both gated on `0xfff4` bit 9. The e-family
+installs the long filter at its entry and keeps it. The f-family starts short
+and **switches to the long pair at `f6e4`** - immediately after its
+four-candidate search - so it grows its equalizer partway through startup.
+
+**The phase hook.** `0x03cd` is the callback cell every datapump phase writes.
+The e-family's values reach the codec rate selector: `ae72` calls `adee`, loads
+a batch of parameters and falls into `call 8140`, and `ae7b` is a shorter entry
+into the same `call 8140`. The f-family's are `ret` and nothing else - `ae57`
+and `ae60` are both a bare `ret`. **The e-family reprograms the codec sample
+rate at that hook; the f-family does not.**
+
+**Bit 13 and the V.34 core.** The four-candidate search, `0xfff4` bit 13, and
+the overlay-6 tables it selects belong to the f-family alone: it calls into the
+V.34 core at seven points, two of which (`c5e0`, `c9fc`) are overlay 6's own
+bit-13 selectors, and its phase pointers include overlay-6 addresses (`c4e7`,
+`c50a`, `c682`, `c683`), so it hands sequencing back and forth with the core.
+The e-family never tests bit 13, calls the core once, and keeps all of its
+phase pointers inside overlay 8.
+
+So the f-family is the elaborate one - fits four candidates, grows its
+equalizer, drives the core's parameter tables - and the e-family is
+self-contained and reprograms the codec rate instead. Which is consistent with
+the bit that selects them being `&X`: the e-family is what runs when the
+transmit clock is recovered from the received signal.
 
 ## The `0xfff1` thread ends short of the fork
 

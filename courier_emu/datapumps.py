@@ -416,3 +416,88 @@ def receiver_setting_command(rom, limit=0x20):
             if label and label.startswith('&'):
                 return label
     raise ValueError('the setting is not labelled in the display code')
+
+
+# --- what the two families differ in --------------------------------------
+
+E_FAMILY, F_FAMILY = 0xE4C5, 0xF442
+FAMILY_SPAN = {E_FAMILY: (0xE4C5, 0xEB00), F_FAMILY: (0xF442, 0xF94A)}
+
+SPLK = 0xAE00                    # splk @dma, #imm  ->  0xAE00 | dma
+FILTER_CELL, UPDATE_CELL, PHASE_CELL = 0x0A, 0x16, 0x2F
+HOOK_POINTER = 0x03CD            # the phase hook every datapump installs into
+LAR_AR1_ = 0xBF09
+RPTZ, BIT_ = 0xBEC5, 0x4000
+OVERLAY_SIX = range(0x9D00, 0xCE32)
+
+
+def _image(rom, index=8):
+    """The overlay's words, indexed by their own program address."""
+    org, words = _overlay_words(rom, index)
+    return [0] * org + words
+
+
+def _splk(words, span, cell):
+    """Every `splk @cell, #imm` in a span, in order."""
+    first, last = span
+    return tuple(words[pc + 1] for pc in range(first, last - 1)
+                 if words[pc] == (SPLK | cell))
+
+
+def filter_taps(rom, entry, window=8):
+    """The tap count of the filter at `entry`, from its own repeat count."""
+    w = _image(rom)
+    for pc in range(entry, entry + window):
+        if w[pc] == RPTZ:
+            return w[pc + 1] + 1
+    raise ValueError(f'no repeat block at {entry:#06x}')
+
+
+def family_hooks(rom, span):
+    """The values a span installs into the shared phase hook at 0x03cd."""
+    w = _image(rom)
+    first, last = span
+    return tuple(w[pc + 3] for pc in range(first, last - 3)
+                 if w[pc] == LAR_AR1_ and w[pc + 1] == HOOK_POINTER
+                 and w[pc + 2] == 0xAE80)
+
+
+def family_flag_bits(rom, span):
+    """Which bits of the parameter word at 0xfff4 a span tests."""
+    w = _image(rom)
+    first, last = span
+    bits, pointed = set(), False
+    for pc in range(first, last - 1):
+        if w[pc] == LAR_AR1_:
+            pointed = w[pc + 1] == 0xFFF4
+        elif pointed and w[pc] & 0xF080 == 0x4080:
+            bits.add((w[pc] >> 8) & 0xF)
+    return frozenset(bits)
+
+
+def family_calls_into_overlay_six(rom, span):
+    """Direct calls and branches from a span into the V.34 core."""
+    w = _image(rom)
+    first, last = span
+    return tuple(sorted({w[pc + 1] for pc in range(first, last - 1)
+                         if w[pc] in (0x7A80, 0x7980, 0x7E80, 0x7D80)
+                         and w[pc + 1] in OVERLAY_SIX}))
+
+
+def receiver_families(rom):
+    """What separates overlay 8's two receivers, read out of the image."""
+    found = {}
+    for entry, span in FAMILY_SPAN.items():
+        words = _image(rom)
+        filters = _splk(words, span, FILTER_CELL)
+        updates = _splk(words, span, UPDATE_CELL)
+        found[entry] = {
+            'span': span,
+            'filters': filters,
+            'taps': tuple(filter_taps(rom, f) for f in filters),
+            'updates': updates,
+            'hooks': family_hooks(rom, span),
+            'flag_bits': family_flag_bits(rom, span),
+            'into_v34_core': family_calls_into_overlay_six(rom, span),
+        }
+    return found

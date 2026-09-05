@@ -177,3 +177,37 @@ def test_the_setting_behind_the_mode_commands_is_ampersand_x(rom):
     entry = rom.data.find(b'&Xn', 0x19000, 0x1a000)
     assert entry > 0
     assert b'is Source' in rom.data[entry:entry + 0x40]
+
+
+def test_the_two_families_run_different_equalizers(rom):
+    """The e-family is long from the start; the f-family grows into it."""
+    families = datapumps.receiver_families(rom)
+    e = families[datapumps.E_FAMILY]
+    f = families[datapumps.F_FAMILY]
+    assert e['filters'] == (0xE055,) and e['taps'] == (96,)
+    assert f['filters'] == (0xE047, 0xE055) and f['taps'] == (64, 96)
+    assert e['updates'] == (0xE08C, 0xE08C)
+    assert f['updates'][0] == 0xE079 and f['updates'][-1] == 0xE08C
+
+
+def test_only_the_f_family_uses_the_four_candidate_bit(rom):
+    families = datapumps.receiver_families(rom)
+    assert 13 not in families[datapumps.E_FAMILY]['flag_bits']
+    assert 13 in families[datapumps.F_FAMILY]['flag_bits']
+    # And only it works with the V.34 core's own bit-13 selectors.
+    into = families[datapumps.F_FAMILY]['into_v34_core']
+    assert 0xC5E0 in into and 0xC9FC in into
+    assert families[datapumps.E_FAMILY]['into_v34_core'] == (0xA35E,)
+
+
+def test_only_the_e_family_reprograms_the_codec_rate(rom):
+    """Its phase hooks reach the rate selector; the f-family's are returns."""
+    families = datapumps.receiver_families(rom)
+    w = datapumps._image(rom, 5)          # the resident bank holds the hooks
+    for hook in (0xAE57, 0xAE60):         # the f-family's
+        assert w[hook] == 0xEF00          # ret
+        assert hook in families[datapumps.F_FAMILY]['hooks']
+    assert 0xAE72 in families[datapumps.E_FAMILY]['hooks']
+    # ae72 walks into `call 8140`, the codec sample-rate selector.
+    assert any(w[pc] == 0x7A80 and w[pc + 1] == 0x8140
+               for pc in range(0xAE72, 0xAE80))
