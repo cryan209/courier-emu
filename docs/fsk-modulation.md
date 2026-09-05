@@ -246,17 +246,21 @@ the mode flags and jump:
 The selector at `9b5a` is a run of `bit n, @cell ; lacl #index ; retc tc`, so
 each modulation's slot is fixed by which flag it sets. Nine slots:
 
+> **Bit codes are not bit numbers.** The C5x `BIT` instruction shifts by
+> `~code & 0xf`, so `bit 14, @27` tests **bit 1**. The table below gives bit
+> numbers; the instructions give the codes.
+
 | slot | flag | table `9b48` | table `9b51` | |
 |---:|---|---|---|---|
-| 0 | `@27` bit 14 | `9d00` | `9d00` | **overlay 6's entry** |
-| 1 | `@26` bit 11 | `b000` | `b000` | **overlay 7's entry** |
-| 2 | `@27` bit 12 | `b052` | `b052` | resident |
-| 3 | `@26` bit 10 | `c533` | `c7fd` | resident |
-| 4 | `@26` bit 12 | `cd61` | `cce0` | resident |
-| 5 | `@26` bit 13 | `cd79` | `ccfa` | resident |
-| 6 | `@27` bit 5 | `da31` | `d9bc` | resident |
-| 7 | `@27` bit 3 | `d808` | `d7fc` | V.21, own band |
-| 8 | `@26` bit 9 | `d7e9` | `d7d8` | Bell 103, own band |
+| 0 | `@27` bit 1 | `9d00` | `9d00` | **overlay 6's entry** |
+| 1 | `@26` bit 4 | `b000` | `b000` | **overlay 7's entry** |
+| 2 | `@27` bit 3 | `b052` | `b052` | resident |
+| 3 | `@26` bit 5 | `c533` | `c7fd` | resident |
+| 4 | `@26` bit 3 | `cd61` | `cce0` | resident |
+| 5 | `@26` bit 2 | `cd79` | `ccfa` | resident |
+| 6 | `@27` bit 10 | `da31` | `d9bc` | resident |
+| 7 | `@27` bit 12 | `d808` | `d7fc` | V.21, own band |
+| 8 | `@26` bit 6 | `d7e9` | `d7d8` | Bell 103, own band |
 
 `courier_emu.fsk.mode_tables` and `mode_flags` read both out of the image
 rather than repeating them. All nine slots are named in

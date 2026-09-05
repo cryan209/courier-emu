@@ -95,7 +95,9 @@ def mode_flags(rom):
     """The selector at `MODE_SELECTOR`, as (data cell, bit) per table slot.
 
     It is a run of `bit n, @cell ; lacl #index ; retc tc`, so the slot a
-    modulation takes is whichever of its flags is tested first.
+    modulation takes is whichever of its flags is tested first. The bit
+    reported is the **bit number**, not the instruction's bit code: the C5x
+    `BIT` shifts by `~code & 0xf`, so bit 0 of the word is code 15.
     """
     w = program(rom)
     pc, found = MODE_SELECTOR, []
@@ -103,7 +105,7 @@ def mode_flags(rom):
         test = w[pc]
         if test & 0xF000 != BIT_TEST:
             raise ValueError(f'selector breaks at {pc:04x}')
-        cell, bit = test & 0xFF, (test >> 8) & 0xF
+        cell, bit = test & 0xFF, 15 - ((test >> 8) & 0xF)
         pc += 1
         if w[pc] == 0xBF80:                   # lacc #0000, the first slot
             index, pc = w[pc + 1], pc + 2

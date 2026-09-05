@@ -244,7 +244,9 @@ def pcm_control(rom):
 
 DATAPUMP_FLAGS = 0x039F          # @1f on page 7: which datapump is running
 LAR_AR1, BIT_TEST_MASK, BCND = 0xBF09, 0xFF00, 0xE200
-E_FAMILY_BIT, F_FAMILY_BIT = 8, 9
+# The fork's bit *number*: the instruction is `bit 8, *`, and the C5x `BIT`
+# shifts by `~code & 0xf`, so code 8 is bit 7.
+E_FAMILY_BIT, F_FAMILY_BIT = 7, 6
 
 # The fork: `lar ar1, #039f ; bit 8, * ; bcnd <f family>, ntc ; b <e family>`
 FORK = (LAR_AR1, DATAPUMP_FLAGS, 0x4800 | 0x80)
@@ -471,7 +473,7 @@ def family_flag_bits(rom, span):
         if w[pc] == LAR_AR1_:
             pointed = w[pc + 1] == 0xFFF4
         elif pointed and w[pc] & 0xF080 == 0x4080:
-            bits.add((w[pc] >> 8) & 0xF)
+            bits.add(15 - ((w[pc] >> 8) & 0xF))     # bit number, not bit code
     return frozenset(bits)
 
 
@@ -501,3 +503,41 @@ def receiver_families(rom):
             'into_v34_core': family_calls_into_overlay_six(rom, span),
         }
     return found
+
+
+# --- what the e-family's rate change selects -------------------------------
+#
+# Its phase hook walks into `call 8140`, the codec rate selector, with an index
+# the routine at `adee` returns. That index is the highest V.34 symbol rate all
+# four capability words agree on.
+
+CAPABILITY_WORDS = (0xFFB0, 0xFFB1, 0xFFB2, 0xFFB3)
+CAPABILITY_AND = 0xFFB4          # where their intersection is parked
+RATE_CHOICE = 0xADEE             # returns the codec rate index
+RATE_SELECTOR = 0x8140
+SYMBOL_RATES = (2400, 2743, 2800, 3000, 3200, 3429)   # S54 bits 0..5
+CODEC_RATES = (7200.0, 7578.947, 7578.947, 7578.947, 8000.0, 8000.0)
+
+
+def rate_choice(rom, window=24):
+    """The bit-to-index scan at `adee`, as {capability bit: codec row}.
+
+    A run of `bit code, @7d ; lacl #index ; retc tc`, read as bit numbers:
+    the C5x `BIT` shifts by `~code & 0xf`.
+    """
+    w = _image(rom, 5)
+    found, pc = {}, RATE_CHOICE
+    while pc < RATE_CHOICE + window:
+        if w[pc] & 0xF080 == 0x4000 and w[pc + 1] & 0xFF00 == 0xB900:
+            found[15 - ((w[pc] >> 8) & 0xF)] = w[pc + 1] & 0xFF
+            pc += 3
+            continue
+        pc += 1
+    return found
+
+
+def rate_choice_selects(rom):
+    """That scan as (symbol rate, codec rate) pairs, fastest first."""
+    return tuple((SYMBOL_RATES[bit], CODEC_RATES[index])
+                 for bit, index in sorted(rate_choice(rom).items(), reverse=True)
+                 if bit < len(SYMBOL_RATES) and index < len(CODEC_RATES))

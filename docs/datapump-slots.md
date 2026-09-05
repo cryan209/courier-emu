@@ -25,17 +25,20 @@ datapump table is the same nine in reverse.
 
 ## The slots
 
+Flags are bit *numbers*; the `BIT` instructions that test them carry bit
+codes, and the C5x shifts by `~code & 0xf`, so code 14 is bit 1.
+
 | slot | flag | table `9b48` (originate) | table `9b51` (answer) | modulation |
 |---:|---|---|---|---|
-| 0 | `@27` b14 | `9d00` | `9d00` | **V.34** |
-| 1 | `@26` b11 | `b000` | `b000` | **V.FC** |
-| 2 | `@27` b12 | `b052` | `b052` | **V.32 / V.32bis** |
-| 3 | `@26` b10 | `c533` | `c7fd` | **HST** |
-| 4 | `@26` b12 | `cd61` | `cce0` | **V.22bis** |
-| 5 | `@26` b13 | `cd79` | `ccfa` | **V.22** (with Bell 212A) |
-| 6 | `@27` b5 | `da31` | `d9bc` | **V.23** |
-| 7 | `@27` b3 | `d808` | `d7fc` | **V.21** |
-| 8 | `@26` b9 | `d7e9` | `d7d8` | **Bell 103** |
+| 0 | `@27` bit 1 | `9d00` | `9d00` | **V.34** |
+| 1 | `@26` bit 4 | `b000` | `b000` | **V.FC** |
+| 2 | `@27` bit 3 | `b052` | `b052` | **V.32 / V.32bis** |
+| 3 | `@26` bit 5 | `c533` | `c7fd` | **HST** |
+| 4 | `@26` bit 3 | `cd61` | `cce0` | **V.22bis** |
+| 5 | `@26` bit 2 | `cd79` | `ccfa` | **V.22** (with Bell 212A) |
+| 6 | `@27` bit 10 | `da31` | `d9bc` | **V.23** |
+| 7 | `@27` bit 12 | `d808` | `d7fc` | **V.21** |
+| 8 | `@26` bit 6 | `d7e9` | `d7d8` | **Bell 103** |
 
 The order is the menu's, fastest first, which is what a rate-negotiation
 fallback ladder looks like. Six of the nine are held up by something measured

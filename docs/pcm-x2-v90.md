@@ -124,22 +124,26 @@ twice: it is two sequences that call the same helpers - `e019`, `e356`, `8766`,
 
 ```text
 de0b  lar   ar1, #039f     ; the datapump flag word, @1f on page 7
-de0d  bit   8, *
-de0e  bcnd  f442, ntc      ; bit 8 clear -> the f-family
-de10  b     e4c5           ; bit 8 set   -> the e-family
+de0d  bit   8, *           ; bit code 8, which is bit 7
+de0e  bcnd  f442, ntc      ; clear -> the f-family
+de10  b     e4c5           ; set   -> the e-family
 ```
 
-`courier_emu.datapumps.receiver_fork` reads it out. The V.34 core dispatches
-into both from its own side, and there it is two bits, one per family:
+**Bit codes are not bit numbers.** The C5x `BIT` shifts by `~code & 0xf`
+(`op_bit` in `native/c5x_ops.ipp`), so `bit 8, *` tests **bit 7**, mask
+`0x0080`. `courier_emu.datapumps.receiver_fork` reports the number.
+
+The V.34 core dispatches into both from its own side, and there it is two bits,
+one per family:
 
 ```text
-a456  bit  8, *  ; bcnd e9a0, tc     ; the e-family
-a45b  bit  9, *  ; bcnd f7d8, tc     ; the f-family
+a456  bit  8, *  ; bcnd e9a0, tc     ; bit 7 - the e-family
+a45b  bit  9, *  ; bcnd f7d8, tc     ; bit 6 - the f-family
 ```
 
-`0x039f` is the same flag word every datapump entry writes - overlay 6 sets bit
-5 for itself, overlay 7 bit 4, the resident V.32 entry bit 0 - so bits 8 and 9
-are two more datapumps in the same register.
+`0x039f` is the same flag word every datapump entry writes, so bits 7 and 6 are
+two more datapumps in the same register. Bit 7 is set by two identical resident
+routines, `b402` and `c91a`, and cleared at `b2df` and `c87f`.
 
 **The supervisor arms them by mailbox command.** Three siblings at `823d`,
 `8245` and `824d` each install a sample-path routine in `@61` and then move the
@@ -167,13 +171,13 @@ image.
 | equalizer installed at `@0a` | `e055`, **96 taps** | `e047`, **64 taps**, then `e055` later |
 | its adaptation at `@16` | `e08c` | `e079`, `e0be`, then `e08c` |
 | phase hooks at `0x03cd` | `ae72`, `ae7b`, `ae64` | `ae57`, `ae60`, `ae31` |
-| `0xfff4` bits tested | 3, 6 | 3, **13**, 14, 15 |
+| `0xfff4` bits tested | 9, 12 | **2**, 1, 0, 12 |
 | into the V.34 core | `a35e` | `a35e`, `a661`, `c56a`, `c5e0`, `c91c`, `c961`, `c9fc` |
 
 **The equalizer.** `e047` is a 64-tap `mac` against the coefficient bank at
 `fba0` with a two-tap section after it; `e055` is a 96-tap `macd` with 14-tap
 and 6-tap sections and a different bank. `e079` adapts the 64-tap bank,
-`e08c` and `e0be` the 96-tap one, both gated on `0xfff4` bit 9. The e-family
+`e08c` and `e0be` the 96-tap one, both gated on `0xfff4` bit 6. The e-family
 installs the long filter at its entry and keeps it. The f-family starts short
 and **switches to the long pair at `f6e4`** - immediately after its
 four-candidate search - so it grows its equalizer partway through startup.
@@ -185,13 +189,56 @@ into the same `call 8140`. The f-family's are `ret` and nothing else - `ae57`
 and `ae60` are both a bare `ret`. **The e-family reprograms the codec sample
 rate at that hook; the f-family does not.**
 
-**Bit 13 and the V.34 core.** The four-candidate search, `0xfff4` bit 13, and
-the overlay-6 tables it selects belong to the f-family alone: it calls into the
-V.34 core at seven points, two of which (`c5e0`, `c9fc`) are overlay 6's own
-bit-13 selectors, and its phase pointers include overlay-6 addresses (`c4e7`,
-`c50a`, `c682`, `c683`), so it hands sequencing back and forth with the core.
-The e-family never tests bit 13, calls the core once, and keeps all of its
-phase pointers inside overlay 8.
+**What the rate change selects.** The e-family's hook is the only path that
+reaches `8140`, and the index it passes comes from `adee`:
+
+```text
+adee  call adc4        ; acc = ffb0 & ffb1 & ffb2 & ffb3, parked at ffb4
+adf0  sacl @7d
+adf1  bit 10, @7d ; lacl #05 ; retc tc     ; bit 5 -> row 5
+adf4  bit 11 -> 04    ; bit 4 -> row 4
+adf7  bit 12 -> 03    ; bit 3
+adfa  bit 13 -> 02    ; bit 2
+adfd  bit 14 -> 01    ; bit 1
+ae00  lacl #00                             ; none -> row 0
+```
+
+Those are bit codes again, so the scan reads **bits 5 down to 1**. The
+supervisor builds the capability word at `0xffb1` from three S-registers -
+`(~S54 & 0x3f) | ((~S55 & 0x0f) << 6) | ((~S56 & 0x1f) << 10)` - and **S54's
+bits 0 to 5 are the six V.34 symbol rates**, 2400, 2743, 2800, 3000, 3200 and
+3429, per the modem's own help text. `0xffb0` is a fixed mask (`7d7f`),
+`0xffb2` is written during negotiation and `0xffb3` is built at `adcc`, so the
+`and` is what every party allows.
+
+So the e-family's rate change selects **the codec sample rate for the fastest
+V.34 symbol rate all four words agree on**, which
+`courier_emu.datapumps.rate_choice_selects` reads out:
+
+| common symbol rate | codec row | sample rate |
+|---:|---:|---|
+| 3429 | 5 | 8000 Hz |
+| 3200 | 4 | 8000 Hz |
+| 3000 | 3 | 7578.95 Hz |
+| 2800 | 2 | 7578.95 Hz |
+| 2743 | 1 | 7578.95 Hz |
+| none of them | 0 | 7200 Hz |
+
+The fit is its own check on the bit numbering: six symbol rates land on six
+codec rows in order, which the bit *codes* would not do.
+
+**The parameter flags and the V.34 core.** The f-family reads `0xfff4` bits 2,
+1 and 0 where the e-family reads none of them; both read bit 12. Its
+four-candidate search *sets* bit 13 (`opl *, #2000`), which overlay 6 reads at
+`c5e7`. Note that this is not the same flag as the one overlay 6's parameter
+selectors read: `c9f3`, `c9d2` and `c5e0` are written `bit 13` but that is a
+bit code, so they read **bit 2**. Which sites consume the search's own bit 13,
+beyond `c5e7`, wants redoing with the numbering right.
+
+The f-family calls into the V.34 core at seven points and its phase pointers
+include overlay-6 addresses (`c4e7`, `c50a`, `c682`, `c683`), so it hands
+sequencing back and forth with the core. The e-family calls the core once and
+keeps all of its phase pointers inside overlay 8.
 
 So the f-family is the elaborate one - fits four candidates, grows its
 equalizer, drives the core's parameter tables - and the e-family is
@@ -204,7 +251,8 @@ transmit clock is recovered from the received signal.
 x2's capability word does not reach the datapump as a bit test. **No overlay
 reads `0xfff1` at all**; only the resident does, at `8e4b`, where it picks
 `fff1` or `fff2` and hands it on. What every overlay does branch on is
-`0xfff4`, and its **bit 13** is not the scheme:
+`0xfff4`, and its **bit 2** (the instructions say `bit 13`, a bit code) is
+not the scheme:
 
 ```text
 f632  lar   ar1, #0822 ; rptz #0006 ; sacl *+     ; clear seven words
@@ -215,7 +263,7 @@ f6c3  lar   ar1, #fff4 ; xc 2, tc ; opl *, #2000  ; winner 4 sets bit 13
 
 `f632`-`f6b3` is a search: `@72` counts four candidates down, each scored by a
 sum of squares against tables at `f7bb` and `f7c5`, the best kept in `0x0830`
-and copied to `0x0822`. Bit 13 then picks between two parallel parameter sets
+and copied to `0x0822`. Bit 2 then picks between two parallel parameter sets
 everywhere downstream, in overlay 6 as well as overlay 8 - `c9f3` chooses table
 `cc72` or `cb47`, `c9d2` and `c9e3` choose adjacent entries, `c5e0` chooses 1 or
 2. That is the shape of a **measured property of the digital path** - a law or
@@ -278,35 +326,38 @@ out of the image. Its help entry at `0x19790` has three options and ends
 `RX ... is Source`: `&X` is the **synchronous transmit clock source** - DCE,
 DTE, or recovered from the received signal.
 
-| `&X` | `[0x4ed]` | tag | sample path `@61` | `@1f` bit 8 |
+| `&X` | `[0x4ed]` | tag | sample path `@61` | `@1f` |
 |---:|---:|---|---|---|
-| 0 | 0 | `4d` | `819d`, a sample from two 8-bit halves | clear - the **f-family** |
-| 1 | 1 | `4e` | `81bb`, interpolating, writes port `0x6a` | clear |
-| 2 | 2 | `4f` | `819d` | **set** - the **e-family** |
+| 0 | 0 | `4d` | `819d`, a sample from two 8-bit halves | clears bit 8 |
+| 1 | 1 | `4e` | `81bb`, interpolating, writes port `0x6a` | clears bit 8 |
+| 2 | 2 | `4f` | `819d` | **sets bit 8** |
 
 The two sample paths make sense of it: when the DTE supplies the clock, the
 data has to be resampled between two clocks, which is what `81bb` does with its
-interpolation, where `819d` just assembles the word.
+interpolation, where `819d` just assembles the word. `@1f` bit 8 is read back
+at `81e4` (`bit 7, @1f`), in the same ISR region as those two paths.
 
 ## What this retires
 
-**The two families in overlay 8 are not x2 and V.90.** The previous section
-noted the shape of a three-way setting - one value on a different sample path,
-two differing only in which receiver runs - and called it suggestive of
-"off / one scheme / the other". With the setting named, that reading is wrong:
-`@1f` bit 8 is set by `&X2` and nothing else, so what forks overlay 8 is the
-**clock source**, and the fork is most likely a timing-recovery variant rather
-than two PCM schemes.
+**`&X` does not select the receiver family, and the families are not x2 and
+V.90 either.** Two readings die here, one from each of the last two sections.
 
-What survives is the structure, not the label: overlay 8 does hold two code
-families, `de0b` does fork between them on one bit, and the V.34 core does
-dispatch into both. What each family is *for* is open again.
+The three-way shape of the setting had looked suggestive of
+"off / one scheme / the other" - that was a guess about a shape, and naming the
+setting killed it. Then the bit numbering killed the rest: `&X2` sets `@1f`
+**bit 8** (`opl @1f, #0100`), while the fork tests **bit 7**. They are
+different bits. `&X` reaches the sample path, not the fork.
+
+What survives is the structure: overlay 8 holds two code families, `de0b` forks
+between them on `@1f` bit 7, and the V.34 core dispatches into both on bits 7
+and 6. What sets bit 7 is `b402`/`c91a`, inside the datapump phase code rather
+than any configuration path, so what the two families are *for* is open.
 
 ## What is still open
 
 **How the DSP is told x2 from V.90.** This is back where it was. S58 carries a
 bit for each, x2's setup sends a capability word as command `70` while V.90's
-branch is empty, and `0xfff4` bit 13 - the bit everything downstream reads - is
+branch is empty, and `0xfff4` bit 2 - the bit everything downstream reads - is
 decided by the four-candidate search rather than by the supervisor. None of
 that names the two code families in overlay 8, and `&X` turned out to be a
 different question.
@@ -319,7 +370,7 @@ tables each family carries.
 replaces, so which image owns that handler at the moment it runs needs
 establishing.
 
-**What bit 13 actually measures.** Four candidates and a least-squares fit is
+**What bit 2 actually measures.** Four candidates and a least-squares fit is
 the right shape for µ-law against A-law, or for the digital pad, but nothing
 here names it.
 

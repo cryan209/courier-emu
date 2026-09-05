@@ -161,8 +161,9 @@ def test_the_mode_flags_index_the_tables_in_order(rom):
     """The selector is read out of the image, not repeated here."""
     flags = fsk.mode_flags(rom)
     assert len(flags) == fsk.MODE_SLOTS
-    assert flags[0] == (0x27, 14) and flags[1] == (0x26, 11)
-    assert flags[7] == (0x27, 3) and flags[8] == (0x26, 9)
+    # Bit numbers: the selector's `bit 14, @27` reads bit 1, and so on.
+    assert flags[0] == (0x27, 1) and flags[1] == (0x26, 4)
+    assert flags[7] == (0x27, 12) and flags[8] == (0x26, 6)
     assert all(cell in (0x26, 0x27) for cell, _ in flags)
 
 

@@ -121,7 +121,8 @@ def test_both_ladders_step_by_one_pcm_frame(rom):
 def test_overlay_eight_forks_into_two_receivers(rom):
     """One bit of the datapump flag word picks which state machine runs."""
     site, bit, families = datapumps.receiver_fork(rom)
-    assert site == 0xDE0B and bit == 8
+    # `bit 8, *` is a bit code: the C5x BIT shifts by ~code, so it reads bit 7.
+    assert site == 0xDE0B and bit == 7
     assert families[True] == 0xE4C5      # bit set
     assert families[False] == 0xF442     # bit clear
     # The two entries are far apart and in different halves of the image.
@@ -190,10 +191,11 @@ def test_the_two_families_run_different_equalizers(rom):
     assert f['updates'][0] == 0xE079 and f['updates'][-1] == 0xE08C
 
 
-def test_only_the_f_family_uses_the_four_candidate_bit(rom):
+def test_only_the_f_family_reads_the_parameter_flags(rom):
     families = datapumps.receiver_families(rom)
-    assert 13 not in families[datapumps.E_FAMILY]['flag_bits']
-    assert 13 in families[datapumps.F_FAMILY]['flag_bits']
+    # Bit numbers, not the bit codes the instructions carry.
+    assert families[datapumps.E_FAMILY]['flag_bits'] == frozenset({9, 12})
+    assert families[datapumps.F_FAMILY]['flag_bits'] == frozenset({0, 1, 2, 12})
     # And only it works with the V.34 core's own bit-13 selectors.
     into = families[datapumps.F_FAMILY]['into_v34_core']
     assert 0xC5E0 in into and 0xC9FC in into
@@ -211,3 +213,27 @@ def test_only_the_e_family_reprograms_the_codec_rate(rom):
     # ae72 walks into `call 8140`, the codec sample-rate selector.
     assert any(w[pc] == 0x7A80 and w[pc + 1] == 0x8140
                for pc in range(0xAE72, 0xAE80))
+
+
+def test_the_rate_change_picks_the_fastest_common_symbol_rate(rom):
+    """`adee` scans the capability intersection, fastest symbol rate first."""
+    assert datapumps.rate_choice(rom) == {5: 5, 4: 4, 3: 3, 2: 2, 1: 1}
+    chosen = datapumps.rate_choice_selects(rom)
+    assert chosen[0] == (3429, 8000.0)
+    assert chosen[-1] == (2743, 7578.947)
+    # S54's bits are those six symbol rates, which is what makes the scan a
+    # rate choice rather than an option scan.
+    s54 = datapumps.s_register_bits(rom, 54)
+    assert [s54[1 << bit].split()[0] for bit in range(6)] == [
+        str(rate) for rate in datapumps.SYMBOL_RATES]
+
+
+def test_bit_codes_are_not_bit_numbers(rom):
+    """The C5x BIT shifts by ~code, so every reported bit is 15 - the code."""
+    flags = fsk.mode_flags(rom)
+    # Slot 0's test is `bit 14, @27`, which reads bit 1.
+    assert flags[0] == (0x27, 1)
+    # And the fork's `bit 8, *` reads bit 7 - not the bit &X2 sets.
+    _, bit, _ = datapumps.receiver_fork(rom)
+    assert bit == 7
+    assert bit != 8
