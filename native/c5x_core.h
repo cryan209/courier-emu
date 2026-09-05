@@ -123,6 +123,13 @@ public:
     void set_v8_calling(bool enabled);
     void set_v8_answering(bool enabled);
     void set_bio_low(bool enabled) { m_bio_low = enabled; }
+    // Whether the harness may substitute its own generated line audio - DTMF
+    // and the V.8 tones - for the datapump's DAC output. With it off the only
+    // thing that reaches the line is what the downloaded C52 program computes.
+    void set_synthetic_line(bool enabled) { m_synthetic_line = enabled; }
+    bool synthetic_line() const { return m_synthetic_line; }
+    void set_line_dac_slot(uint16_t slot) { m_line_dac_slot = slot; }
+    uint16_t line_dac_slot() const { return m_line_dac_slot; }
     uint16_t io(uint16_t port) const;
     uint16_t program(uint16_t address) const;
     uint16_t data(uint16_t address) const;
@@ -211,6 +218,8 @@ private:
     int64_t m_line_dac_sum = 0;
     unsigned m_line_dac_count = 0;
     bool m_call_tdm_active = false;
+    bool m_synthetic_line = true;
+    uint16_t m_line_dac_slot = 0xfffd;
     int m_line_frame_entry = -1;
     uint16_t m_pending_overlay_origin = 0;
     std::vector<uint16_t> m_pending_overlay;

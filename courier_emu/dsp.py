@@ -184,6 +184,8 @@ class NativeC5x:
         lib.courier_c5x_set_v8_calling.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_v8_answering.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_bio_low.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_synthetic_line.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_line_dac_slot.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
@@ -328,6 +330,20 @@ class NativeC5x:
 
     def set_bio_low(self, enabled: bool) -> None:
         self.library.courier_c5x_set_bio_low(self.handle, int(enabled))
+
+    def set_line_dac_slot(self, slot: int) -> None:
+        """Choose which ASIC slot the datapump's output word is taken from."""
+        self.library.courier_c5x_set_line_dac_slot(self.handle, slot)
+
+    def set_synthetic_line(self, enabled: bool) -> None:
+        """Allow or forbid harness-generated audio on the line.
+
+        Off, the core stops substituting its own DTMF and V.8 tones for the
+        datapump's DAC output - and stops discarding that output to make room
+        for them - so the line carries what the C52 program computes or
+        nothing at all.
+        """
+        self.library.courier_c5x_set_synthetic_line(self.handle, int(enabled))
 
     def io(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io(self.handle, port))

@@ -294,9 +294,13 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     if (address < 0x60) cpuregs_w(address, value); else m_data[address] = value;
-    // The polyphase ISR's 0xfffd result is the oversampled DAC word. Slot
-    // 0xffff is control; 0xfff8/0xfff9 hold the ADC delay pair.
-    if (m_call_tdm_active && address == 0xfffd) {
+    // Which ASIC slot the line datapump's output word lands in. The ISR at
+    // 0x0228 keeps a 32-bit phase accumulator in @7c/@7d - 0xfffc/0xfffd at
+    // DP 0x1ff - and reading 0xfffd gives that phase, which is a linear ramp
+    // rather than a waveform. The word it computes from it goes out through
+    // @7a to 0xffff. Which of the two the board sinks is the question this
+    // makes measurable.
+    if (m_call_tdm_active && address == m_line_dac_slot) {
         m_line_dac_sum += int16_t(value);
         ++m_line_dac_count;
     }
@@ -318,7 +322,8 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
-    if (port == 0xb2e5 && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
+    if (port == 0xb2e5 && m_synthetic_line
+        && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
         value = m_io[port];
     m_io[port] = value;
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
@@ -735,7 +740,7 @@ void C5xCore::step()
                         }
                     }
                 }
-                if (m_v8_mode != V8Mode::Off) {
+                if (m_synthetic_line && m_v8_mode != V8Mode::Off) {
                     // The ASIC owns the V.8 line slot for both roles. Calling
                     // emits CI; answering emits ANSam. Previously only the
                     // answer branch drove this slot, leaving the caller silent
@@ -756,7 +761,8 @@ void C5xCore::step()
                     m_line_dac_count = 0;
                 }
             } else {
-                if (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off)
+                if (m_synthetic_line
+                    && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
                     m_io[0xb2e5] = dtmf_sample();
                 uint16_t sample = m_io[0xb2e5];
                 m_line_tx.push_back(sample);

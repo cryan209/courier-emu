@@ -147,6 +147,16 @@ void courier_c5x_set_v8_answering(void *handle, int enabled)
     if (handle) static_cast<C5xCore *>(handle)->set_v8_answering(enabled != 0);
 }
 
+void courier_c5x_set_line_dac_slot(void *handle, uint16_t slot)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_line_dac_slot(slot);
+}
+
+void courier_c5x_set_synthetic_line(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_synthetic_line(enabled != 0);
+}
+
 void courier_c5x_set_bio_low(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_bio_low(enabled != 0);

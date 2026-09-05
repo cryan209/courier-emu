@@ -8,7 +8,7 @@ from typing import Any
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
-from .exchange import DTMF_COLUMN_FREQUENCIES, DTMF_KEYS, DTMF_ROW_FREQUENCIES, LineExchange
+from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import RateConverter, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
@@ -110,8 +110,6 @@ DETECTOR_PRESENT_LEVEL = 0x30
 # call-start block, which is why the preceding message decides.
 DIAL_TONE_TAG = 0x13
 DIAL_SILENCE = (0x16, 0x0000)
-# Level per component, matching what the exchange renders its own tones at.
-DIAL_TONE_LEVEL = 4_000
 # The keypad index the supervisor sends, decoded from its own encoder at
 # 0x6353c: characters below '*' gain 6 and characters below '0' gain 0x11, so
 # '#' lands on 0x0a and '*' on 0x0b; 'A'-'D' lose 5 to land on 0x0c-0x0f; and
@@ -248,12 +246,13 @@ class CourierDspBridge:
         self.codec = codec
         self.ring = ring
         self.exchange = exchange
+        self._configure_synthetic_line()
         self._instructions = 0
         self._exchange_instructions = 0
         self._exchange_tx_index = 0
         self._exchange_rx_samples: deque[int] = deque()
         self._dial_tone_digit: str | None = None
-        self._dial_tone_index = 0
+        self._dial_digits_commanded = ""
         self._codec_instructions = 0
         self._line_instructions = 0
         self._line_tx_index = 0
@@ -527,6 +526,18 @@ class CourierDspBridge:
         if self.line is not None and self.line.connected:
             self._publish_connected_event()
 
+    def _configure_synthetic_line(self) -> None:
+        """Forbid harness-generated line audio when a modeled line is attached.
+
+        A modeled line carries what the board computes. The core's own DTMF
+        and V.8 generators would otherwise stand in for the datapump - and
+        discard its output to make room. This has to be reapplied to every
+        core, because a line operation reloads the C52 and builds a new one.
+        """
+        if self.exchange is None or not hasattr(self.core, "set_synthetic_line"):
+            return
+        self.core.set_synthetic_line(False)
+
     def _configure_frame_interrupt(self) -> None:
         if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
             if hasattr(self.core, "configure_line_frame_interrupt"):
@@ -781,14 +792,11 @@ class CourierDspBridge:
 
         Each digit goes out as a small block - `0x16:0000`, then the tone
         generator's three constant lanes, with `0x13` carrying the keypad
-        index - and `0x16:0000` again when the tone ends. So the digit lane
-        starts the tone and the silence lane stops it.
+        index - and `0x16:0000` again when the tone ends.
 
-        The call-start block uses the same lanes with the same constants, and
-        nothing in a single message separates the two uses. What separates
-        them here is the line: a digit only means anything while the loop is
-        seized and the call has not come up, which is exactly the window the
-        dialer runs in.
+        Nothing here plays it. The tone generator is the ASIC's, and this only
+        records what the supervisor asked for, so a run can be compared
+        against what the C52 actually put on the line.
         """
         if self.exchange is None or self.daa is None:
             return
@@ -802,23 +810,7 @@ class CourierDspBridge:
         index = data & 0xFF
         if index < len(DIAL_TONE_DIGITS):
             self._dial_tone_digit = DIAL_TONE_DIGITS[index]
-            self._dial_tone_index = 0
-
-    def _dial_tone_samples(self, count: int) -> list[int]:
-        """Render the held digit as line audio for one block."""
-        key = DTMF_KEYS.index(self._dial_tone_digit or "1")
-        row = DTMF_ROW_FREQUENCIES[key // len(DTMF_COLUMN_FREQUENCIES)]
-        column = DTMF_COLUMN_FREQUENCIES[key % len(DTMF_COLUMN_FREQUENCIES)]
-        rate = self.exchange.sample_rate
-        start = self._dial_tone_index
-        self._dial_tone_index += count
-        return [
-            round(
-                DIAL_TONE_LEVEL * math.sin(2 * math.pi * row * index / rate)
-                + DIAL_TONE_LEVEL * math.sin(2 * math.pi * column * index / rate)
-            )
-            for index in range(start, start + count)
-        ]
+            self._dial_digits_commanded += self._dial_tone_digit
 
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
@@ -961,6 +953,7 @@ class CourierDspBridge:
             self.core.close()
             self.core = NativeC5x(self.image)
             self._configure_frame_interrupt()
+            self._configure_synthetic_line()
             self._call_overlay_active = False
             self._call_resume_pending = self._v8_armed
             self.bootstrap = bytearray(window)
@@ -1293,11 +1286,7 @@ class CourierDspBridge:
         off_hook = self.daa is not None and self.daa.off_hook
         samples = self.core.line_tx_samples(self._exchange_tx_index)[:LINE_FRAME_SAMPLES]
         self._exchange_tx_index += len(samples)
-        if self._dial_tone_digit is not None:
-            # A held dial tone is what the board is putting on the line, so it
-            # replaces the datapump's block rather than mixing with it.
-            samples = self._dial_tone_samples(LINE_FRAME_SAMPLES)
-        elif len(samples) < LINE_FRAME_SAMPLES:
+        if len(samples) < LINE_FRAME_SAMPLES:
             # The codec clocks whether or not the datapump has a block ready,
             # and what it clocks out is silence. The exchange has to hear that
             # silence: it is the gap that separates two presses of one key.
@@ -1317,6 +1306,12 @@ class CourierDspBridge:
                 self._exchange_rx_samples.extend(incoming)
         self._carrier_probe.extend(incoming)
         self._observe_carrier_audio()
+        if self.exchange.connected and not self._connected_event_queued:
+            # The exchange has put the two ends through. On hardware the ASIC
+            # is what tells the supervisor that, and the supervisor's dialer
+            # parks in command mode until it hears it - this is the board half
+            # of the call coming up, not a result the harness invented.
+            self._publish_connected_event()
         if self.daa is not None:
             # The DAA reports what the exchange is presenting rather than a
             # state the harness set for it. Dial tone therefore stays on the
@@ -1329,8 +1324,9 @@ class CourierDspBridge:
             if self.exchange.dialed and self.daa.operation == "originate":
                 # Digits on the line are what makes this a dialing seizure.
                 self.daa.begin_dialing()
-            # What the line heard is the only record of the number here; the
-            # bridge no longer reads it out of the command text.
+            # What the line heard, which is not the same as what the
+            # supervisor asked the board to play. The difference between
+            # dial_digits and dial_digits_commanded is the measurement.
             self.dial_digits = self.exchange.dialed
 
     def _service_line(self) -> None:

@@ -59,6 +59,7 @@ def main() -> int:
     parser.add_argument("--exchange-outcome", choices=EXCHANGE_OUTCOMES, default="answer")
     parser.add_argument("--exchange-answer-after", type=_number, default=2)
     parser.add_argument("--exchange-answer-tone", type=_number, default=3_000)
+    parser.add_argument("--exchange-hotline", action="store_true")
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
     parser.add_argument("--daa-codec", action="store_true")
@@ -132,6 +133,7 @@ def main() -> int:
             default_outcome=args.exchange_outcome,
             answer_after_rings=args.exchange_answer_after,
             answer_tone_ms=args.exchange_answer_tone,
+            hotline=args.exchange_hotline,
         )
 
     ring = None

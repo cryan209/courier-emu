@@ -3652,6 +3652,53 @@ has not come up.
 Still outstanding: the result code. `ATD` ends in command mode, because the
 exchange answers with 2100 Hz and nothing behind it trains.
 
+### What the call overlay writes, and why it is not audio
+
+Measured 2026-09-05 with `set_synthetic_line(False)`, which stops the core
+substituting its hand-written DTMF and V.8 tones for the datapump's DAC
+accumulation - and stops it discarding that accumulation to make room.
+
+An answered call reaches the overlay: ring the modeled line, let the firmware
+answer, and `call_overlay_active` goes true with the recovered bank executing.
+The frame ISR at `0x0228` then runs every codec slot:
+
+```
+022c  add     #0000824d      ; table base
+022e  tblr    @7a            ; table read
+0230  lacc16  @7c            ; ACC = phase high << 16
+0231  adds    @7d            ;     + phase low
+0232  lt      @7b
+0233  mpy     #0028
+0234  lta     @7a
+0235  mpy     @78
+0236  mpya    @79
+0237  sach    @7c            ; phase high
+0238  sacl    @7d            ; phase low
+...
+0245  sacl    @7a
+0246  bldd    @7a, #ffff     ; out to the ASIC slot
+```
+
+At DP `0x1ff`, `@7c`/`@7d` are `0xfffc`/`0xfffd`. So **`0xfffd` is the low half
+of a 32-bit phase accumulator, not the DAC word.** The core read it as the DAC,
+which is why the datapump's output measured as broadband noise: the captured
+stream is a linear ramp with a constant step of `-14704` per sample, wrapping
+16 bits - about 2.15 kHz at the 9.6 kHz codec rate.
+
+The word the ISR computes from that phase goes out through `@7a` to `0xffff`.
+That slot carries exactly two distinct values, near-DC, so it is not a waveform
+either. `set_line_dac_slot` makes the choice switchable rather than assumed.
+
+Where the datapump's PCM actually leaves the C52 is therefore unresolved. The
+`tblr` at `0x022e` against a table based at `0x824d` is the next thread: a table
+read on this path is what a phase-to-amplitude lookup looks like, and its
+result is overwritten in `@7a` before the store at `0x0245`.
+
+Two things are settled by this measurement. The V.8 tones a run emits are
+`C5xCore::dtmf_sample()` - 1300 Hz gated 500 ms on/off for calling, 2100 Hz with
+15 Hz AM and 450 ms reversals for answering - not firmware output. And V.21 is
+generated nowhere; the harness only scores 980/1180 Hz symbols it never sees.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under

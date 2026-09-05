@@ -180,6 +180,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--exchange-outcome", args.exchange_outcome))
         command.extend(("--exchange-answer-after", str(args.exchange_answer_after)))
         command.extend(("--exchange-answer-tone", str(args.exchange_answer_tone)))
+        if args.exchange_hotline:
+            command.append("--exchange-hotline")
     if args.sip_server:
         command.extend(("--sip-server", args.sip_server))
         command.extend(("--sip-username", args.sip_username))
@@ -634,6 +636,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="MS",
         help="how long the answered call carries 2100 Hz answer tone before "
         "the exchange hands it to the far end (default 3000; 0 skips it)",
+    )
+    run.add_argument(
+        "--exchange-hotline",
+        action="store_true",
+        help="answer on seizure with no dial tone and no digits, the way a "
+        "private-ringdown circuit does. Use it to reach the online state "
+        "without the modem having to dial",
     )
     run.add_argument(
         "--line-listen",

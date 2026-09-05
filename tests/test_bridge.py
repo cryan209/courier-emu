@@ -539,7 +539,7 @@ class ExchangeTests(unittest.TestCase):
         self.assertTrue(daa.detector_qualified)
         self.assertTrue(daa.dial_tone_qualified)
 
-    def test_a_tone_message_puts_that_digit_on_the_line(self) -> None:
+    def test_a_tone_message_is_recorded_but_not_played(self) -> None:
         daa = CourierDaa("quiet")
         exchange = LineExchange()
         bridge, _ = self._make(exchange, daa)
@@ -548,13 +548,15 @@ class ExchangeTests(unittest.TestCase):
 
         self._dial(bridge, 5)
 
-        self.assertEqual(exchange.dialed, "5")
-        self.assertEqual(exchange.decoder.digits, "5")
-        # And the tone stops with the silence message, so the next digit is a
-        # separate press rather than a continuation of this one.
+        # The bridge knows which digit the supervisor asked the board to play,
+        # and plays nothing: the tone generator is the ASIC's, and the line
+        # carries only what the C52 computes.
+        self.assertEqual(bridge._dial_digits_commanded, "5")
         self.assertIsNone(bridge._dial_tone_digit)
+        self.assertEqual(exchange.dialed, "")
+        self.assertEqual(exchange.decoder.digits, "")
 
-    def test_the_firmware_dials_its_number_over_the_line(self) -> None:
+    def test_the_commanded_number_is_recorded_in_order(self) -> None:
         daa = CourierDaa("quiet")
         exchange = LineExchange(directory={"5551212": "busy"})
         bridge, _ = self._make(exchange, daa)
@@ -564,10 +566,11 @@ class ExchangeTests(unittest.TestCase):
         for index in (5, 5, 5, 1, 2, 1, 2):
             self._dial(bridge, index)
 
-        self.assertEqual(exchange.dialed, "5551212")
-        self.assertEqual(bridge.dial_digits, "5551212")
-        self.assertEqual(exchange.outcome, "busy")
-        self.assertEqual(daa.operation, "dialing")
+        self.assertEqual(bridge._dial_digits_commanded, "5551212")
+        # And the exchange heard none of it, because nothing put it on the
+        # line. dial_digits reports the line, not the command.
+        self.assertEqual(exchange.dialed, "")
+        self.assertEqual(bridge.dial_digits, "")
 
     def test_the_keypad_index_is_the_supervisor_encoding(self) -> None:
         # 0x6353c leaves '0'-'9' as themselves and folds the rest above them:
@@ -581,7 +584,7 @@ class ExchangeTests(unittest.TestCase):
         for index in (0, 9, 0x0B, 0x0C):
             self._dial(bridge, index)
 
-        self.assertEqual(exchange.dialed, "09*A")
+        self.assertEqual(bridge._dial_digits_commanded, "09*A")
 
     def test_a_tone_message_off_hook_only(self) -> None:
         daa = CourierDaa("quiet")

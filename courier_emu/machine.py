@@ -1545,8 +1545,14 @@ class CourierMachine:
                         and self.dsp_bridge.line is not None
                         and self.dsp_bridge.line.peer_ringing
                     )
+                    exchange_ringing = bool(
+                        self.dsp_bridge is not None
+                        and self.dsp_bridge.exchange is not None
+                        and self.dsp_bridge.exchange.ringing
+                    )
                     if (
                         peer_ringing
+                        or exchange_ringing
                         or (self.ring is not None and self.ring.present(self.instructions))
                     ):
                         value |= RING_DETECT_BIT

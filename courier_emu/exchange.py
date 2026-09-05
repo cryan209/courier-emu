@@ -204,6 +204,12 @@ class LineExchange:
     ring_off_ms: int = RINGBACK_OFF_MS
     incoming_rings: int = 12
     pulse_dialing: bool = True
+    # A hotline (private ringdown) route: the switch has a number for this
+    # loop already and starts the call on seizure, with no dial tone and no
+    # digits. It is a real service, and it is the one way to bring a call up
+    # without the subscriber dialing - which is what makes it useful when the
+    # question under test is what the modem does after the call is up.
+    hotline: bool = False
     # Once the call is up the exchange stops generating and asks this for the
     # far end's audio: `peer_audio(count, transmitted) -> samples`. Without one
     # a connected call is silent, which is a bare loop with nobody on it.
@@ -389,7 +395,10 @@ class LineExchange:
             self._pulses = 0
             self.decoder = DtmfDecoder(sample_rate=self.sample_rate)
             self._last_digit_at = self.elapsed
-            self._enter("dial-tone")
+            if self.hotline:
+                self._route()
+            else:
+                self._enter("dial-tone")
 
     def _on_release(self) -> None:
         """The subscriber opened the loop."""
