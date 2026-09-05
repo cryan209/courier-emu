@@ -74,6 +74,39 @@ routine has to be reachable in the segment the caller uses. Placing code at
 physical `0x2000` and pointing a near vector at it only works if that vector's
 segment is zero. This has not been checked, and it decides the whole layout.
 
+## The write primitive, confirmed on the board
+
+Run 2026-09-05 against the live unit. Target `0x5d80`-`0x5d83`, four bytes
+verified zero immediately before writing; the script's allowlist admitted page
+reads and writes to those four addresses and nothing else.
+
+```
+before             5d80: 00 00 00 00 00 00
+
+ATGLK2W5D80,A5    -> OK
+after              5d80: A5 00 00 00 00 00
+
+ATGLK2W5D82,1234  -> OK
+after              5d80: A5 00 34 12 00 00
+
+restore           -> 00 00 00 00 00 00
+AT -> OK, ATI7 -> 7.4.16
+```
+
+Three things confirmed, all as disassembled:
+
+* **`DS` is zero.** `A5` landed at physical `0x5d80`, so the address in the
+  command is a physical low-RAM address and the `mov [bx]` needs no segment
+  reasoning.
+* **Width follows the digit count.** `,A5` wrote one byte; `,1234` wrote a
+  word, little-endian, `34 12`. The value does not decide it - `,000F` would be
+  a word.
+* **It is reversible.** Writing zeros back restored the region exactly, and the
+  modem answered normally afterwards.
+
+So the delivery half of the RAM-probe method is no longer theoretical. A
+routine can be placed one byte or one word per command.
+
 ## Execution: the interrupt vector table
 
 The near-vector constraint turned out not to bind, because there is a better
