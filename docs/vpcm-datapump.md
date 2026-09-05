@@ -30,6 +30,46 @@ and V.90 were present in the older build too.
 The training UCode sequence is not stored anywhere in any image, in bytes or in
 either word order. It is generated rather than tabulated.
 
+## The assembler, and the descriptor it produced on the wire
+
+Immediately after the field block, at program `e7e8`, is the code that builds
+the descriptor:
+
+```text
+e7e8: ldp  #006
+e7e9: lar  ar1, #0940      ; the build buffer
+e7eb: splk *+, #00c5       ; N = 197
+e7ed: splk *+, #4141       ; LSP-1 = 65 and LTP-1 = 65, packed as two bytes
+e7f0: blpd *+, #e7d6       ; 5 words of SP
+e7f3: blpd *+, #e7db       ; 5 words of TP
+e7f6: blpd *+, #e7e0       ; 4 words of H1-8
+```
+
+So `N = 197`, `LSP = 66`, `LTP = 66`, and the patterns come straight out of the
+block above.
+
+That can be checked against the wire rather than left as a reading. The user's
+V.90 DIL lab carries `COURIER_JA_HEX`, a 2058-bit Ja recovered from a capture of
+this modem transmitting, with a valid CRC. Parsing it with that tool's own field
+framing and comparing every field against this image:
+
+| field | transmitted Ja | overlay 8 | |
+|---|---|---|---|
+| N / LSP / LTP | 197 / 66 / 66 | 197 / 66 / 66 | match |
+| SP | 66 bits | `e7d6` | match |
+| TP | 66 bits | `e7db` | match |
+| H1-8 | 10 x8 | `e7e0` | match |
+| REF | 0 x8 | `e7e4` | match |
+
+Every field, from the ROM to the signal.
+
+The raw recovered hex does **not** appear anywhere in the flash, and that is the
+expected result rather than a contradiction: the wire format is framed, with a
+zero bit ahead of each chunk of up to 16 payload bits and the H and REF entries
+carried as 7-bit values between framing bits, while the ROM stores the patterns
+unframed and LSB-packed. The framing, the training Ucodes and the CRC are all
+added when the descriptor is assembled - which is what the CRC below is for.
+
 ## The four images, and which ones do I/O
 
 | image | loads at | span | serial-port access |
