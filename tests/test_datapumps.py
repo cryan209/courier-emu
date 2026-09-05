@@ -149,3 +149,22 @@ def test_the_pcm_sample_path_is_selected_beside_the_receiver_bit(rom):
     assert commands[0x4F]['flag'] == ('set', 0x0100)
     assert commands[0x4D]['flag'] == ('clear', 0xFEFF)
     assert commands[0x4E]['flag'] == ('clear', 0xFEFF)
+
+
+def test_the_mode_commands_are_sent_with_the_tag_in_ah(rom):
+    """Two sites, both fanning out from one profile byte to the three tags."""
+    sites = datapumps.receiver_selector(rom)
+    assert len(sites) == 2
+    assert {site for site, _ in sites} == {0x4749, 0xBE6F}
+    for _, tags in sites:
+        assert tags == {0: 0x4D, 1: 0x4E, 2: 0x4F}
+
+
+def test_the_receiver_is_chosen_by_a_saved_setting(rom):
+    """Not V.8, not INFO: a stored profile byte with an active/stored pair."""
+    assert datapumps.receiver_setting_is_configured(rom)
+    # Both copies sit at the same offset into their profile block, past the
+    # S-registers the help text documents.
+    offset = datapumps.RECEIVER_SETTING - datapumps.PROFILE_ACTIVE
+    assert offset == datapumps.RECEIVER_SETTING_STORED - datapumps.PROFILE_STORED
+    assert offset > datapumps.PCM_OPTIONS

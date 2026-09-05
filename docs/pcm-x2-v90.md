@@ -180,15 +180,63 @@ everywhere downstream, in overlay 6 as well as overlay 8 - `c9f3` chooses table
 a pad, decided by fitting four candidates - not of a scheme the supervisor
 configured.
 
+## Who sends `4d`/`4e`/`4f`, and it is not V.8
+
+They never appear as `mov ax, imm` because they do not go through that sender.
+They go through the **packed** one - `lcall 0x8f46:0x01e8`, tag in `ah` and data
+zero - and the tag is chosen by a byte of the stored profile:
+
+```text
+be6f  mov  al, byte ptr [0x4ed]
+be72  cmp  al, 1 ; je be7e
+be76  cmp  al, 2 ; je be82
+be7a  mov  ah, 0x4d      ; 0
+be7e  mov  ah, 0x4e      ; 1
+be82  mov  ah, 0x4f      ; 2
+be84  xor  al, al
+be86  lcall 0x8f46, 0x1e8
+```
+
+`courier_emu.datapumps.receiver_selector` finds both sites that do this:
+
+* **`0xbe6f`**, a bare sender guarded by `[0x4e9] <= 5` and `!= 1`. Its caller
+  is the datapump bring-up, and the instruction before the call is the overlay
+  loader: `b620 cmp byte [0xd28], 0 ; jne ; call e60a` then `b62d call be5f`.
+  The receiver family is armed in the same breath as the image that holds it.
+* **`0x4749`**, inside a routine that reprograms ASIC ports 2, 4, 6 and 8 and,
+  for the same three cases, writes `0x3c`, `0x3d` or `0x3e` to port `0x0c`
+  before sending the tag. The analogue path is switched with the receiver.
+
+So the selection is neither V.8 nor an INFO sequence. **It is a saved
+setting.** `[0x4ed]` is written only at `0x26cae`, by an AT handler that parses
+a number and rejects anything above 2, and it has a twin at `[0x563]` chosen by
+the same active-or-stored test the S-register reader uses. The two profile
+blocks start at `0x048e` and `0x0504`, and both copies sit `0x5f` into their
+block - past the S-registers, so this is an ampersand-style option rather than
+an S-register. Nothing in the negotiation paths writes it.
+
+Putting the three together with the DSP handlers:
+
+| `[0x4ed]` | tag | sample path | receiver |
+|---:|---|---|---|
+| 0 | `4d` | `819d`, 8-bit codewords | bit 8 clear - the **f-family** |
+| 1 | `4e` | `81bb`, interpolating | bit 8 clear, no PCM path |
+| 2 | `4f` | `819d`, 8-bit codewords | bit 8 set - the **e-family** |
+
 ## What is still open
 
-**Which family is x2 and which is V.90.** The two receivers are there and the
-flag bits that select them are there, but the link from S58's bits to bits 8
-and 9 is not closed: the supervisor never loads tags `4d`/`4e`/`4f` as a
-literal, so their senders did not fall out of a search for `mov ax, imm`. The
-same gap covers `dccd`, which sets bit 9 from inside the `dc00` block - a block
-overlay 8 itself replaces, so which image owns that handler at the moment it
-runs needs establishing too.
+**Which family is x2 and which is V.90.** The shape of the setting is
+suggestive - three values where one takes the ordinary sample path and the
+other two take the PCM path and differ *only* in which receiver runs, which is
+what "off / one scheme / the other" would look like - but that is a reading of
+the shape, not a label. Naming it needs the AT command that writes `[0x4ed]`,
+and its handler at `0x26c88` is reached through an indirect dispatch that has
+not been located, so the command letter and its documented values are still
+unread.
+
+**Bit 9's arming.** `dccd` sets it from inside the `dc00` block, which overlay 8
+replaces, so which image owns that handler at the moment it runs needs
+establishing.
 
 **What bit 13 actually measures.** Four candidates and a least-squares fit is
 the right shape for µ-law against A-law, or for the digital pad, but nothing

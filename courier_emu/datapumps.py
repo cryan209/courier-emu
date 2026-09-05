@@ -318,3 +318,56 @@ def mode_commands(rom):
             pc += 2 if w[pc] & 0xFF00 in (0xAE00, 0x5D00, 0x5E00) else 1
         found[tag] = {'sample_path': path, 'flag': flag}
     return found
+
+
+# --- who arms the receiver bit --------------------------------------------
+#
+# The three mode commands are not sent with a literal tag in `ax`: they go
+# through the packed sender, tag in `ah` and data zero, chosen by a byte of the
+# stored profile. That is why they never turn up in a search for `mov ax, imm`.
+
+RECEIVER_SETTING = 0x04ED               # active profile byte
+RECEIVER_SETTING_STORED = 0x0563        # its twin in the stored profile
+PROFILE_ACTIVE, PROFILE_STORED = 0x048E, 0x0504
+LOAD_SETTING = bytes([0xA0, RECEIVER_SETTING & 0xFF, RECEIVER_SETTING >> 8])
+PACKED_SENDER = bytes([0x9A, 0xE8, 0x01, 0x46, 0x8F])   # lcall 0x8f46:0x01e8
+
+
+def receiver_selector(rom, window=0x40):
+    """Where the mode commands are sent, and what chooses between them.
+
+    Each site loads the profile byte and fans out to `mov ah, <tag>` - one per
+    value - before the packed sender. Returns the sites and the value-to-tag
+    map they encode.
+    """
+    found = []
+    for match in re.finditer(re.escape(LOAD_SETTING), rom.data):
+        site = match.start()
+        window_bytes = rom.data[site:site + window]
+        tags = {}
+        for value, tag in enumerate(MODE_COMMANDS):
+            where = window_bytes.find(bytes([0xB4, tag]))     # mov ah, tag
+            if where >= 0:
+                tags[value] = tag
+        if len(tags) == len(MODE_COMMANDS) and PACKED_SENDER in window_bytes:
+            found.append((site, tags))
+    if not found:
+        raise ValueError('no site selects a mode command from the profile')
+    return tuple(found)
+
+
+def receiver_setting_is_configured(rom):
+    """True when the selector reads a stored setting rather than a negotiation.
+
+    The byte is written by an AT handler that parses a number and rejects
+    anything above 2, and it has a twin in the stored profile at the same
+    offset - 0x5f into each of the two 118-byte blocks the S-register file
+    starts. Nothing in the V.8 or INFO paths writes it.
+    """
+    writes_active = bytes([0xA2, RECEIVER_SETTING & 0xFF, RECEIVER_SETTING >> 8])
+    writes_stored = bytes([0xA2, RECEIVER_SETTING_STORED & 0xFF,
+                           RECEIVER_SETTING_STORED >> 8])
+    same_offset = (RECEIVER_SETTING - PROFILE_ACTIVE
+                   == RECEIVER_SETTING_STORED - PROFILE_STORED)
+    return (writes_active in rom.data and writes_stored in rom.data
+            and same_offset)
