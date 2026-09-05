@@ -133,12 +133,12 @@ register 4, whose two 2-bit fields look like gain rather than rate.
 
 ## Which leaves a real contradiction
 
-> **Resolved.** See [vpcm-datapump.md](vpcm-datapump.md). The board takes samples
-> on both C5x serial ports - the resident bank sets up `TSPC` and overlay 6 reads
-> `TRCV` - so the AC01's fixed rate never constrained the datapump. Everything
-> below stands as written; what was wrong was the assumption that the AC01 is the
-> only converter. The three "cannot all be true" facts are all true, and the
-> hidden fourth is that they are not about the same signal path.
+> **Still open.** This was briefly marked resolved, on the grounds that the board
+> reads samples on both C5x serial ports. It does not: overlay 6's apparent
+> `TRCV` and `DRR` reads are a data table read as code, and nothing in any image
+> reads `TRCV` at all. See the retraction in
+> [vpcm-datapump.md](vpcm-datapump.md). The three facts below stand, they still
+> cannot all be true, and the only sample path in evidence is the AC01.
 
 Three things cannot all be true:
 

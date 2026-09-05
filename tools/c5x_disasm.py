@@ -160,3 +160,20 @@ def disassemble(words: list[int] | tuple[int, ...], first: int, last: int) -> li
         result.append(instruction)
         pc += instruction.size
     return result
+
+
+def anchored(instructions, pc: int, span: int = 48) -> bool:
+    """Whether anything branches or calls near `pc`.
+
+    A linear disassembly of a data table produces plausible-looking
+    instructions, and small values decode as common opcodes - `lacc @21` is
+    `0x1021`, which reads as the CRC-16 CCITT polynomial, and a run of slowly
+    rising values reads as `lar ar0, @xx`. Real code is reachable, so the cheap
+    discriminator is whether any control-flow target lands nearby. A site with
+    none inside a couple of dozen words is almost certainly data.
+
+    This is a filter, not a proof: straight-line code far from any branch would
+    fail it too. Use it to reject, then read the neighbourhood.
+    """
+    targets = [i.target for i in instructions if i.target is not None]
+    return any(pc - span <= t <= pc + span for t in targets)

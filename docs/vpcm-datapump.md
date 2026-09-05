@@ -99,128 +99,36 @@ added when the descriptor is assembled - which is what the CRC below is for.
 
 | image | loads at | span | serial-port access |
 |---|---|---|---|
-| resident | `8000` | `8000..eea7` | `DRR` read x1 (the ISR), `DXR` write x4, **`TSPC` setup x2** |
-| overlay 6 | `9d00` | `9d00..ce32` | **`DRR` read x32, `TRCV` read x4** |
+| resident | `8000` | `8000..eea7` | `TSPC` setup x2, `DXR` write x4, `DRR` read x1 (the ISR) |
+| overlay 6 | `9d00` | `9d00..ce32` | **none** |
 | overlay 7 | `b000` | `b000..cd4a` | none |
 | overlay 8 | `dc00` | `dc00..f94a` | none |
 
-Overlay 8 touches no converter at all. It is pure algorithm, and it does not
-overlap overlay 6, so the two are loaded together: **6 moves the samples, 8 runs
-V.PCM on them.** Overlay 7 sits inside overlay 6's range, so those two are
+Overlay 8 touches no converter. It is pure algorithm, and it does not overlap
+overlay 6, so the two are loaded together: 6 is the datapump, 8 runs V.PCM on
+what it produces. Overlay 7 sits inside overlay 6's range, so those two are
 alternatives.
 
-## Two converters, which is the answer
+## Retracted: there is no second converter here
 
-The resident bank programs `TSPC` - the TDM serial port's control register - at
-`808a`, and overlay 6 reads `TRCV`, that port's receive register. So this board
-takes samples on **both** C5x serial ports: the primary one, where the
-TLC320AC01 sits, and the TDM port.
-
-That dissolves the contradiction recorded in
-[codec-rate-312.md](codec-rate-312.md). The AC01's divider registers are written
-once at reset and never again, and the dial path's DTMF pins that rate at
-7200 Hz - both still true. Neither constrains the datapump, because the
-datapump's samples need not come through the AC01 at all.
-
-It also corrects [board-parts.md](board-parts.md) a second time. That document
-says the 20.16 MHz builds "instead of the AC0x path... configure `TSPC`". It is
-not instead: this build does both, and the two paths are the two halves of the
-answer.
-
-## What is hypothesis, and what is not
-
-Established: the descriptor block and its location; which images do which I/O;
-that both serial ports are set up and read; that the AC01's rate never changes.
-
-Not established: **which converter carries which direction, and at what rate.**
-V.90 is asymmetric - a PCM downstream at 8000 symbols per second, a V.34-like
-upstream - so an obvious reading is that the TDM port carries the
-8000 Hz-aligned receive path while the AC01 carries the analog side at 7200. The
-counts are suggestive of a split (overlay 6 reads `DRR` 32 times and `TRCV` four
-times, and no overlay transmits at all - every `DXR` write is in the resident
-bank) but they are static site counts, not traffic. What actually sits on the
-TDM port is also unestablished; the ASIC is the obvious candidate and this does
-not demonstrate it.
-
-## The CRC is in code, ahead of the modulator
-
-The framing checksum is computed in software, bitwise, with the polynomial as a
-literal - no table. The step at overlay 6 program `a4fa` is the whole method:
-
-```text
-a4f3: sfl              ; shift the data bit out
-a4f4: lacl #00
-a4f5: rol              ; rotate it into the low bit
-a4f6: xor  @42         ; against the running remainder
-a4f7: sfr
-a4f9: xc   2, c        ; and if a one fell out...
-a4fa: xor  #00008408   ;   ...fold in the polynomial
-a4fc: sacl @42         ; store the remainder back
-```
-
-`8408` is CRC-16 CCITT reversed - the V.42 FCS polynomial, and the one V.34's
-INFO sequences use. Every site in every image uses that one polynomial:
-
-| image | sites | where |
-|---|---:|---|
-| board 3.1.2 | 4 | resident `9911`, `99e6`; overlay 6 `a4fa`, `b131` |
-| board 3.0.13 | 4 | the same four, shifted |
-| `main211` | 5 | - |
-
-**Overlay 8 has none.** So the split holds on this axis too: overlay 6 carries
-the framing - CRC, and the sample I/O - while overlay 8 is the V.PCM algorithm
-alone. The CRC runs in the DSP rather than on the 80186, and ahead of the
-modulator rather than in the supervisor's data path.
-
-A caution about how these were found. Searching for the polynomial as a bare
-constant is worthless here: `1021` is also the encoding of `lacc @21`, and it
-turned up in the resident bank and in two overlays as exactly that. Only the
-`xor #<poly>` opcode pair distinguishes a polynomial from an instruction, and
-all four sites above are that pair.
-
-## The 197 training Ucodes are arithmetic
-
-They are not in the flash because the firmware counts them out. `courier_emu.vpcm`
-runs the assembler in the C5x core and reads back what it wrote; all 197 match
-the ladder in the captured Ja exactly.
-
-The store is what disguises them. `e838` keeps `127 - value` and packs two per
-word, low byte first, so nothing in the image ever looks like the ladder:
-
-```text
-e838: neg ; add #7f        ; keep 127 - value
-e83a: bit 15, @7c          ; bit code 15 is bit 0 - the pack toggle
-e83b: bcndd e841, tc
-e83d: xpl  @7c, #0001      ; flip it every call
-e83f: sacl *               ; first of a pair: park it
-e841: sacl @7f             ; second: combine with the parked one
-e844: add  @7f, 8          ;   low | (this << 8)
-e845: sacl *+
-```
-
-The ladder itself is two counters:
-
-| step | emits |
-|---|---|
-| `@7d` = 11, five times, incrementing | 116, 115, 114, 113, 112 |
-| `@7d` = `10`, `@7e` = `7f`, sixteen pairs | 111, 0, 110, 1, ... |
-| `@7d` = `20`, `30`, `40`, same `@7e` | three more blocks of sixteen pairs |
-| `@7d` = `50`, `@7e` = `6f`, **twice** | 47, 16, 46, 17, ... repeated |
-
-5 + 6 x 32 = 197, which is N. The last two calls take identical parameters,
-which is why the captured ladder ends with the same 32 Ucodes twice - a detail
-that reads as an oddity in the capture and as one duplicated instruction pair in
-the ROM.
-
-### A trap for anyone entering this code directly
-
-The assembler reaches its buffer through `*`, which selects whichever auxiliary
-register `ARP` names, not `AR1` - despite the `lar ar1, #0940` two instructions
-earlier. Its real caller arrives with `ARP` already 1. Entering at `e7e8` without
-setting it sends every store through `AR0`, and the run produces a descriptor
-that is *almost* right: the ladder appears, but shifted, with its first Ucode
-missing, because `banz *-, ar1` at `e807` sets `ARP` partway through. `vpcm.py`
-selects `AR1` first, the way the firmware's own `mar *, ar1` does.
+> An earlier version of this document said the board takes samples on both C5x
+> serial ports, and used that to dissolve the 7200 Hz problem in
+> [codec-rate-312.md](codec-rate-312.md). **That was wrong.** It rested on
+> overlay 6 appearing to read `DRR` 32 times and `TRCV` four times. Every one of
+> those 36 sites is inside a data table that disassembles into plausible
+> instructions - they cluster in two contiguous blobs at `c019..c207` and
+> `ca64..cbf2`, and not one has a single control-flow target within 48 words,
+> while every site in the resident bank does. `tools/c5x_disasm.anchored` now
+> makes that test cheap, and `tests/test_c5x_anchoring.py` pins these exact
+> addresses so the mistake cannot come back quietly.
+>
+> What survives is only this: the resident bank sets up `TSPC`, the TDM serial
+> port's control register, at `808a`. **Nothing in any of the four images ever
+> reads `TRCV`.** So the port is configured and then not used, which is a much
+> weaker fact than "both converters are in use" and does not resolve anything.
+>
+> The 7200 Hz contradiction is therefore **open again**, and harder than before:
+> the only sample path in evidence anywhere is the AC01 on the primary port.
 
 ## The far end sent exactly the ladder this ROM generated
 

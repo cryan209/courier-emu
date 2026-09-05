@@ -152,9 +152,11 @@ missed.
 Instead of the AC0x path, both 20.16 MHz builds configure **`TSPC`** (`0x32`,
 the TDM serial port control register) at program `0x008a`.
 
-> **Corrected.** Not instead - as well. This build drives the AC01 *and* sets
-> up the TDM port, and an overlay reads `TRCV`. Both converters are in use.
-> See [vpcm-datapump.md](vpcm-datapump.md). `main211` does not,
+> **Partly corrected.** This build drives the AC01 *and* sets up the TDM port, so
+> "instead of" is too strong for the setup. But an earlier version of this note
+> also claimed an overlay reads `TRCV`, and that was wrong - those sites are a
+> data table read as code. Nothing in any image reads `TRCV`, so the TDM port is
+> configured and then unused. See [vpcm-datapump.md](vpcm-datapump.md). `main211` does not,
 anywhere in program `0000..2000`.
 
 So there is a genuine architectural split between generations, and it is
