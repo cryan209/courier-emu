@@ -346,6 +346,56 @@ which is the same pairing the resident makes at `9735`, immediately after
 programming the codec at `9730`. There is a further six-entry, two-word-per-entry
 table at program `967a`, also indexed by the DP 7 index.
 
+## The block is INFO1's per-symbol-rate probe result
+
+The 9 bits per entry split 5 + 4, and the reader shows how. The builder packs
+`A[i] + (B[i] << 5)`; the parser starts 5 bits lower (58 against 63), steps by
+the same 9, and masks with `and #000f`. So each entry is a 5-bit field followed
+by a 4-bit field, and only the 4-bit one is parsed back.
+
+That is the shape of V.34's **INFO1** per-symbol-rate block: for each of the six
+symbol rates, a pre-emphasis selection plus a flag, and a projected maximum data
+rate. The parsed 4-bit value is the far end's projected rate, measured from the
+line probe - which is why the selection at `91e1` is `min(ours, theirs)` then
+argmax. It picks the symbol rate whose worse direction is best, off probe
+results, exactly as V.34 Phase 2 prescribes.
+
+It also explains zero-means-unsupported without needing a separate flag: a
+projected data rate of zero is a symbol rate that cannot carry anything, so
+withdrawing 2400/2743/2800/3000 for a V.PCM call is a matter of zeroing four
+entries before the block is built.
+
+Field widths throughout are set by the caller's mask, not by the reader - `8785`
+returns a raw window and the caller narrows it. So the frame layout can be read
+straight off the call sites:
+
+| buffer | bit offset | width | what |
+|---|---:|---:|---|
+| `ff08` (received) | 12 | 3 | a symbol-rate index - clamped to 5 at `96cf` and stored as **the DP 7 index** |
+| `ff08` | 58, 49, 40, 31, 22, 13 | 4 | the far end's projected data rate per symbol rate -> `ff30..ff35` |
+| `ff08` | 70 | 7 | `9766` |
+| `ff08` | 9/10 | 10 | `9703` |
+| `ff1a` (outgoing) | 63, 54, 45, 36, 27, 18 | 9 | our per-rate block, `A + (B << 5)` |
+| `ff1a` | 76, 37, 24, 19, 15, 9 | - | single fields |
+
+## Where the two indices come from
+
+This sharpens the open question rather than closing it, and it points the way
+your reading suggested:
+
+* **DP 7 (`0x3db`)** - read from a 3-bit field at bit 12 of the **received**
+  frame (`96c8`), clamped to 5. This is the index that programs the codec, the
+  carrier table and the symbol-rate table.
+* **DP 6 (`0x35b`)** - the result of **our own** argmax at `91e1` over both
+  directions' probe results, and what the outgoing frame declares at `9211`.
+
+So the codec follows a symbol rate the far end sent us, while our own selection
+lives in the other variable. That is the transmit-versus-receive split, with
+both halves now located. What it does not yet say is which of the two is the
+transmit rate and which the receive rate, or how the single codec `Fs` is
+reconciled when they differ - `971c`'s `max` of two 3-bit fields is the obvious
+candidate for that reconciliation and still has no shown path to either index.
+
 **Not established: which rates this modem actually offers.** The advertised
 values live in data RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time,
 so "3200 and 3429 enabled, the rest zeroed" is not something the ROM states
