@@ -17,7 +17,7 @@ hashes and assumptions; treat that file as the authority for what a capture is.
 | `dsp-mailbox-command-01/`, `dsp-mailbox-command-02/` | The repeatable host write: null-control and query tags, every inbound-register prediction fixed from the disassembly beforehand and held |
 | `dsp-mailbox-312-comparison-01/` | The `07, 2d, 62, 07` sequence on the DSP 3.1.2 board, replayed offline through that firmware's real dispatcher and sender, with seven flash pages verified byte for byte first. The `62` reply differs - hardware `0015`, emulator `0012` - and is kept visible rather than fitted |
 | `dsp-window-pump-01/` | Tag `06` armed and pumped; the channel responds, but its sources are empty on an idle unit |
-| `dsp-window-pump-02/`, `dsp-window-pump-03/` | Tag `46` pumped: sixteen words, the first four DSP **program** memory matching the flash image at addresses predicted beforehand |
+| `dsp-window-pump-02/`, `dsp-window-pump-03/` | Tag `46` pumped: sixteen words, the first four DSP **program** memory matching the flash image at addresses predicted beforehand. The table they come from is the V.34 carrier and symbol-rate table, so the window reports which of the two the datapump is using |
 | `dsp-window-pump-312-01/` | The tag `06` window on the 3.1.2 board: seven words, all zero on an idle unit, with `1c` bit 2 marking the sequence length. The run that re-derived the 7.4.16 chain vector `[0x01cd]` and confirmed it live |
 | `dsp-window-index-01/` | Tag `48` writing `ffb1` all-ones before arming tag `46`: the index stays `0`, since the other AND terms are call-setup state |
 | `dsp-window-stream-01/` | The `0x60`/`0x62` chain's live state, and tag `06` shown to arm the DSP streamer without emitting |

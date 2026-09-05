@@ -137,7 +137,12 @@ Three things cannot all be true:
 
 1. The dial path runs at 7200 Hz. Constrained hard by DTMF tolerance, as above.
 2. Registers 1 and 2 are set once at reset and never changed.
-3. This unit does x2 and V.90, which need at least 8000 Hz.
+3. This unit does x2 and V.90, which need at least 8000 Hz. `ATI7`'s option
+   list is the *enabled* feature set, not what the build could do, so the
+   `x2` and `V90` entries mean this board is licensed and expected to run
+   them. The unit is labelled "COURIER V.34 Fax with V.32 bis", so V.PCM
+   arrived as an upgrade to it - which puts a V.PCM datapump somewhere in
+   this image.
 
 Something in that list is wrong, and this document does not know which. The
 first candidate below has since been ruled out, which sharpens the problem
@@ -195,3 +200,39 @@ they are, would give the ratio between the two rates directly - and with the
 `Fs = MCLK/(2AB)` form assumed, `MCLK` itself. Finding one tag `2c` send with a
 known modulation would convert the whole question from a datasheet lookup into
 arithmetic.
+
+
+## Where the V.PCM datapump is not
+
+Two searches for it came back empty, and one of them was the wrong search.
+
+There is no companding table - no monotonic run of 48 words or more anywhere in
+the resident bank or the three overlays, and only one in the supervisor, which
+is not shaped like one. That is the expected result rather than a surprising
+one: the Courier works in the linear domain, so a mu-law table is not something
+its datapump needs, and this says nothing about whether V.PCM code is present.
+
+There is also no line-probe tone table. V.34's probing signal is tones at
+multiples of 150 Hz, so a table of phase increments for it would be an
+arithmetic progression whose step gives the sample rate directly - 0x0555 at
+7200 Hz, a round 0x0400 at 9600. No progression with a plausible step exists in
+any of the four images, so the probe is synthesised some other way and that
+route to the rate is closed.
+
+## What the tag 46 window actually streams
+
+The table it reads from, at program `85f2`, is the **V.34 rate and carrier
+table**:
+
+| words | meaning |
+|---|---|
+| `0708 0725 074b 0753 0780 07a7` | 1800, 1829, 1867, 1875, 1920, 1959 - V.34 carrier frequencies |
+| `0960 0ab7 0af0 0bb8 0c80 0d65` | 2400, 2743, 2800, 3000, 3200, 3429 - all six V.34 symbol rates |
+
+`artifacts/dsp-window-pump-02/` and `-03/` describe these as "DSP program memory
+matching the flash image at addresses predicted beforehand", which is true and
+was the point of that run, but under-reads them. The window reports which V.34
+carrier and symbol rate the datapump is using.
+
+They are stored as decimal Hz and baud, not as phase increments, so they carry
+no sample-rate information themselves.
