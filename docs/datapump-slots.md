@@ -41,7 +41,11 @@ The order is the menu's, fastest first, which is what a rate-negotiation
 fallback ladder looks like. Six of the nine are held up by something measured
 rather than by the ordering alone:
 
-* **V.34.** `9d00` selects codec rate index 5 - 8000 Hz for a 3429 baud symbol
+* **V.34 and V.FC.** The two overlay predicates gate on S56 bits `0x40` and
+  `0x80`, which the modem's own help text names `V34` and `VFC` - the
+  firmware's label rather than an inference. See
+  [pcm-x2-v90.md](pcm-x2-v90.md). Independently, `9d00` selects codec rate
+  index 5 - 8000 Hz for a 3429 baud symbol
   rate, which is V.34's alone and which no other slot asks for. See
   [codec-sample-rates.md](codec-sample-rates.md).
 * **V.22bis and V.22.** Both slots install the *same* transmitter `d34a` and
@@ -116,10 +120,8 @@ steps:
 | **V.90** | 28000 … 62666, and 64000 - 28 rates, each also `/ARQ/V90` |
 
 x2 starts at 33333 where V.90 starts at 28000, and V.90 fills in every step
-between. What separates the two receivers *inside* overlay 8 is not
-established here: no bit test in that image has been tied to the choice, and
-the selection is made on the supervisor side, where the two string tables are
-what is visible.
+between. How the two are enabled, what each hands the DSP, and what is still
+unknown about them is in [pcm-x2-v90.md](pcm-x2-v90.md).
 
 ## Fax is resident, and it collides with overlay 8
 
@@ -164,7 +166,8 @@ sits below `dc00`.
 * Slot 2 = V.32 and slot 3 = HST rest on one constant and on structure. Both
   should be measurable the way V.22 and V.23 were, by bringing the entry up and
   reading its carrier cells.
-* Nothing separates x2 from V.90 inside overlay 8 yet.
+* Nothing separates x2 from V.90 *inside* overlay 8 yet, though the
+  supervisor side is now mapped - see [pcm-x2-v90.md](pcm-x2-v90.md).
 * V.17 versus V.27ter for the two 1800 Hz fax rows is an ordering argument.
 * The `+FTM`/`+FRM` handlers reach the mailbox through the supervisor's command
   ring rather than a direct call, so the mapping from a Class 1 modulation

@@ -76,3 +76,43 @@ def test_the_fax_subsystem_sits_where_overlay_eight_loads(rom):
     # The V.21 slot is the exception: it is the FSK code, which sits below
     # dc00 and survives the overlay.
     assert table[1] < first
+
+
+def test_the_help_text_names_the_option_bits(rom):
+    """S58 carries the two PCM schemes; S56 names the overlays."""
+    assert datapumps.s_register_bits(rom, datapumps.PCM_OPTIONS) == {
+        1: 'x2', 2: 'BLER monitor', 32: 'V.90'}
+    modulation = datapumps.s_register_bits(rom, datapumps.MODULATION_OPTIONS)
+    assert modulation[32] == 'V34+' and modulation[64] == 'V34'
+    assert modulation[128] == 'VFC'
+    # The overlay predicates gate on exactly those two bits of that register,
+    # which is what names overlay 6 V.34 and overlay 7 V.FC.
+    options = datapumps.S_REGISTER_BASE + datapumps.MODULATION_OPTIONS
+    assert options == 0x4C6
+    for bit in (0x40, 0x80):
+        assert datapumps._test_byte(options, bit) in rom.data
+
+
+def test_x2_and_v90_are_two_bits_over_one_receiver(rom):
+    control = datapumps.pcm_control(rom)
+    assert control['x2']['disable_bit'] == 1
+    assert control['V90']['disable_bit'] == 0x20
+    assert control['x2']['s_register'] == control['V90']['s_register'] == 58
+    # x2 hands the DSP a capability word; V.90's branch has an empty body.
+    assert control['x2']['command'] == 0x70
+    assert control['V90']['command'] is None
+    assert control['V90']['empty_setup'] and not control['x2']['empty_setup']
+
+
+def test_both_ladders_step_by_one_pcm_frame(rom):
+    ladders = datapumps.pcm_ladders(rom)
+    assert len(ladders['x2']) == 16 and len(ladders['V90']) == 28
+    assert ladders['x2'][0] == 33333 and ladders['V90'][0] == 28000
+    assert ladders['x2'][-1] == ladders['V90'][-1] == 64000
+    for rates in ladders.values():
+        for rate in rates:
+            # Every rate is a whole number of bits per six-symbol frame.
+            assert abs(rate / datapumps.PCM_STEP
+                       - round(rate / datapumps.PCM_STEP)) < 0.01
+    # V.90 covers every x2 rate and five slower ones besides.
+    assert set(ladders['x2']) < set(ladders['V90'])

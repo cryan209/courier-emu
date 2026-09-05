@@ -145,3 +145,90 @@ def fax_carriers(rom, tag=0x21):
         found[slot] = tuple(sorted(round(i / 65536 * DIAL_RATE)
                                    for i in increments)) or None
     return found
+
+
+# --- the PCM downstream schemes -------------------------------------------
+#
+# x2 and V.90 are two capabilities of one receiver, not two images: both ride
+# overlay 8, which the loader chains onto the V.34 core. What separates them is
+# an S-register bit each, and what each hands the DSP.
+
+# The S-register file. The `ATSn` reader indexes it by the number the user
+# typed, `mov al, byte ptr [bx + 0x48e]`, which is what fixes the base.
+S_REGISTER_BASE = 0x048E
+S_REGISTER_INDEX = bytes([0x8A, 0x87, 0x8E, 0x04])      # mov al, [bx + 0x48e]
+PCM_OPTIONS, MODULATION_OPTIONS = 58, 56
+
+# `test byte ptr [<S-register>], <bit>` - the disable tests.
+def _test_byte(address, bit):
+    return bytes([0xF6, 0x06, address & 0xFF, address >> 8, bit])
+
+X2_BIT, V90_BIT = 0x01, 0x20
+X2_COMMAND = 0x70                      # the capability word x2 sends the DSP
+SEND_TAG = bytes([0xB8, X2_COMMAND, 0x00])              # mov ax, 0x70
+EMPTY_BODY = bytes([0x75, 0x00, 0xC3])                  # jne +0 ; ret
+
+# Both ladders step by 8000/6 bps: PCM downstream is 8000 symbols a second in
+# six-symbol frames, so a rate is a count of bits per frame.
+PCM_STEP = 8000 / 6
+LADDER = re.compile(rb'([0-9]{4,5})/(x2|V90)(?![0-9A-Za-z])')
+
+
+def s_register_bits(rom, number):
+    """The bit meanings the modem's own help text gives for one S-register.
+
+    Each entry is a token byte, the bit's decimal value, two more tokens, then
+    the name - so the values and names come out even though the surrounding
+    help text is compressed.
+    """
+    anchor = b'S%d' % number
+    start = rom.data.find(anchor, 0x18000, 0x19000)
+    if start < 0:
+        raise ValueError(f'no help entry for S{number}')
+    found = {}
+    for chunk in rom.data[start:start + 0x120].split(b'\x00')[1:]:
+        body = chunk.lstrip(b'\x7f\xff ')
+        if body[:1] == b'S' and body[1:2].isdigit():
+            break                                        # the next register
+        match = re.match(rb'[\x80-\xff](\d{1,3})[\x80-\xff]{2} ([ -~]+?)[\s\x80-\xff]*$',
+                         chunk)
+        if match:
+            found[int(match[1])] = match[2].decode()
+    return found
+
+
+def pcm_ladders(rom):
+    """The rates each scheme has a result code for, from the CONNECT strings."""
+    found = {'x2': set(), 'V90': set()}
+    for match in LADDER.finditer(rom.data):
+        found[match[2].decode()].add(int(match[1]))
+    return {scheme: tuple(sorted(rates)) for scheme, rates in found.items()}
+
+
+def pcm_control(rom):
+    """How each scheme is enabled, and what it tells the DSP.
+
+    The two eligibility predicates are the same routine twice over, differing
+    only in which S58 bit disables them. What follows differs: x2 builds a
+    capability word and sends it as command 0x70, while V.90's branch is
+    present with an empty body - `jne +0 ; ret` - so it adds nothing to the
+    shared PCM setup.
+    """
+    if S_REGISTER_INDEX not in rom.data:
+        raise ValueError('the S-register file is not where this expects')
+    options = S_REGISTER_BASE + PCM_OPTIONS
+    found = {}
+    for scheme, bit in (('x2', X2_BIT), ('V90', V90_BIT)):
+        sites = [m.start() for m in
+                 re.finditer(re.escape(_test_byte(options, bit)), rom.data)]
+        command, empty = None, False
+        for site in sites:
+            tail = rom.data[site + 5:site + 5 + 3]
+            if tail == EMPTY_BODY:
+                empty = True
+            if SEND_TAG in rom.data[site:site + 0x40]:
+                command = X2_COMMAND
+        found[scheme] = {'s_register': PCM_OPTIONS, 'disable_bit': bit,
+                         'sites': tuple(sites), 'command': command,
+                         'empty_setup': empty}
+    return found
