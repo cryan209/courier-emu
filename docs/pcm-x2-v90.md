@@ -212,27 +212,66 @@ setting.** `[0x4ed]` is written only at `0x26cae`, by an AT handler that parses
 a number and rejects anything above 2, and it has a twin at `[0x563]` chosen by
 the same active-or-stored test the S-register reader uses. The two profile
 blocks start at `0x048e` and `0x0504`, and both copies sit `0x5f` into their
-block - past the S-registers, so this is an ampersand-style option rather than
-an S-register. Nothing in the negotiation paths writes it.
+block - past the S-registers, which the help text documents only to S70.
 
-Putting the three together with the DSP handlers:
+## The command is `&X`, and it is the clock source
 
-| `[0x4ed]` | tag | sample path | receiver |
-|---:|---|---|---|
-| 0 | `4d` | `819d`, 8-bit codewords | bit 8 clear - the **f-family** |
-| 1 | `4e` | `81bb`, interpolating | bit 8 clear, no PCM path |
-| 2 | `4f` | `819d`, 8-bit codewords | bit 8 set - the **e-family** |
+The setting names itself in the `&V` display. Each line there is a label
+routine followed by a value, and a label routine prints the string that follows
+its own call:
+
+```text
+1b4d6  call 1bb11            ; the label
+1b4d9  jae  ...              ; then the value:
+1b4f0  mov  al, [0x4ed]
+1b4f3  jmp  1b38e            ; print it as a number
+
+1bb11  test byte [058b], 48
+1bb18  call <print inline>
+1bb1b  82 '&' 'X' 00         ; the string it prints
+```
+
+`courier_emu.datapumps.receiver_setting_command` follows that and reads **`&X`**
+out of the image. Its help entry at `0x19790` has three options and ends
+`RX ... is Source`: `&X` is the **synchronous transmit clock source** - DCE,
+DTE, or recovered from the received signal.
+
+| `&X` | `[0x4ed]` | tag | sample path `@61` | `@1f` bit 8 |
+|---:|---:|---|---|---|
+| 0 | 0 | `4d` | `819d`, a sample from two 8-bit halves | clear - the **f-family** |
+| 1 | 1 | `4e` | `81bb`, interpolating, writes port `0x6a` | clear |
+| 2 | 2 | `4f` | `819d` | **set** - the **e-family** |
+
+The two sample paths make sense of it: when the DTE supplies the clock, the
+data has to be resampled between two clocks, which is what `81bb` does with its
+interpolation, where `819d` just assembles the word.
+
+## What this retires
+
+**The two families in overlay 8 are not x2 and V.90.** The previous section
+noted the shape of a three-way setting - one value on a different sample path,
+two differing only in which receiver runs - and called it suggestive of
+"off / one scheme / the other". With the setting named, that reading is wrong:
+`@1f` bit 8 is set by `&X2` and nothing else, so what forks overlay 8 is the
+**clock source**, and the fork is most likely a timing-recovery variant rather
+than two PCM schemes.
+
+What survives is the structure, not the label: overlay 8 does hold two code
+families, `de0b` does fork between them on one bit, and the V.34 core does
+dispatch into both. What each family is *for* is open again.
 
 ## What is still open
 
-**Which family is x2 and which is V.90.** The shape of the setting is
-suggestive - three values where one takes the ordinary sample path and the
-other two take the PCM path and differ *only* in which receiver runs, which is
-what "off / one scheme / the other" would look like - but that is a reading of
-the shape, not a label. Naming it needs the AT command that writes `[0x4ed]`,
-and its handler at `0x26c88` is reached through an indirect dispatch that has
-not been located, so the command letter and its documented values are still
-unread.
+**How the DSP is told x2 from V.90.** This is back where it was. S58 carries a
+bit for each, x2's setup sends a capability word as command `70` while V.90's
+branch is empty, and `0xfff4` bit 13 - the bit everything downstream reads - is
+decided by the four-candidate search rather than by the supervisor. None of
+that names the two code families in overlay 8, and `&X` turned out to be a
+different question.
+
+**What the two families are.** With the clock-source reading in hand, the fork
+looks like a timing variant, but nothing here says what differs between the
+tables each family carries.
 
 **Bit 9's arming.** `dccd` sets it from inside the `dc00` block, which overlay 8
 replaces, so which image owns that handler at the moment it runs needs

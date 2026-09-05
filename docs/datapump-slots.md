@@ -166,8 +166,9 @@ sits below `dc00`.
 * Slot 2 = V.32 and slot 3 = HST rest on one constant and on structure. Both
   should be measurable the way V.22 and V.23 were, by bringing the entry up and
   reading its carrier cells.
-* Nothing separates x2 from V.90 *inside* overlay 8 yet, though the
-  supervisor side is now mapped - see [pcm-x2-v90.md](pcm-x2-v90.md).
+* Nothing separates x2 from V.90 *inside* overlay 8 yet. Overlay 8 does hold
+  two code families, but the bit that forks them turned out to be `&X`, the
+  synchronous clock source - see [pcm-x2-v90.md](pcm-x2-v90.md).
 * V.17 versus V.27ter for the two 1800 Hz fax rows is an ordering argument.
 * The `+FTM`/`+FRM` handlers reach the mailbox through the supervisor's command
   ring rather than a direct call, so the mapping from a Class 1 modulation

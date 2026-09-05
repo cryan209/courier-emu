@@ -371,3 +371,48 @@ def receiver_setting_is_configured(rom):
                    == RECEIVER_SETTING_STORED - PROFILE_STORED)
     return (writes_active in rom.data and writes_stored in rom.data
             and same_offset)
+
+
+# The `&V` display prints each setting as a label then a number. Each label is
+# a routine that calls a print-inline-string helper, the string following the
+# call, so the name of a setting can be read from the display code.
+DISPLAY_LOAD = bytes([0xA0, RECEIVER_SETTING & 0xFF, RECEIVER_SETTING >> 8])
+NEAR_CALL = 0xE8
+
+
+def _inline_string(data, site, limit=0x30):
+    """The string a label routine prints: it follows that routine's own call."""
+    for pc in range(site, site + limit):
+        if data[pc] != NEAR_CALL:
+            continue
+        text = pc + 3
+        end = data.find(b'\x00', text, text + 16)
+        if end < 0:
+            continue
+        body = bytes(c for c in data[text:end] if 0x20 <= c < 0x7F)
+        if body:
+            return body.decode()
+    return None
+
+
+def receiver_setting_command(rom, limit=0x20):
+    """The AT command whose value chooses the mode command, by its own label.
+
+    The display routine prints a label and then this setting's value, so
+    following its call to the label routine and reading the string that
+    routine prints names the command.
+    """
+    for match in re.finditer(re.escape(DISPLAY_LOAD), rom.data):
+        site = match.start()
+        for back in range(3, limit):
+            pc = site - back
+            if rom.data[pc] != NEAR_CALL:
+                continue
+            target = pc + 3 + int.from_bytes(rom.data[pc + 1:pc + 3], 'little',
+                                             signed=True)
+            if not 0 <= target < len(rom.data):
+                continue
+            label = _inline_string(rom.data, target)
+            if label and label.startswith('&'):
+                return label
+    raise ValueError('the setting is not labelled in the display code')

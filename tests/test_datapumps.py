@@ -168,3 +168,12 @@ def test_the_receiver_is_chosen_by_a_saved_setting(rom):
     offset = datapumps.RECEIVER_SETTING - datapumps.PROFILE_ACTIVE
     assert offset == datapumps.RECEIVER_SETTING_STORED - datapumps.PROFILE_STORED
     assert offset > datapumps.PCM_OPTIONS
+
+
+def test_the_setting_behind_the_mode_commands_is_ampersand_x(rom):
+    """The display code labels it, so the image names its own command."""
+    assert datapumps.receiver_setting_command(rom) == '&X'
+    # Its help entry lists three options, the last one clock-from-receive.
+    entry = rom.data.find(b'&Xn', 0x19000, 0x1a000)
+    assert entry > 0
+    assert b'is Source' in rom.data[entry:entry + 0x40]
