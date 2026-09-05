@@ -26,13 +26,30 @@ descriptor block.
 That block is inside **overlay 8**, at DSP program `e7d6`. The 3.0.13 board and
 `IDSDL302.ROM` carry the same block in their own overlay 8, at `e599`.
 
-That it is identical across builds dates it, and the date says this is x2's page
-with V.90 added rather than a V.90 page. The 3.0.13 DSP is stamped **03/13/98**,
-about six months before V.90 was approved, and it already carries these exact
-fields and already advertises `x2,V90`. A March 1998 build cannot be implementing
-the finished recommendation. x2 learns digital impairments the same way, so the
-descriptor is x2's and V.90 inherited it - which is also why the two modulations
-share a page rather than having one each.
+The descriptor is stable across every image here. The assembler's signature -
+`splk *+, #00c5` then `splk *+, #4141`, so N = 197 and LSP = LTP = 66 - appears
+in all four, including `main211` from 2003, and the SP and TP patterns are
+identical with it. So this descriptor did not change between the oldest build in
+this repository and the newest.
+
+**An earlier version of this document read more into that than it supports.** It
+argued that because the 3.0.13 DSP is stamped `03/13/98`, about six months before
+V.90 was approved, the descriptor must be x2's with V.90 layered on. Two things
+undermine that:
+
+* The `ATI7` date is a stamp in the image. What it actually records - when the
+  code was written, built, or released to users - is not established here, and
+  the argument needs it to mean the first of those.
+* x2 and V.90 have a great deal in common, and USR's own work fed the
+  recommendation. If the two use the same descriptor, then "x2's or V.90's" is
+  not a question this image can answer, because there would be nothing to tell
+  apart.
+
+What the images do support is narrower and still useful: **one page carries the
+V.PCM datapump, its descriptor has not changed across five years of builds, and
+nothing here separates an x2 descriptor from a V.90 one.** Whether x2 and
+K56flex had an equivalent impairment-learning phase is a question about those
+specifications, not about this ROM, and this document does not answer it.
 
 The training UCode sequence is not stored anywhere in any image, in bytes or in
 either word order. It is generated rather than tabulated - and running the
