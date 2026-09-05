@@ -123,3 +123,63 @@ def test_the_loopback_carries_a_real_signal(rom):
     transmitted, _, _ = fsk.loopback(rom, [1, 0] * 8, mode='v21-answer')
     assert max(abs(x) for x in transmitted) > 2000
     assert min(soft) < 0 < max(soft)
+
+
+def test_the_receive_setup_chooses_the_band_the_receiver_hears(rom):
+    """One band's signal, four receivers: only its own band centre recovers it.
+
+    This is the measurement the loopback reading rests on. Without it, "the
+    receiver sits in the transmitter's own band" is an argument about
+    constants rather than a property of the firmware.
+    """
+    state, bits = 0x1FF, []
+    for _ in range(60):
+        bits.append(state & 1)
+        state = (state >> 1) | (((state ^ (state >> 4)) & 1) << 8)
+    errors = fsk.band_scan(rom, bits, 'v21-answer')
+    assert errors[0xD7A4] == 0                       # 1750, the answer centre
+    assert min(errors[s] for s in (0xD7AC, 0xD7C8, 0xD7D0)) > len(bits) // 4
+
+
+def test_the_start_commands_dispatch_nine_datapumps(rom):
+    """Mailbox commands 10 and 11, each through its own table."""
+    tables = fsk.mode_tables(rom)
+    assert set(tables) == set(fsk.START_COMMANDS)
+    assert tables[0x10] == (0x9D00, 0xB000, 0xB052, 0xC533, 0xCD61, 0xCD79,
+                            0xDA31, 0xD808, 0xD7E9)
+    assert tables[0x11] == (0x9D00, 0xB000, 0xB052, 0xC7FD, 0xCCE0, 0xCCFA,
+                            0xD9BC, 0xD7FC, 0xD7D8)
+    # The two FSK slots are the own-band entries, in both tables.
+    loops = {entry for entry, loop in fsk.loopback_pairs().items() if loop}
+    assert set(tables[0x10][7:]) | set(tables[0x11][7:]) == loops
+    # The first two slots are the overlays' own entry addresses.
+    entries = {overlay.entry_word for overlay in rom.dsp_overlays}
+    assert set(tables[0x10][:2]) <= entries
+
+
+def test_the_mode_flags_index_the_tables_in_order(rom):
+    """The selector is read out of the image, not repeated here."""
+    flags = fsk.mode_flags(rom)
+    assert len(flags) == fsk.MODE_SLOTS
+    assert flags[0] == (0x27, 14) and flags[1] == (0x26, 11)
+    assert flags[7] == (0x27, 3) and flags[8] == (0x26, 9)
+    assert all(cell in (0x26, 0x27) for cell, _ in flags)
+
+
+def test_no_overlay_sets_up_an_fsk_band(rom):
+    """The four 300 bps bands are resident: the overlays carry none of them."""
+    import struct as _struct
+
+    setups = {0xAE72, 0xAE73}          # splk @72 / @73, the mark and space cells
+    overlays = rom.dsp_overlays
+    for overlay in overlays:
+        raw = rom.data[overlay.offset:overlay.offset + overlay.length]
+        words = _struct.unpack('<%dH' % (len(raw) // 2), raw)
+        pairs = [words[i + 1] for i, word in enumerate(words[:-1])
+                 if word in setups]
+        band = [value for value in pairs if 0x2000 <= value <= 0x5000]
+        if overlay.entry_word == 0x8000:          # the resident bank
+            assert sorted(band) == [0x22D8, 0x260B, 0x29F5, 0x2D28,
+                                    0x3AAB, 0x41C7, 0x4800, 0x4F1C]
+        else:
+            assert band == []

@@ -191,6 +191,108 @@ depends on the callback rate this document could not establish. If the
 callback runs at 7200 Hz it is 150 baud; V.21's 300 baud would need 14400.
 **Neither the baud rate nor the callback rate is settled here.**
 
+## Which band a receive setup hears, measured
+
+The loopback argument above rests on the receive setup choosing the band the
+receiver listens on. That was read off the constants; this measures it.
+
+One signal, four receivers. The firmware's own modulator produces a **V.21
+answer** signal at 1650/1850, the transmitter is left on the originate band and
+gated off, and the same signal is handed to the receiver with each of the four
+receive setups installed in turn:
+
+| receive setup | carrier | bit errors over 120 |
+|---|---:|---:|
+| `d7a4` | 1750, the answer band centre | **0** |
+| `d7ac` | 2125 | 56 |
+| `d7c8` | 1080 | 64 |
+| `d7d0` | 1170 | 64 |
+
+Only the setup whose carrier is the signal's own band centre recovers anything;
+the other three are at chance. So the receive setup selects the band, and the
+four dispatch entries that pair a transmitter with its own band centre really
+are the modem hearing itself. Whatever else they are for, they cannot be a
+configuration for a call: no V.21 or Bell 103 modem in a call listens to the
+band it is transmitting in.
+
+```sh
+.venv/bin/python -m courier_emu.fsk --band-scan --mode v21-answer \
+  --rom artifacts/courier-board-21210-capture-403/courier-board.rom \
+  --bits 111111111000000000... --output /tmp/band
+```
+
+The run above is saved in `artifacts/fsk-band-01/`, with the dispatch tables
+and mode flags read out of the same image. `--bits` is worth passing: the
+default 511-bit sequence is four receiver runs long here.
+
+## Where those entries are dispatched from
+
+Mailbox commands **`10`** and **`11`** in the table at `83e9` enter at `9b34`
+and `9b38`. Each loads a table base into `@7c`; both then take an index from
+the mode flags and jump:
+
+```text
+9b34  splk   @7c, #9b48     ; one table
+9b38  splk   @7c, #9b51     ; the other
+...
+9b3e  call   9b5a           ; the index, from the mode flags
+9b40  retc   ntc            ; no flag set, nothing to start
+9b42  opl    @6f, #4040
+9b44  add    @7c
+9b45  tblr   @7d
+9b47  bacc
+```
+
+The selector at `9b5a` is a run of `bit n, @cell ; lacl #index ; retc tc`, so
+each modulation's slot is fixed by which flag it sets. Nine slots:
+
+| slot | flag | table `9b48` | table `9b51` | |
+|---:|---|---|---|---|
+| 0 | `@27` bit 14 | `9d00` | `9d00` | **overlay 6's entry** |
+| 1 | `@26` bit 11 | `b000` | `b000` | **overlay 7's entry** |
+| 2 | `@27` bit 12 | `b052` | `b052` | resident |
+| 3 | `@26` bit 10 | `c533` | `c7fd` | resident |
+| 4 | `@26` bit 12 | `cd61` | `cce0` | resident |
+| 5 | `@26` bit 13 | `cd79` | `ccfa` | resident |
+| 6 | `@27` bit 5 | `da31` | `d9bc` | resident |
+| 7 | `@27` bit 3 | `d808` | `d7fc` | V.21, own band |
+| 8 | `@26` bit 9 | `d7e9` | `d7d8` | Bell 103, own band |
+
+`courier_emu.fsk.mode_tables` and `mode_flags` read both out of the image
+rather than repeating them.
+
+A second dispatcher on the **same flag bits** - `9da6`, `a00d`, `9dc1`, `a054` -
+branches instead to the four cross-band FSK entries `d7f4`, `d7e3`, `d802`,
+`d80e`, and for slots 4 and 5 to `cd13`/`cd42` and `cc9e`/`ccc6`, neighbours of
+the table's `cd61`/`cd79` and `cce0`/`ccfa`. So these modulations have two
+entry points each, and for the two that can be read, the pair differs by
+exactly which band the receiver is put on.
+
+The path leaves a marker. `9b42` sets `@6f` bit 14, and every entry it
+dispatches to sets it again - overlay 6's `9d00` writes `#4042`, overlay 7's
+`b010` and the resident `b052` write `#4841` - where entries reached any other
+way write `#0040` or `#0043`. Five resident sites test that bit and configure
+differently; at `8d6f` it swaps the transmit carrier between `#2000` and
+`#4000`, which at 9600 Hz are 1200 and 2400 Hz, the V.22 originate and answer
+carriers - again a transmitter moved onto the band its own receiver is on.
+
+## The overlays carry no loopback entries of their own
+
+Nothing in overlays 6, 7 or 8 sets up an FSK band. Scanning each image for
+`splk @72` and `splk @73` - the mark and space increment cells - finds the
+eight resident writes and nothing in overlay 6 or 7; overlay 8's nine hits are
+loop counters on another data page (`splk @73, #0005`, `#001f`, `#0004`). The
+four 300 bps bands, all eight transmit/receive pairings, and both dispatchers
+are resident.
+
+What the overlays do have is a place in the table: slots 0 and 1 are their
+entry addresses. Their loopback behaviour is **not** established here, and two
+things say to leave it that way. No overlay tests `@6f` bit 14, and none of
+them calls any of the five resident routines that do - their entries set the
+bit and go. And what that bit means is itself unsettled: the `8d6f` reading
+above is as consistent with an answer-side flag as with a self-test flag, and
+only the two FSK slots have been shown to listen to themselves.
+
 ## The core bug that hid all of this
 
 `MAC`, `MACD`, `MADD` and `MADS` are the C5x's FIR instructions: each walks a

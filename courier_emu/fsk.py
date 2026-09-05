@@ -65,6 +65,61 @@ PAIRS = {
 }
 
 
+# The supervisor's mailbox command table, and the two commands that start a
+# datapump through it. Each loads a table base into `@7c`, takes an index from
+# the mode flags, and `bacc`s to the entry: `add @7c ; tblr @7d ; bacc`.
+COMMAND_TABLE = 0x83E9
+START_COMMANDS = (0x10, 0x11)
+MODE_SELECTOR = 0x9B5A
+MODE_SLOTS = 9
+
+SPLK_AT_7C = 0xAE7C
+BIT_TEST, LACL, RETC_TC, RET = 0x4000, 0xB900, 0xED00, 0xEF00
+
+
+def mode_tables(rom):
+    """The two `MODE_SLOTS`-entry datapump tables the start commands dispatch
+    through, keyed by mailbox tag."""
+    w = program(rom)
+    tables = {}
+    for tag in START_COMMANDS:
+        handler = w[COMMAND_TABLE + tag]
+        if w[handler] != SPLK_AT_7C:
+            raise ValueError(f'command {tag:#04x} does not load a table base')
+        base = w[handler + 1]
+        tables[tag] = tuple(w[base:base + MODE_SLOTS])
+    return tables
+
+
+def mode_flags(rom):
+    """The selector at `MODE_SELECTOR`, as (data cell, bit) per table slot.
+
+    It is a run of `bit n, @cell ; lacl #index ; retc tc`, so the slot a
+    modulation takes is whichever of its flags is tested first.
+    """
+    w = program(rom)
+    pc, found = MODE_SELECTOR, []
+    while len(found) < MODE_SLOTS:
+        test = w[pc]
+        if test & 0xF000 != BIT_TEST:
+            raise ValueError(f'selector breaks at {pc:04x}')
+        cell, bit = test & 0xFF, (test >> 8) & 0xF
+        pc += 1
+        if w[pc] == 0xBF80:                   # lacc #0000, the first slot
+            index, pc = w[pc + 1], pc + 2
+        elif w[pc] & 0xFF00 == LACL:
+            index, pc = w[pc] & 0xFF, pc + 1
+        else:
+            raise ValueError(f'no index loaded at {pc:04x}')
+        if w[pc] not in (RETC_TC, RET):
+            raise ValueError(f'no conditional return at {pc:04x}')
+        pc += 1
+        if index != len(found):
+            raise ValueError(f'slot {index} out of order')
+        found.append((cell, bit))
+    return tuple(found)
+
+
 def loopback_pairs():
     """Entries whose receiver sits on the transmitter's own band."""
     found = {}
@@ -205,6 +260,80 @@ def loopback(rom, bits, samples_per_bit=LOOPBACK_SAMPLES_PER_BIT,
         return transmitted, soft, armed
 
 
+def receive(rom, samples, receive_setup, mode='v21-answer',
+            transmit_setup=None):
+    """Feed `samples` to the ROM's receiver with one chosen receive setup.
+
+    The transmitter is brought up as usual but gated off, so what reaches the
+    receiver is only what is handed in. This is how the band a receive setup
+    actually listens on is measured rather than argued: the caller supplies a
+    signal from one band and reads the soft decisions out of `@6a`.
+    """
+    validate(rom)
+    if mode not in MODES:
+        raise ValueError(f'unknown mode {mode!r}')
+    if receive_setup not in RECEIVERS:
+        raise ValueError(f'unknown receive setup {receive_setup:#06x}')
+    setup = MODES[mode][0] if transmit_setup is None else transmit_setup
+
+    frame = [0xBC07, 0xBF01, 0xBF0F, 0x0BC0, 0x7980, SAMPLE_BODY]
+    arm = [0xBC07]
+    for target in (setup, receive_setup, *BRINGUP):
+        arm += [0x7A80, target]
+    arm += [0x7980, 0]
+    driver = frame + arm
+    driver += [0] * (INTR17_VECTOR + 1 - len(driver))
+    driver[INTR17_VECTOR] = RETE
+
+    with NativeC5x(rom) as core:
+        core.load_rom(struct.pack('<%dH' % len(driver), *driver))
+        core.set_mpmc_pin(0)
+        for address, value in FIXTURES:
+            core.set_data(address, value)
+        core.set_pc(len(frame))
+
+        def until(pc, limit):
+            for _ in range(limit):
+                core.step(1)
+                if core.state()['pc'] == pc:
+                    return
+            raise RuntimeError(f'receiver did not reach {pc:04x}: {core.state()}')
+
+        until(0, 600)
+        if core.data(0x39B) != 0xD8AA:
+            raise RuntimeError('the ROM did not install its own receiver')
+
+        soft = []
+        for sample in samples:
+            core.set_data(GATE_CELL, 0)            # the transmitter, muted
+            core.queue_codec_rx([sample & 0xFFFF])
+            until(MIXER_TOP, 900)
+            core.set_pc(ISR_BODY)
+            until(ISR_TRANSMIT, 200)
+            value = core.data(SOFT_DECISION)
+            soft.append(value - 65536 if value >= 32768 else value)
+            core.set_data(0x390, 0x0BC0)
+            core.set_pc(0)
+        return soft
+
+
+def band_scan(rom, bits, mode='v21-answer',
+              samples_per_bit=LOOPBACK_SAMPLES_PER_BIT):
+    """Which receive setup hears a signal transmitted in `mode`'s band.
+
+    One band's signal, four receivers. The transmitter stays on the originate
+    band throughout, so nothing but the receive setup changes between runs.
+    """
+    samples, _ = render(rom, bits, samples_per_bit, mode)
+    found = {}
+    for setup in sorted(RECEIVERS):
+        soft = receive(rom, samples, setup, mode, transmit_setup=0xD790)
+        offset = best_offset(soft, bits, samples_per_bit, mode)
+        recovered = slice_bits(soft, len(bits), samples_per_bit, offset, mode)
+        found[setup] = sum(a != b for a, b in zip(bits, recovered))
+    return found
+
+
 def slice_bits(soft, count, samples_per_bit, offset, mode='v21-answer'):
     """One decision per bit, at a fixed offset into the symbol.
 
@@ -252,6 +381,8 @@ def main():
     parser.add_argument('--samples-per-bit', type=int, default=24)
     parser.add_argument('--loopback', action='store_true',
                         help="run the ROM's transmitter into its own receiver")
+    parser.add_argument('--band-scan', action='store_true',
+                        help='which receive setup hears one band, all four tried')
     args = parser.parse_args()
 
     from .rom import CourierRom
@@ -267,6 +398,28 @@ def main():
             bits.append(bit)
 
     setup, mark, space = MODES[args.mode]
+    if args.band_scan:
+        spb = (LOOPBACK_SAMPLES_PER_BIT if args.samples_per_bit == 24
+               else args.samples_per_bit)
+        errors = band_scan(rom, bits, args.mode, spb)
+        report = {
+            'mode': args.mode, 'rate_hz': RATE,
+            'mark_hz': mark, 'space_hz': space,
+            'bits': len(bits), 'samples_per_bit': spb,
+            'transmit_setup': hex(0xD790),
+            'bit_errors': {f'{k:04x}': {'carrier_hz': RECEIVERS[k], 'errors': v}
+                           for k, v in errors.items()},
+            'mode_tables': {f'{tag:02x}': [f'{entry:04x}' for entry in table]
+                            for tag, table in mode_tables(rom).items()},
+            'mode_flags': [{'cell': f'@{cell:02x}', 'bit': bit}
+                           for cell, bit in mode_flags(rom)],
+        }
+        args.output.mkdir(parents=True, exist_ok=True)
+        (args.output / 'manifest.json').write_text(
+            json.dumps(report, indent=2) + '\n')
+        print(json.dumps(report, indent=2))
+        return
+
     if args.loopback:
         spb = (LOOPBACK_SAMPLES_PER_BIT if args.samples_per_bit == 24
                else args.samples_per_bit)

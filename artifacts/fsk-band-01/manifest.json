@@ -1,0 +1,89 @@
+{
+  "mode": "v21-answer",
+  "rate_hz": 7200,
+  "mark_hz": 1650,
+  "space_hz": 1850,
+  "bits": 120,
+  "samples_per_bit": 48,
+  "transmit_setup": "0xd790",
+  "bit_errors": {
+    "d7a4": {
+      "carrier_hz": 1750,
+      "errors": 0
+    },
+    "d7ac": {
+      "carrier_hz": 2125,
+      "errors": 56
+    },
+    "d7c8": {
+      "carrier_hz": 1080,
+      "errors": 64
+    },
+    "d7d0": {
+      "carrier_hz": 1170,
+      "errors": 64
+    }
+  },
+  "mode_tables": {
+    "10": [
+      "9d00",
+      "b000",
+      "b052",
+      "c533",
+      "cd61",
+      "cd79",
+      "da31",
+      "d808",
+      "d7e9"
+    ],
+    "11": [
+      "9d00",
+      "b000",
+      "b052",
+      "c7fd",
+      "cce0",
+      "ccfa",
+      "d9bc",
+      "d7fc",
+      "d7d8"
+    ]
+  },
+  "mode_flags": [
+    {
+      "cell": "@27",
+      "bit": 14
+    },
+    {
+      "cell": "@26",
+      "bit": 11
+    },
+    {
+      "cell": "@27",
+      "bit": 12
+    },
+    {
+      "cell": "@26",
+      "bit": 10
+    },
+    {
+      "cell": "@26",
+      "bit": 12
+    },
+    {
+      "cell": "@26",
+      "bit": 13
+    },
+    {
+      "cell": "@27",
+      "bit": 5
+    },
+    {
+      "cell": "@27",
+      "bit": 3
+    },
+    {
+      "cell": "@26",
+      "bit": 9
+    }
+  ]
+}
