@@ -164,6 +164,19 @@ That is consistent with the photograph rather than at odds with it. The
 DSP - which is what an ASIC mastering the codec looks like, and is reading 1
 above.
 
+> **Corrected.** The last sentence is wrong for the ID_SDL 4.03 / DSP 3.1.2
+> build. What the table above establishes is that these images do not contain
+> *`main211`'s* initialisation routine, which is true. That build has its own:
+> its serial ISR ORs a secondary-frame request into the word it writes to `DXR`,
+> which is precisely the AC0x protocol described earlier in this section, and
+> reset sends six control registers through it. So reading 1 loses its support
+> for this board. The `dxr_writes` is 3 measurement behind it was taken on
+> `main211`, where the DSP stops transmitting after reset; on this build `DXR` is
+> written every sample. Note too that the program addresses used for the
+> 20.16 MHz build in this section are `0x8000` below those in
+> [codec-rate-312.md](codec-rate-312.md) - the `TSPC` setup at `0x008a` here is
+> `808a` there - so the two are reading the same instructions.
+
 `main211`'s place in the lineup is inferred, not read off a version string: its
 payload is 736 KiB where both V.Everything boards report 512 KiB of flash, and
 the file is dated 2003. That points at the business Courier.

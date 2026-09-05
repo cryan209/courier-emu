@@ -4,7 +4,11 @@ The [DSP 3.1.2 audio trace](docs/audio-312-path.md) now runs the original
 tone selector, oscillator, mixer and serial ISR to produce all 16 DTMF pairs.
 It fixes square, product-load and normalization instruction errors that
 silenced this path, and emits a listenable WAV. This board image has a
-DRR/DXR sample-buffer path; claims below based on `main211` do not rule it out.
+DRR/DXR sample-buffer path, and it drives the codec itself: the ISR implements
+the AC0x secondary-frame protocol and reset programs six of the part's control
+registers, so claims below based on `main211` do not describe it. Its 7200 Hz is
+the dial path's rate, not the board's; the PCM modulations it advertises force a
+rate change. See [the codec rate](docs/codec-rate-312.md).
 
 The [DSP 3.1.2 hardware comparison](docs/mailbox-312-comparison.md) records a
 fresh connected-board mailbox sequence and its replay through the original DSP

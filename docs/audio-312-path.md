@@ -34,10 +34,12 @@ writes the input slot, and loads the adjacent output word before writing
 sender at `819e` sends the control word from `006c` instead of a sample.
 
 This is evidence for a serial-codec audio path in **this image**. It does not
-prove which board pins carry that serial stream, or that an ASIC is absent
-between the DSP and the codec. The `main211` external-I/O audio path and its
-runtime counters describe another image and must not be used to rule this one
-out.
+prove which board pins carry that serial stream. The `main211` external-I/O
+audio path and its runtime counters describe another image and must not be used
+to rule this one out - and the reading that an ASIC fronts the codec here has
+since lost its support: the ISR at `818d` implements the AC0x secondary-frame
+protocol, and reset programs six of the part's control registers. See
+[codec-rate-312.md](codec-rate-312.md).
 
 ## Why the emulator was silent
 
@@ -76,6 +78,16 @@ The WAV uses **7200 samples/second**, inferred from the labelled keypad phase
 increments: digit 1 uses `18c8` and `2afd`, which correspond to approximately
 697 and 1209 Hz at that rate. This is not yet a measurement of the physical
 codec clock.
+
+That figure is the **dial path's** rate and must not be read as the board's one
+sample rate. It is well founded for this code - DTMF's tight tolerance means no
+other plausible rate fits, and the ISR takes one buffer word per codec interrupt,
+so while dialing the generator and the codec run at the same number. But this
+unit advertises `x2` and `V90`, whose 8000-baud carrier cannot live under
+7200 Hz sampling's 3600 Hz Nyquist, and V.34+ at 3429 baud does not fit either.
+So the codec rate must change for those modulations, and tag `2c` is a mailbox
+command that writes an arbitrary AC01 control register at runtime. See
+[codec-rate-312.md](codec-rate-312.md).
 
 The component harness supplies idle RAM, the dial-path gain/amplitude values,
 a dummy second callback, and one reusable input/output buffer pair. It invokes
