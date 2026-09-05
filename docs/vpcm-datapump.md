@@ -1,6 +1,6 @@
 # Where V.PCM lives, and why 7200 Hz was never the whole story
 
-Overlay 8 is the V.90 datapump. It is identified by its own DIL descriptor, and
+Overlay 8 is the V.PCM datapump - x2 first, with V.90 layered onto it. It is identified by its own DIL descriptor, and
 finding it also explains how a board whose codec is fixed at one rate runs a
 modulation that needs another: there are two serial converters, not one.
 
@@ -24,8 +24,15 @@ the order the notes give them, which is what turns two pattern hits into a
 descriptor block.
 
 That block is inside **overlay 8**, at DSP program `e7d6`. The 3.0.13 board and
-`IDSDL302.ROM` carry the same block in their own overlay 8, at `e599` - so x2
-and V.90 were present in the older build too.
+`IDSDL302.ROM` carry the same block in their own overlay 8, at `e599`.
+
+That it is identical across builds dates it, and the date says this is x2's page
+with V.90 added rather than a V.90 page. The 3.0.13 DSP is stamped **03/13/98**,
+about six months before V.90 was approved, and it already carries these exact
+fields and already advertises `x2,V90`. A March 1998 build cannot be implementing
+the finished recommendation. x2 learns digital impairments the same way, so the
+descriptor is x2's and V.90 inherited it - which is also why the two modulations
+share a page rather than having one each.
 
 The training UCode sequence is not stored anywhere in any image, in bytes or in
 either word order. It is generated rather than tabulated - and running the
@@ -285,7 +292,16 @@ variable-shift instructions that would implement a chord expansion - `lact`,
 table read as code, and overlay 8's real one at `ea91` is a mask generator,
 `samm @0d` then `lact @7b` then `sub #01`, which is `2^n - 1`.
 
-Finding it wants a dynamic trace rather than cross-references: run the datapump
+### What the last search turned up instead
+
+Overlay 6 at `a650` is a variable-width bit-field extractor over the same `0940`
+buffer: it normalises to find a bit position (`rpt #0e ; norm *-`), builds a mask
+of that width, and pulls fields of 2 and 6 bits, switching between `0340`/`0341`
+and `0940`/`0941` on a flag. That is descriptor framing rather than DIL scoring.
+Its mask generator is the same shape as overlay 8's at `ea91` - `samm @0d`, then
+`lact`, then `sub #01` - so the two pages share that helper.
+
+Finding the matcher wants a dynamic trace rather than cross-references: run the datapump
 in the core and watch which addresses are read back after the descriptor is
 assembled. `vpcm.assemble` already sets up a working entry, including the ARP
 detail above; what is missing is a plausible state to enter the receive path in.
