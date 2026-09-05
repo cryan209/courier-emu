@@ -180,3 +180,44 @@ class RomFormatTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(IMAGE.exists(), "no Courier ROM image available")
+class DspOverlayTests(unittest.TestCase):
+    """The DSP takes four images, not one, and the table names all of them."""
+
+    def setUp(self) -> None:
+        self.rom = CourierRom.load(IMAGE)
+
+    def test_the_resident_payload_is_a_row_of_the_overlay_table(self) -> None:
+        # This is the check that identifies the table rather than assuming it:
+        # one row has to reproduce what the download call site independently
+        # says, and `dsp_overlays` returns nothing at all if none does.
+        download = self.rom.dsp_download
+        resident = [o for o in self.rom.dsp_overlays if o.entry_word == 0x8000]
+        self.assertEqual(len(resident), 1)
+        self.assertEqual(resident[0].offset, download.offset)
+        self.assertEqual(resident[0].length, download.length)
+        self.assertEqual(resident[0].source_segment, download.source_segment)
+
+    def test_the_three_overlays_land_above_the_resident_bank(self) -> None:
+        overlays = self.rom.dsp_overlays
+        self.assertEqual([o.index for o in overlays], [5, 6, 7, 8])
+        self.assertEqual([o.entry_word for o in overlays],
+                         [0x8000, 0x9D00, 0xB000, 0xDC00])
+        # Each image is a separate, non-overlapping run of flash...
+        for earlier, later in zip(overlays, overlays[1:]):
+            self.assertLessEqual(earlier.end, later.offset)
+        # ...but 6 and 7 share DSP program space, so they are alternatives
+        # loaded one at a time rather than three pieces of one program.
+        self.assertLess(overlays[2].entry_word,
+                        overlays[1].entry_word + overlays[1].length // 2)
+
+    def test_every_512k_build_agrees_on_where_the_overlays_land(self) -> None:
+        captures = sorted((ROOT / "artifacts").glob("courier-board-*-capture-*/courier-board.rom"))
+        if not captures:
+            self.skipTest("no board captures in this working tree")
+        for capture in captures:
+            with self.subTest(capture=capture.name):
+                entries = [o.entry_word for o in CourierRom.load(capture).dsp_overlays]
+                self.assertEqual(entries, [0x8000, 0x9D00, 0xB000, 0xDC00])

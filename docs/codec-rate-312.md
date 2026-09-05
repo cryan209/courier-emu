@@ -154,7 +154,10 @@ rather than solving it: no payload the supervisor downloads reprograms the rate.
   code and its internal call targets are consistent, but it contains **no**
   host sender (`out *, 0060`), **no** `DXR` write, and no codec initialisation -
   pure algorithm code with no I/O, which is what datapump overlays look like.
-  Whatever loads it, it does not reprogram the codec.
+  It is loaded by a second, table-driven transfer routine - see
+  [dsp-overlays.md](dsp-overlays.md) - as three images at program `9d00`,
+  `b000` and `dc00`. Only one of them writes the codec at all, and that write
+  is register 4 again, so the dividers are still untouched after reset.
 
   All three 512 KiB 20.16 MHz images - stock 7.3.14, ID_SDL 4.03, and the flat
   `IDSDL302.ROM` - carry exactly one codec initialisation, with byte-identical

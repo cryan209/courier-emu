@@ -60,7 +60,7 @@ and cross-checked against the download site the supervisor actually uses:
 | `18000..19fff` | a C5x-looking block inside the supervisor region |
 | `1a000..27fff` | supervisor code and data |
 | `29140..36e8e` | **the DSP payload that is downloaded**, 28,327 words at program `8000` |
-| `36e8e..~44633` | ~55 KB of further C5x code that no download call references |
+| `36e90..44634` | three DSP overlay images, loaded at program `9d00`, `b000` and `dc00` - see [dsp-overlays.md](dsp-overlays.md) |
 | `44634..4bfff` | blank, then a small x86 block at `48000` |
 | `4c000..7bfff` | blank |
 | `7c000..7dfff` | x86 code or data |

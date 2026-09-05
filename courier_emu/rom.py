@@ -76,6 +76,13 @@ DSP_SOURCE_WINDOW = re.compile(rb"\xb8(..)\x8e\xc0", re.S)
 # the call site and downloader both live in. Both are near calls, so caller and
 # callee share one code segment.
 DSP_DOWNLOADER_WINDOW = 0x120
+# The overlay loader is table driven. It masks a 4-bit code, multiplies by the
+# entry width, and adds the table base - `mov bl, 6 ; mul bl ; mov bx, imm16` -
+# then picks a source segment by comparing that same code against 6, 7 and 8,
+# falling through to the resident segment. Both are matched structurally rather
+# than by address, because the table moves between builds.
+DSP_OVERLAY_TABLE = re.compile(rb"\xb3(.)\xf6\xe3\xbb(..)", re.S)
+DSP_OVERLAY_SEGMENT = re.compile(rb"\xb8(..)\x83\xfb(.)\x74", re.S)
 CODE_SEGMENT_SIZE = 0x10000
 
 
@@ -100,6 +107,34 @@ class DspDownload:
             "call_site": f"{self.call_site:#07x}",
             "reset": f"{self.reset:#07x}",
             "downloader": f"{self.downloader:#07x}",
+            "source_segment": f"{self.source_segment:#06x}",
+            "flash_range": f"{self.offset:#07x}..{self.end:#07x}",
+            "words": self.length // 2,
+            "entry_word": f"{self.entry_word:#06x}",
+        }
+
+
+@dataclass(frozen=True)
+class DspOverlay:
+    """One row of the overlay table: where a C52 image lives and where it lands.
+
+    The resident payload is a row of this same table, which is what identifies
+    the rest of them - its row reproduces the download call site's own answer.
+    """
+
+    index: int
+    source_segment: int
+    offset: int
+    length: int
+    entry_word: int
+
+    @property
+    def end(self) -> int:
+        return self.offset + self.length
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
             "source_segment": f"{self.source_segment:#06x}",
             "flash_range": f"{self.offset:#07x}..{self.end:#07x}",
             "words": self.length // 2,
@@ -258,6 +293,57 @@ class CourierRom:
                 "refusing to choose between them"
             )
         return candidates[0]
+
+    @property
+    def dsp_overlays(self) -> tuple["DspOverlay", ...]:
+        """Every C52 image the supervisor can send, resident and overlay alike.
+
+        The resident payload is one row of the overlay table, so this is checked
+        rather than asserted: the row matching `dsp_download` must be present, or
+        the table was not found and nothing is returned. The table's length is
+        not marked, and rows past its end can still look like valid ranges, so a
+        row is kept only if the loader has a source segment for its index - it
+        compares against 6, 7 and 8 - or it is the resident row the fall-through
+        serves.
+        """
+        download = self.dsp_download
+        if download is None:
+            return ()
+        head = self.data[:CODE_SEGMENT_SIZE]
+        table = DSP_OVERLAY_TABLE.search(head)
+        if table is None:
+            return ()
+        width = table[1][0]
+        base = struct.unpack("<H", table[2])[0]
+        segments = {
+            struct.unpack("<H", match[2] + b"\x00")[0]: struct.unpack("<H", match[1])[0]
+            for match in DSP_OVERLAY_SEGMENT.finditer(
+                head[table.end() : table.end() + DSP_DOWNLOADER_WINDOW]
+            )
+        }
+        found = []
+        for index in range(0x10):
+            row = base + width * index
+            if row + 6 > len(head):
+                break
+            start, end, entry = struct.unpack_from("<3H", head, row)
+            segment = segments.get(index, download.source_segment)
+            offset = (segment << 4) - self.base + start
+            length = end - start
+            if length <= 0 or length % 2 or offset < 0 or offset + length > len(self.data):
+                continue
+            row_is_resident = (segment, offset, length, entry) == (
+                download.source_segment, download.offset, download.length,
+                download.entry_word)
+            if index not in segments and not row_is_resident:
+                continue
+            found.append(DspOverlay(index, segment, offset, length, entry))
+        resident = (download.source_segment, download.offset, download.length,
+                    download.entry_word)
+        if not any((o.source_segment, o.offset, o.length, o.entry_word) == resident
+                   for o in found):
+            return ()
+        return tuple(found)
 
     def dsp_program_segments(self) -> tuple[tuple[int, bytes], ...]:
         """Return the C52 program-memory origin and bytes the ROM downloads.

@@ -14,7 +14,8 @@ path, so its diff cannot see a tone; and blocker 3's "tag `0x13` is not traced"
 is now out of date - `13` enters `ee20` and is fully traced in
 [mailbox-312-comparison.md](mailbox-312-comparison.md). See
 [window-312-baseline.md](window-312-baseline.md) for the measured baseline, the
-seventh streamed word, and the corrected chain vector.
+seventh streamed word, and the corrected chain vector. Blocker 3's addresses
+are also wrong; [dsp-overlays.md](dsp-overlays.md) has the measured overlay map.
 
 ## Driving: six mailbox messages
 
