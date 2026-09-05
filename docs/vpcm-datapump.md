@@ -28,7 +28,8 @@ That block is inside **overlay 8**, at DSP program `e7d6`. The 3.0.13 board and
 and V.90 were present in the older build too.
 
 The training UCode sequence is not stored anywhere in any image, in bytes or in
-either word order. It is generated rather than tabulated.
+either word order. It is generated rather than tabulated - and running the
+generator confirms it, below.
 
 ## The assembler, and the descriptor it produced on the wire
 
@@ -152,3 +153,47 @@ constant is worthless here: `1021` is also the encoding of `lacc @21`, and it
 turned up in the resident bank and in two overlays as exactly that. Only the
 `xor #<poly>` opcode pair distinguishes a polynomial from an instruction, and
 all four sites above are that pair.
+
+## The 197 training Ucodes are arithmetic
+
+They are not in the flash because the firmware counts them out. `courier_emu.vpcm`
+runs the assembler in the C5x core and reads back what it wrote; all 197 match
+the ladder in the captured Ja exactly.
+
+The store is what disguises them. `e838` keeps `127 - value` and packs two per
+word, low byte first, so nothing in the image ever looks like the ladder:
+
+```text
+e838: neg ; add #7f        ; keep 127 - value
+e83a: bit 15, @7c          ; bit code 15 is bit 0 - the pack toggle
+e83b: bcndd e841, tc
+e83d: xpl  @7c, #0001      ; flip it every call
+e83f: sacl *               ; first of a pair: park it
+e841: sacl @7f             ; second: combine with the parked one
+e844: add  @7f, 8          ;   low | (this << 8)
+e845: sacl *+
+```
+
+The ladder itself is two counters:
+
+| step | emits |
+|---|---|
+| `@7d` = 11, five times, incrementing | 116, 115, 114, 113, 112 |
+| `@7d` = `10`, `@7e` = `7f`, sixteen pairs | 111, 0, 110, 1, ... |
+| `@7d` = `20`, `30`, `40`, same `@7e` | three more blocks of sixteen pairs |
+| `@7d` = `50`, `@7e` = `6f`, **twice** | 47, 16, 46, 17, ... repeated |
+
+5 + 6 x 32 = 197, which is N. The last two calls take identical parameters,
+which is why the captured ladder ends with the same 32 Ucodes twice - a detail
+that reads as an oddity in the capture and as one duplicated instruction pair in
+the ROM.
+
+### A trap for anyone entering this code directly
+
+The assembler reaches its buffer through `*`, which selects whichever auxiliary
+register `ARP` names, not `AR1` - despite the `lar ar1, #0940` two instructions
+earlier. Its real caller arrives with `ARP` already 1. Entering at `e7e8` without
+setting it sends every store through `AR0`, and the run produces a descriptor
+that is *almost* right: the ladder appears, but shifted, with its first Ucode
+missing, because `banz *-, ar1` at `e807` sets `ARP` partway through. `vpcm.py`
+selects `AR1` first, the way the firmware's own `mar *, ar1` does.
