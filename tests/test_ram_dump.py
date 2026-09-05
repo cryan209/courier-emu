@@ -4,6 +4,10 @@ import pytest
 
 from courier_emu import flash_dump as flash, ram_dump as ram
 
+# The fake board below answers ATI7 as 7.3.14 / 3.0.13, so its anchors are that
+# build's entry in TARGETS rather than a hard-coded pair.
+_FIRST, _RESET = flash.TARGETS[("7.3.14", "3.0.13")]
+
 
 def raw_page(address, data):
     command = flash.command_for(address, allow_ram=True, allow_upper_ram=True)
@@ -62,9 +66,9 @@ class FakePort:
             return b"ERROR\r\n"
         data = bytearray(256)
         if address == 0x80000:
-            data[:len(flash.FIRST)] = flash.FIRST
+            data[:len(_FIRST)] = _FIRST
         elif address == 0xFFF00:
-            data[-16:] = flash.RESET
+            data[-16:] = _RESET
         elif address == 0x700:
             data[0x52:0x64] = bytes.fromhex("f3081c") * 6
         elif address == 0x200:

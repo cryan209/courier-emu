@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 import time
 
-from .flash_dump import FIRST, RESET, PAGE, TERMINAL, SerialPort, command_for, parse_page, validate_identity
+from .flash_dump import TARGETS, PAGE, TERMINAL, SerialPort, command_for, parse_page, validate_identity
 
 RAM_END = 0xFF00
 SETTINGS_START, SETTINGS_END = 0x752, 0x764
@@ -93,14 +93,18 @@ def collect(port, output: Path, *, upper: bool = False) -> dict:
             raise RuntimeError("modem did not answer AT with OK")
         identity = port.query("ATI7")
         (output / "ati7.txt").write_bytes(identity)
-        report["identity"] = validate_identity(identity)
+        report["identity"], target = validate_identity(identity)
+        report["firmware"] = {"supervisor": target[0], "dsp": target[1]}
+        # The anchors are per-build, so they follow the revision the board just
+        # reported rather than one hard-coded pair.
+        first, reset = TARGETS[target]
         if not re.search(rb"Ram\s+64k\b", identity, re.I):
             raise RuntimeError("expected the demonstrated 64k RAM profile")
         anchors = {}
         for address in (0x80000, 0xFFF00):
             anchors[address] = read_page(address, "anchor-before")[0]
-        if not anchors[0x80000].startswith(FIRST) or anchors[0xFFF00][-16:] != RESET:
-            raise RuntimeError("firmware anchors differ from the demonstrated target")
+        if not anchors[0x80000].startswith(first) or anchors[0xFFF00][-16:] != reset:
+            raise RuntimeError("firmware anchors differ from the anchors recorded for this firmware")
         print(json.dumps({"event": "identity-and-anchors-confirmed", "physical_start": start,
                           "ram_end_exclusive": end}), flush=True)
         images = []
