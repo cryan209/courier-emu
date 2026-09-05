@@ -125,3 +125,32 @@ def test_unknown_firmware_is_refused_rather_than_guessed():
              b"Supervisor rev 9.9.9\r\nDSP rev 1.2.3\r\nOK\r\n")
     with pytest.raises(ValueError, match="unknown firmware"):
         dump.validate_identity(other)
+
+
+
+# The tick probe's commands, and everything it must never send.
+
+def test_timing_commands_are_settings_and_local_tests():
+    for command in ("ATE0", "ATQ0", "ATV1", "ATX3", "AT&T1", "AT&T0",
+                    "ATS18?", "ATS18=5", "ATS6=2", "ATS7=30", "ATS18=255"):
+        assert dump.TIMING_COMMAND.fullmatch(command), command
+
+
+def test_nvram_writes_and_dialling_are_not_timing_commands():
+    for command in ("AT&W", "AT&W0", "ATZ", "ATDT5551212", "ATD5551212",
+                    "ATS18=256", "ATS0=1", "AT&F"):
+        assert dump.TIMING_COMMAND.fullmatch(command) is None, command
+
+
+def test_the_off_hook_list_carries_no_digits():
+    for command in ("ATD", "ATH", "ATH0"):
+        assert dump.OFF_HOOK_COMMAND.fullmatch(command), command
+    for command in ("ATDT5551212", "ATD1", "ATDP9", "ATD,"):
+        assert dump.OFF_HOOK_COMMAND.fullmatch(command) is None, command
+
+
+def test_call_results_terminate_a_dial_wait():
+    for reply in (b"\r\nNO DIAL TONE\r\n", b"\r\nNO CARRIER\r\n",
+                  b"\r\nBUSY\r\n", b"\r\nOK\r\n"):
+        assert dump.CALL_TERMINAL.search(reply), reply
+    assert dump.CALL_TERMINAL.search(b"\r\nCONNECT 33600\r\n") is None

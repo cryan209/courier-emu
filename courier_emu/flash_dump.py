@@ -41,6 +41,29 @@ TARGETS = {
     ),
 }
 TERMINAL = re.compile(rb"(?:^|[\r\n])(OK|ERROR)[\r\n]+$")
+
+# What the tick probe is allowed to send. Every one of these is a command-mode
+# setting or a local self-test: none writes NVRAM (`&W` is absent by design),
+# none dials, and none takes the line off hook. `S18` is the self-test timer in
+# seconds and `&T1` the local analogue loopback it bounds, which is the pair
+# that measures a firmware second without a phone line.
+def _byte_range() -> str:
+    return r"(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
+
+
+TIMING_COMMAND = re.compile(
+    r"AT(?:E[01]|Q0|V1|X[0-4]|&T[01]"
+    rf"|S(?:6|7|18)\?|S(?:6|7|18)={_byte_range()})"
+)
+# The dial-tone wait, timed with no digits at all: a bare `ATD` seizes the loop
+# and waits, so even a board with a line attached dials nothing. It still takes
+# the loop off hook, which is why it is behind its own flag rather than in the
+# list above.
+OFF_HOOK_COMMAND = re.compile(r"ATD|ATH0?")
+# Result codes the dial test ends on, which are not OK or ERROR.
+CALL_TERMINAL = re.compile(
+    rb"(?:^|[\r\n])(OK|ERROR|NO DIAL ?TONE|NO CARRIER|BUSY|NO ANSWER)[\r\n]+$"
+)
 ROW = re.compile(r"([0-9A-F]{4}):([0-9A-F]{4})\s+((?:[0-9A-F]{2}\s+){15}[0-9A-F]{2})", re.I)
 
 
@@ -84,10 +107,13 @@ class SerialPort:
     """Small POSIX serial transport; preserves the host's original settings."""
 
     def __init__(self, device: str, baud: int, *, allow_ram: bool = False,
-                 allow_upper_ram: bool = False):
+                 allow_upper_ram: bool = False, allow_timing: bool = False,
+                 allow_off_hook: bool = False):
         self.device, self.baud = device, baud
         self.allow_ram = allow_ram
         self.allow_upper_ram = allow_upper_ram
+        self.allow_timing = allow_timing
+        self.allow_off_hook = allow_off_hook
         self.fd = None
         self.original = None
 
@@ -142,8 +168,13 @@ class SerialPort:
                 raise RuntimeError("continuous unsolicited input; stop before issuing commands")
         return bytes(result)
 
-    def query(self, command: str, timeout: float = 4.0) -> bytes:
-        if command not in ("AT", "ATI7"):
+    def query(self, command: str, timeout: float = 4.0,
+              expect: "re.Pattern[bytes]" = TERMINAL) -> bytes:
+        if command not in ("AT", "ATI7") and not (
+            self.allow_timing and TIMING_COMMAND.fullmatch(command)
+        ) and not (
+            self.allow_off_hook and OFF_HOOK_COMMAND.fullmatch(command)
+        ):
             match = re.fullmatch(r"ATGLK2=([0-9A-F]{4}):([0-9A-F]{4})", command)
             if not match:
                 raise ValueError("command is not an allowed read operation")
@@ -169,7 +200,7 @@ class SerialPort:
             response.extend(chunk)
             if len(response) > 16384:
                 raise RuntimeError("response exceeds expected maximum length")
-            if TERMINAL.search(response):
+            if expect.search(response):
                 break
         return bytes(response)
 
