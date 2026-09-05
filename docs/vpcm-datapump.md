@@ -223,6 +223,39 @@ exactly, which is what the capture's name says was requested.
 `vpcm.ucode_level` carries both, with A-law verified here and mu-law only the
 standard's arithmetic.
 
+## Scoring an impaired one
+
+`artifacts/dil-ulaw-impaired-01/` is the same DIL with impairments deliberately
+applied, and in mu-law where the clean one is A-law. `vpcm.score_dil` compares
+either against the ladder:
+
+| | clean (A-law) | impaired (mu-law) |
+|---|---|---|
+| signs wrong | 0 | 0 |
+| training symbols exact | 2364 / 2364 | 66 / 2364 |
+| gain | 1.0000, 0.00 dB | 0.4986, **-6.04 dB** |
+| reference slots disturbed | 0 / 10638 | 5139 / 10638, worst 244 |
+
+Three readings, and what separates them:
+
+* **A 6 dB digital pad.** The gain is flat across all six data-frame intervals,
+  -6.05 to -6.08 dB, and the modal Ucode error is **-16** - one mu-law chord,
+  and one chord is 6 dB.
+* **Additive noise on top.** A pad scales, so it leaves a silent slot silent.
+  Nearly half the reference slots are not, which a pad cannot explain; the
+  residual after removing the pad has a standard deviation of about 79. After
+  accounting for the pad, a quarter of the training symbols land on the exact
+  Ucode and the rest spread one to three either side, which is that noise.
+* **Not robbed-bit signalling.** RBS lands on particular data-frame intervals.
+  This is flat across all six, so whatever else it is, it is not that. That the
+  signs are all still correct says the same thing from another direction: the
+  impairment is amplitude only.
+
+This is the comparison a DIL exists to make, and it is the comparison the
+datapump's own matcher makes. Running it here does not locate that routine -
+see below - but it does establish that the ladder the firmware generates is
+enough to characterise a channel, which is the claim the descriptor rests on.
+
 ## The matcher itself has not been found
 
 Scoring a DIL means comparing what arrives against the level each training

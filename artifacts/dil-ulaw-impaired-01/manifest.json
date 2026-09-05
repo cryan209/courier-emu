@@ -1,0 +1,20 @@
+{
+  "capture": "dil-received-ulaw.g711",
+  "what": "The same DIL as received, with impairments applied by the user's V.90 DIL lab",
+  "format": "G.711 mu-law, 8 kHz, one octet per symbol, no header",
+  "bytes": 13002,
+  "sha256": "9afd6b2d16d18719d7b856fc59ac494778216ddb458f5a3be5824a27d5b38464",
+  "shape": "197 x 66, the same descriptor as artifacts/dil-alaw-01",
+  "provenance": "supplied by the user; impairments deliberately introduced, not measured off a line",
+  "law": "mu-law, where the clean reference capture is A-law",
+  "scored": {
+    "signs": "all 7212 non-zero symbols still follow SP - the impairment is amplitude only",
+    "gain": "median observed/expected 0.4986, -6.04 dB, uniform across all six data-frame intervals (-6.05 to -6.08, and -5.81 on interval 2)",
+    "reading": "a 6 dB digital pad. The modal Ucode error is -16, which is one mu-law chord, and one chord is 6 dB",
+    "plus_noise": "5139 of 10638 reference slots are non-zero, worst 244. A pad leaves zero at zero, so that is additive noise; the residual after removing the pad has stdev about 79",
+    "not_robbed_bit": "RBS would land on particular data-frame intervals. This is flat across all six, so it is not that",
+    "after_the_pad": "25.2% of training symbols land on the exact Ucode, the rest spread +/-1 to 3, consistent with that noise"
+  },
+  "tool": "courier_emu.vpcm.score_dil",
+  "recorded_utc": "2026-09-05T12:10:35.383871+00:00"
+}

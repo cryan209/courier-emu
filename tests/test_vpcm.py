@@ -117,3 +117,35 @@ class DilAgainstTheLadderTests(unittest.TestCase):
             self.assertEqual(len(levels), 1, f'segment {s} is not one level')
             self.assertEqual(levels.pop(), vpcm.ucode_level(ucode, law='a'),
                              f'segment {s} does not carry Ucode {ucode}')
+
+
+IMPAIRED = ROOT / "artifacts/dil-ulaw-impaired-01/dil-received-ulaw.g711"
+
+
+@unittest.skipUnless(IMAGE.exists() and DIL.exists() and IMPAIRED.exists(),
+                     "no captures in this working tree")
+class ScoringTests(unittest.TestCase):
+    """Scoring a DIL against the ladder, clean and impaired."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.desc = vpcm.assemble(CourierRom.load(IMAGE))
+
+    def test_a_clean_dil_scores_as_untouched(self) -> None:
+        r = vpcm.score_dil(DIL.read_bytes(), self.desc, law='a')
+        self.assertEqual(r['signs_wrong'], 0)
+        self.assertEqual(r['exact'], r['training_symbols'])
+        self.assertEqual(r['gain'], 1.0)
+        self.assertEqual(r['reference_non_zero'], 0)
+
+    def test_the_impaired_dil_shows_a_six_db_pad(self) -> None:
+        r = vpcm.score_dil(IMPAIRED.read_bytes(), self.desc, law='mu')
+        # Amplitude only: every sign still follows SP.
+        self.assertEqual(r['signs_wrong'], 0)
+        self.assertAlmostEqual(r['gain_db'], -6.0, delta=0.2)
+
+    def test_the_impaired_dil_also_carries_additive_noise(self) -> None:
+        # A pad scales, so it leaves the reference slots at their own level.
+        # Anything else in them had to be added.
+        r = vpcm.score_dil(IMPAIRED.read_bytes(), self.desc, law='mu')
+        self.assertGreater(r['reference_non_zero'], r['reference_symbols'] // 4)

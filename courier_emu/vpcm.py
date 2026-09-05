@@ -119,3 +119,65 @@ def alaw_decode(byte: int) -> int:
     else:
         magnitude = (magnitude + 0x108) << (chord - 1)
     return magnitude if byte & 0x80 else -magnitude
+
+
+def ulaw_decode(byte: int) -> int:
+    """One G.711 mu-law octet as a signed linear sample."""
+    byte = ~byte & 0xFF
+    magnitude = ((((byte & 0x0F) << 3) + MU_BIAS) << ((byte >> 4) & 0x07)) - MU_BIAS
+    return -magnitude if byte & 0x80 else magnitude
+
+
+DECODE = {'a': alaw_decode, 'mu': ulaw_decode}
+
+
+def pattern(words, length: int) -> str:
+    """A framed descriptor pattern back out of the words the firmware packed."""
+    bits = ''.join(f'{word:016b}'[::-1] for word in words)
+    return bits[:length]
+
+
+def score_dil(raw: bytes, descriptor, *, law: str):
+    """Compare a received DIL against the ladder this firmware asked for.
+
+    Returns the gain the channel applied, how much of the signal survives on
+    the nose, and what lands in the slots that should be silent - which is the
+    comparison a DIL exists to make. It reports; it does not decide.
+    """
+    n = descriptor['n']
+    if not n or len(raw) % n:
+        raise ValueError(f'{len(raw)} symbols is not a whole number of {n} segments')
+    span = len(raw) // n
+    sp = pattern(descriptor['sp'], descriptor['lsp'])
+    tp = pattern(descriptor['tp'], descriptor['ltp'])
+    linear = [DECODE[law](byte) for byte in raw]
+
+    signs_wrong = training = exact = 0
+    ratios, reference, residual = [], [], []
+    for index, sample in enumerate(linear):
+        want_positive = sp[index % len(sp)] == '1'
+        if sample and (sample > 0) != want_positive:
+            signs_wrong += 1
+        if tp[index % len(tp)] == '0':
+            reference.append(abs(sample))
+            continue
+        expected = ucode_level(descriptor['ucodes'][index // span], law=law)
+        training += 1
+        if abs(sample) == expected:
+            exact += 1
+        if expected > 500:                  # below this, quantising dominates
+            ratios.append(abs(sample) / expected)
+        residual.append(abs(sample) - expected)
+    ratios.sort()
+    gain = ratios[len(ratios) // 2] if ratios else None
+    return {
+        'segments': n, 'symbols_per_segment': span,
+        'signs_wrong': signs_wrong,
+        'training_symbols': training, 'exact': exact,
+        'gain': gain,
+        'gain_db': None if not gain else 20 * __import__('math').log10(gain),
+        'reference_symbols': len(reference),
+        'reference_non_zero': sum(1 for value in reference if value != ucode_level(0, law=law)),
+        'reference_worst': max(reference) if reference else 0,
+        'residual_mean': sum(residual) / len(residual) if residual else 0.0,
+    }
