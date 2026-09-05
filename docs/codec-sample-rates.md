@@ -120,8 +120,8 @@ Read backwards, word 2 recovers the sample rate - row 2 gives
 **Each rate is the smallest of the three that clears its own spectrum.** V.34's
 widest signal, 3429 baud on the 1959 Hz carrier, reaches 3673 Hz; 7578.95 Hz
 sampling gives 3789 Hz of Nyquist and 7200 Hz gives 3600, which is not enough.
-3200 baud on 1829 Hz reaches 3429 Hz, and is given 8000 anyway because
-that is what V.PCM needs. The ladder is not arbitrary.
+Row by row the margin over Nyquist is 1.09-1.20 - see the table below. The
+ladder is V.34's own bandwidth requirement and nothing else.
 
 ## The arithmetic behind the codec words
 
@@ -136,10 +136,9 @@ Fs(B=19) = 7578.947  Hz
 Fs(B=18) = 8000      Hz   exactly
 ```
 
-`B = 18` landing exactly on 8000 Hz - the one rate V.PCM cannot do without - is
-the strongest evidence that the register reading and the divider form are both
-right. It is also the answer to the question `codec-rate-312.md` poses at the
-end: a second mode's register values give the ratio between the rates directly,
+`B = 18` landing exactly on 8000 Hz is a property of the 2.88 MHz MCLK, not
+evidence that the ladder was designed for V.PCM - see below. What it does
+answer is the question `codec-rate-312.md` poses at the end: a second mode's register values give the ratio between the rates directly,
 and with `A = 10` fixed they give `MCLK = 2.88 MHz`, which is `40.32 MHz / 14`
 off the board's oscillator.
 
@@ -163,8 +162,50 @@ resident bank generates by hand belongs to index 0.
 | resident, from the negotiated field (`970c`) | 0-5 | all three |
 
 Overlays 6 and 7 overlap in program space and are alternatives; overlay 8, the
-V.PCM datapump, loads alongside either and inherits whatever rate the resident
-last programmed - which on the paths that reach it is index 4 or 5, both 8000 Hz.
+V.PCM datapump, loads alongside either.
+
+## What this does not establish: the V.PCM rate
+
+The ladder above is **V.34's**, and only V.34's. Overlay 8 reads `@5b` zero
+times and writes no codec register, so it runs at whatever rate the V.34 index
+last selected. The rate it gets is therefore 8000 Hz only when the negotiated
+symbol rate is 3200 or 3429; at 2400-3000 baud the codec is at 7200 or
+7578.95 Hz, which cannot align to a downstream 8 kHz codeword stream without
+resampling in software.
+
+An earlier version of this document argued that `B = 18` landing exactly on
+8000 Hz showed the ladder was provisioned for V.PCM. It does not. Checking each
+row against its own carrier and symbol rate, the margin over Nyquist is
+1.09-1.20 throughout:
+
+| index | carrier | baud | upper edge | min Fs | given | margin |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 1800 | 2400 | 3000.0 | 6000 | 7200.00 | 1.200 |
+| 1 | 1829 | 2743 | 3200.5 | 6401 | 7578.95 | 1.184 |
+| 2 | 1867 | 2800 | 3267.0 | 6534 | 7578.95 | 1.160 |
+| 3 | 1875 | 3000 | 3375.0 | 6750 | 7578.95 | 1.123 |
+| 4 | 1920 | 3200 | 3520.0 | 7040 | 8000.00 | 1.136 |
+| 5 | 1959 | 3429 | 3673.5 | 7347 | 8000.00 | 1.089 |
+
+That is a uniform oversampling margin over V.34's own bandwidth. Nothing in the
+ladder is provisioned for V.PCM; `144000 / 18` is 8000 because `B = 18` is what
+3200 and 3429 baud need, and the exactness is a property of the 2.88 MHz MCLK.
+
+So the V.PCM sample rate is **not established here**. Three possibilities, none
+of them ruled out:
+
+* The firmware constrains V.PCM to symbol rates 3200/3429, so the codec is at
+  8000 whenever PCM runs. Several resident paths do force index 4 by literal
+  (`8e0d`, `a33c`, `a38e`, `a3d7`, `a412`, and `splk @5b, #0004` at `90ba` and
+  `9299`), which is what that constraint would look like - but none of them is
+  identified as the V.PCM path.
+* Overlay 8 resamples from 7578.95 to 8000 internally.
+* There is a rate mechanism for V.PCM that this search has not found.
+
+What would settle it: identify which of the forced index-4 sites is on the
+V.PCM path, or find the overlay-selection logic in the supervisor that pairs
+overlay 8 with overlay 6 (which defaults to index 5) rather than overlay 7
+(which defaults to index 1).
 
 ## What this closes and what it does not
 
