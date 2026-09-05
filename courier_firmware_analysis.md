@@ -3775,6 +3775,57 @@ So the receive path is now correctly paced and still unproven, and the thing
 standing in the way is a clock calibration rather than anything in the
 firmware.
 
+### What the firmware says a second is: 200 ticks
+
+Found 2026-09-05 in the user's own board image,
+`artifacts/courier-board-21210-capture-403/courier-board.rom` (supervisor
+7.4.16 / DSP 3.1.2), and confirmed against `main211.xmf`.
+
+Both builds convert an S-register byte, which is in seconds, to a countdown by
+multiplying by 200:
+
+| build | sites |
+|---|---|
+| 403 ROM (7.4.16) | `0x82206`, `0x952b5`, `0xa23ef`, `0xa570a`, `0xa5914` |
+| main211 (2.1.1) | `0x5dc8c`, `0x70fa6`, `0x82635`, `0x82862`, `0x828c8` |
+
+each `mov ah, 0xc8 ; mul ah`, storing to the cell the wait then counts down -
+`[0xc9a]`, `[0xae5]`, `[0xd85]` in the 403; `[0x8d6]` in main211, which
+subtracts `0x50` afterwards where the 403 subtracts `0x0f`. **So the firmware's
+own arithmetic puts one tick at 5.0 ms.**
+
+The two builds are the same codebase relocated. Every `mov ah, imm ; mul ah`
+site appears in both in the same order with the same factors - 200, 4, 8, 10,
+24, 100, 100, 10, 20, 60, 60 - and the wait shapes match too: main211's
+`test byte [0x66c], 0x80 ; cmp word [0x8d6], 0` at `0x82afd`, loaded with 2000,
+is the 403's `test byte [0x225], 0x80 ; cmp word [0x488], 0` at `0xa5b9b`,
+loaded with the same 2000. 7.4.16 reorganises the dial-tone wait itself into a
+dispatch on `[0xaf0]` rather than main211's inline poll, which is why its
+countdown cell `[0xaea]` holds no 9,600 literal.
+
+Against that 5 ms, both of the harness's figures are out by about two:
+
+| | ms per tick |
+|---|---|
+| firmware, from the image | **5.0** |
+| harness ROM path, `tick_ms=10` | 10.0 |
+| `daa.py`, from the ring calibration | 11.1 |
+
+`daa.py` derives `INSTRUCTIONS_PER_MS = 1,111` from 2,000,000 instructions
+taking the counter to 180, read as one 2 s ring burst. That is 11,111
+instructions per tick either way; at the firmware's own 5 ms it makes
+`INSTRUCTIONS_PER_MS` **2,222**, not 1,111. And the reading it rests on looks
+wrong in the same direction: 180 ticks at 5 ms is 900 ms, which is an ordinary
+minimum ring-burst length to qualify on, where 2 s is the whole cadence.
+
+None of this reaches the codec-implied 4,348, so that model stays separately
+suspect - this settles the supervisor's timebase, not the C5x's.
+
+**The falsifiable part.** On the 403 board the dial-tone wait is `S6 x 200`
+ticks. If one tick is 5 ms then `ATD` to `NO DIAL TONE` takes exactly `S6`
+seconds, so timing it at several `S6` settings must give a slope of 1.000
+seconds per unit. `tick_probe --dial-wait` measures precisely that.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under
