@@ -164,14 +164,77 @@ resident bank generates by hand belongs to index 0.
 Overlays 6 and 7 overlap in program space and are alternatives; overlay 8, the
 V.PCM datapump, loads alongside either.
 
+## One index, two directions
+
+V.34 negotiates transmit and receive symbol rates independently, and the AC01
+has a single `Fs` for both converters. So the six-row index cannot simply be
+"the symbol rate" - it has to be a reduction of two. It is, and the reduction
+is visible twice.
+
+**The selector is an argmax over six rates of the per-direction minimum.**
+`91e1` walks two six-entry arrays in parallel - `ff28..ff2d` and `ff30..ff35`,
+one per direction - takes the smaller of the pair at each rate, and keeps the
+index of the best:
+
+```text
+91e7: lar  ar2, #ff2d       ; direction A, six entries
+91e5: lar  ar1, #ff35       ; direction B, six entries
+91e9: lar  ar3, #05         ; six iterations
+91eb: sacl @5b              ; best index so far = 0
+91ed: lacl *-, ar2          ; B[i]
+91ee: sacb
+91ef: lacl *-, ar3          ; A[i]
+91f0: crlt                  ; min(A[i], B[i])
+91f1: lacl @7d              ; best so far
+91f2: crgt                  ; max(best, min(A[i], B[i]))
+91f3: sacl @7d
+91f4: xc   2, nc
+91f5: lamm @13
+91f6: sacl @5b              ; ...and record the index if it improved
+91f7: banz 91ed, *-, ar1
+```
+
+**And `971c` reduces two 3-bit fields by `max`.** `@7d` and `@7e` are filled by
+the bit extractor from two different frame buffers, `ff08` and `ff1a`, with the
+two swapped between the blocks at `96b9` and `96d3` - which is call mode against
+answer mode:
+
+```text
+971c: lacl #07 ; and @7d ; sacb    ; direction A's 3-bit rate field
+971f: lacl #07 ; and @7e ; sacl @7c ; direction B's
+9722: crgt                          ; the greater of the two
+9723: lacl #38 ; and @7e ; bsar 3   ; a second 3-bit field
+9727: add  @7c
+9728: crlt                          ; capped
+```
+
+`CRGT` and `CRLT` leave the greater and the lesser of `ACC`/`ACCB` in `ACC`, so
+these are `max` and `min`. `971c`'s result goes to `@7f`/`@7c` rather than to
+`@5b`, so it is not itself the codec selector - but between the two, the
+firmware plainly carries the directions separately and collapses them to one
+number before the codec sees it.
+
+The consequence matters for the ladder above: the codec rate is bounded by the
+**wider** of the two directions, not by either one alone. A connection
+transmitting at 2400 baud while receiving at 3429 still runs the codec at
+8000 Hz. So the per-row Nyquist margins in the table are a worst case, and the
+asymmetric case your reading of the table might suggest - one direction's rate
+starving the other - cannot arise.
+
 ## What this does not establish: the V.PCM rate
 
 The ladder above is **V.34's**, and only V.34's. Overlay 8 reads `@5b` zero
 times and writes no codec register, so it runs at whatever rate the V.34 index
-last selected. The rate it gets is therefore 8000 Hz only when the negotiated
-symbol rate is 3200 or 3429; at 2400-3000 baud the codec is at 7200 or
-7578.95 Hz, which cannot align to a downstream 8 kHz codeword stream without
-resampling in software.
+last selected. The rate it gets is therefore 8000 Hz only when the index -
+`max` over the two directions, per the section above - is 4 or 5; at 2400-3000
+baud the codec is at 7200 or 7578.95 Hz, which cannot align to a downstream
+8 kHz codeword stream without resampling in software.
+
+The `max` helps here rather than hurting: V.PCM only constrains the *receive*
+direction, so the downstream symbol rate alone can pull the codec to 8000 while
+the V.34 upstream runs slower. What it does not cover is symbol rate 3000,
+which maps to index 3 and 7578.95 Hz. If V.PCM admits 3000, that case still
+needs an explanation.
 
 An earlier version of this document argued that `B = 18` landing exactly on
 8000 Hz showed the ladder was provisioned for V.PCM. It does not. Checking each
