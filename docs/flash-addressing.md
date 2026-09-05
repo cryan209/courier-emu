@@ -48,3 +48,23 @@ DSP program addresses are a separate mapping again. This image's payload places
 program `0x8000` at file `0x29140`, so `program = 0x8000 + (file - 0x29140) / 2`.
 Note that [board-parts.md](board-parts.md) numbers the same code from a payload
 origin `0x8000` lower.
+
+## What the 512 KiB holds
+
+Scored in 8 KiB blocks by instruction fingerprints - C5x forms against x86 ones -
+and cross-checked against the download site the supervisor actually uses:
+
+| range | contents |
+|---|---|
+| `00000..17fff` | supervisor code and data |
+| `18000..19fff` | a C5x-looking block inside the supervisor region |
+| `1a000..27fff` | supervisor code and data |
+| `29140..36e8e` | **the DSP payload that is downloaded**, 28,327 words at program `8000` |
+| `36e8e..~44633` | ~55 KB of further C5x code that no download call references |
+| `44634..4bfff` | blank, then a small x86 block at `48000` |
+| `4c000..7bfff` | blank |
+| `7c000..7dfff` | x86 code or data |
+| `7e000..7ffff` | blank |
+
+The DSP payload's own origin follows from the download: program `0x8000` sits at
+file `0x29140`, so `program = 0x8000 + (file - 0x29140) / 2`.

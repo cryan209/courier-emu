@@ -140,18 +140,40 @@ Three things cannot all be true:
 3. This unit does x2 and V.90, which need at least 8000 Hz.
 
 Something in that list is wrong, and this document does not know which. The
-candidates, in the order worth testing:
+first candidate below has since been ruled out, which sharpens the problem
+rather than solving it: no payload the supervisor downloads reprograms the rate.
 
-* **A second DSP program.** The supervisor downloads DSP code, and a datapump
-  image with its own initialisation would reprogram the dividers on load without
-  any tag `2c` traffic. Only one codec init exists in *this* payload, but the
-  payload extracted from this flash is one segment at origin `0x8000`, and
-  whether another image is downloaded for the datapump is not settled here.
+* ~~**A second DSP program.**~~ **Ruled out.** Relaxing the download-site scan
+  to the whole image and to any entry word - it was limited to the first code
+  segment and to entry `8000` - finds three call sites, which is what
+  `rom.py` already says this board has. All three send the **same** payload:
+  entry `8000`, flash `29140..36e8e`, 28,327 words. There is no second download.
+
+  There is, though, about 55 KB of further C5x code immediately after that
+  payload, at `36e8e..~44633`, which no download call references. It is real
+  code and its internal call targets are consistent, but it contains **no**
+  host sender (`out *, 0060`), **no** `DXR` write, and no codec initialisation -
+  pure algorithm code with no I/O, which is what datapump overlays look like.
+  Whatever loads it, it does not reprogram the codec.
+
+  All three 512 KiB 20.16 MHz images - stock 7.3.14, ID_SDL 4.03, and the flat
+  `IDSDL302.ROM` - carry exactly one codec initialisation, with byte-identical
+  values `010A 0214 0300 0409 0505 0620`. `main211` differs (`0203 0502 0670`,
+  register 2 = `03` against `14` here), which is consistent with it being the
+  25.8048 MHz build.
+
 * **Register 4 is not only gain.** If it carries a rate or filter select, the
   three sends above are the rate change and the reading of them is wrong.
 * **The register numbering.** The whole `(register << 8) | data` reading rests
   on the reset sequence looking like registers 1-6 in order, which is suggestive
   rather than decoded.
+* **The AC01 is not the datapump's converter.** This would reconcile everything:
+  the part runs at 7200 Hz for dialing, call progress and voice, and the
+  datapump's samples go somewhere else. It is a modified form of
+  [board-parts.md](board-parts.md)'s reading 1, and the overlay region above is
+  weak support for it - algorithm code with no I/O has to be fed by something.
+  What argues against it is that the resident bank's ISR moves a sample every
+  codec interrupt and there is no second sample path in this image.
 
 ## What would settle it
 
