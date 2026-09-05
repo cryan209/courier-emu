@@ -84,6 +84,56 @@ This is the main limit of the run: with the loop on hook and no call, most of
 the ASIC never does anything. Four ports out of thirty-two is what `&T8`
 reaches.
 
+## The reset sweep: a clean negative
+
+`--reset` sweeps either side of an `ATZ` instead of either side of a loopback,
+on the theory that a restart would strobe the DSP download window at
+`0x40`-`0x56`.
+
+```sh
+.venv/bin/python -m courier_emu.asic_probe \
+  --device /dev/cu.usbserial-21210 --baud 115200 \
+  --reset --output artifacts/asic-reset-01
+```
+
+It does not work, and the reason is structural rather than a matter of
+sampling faster: **the monitor is firmware**. The board stops answering the
+moment it restarts and is readable again only once the supervisor is back at
+its command loop, by which point anything a reset did to the download window is
+over.
+
+The probe still races it rather than waiting for `ATZ`'s own `OK`, which would
+guarantee missing the event. It writes the command without waiting and then
+hammers one port with a 0.45 s timeout:
+
+```
+t=0.000  port 40 -> (no answer)
+t=0.375  port 40 -> 00
+t=0.540  port 40 -> 00        ... steady thereafter
+```
+
+So the outage is under 375 ms and the board answers immediately after. The
+resolution floor is the modem's own ~165 ms reply latency, so a shorter timeout
+would not buy much.
+
+The result across the reset:
+
+| | |
+|---|---|
+| ports differing before vs after | **0** of 256 |
+| non-zero ports, before vs after | all 32 identical |
+| watched ports still moving while settling | none |
+| `ATZ` round trip | 0.375 s |
+
+The download window reads `00`/`FF` in the same alternating pattern either
+side. Nothing in the port space records that a reset happened.
+
+That is a real limit on this approach rather than a tuning problem. Moving the
+download window needs a transition the monitor can survive, and there are only
+two: power-on, which is unobservable through the firmware's own monitor, and a
+call setup, which `bridge.py` notes re-enters the download routine - and that
+needs the loop off hook.
+
 ## What this does not settle
 
 Seeding the measured map into the ROM harness does **not** fix the outstanding

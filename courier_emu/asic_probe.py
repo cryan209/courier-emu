@@ -50,8 +50,19 @@ from .flash_dump import SerialPort, TERMINAL, validate_identity
 # The monitor's port-read selector, and the two self-test commands that move
 # the board between the states sampled here. Nothing else is admitted.
 READ = re.compile(r"ATGLK2I00([0-9A-F]{2})")
-ALLOWED = re.compile(r"AT(?:|I7|E0|S18=\d{1,3}|&T[08])")
+# `ATZ` reloads the stored profile and restarts the firmware. It reads NVRAM
+# and never writes it - `AT&W` is the command that stores, and it is not here
+# and not admitted - so a reset discards anything this probe put in RAM rather
+# than persisting it.
+ALLOWED = re.compile(r"AT(?:|I7|E0|Z|S18=\d{1,3}|&T[08])")
 VALUE = re.compile(rb"\r\r?\n([0-9A-F]{2})\r\nOK\r\n")
+
+# The ports a reset is expected to move: the DSP download window, which the
+# supervisor strobes in thousands while the C52 is held in reset, and the
+# mailbox the two processors then talk over.
+RESET_WATCH = (0x40, 0x42, 0x44, 0x46, 0x48, 0x4A, 0x4C, 0x4E,
+               0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E,
+               0x60, 0x62, 0x18, 0x1A, 0x1C, 0x1E)
 
 # The mailbox group. Reading these can consume state the firmware wanted, so
 # `--skip-mailbox` drops them; see the module docstring.
@@ -70,6 +81,22 @@ DEFAULT_LAST = 0xFF
 
 class MonitorPort(SerialPort):
     """Read-only monitor transport: port reads and the two self-test commands."""
+
+    def write_raw(self, command: str) -> None:
+        """Send a permitted command without waiting for its result code.
+
+        `ATZ` is the reason this exists: its `OK` arrives only once the restart
+        has finished, so waiting for it guarantees missing the outage.
+        """
+        if not (READ.fullmatch(command) or ALLOWED.fullmatch(command)):
+            raise ValueError(f"{command} is not a permitted operation")
+        data = (command + "\r").encode("ascii")
+        deadline = time.monotonic() + 2.0
+        while data:
+            left = deadline - time.monotonic()
+            if left <= 0 or not select.select([], [self.fd], [], left)[1]:
+                raise TimeoutError("serial write timed out")
+            data = data[os.write(self.fd, data):]
 
     def query(self, command: str, timeout: float = 3.0,
               expect: "re.Pattern[bytes]" = TERMINAL) -> bytes:
@@ -98,8 +125,9 @@ class MonitorPort(SerialPort):
         return bytes(response)
 
 
-def read_port(port: MonitorPort, number: int) -> int | None:
-    match = VALUE.search(port.query(f"ATGLK2I00{number:02X}"))
+def read_port(port: MonitorPort, number: int, timeout: float = 3.0) -> int | None:
+    """One port, or None if the board did not answer inside `timeout`."""
+    match = VALUE.search(port.query(f"ATGLK2I00{number:02X}", timeout=timeout))
     return int(match[1], 16) if match else None
 
 
@@ -201,6 +229,96 @@ def run(port: MonitorPort, numbers, passes: int) -> dict:
     }
 
 
+def run_reset(port: MonitorPort, numbers, passes: int) -> dict:
+    """Sweep either side of an `ATZ`, and race the modem back up.
+
+    The monitor is part of the firmware, so nothing can be sampled *during* the
+    reset: the board stops answering the moment it restarts and is only
+    readable again once the supervisor is back at its command loop, by which
+    time the DSP download has finished. What this can show is the settled state
+    either side of it, how long the restart takes, and whether the download
+    window is still moving when the board first answers - `RESET_WATCH` is
+    swept as fast as the link allows for exactly that.
+    """
+    identity = port.query("ATI7", timeout=6.0)
+    text, target = validate_identity(identity)
+
+    before = [sweep(port, numbers) for _ in range(passes)]
+
+    # Do not wait for ATZ's own OK: that arrives when the restart is already
+    # complete, so waiting for it guarantees missing the outage. Write the
+    # command and immediately race the board with single-port reads on a short
+    # timeout. A read that fails is the firmware being down, and the first that
+    # succeeds dates its return - which is the only way this transport can
+    # bound the reset at all.
+    start = time.monotonic()
+    port.write_raw("ATZ")
+    race: list[dict] = []
+    watch = RESET_WATCH[:1][0]          # 0x40, the download window's first port
+    while time.monotonic() - start < 8.0:
+        at = time.monotonic() - start
+        value = read_port(port, watch, timeout=0.45)
+        race.append({"at": round(at, 4), "port": f"{watch:02X}",
+                     "value": f"{value:02X}" if value is not None else None})
+        if len(race) > 8 and all(r["value"] is not None for r in race[-6:]):
+            break
+    reset_seconds = time.monotonic() - start
+    down = [r for r in race if r["value"] is None]
+    answered = any(r["value"] is not None for r in race)
+    port.drain(0.2)
+
+    # Then the slower watched set, to see whether anything is still settling.
+    settling = []
+    settle_start = time.monotonic()
+    while time.monotonic() - settle_start < 3.0:
+        settling.append({
+            "at": round(time.monotonic() - settle_start, 4),
+            "ports": {f"{n:02X}": (f"{v:02X}" if v is not None else None)
+                      for n, v in sweep(port, RESET_WATCH).items()},
+        })
+
+    after = [sweep(port, numbers) for _ in range(passes)]
+
+    states = {"before": before, "after": after}
+    ports = classify(states, numbers)
+    moved = {name: entry for name, entry in
+             ((f"{n:02X}", ports[n]) for n in numbers)
+             if entry["kind"] in ("state", "volatile")}
+    return {
+        "captured": datetime.now(timezone.utc).isoformat(),
+        "identity": text,
+        "target": {"supervisor": target[0], "dsp": target[1]},
+        "experiment": "reset",
+        "passes": passes,
+
+        "reset_answered_ok": answered,
+        "reset_seconds": round(reset_seconds, 4),
+        "race": race,
+        "race_reads": len(race),
+        "race_failed_reads": len(down),
+        "outage_first_failure": down[0]["at"] if down else None,
+        "outage_last_failure": down[-1]["at"] if down else None,
+        "settling_sweeps": len(settling),
+        "settling": settling,
+        "moved_across_reset": moved,
+        "ports": {f"{n:02X}": entry for n, entry in ports.items()},
+        "raw": {name: [{f"{n:02X}": (f"{v:02X}" if v is not None else None)
+                        for n, v in one.items()} for one in passes_]
+                for name, passes_ in states.items()},
+        "assumptions": [
+            "Nothing is sampled during the reset: the monitor is firmware, so "
+            "the board is unreadable until the supervisor is back, by which "
+            "time the DSP download has already finished.",
+            "`reset_seconds` is the ATZ round trip, so it includes one "
+            "command's serial overhead as well as the restart.",
+            "A port that reads the same before and after has not been shown to "
+            "be untouched by the reset, only to settle to the same value.",
+            "ATZ reloads the stored profile, so any RAM-only setting made "
+            "earlier in the session is discarded here rather than persisted.",
+        ],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="read-only characterization of the ASIC's I/O port space"
@@ -217,6 +335,10 @@ def main() -> int:
     parser.add_argument("--skip-mailbox", action="store_true",
                         help="leave 1c/1e/58-62 unread, since reading them can "
                         "consume state the supervisor was about to collect")
+    parser.add_argument("--reset", action="store_true",
+                        help="sweep either side of an ATZ instead of either "
+                        "side of a loopback. ATZ reloads the stored profile "
+                        "and writes no NVRAM; it discards RAM-only settings")
     args = parser.parse_args()
 
     numbers = [n for n in range(args.first, args.last + 1)
@@ -225,13 +347,33 @@ def main() -> int:
 
     with MonitorPort(args.device, args.baud) as port:
         port.drain()
-        report = run(port, numbers, args.passes)
+        report = (run_reset if args.reset else run)(port, numbers, args.passes)
     report["skip_mailbox"] = args.skip_mailbox
     (args.output / "report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n"
     )
 
     print(f"board: {report['target']['supervisor']} / {report['target']['dsp']}")
+    if args.reset:
+        print(f"ATZ answered OK: {report['reset_answered_ok']} "
+              f"in {report['reset_seconds']:.3f} s")
+        print(f"settling sweeps in the first 3 s: {report['settling_sweeps']}")
+        moved = report["moved_across_reset"]
+        print(f"\nports that differ across the reset: {len(moved)}")
+        for name, entry in moved.items():
+            before = ",".join(entry["values"].get("before", []))
+            after = ",".join(entry["values"].get("after", []))
+            print(f"  {name}  {entry['kind']:>9}  before={before:<14}"
+                  f" after={after:<14} bits={entry['bits_seen_changing']}")
+        # Whether the watched set was still moving as the board came back.
+        first = report["settling"][0]["ports"] if report["settling"] else {}
+        unsettled = sorted(
+            name for name in first
+            if len({s["ports"].get(name) for s in report["settling"]}) > 1
+        )
+        print(f"\nwatched ports still moving while settling: "
+              f"{', '.join(unsettled) if unsettled else 'none'}")
+        return 0
     print(f"kinds: {report['kinds']}")
     print(f"decode stops after: {report['decode_limit']}\n")
     print(f"{'port':>5} {'kind':>9} {'idle':>14} {'loopback':>18} {'bits':>5}")
