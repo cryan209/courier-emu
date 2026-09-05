@@ -243,3 +243,39 @@ carrier and symbol rate the datapump is using.
 
 They are stored as decimal Hz and baud, not as phase increments, so they carry
 no sample-rate information themselves.
+
+## Every way out, and why each is shut
+
+The contradiction has survived a lot of searching, and what follows is the list
+of resolutions that have been tried and closed, so none is attempted a fourth
+time.
+
+| way out | why it is shut |
+|---|---|
+| A second DSP program with its own codec setup | Three download call sites, all sending the same payload. See [dsp-overlays.md](dsp-overlays.md) |
+| An overlay reprogramming the dividers | Only the six reset writes call the control sender at all, and the one write an overlay makes is register 4 |
+| Tag `2c` carrying the rate at runtime | It is sent, three times, and every one writes register 4 |
+| A second converter on the TDM port | Retracted. Nothing in any image reads `TRCV`; the apparent reads are a data table |
+| Samples arriving over external I/O instead | With the anchoring filter applied, the overlays have **no** real `in`/`out` at all, and the resident's are mailbox, window and codec-control ports. There is no `0x50`/`0x52`/`0x54` sample loop in this image |
+| An interpolator between the tone generator and the codec | The main loop at `80c3` is a producer/consumer against the ISR's own pointer - `lar ar0, @10 ; cmpr eq ; bcnd` - producing exactly one output word per callback and stopping when it catches up. One sample per interrupt, no resampling |
+
+So the only sample path anywhere in this image is the AC01 on the primary serial
+port, moved one sample per interrupt by the resident ISR, at a rate the dial
+path's DTMF pins to 7200 Hz, set once at reset and never changed.
+
+Two candidates are left, and neither can be settled from the image alone:
+
+* **The divider registers do not mean what is assumed.** The whole `A = 10`,
+  `B = 20`, `Fs = MCLK / (2AB)` reading rests on the reset sequence looking like
+  registers 1-6 in order. That needs the AC01's register map.
+* **Something in the DTMF chain is wrong.** It is short and each link has been
+  checked - a 16-bit phase accumulator at `8743`, one sample per interrupt at
+  `80c3`, sixteen increment pairs whose ratios are DTMF's - but it is the only
+  thing pinning the rate.
+
+The second is testable without a datasheet, and cheaply: **record the modem
+dialling and measure the tones.** If they are 697 and 1209 Hz then the codec runs
+at 7200 during dialling and the contradiction is real and unexplained. If they
+are not, the chain breaks at a link that measurement will identify. That is the
+physical recording attempt `audio-312-path.md` records as abandoned, and it is
+now the cheapest experiment left rather than a loose end.
