@@ -1,0 +1,135 @@
+"""Sample ASIC ports at the tick rate from inside the modem.
+
+The serial monitor cannot sample fast. Every port read is a command round trip
+and the board's reply latency is about 165 ms, so a sweep of the interesting
+ports takes seconds and any event shorter than that is invisible - which is why
+the reset sweep in [asic-port-map.md] saw nothing at all.
+
+This runs on the 80186 instead. It reuses the counter routine's hook exactly:
+the tick vector's *segment* word is the only thing written, so the offset stays
+`0x0a77`, the routine lives at `0x3a77`, and the board never holds a
+half-updated far pointer. Each tick it reads a fixed list of ports, appends
+them to a ring buffer in RAM, and chains to the firmware's handler. At 200 ticks
+a second that is a sample every 5 ms.
+
+## The ports it may read
+
+Unlike the counter, this routine contains `IN` opcodes, so the property that
+made that one trivially safe - no port access at all - no longer holds. The
+replacement is an explicit allowlist: `0x10`, `0x12` and `0x14` are refused,
+because they carry the hook relay, the NVRAM strobe and the carrier-detect
+pair. Reading a latch is not what damages anything, but the routine has no
+business near them and the check is cheap.
+
+Reads are not always free even so. The mailbox data registers at `0x5c`/`0x5e`
+are how the supervisor collects a reply, so sampling them 200 times a second
+will race the firmware for its own messages. `0x1c` and `0x1e` are the status
+pair, and reading status is what the supervisor's interrupt does anyway. Sample
+the data registers only deliberately.
+"""
+from __future__ import annotations
+
+from .ram_counter import (ORIGINAL_OFFSET, ORIGINAL_SEGMENT, HOOK_SEGMENT,
+                          ROUTINE_BASE, VECTOR_SEGMENT_CELL, TICK_VECTOR,
+                          arm_command, disarm_command, write_byte, write_word)
+
+# Never sampled: hook relay, NVRAM strobe, carrier-detect pair.
+FORBIDDEN_PORTS = (0x10, 0x12, 0x14)
+# Where the ring buffer and its write index live. Both are inside the large
+# region that reads zero, and the index is kept clear of the routine's tail.
+INDEX = 0x3AF0
+BUFFER = 0x4000
+BUFFER_SIZE = 0x1000
+
+# The four ports that moved between idle and analogue loopback. 1c/1e are the
+# mailbox status pair; 18 also varied within the active state.
+DEFAULT_PORTS = (0x18, 0x1A, 0x1C, 0x1E)
+
+
+def routine(ports=DEFAULT_PORTS, index: int = INDEX,
+            buffer: int = BUFFER, size: int = BUFFER_SIZE) -> bytes:
+    """The sampler placed at `ROUTINE_BASE`.
+
+    `DI` carries the write cursor between ticks through `index`, so the buffer
+    fills continuously rather than restarting. The wrap is a compare against
+    the end and a reload, which costs nothing when it does not fire.
+    """
+    for port in ports:
+        if port in FORBIDDEN_PORTS:
+            raise ValueError(f"port {port:02x} drives a board latch; refused")
+        if not 0 <= port <= 0xFF:
+            raise ValueError(f"port {port:#x} is outside the byte-immediate form")
+    end = buffer + size
+    code = bytearray((
+        0x50,                      # push ax
+        0x9C,                      # pushf
+        0x1E,                      # push ds
+        0x57,                      # push di
+        0x31, 0xC0,                # xor ax, ax
+        0x8E, 0xD8,                # mov ds, ax
+        0x8B, 0x3E, index & 0xFF, index >> 8,      # mov di, [index]
+    ))
+    for port in ports:
+        code += bytes((0xE4, port,  # in al, port
+                       0x88, 0x05,  # mov [di], al
+                       0x47))       # inc di
+    code += bytes((
+        0x81, 0xFF, end & 0xFF, end >> 8,          # cmp di, end
+        0x72, 0x03,                                # jb +3, over the reload
+        0xBF, buffer & 0xFF, buffer >> 8,          # mov di, buffer
+        0x89, 0x3E, index & 0xFF, index >> 8,      # mov [index], di
+        0x5F,                      # pop di
+        0x1F,                      # pop ds
+        0x9D,                      # popf
+        0x58,                      # pop ax
+        0xEA, ORIGINAL_OFFSET & 0xFF, ORIGINAL_OFFSET >> 8,
+        ORIGINAL_SEGMENT & 0xFF, ORIGINAL_SEGMENT >> 8,   # jmp far 8000:0a77
+    ))
+    return bytes(code)
+
+
+def place_commands(ports=DEFAULT_PORTS, index: int = INDEX,
+                   buffer: int = BUFFER, size: int = BUFFER_SIZE) -> list[str]:
+    """Place the routine and point the write cursor at the buffer start."""
+    code = routine(ports, index, buffer, size)
+    commands = [write_byte(ROUTINE_BASE + i, b) for i, b in enumerate(code)]
+    commands.append(write_word(index, buffer))
+    return commands
+
+
+def decode(raw: bytes, written: int, ports=DEFAULT_PORTS) -> list[dict]:
+    """Turn the buffer into one record per tick, oldest first.
+
+    `written` is how far the cursor got, so anything past it is untouched
+    buffer rather than data. No wrap handling: a run is kept short enough that
+    the cursor does not lap the buffer, and the caller checks that.
+    """
+    stride = len(ports)
+    return [
+        {"tick": n, **{f"{port:02X}": raw[n * stride + i]
+                       for i, port in enumerate(ports)}}
+        for n in range(written // stride)
+    ]
+
+
+def plan(ports=DEFAULT_PORTS) -> str:
+    code = routine(ports)
+    seconds = BUFFER_SIZE / len(ports) / 200
+    return "\n".join((
+        f"routine  {len(code)} bytes at {ROUTINE_BASE:05x}..{ROUTINE_BASE + len(code) - 1:05x}",
+        f"ports    {' '.join(f'{p:02X}' for p in ports)}  ({len(ports)} bytes per tick)",
+        f"index    word at {INDEX:05x}",
+        f"buffer   {BUFFER:05x}..{BUFFER + BUFFER_SIZE - 1:05x}"
+        f"  ({BUFFER_SIZE} bytes = {seconds:.1f} s at 200 Hz)",
+        f"hook     vector {TICK_VECTOR:02x} segment cell {VECTOR_SEGMENT_CELL:02x}: "
+        f"{ORIGINAL_SEGMENT:04x} -> {HOOK_SEGMENT:04x}",
+        "",
+        "  " + " ".join(f"{b:02X}" for b in code),
+        "",
+        f"arm      {arm_command()}",
+        f"disarm   {disarm_command()}",
+    ))
+
+
+if __name__ == "__main__":
+    print(plan())

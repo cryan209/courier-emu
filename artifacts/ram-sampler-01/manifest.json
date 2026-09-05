@@ -1,0 +1,24 @@
+{
+  "what": "A port sampler running on the modem's own 80186, hooked onto the tick, writing I/O port reads into a RAM ring buffer at 200 Hz.",
+  "device": "/dev/cu.usbserial-21210",
+  "board": {"supervisor": "7.4.16", "dsp": "3.1.2", "firmware": "ID_SDL 4.03d"},
+  "routine": {"bytes": 54, "base": "0x03a77", "index": "0x03af0",
+              "buffer": "0x04000..0x04fff", "ports": ["0x18","0x1a","0x1c","0x1e"]},
+  "hook": {"vector": "0x0f", "cell": "0x3e (segment only)", "from": "0x8000", "to": "0x0300"},
+  "idle_capture": {
+    "ticks": 834, "seconds": 4.17, "rate_hz": 200,
+    "values": {"0x18": "FF", "0x1a": "FF", "0x1c": "FD", "0x1e": "FF"},
+    "distinct_values_per_port": 1,
+    "note": "identical to what the serial sweep reports at idle, which is the cross-check that the sampler reads what it claims to"
+  },
+  "the_finding": {
+    "claim": "AT&T8 clears essentially all free RAM.",
+    "evidence": "51 marker bytes placed across every free region from 0x0e77 to 0x0fc77; after one AT&T8 / AT&T0 cycle, 0 of 51 survived. The control was unarmed - no routine was hooked and no code executed - so this is the firmware's own behaviour, not a crash.",
+    "consequence": "AT&T8 cannot be used as the stimulus for a RAM-resident sampler: it destroys the routine, the cursor and the buffer. It is also why the first armed attempt returned an empty buffer."
+  },
+  "limits": [
+    "The idle capture shows no movement, which is expected: the serial sweep already said these four ports are static on hook. It proves the instrument, not the ASIC.",
+    "Sampling 0x1c and 0x1e races the supervisor for mailbox status, which is tolerable for a short idle run and would not be for a live call.",
+    "200 Hz is the tick rate, not the codec rate; events shorter than 5 ms are still invisible."
+  ]
+}
