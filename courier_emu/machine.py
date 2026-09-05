@@ -197,6 +197,7 @@ class CourierMachine:
         nvram: CourierNvram | None = None,
         board_id: int | None = DEFAULT_BOARD_ID,
         dip_closed: frozenset[str] | None = None,
+        code_observer: Any = None,
         parameter_sector: bytes | None = None,
         parameter_flash: ParameterFlash | None = None,
         tick_ms: int | None = None,
@@ -254,6 +255,10 @@ class CourierMachine:
         self.serial_interrupts = 0
         self.timer_interrupts = 0
         self.serial_trace: list[str] = []
+        # An optional per-instruction address sink. Diffing the addresses two
+        # runs reach is how a command's own handler is separated from the idle
+        # loop that dominates any profile.
+        self._code_observer = code_observer
         self._completion_dispatch_trace_count = 0
         self._originate_connect_published = False
         self._serial_started = False
@@ -717,6 +722,8 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            if self._code_observer is not None:
+                self._code_observer(address)
             if (
                 address == 0x65560
                 and self.dsp_bridge is not None

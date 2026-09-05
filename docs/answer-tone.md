@@ -89,16 +89,24 @@ transmits 1440 words, and the result is simply the wrong signal.
 * **Not the supervisor's decision to send it.** `9f40` is reached from a state
   machine this harness does not run; what it renders is the generator, armed
   the way that site arms it.
-* **ANSam is identified, not rendered.** The `8712` and `8716` variants route
-  the modulated tone through a five-tap filter at `8a88` over a delay line at
-  `0x01e1`. Under idle-RAM fixtures only two of its taps are ever written and
-  the output is silence, which the tool reports as `silent` rather than
-  guessing at the missing state. The 15.05 Hz second oscillator does run, and
-  its phase advances correctly; it is the shaping filter that wants state the
-  fixture has not got.
+* **ANSam renders too.** *Corrected.* This section used to say the `8712` and
+  `8716` variants could not be rendered, and blamed missing delay-line state.
+  The real cause was a bug in this repository's C5x core: `MADD` and `MADS`
+  read their coefficients from data memory instead of program memory, so the
+  shaping filter at `8a88` returned zero. With that fixed - see
+  [fsk-modulation.md](fsk-modulation.md) - both variants produce the 15.05 Hz
+  amplitude modulation, as a symmetric sideband pair at 2085 and 2115 Hz, each
+  about 10% of the carrier.
 * **The `&T` self-test was not the way in.** Driving the supervisor with
   `AT&T1`, `AT&T8` and `ATS18=2&T8` under `courier_emu.mailbox_tap` produces
-  `OK` and the same fourteen idle-cycle mailbox messages as a bare `AT`, at
-  both 9M and 60M instructions. The loopback path does not engage in the
-  emulator, so it could not be used to make the datapump speak. The generator
-  above was found by reading the callback slot's writers instead.
+  `OK` and the same fourteen idle-cycle mailbox messages as a bare `AT`. The
+  generator above was found by reading the callback slot's writers instead.
+
+  *Corrected.* This originally added "the loopback path does not engage in the
+  emulator", on the grounds that the runs showed no distinct execution. That
+  was read off `hot_addresses`, which lists only the most-executed addresses
+  and is therefore dominated by the idle loop either way. Recording every
+  address instead - `CourierMachine(code_observer=...)`, added for this -
+  shows `AT&T8` reaching **548 addresses a bare `AT` never reaches**, in some
+  thirty regions of the supervisor. The handler runs. What has not been shown
+  is that it reaches the datapump within the window observed.

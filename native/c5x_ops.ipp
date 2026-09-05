@@ -1778,51 +1778,98 @@ void C5xCore::op_lts()
 	CYCLES(1);
 }
 
+// MAC, MACD, MADD and MADS all walk a coefficient table in PROGRAM memory
+// while walking a data window, which is what makes them the C5x's FIR
+// instructions (TMS320C5x User's Guide, SPRU056D, 6-141 to 6-152). Two
+// details matter and were previously missing:
+//
+//   * Under RPT the program address advances with each repetition. These
+//     therefore consume the repeat themselves, in the same shape as TBLR and
+//     BLPD above; relying on the outer repeat loop re-executed the
+//     instruction with the program address reset, so an N-tap filter
+//     convolved its window against one constant coefficient.
+//   * MADD and MADS take that program address from BMAR. Reading BMAR's
+//     contents out of DATA memory returned zero for every coefficient table
+//     this firmware uses, because they live in program memory beside the code
+//     that scans them.
+//
+// All four load TREG0 with the data operand.
+
 void C5xCore::op_mac()
 {
-	uint16_t pma = ROPCODE();
-	uint16_t ea = GET_ADDRESS();
-	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
-	m_preg = int32_t(int16_t(PM_READ16(pma))) * int32_t(int16_t(DM_READ16(ea)));
-	CYCLES(2);
+	uint16_t pfc = ROPCODE();
+
+	while (m_rptc > -1)
+	{
+		uint16_t ea = GET_ADDRESS();
+		uint16_t data = DM_READ16(ea);
+		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+		m_treg0 = data;
+		m_preg = int32_t(int16_t(PM_READ16(pfc))) * int32_t(int16_t(data));
+		pfc++;
+		CYCLES(2);
+
+		m_rptc--;
+	};
 }
 
 void C5xCore::op_macd()
 {
-	uint16_t pma = ROPCODE();
-	uint16_t ea = GET_ADDRESS();
-	uint16_t data = DM_READ16(ea);
-	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
-	m_preg = int32_t(int16_t(PM_READ16(pma))) * int32_t(int16_t(data));
-	// MACD builds a delay line while doing the same pipelined multiply and
-	// accumulate as MAC. The data operand is copied to the next higher data
-	// address; address-register modification, if any, has already happened in
-	// GET_ADDRESS and does not change the copy destination.
-	DM_WRITE16(uint16_t(ea + 1), data);
-	CYCLES(2);
+	uint16_t pfc = ROPCODE();
+
+	while (m_rptc > -1)
+	{
+		uint16_t ea = GET_ADDRESS();
+		uint16_t data = DM_READ16(ea);
+		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+		m_treg0 = data;
+		m_preg = int32_t(int16_t(PM_READ16(pfc))) * int32_t(int16_t(data));
+		// MACD also builds the delay line: the data operand is copied to the
+		// next higher data address. Address-register modification has already
+		// happened in GET_ADDRESS and does not change the copy destination.
+		DM_WRITE16(uint16_t(ea + 1), data);
+		pfc++;
+		CYCLES(2);
+
+		m_rptc--;
+	};
 }
 
 void C5xCore::op_madd()
 {
-	uint16_t ea = GET_ADDRESS();
-	uint16_t data = DM_READ16(ea);
-	uint16_t bmar_data = DM_READ16(m_bmar);
-	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
-	m_treg0 = data;
-	m_preg = int32_t(int16_t(data)) * int32_t(int16_t(bmar_data));
-	DM_WRITE16(uint16_t(ea + 1), data);
-	CYCLES(3);
+	uint16_t pfc = m_bmar;
+
+	while (m_rptc > -1)
+	{
+		uint16_t ea = GET_ADDRESS();
+		uint16_t data = DM_READ16(ea);
+		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+		m_treg0 = data;
+		m_preg = int32_t(int16_t(data)) * int32_t(int16_t(PM_READ16(pfc)));
+		DM_WRITE16(uint16_t(ea + 1), data);
+		pfc++;
+		CYCLES(3);
+
+		m_rptc--;
+	};
 }
 
 void C5xCore::op_mads()
 {
-	uint16_t ea = GET_ADDRESS();
-	uint16_t data = DM_READ16(ea);
-	uint16_t bmar_data = DM_READ16(m_bmar);
-	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
-	m_treg0 = data;
-	m_preg = int32_t(int16_t(data)) * int32_t(int16_t(bmar_data));
-	CYCLES(3);
+	uint16_t pfc = m_bmar;
+
+	while (m_rptc > -1)
+	{
+		uint16_t ea = GET_ADDRESS();
+		uint16_t data = DM_READ16(ea);
+		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+		m_treg0 = data;
+		m_preg = int32_t(int16_t(data)) * int32_t(int16_t(PM_READ16(pfc)));
+		pfc++;
+		CYCLES(3);
+
+		m_rptc--;
+	};
 }
 
 void C5xCore::op_mpy_mem()
