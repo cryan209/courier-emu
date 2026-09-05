@@ -87,7 +87,7 @@ one of them. `courier_emu.datapumps.pcm_ladders` reads the CONNECT strings:
 | **x2** | 33333 … 57333, and 64000 | 16 |
 | **V.90** | 28000 … 62666, and 64000 | 28 |
 
-V.90 starts five steps lower and fills in every step; x2 starts at 33333 and
+V.90 starts four steps lower and fills in every step; x2 starts at 33333 and
 skips 34666, 38666 and 40000. Both stop at 57333 before the 64000 entry, which
 is the digital-side rate rather than a modem rate.
 
@@ -355,12 +355,15 @@ than any configuration path, so what the two families are *for* is open.
 
 ## What is still open
 
-**How the DSP is told x2 from V.90.** This is back where it was. S58 carries a
-bit for each, x2's setup sends a capability word as command `70` while V.90's
-branch is empty, and `0xfff4` bit 2 - the bit everything downstream reads - is
-decided by the four-candidate search rather than by the supervisor. None of
-that names the two code families in overlay 8, and `&X` turned out to be a
-different question.
+**The V.90 wire-level selector is recovered; x2's is not.** The DSP has one
+writer for outgoing INFO1a bits `37:39`: `9185` calls `9267` and writes its
+three-bit result to `ff1a` at bit offset `0x25`. Under Table 10/V.90, the
+integer `6` in that field requests V.90 and the digital modem's 8000-symbol/s
+direction. The nearby six-row V.34 index decoder is a different path and must
+not be mistaken for this selector. x2 has no parallel writer for bit offset
+`0x25`; its known local difference remains command `70` into `fff1`. See
+[x2-v90-protocol-selection.md](x2-v90-protocol-selection.md) for the exact
+instructions and the remaining x2 trace.
 
 **What the two families are.** With the clock-source reading in hand, the fork
 looks like a timing variant, but nothing here says what differs between the

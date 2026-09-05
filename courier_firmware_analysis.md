@@ -179,10 +179,12 @@ x2
 ```
 
 This confirms that the supervisor can report x2 as a distinct modulation/rate
-label. A string scan did **not** find a separate `X2 Status` diagnostic comparable
-to `V.90 Status`; x2 appears to reuse the normal last-call/link diagnostic
-surfaces (`ATI6`, `ATI11`, and hidden `ATY*` tables) with x2-specific connect
-result text.
+label. Later disassembly corrected the original string-scan conclusion: the
+capture has separate `x2 Status` and `V.90 Status` formatter headers at flash
+`0x1bff0` and `0x1c0a0`, respectively. The nearby diagnostic enum contains
+x2-specific outcomes (remote not x2/server, multiple codecs, incompatible
+versions, and 3200-baud restrictions). The normal link diagnostics may still
+be shared, but x2 is not merely a result-code label.
 
 ### x2 / V.90 feature-gate and NVRAM evidence
 

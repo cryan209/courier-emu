@@ -104,6 +104,23 @@ def test_x2_and_v90_are_two_bits_over_one_receiver(rom):
     assert control['V90']['empty_setup'] and not control['x2']['empty_setup']
 
 
+def test_x2_alone_builds_a_dsp_capability_word(rom):
+    """Two undocumented S58 bits alter x2's tag-70 argument, not V.90."""
+    assert datapumps.x2_capability_builder(rom) == {
+        'site': 0x8F43, 's_register': 58,
+        'bit_9_from_s58': 0x04, 'bit_10_clear_from_s58': 0x10,
+        'always_clear': 0xD800, 'command': 0x70,
+    }
+
+
+def test_x2_tag_seventy_marks_the_dsp_parameter_state(rom):
+    assert datapumps.x2_dsp_setup(rom) == {
+        'site': 0x8D29, 'capability_cell': 0xFFF1,
+        'capability_mask': 0x3FFF,
+        'set': {0xFFF4: 0x8000, 0xFFF7: 0x0001},
+    }
+
+
 def test_both_ladders_step_by_one_pcm_frame(rom):
     ladders = datapumps.pcm_ladders(rom)
     assert len(ladders['x2']) == 16 and len(ladders['V90']) == 28
@@ -114,8 +131,12 @@ def test_both_ladders_step_by_one_pcm_frame(rom):
             # Every rate is a whole number of bits per six-symbol frame.
             assert abs(rate / datapumps.PCM_STEP
                        - round(rate / datapumps.PCM_STEP)) < 0.01
-    # V.90 covers every x2 rate and five slower ones besides.
+    # V.90 covers every x2 rate and adds four lower plus eight missing rungs.
     assert set(ladders['x2']) < set(ladders['V90'])
+    assert set(ladders['V90']) - set(ladders['x2']) == {
+        28000, 29333, 30666, 32000, 34666, 36000, 38666, 40000,
+        58666, 60000, 61333, 62666,
+    }
 
 
 def test_overlay_eight_forks_into_two_receivers(rom):
@@ -237,3 +258,25 @@ def test_bit_codes_are_not_bit_numbers(rom):
     _, bit, _ = datapumps.receiver_fork(rom)
     assert bit == 7
     assert bit != 8
+
+
+def test_capability_message_and_v90_info1a_selector_are_distinct(rom):
+    """x2's `fff1` message is not V.90's INFO1a integer-six declaration."""
+    choice = datapumps.capability_choice(rom)
+    assert choice == {
+        'site': 0x8E4A, 'flag_bit': 6,
+        'set': 0xFFF1, 'clear': 0xFFF2,
+        'width': 0x10, 'buffer': 0xFF18,
+    }
+    info = datapumps.v90_info1a_writer(rom)
+    assert info == {
+        'site': 0x9185, 'value_source': 0x9267,
+        'buffer': 0xFF1A, 'offset': 37, 'v90_value': 6,
+    }
+
+
+def test_capability_selector_gets_a_scaled_host_configuration_word(rom):
+    assert datapumps.datapump_flag_transfer(rom) == {
+        'site': 0x9B94, 'input_cell': 0x007A,
+        'destination': datapumps.DATAPUMP_FLAGS, 'multiplier': 5,
+    }

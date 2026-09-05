@@ -169,6 +169,25 @@ X2_BIT, V90_BIT = 0x01, 0x20
 X2_COMMAND = 0x70                      # the capability word x2 sends the DSP
 SEND_TAG = bytes([0xB8, X2_COMMAND, 0x00])              # mov ax, 0x70
 EMPTY_BODY = bytes([0x75, 0x00, 0xC3])                  # jne +0 ; ret
+# x2's pre-send capability edits.  Bits 4 and 16 of S58 have no recovered help
+# labels, but their effect on the DSP word is explicit.
+X2_CAPABILITY_BUILD = bytes([
+    0x81, 0xE3, 0xFF, 0xFD,             # and bx, 0xfdff
+    0xF6, 0x06, 0xC8, 0x04, 0x04,       # test [S58], 4
+    0x74, 0x04, 0x81, 0xCB, 0x00, 0x02, # set bit 9 when set
+    0x81, 0xCB, 0x00, 0x04,             # set bit 10
+    0xF6, 0x06, 0xC8, 0x04, 0x10,       # test [S58], 16
+    0x74, 0x04, 0x81, 0xE3, 0xFF, 0xFB, # clear bit 10 when set
+    0x81, 0xE3, 0xFF, 0xE7,             # clear bits 11 and 12
+    0x81, 0xE3, 0xFF, 0x3F,             # clear bits 14 and 15
+    0xB8, X2_COMMAND, 0x00,
+])
+
+# The tag-70 DSP handler.  In addition to accepting the x2 capability word,
+# it marks two shared state words as having fresh x2 parameters.
+X2_DSP_SETUP = (0x097A, 0xFFF1, 0xBF09, 0xFFF1, 0x5E80, 0x3FFF,
+                0x5D80, 0x0000, 0xBF09, 0xFFF4, 0xAE80, 0x8000,
+                0xBF09, 0xFFF7, 0x5D80, 0x0001, 0xEF00)
 
 # Both ladders step by 8000/6 bps: PCM downstream is 8000 symbols a second in
 # six-symbol frames, so a rate is a count of bits per frame.
@@ -234,6 +253,29 @@ def pcm_control(rom):
                          'sites': tuple(sites), 'command': command,
                          'empty_setup': empty}
     return found
+
+
+def x2_capability_builder(rom):
+    """The x2-only transformation applied before tag 0x70 reaches the DSP."""
+    sites = tuple(match.start() for match in
+                  re.finditer(re.escape(X2_CAPABILITY_BUILD), rom.data))
+    if len(sites) != 1:
+        raise ValueError(f'expected one x2 capability-word builder, found {len(sites)}')
+    return {'site': sites[0], 's_register': PCM_OPTIONS,
+            'bit_9_from_s58': 0x04, 'bit_10_clear_from_s58': 0x10,
+            'always_clear': 0xD800, 'command': X2_COMMAND}
+
+
+def x2_dsp_setup(rom):
+    """The complete DSP-side state update performed for host tag 0x70."""
+    w = _image(rom, 5)
+    sites = tuple(pc for pc in range(0x8000, 0xEEA0 - len(X2_DSP_SETUP))
+                  if tuple(w[pc:pc + len(X2_DSP_SETUP)]) == X2_DSP_SETUP)
+    if len(sites) != 1:
+        raise ValueError(f'expected one x2 tag-70 handler, found {len(sites)}')
+    return {'site': sites[0], 'capability_cell': X2_CAPABILITY,
+            'capability_mask': 0x3FFF,
+            'set': {0xFFF4: 0x8000, 0xFFF7: 0x0001}}
 
 
 # --- the two receivers in overlay 8 ---------------------------------------
@@ -541,3 +583,87 @@ def rate_choice_selects(rom):
     return tuple((SYMBOL_RATES[bit], CODEC_RATES[index])
                  for bit, index in sorted(rate_choice(rom).items(), reverse=True)
                  if bit < len(SYMBOL_RATES) and index < len(CODEC_RATES))
+
+
+# --- which scheme a call ends up in ----------------------------------------
+#
+# The DSP packs one of two 16-bit capability words into its startup message.
+# The choice is flag bit 6 in its datapump register.  This is *not* overlay
+# 8's family fork (bit 7), and static analysis has not yet proved what sets
+# the bit-6 selector for an x2 call.
+
+X2_CAPABILITY, OTHER_CAPABILITY = 0xFFF1, 0xFFF2   # the two words it can send
+MESSAGE_BUFFER = 0xFF18                            # the bit-packed message
+BIT_PACKER = 0x8769                                # writes acc into it, @7f wide
+CAPABILITY_FLAG_BIT, E_FAMILY_FLAG_BIT = 6, 7      # separate flag bits
+BLDD_AT_7D = 0xA87D
+DATAPUMP_FLAG_TRANSFER = (0x127A, 0x207A, 0xBC10, 0x901F, 0xEF00)
+
+
+def capability_choice(rom):
+    """Where the DSP picks which capability word goes into the message.
+
+    `bit <code>, @1f ; bldd @7d, #fff1 ; xc 2, ntc ; bldd @7d, #fff2` chooses
+    `fff1` when its bit-6 selector is set and `fff2` when clear, then pushes
+    the chosen 16-bit word into the message buffer. Tag `0x70` writes `fff1`
+    on the x2 setup path; the selector's setter is still untraced.
+    """
+    w = _image(rom, 5)
+    for pc in range(0x8000, 0xEEA0):
+        if (w[pc] & 0xF000 != 0x4000 or w[pc] & 0x7F != 0x1F
+                or w[pc + 1] != BLDD_AT_7D or w[pc + 2] != X2_CAPABILITY):
+            continue
+        if w[pc + 4] != BLDD_AT_7D or w[pc + 5] != OTHER_CAPABILITY:
+            continue
+        bit = 15 - ((w[pc] >> 8) & 0xF)
+        width = next((w[q + 1] for q in range(pc, pc + 12)
+                      if w[q] == (SPLK | 0x7F)), None)
+        buffer_ = next((w[q + 1] for q in range(pc, pc + 12)
+                        if w[q] == 0xBF08), None)
+        return {'site': pc, 'flag_bit': bit, 'set': X2_CAPABILITY,
+                'clear': OTHER_CAPABILITY, 'width': width, 'buffer': buffer_}
+    raise ValueError('no capability-word choice in this image')
+
+
+def datapump_flag_transfer(rom):
+    """The tag-1d conversion that installs the DSP datapump flag word.
+
+    It computes five times the mailbox argument before storing `@1f`; host
+    code supplies that argument from configuration byte `[4ab]`.
+    """
+    w = _image(rom, 5)
+    sites = tuple(pc for pc in range(0x8000, 0xEEA0 - len(DATAPUMP_FLAG_TRANSFER))
+                  if tuple(w[pc:pc + len(DATAPUMP_FLAG_TRANSFER)]) == DATAPUMP_FLAG_TRANSFER)
+    if len(sites) != 1:
+        raise ValueError(f'expected one tag-1d datapump-flag handler, found {len(sites)}')
+    return {'site': sites[0], 'input_cell': 0x007A,
+            'destination': DATAPUMP_FLAGS, 'multiplier': 5}
+
+
+# --- V.90's INFO1a selector -----------------------------------------------
+#
+# This must stay distinct from `rate_choice`: V.90 Table 10 assigns integer 6
+# at INFO1a bits 37:39 to mean V.90 operation, whereas V.34 uses values 0..5
+# for a symbol-rate index.
+
+INFO1A_DIGITAL_RATE_OFFSET = 0x25
+V90_INFO1A_VALUE = 6
+INFO1A_V90_WRITER = (0x7A80, 0x9267, 0xBF08, 0xFF1A,
+                     0x7E80, BIT_PACKER, 0xAE7F, INFO1A_DIGITAL_RATE_OFFSET)
+
+
+def v90_info1a_writer(rom):
+    """The sole code path that writes outgoing INFO1a bits 37:39.
+
+    The called routine computes the three-bit value; the immediately following
+    bit-packer call inserts it in `ff1a` at offset 37.  A second writer would
+    be an x2 candidate, but the image has no such counterpart.
+    """
+    w = _image(rom, 5)
+    sites = tuple(pc for pc in range(0x8000, 0xEEA0 - len(INFO1A_V90_WRITER))
+                  if tuple(w[pc:pc + len(INFO1A_V90_WRITER)]) == INFO1A_V90_WRITER)
+    if len(sites) != 1:
+        raise ValueError(f'expected one INFO1a bits-37:39 writer, found {len(sites)}')
+    return {'site': sites[0], 'value_source': 0x9267,
+            'buffer': 0xFF1A, 'offset': INFO1A_DIGITAL_RATE_OFFSET,
+            'v90_value': V90_INFO1A_VALUE}
