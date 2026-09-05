@@ -67,6 +67,7 @@ void C5xCore::reset()
     m_line_dac_sum = 0;
     m_line_dac_count = 0;
     m_call_tdm_active = false;
+    for (auto &phase : m_line_phase_tx) phase.clear();
     m_line_frame_entry = -1;
     m_pending_overlay.clear();
     std::fill(std::begin(m_pcstack), std::end(m_pcstack), 0);
@@ -303,6 +304,8 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
     if (m_call_tdm_active && address == m_line_dac_slot) {
         m_line_dac_sum += int16_t(value);
         ++m_line_dac_count;
+        std::vector<uint16_t> &phase = m_line_phase_tx[m_io[0x52] & 3];
+        if (phase.size() < 400000) phase.push_back(value);
     }
 }
 
@@ -705,8 +708,12 @@ void C5xCore::step()
                 if (!m_codec_rx.empty()) {
                     // The ASIC's polyphase input holds the newest and previous
                     // 9.6 kHz ADC words in the delay cells at 0xfff8/0xfff9.
-                    m_data[0xfff9] = m_data[0xfff8];
-                    m_data[0xfff8] = m_codec_rx.front();
+                    // Through DM_WRITE16 so the ADC pair is visible to the
+                    // same instrumentation as everything else the datapump
+                    // touches; whether the firmware's own reads track it is
+                    // the question, and it cannot be asked otherwise.
+                    DM_WRITE16(0xfff9, m_data[0xfff8]);
+                    DM_WRITE16(0xfff8, m_codec_rx.front());
                     // The TDM receive register and the polyphase ADC latch
                     // are two views of the same ASIC slot. Populate TRCV
                     // before the frame ISR reads it; previously only the

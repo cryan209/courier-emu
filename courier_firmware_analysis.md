@@ -3699,6 +3699,48 @@ Two things are settled by this measurement. The V.8 tones a run emits are
 15 Hz AM and 450 ms reversals for answering - not firmware output. And V.21 is
 generated nowhere; the harness only scores 980/1180 Hz symbols it never sees.
 
+### Where the audio path is not: four measurements
+
+Measured 2026-09-05 on an answered call with `set_synthetic_line(False)`, so
+nothing but the C52 can put anything on the line.
+
+**1. The overlay runs and stalls where the file already said it would.**
+`v8_dispatches` 89, `negotiation_loop_entries` 14, `negotiation_loop_pc`
+`0xc853`, and the PC trace is dominated by `0xc853`. So the datapump's
+negotiation is executing and spinning in the loop that needs the absent
+ASIC-produced workspace.
+
+**2. The frame ISR at `0x0228` is the polyphase resampler, not a DAC writer.**
+It runs about **ten times per codec sample** - the write counts for the ASIC
+block are `0xfffd`, `0xfffb`, `0xffff` at 10.09 per sample, `0xfffa` at 20.2,
+`0xfffc` at 30.3 - which is the 25 MHz/258-cycle TDM slot rate against the
+9.6 kHz codec. It reads the slot number from `@52`, indexes four descriptors at
+program `0x824d` (`bf09 04fd be59 bb3f`), and filters the ADC pair `@78`/`@79`
+by them into the 32-bit accumulator `@7c`/`@7d`.
+
+**3. Nothing in the block is a waveform.** De-interleaved by TDM phase, slot
+`0xffff` carries two to four distinct values in every phase, peak/rms 0.066.
+The whole overlay writes only 723 distinct cells, and every one outside
+`0xfff8`-`0xffff` fewer than 200 times in 98,237 codec samples. A running
+datapump would touch far more than that.
+
+**4. The receive path is backlogged by about forty seconds.** A known 1800 Hz
+tone from the far end appears nowhere in the ISR's output - and the reason is
+not the firmware. Routing the harness's ADC injection through `DM_WRITE16`
+makes it visible: `0xfff8` is written once per codec sample, 24,979 times, and
+**every write carries the same value**. `codec_rx_queued` is 495,360 against
+`codec_rx_consumed` 101,020, so the queue runs about five times faster than the
+DSP drains it and `front()` is still silence from before the call came up.
+
+That last one is a harness bug, not a firmware property, and it invalidates any
+earlier reading that assumed the datapump had heard the line. The codec receive
+queue has to be paced to consumption before the transmit side can be judged at
+all.
+
+So the audio path is not at `0xfffd` (a phase accumulator), not at `0xffff`
+(two values), and the input at `0xfff8` never varies. `set_line_dac_slot` and
+`line_phase_samples` make each of those measurable rather than assumed.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under

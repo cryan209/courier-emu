@@ -186,6 +186,10 @@ class NativeC5x:
         lib.courier_c5x_set_bio_low.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_synthetic_line.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_line_dac_slot.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_line_phase_samples.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
+        ]
+        lib.courier_c5x_get_line_phase_samples.restype = ctypes.c_size_t
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
@@ -474,6 +478,23 @@ class NativeC5x:
             if stats["reads"] or stats["writes"]:
                 result[f"0x{port:02x}"] = stats
         return result
+
+    def line_phase_samples(self, phase: int) -> list[int]:
+        """Return the DAC-slot writes made in one TDM phase.
+
+        The ASIC bus carries about ten slots per codec sample. If the line
+        channel is one of them its samples are in a single phase, and the
+        average across all of them - which is what the line_tx stream is - is
+        not a waveform.
+        """
+        count = int(self.library.courier_c5x_get_line_phase_samples(
+            self.handle, phase, None, 0))
+        if not count:
+            return []
+        buffer = (ctypes.c_uint16 * count)()
+        self.library.courier_c5x_get_line_phase_samples(
+            self.handle, phase, buffer, count)
+        return [value - 0x10000 if value & 0x8000 else value for value in buffer]
 
     def line_tx_samples(self, start: int = 0) -> list[int]:
         count = self.serial_state()["line_tx_writes"]

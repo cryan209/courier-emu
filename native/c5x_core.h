@@ -129,6 +129,12 @@ public:
     void set_synthetic_line(bool enabled) { m_synthetic_line = enabled; }
     bool synthetic_line() const { return m_synthetic_line; }
     void set_line_dac_slot(uint16_t slot) { m_line_dac_slot = slot; }
+    // Writes to that slot, kept apart by the TDM phase they were made in. The
+    // ASIC bus carries about ten slots per codec sample; if the line channel
+    // is one of them, its samples are in one of these and averaging them all
+    // together is what turns a waveform into noise.
+    const std::vector<uint16_t> &line_phase_samples(unsigned phase) const
+        { return m_line_phase_tx[phase & 3]; }
     uint16_t line_dac_slot() const { return m_line_dac_slot; }
     uint16_t io(uint16_t port) const;
     uint16_t program(uint16_t address) const;
@@ -220,6 +226,7 @@ private:
     bool m_call_tdm_active = false;
     bool m_synthetic_line = true;
     uint16_t m_line_dac_slot = 0xfffd;
+    std::vector<uint16_t> m_line_phase_tx[4];
     int m_line_frame_entry = -1;
     uint16_t m_pending_overlay_origin = 0;
     std::vector<uint16_t> m_pending_overlay;

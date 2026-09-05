@@ -147,6 +147,16 @@ void courier_c5x_set_v8_answering(void *handle, int enabled)
     if (handle) static_cast<C5xCore *>(handle)->set_v8_answering(enabled != 0);
 }
 
+std::size_t courier_c5x_get_line_phase_samples(void *handle, unsigned phase,
+    uint16_t *out, std::size_t capacity)
+{
+    if (!handle) return 0;
+    const auto &samples = static_cast<C5xCore *>(handle)->line_phase_samples(phase);
+    std::size_t count = samples.size() < capacity ? samples.size() : capacity;
+    if (out) std::copy(samples.begin(), samples.begin() + count, out);
+    return samples.size();
+}
+
 void courier_c5x_set_line_dac_slot(void *handle, uint16_t slot)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_line_dac_slot(slot);
