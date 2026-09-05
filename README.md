@@ -43,7 +43,19 @@ C5x serial port, `DRR`/`DXR`, with the codec as clock master and no TDM
 register used anywhere; a port sweep during `AT&T8` analogue loopback shows no
 CPU port carrying samples. And the C52's mask ROM is not what the modem
 executes - the firmware supplies program words `0000..75d9`, including the
-reset code, and programs external-memory wait states.
+reset code, and programs external-memory wait states — and the supervisor's own
+download stream, which the bridge checks rather than assumes, matches that
+segment byte for byte (`bootstrap_match`, 60,344 bytes), so those words are RAM
+the CPU writes.
+
+[What is actually on the board](docs/board-parts.md) identifies the parts from
+a photograph, each checked against the firmware where it can be. The large NEC
+package is `1-016-905` — a USR part number on an NEC-fabricated gate array —
+and it is the "interposed ASIC" these notes model as a black box: the mailbox,
+the DSP download window, the codec bring-up, the line detector and the missing
+tone generator are all in that one package. The `40.320 MHz` oscillator also
+confirms CLKOUT is 20.16 MHz, which is the last thing the tick derivation
+needed.
 
 The constants that rested on the old calibration have been moved with it:
 `INSTRUCTIONS_PER_MS` 1,111 -> 4,348, `SUGGESTED_TICK_MS` 10 -> 5, and
@@ -372,6 +384,14 @@ brings the native C52 bridge up on runs that would not otherwise need it.
 The board carries an Si3021 and an Si3014; `docs/SI3038.PDF` is the AC'97
 sibling of that pair and is the only published register map here, so the model
 uses its addresses for the shared line-side fields.
+
+That attribution is about the **line interface**. The part on the DSP's own
+serial port is a different one: a TI `TLC320AC0x`, identified from the board and
+confirmed by the C52's firmware, which uses bit 0 of each transmitted word to
+request the secondary frame that carries a control register — the AC0x
+protocol. See [what is actually on the board](docs/board-parts.md). So
+`CodecBringUp`, which runs an `SI3038` register sequence, models a part the DSP
+does not talk to; the line-side attribution is untouched.
 
 ```sh
 ./courier run main211.xmf --instructions 20000000 \

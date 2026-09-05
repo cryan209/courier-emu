@@ -44,6 +44,13 @@ Two different builds on two different crystals, each choosing the max count
 that lands on exactly 5.000 ms. The board's value is written at `0x008ce` and
 verified by the firmware itself at `0x4a83b` (`cmp word [0xff32], 0x6270`).
 
+The board's oscillator can reads **40.320 MHz** (see [board-parts.md](board-parts.md)),
+and the 80C186 divides its oscillator input by two, so CLKOUT is 20.16 MHz.
+That removes the one ambiguity in this table: 25,200 counts is a round figure
+either way - 5.000 ms at CLKOUT = 20.16 MHz, or 10.000 ms had 20.16 been the
+crystal and CLKOUT half of it. The `&T1` slope had already chosen the first,
+since seconds convert to ticks by multiplying by 200. The can agrees.
+
 This also settles something the "pairing trap" note flagged: **main211 is the
 25.8048 MHz build**, not a 20.16 MHz one. Its timer constant only lands on
 5 ms at 25.8048 MHz.
@@ -199,10 +206,24 @@ All of `0000..75d9`, `8000..d9ef` and the `de83` overlay come from the flash
 image already captured. There is nothing behind a mask-ROM protection bit that
 the modem itself executes.
 
-This is an argument from the image and its internal consistency, not a readout.
-It does not say what is physically on the die, and it does not rule out mask
-ROM contents that are simply never mapped. What it does rule out is the worry
-that drove the probe work: that some of the running DSP code is unavailable.
+There is a stronger test than any of the above, and it was already in the runs.
+The bridge does not assume the transfer: it accumulates the supervisor's actual
+download stream and compares it against the image. Every answered-call run
+reports `bootstrap_match: true` at `bootstrap_bytes: 60344` - 30,172 words, the
+whole origin-`0x0000` segment. The supervisor really does transfer code whose
+content is `0x0000`-origin, spanning the entire 4K mask-ROM window, so program
+`0000..0fff` is written by the CPU and is therefore RAM.
+
+That matters because the DSP is custom-marked `(C) US ROBOTICS`, which is
+exactly what a mask-ROM part looks like, and the arguments above - branch
+targets, wait states, code running through the vector slots - would all read
+the same way if the low words were mask ROM that the flash image merely carries
+a copy of. The download stream is what discriminates.
+
+None of this is a readout. It does not say what is physically on the die, and
+it does not rule out mask ROM contents that are simply never mapped. What it
+does rule out is the worry that drove the probe work: that some of the running
+DSP code is unavailable.
 
 ### Still unavailable
 
