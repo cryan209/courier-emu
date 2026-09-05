@@ -133,6 +133,13 @@ register 4, whose two 2-bit fields look like gain rather than rate.
 
 ## Which leaves a real contradiction
 
+> **Resolved.** See [vpcm-datapump.md](vpcm-datapump.md). The board takes samples
+> on both C5x serial ports - the resident bank sets up `TSPC` and overlay 6 reads
+> `TRCV` - so the AC01's fixed rate never constrained the datapump. Everything
+> below stands as written; what was wrong was the assumption that the AC01 is the
+> only converter. The three "cannot all be true" facts are all true, and the
+> hidden fourth is that they are not about the same signal path.
+
 Three things cannot all be true:
 
 1. The dial path runs at 7200 Hz. Constrained hard by DTMF tolerance, as above.
