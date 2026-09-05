@@ -116,3 +116,36 @@ def test_both_ladders_step_by_one_pcm_frame(rom):
                        - round(rate / datapumps.PCM_STEP)) < 0.01
     # V.90 covers every x2 rate and five slower ones besides.
     assert set(ladders['x2']) < set(ladders['V90'])
+
+
+def test_overlay_eight_forks_into_two_receivers(rom):
+    """One bit of the datapump flag word picks which state machine runs."""
+    site, bit, families = datapumps.receiver_fork(rom)
+    assert site == 0xDE0B and bit == 8
+    assert families[True] == 0xE4C5      # bit set
+    assert families[False] == 0xF442     # bit clear
+    # The two entries are far apart and in different halves of the image.
+    assert families[True] < 0xF000 < families[False]
+
+
+def test_the_two_receivers_share_code_verbatim(rom):
+    """Two state machines from one source leave duplicated runs behind."""
+    runs = datapumps.receiver_twins(rom)
+    assert len(runs) >= 8
+    for first, last, twin, twin_last in runs:
+        assert last - first == twin_last - twin
+        assert twin - first > 0x400
+    # The e-family and f-family halves are what repeat.
+    assert any(0xE900 <= a < 0xEB00 and 0xF700 <= c < 0xF900
+               for a, _, c, _ in runs)
+
+
+def test_the_pcm_sample_path_is_selected_beside_the_receiver_bit(rom):
+    """Commands 4d and 4f differ only in the receiver flag."""
+    commands = datapumps.mode_commands(rom)
+    assert commands[0x4F]['sample_path'] == datapumps.PCM_SAMPLE_PATH
+    assert commands[0x4D]['sample_path'] == datapumps.PCM_SAMPLE_PATH
+    assert commands[0x4E]['sample_path'] != datapumps.PCM_SAMPLE_PATH
+    assert commands[0x4F]['flag'] == ('set', 0x0100)
+    assert commands[0x4D]['flag'] == ('clear', 0xFEFF)
+    assert commands[0x4E]['flag'] == ('clear', 0xFEFF)

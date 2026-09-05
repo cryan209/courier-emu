@@ -15,7 +15,9 @@ start commands dispatch through. See `docs/datapump-slots.md`.
 from __future__ import annotations
 
 import re
+import struct
 
+from .fsk import COMMAND_TABLE
 from .mailbox_compare import program
 
 # The `AT*C` help text: "(nn) <name>", one line per carrier, both sides of
@@ -231,4 +233,88 @@ def pcm_control(rom):
         found[scheme] = {'s_register': PCM_OPTIONS, 'disable_bit': bit,
                          'sites': tuple(sites), 'command': command,
                          'empty_setup': empty}
+    return found
+
+
+# --- the two receivers in overlay 8 ---------------------------------------
+#
+# Overlay 8 is not one receiver. It carries two parallel state machines with
+# their own tables and callbacks, and a one-bit fork at the top chooses which
+# one runs.
+
+DATAPUMP_FLAGS = 0x039F          # @1f on page 7: which datapump is running
+LAR_AR1, BIT_TEST_MASK, BCND = 0xBF09, 0xFF00, 0xE200
+E_FAMILY_BIT, F_FAMILY_BIT = 8, 9
+
+# The fork: `lar ar1, #039f ; bit 8, * ; bcnd <f family>, ntc ; b <e family>`
+FORK = (LAR_AR1, DATAPUMP_FLAGS, 0x4800 | 0x80)
+
+# The three mailbox commands that set it up. Each installs a sample-path
+# routine in @61 and then sets or clears the flag bit.
+MODE_COMMANDS = (0x4D, 0x4E, 0x4F)
+SPLK_AT_61, OPL_AT_1F, APL_AT_1F = 0xAE61, 0x5D1F, 0x5E1F
+PCM_SAMPLE_PATH = 0x819D         # assembles a sample from two 8-bit codewords
+
+
+def _overlay_words(rom, index):
+    overlay = next(o for o in rom.dsp_overlays if o.index == index)
+    raw = rom.data[overlay.offset:overlay.offset + overlay.length]
+    return overlay.entry_word, list(struct.unpack('<%dH' % (len(raw) // 2), raw))
+
+
+def receiver_fork(rom):
+    """Where overlay 8 splits into its two receivers, and into what.
+
+    Returns (site, bit, {bit set: entry, bit clear: entry}). The branch is
+    taken when the bit is clear, so the fall-through is the set case.
+    """
+    org, words = _overlay_words(rom, 8)
+    for i in range(len(words) - 6):
+        if tuple(words[i:i + 3]) != FORK:
+            continue
+        if words[i + 3] & BIT_TEST_MASK != BCND or words[i + 5] != 0x7980:
+            continue
+        return org + i, E_FAMILY_BIT, {True: words[i + 6], False: words[i + 4]}
+    raise ValueError('overlay 8 does not fork on the datapump flags')
+
+
+def receiver_twins(rom, window=8, span=10):
+    """Runs of code overlay 8 holds twice over, far apart - the two families.
+
+    Two state machines built from one source share fragments verbatim while
+    their tables and constants differ, so exact repeats at a consistent offset
+    are what the pair leaves behind.
+    """
+    org, words = _overlay_words(rom, 8)
+    seen = {}
+    for i in range(len(words) - window):
+        seen.setdefault(tuple(words[i:i + window]), []).append(org + i)
+    pairs = sorted((v[0], v[1]) for v in seen.values()
+                   if len(v) == 2 and abs(v[0] - v[1]) > 0x400)
+    runs = []
+    for first, second in pairs:
+        if runs and first == runs[-1][1] + 1 and second == runs[-1][3] + 1:
+            runs[-1][1], runs[-1][3] = first, second
+        else:
+            runs.append([first, first, second, second])
+    return tuple((a, b + window - 1, c, d + window - 1)
+                 for a, b, c, d in runs if b - a + window >= span)
+
+
+def mode_commands(rom):
+    """The commands that install a sample path and set the receiver flag."""
+    w = program(rom)
+    found = {}
+    for tag in MODE_COMMANDS:
+        pc = w[COMMAND_TABLE + tag]
+        path, flag = None, None
+        for _ in range(6):
+            if w[pc] == SPLK_AT_61:
+                path = w[pc + 1]
+            elif w[pc] in (OPL_AT_1F, APL_AT_1F):
+                flag = ('set' if w[pc] == OPL_AT_1F else 'clear', w[pc + 1])
+            elif w[pc] == 0xEF00:
+                break
+            pc += 2 if w[pc] & 0xFF00 in (0xAE00, 0x5D00, 0x5E00) else 1
+        found[tag] = {'sample_path': path, 'flag': flag}
     return found

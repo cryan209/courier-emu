@@ -101,15 +101,98 @@ The diagnostics are separate too: `x2 Status` and `V.90 Status` are distinct
 report blocks, with reasons beside them like `x2 disabled on local modem` and
 `Unspecified impairment`.
 
+## Overlay 8 holds two receivers
+
+It is two state machines, not one. The image splits into an **e-family** around
+`e4c5`-`eaff` and an **f-family** around `f442`-`f94a`, and the pair leaves the
+mark two builds from one source leave: runs of identical code far apart at a
+consistent offset. `courier_emu.datapumps.receiver_twins` finds ten of at least
+ten words, among them
+
+```text
+e9be-e9cb  ==  f7eb-f7f8    (+0xe2d)
+e9d8-e9e1  ==  f805-f80e    (+0xe2d)
+e9f2-e9ff  ==  f821-f82e    (+0xe2f)
+e59f-e5b3  ==  f4e2-f4f6    (+0xf43)
+```
+
+Only 158 of 7,498 words repeat verbatim; the rest of each family is its own
+tables and constants. Both call the same lower-level helpers - `e019`, `e356`,
+`8766`, `8797` - so what is doubled is the sequencing, not the arithmetic.
+
+**The fork is one bit.** At `de0b`, at the top of the image's dispatch:
+
+```text
+de0b  lar   ar1, #039f     ; the datapump flag word, @1f on page 7
+de0d  bit   8, *
+de0e  bcnd  f442, ntc      ; bit 8 clear -> the f-family
+de10  b     e4c5           ; bit 8 set   -> the e-family
+```
+
+`courier_emu.datapumps.receiver_fork` reads it out. The V.34 core dispatches
+into both from its own side, and there it is two bits, one per family:
+
+```text
+a456  bit  8, *  ; bcnd e9a0, tc     ; the e-family
+a45b  bit  9, *  ; bcnd f7d8, tc     ; the f-family
+```
+
+`0x039f` is the same flag word every datapump entry writes - overlay 6 sets bit
+5 for itself, overlay 7 bit 4, the resident V.32 entry bit 0 - so bits 8 and 9
+are two more datapumps in the same register.
+
+**The supervisor arms them by mailbox command.** Three siblings at `823d`,
+`8245` and `824d` each install a sample-path routine in `@61` and then move the
+flag:
+
+| tag | sample path `@61` | flag |
+|---|---|---|
+| `4f` | `819d` | **sets** bit 8 |
+| `4d` | `819d` | clears bit 8 |
+| `4e` | `81bb` | clears bit 8 |
+
+`819d` and `81bb` are the two sample paths, and the difference is what PCM
+needs: `819d` assembles each sample from **two 8-bit halves** with saturation -
+codewords - where `81bb` interpolates and writes port `0x6a`. The two commands
+that select the PCM sample path, `4d` and `4f`, differ *only* in the receiver
+bit. Bit 9 is set and cleared by another pair, at `dccd` and `dcde`.
+
+## The `0xfff1` thread ends short of the fork
+
+x2's capability word does not reach the datapump as a bit test. **No overlay
+reads `0xfff1` at all**; only the resident does, at `8e4b`, where it picks
+`fff1` or `fff2` and hands it on. What every overlay does branch on is
+`0xfff4`, and its **bit 13** is not the scheme:
+
+```text
+f632  lar   ar1, #0822 ; rptz #0006 ; sacl *+     ; clear seven words
+...                                                ; try four candidates,
+f6b5  lar   ar1, #0822 ; cpl *, #0003             ; keep the best in 0x0822
+f6c3  lar   ar1, #fff4 ; xc 2, tc ; opl *, #2000  ; winner 4 sets bit 13
+```
+
+`f632`-`f6b3` is a search: `@72` counts four candidates down, each scored by a
+sum of squares against tables at `f7bb` and `f7c5`, the best kept in `0x0830`
+and copied to `0x0822`. Bit 13 then picks between two parallel parameter sets
+everywhere downstream, in overlay 6 as well as overlay 8 - `c9f3` chooses table
+`cc72` or `cb47`, `c9d2` and `c9e3` choose adjacent entries, `c5e0` chooses 1 or
+2. That is the shape of a **measured property of the digital path** - a law or
+a pad, decided by fitting four candidates - not of a scheme the supervisor
+configured.
+
 ## What is still open
 
-**The signal-level difference is not established.** Nothing here says whether
-overlay 8 holds two receivers or one receiver with a mode bit - no bit test in
-that image has been tied to the choice, and the two schemes' constellation
-mapping, precoding and training differ in ways this has not looked for. The
-`0xfff1` capability word is the place to look: x2 writes it, V.90 does not, so
-whatever the overlay reads out of `0xfff1` is what x2 changes about the
-receiver.
+**Which family is x2 and which is V.90.** The two receivers are there and the
+flag bits that select them are there, but the link from S58's bits to bits 8
+and 9 is not closed: the supervisor never loads tags `4d`/`4e`/`4f` as a
+literal, so their senders did not fall out of a search for `mov ax, imm`. The
+same gap covers `dccd`, which sets bit 9 from inside the `dc00` block - a block
+overlay 8 itself replaces, so which image owns that handler at the moment it
+runs needs establishing too.
+
+**What bit 13 actually measures.** Four candidates and a least-squares fit is
+the right shape for µ-law against A-law, or for the digital pad, but nothing
+here names it.
 
 **The empty V.90 body invites a second reading.** It may mean V.90 needs no
 DSP-side parameters because its capabilities travel in the V.8 CM/JM exchange,
