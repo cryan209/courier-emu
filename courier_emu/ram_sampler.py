@@ -97,18 +97,31 @@ def place_commands(ports=DEFAULT_PORTS, index: int = INDEX,
     return commands
 
 
-def decode(raw: bytes, written: int, ports=DEFAULT_PORTS) -> list[dict]:
-    """Turn the buffer into one record per tick, oldest first.
+def decode(ring: bytes, cursor: int, ports=DEFAULT_PORTS,
+           buffer: int = BUFFER, wrapped: bool | None = None) -> list[dict]:
+    """Turn the ring into one record per tick, oldest first.
 
-    `written` is how far the cursor got, so anything past it is untouched
-    buffer rather than data. No wrap handling: a run is kept short enough that
-    the cursor does not lap the buffer, and the caller checks that.
+    `cursor` is the routine's live write index, so it is both where the next
+    sample would go and where the oldest one currently sits.
+
+    The ring wraps, and getting this wrong is easy: at six ports and 200 Hz a
+    4 KiB buffer laps in 3.4 s, and treating `cursor - buffer` as a length then
+    silently returns whatever fraction of a lap the cursor happens to be into.
+    Pass `wrapped=False` for a run known to be shorter than one lap, in which
+    case only the bytes up to the cursor are data; otherwise the whole ring is
+    data and it is unrolled starting at the cursor.
     """
     stride = len(ports)
+    offset = (cursor - buffer) % len(ring)
+    if wrapped is False:
+        data = ring[:offset]
+    else:
+        data = ring[offset:] + ring[:offset]
+    data = data[:len(data) - len(data) % stride]
     return [
-        {"tick": n, **{f"{port:02X}": raw[n * stride + i]
+        {"tick": n, **{f"{port:02X}": data[n * stride + i]
                        for i, port in enumerate(ports)}}
-        for n in range(written // stride)
+        for n in range(len(data) // stride)
     ]
 
 

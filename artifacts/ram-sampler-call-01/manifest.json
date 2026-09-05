@@ -1,0 +1,29 @@
+{
+  "what": "ASIC ports sampled at 200 Hz from inside the modem across an off-hook seizure. Phone line unplugged, so ATD closes a relay and dials nothing.",
+  "device": "/dev/cu.usbserial-21210",
+  "board": {"supervisor": "7.4.16", "dsp": "3.1.2", "firmware": "ID_SDL 4.03d"},
+  "ports": ["0x18", "0x1a", "0x1c", "0x1e", "0x40", "0x42"],
+  "capture": {"ticks": 682, "seconds": 3.41, "resolution_ms": 5,
+              "ring": "0x4000..0x4fff", "cursor_at_disarm": "0x4102"},
+  "observations": {
+    "idle_in_modem": {"0x18": "FF", "0x1a": "FF", "0x1c": "FD", "0x1e": "FF",
+                      "0x40": "55", "0x42": "00"},
+    "transients": [
+      "0x1c FD->FF for a single tick (5 ms) at t=975 ms",
+      "0x1c FD->FC for two ticks (10 ms) at t=2125 ms - bit 0",
+      "all six ports read 00 for a single tick at t=2715 ms",
+      "sustained ~215 ms state at the end of the ring: 0x40 and 0x42 both FF, 0x18 FD, 0x1c 55, 0x1e 00"
+    ]
+  },
+  "the_discrepancy": {
+    "claim": "The monitor's port-read selector and the CPU's own IN do not agree on port 0x40.",
+    "evidence": "ATGLK2I0040 reports 00 in artifacts/asic-ports-01; an in al,0x40 executed on the 80186 reads 55, steadily, for 639 of 682 ticks.",
+    "status": "unexplained; it means the ATGLK2I sweep is not a faithful picture of what the CPU sees"
+  },
+  "limits": [
+    "The 215 ms end-of-ring state coincides with the dial abort and hangup. Attributing it to a DSP re-download is a hypothesis, not established - nothing here identifies what drove those ports.",
+    "Single-tick events are at the sampling resolution, so a 5 ms transient is indistinguishable from anything shorter that happened to be caught.",
+    "The six ports are not sampled simultaneously; they are five instructions apart within one tick.",
+    "Sampling 0x1c and 0x1e races the supervisor for mailbox status."
+  ]
+}

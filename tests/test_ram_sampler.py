@@ -51,20 +51,30 @@ class EncodingTests(unittest.TestCase):
 
 
 class DecodeTests(unittest.TestCase):
-    def test_one_record_per_tick_in_port_order(self) -> None:
-        raw = bytes((0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88))
-        records = rs.decode(raw, 8)
+    def test_an_unwrapped_run_stops_at_the_cursor(self) -> None:
+        ring = bytes((0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88)) + bytes(8)
+        records = rs.decode(ring, rs.BUFFER + 8, wrapped=False)
         self.assertEqual(len(records), 2)
         self.assertEqual(records[0], {"tick": 0, "18": 0x11, "1A": 0x22,
                                       "1C": 0x33, "1E": 0x44})
         self.assertEqual(records[1]["1E"], 0x88)
 
-    def test_it_stops_at_the_cursor_rather_than_the_buffer_end(self) -> None:
-        raw = bytes(64)
-        self.assertEqual(len(rs.decode(raw, 8)), 2)
+    def test_a_wrapped_ring_is_unrolled_from_the_cursor(self) -> None:
+        # Oldest sample sits at the cursor, so a cursor halfway round puts the
+        # second half of the ring first.
+        ring = bytes(range(16))
+        records = rs.decode(ring, rs.BUFFER + 8)
+        self.assertEqual(len(records), 4)
+        self.assertEqual(records[0]["18"], 8)      # oldest is at the cursor
+        self.assertEqual(records[-1]["1E"], 7)     # newest is just before it
+
+    def test_the_cursor_is_taken_modulo_the_ring(self) -> None:
+        ring = bytes(range(16))
+        self.assertEqual(rs.decode(ring, rs.BUFFER + 8),
+                         rs.decode(ring, rs.BUFFER + 8 + len(ring)))
 
     def test_a_partial_final_tick_is_dropped(self) -> None:
-        self.assertEqual(len(rs.decode(bytes(16), 6)), 1)
+        self.assertEqual(len(rs.decode(bytes(16), rs.BUFFER + 6, wrapped=False)), 1)
 
 
 if __name__ == "__main__":
