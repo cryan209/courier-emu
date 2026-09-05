@@ -112,16 +112,19 @@ and this document takes neither: fit the constant to the balance, or pace the
 link on the codec the way the modeled line already is. The second is the
 structural fix; the first is a number.
 
-## 2. Audio reaches the DSP on the C5x serial port, not through the CPU
+## 2. The 80186 is not in the audio path; where it goes on the DSP side is
+still open
 
-**Hardware, negative half.** `AT&T8` runs analogue loopback with self-test:
-the modem generates its own pattern, drives the full modulator/analogue/
-demodulator path, and - unlike `&T1` - leaves the DTE in command mode, so the
-`ATGLK2` monitor still answers while audio is flowing. The test returned `000`
-errors, so the path really ran.
+**This section originally claimed the audio arrives on the C5x serial port via
+a four-phase handler chain at program `0x01a8`. That was wrong, and the
+correction is below the measurement that stands.**
 
-Sweeping I/O ports `0x00..0x7f` idle and during the test
-(`artifacts/io-port-loopback-01/`), only four ports differ:
+### What stands: no CPU port carries audio
+
+`AT&T8` runs analogue loopback with self-test and, unlike `&T1`, leaves the DTE
+in command mode, so the `ATGLK2` monitor answers while audio flows - it
+returned `000` errors, so the path ran. Sweeping ports `0x00..0x7f` idle
+against active (`artifacts/io-port-loopback-01/`), only four move:
 
 | port | idle | during `&T8` |
 |---|---|---|
@@ -131,41 +134,56 @@ Sweeping I/O ports `0x00..0x7f` idle and during the test
 | `0x1e` | FF | FB |
 
 All four are mailbox handshake and status registers. **No CPU I/O port carries
-audio samples.** The 80186 is not in the audio path.
+audio samples**, so the 80186 is not in the audio path. That is a board
+measurement and it is unaffected by what follows.
 
-**Firmware, positive half.** Across the whole DSP image the only peripheral
-registers touched are `DRR` (`@20`, serial receive) and `DXR` (`@21`, serial
-transmit). The TDM registers `0x30..0x35` are never referenced anywhere.
+### The correction
 
-The port is set up at reset (`main211` program addresses):
+Two claims made here from static reading do not survive the runs' own
+instrumentation:
 
-```
-00bc  lar  ar1, #22        ; SPC, the serial port control register
-00bd  splk *, #0008
-00bf  splk *, #40c8        ; MCM = 0: the bit clock comes from outside
-```
+*"The only peripheral registers the DSP image touches are DRR and DXR; the TDM
+registers `0x30..0x35` are never referenced."* Wrong. `TRCV` (`0x30`) is read
+**676,558 times** in a 60M-instruction run, at program `0x8c1e` - twice for
+every `DRR` read. The scan that missed it only matched `lamm/samm` forms and
+did not cover the resident bank's addressing.
 
-`MCM = 0` means the DSP takes `CLKX` from an external source - **the codec is
-the clock master**, which is exactly what pacing the modeled line on the codec
-assumed, now confirmed from the firmware rather than inferred.
+*"The frame handlers are a four-phase rotating chain, one `DRR` read and one
+`DXR` write each."* That code exists, but it does not run. `dxr_writes` is
+**3** in the same run, all at program `0x00c6`, which is the reset-time
+initialisation. `tdxr_writes` and `tspc_writes` are **0**. The DSP never
+transmits on either serial port after reset.
 
-The frame handlers are a four-phase rotating chain. Each phase reads one word
-from `DRR`, writes one to `DXR`, and installs the next phase's address:
+What the DSP actually does, per run counters:
 
-```
-01ad  lamm @20   ; read the codec sample
-01ae  sacl *+    ; store through ar7
-01bc  samm @21   ; write the outgoing sample
-01c3  lacc #81de ; -> next phase
-```
+| source | reads | program |
+|---|---:|---|
+| `DRR` (`0x20`) | 338,279 | `0x8c1c` |
+| `TRCV` (`0x30`) | 676,558 | `0x8c1e` |
+| ASIC external I/O `0x50` | 338,279 | `0x8c1f` |
+| ASIC external I/O `0x52` | 411,025 | - |
+| ASIC external I/O `0x54` | 676,556 | - |
 
-`01a8 -> 01de -> 01f4 -> 020d -> 01a3`, cycling. That is the software framing
-measured earlier as roughly ten writes per codec sample: several serial slots
-per audio frame, not several audio samples.
+All in one polling loop in the resident bank, and `0x52`'s count equals
+`line_frame_interrupts` exactly. So the repo's existing position - that the
+C52's live view of the outside world is the ASIC boundary
+(`courier_firmware_analysis.md`, "DAA chipset identity") - is at least as well
+supported as the serial-port reading, and this document should not have
+asserted otherwise.
 
-Codec and DAA control is separate from the audio, on the DSP's own I/O ports
-`0x68..0x6c` (`out @7d,0068` ... `out @7e,006c` at reset, and `out @7f,006a`
-inside the receive handler).
+What is genuinely open is which of these the *hardware* uses for audio. The
+harness answers all of them, so run counts cannot separate them; they only show
+the firmware polls all three.
+
+### What the low-address code is
+
+The dormant code at `0x0176..0x0223` is a codec control path, and a specific
+one: it drives a TI `TLC320AC0x`, whose protocol is to request a secondary
+control frame with bit 0 of the transmitted word. See
+[board-parts.md](board-parts.md). It runs at reset - the three `DXR` writes are
+its initialisation - and then stops. Whether it is dormant because the ASIC
+fronts the codec on this board, or because one firmware serves two hardware
+variants, is not settled here.
 
 ## 3. The C52's internal mask ROM is not what the modem executes
 

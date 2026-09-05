@@ -106,12 +106,50 @@ through it: `0911 0967 0956 0934 0923 0969 0989 bc07 1019 ba01 9019 f788 be4c
 fields are not decoded here - there is no TLC320AC01 datasheet in `docs/`, and
 a guessed bit layout did not fit the table.
 
-This is about the part on the **DSP's serial port**, which is a different role
-from the line-side DAA. The Si3021/Si3014 attribution in the README concerns
-the line interface, and the DAA section of the board is not in the photograph,
-so nothing here contradicts it. What it does question is `CodecBringUp`, which
-models the codec bring-up with `SI3038.PDF` register addresses: the part the
-DSP actually talks to is not that one.
+### but that code is dormant, which is the interesting part
+
+It runs at reset and then stops. In a 60M-instruction run `dxr_writes` is
+**3**, all at program `0x00c6`, and `tdxr_writes` is **0** - the DSP never
+transmits on either serial port after initialising the codec. What it does
+instead is poll, in one resident-bank loop: `DRR` 338,279 times, `TRCV`
+676,558 times, and ASIC external I/O `0x50`/`0x52`/`0x54` 338,279 / 411,025 /
+676,556 times.
+
+So the AC0x is initialised and then not driven. Two readings fit:
+
+1. The ASIC fronts the codec. The C52 configures the part once, and thereafter
+   the ASIC moves samples, which is the topology
+   `courier_firmware_analysis.md` already argues for from AN16 section 1.3 and
+   from the C52's view being four ASIC ports.
+2. One firmware serves two board variants, and this one does not use the
+   serial-codec path.
+
+Nothing here chooses between them.
+
+### Which board has which part is not recorded
+
+`courier_firmware_analysis.md` says the Si3014/Si3021 pair was "read off the
+board" - line side at the phone jack, digital side near the CPU - but does not
+say **which** board. There are at least two units in this repository's
+evidence: the 20.16 MHz one photographed here, and a 25 MHz US/Canada unit
+(`artifacts/io-port-map/hardware-25mhz/`, supervisor 7.3.14 / DSP 3.0.13).
+
+The photograph covers the DSP/ASIC area of the 20.16 MHz board only. Its DAA
+section, at the phone jack, is not in frame. So the two attributions are not
+yet in conflict, and there are two live possibilities:
+
+- **one board, two parts in two roles** - a TLC320AC0x on the DSP's serial port
+  and an Si3021/Si3014 as the line interface; or
+- **two board generations** - a TI codec in the older design and a Silicon Labs
+  silicon DAA in the newer, with one firmware carrying both paths, which would
+  explain the dormant AC0x code directly.
+
+What would settle it is one look: whether the photographed 20.16 MHz board also
+carries Si parts near its phone jack, and whether the 25 MHz board carries a
+TI PLCC near its DSP. That is a datum from the boards, not from the images.
+
+Either way `CodecBringUp` is questionable: it runs an `SI3038.PDF` register
+sequence, and the part the DSP's own code initialises is not that one.
 
 ## The DSP's low program memory is RAM, and the download shows it
 
