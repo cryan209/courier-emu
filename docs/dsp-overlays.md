@@ -70,8 +70,14 @@ the low byte conditionally by four and then by one, and calls the resident
 sender. So with the overlays included, the picture in
 [codec-rate-312.md](codec-rate-312.md) does not change. Every codec write this
 firmware makes after reset - three from the supervisor by tag `2c`, one from
-overlay 8 - targets register 4. The divider registers are written once, at reset,
-and never again.
+overlay 8 - targets register 4.
+
+> **Corrected.** The last sentence used to read "the divider registers are
+> written once, at reset, and never again". That is false. The rate selector at
+> `8140` writes register 2 from a six-row table, and the overlays reach it: the
+> `call <sender>` counts above miss it because it inlines the sender's handshake
+> rather than calling it. Overlay 6 selects 8000 Hz at its entry and overlay 7
+> selects 7578.95 Hz. See [codec-sample-rates.md](codec-sample-rates.md).
 
 ## A correction to driving-the-tones.md
 

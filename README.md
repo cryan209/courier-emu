@@ -8,7 +8,10 @@ DRR/DXR sample-buffer path, and it drives the codec itself: the ISR implements
 the AC0x secondary-frame protocol and reset programs six of the part's control
 registers, so claims below based on `main211` do not describe it. Its 7200 Hz is
 the dial path's rate, not the board's; the PCM modulations it advertises force a
-rate change. See [the codec rate](docs/codec-rate-312.md).
+rate change - and it makes one: a six-row table selects 7200, 7578.95 or
+8000 Hz from V.34's negotiated symbol rate. See
+[the codec sample rates](docs/codec-sample-rates.md), and
+[the codec rate](docs/codec-rate-312.md) for how the question stood before.
 
 The [DSP 3.1.2 hardware comparison](docs/mailbox-312-comparison.md) records a
 fresh connected-board mailbox sequence and its replay through the original DSP

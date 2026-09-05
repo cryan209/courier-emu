@@ -1,5 +1,15 @@
 # The codec on the 3.1.2 board: DSP-driven, and not fixed at 7200 Hz
 
+> **Resolved.** The contradiction this document builds and leaves open is
+> resolved in [codec-sample-rates.md](codec-sample-rates.md). The claim that
+> fails is "the divider registers are written once at reset and never again":
+> a second, table-driven routine at `8140` - immediately after the sender at
+> `8138` - **inlines** the sender's handshake instead of calling it, and writes
+> register 2 with one of `0214`, `0213`, `0212` (B = 20, 19, 18) as selected by
+> V.34's negotiated symbol rate. The three sample rates are 7200,
+> 7578.95 and 8000 Hz. Every scan recorded below looked for *calls* to the
+> sender, which is why none of them found it. Everything else here stands.
+
 Two claims are corrected here. This board's firmware *does* drive its TLC320AC01
 from the DSP, and the 7200 Hz figure in
 [audio-312-path.md](audio-312-path.md) is the **dial path's** rate, not the
@@ -133,7 +143,11 @@ register 4, whose two 2-bit fields look like gain rather than rate.
 
 ## Which leaves a real contradiction
 
-> **Still open.** This was briefly marked resolved, on the grounds that the board
+> **Closed.** See [codec-sample-rates.md](codec-sample-rates.md): point 2 below
+> is false. The paragraph that follows is kept as the record of how the question
+> stood before the rate table was found.
+>
+> **Was still open.** This was briefly marked resolved, on the grounds that the board
 > reads samples on both C5x serial ports. It does not: overlay 6's apparent
 > `TRCV` and `DRR` reads are a data table read as code, and nothing in any image
 > reads `TRCV` at all. See the retraction in
@@ -253,7 +267,7 @@ time.
 | way out | why it is shut |
 |---|---|
 | A second DSP program with its own codec setup | Three download call sites, all sending the same payload. See [dsp-overlays.md](dsp-overlays.md) |
-| An overlay reprogramming the dividers | Only the six reset writes call the control sender at all, and the one write an overlay makes is register 4 |
+| An overlay reprogramming the dividers | Only the six reset writes call the control sender at all, and the one write an overlay makes is register 4. **This is where the answer was**: the rate selector at `8140` does not call the sender, it inlines it - see [codec-sample-rates.md](codec-sample-rates.md) |
 | Tag `2c` carrying the rate at runtime | It is sent, three times, and every one writes register 4 |
 | A second converter on the TDM port | Retracted. Nothing in any image reads `TRCV`; the apparent reads are a data table |
 | Samples arriving over external I/O instead | With the anchoring filter applied, the overlays have **no** real `in`/`out` at all, and the resident's are mailbox, window and codec-control ports. There is no `0x50`/`0x52`/`0x54` sample loop in this image |
