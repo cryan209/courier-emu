@@ -255,7 +255,6 @@ Widths come from the caller's mask, so the layout reads off the call sites:
 | `ff08` | 58, 49, 40, 31, 22, 13 | 4 | far end's projected rate per symbol rate -> `ff30..ff35` |
 | `ff08` | 70 | 7 | `9766` |
 | `ff08` | 9 | 10 | `9703` |
-| `ff08` | 58 | 4 | `91cf`, the parse loop |
 | `ff1a` outgoing | 63, 54, 45, 36, 27, 18 | 9 | our per-rate block, `A + (B << 5)` |
 | `ff1a` | 76 | - | `91a7` |
 | `ff1a` | 24, 19, 15, 9 | - | the builder at `9204`: `*`, `@7c`, `9 * @5b`, `@70` |
