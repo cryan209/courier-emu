@@ -15,7 +15,10 @@ and a RAM supervisor launcher for the 20.16 MHz reference. Its offline test
 executes reset/download, DSP mailbox output and supervisor serial readback.
 Hardware handshakes remain modeled; a physical RAM-load and launch mechanism
 is still unverified. The same document describes the read-only `ATGLK2` serial
-collector for the user's 20.16 MHz, 512 KiB, supervisor 7.3.14 modem:
+collector for the user's 20.16 MHz, 512 KiB modem. That board now runs
+supervisor 7.4.16 / DSP 3.1.2 - the image under
+`artifacts/courier-board-21210-capture-403/` - having previously reported
+7.3.14 / DSP 3.0.13, which is what the older notes below describe:
 
 ```sh
 .venv/bin/python -m courier_emu.flash_dump \

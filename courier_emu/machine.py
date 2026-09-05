@@ -1317,7 +1317,15 @@ class CourierMachine:
                     and self.instructions >= DTE_TYPING_INSTRUCTIONS
                     and (
                         not self._rom_tick
-                        or int.from_bytes(_uc.mem_read(0x026A, 2), "little") == 0x9A06
+                        # The ROM must have a receive callback installed
+                        # before a character means anything to it. Requiring
+                        # one specific pointer value here was reading a
+                        # constant out of the IDSDL302 reference build: the
+                        # captured 7.4.16 board holds zero in this cell for
+                        # the whole run, so no ROM but that one could ever
+                        # take input. What the callback has to be is present.
+                        or self._rom_dte_opened
+                        or int.from_bytes(_uc.mem_read(0x026A, 2), "little") != 0
                     )
                 ):
                     # Put the character on the wire before handing it over.
