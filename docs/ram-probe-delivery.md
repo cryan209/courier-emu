@@ -74,7 +74,89 @@ routine has to be reachable in the segment the caller uses. Placing code at
 physical `0x2000` and pointing a near vector at it only works if that vector's
 segment is zero. This has not been checked, and it decides the whole layout.
 
-## Where a routine could live
+## Execution: the interrupt vector table
+
+The near-vector constraint turned out not to bind, because there is a better
+hook. **The 80186's interrupt vector table is at physical `0`, which is RAM on
+this board, and its entries are far pointers.** Read live:
+
+| vector | contents |
+|---|---|
+| `08` timer 0 | `8000:108f` |
+| `0f` INT3 / tick | `8000:0a77` |
+| `0d` INT1 | `9e74:01eb` |
+| `12` timer 1 | `9e74:0334` |
+
+Segment `0x8000` is physical `0x80000`, the flash base, so these are real and
+in use. A far pointer carries its own segment, so a routine at physical
+`0x3000` is reachable as `0000:3000` - the layout question the near vectors
+raised does not arise.
+
+The hook is then: save the original vector, point it at the routine, and have
+the routine finish with a far jump to the saved one. Timer 0 fires every 5 ms,
+so it gives 200 executions a second without needing anything else to happen.
+
+The FAR-call sites found by scanning for `ff 1e` were **false positives** - the
+most-referenced, `jmp FAR [0x06c7]` at `0x7c34c`, is inside
+`mov word ptr cs:[0x100], 0x113d`. The near cells are real (`call word ptr
+[0x220]` at `0x03b07`, `call word ptr [0x2ab]` at `0x0f892`), but near is the
+wrong shape. The IVT is the answer.
+
+One consequence worth stating: **the IVT is volatile.** Everything this method
+writes - vector and routine both - is RAM, so a power cycle restores the modem
+completely. That changes what the risk actually is; see below.
+
+## Where a routine could live, and why the static answer is wrong
+
+The obvious approach is to find RAM the firmware never touches: scan the ROM
+for absolute-displacement operands and pick a region nothing references. **That
+does not work, and the check that showed it is worth keeping.**
+
+Reference counts per page are dominated by chance matches - a 512 KiB image
+contains those byte sequences at random - and the real data area (`0x000`-
+`0x0d00`, hundreds to thousands of hits per page) is the only part that stands
+clear of the noise. Worse than imprecise, the signal is misleading. Reading
+candidate pages on the live board through idle, `AT&T8` and after:
+
+| page | static refs | idle | during `&T8` | after |
+|---|---:|---|---|---|
+| `02e00` `03400` `03b00` `04000` | 52-200 | zero | zero | zero |
+| `05d00` `08000` `0d100` `0da00` `0ec00` | 0-174 | zero | zero | zero |
+| **`09400`** | **0** | zero | **256 bytes non-zero** | zero |
+
+The one page with **zero** static references is the one that filled completely
+under load and emptied again afterwards. The firmware reaches it through a
+pointer rather than an absolute displacement, which the scan cannot see. So
+neither "reads zero when idle" nor "nothing in the ROM references it" is
+evidence that a page is free.
+
+The pages that stayed zero throughout are only known not to be used *by
+`&T8`*, which exercises very little: no call, no fax, no error control. A
+region qualified this way is qualified against a weak test.
+
+## Risk, restated
+
+The earlier framing here was too cautious in one direction and not cautious
+enough in another.
+
+Everything this method writes is **volatile**: the routine goes in RAM and the
+hook goes in the IVT, which is also RAM. A power cycle rebuilds both. So
+choosing scratch space wrongly - landing on a buffer the firmware fills during
+a call - costs a crashed session and a power cycle, not the modem. The scratch
+region does not have to be *proven* free, which is fortunate, because the work
+above says it cannot be.
+
+What is genuinely irreversible is narrower and sharper: port `0x10` carries the
+**NVRAM strobe**, and `0x12`/`0x14` the other board latches. A routine that
+writes those, or that executes a flash command sequence, can change stored
+settings or flash contents, and a power cycle does not undo that. So the rule
+is about what the routine does, not where it lives:
+
+* never write ports `0x10`, `0x12`, `0x14`;
+* never write flash addresses or issue a flash unlock sequence;
+* keep the routine short enough to read and check by hand before it is sent.
+
+## Original scratch survey
 
 Read-only survey of the live board, one `ATGLK2=` page at a time, looking for
 pages that are entirely zero:
