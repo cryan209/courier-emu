@@ -1,0 +1,151 @@
+[
+  {
+    "command": "AT",
+    "raw": "AT\r\r\nOK\r\n",
+    "time": 1788602187.896113
+  },
+  {
+    "command": "ATI7",
+    "raw": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+    "time": 1788602188.1162848
+  },
+  {
+    "command": "ATS8?",
+    "raw": "ATS8?\r\r\n002\r\n\r\nOK\r\n",
+    "time": 1788602188.2761211
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!122!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "command": "ATDT9099,,,,123456789*0#;",
+    "raw": "ATDT9099,,,,123456789*0#;\r",
+    "time": 1788602188.943118
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!123!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!123!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!124!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!124!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!125!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!125!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!126!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!127!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!127!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!128!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!128!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!129!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!129!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!130!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!131!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!131!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!132!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "asterisk": "core show channels concise",
+    "stdout": "PJSIP/8421-000033e6!default!5557!5!Up!MP3Player!https://station.thecheese.co.nz/listen/the_cheese/128.mp3!8421!!!3!132!!1788602066.20881\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  {
+    "command": "",
+    "raw": "\r\nNO CARRIER\r\n",
+    "time": 1788602199.691895
+  },
+  {
+    "command": "ATH",
+    "raw": "ATH\r\r\nOK\r\n",
+    "time": 1788602199.8513181
+  },
+  {
+    "command": "AT",
+    "raw": "AT\r\r\nOK\r\n",
+    "time": 1788602200.011502
+  }
+]

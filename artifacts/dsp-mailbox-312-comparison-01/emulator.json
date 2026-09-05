@@ -1,0 +1,195 @@
+{
+  "rom_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "scope": "Real DSP dispatcher and sender; fixture RAM and ASIC acknowledgement adapter; no boot or timing equivalence claimed",
+  "steps": [
+    {
+      "command": 7,
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "tag_matches": true,
+      "value_matches": true,
+      "reply": [
+        49,
+        0
+      ],
+      "instructions": 87,
+      "writes": [
+        {
+          "write": true,
+          "port": 87,
+          "value": 1,
+          "pc": 33693,
+          "instruction": 21
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 49,
+          "pc": 33748,
+          "instruction": 74
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 33751,
+          "instruction": 76
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 33759,
+          "instruction": 81
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 33767,
+          "instruction": 86
+        }
+      ]
+    },
+    {
+      "command": 45,
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "tag_matches": true,
+      "value_matches": true,
+      "reply": null,
+      "instructions": 36,
+      "writes": [
+        {
+          "write": true,
+          "port": 87,
+          "value": 1,
+          "pc": 33693,
+          "instruction": 21
+        }
+      ]
+    },
+    {
+      "command": 98,
+      "hardware": [
+        105,
+        21
+      ],
+      "emulated": [
+        105,
+        18
+      ],
+      "tag_matches": true,
+      "value_matches": false,
+      "reply": [
+        105,
+        18
+      ],
+      "instructions": 290,
+      "writes": [
+        {
+          "write": true,
+          "port": 87,
+          "value": 1,
+          "pc": 33693,
+          "instruction": 21
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 105,
+          "pc": 33748,
+          "instruction": 277
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 33751,
+          "instruction": 279
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 18,
+          "pc": 33759,
+          "instruction": 284
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 33767,
+          "instruction": 289
+        }
+      ]
+    },
+    {
+      "command": 7,
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "tag_matches": true,
+      "value_matches": true,
+      "reply": [
+        49,
+        0
+      ],
+      "instructions": 87,
+      "writes": [
+        {
+          "write": true,
+          "port": 87,
+          "value": 1,
+          "pc": 33693,
+          "instruction": 21
+        },
+        {
+          "write": true,
+          "port": 94,
+          "value": 49,
+          "pc": 33748,
+          "instruction": 74
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 33751,
+          "instruction": 76
+        },
+        {
+          "write": true,
+          "port": 95,
+          "value": 0,
+          "pc": 33759,
+          "instruction": 81
+        },
+        {
+          "write": true,
+          "port": 87,
+          "value": 2,
+          "pc": 33767,
+          "instruction": 86
+        }
+      ]
+    }
+  ]
+}

@@ -650,7 +650,8 @@ void C5xCore::op_norm()
 	// operation so a repeated NORM can count the shifts in an auxiliary
 	// register.
 	uint32_t acc = uint32_t(m_acc);
-	if (((acc >> 31) & 1) == ((acc >> 30) & 1)) {
+	m_st1.tc = acc == 0 || (((acc >> 31) ^ (acc >> 30)) & 1);
+	if (!m_st1.tc) {
 		m_acc = int32_t(acc << 1);
 		GET_ADDRESS();
 	}
@@ -1872,7 +1873,7 @@ void C5xCore::op_mpyu()
 
 void C5xCore::op_pac()
 {
-	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_acc = PREG_PSCALER(m_preg);
 	CYCLES(1);
 }
 
@@ -1909,14 +1910,20 @@ void C5xCore::op_spm()
 
 void C5xCore::op_sqra()
 {
+	uint16_t data = DM_READ16(GET_ADDRESS());
 	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_treg0 = data;
+	if (m_pmst.trm == 0) m_treg1 = m_treg2 = data;
 	m_preg = int32_t(int16_t(m_treg0)) * int32_t(int16_t(m_treg0));
 	CYCLES(1);
 }
 
 void C5xCore::op_sqrs()
 {
+	uint16_t data = DM_READ16(GET_ADDRESS());
 	m_acc = SUB(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
+	m_treg0 = data;
+	if (m_pmst.trm == 0) m_treg1 = m_treg2 = data;
 	m_preg = int32_t(int16_t(m_treg0)) * int32_t(int16_t(m_treg0));
 	CYCLES(1);
 }

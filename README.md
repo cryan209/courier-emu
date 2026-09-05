@@ -1,5 +1,18 @@
 # Courier XMF emulator harness
 
+The [DSP 3.1.2 audio trace](docs/audio-312-path.md) now runs the original
+tone selector, oscillator, mixer and serial ISR to produce all 16 DTMF pairs.
+It fixes square, product-load and normalization instruction errors that
+silenced this path, and emits a listenable WAV. This board image has a
+DRR/DXR sample-buffer path; claims below based on `main211` do not rule it out.
+
+The [DSP 3.1.2 hardware comparison](docs/mailbox-312-comparison.md) records a
+fresh connected-board mailbox sequence and its replay through the original DSP
+dispatcher and sender. It identifies the current firmware's tone selector,
+demonstrates the acknowledgement behavior needed to receive replies, and keeps
+the remaining sample-dependent reply mismatch explicit. Older mailbox no-op
+and stream assumptions must not be applied to this firmware unchanged.
+
 This repository contains a reproducible dual-core firmware harness for
 `main211.xmf`. It validates and splits the update image, executes the Intel
 80186 supervisor in a 1 MiB instrumented address space, and runs the recovered
