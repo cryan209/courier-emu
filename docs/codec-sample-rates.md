@@ -1,11 +1,10 @@
-# The codec has three sample rates, and the V.34 symbol rate picks them
+# The codec has three sample rates, and V.34's symbol rate picks them
 
 `codec-rate-312.md` closes on a contradiction: the dial path runs at 7200 Hz,
 the AC01's divider registers are written once at reset and never again, and the
-unit nonetheless does V.34 at 3429 baud and V.PCM at 8000 baud - which 7200 Hz
-sampling cannot carry. The second of those is wrong. There is a runtime rate
-change, it is table-driven, and the table is indexed by **V.34's symbol-rate
-field**.
+unit nonetheless advertises modulations that 7200 Hz sampling cannot carry. The
+second of those is false. There is a runtime rate change, it is table-driven,
+and the table is indexed by V.34's symbol rate.
 
 | index | V.34 symbol rate | codec word | B | sample rate |
 |---:|---|---|---:|---|
@@ -16,57 +15,60 @@ field**.
 | 4 | 3200 | `0212` | 18 | **8000 Hz** |
 | 5 | 3429 | `0212` | 18 | 8000 Hz |
 
-So 7200 Hz is the 2400-baud rate - V.32bis and everything below it, and the
-dial, call-progress and answer-tone paths that live in the resident bank. It was
-never the board's one rate.
+7200 Hz is the 2400-baud rate - V.32bis and below, and the dial, call-progress
+and handshake tones the resident bank generates by hand. It was never the
+board's one rate.
 
-## Why the earlier scans missed it
+Program addresses are `IDSDL302.ROM` unless stated. The stock 7.3.14 image
+matches it; the ID_SDL 4.03 / DSP 3.1.2 build sits `0x11` lower in this region,
+so its selector is at `8140` and its table at `815a`.
 
-The search that produced "the dividers are written once at reset" was for
-`lacc #0nnn ; call <sender>` - and every runtime write is made by a routine that
-**inlines** the sender's handshake instead of calling it. In the 3.1.2 build the
-inlined copy sits immediately after the sender it duplicates:
+## The mechanism, and why earlier scans missed it
+
+The search behind "the dividers are written once at reset" was for
+`lacc #0nnn ; call <sender>`. Every runtime write is made by a routine that
+**inlines** the sender's handshake instead of calling it, and in the 3.1.2 build
+the inlined copy sits immediately after the sender it duplicates:
 
 ```text
-8138  samm @6c        ; the control-word sender: park the word,
-8139  lacl #03        ; raise the secondary-frame request,
-813a  samm @6b        ; and idle until the ISR has sent it
-813b  idle
-813c  lamm @6b
-813d  bcnd 813b, neq
-813f  ret
+8149  samm @6c        ; the control-word sender: park the word,
+814a  lacl #03        ; raise the secondary-frame request,
+814b  samm @6b        ; and idle until the ISR has sent it
+814c  idle
+814d  lamm @6b
+814e  bcnd 814c, neq
+8150  ret
 
-8140  sacl @7d        ; the rate selector: acc = index
-8141  add  @7d, 2     ; index * 5
-8142  add  #815a      ; + table base
-8144  tblr @7d
-8145  add  #01
-8146  tblr @7e
-8147  out  @7d, 0068  ; row words 0,1 -> ASIC ports 0x68/0x69
-8149  out  @7e, 0069
-814b  add  #01
-814c  tblr @7d
-814d  add  #01
-814e  tblr @7e
-814f  out  @7d, 006b  ; row words 2,3 -> ASIC ports 0x6b/0x6c
-8151  out  @7e, 006c
-8153  add  #01
-8154  tblr @7f        ; row word 4: the codec control word
-8155  lacl @7f
-8156  samm @6c        ; ...sent through an inlined copy of 8138
-8157  lacl #03
-8158  samm @6b
-8159  ret
+8151  sacl @7d        ; the rate selector: acc = index
+8152  add  @7d, 2     ; index * 5
+8153  add  #816b      ; + table base
+8155  tblr @7d
+8156  add  #01
+8157  tblr @7e
+8158  out  @7d, 0068  ; row words 0,1 -> ASIC ports 0x68/0x69
+815a  out  @7e, 0069
+815c  add  #01
+815d  tblr @7d
+815e  add  #01
+815f  tblr @7e
+8160  out  @7d, 006b  ; row words 2,3 -> ASIC ports 0x6b/0x6c
+8162  out  @7e, 006c
+8164  add  #01
+8165  tblr @7f        ; row word 4: the codec control word
+8166  lacl @7f
+8167  samm @6c        ; ...sent through an inlined copy of 8149
+8168  lacl #03
+8169  samm @6b
+816a  ret
 ```
 
-A scan for calls to `8138` returns exactly the six reset writes plus one
-register-4 write, as `codec-rate-312.md` reports. It is true and it is not the
-whole story: `8140` writes the codec without ever calling `8138`.
+A scan for calls to the sender returns the six reset writes plus one register-4
+write, which is what `codec-rate-312.md` reports. It is true, and it is not the
+whole story.
 
 ## The table
 
-Six rows of five words, at program `815a` in the 3.1.2 build (`816b` in
-`IDSDL302.ROM` and in stock 7.3.14, which differ only by the shift in addresses):
+Six rows of five words at `816b`:
 
 ```text
 row0: 000f 0002 0078 0901 0214
@@ -77,31 +79,24 @@ row4: 000c 0202 0090 0901 0212
 row5: 000b 0808 009a 0926 0212
 ```
 
-Byte-identical in all three 20.16 MHz images - stock 7.3.14, ID_SDL 4.03, and
-the flat `IDSDL302.ROM`. It is absent from `main211.xmf` and from the 2.x builds,
-which are other boards.
+Byte-identical across all three 20.16 MHz images - stock 7.3.14, ID_SDL 4.03 and
+`IDSDL302.ROM`. Absent from `main211.xmf` and from the 2.x builds, which are
+other boards.
 
-## Why the index is V.34's symbol rate, and not something else
+## Why the index is V.34's symbol rate
 
-Three independent things say so.
-
-**The selector is a 3-bit received field clamped to 5.** At `96c7` the resident
-reads a 12-bit field out of a received frame with the bit extractor at `8785`,
-masks it to three bits, clamps it to 5, and stores it as the table index:
+**The same index drives three tables.** `@5b` on data page 7 selects the codec
+divider row, the V.34 carrier and the V.34 symbol rate:
 
 ```text
-96c7: lacl #0c ; call 8785   ; read 12 bits
-96ca: and  #0007             ; keep 3
-96cd: lacl #05 ; crlt        ; clamp to 0..5
-96cf: sacl @5b               ; the rate index
+84d9: lacl @5b ; add #860b ; tblr *+   ; carriers 1800 1829 1867 1875 1920 1959
+852c: lacl @5b ; add #8611 ; tblr *+   ; bauds   2400 2743 2800 3000 3200 3429
+9730: lacl @5b ; call 8151             ; the codec divider table
 ```
 
-Three bits with six legal values, arriving in a negotiated frame, is V.34's
-symbol-rate field.
-
-**Word 2 of each row is `360 x baud / Fs`.** This is the check that makes the
-mapping arithmetic rather than suggestive. Taking the six V.34 symbol rates in
-order and the three sample rates above:
+**Word 2 of each row is `360 x baud / Fs`.** Nothing is fitted here: the sample
+rates come from the codec words, the symbol rates from V.34, and `360` is the
+only free constant.
 
 | index | baud | `360 x baud / Fs` | word 2 |
 |---:|---|---:|---:|
@@ -112,173 +107,86 @@ order and the three sample rates above:
 | 4 | 3200 | 144.00 | `0090` = 144 |
 | 5 | 3428.57 | 154.29 | `009a` = 154 |
 
-All six agree to rounding. Nothing was fitted: the sample rates come from the
-codec words, the symbol rates from V.34, and 360 is the only free constant.
-Read backwards, word 2 recovers the sample rate - row 2 gives
-`360 x 2800 / 133 = 7578.9`, row 4 gives exactly 8000, row 0 exactly 7200.
+All six agree to rounding. Read backwards it recovers the rate: row 2 gives
+`360 x 2800 / 133 = 7578.9`, row 4 exactly 8000, row 0 exactly 7200.
 
-**Each rate is the smallest of the three that clears its own spectrum.** V.34's
-widest signal, 3429 baud on the 1959 Hz carrier, reaches 3673 Hz; 7578.95 Hz
-sampling gives 3789 Hz of Nyquist and 7200 Hz gives 3600, which is not enough.
-Row by row the margin over Nyquist is 1.09-1.20 - see the table below. The
-ladder is V.34's own bandwidth requirement and nothing else.
+**Each row clears its own spectrum by a uniform margin.** Pairing each carrier
+with its symbol rate:
 
-## The arithmetic behind the codec words
+| index | carrier | baud | upper edge | min Fs | given | margin |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 1800 | 2400 | 3000.0 | 6000 | 7200.00 | 1.200 |
+| 1 | 1829 | 2743 | 3200.5 | 6401 | 7578.95 | 1.184 |
+| 2 | 1867 | 2800 | 3267.0 | 6534 | 7578.95 | 1.160 |
+| 3 | 1875 | 3000 | 3375.0 | 6750 | 7578.95 | 1.123 |
+| 4 | 1920 | 3200 | 3520.0 | 7040 | 8000.00 | 1.136 |
+| 5 | 1959 | 3429 | 3673.5 | 7347 | 8000.00 | 1.089 |
 
-Under the `(register << 8) | data` reading, all three words write **register 2**
-and nothing else; register 1 keeps the `A = 10` it was given at reset. With any
-`Fs = MCLK / (2 x A x B)` form the rates are then in the ratio `1/20 : 1/19 : 1/18`,
-and the dial path's DTMF pins the first to 7200 Hz, so:
+1.09 to 1.20 throughout. The ladder is V.34's own bandwidth requirement and
+nothing else - so `B = 18` is what 3200 and 3429 baud need, and 8000 Hz falls
+out of the 2.88 MHz master clock rather than being provisioned for V.PCM.
 
-```text
-Fs(B=20) = 7200      Hz   (DTMF, independently measured)
-Fs(B=19) = 7578.947  Hz
-Fs(B=18) = 8000      Hz   exactly
-```
+## The arithmetic, and the absolute scale
 
-`B = 18` landing exactly on 8000 Hz is a property of the 2.88 MHz MCLK, not
-evidence that the ladder was designed for V.PCM - see below. What it does
-answer is the question `codec-rate-312.md` poses at the end: a second mode's register values give the ratio between the rates directly,
-and with `A = 10` fixed they give `MCLK = 2.88 MHz`, which is `40.32 MHz / 14`
-off the board's oscillator.
+Under `(register << 8) | data` all three words write **register 2** and nothing
+else; register 1 keeps the `A = 10` it is given at reset. With any
+`Fs = MCLK / (2 x A x B)` form the rates are in the ratio `1/20 : 1/19 : 1/18`,
+so `Fs = 144000 / B` once the base is pinned, and `MCLK = 2.88 MHz`, which is
+`40.32 MHz / 14` off the board's oscillator.
 
-## What still selects index 0
+The base is pinned by what the resident bank generates at index 0, and by more
+than one thing:
+
+* the DTMF table at `86fd` - all sixteen pairs within 0.05% at 7200 Hz;
+* `4aab` -> 2100.000 Hz, the answer tone;
+* `4800` -> 2025.0 Hz, Bell 103 answer space;
+* `3aab` -> 1650.0 Hz, V.21 channel 2 mark.
+
+None of those is a standard frequency at 9600 Hz. `1555` is `Fs / 12` exactly
+and so discriminates nothing.
 
 The reset sequence writes `B = 20`, so the board comes up at 7200 Hz, and the
-resident bank returns to it explicitly (`lacl #00 ; call 8140` at `a32b` and
-`a331`, and `splk @5b, #0000` at `9499`). The DTMF table at `86fd` and the tone
-increments at `86dc` are 7200 Hz values throughout - digit 1 gives 696.97 and
-1209.05 Hz, and `0x4aab` gives 2100.000 Hz, the answer tone - so everything the
-resident bank generates by hand belongs to index 0.
-
-## Which overlay asks for which rate
-
-| loader | index | rate |
-|---|---:|---|
-| overlay 6, at its entry (`9d14`) | 5 | 8000 Hz |
-| overlay 7 (`b155`, `b4c7`) | 1 | 7578.95 Hz |
-| resident, high-speed paths (`8e0d`, `a33c`, `a38e`, `a3d7`, `a412`) | 4 | 8000 Hz |
-| resident, back to base (`a32b`, `a331`) | 0 | 7200 Hz |
-| resident, from the negotiated field (`970c`) | 0-5 | all three |
-
-Overlays 6 and 7 overlap in program space and are alternatives; overlay 8, the
-V.PCM datapump, loads alongside either.
+resident returns to it explicitly (`lacl #00 ; call 8151` at `a350` and `a356`,
+`splk @5b, #0000` at `9499`).
 
 ## Two variables share the offset `@5b`
 
-`@5b` is data-page relative, and this firmware keeps **two different variables**
-at that offset. Tracking `ldp` separates them:
+`@5b` is data-page relative and this firmware keeps **two** variables there.
+Every claim in this document has been checked for its `ldp`.
 
 | page | address | what it is |
 |---:|---|---|
-| DP 7 | `0x3db` | **the rate index** - it drives the V.34 carrier table (`84d9`), the symbol-rate table (`852c`) and the codec rate table (`9730`) |
-| DP 6 | `0x35b` | something else entirely, unrelated to the codec |
+| DP 7 | `0x3db` | **the rate index** - carrier table, symbol-rate table, codec divider table, and our own capability array |
+| DP 6 | `0x35b` | a second symbol-rate index, used for the outgoing INFO frame |
 
-Every claim below is about the DP 7 variable, and every site named has been
-checked for its data page.
+**DP 7** is written at `9299` (forced to 4), `9499` (0), `94bc` and `96cf`, and
+by overlay 6 at `9d15` (5). It is read at `84d9`, `852c`, `9730`, `9735`, by
+overlay 8 at `dc4a`, and by a further six-entry, two-word-per-entry table at
+program `967a`.
 
-> **Retraction, narrowed.** An earlier version argued, from the argmax loop at
-> `91e1`, that *the codec index* is a reduction over the transmit and receive
-> symbol rates. The loop is a genuine two-direction symbol-rate negotiation -
-> see the INFO section below - but it writes `0x35b`, on DP 6, and the codec is
-> programmed from DP 7. So the claim about the codec index is withdrawn; the
-> claim about the negotiation stands.
-> `971c` does take the `max` of two 3-bit fields drawn from the call-mode and
-> answer-mode frame buffers, but its result goes to `@7f`/`@7c` and is not shown
-> to reach the rate index. **Whether the transmit and receive symbol rates are
-> reduced to one before the codec sees them is not established here.** It is a
-> real question - V.34 negotiates them separately and the AC01 has one `Fs` -
-> and this document does not answer it.
+**DP 6** is written by the argmax at `91f6`, at `90ba` (4) and by overlay 7 at
+`b155` and `b4c7` (1). It is what the outgoing frame declares at `9211`.
 
-> **Also retracted.** "Overlay 7 selects index 1 (7578.95 Hz)" was the same
-> mistake: `b155` and `b4c7` write DP 6. Overlay 7 is not shown to select any
-> rate.
+## Where each index comes from
 
-## The V.PCM rate: 8000 Hz, forced at both entries
+* **DP 7** is a 3-bit field read from the **received** frame at bit 12 and
+  clamped to 5:
 
-Overlay 8 calls the rate selector zero times, and reads the rate index exactly
-once (`dc4a`, `lar ar0, @5b`, on DP 7 - an index, not a rate decision), so on
-its own it cannot say what rate it runs at. The entry paths can, and both of
-them force 8000 Hz before the PCM code starts.
+  ```text
+  96c7: lacl #0c ; call 8785 ; and #0007 ; lacl #05 ; crlt ; sacl @5b
+  ```
 
-**Overlay 6 sets index 5 as its eighth instruction.** Its entry at `9d00` is
-plainly an entry - state init, then:
+* **DP 6** is **our own** choice, the argmax at `91e1` over both directions'
+  probe results.
 
-```text
-9d10: splk @4d, #adfe
-9d12: opl  @1f, #0020
-9d14: lacl #05
-9d15: sacl @5b          ; index 5 = 3429 baud
-9d16: call 8151         ; ...and program the codec: B = 18, 8000 Hz
-```
+So the codec follows a symbol rate the far end sent us, while our own selection
+lives in the other variable.
 
-**`9299` forces index 4 and declares it outward.** On DP 7, so this is the rate
-index. It forces 3200 baud and then writes `@5b + 0x30` into the outgoing frame
-through the bit-field writer at `8774`:
+## The INFO parser and builder
 
-```text
-9293: lar  ar0, #ff1a         ; the outgoing frame buffer
-9295: calld 8774 ; splk @7f, #0018
-9299: splk @5b, #0004         ; index 4 = 3200 baud -> B = 18, 8000 Hz
-929b: lacl @5b ; add #0030
-929e: bd   8774  ; splk @7f, #000f
-```
+The frame carries a **six-entry block, one 9-bit field per V.34 symbol rate**.
 
-So the modem *declares* 3200 rather than accepting whatever was negotiated. The
-general builder at `9204` writes `9 * @5b` into a 15-bit field instead - a
-different encoding of the same quantity, so these are two different outgoing
-frame formats.
-
-**Five resident sites pass a literal 4 to the rate routine directly**, in the
-accumulator rather than through `@5b`, so no data page is involved: `8e0d`,
-`a33c`, `a38e`, `a3d7`, `a412`. All of them program 8000 Hz.
-
-Taken together: the PCM core forces 8000 Hz at its entry, one negotiation path
-forces 3200 and declares it, and every literal rate call on the high-speed paths
-is index 4. **The V.PCM sample rate on this firmware is 8000 Hz.**
-
-> **Weaker than first stated.** An earlier version claimed the path into
-> overlay 8 also forces the index, at `90ba`. It does not: `90ba` writes DP 6,
-> the other variable, and then tail-branches to `dc24`. That branch into overlay
-> 8 is real; the rate forcing attributed to it is not.
-
-Overlay 8's own first act at `dc24` is a codec write, and it is register 4
-again - `040a` or `0406`, selected on a status bit, with `@7b << 2` added
-conditionally, through a third inlined copy of the secondary-frame handshake.
-Gain, not rate.
-
-## The ladder explains which V.90 symbol rates this modem can offer
-
-V.90 constrains the analogue modem's symbol rate: 3200 is mandatory, 3000 and
-3429 are optional, and 2400, 2743 and 2800 are prohibited. Laid against the
-table:
-
-| index | baud | V.90 status | codec rate | usable for V.PCM? |
-|---:|---|---|---|---|
-| 0 | 2400 | prohibited | 7200 | - |
-| 1 | 2743 | prohibited | 7578.95 | - |
-| 2 | 2800 | prohibited | 7578.95 | - |
-| 3 | 3000 | **optional** | 7578.95 | **no** |
-| 4 | 3200 | **mandatory** | 8000 | yes |
-| 5 | 3429 | optional | 8000 | yes |
-
-The three prohibited rates are exactly the three that sit below 8000 Hz, bar
-one - and that one is the interesting case. **Index 3 is permitted by V.90 and
-unusable on this hardware**: 3000 baud puts the codec at 7578.95 Hz, which
-cannot align to a downstream 8 kHz codeword stream.
-
-So this implementation can offer only `{3200, 3429}` - the mandatory rate plus
-the optional 3429 - and must decline the optional 3000. That is a prediction
-about the product, not just the code, and it follows from the divider table
-alone. It also explains `9299`: forcing the index to 4 and declaring it outward
-is this modem taking the one rate it is obliged to support and is able to run.
-
-## The INFO parser and builder, and how a symbol rate is disabled
-
-The frame carries a **six-entry capability block, one 9-bit field per V.34
-symbol rate**, and the firmware has a builder and a parser for it.
-
-**Builder**, at `91a5`, into the outgoing buffer `ff1a`:
+**Builder** at `91a5`, into the outgoing buffer `ff1a`:
 
 ```text
 91a5: lar ar0, #ff1a
@@ -293,7 +201,7 @@ symbol rate**, and the firmware has a builder and a parser for it.
 91bb: banz 91b2, *-, ar1
 ```
 
-**Parser**, at `91c2`, out of the received buffer `ff08`:
+**Parser** at `91c2`, out of the received buffer `ff08`:
 
 ```text
 91c8: lar ar0, #ff08
@@ -302,116 +210,99 @@ symbol rate**, and the firmware has a builder and a parser for it.
 91cf: call 8785 ; and #000f           ; read, keep 4 bits
 91d4: sacl *+, ar3
 91d5: lacl @7d ; sub #09              ; step down 9 bits
-91d7: banz
 ```
 
-Nine bits per entry, six entries, one per symbol rate, in both directions.
-`8785` takes the bit offset in the accumulator and the width from `@7b`; `8774`
-takes the value in the accumulator and the offset in `@7f`.
+`8785` takes the bit offset in the accumulator and returns a raw window - the
+caller sets the width by masking. `8774` takes the value in the accumulator and
+the offset in `@7f`, set in the delayed call's slot.
 
-**A rate is disabled by writing zero into its entry.** `92d2` normalises an
-array: it takes the maximum over the six, forms `0x0f - max`, and adds that to
-each entry **only where the entry is non-zero** (`xc 1, neq ; add @7c`). Zeros
-are left as zeros. And `9615` finds the argmax and then zeroes everything past
-it (`rpt @7e ; sach *-`). So the capability block is a per-rate quality figure
-in which **zero means "not offered"**, and there are routines whose job is to
-zero entries.
+### It is INFO1's per-symbol-rate probe result
 
-**Selection is over both directions.** `91e1` walks our array and theirs in
-parallel - `ff2d` and `ff35`, descending, six entries each - takes `min` at each
-rate and keeps the argmax:
+The 9 bits split 5 + 4. The builder packs `A[i] + (B[i] << 5)`; the parser
+starts 5 bits lower (58 against 63), steps by the same 9, and masks 4 bits. So
+each entry is a 5-bit field followed by a 4-bit field, and only the 4-bit one is
+read back.
+
+That is the shape of V.34's INFO1 block: per symbol rate, a pre-emphasis
+selection plus a flag, and a **projected maximum data rate** measured from the
+line probe. It is why selection is `min(ours, theirs)` then argmax - the rate
+whose worse direction is best, off probe results, as V.34 Phase 2 prescribes:
 
 ```text
-91ed: lacl *-, ar2 ; sacb      ; theirs
+91ed: lacl *-, ar2 ; sacb      ; theirs, from ff35 descending
 91ef: lacl *-, ar3 ; crlt      ; min(ours, theirs)
 91f1: lacl @7d     ; crgt      ; running best
-91f4: xc 2, nc ; lamm @13 ; sacl @5b    ; record the index
+91f4: xc 2, nc ; lamm @13 ; sacl @5b
 ```
 
-So the negotiation genuinely is two-directional: it picks the rate that is best
-for the worse direction. What is **not** established is that its result reaches
-the codec - it writes the DP 6 variable, and the codec is programmed from DP 7.
-Two symbol-rate indices exist and their relationship is open. That is where the
-transmit-versus-receive question lives.
+### A rate is withdrawn by zeroing its entry
 
-**Overlay 8 uses the DP 7 index against our own capability array:**
+A projected data rate of zero is a symbol rate that carries nothing, so no
+separate flag is needed. Two routines act on that:
 
-```text
-dc4a: lar ar0, @5b        ; DP 7 - the rate index
-dc4b: lar ar1, #ff20      ; our per-rate array
-dc4d: mar *0+ ; lacl *    ; our entry for the selected rate
-```
+* `92d2` normalises an array - maximum over the six, form `0x0f - max`, and add
+  it back **only where the entry is non-zero** (`xc 1, neq ; add @7c`). Zeros
+  stay zero.
+* `9615` finds the argmax and zeroes everything past it (`rpt @7e ; sach *-`).
 
-which is the same pairing the resident makes at `9735`, immediately after
-programming the codec at `9730`. There is a further six-entry, two-word-per-entry
-table at program `967a`, also indexed by the DP 7 index.
+### The frame layout
 
-## The block is INFO1's per-symbol-rate probe result
-
-The 9 bits per entry split 5 + 4, and the reader shows how. The builder packs
-`A[i] + (B[i] << 5)`; the parser starts 5 bits lower (58 against 63), steps by
-the same 9, and masks with `and #000f`. So each entry is a 5-bit field followed
-by a 4-bit field, and only the 4-bit one is parsed back.
-
-That is the shape of V.34's **INFO1** per-symbol-rate block: for each of the six
-symbol rates, a pre-emphasis selection plus a flag, and a projected maximum data
-rate. The parsed 4-bit value is the far end's projected rate, measured from the
-line probe - which is why the selection at `91e1` is `min(ours, theirs)` then
-argmax. It picks the symbol rate whose worse direction is best, off probe
-results, exactly as V.34 Phase 2 prescribes.
-
-It also explains zero-means-unsupported without needing a separate flag: a
-projected data rate of zero is a symbol rate that cannot carry anything, so
-withdrawing 2400/2743/2800/3000 for a V.PCM call is a matter of zeroing four
-entries before the block is built.
-
-Field widths throughout are set by the caller's mask, not by the reader - `8785`
-returns a raw window and the caller narrows it. So the frame layout can be read
-straight off the call sites:
+Widths come from the caller's mask, so the layout reads off the call sites:
 
 | buffer | bit offset | width | what |
 |---|---:|---:|---|
-| `ff08` (received) | 12 | 3 | a symbol-rate index - clamped to 5 at `96cf` and stored as **the DP 7 index** |
-| `ff08` | 58, 49, 40, 31, 22, 13 | 4 | the far end's projected data rate per symbol rate -> `ff30..ff35` |
+| `ff08` received | 12 | 3 | symbol-rate index -> the DP 7 index |
+| `ff08` | 58, 49, 40, 31, 22, 13 | 4 | far end's projected rate per symbol rate -> `ff30..ff35` |
 | `ff08` | 70 | 7 | `9766` |
-| `ff08` | 9/10 | 10 | `9703` |
-| `ff1a` (outgoing) | 63, 54, 45, 36, 27, 18 | 9 | our per-rate block, `A + (B << 5)` |
-| `ff1a` | 76, 37, 24, 19, 15, 9 | - | single fields |
+| `ff08` | 9 | 10 | `9703` |
+| `ff08` | 58 | 4 | `91cf`, the parse loop |
+| `ff1a` outgoing | 63, 54, 45, 36, 27, 18 | 9 | our per-rate block, `A + (B << 5)` |
+| `ff1a` | 76 | - | `91a7` |
+| `ff1a` | 24, 19, 15, 9 | - | the builder at `9204`: `*`, `@7c`, `9 * @5b`, `@70` |
+| `ff1a` | 24, 15 | - | the builder at `9293`: `@3e`, `@5b + 0x30` |
 
-## Where the two indices come from
+Two outgoing builders write bit 15 with different encodings - `9 * @5b` at
+`9211`, `@5b + 0x30` at `929e` - so these are two different frame formats.
+`9293` is the one that forces the index first:
 
-This sharpens the open question rather than closing it, and it points the way
-your reading suggested:
+```text
+9299: splk @5b, #0004         ; index 4 = 3200 baud, DP 7
+929b: lacl @5b ; add #0030
+929e: bd   8774  ; splk @7f, #000f
+```
 
-* **DP 7 (`0x3db`)** - read from a 3-bit field at bit 12 of the **received**
-  frame (`96c8`), clamped to 5. This is the index that programs the codec, the
-  carrier table and the symbol-rate table.
-* **DP 6 (`0x35b`)** - the result of **our own** argmax at `91e1` over both
-  directions' probe results, and what the outgoing frame declares at `9211`.
+so on that path the modem *declares* 3200 rather than accepting a negotiated
+rate.
 
-So the codec follows a symbol rate the far end sent us, while our own selection
-lives in the other variable. That is the transmit-versus-receive split, with
-both halves now located. What it does not yet say is which of the two is the
-transmit rate and which the receive rate, or how the single codec `Fs` is
-reconciled when they differ - `971c`'s `max` of two 3-bit fields is the obvious
-candidate for that reconciliation and still has no shown path to either index.
+## What the ladder implies for V.90
 
-**Not established: which rates this modem actually offers.** The advertised
-values live in data RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time,
-so "3200 and 3429 enabled, the rest zeroed" is not something the ROM states
-outright. The *mechanism* for exactly that is present - zero-means-unsupported,
-plus routines that zero entries - and the prediction is consistent with `9299`
-forcing index 4 and declaring it. Confirming it means finding what writes
-`ff20..ff25`, or watching those six words on hardware during Phase 2.
+V.90 constrains the analogue modem: 3200 mandatory, 3000 and 3429 optional,
+2400/2743/2800 prohibited.
+
+| index | baud | V.90 status | codec rate | usable for V.PCM? |
+|---:|---|---|---|---|
+| 0 | 2400 | prohibited | 7200 | - |
+| 1 | 2743 | prohibited | 7578.95 | - |
+| 2 | 2800 | prohibited | 7578.95 | - |
+| 3 | 3000 | **optional** | 7578.95 | **no** |
+| 4 | 3200 | **mandatory** | 8000 | yes |
+| 5 | 3429 | optional | 8000 | yes |
+
+The prohibited rates are exactly the sub-8000 rows bar one, and that one is the
+finding: **index 3 is permitted by V.90 and unusable on this hardware**, because
+3000 baud puts the codec at 7578.95 Hz, which cannot align to a downstream 8 kHz
+codeword stream. So this implementation can offer only `{3200, 3429}` and must
+decline the optional 3000. That is a prediction about the product, and it falls
+out of the divider table alone.
 
 ## Which overlay is which
 
 Overlay 8 is the **V.90 layer**, not the whole PCM datapump. The Ja descriptor -
 V.90's digital impairment learning, the `SP`/`TP` pair from
-[vpcm-datapump.md](vpcm-datapump.md) - is at program `e599` in overlay 8 and
-appears in **no other overlay**.
+[vpcm-datapump.md](vpcm-datapump.md) - is at program `e599` in overlay 8 and in
+**no other overlay**.
 
-Its partner is overlay 6, not overlay 7:
+Its partner is overlay 6:
 
 | | into overlay-6-only space (`9d00..b000`) | into overlay-7-only space (`c9f6..cd4b`) |
 |---|---:|---:|
@@ -423,30 +314,68 @@ Its partner is overlay 6, not overlay 7:
 | overlay 7 | 5 |
 
 Overlays 6 and 7 overlap and are alternatives; overlay 8 overlaps neither and
-can load beside either. The traffic says it runs beside 6. That fits the reading
-that **overlay 6 is the PCM datapump core and overlay 8 the V.90 layer on top of
-it** - overlay 6 sets the 8000 Hz rate and carries no descriptor, overlay 8
-carries the descriptor and no rate.
-
-Not established: that overlay 6 is specifically *x2* rather than a shared PCM
-core. Nothing here separates an x2 core from a V.90 one, which is the same limit
-[vpcm-datapump.md](vpcm-datapump.md) records for the descriptor itself.
+can load beside either. The traffic says it runs beside 6. That fits **overlay 6
+as the PCM datapump core and overlay 8 as the V.90 layer on top of it** -
+overlay 6 sets the rate and carries no descriptor, overlay 8 carries the
+descriptor and sets no rate. Overlay 8's own first act, at `dc24`, is a codec
+write, and it is register 4 - `040a` or `0406` selected on a status bit, with
+`@7b << 2` added conditionally, through a third inlined copy of the handshake.
+Gain, not rate.
 
 Caveat on the traffic counts: both windows are also resident space when the
 overlay in question is not loaded, so a target there could be a resident
-routine. The argument is the asymmetry - if these were resident calls there is
-no reason for 8 in one window and 0 in the other.
+routine. The argument is the asymmetry, not the totals.
 
-## What this closes and what it does not
+## The V.PCM rate
 
-The contradiction in `codec-rate-312.md` is resolved: fact 2 - "registers 1 and
-2 are set once at reset and never changed" - is false, and every other fact in
-that document stands. The AC01 is the only converter, the resident ISR moves one
-sample per interrupt, there is no second sample path, and no resampling: the
-codec is simply retuned before each modulation runs.
+Overlay 8 never calls the rate selector and reads the rate index once, so it
+cannot set its own rate. What surrounds it does:
 
-Not established here: what the four ASIC words in each row do. Ports
-`0x68`/`0x69` and `0x6b`/`0x6c` take two pairs per row, and word 2 is the
-`360 x baud / Fs` figure above, which looks like a timing-recovery or decimator
-increment. Words 0, 1 and 3 (`000f..000b`, `0002/1112/0c12/0f12/0202/0808`,
-`0901/0926/0911`) are not decoded.
+* overlay 6 forces index 5 and programs the codec as its eighth instruction -
+  `9d14: lacl #05 ; sacl @5b ; call 8151`;
+* `9299` forces index 4 on DP 7 and declares it outward;
+* the resident passes a literal 4 to the rate routine at `8e14`, `a361`,
+  `a3b3`, `a3fc` and `a437`, in the accumulator, so no data page is involved.
+
+All of those are `B = 18`. **The V.PCM sample rate on this firmware is 8000 Hz.**
+
+## What is not established
+
+* **How one `Fs` serves two directions.** V.34 negotiates transmit and receive
+  symbol rates separately. Two indices exist and their sources are known - DP 7
+  from the received frame, DP 6 from our own argmax - but which is transmit and
+  which receive, and how they are reconciled, is open. `971c` takes the `max` of
+  two 3-bit fields drawn from the call-mode and answer-mode buffers, which is
+  the obvious reconciliation, but its result goes to `@7f`/`@7c` and has no
+  shown path to either index.
+* **Which rates this modem actually offers.** The advertised values live in data
+  RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time from the probe, so
+  "3200 and 3429 enabled, the rest zeroed" is not something the ROM states. The
+  mechanism for exactly that is present. Confirming it means finding what writes
+  `ff20..ff25`, or watching those six words on hardware during Phase 2.
+* **The four ASIC words in each table row.** Ports `0x68`/`0x69` and
+  `0x6b`/`0x6c` take two pairs per row. Word 2 is the `360 x baud / Fs` figure,
+  which looks like a timing-recovery or decimator increment. Words 0, 1 and 3
+  (`000f..000b`, `0002/1112/0c12/0f12/0202/0808`, `0901/0926/0911`) are not
+  decoded.
+* **Whether overlay 6 is specifically x2** rather than a shared PCM core.
+  Nothing here separates an x2 core from a V.90 one, the same limit
+  [vpcm-datapump.md](vpcm-datapump.md) records for the descriptor.
+
+## Corrections to earlier versions of this document
+
+Kept as the record, since each was asserted here before being withdrawn.
+
+* **"The index is a reduction over the transmit and receive symbol rates."**
+  Argued from the argmax at `91e1`. That loop writes DP 6; the codec is
+  programmed from DP 7. The loop *is* a genuine two-direction negotiation - that
+  part stands - but the conclusion about the codec index does not.
+* **"Overlay 7 selects index 1, 7578.95 Hz."** `b155` and `b4c7` write DP 6.
+  Overlay 7 is not shown to select any rate.
+* **"The path into overlay 8 forces the index at `90ba`."** `90ba` writes DP 6.
+  The branch from `90ce` into overlay 8 is real; the rate forcing attributed to
+  it is not.
+* **"`B = 18` landing exactly on 8000 Hz shows the ladder was provisioned for
+  V.PCM."** Backwards. The per-row Nyquist margins are uniform, so `B = 18` is
+  what 3200 and 3429 baud need on their own, and 8000 Hz is a property of the
+  2.88 MHz master clock.
