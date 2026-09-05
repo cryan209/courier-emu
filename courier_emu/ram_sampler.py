@@ -33,13 +33,24 @@ from .ram_counter import (ORIGINAL_OFFSET, ORIGINAL_SEGMENT, HOOK_SEGMENT,
                           ROUTINE_BASE, VECTOR_SEGMENT_CELL, TICK_VECTOR,
                           arm_command, disarm_command, write_byte, write_word)
 
-# Never sampled: hook relay, NVRAM strobe, carrier-detect pair.
+# Not sampled by default: hook relay, NVRAM strobe, carrier-detect pair.
+# Reading a latch is what the firmware's own panel code does, so it is not
+# itself dangerous; `allow_latches` exists so that including them is a
+# deliberate choice rather than an oversight.
 FORBIDDEN_PORTS = (0x10, 0x12, 0x14)
-# Where the ring buffer and its write index live. Both are inside the large
-# region that reads zero, and the index is kept clear of the routine's tail.
-INDEX = 0x3AF0
+# Every even port in the decoded space. The odd halves read zero - the ASIC
+# presents 16-bit registers and `IN AL` reads a byte - so they carry nothing.
+EVEN_PORTS = tuple(range(0x00, 0x80, 2))
+
+# The cursor sits just below the buffer so a long routine cannot grow into it:
+# at five bytes a port a 64-port sampler is over 350 bytes, which would have run
+# straight through the old 0x3af0.
+INDEX = 0x3FF0
 BUFFER = 0x4000
-BUFFER_SIZE = 0x1000
+# A call leaves RAM alone - unlike `AT&T8`, which clears all of it - so the ring
+# can be far larger than the first 4 KiB. 32 KiB is 512 ticks of a 64-port
+# sampler, or ten seconds of a six-port one.
+BUFFER_SIZE = 0x8000
 
 # The four ports that moved between idle and analogue loopback. 1c/1e are the
 # mailbox status pair; 18 also varied within the active state.
@@ -47,7 +58,8 @@ DEFAULT_PORTS = (0x18, 0x1A, 0x1C, 0x1E)
 
 
 def routine(ports=DEFAULT_PORTS, index: int = INDEX,
-            buffer: int = BUFFER, size: int = BUFFER_SIZE) -> bytes:
+            buffer: int = BUFFER, size: int = BUFFER_SIZE,
+            allow_latches: bool = False) -> bytes:
     """The sampler placed at `ROUTINE_BASE`.
 
     `DI` carries the write cursor between ticks through `index`, so the buffer
@@ -55,8 +67,10 @@ def routine(ports=DEFAULT_PORTS, index: int = INDEX,
     the end and a reload, which costs nothing when it does not fire.
     """
     for port in ports:
-        if port in FORBIDDEN_PORTS:
-            raise ValueError(f"port {port:02x} drives a board latch; refused")
+        if port in FORBIDDEN_PORTS and not allow_latches:
+            raise ValueError(
+                f"port {port:02x} drives a board latch; pass allow_latches to read it"
+            )
         if not 0 <= port <= 0xFF:
             raise ValueError(f"port {port:#x} is outside the byte-immediate form")
     end = buffer + size
@@ -89,10 +103,21 @@ def routine(ports=DEFAULT_PORTS, index: int = INDEX,
 
 
 def place_commands(ports=DEFAULT_PORTS, index: int = INDEX,
-                   buffer: int = BUFFER, size: int = BUFFER_SIZE) -> list[str]:
-    """Place the routine and point the write cursor at the buffer start."""
-    code = routine(ports, index, buffer, size)
-    commands = [write_byte(ROUTINE_BASE + i, b) for i, b in enumerate(code)]
+                   buffer: int = BUFFER, size: int = BUFFER_SIZE,
+                   allow_latches: bool = False) -> list[str]:
+    """Place the routine and point the write cursor at the buffer start.
+
+    Bytes go two at a time. Each command is a serial round trip of about
+    165 ms and a 64-port sampler is over 350 bytes, so pairing them is the
+    difference between a minute of placement and two. The monitor picks the
+    store width from the digit count, so four digits is what makes it a word.
+    """
+    code = routine(ports, index, buffer, size, allow_latches)
+    commands = []
+    for i in range(0, len(code) - 1, 2):
+        commands.append(write_word(ROUTINE_BASE + i, code[i] | (code[i + 1] << 8)))
+    if len(code) % 2:
+        commands.append(write_byte(ROUTINE_BASE + len(code) - 1, code[-1]))
     commands.append(write_word(index, buffer))
     return commands
 

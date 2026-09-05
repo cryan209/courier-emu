@@ -47,7 +47,26 @@ class EncodingTests(unittest.TestCase):
     def test_placement_ends_by_pointing_the_cursor_at_the_buffer(self) -> None:
         commands = rs.place_commands()
         self.assertEqual(commands[-1], f"ATGLK2W{rs.INDEX:X},{rs.BUFFER:04X}")
-        self.assertEqual(len(commands), len(rs.routine()) + 1)
+
+    def test_placement_packs_two_bytes_per_command(self) -> None:
+        # Each command is a serial round trip, so a 354-byte routine placed a
+        # byte at a time would take twice as long as it needs to.
+        code = rs.routine()
+        commands = rs.place_commands()
+        self.assertEqual(len(commands), (len(code) + 1) // 2 + 1)
+        # First command carries code[0] as the low byte and code[1] as the high.
+        self.assertEqual(commands[0],
+                         f"ATGLK2W{rc.ROUTINE_BASE:X},{code[1] << 8 | code[0]:04X}")
+
+    def test_the_routine_never_grows_into_the_cursor(self) -> None:
+        code = rs.routine(ports=rs.EVEN_PORTS, allow_latches=True)
+        self.assertLess(rc.ROUTINE_BASE + len(code), rs.INDEX)
+
+    def test_latches_need_an_explicit_opt_in(self) -> None:
+        self.assertIn(0x10, rs.EVEN_PORTS)
+        with self.assertRaises(ValueError):
+            rs.routine(ports=rs.EVEN_PORTS)
+        self.assertTrue(rs.routine(ports=rs.EVEN_PORTS, allow_latches=True))
 
 
 class DecodeTests(unittest.TestCase):

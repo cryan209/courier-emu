@@ -1,0 +1,24 @@
+{
+  "what": "All 64 even I/O ports read by the CPU's own IN instruction, 174 ticks at 200 Hz, on hook - and diffed against the monitor's ATGLK2I sweep in artifacts/asic-ports-01.",
+  "device": "/dev/cu.usbserial-21210",
+  "board": {"supervisor": "7.4.16", "dsp": "3.1.2", "firmware": "ID_SDL 4.03d"},
+  "routine": {"bytes": 354, "base": "0x03a77", "index": "0x03ff0",
+              "ring": "0x04000..0x06fff", "ports": "0x00..0x7e even, latches included"},
+  "result": {"agree": 51, "disagree": 13,
+             "disagreeing_ports": ["0x0c", "0x40", "0x42", "0x44", "0x46", "0x48",
+                                   "0x4a", "0x4c", "0x4e", "0x50", "0x52", "0x54", "0x56"]},
+  "the_finding": {
+    "claim": "The monitor's ATGLK2I selector does not report what the CPU sees for the DSP download window.",
+    "detail": "Across 0x40..0x56 the CPU reads 55 on the even-of-even ports (40 44 48 4c 50 54) and 00 on the others (42 46 4a 4e 52 56). The monitor reports exactly the opposite pairing: 00 on the first set and FF on the second. 0x0c also differs - the CPU sees 40 and 60, the monitor only 60.",
+    "consequence": "asic-ports-01 is reliable for 51 of 64 ports and wrong for the download window, which is the part of the map that matters most for the DSP transfer."
+  },
+  "limits": [
+    "On hook and idle: this is the static map, not the dynamics.",
+    "The 64 ports are not read simultaneously - they are five instructions apart within one tick.",
+    "Ports 0x10, 0x12 and 0x14 were read here (allow_latches); reading a latch is what the firmware's own panel code does, but it is still a deliberate departure from the sampler's default refusal."
+  ],
+  "mistake_recorded": {
+    "what": "An earlier attempt sized the ring 0x4000..0xbfff without rechecking the span, and 0x7f00..0x7fff is not in the verified-free list. The sampler overwrote 256 bytes of live firmware RAM there, and the unwritten tail of the oversized ring also contaminated the decode with firmware bytes (0x72 appearing on every port).",
+    "repair": "ATZ rebuilt the page; page 0x7f00 had visibly held sample bytes (f7 40 07 86 8a 7e ...) beforehand and afterwards held firmware content again. The rerun confined the ring to 0x4000..0x6fff, inside the verified-free 0x2e00..0x7eff block."
+  }
+}
