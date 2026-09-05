@@ -76,8 +76,11 @@ overlay 8 - targets register 4.
 > written once, at reset, and never again". That is false. The rate selector at
 > `8140` writes register 2 from a six-row table, and the overlays reach it: the
 > `call <sender>` counts above miss it because it inlines the sender's handshake
-> rather than calling it. Overlay 6 selects 8000 Hz at its entry and overlay 7
-> selects 7578.95 Hz. See [codec-sample-rates.md](codec-sample-rates.md).
+> rather than calling it. Overlay 6 selects 8000 Hz at its entry. Overlay 7 was
+> briefly recorded here as selecting 7578.95 Hz; that was a data-page error and
+> is withdrawn - overlay 7 is not shown to select any rate. See
+> [codec-sample-rates.md](codec-sample-rates.md), which also identifies
+> overlay 8 as the V.90 layer and overlay 6 as the PCM core it runs beside.
 
 ## A correction to driving-the-tones.md
 
