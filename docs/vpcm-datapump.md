@@ -76,3 +76,39 @@ times, and no overlay transmits at all - every `DXR` write is in the resident
 bank) but they are static site counts, not traffic. What actually sits on the
 TDM port is also unestablished; the ASIC is the obvious candidate and this does
 not demonstrate it.
+
+## The CRC is in code, ahead of the modulator
+
+The framing checksum is computed in software, bitwise, with the polynomial as a
+literal - no table. The step at overlay 6 program `a4fa` is the whole method:
+
+```text
+a4f3: sfl              ; shift the data bit out
+a4f4: lacl #00
+a4f5: rol              ; rotate it into the low bit
+a4f6: xor  @42         ; against the running remainder
+a4f7: sfr
+a4f9: xc   2, c        ; and if a one fell out...
+a4fa: xor  #00008408   ;   ...fold in the polynomial
+a4fc: sacl @42         ; store the remainder back
+```
+
+`8408` is CRC-16 CCITT reversed - the V.42 FCS polynomial, and the one V.34's
+INFO sequences use. Every site in every image uses that one polynomial:
+
+| image | sites | where |
+|---|---:|---|
+| board 3.1.2 | 4 | resident `9911`, `99e6`; overlay 6 `a4fa`, `b131` |
+| board 3.0.13 | 4 | the same four, shifted |
+| `main211` | 5 | - |
+
+**Overlay 8 has none.** So the split holds on this axis too: overlay 6 carries
+the framing - CRC, and the sample I/O - while overlay 8 is the V.PCM algorithm
+alone. The CRC runs in the DSP rather than on the 80186, and ahead of the
+modulator rather than in the supervisor's data path.
+
+A caution about how these were found. Searching for the polynomial as a bare
+constant is worthless here: `1021` is also the encoding of `lacc @21`, and it
+turned up in the resident bank and in two overlays as exactly that. Only the
+`xor #<poly>` opcode pair distinguishes a polynomial from an instruction, and
+all four sites above are that pair.
