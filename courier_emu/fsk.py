@@ -128,6 +128,107 @@ def render(rom, bits, samples_per_bit=24, mode='v21-answer'):
         return out, armed
 
 
+# The receiver's own bring-up, in the order dispatch entry d829 calls it:
+# install the modulator, initialise the AGC, install the receiver and clear its
+# delay lines.
+BRINGUP = (0xD94E, 0xD895, 0xD879)
+
+# Each dispatch entry's receive setup, paired with its transmit setup.
+RECEIVE_SETUP = {'v21-originate': 0xD7C8, 'bell103-originate': 0xD7D0,
+                 'v21-answer': 0xD7A4, 'bell103-answer': 0xD7AC}
+
+# The receiver raises INTR 17 every sample. Its vector at program 0x0022 is not
+# in the resident bank, so the harness supplies a bare RETE there.
+INTR17_VECTOR, RETE = 0x0022, 0xBE3A
+
+SOFT_DECISION = 0x3EA          # @6a, the receiver's integrate-and-dump output
+LOOPBACK_SAMPLES_PER_BIT = 48  # measured: see docs/fsk-modulation.md
+
+
+def loopback(rom, bits, samples_per_bit=LOOPBACK_SAMPLES_PER_BIT,
+             mode='v21-answer'):
+    """Run the firmware's own transmitter into its own receiver.
+
+    Every transmitted word is fed back as the next received word, which is what
+    the codec's analogue loopback does in hardware. Returns the per-sample soft
+    decisions the receiver produces at `@6a`.
+    """
+    validate(rom)
+    if mode not in MODES:
+        raise ValueError(f'unknown mode {mode!r}')
+    setup, _, _ = MODES[mode]
+
+    frame = [0xBC07, 0xBF01, 0xBF0F, 0x0BC0, 0x7980, SAMPLE_BODY]
+    arm = [0xBC07]
+    for target in (setup, RECEIVE_SETUP[mode], *BRINGUP):
+        arm += [0x7A80, target]         # call, as the ROM's own entry does
+    arm += [0x7980, 0]
+    driver = frame + arm
+    driver += [0] * (INTR17_VECTOR + 1 - len(driver))
+    driver[INTR17_VECTOR] = RETE
+
+    with NativeC5x(rom) as core:
+        core.load_rom(struct.pack('<%dH' % len(driver), *driver))
+        core.set_mpmc_pin(0)
+        for address, value in FIXTURES:
+            core.set_data(address, value)
+        core.set_pc(len(frame))
+
+        def until(pc, limit):
+            for _ in range(limit):
+                core.step(1)
+                if core.state()['pc'] == pc:
+                    return
+            raise RuntimeError(f'loopback did not reach {pc:04x}: {core.state()}')
+
+        until(0, 600)
+        armed = {'modulator': core.data(0x39A), 'receiver': core.data(0x39B)}
+        if armed['receiver'] != 0xD8AA:
+            raise RuntimeError('the ROM did not install its own receiver')
+
+        transmitted, soft, echo = [], [], 0
+        for bit in bits:
+            for _ in range(samples_per_bit):
+                cell = core.data(DATA_CELL)
+                core.set_data(DATA_CELL,
+                              (cell | DATA_BIT) if bit else (cell & ~DATA_BIT))
+                core.queue_codec_rx([echo & 0xFFFF])   # the loop itself
+                until(MIXER_TOP, 900)
+                core.set_pc(ISR_BODY)
+                until(ISR_TRANSMIT, 200)
+                echo = core.serial_state()['dxr']
+                transmitted.append(echo - 65536 if echo >= 32768 else echo)
+                value = core.data(SOFT_DECISION)
+                soft.append(value - 65536 if value >= 32768 else value)
+                core.set_data(0x390, 0x0BC0)
+                core.set_pc(0)
+        return transmitted, soft, armed
+
+
+def slice_bits(soft, count, samples_per_bit, offset, mode='v21-answer'):
+    """One decision per bit, at a fixed offset into the symbol.
+
+    The receiver mixes against its band centre, so the sign of its output says
+    whether the tone is above or below that centre - not which bit it is. V.21
+    puts mark below the centre and Bell 103 puts it above, so the polarity is a
+    property of the modulation and is taken from the frequency table.
+    """
+    _, mark, space = MODES[mode]
+    inverted = mark < space
+    return [(1 if soft[i * samples_per_bit + offset] > 0 else 0) ^ inverted
+            for i in range(count)]
+
+
+def best_offset(soft, bits, samples_per_bit, mode='v21-answer'):
+    """The sampling instant that recovers the most bits: the receiver's delay."""
+    scored = []
+    for offset in range(samples_per_bit):
+        recovered = slice_bits(soft, len(bits), samples_per_bit, offset, mode)
+        errors = sum(a != b for a, b in zip(bits, recovered))
+        scored.append((errors, offset))
+    return min(scored)[1]
+
+
 def demodulate(samples, mark, space, samples_per_bit):
     """Non-coherent detection: whichever tone has more energy in the bit."""
     bits = []
@@ -149,6 +250,8 @@ def main():
     parser.add_argument('--mode', choices=sorted(MODES), default='v21-answer')
     parser.add_argument('--bits', default='')
     parser.add_argument('--samples-per-bit', type=int, default=24)
+    parser.add_argument('--loopback', action='store_true',
+                        help="run the ROM's transmitter into its own receiver")
     args = parser.parse_args()
 
     from .rom import CourierRom
@@ -164,15 +267,26 @@ def main():
             bits.append(bit)
 
     setup, mark, space = MODES[args.mode]
-    samples, armed = render(rom, bits, args.samples_per_bit, args.mode)
-    recovered = demodulate(samples, mark, space, args.samples_per_bit)
+    if args.loopback:
+        spb = (LOOPBACK_SAMPLES_PER_BIT if args.samples_per_bit == 24
+               else args.samples_per_bit)
+        samples, soft, armed = loopback(rom, bits, spb, args.mode)
+        offset = best_offset(soft, bits, spb, args.mode)
+        recovered = slice_bits(soft, len(bits), spb, offset, args.mode)
+        armed = {**armed, 'sampling_offset': offset}
+        args.samples_per_bit = spb
+    else:
+        samples, armed = render(rom, bits, args.samples_per_bit, args.mode)
+        recovered = demodulate(samples, mark, space, args.samples_per_bit)
     errors = sum(a != b for a, b in zip(bits, recovered))
 
     args.output.mkdir(parents=True, exist_ok=True)
-    write_wave(args.output / 'fsk.wav', samples)
+    write_wave(args.output / ('loopback.wav' if args.loopback else 'fsk.wav'),
+               samples)
     pcm = struct.pack('<%dh' % len(samples), *samples)
     manifest = {
         'mode': args.mode, 'rate_hz': RATE,
+        'loopback': args.loopback,
         'mark_hz': mark, 'space_hz': space,
         'bits': len(bits), 'samples_per_bit': args.samples_per_bit,
         # This harness's keying rate, not a measurement of the firmware's own

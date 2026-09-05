@@ -96,3 +96,30 @@ def test_four_dispatch_entries_put_the_receiver_on_the_transmit_band(rom):
 def test_an_unknown_mode_is_refused(rom):
     with pytest.raises(ValueError):
         fsk.render(rom, [1], 4, 'v34')
+
+
+@pytest.mark.parametrize('mode', sorted(fsk.MODES))
+def test_the_firmware_demodulates_its_own_transmitter(rom, mode):
+    """Analogue loopback: every transmitted word fed back as the next received
+    one, through the ROM's own modulator at d95f and receiver at d8aa."""
+    import random
+
+    random.seed(3)
+    bits = [random.randint(0, 1) for _ in range(40)]
+    _, soft, armed = fsk.loopback(rom, bits, mode=mode)
+    assert armed['modulator'] == fsk.MODULATOR
+    assert armed['receiver'] == 0xD8AA
+    offset = fsk.best_offset(soft, bits, fsk.LOOPBACK_SAMPLES_PER_BIT, mode)
+    # The offset is the receiver's group delay, not a free parameter.
+    assert 38 <= offset <= 46
+    recovered = fsk.slice_bits(soft, len(bits),
+                               fsk.LOOPBACK_SAMPLES_PER_BIT, offset, mode)
+    assert recovered == bits
+
+
+def test_the_loopback_carries_a_real_signal(rom):
+    """Both directions move: the line swings, and so does the soft decision."""
+    _, soft, _ = fsk.loopback(rom, [1, 0] * 8, mode='v21-answer')
+    transmitted, _, _ = fsk.loopback(rom, [1, 0] * 8, mode='v21-answer')
+    assert max(abs(x) for x in transmitted) > 2000
+    assert min(soft) < 0 < max(soft)

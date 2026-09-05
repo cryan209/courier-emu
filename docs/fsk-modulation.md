@@ -2,9 +2,10 @@
 
 [answer-tone.md](answer-tone.md) got the datapump to emit a 2100 Hz answer
 tone. That is a signalling tone: one oscillator, no data. This document gets
-the same firmware to run an actual **modulation** - 300 bps FSK, keyed by a
-data bit - and finds the eight-entry table that pairs each transmitter with a
-receiver, four of which are the analogue-loopback self-test configuration.
+the same firmware to run an actual **modulation** - FSK, keyed by a data bit -
+and then to **demodulate its own transmitter through analogue loopback**, which
+is what the `&T` self-test does. All four 300 bps bands recover a 511-bit
+sequence without error.
 
 Getting there required fixing four opcodes in the C5x core. Those are the
 reason none of this worked before, and they are the most portable result here.
@@ -116,31 +117,79 @@ listening to itself, which is what analogue loopback needs. So four of these
 eight entries are the loopback self-test's datapump configuration, one per
 300 bps modulation.
 
-That is an argument from the table's structure. It is not a run.
+That began as an argument from the table's structure. The next section runs
+it.
 
-## The loopback attempt, and where it stops
+## The loopback, closed
 
-Closing the loop was tried and **does not work yet**. The bring-up itself does:
-replaying entry `d7fc`'s own calls - `d7b4` transmit config, `d7a4` receive
-config, then `d829`'s `d94e`, `d895` and `d879` - leaves the firmware's own
-state installed, with `@1a` = `d95f`, `@1b` = `d8aa`, and `@70` = `0x0013`. The
-receiver raises `INTR 17` every sample, which needs a vector at program `0x0022`
-that the resident bank does not contain; a bare `RETE` there lets the path run.
-With each transmitted `DXR` fed back as the next `DRR` through
-`queue_serial_rx`, 1152 samples execute without leaving the firmware.
+The loop closes. The firmware's own transmitter now drives the firmware's own
+receiver, and the receiver recovers the bits.
 
-Two things then stop it, and neither is resolved:
+The bring-up is the ROM's, in the order dispatch entry `d7fc` and `d829`
+perform it: the transmit setup, the receive setup, then `d94e` (install the
+modulator at `d95f`), `d895` (initialise the AGC) and `d879` (install the
+receiver at `d8aa` and clear its delay lines). Nothing is installed by hand;
+the harness only supplies the data bit and the loop.
 
-* `DXR` reads zero from the second sample on, although the mixer's output cell
-  `@47` and the sample buffer are both varying correctly. With the receiver
-  installed the circular buffer advances differently than it does in the
-  transmit-only harness, and this harness's habit of forcing the pointer back
-  to `0x0bc0` each frame is no longer right.
-* The demodulator's soft decision at `@6a` stays positive throughout, so no bit
-  is ever recovered.
+Three things had to be right, and each was wrong first:
 
-So: the transmitter is confirmed, the receiver is installed and executing, and
-the loop is not closing. Reporting it as anything more would be wrong.
+* **The receiver raises `INTR 17` on every sample**, vectoring to program
+  `0x0022`. The resident bank begins at `0x8000` and does not contain that
+  vector, so the harness puts a bare `RETE` there.
+* **The loop must be fed through the codec receive queue.** `DRR` is served
+  from the core's codec queue, so the returned word goes in with
+  `queue_codec_rx`. Feeding the line queue instead - which is what the first
+  attempt did - leaves `DRR` at zero and looks exactly like a dead receiver.
+* **The buffer pointer and PC must be restored each frame**, as `audio312` and
+  the transmit-only path already do. Without it the ISR walks off the two-word
+  window and `DXR` reads zero from the second sample - the symptom that made
+  the first attempt look like a receiver failure when the receiver was fine.
+
+With those, every transmitted word fed back as the next received word:
+
+| mode | sampling offset | bit errors over 511 |
+|---|---:|---:|
+| `v21-originate` | 41 | 0 |
+| `v21-answer` | 43 | 0 |
+| `bell103-originate` | 44 | 0 |
+| `bell103-answer` | 42 | 0 |
+
+```sh
+.venv/bin/python -m courier_emu.fsk --loopback \
+  --rom artifacts/courier-board-21210-capture-403/courier-board.rom \
+  --output /tmp/loopback --mode v21-answer
+```
+
+Saved runs are in `artifacts/fsk-loopback-01/`. Note that this is the
+**firmware's** demodulator, not the crude two-tone detector further up: it
+recovers Bell 103 originate, the mode that detector could not, without error.
+
+### Two properties of the receiver, measured rather than assumed
+
+**The sampling offset is the receiver's group delay.** It is not a free
+parameter fitted per run: it is stable per mode across patterns and seeds, at
+41 to 44 samples, and the tests assert it lands in that band rather than
+accepting whatever scores best.
+
+**The decision polarity belongs to the modulation, not the harness.** `@6a` is
+an integrate-and-dump on the signal mixed against the band centre, so its sign
+says whether the tone is above or below that centre - not which bit it is.
+V.21 puts mark *below* the centre (1650 against 1750) and Bell 103 puts it
+*above* (2225 against 2125), so the two families decode with opposite sign.
+`slice_bits` takes that from the frequency table. Getting this wrong is what
+made V.21 appear to fail while Bell 103 passed, on an otherwise identical run.
+
+### What is still open
+
+**48 samples a bit is measured, not derived.** It was found by scanning the
+symbol period for the error minimum, and it is sharp - 48 gives zero errors
+where 40 and 36 give seventeen. But it does not reconcile with the transmit
+shift register above, which presents one bit per invocation, and this harness
+overrides that register rather than letting it run. So the receiver's natural
+symbol period is 48 modulator invocations, and what that is in real time still
+depends on the callback rate this document could not establish. If the
+callback runs at 7200 Hz it is 150 baud; V.21's 300 baud would need 14400.
+**Neither the baud rate nor the callback rate is settled here.**
 
 ## The core bug that hid all of this
 
