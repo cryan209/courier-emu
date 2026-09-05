@@ -249,6 +249,9 @@ class CourierDspBridge:
         self._configure_synthetic_line()
         self._instructions = 0
         self._exchange_instructions = 0
+        self._exchange_codec_mark = 0
+        self._exchange_codec_last = 0
+        self._exchange_idle = 0
         self._exchange_tx_index = 0
         self._exchange_rx_samples: deque[int] = deque()
         self._dial_tone_digit: str | None = None
@@ -1279,10 +1282,37 @@ class CourierDspBridge:
         exchange decodes it from the audio, so the DAA's line state follows a
         call the firmware actually placed.
         """
+        # The codec is the clock for both directions, so the line advances
+        # when the codec has clocked a frame - not when the 80186 has executed
+        # some number of instructions. Those two disagree by about fifteen
+        # times here, and pacing the line on the instruction count filled the
+        # codec receive queue five times faster than the DSP drained it: the
+        # datapump was hearing the line about forty seconds late, which is to
+        # say it was hearing whatever was on it before the call came up.
         self._exchange_instructions += 1
-        if self._exchange_instructions < LINE_FRAME_INSTRUCTIONS:
+        if self._exchange_instructions < self.batch:
             return
         self._exchange_instructions = 0
+        produced = self.core.serial_state().get("line_tx_writes", 0)
+        if produced == self._exchange_codec_last:
+            # No codec clock yet - before the download, or a stalled core. The
+            # line still has to run, so fall back to the instruction clock at
+            # the same nominal frame.
+            self._exchange_idle += self.batch
+            if self._exchange_idle < LINE_FRAME_INSTRUCTIONS:
+                return
+            self._exchange_idle = 0
+            self._exchange_codec_mark = produced
+            self._service_exchange_frame()
+            return
+        self._exchange_codec_last = produced
+        self._exchange_idle = 0
+        while produced - self._exchange_codec_mark >= LINE_FRAME_SAMPLES:
+            self._exchange_codec_mark += LINE_FRAME_SAMPLES
+            self._service_exchange_frame()
+
+    def _service_exchange_frame(self) -> None:
+        """One line frame: hand over what the board sent, take what it hears."""
         off_hook = self.daa is not None and self.daa.off_hook
         samples = self.core.line_tx_samples(self._exchange_tx_index)[:LINE_FRAME_SAMPLES]
         self._exchange_tx_index += len(samples)

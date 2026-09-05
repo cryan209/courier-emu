@@ -3741,6 +3741,40 @@ So the audio path is not at `0xfffd` (a phase accumulator), not at `0xffff`
 (two values), and the input at `0xfff8` never varies. `set_line_dac_slot` and
 `line_phase_samples` make each of those measurable rather than assumed.
 
+### The two clocks disagree by about four times
+
+Pacing the modeled line on the codec rather than on the 80186 instruction count
+removes the receive backlog exactly - `codec_rx_queued` 132,480 against
+`codec_rx_consumed` 132,480, ratio 1.00, backlog 0 - and immediately exposes
+why the backlog existed.
+
+Over 60,000,000 instructions the codec clocks 132,480 samples, which at 9.6 kHz
+is 13.80 s of line time. That implies **4,348 80186 instructions per
+millisecond**. `INSTRUCTIONS_PER_MS` in `daa.py` is **1,111**, calibrated from
+the answer machine's tick counter reaching the country minimum of 180 during
+one 2 s ring burst. The two disagree by 3.91x.
+
+At the board's 20 MHz that is 4.6 clock cycles per instruction on the codec's
+figure and 18.0 on the DAA's. 4.6 is an ordinary 80186 mix; 18.0 is not.
+
+Neither is independently verified. The codec figure inherits the C5x cycle
+model and the 5:4 scheduling ratio between the two processors; the DAA figure
+inherits the assumption that one ring burst is what takes the counter to 180.
+But they cannot both stand, and every line-side timing in the harness rests on
+one or the other.
+
+The immediate consequence is visible in the answer probe. With the line paced
+correctly it advances about four times slower per instruction than before, so
+the firmware's own timeouts - which count in instructions - expire against it:
+the answered call in that run stays up for 6 line frames out of 147, and the
+1800 Hz far-end tone that was supposed to prove the receive path reaches the
+datapump for 600 ms before the modem hangs up. `0xfff8` still reads as one
+distinct value across the run.
+
+So the receive path is now correctly paced and still unproven, and the thing
+standing in the way is a clock calibration rather than anything in the
+firmware.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under
