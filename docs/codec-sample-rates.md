@@ -221,54 +221,81 @@ transmitting at 2400 baud while receiving at 3429 still runs the codec at
 asymmetric case your reading of the table might suggest - one direction's rate
 starving the other - cannot arise.
 
-## What this does not establish: the V.PCM rate
+## The V.PCM rate: 8000 Hz, forced at both entries
 
-The ladder above is **V.34's**, and only V.34's. Overlay 8 reads `@5b` zero
-times and writes no codec register, so it runs at whatever rate the V.34 index
-last selected. The rate it gets is therefore 8000 Hz only when the index -
-`max` over the two directions, per the section above - is 4 or 5; at 2400-3000
-baud the codec is at 7200 or 7578.95 Hz, which cannot align to a downstream
-8 kHz codeword stream without resampling in software.
+Overlay 8 reads `@5b` zero times and calls the rate selector zero times, so on
+its own it cannot say what rate it runs at. The entry paths can, and both of
+them force 8000 Hz before the PCM code starts.
 
-The `max` helps here rather than hurting: V.PCM only constrains the *receive*
-direction, so the downstream symbol rate alone can pull the codec to 8000 while
-the V.34 upstream runs slower. What it does not cover is symbol rate 3000,
-which maps to index 3 and 7578.95 Hz. If V.PCM admits 3000, that case still
-needs an explanation.
+**Overlay 6 sets index 5 as its eighth instruction.** Its entry at `9d00` is
+plainly an entry - state init, then:
 
-An earlier version of this document argued that `B = 18` landing exactly on
-8000 Hz showed the ladder was provisioned for V.PCM. It does not. Checking each
-row against its own carrier and symbol rate, the margin over Nyquist is
-1.09-1.20 throughout:
+```text
+9d10: splk @4d, #adfe
+9d12: opl  @1f, #0020
+9d14: lacl #05
+9d15: sacl @5b          ; index 5 = 3429 baud
+9d16: call 8151         ; ...and program the codec: B = 18, 8000 Hz
+```
 
-| index | carrier | baud | upper edge | min Fs | given | margin |
-|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 1800 | 2400 | 3000.0 | 6000 | 7200.00 | 1.200 |
-| 1 | 1829 | 2743 | 3200.5 | 6401 | 7578.95 | 1.184 |
-| 2 | 1867 | 2800 | 3267.0 | 6534 | 7578.95 | 1.160 |
-| 3 | 1875 | 3000 | 3375.0 | 6750 | 7578.95 | 1.123 |
-| 4 | 1920 | 3200 | 3520.0 | 7040 | 8000.00 | 1.136 |
-| 5 | 1959 | 3429 | 3673.5 | 7347 | 8000.00 | 1.089 |
+**The path into overlay 8 sets index 4 and branches straight in.** At `90ba` the
+resident forces the index, builds its state, and tail-branches to `dc24`, which
+is `0x24` words into overlay 8's image:
 
-That is a uniform oversampling margin over V.34's own bandwidth. Nothing in the
-ladder is provisioned for V.PCM; `144000 / 18` is 8000 because `B = 18` is what
-3200 and 3429 baud need, and the exactness is a property of the 2.88 MHz MCLK.
+```text
+90ba: splk @5b, #0004   ; index 4 = 3200 baud -> B = 18, 8000 Hz
+...
+90ca: splk @4d, #ae11
+90cc: call 9123
+90ce: b    dc24         ; into overlay 8
+```
 
-So the V.PCM sample rate is **not established here**. Three possibilities, none
-of them ruled out:
+`9299` does the same in the other direction: it forces `@5b = 4` and then writes
+`@5b + 0x30` into the outgoing frame through the bit-field writer at `8774`, so
+the modem *declares* symbol rate 3200 rather than accepting a negotiated one.
 
-* The firmware constrains V.PCM to symbol rates 3200/3429, so the codec is at
-  8000 whenever PCM runs. Several resident paths do force index 4 by literal
-  (`8e0d`, `a33c`, `a38e`, `a3d7`, `a412`, and `splk @5b, #0004` at `90ba` and
-  `9299`), which is what that constraint would look like - but none of them is
-  identified as the V.PCM path.
-* Overlay 8 resamples from 7578.95 to 8000 internally.
-* There is a rate mechanism for V.PCM that this search has not found.
+So V.PCM does not inherit a rate by luck. Every path that reaches it pins the
+index to 4 or 5 - the only two rows that give 8000 Hz - and one of them pins the
+negotiated symbol rate to match. **The V.PCM sample rate on this firmware is
+8000 Hz.**
 
-What would settle it: identify which of the forced index-4 sites is on the
-V.PCM path, or find the overlay-selection logic in the supervisor that pairs
-overlay 8 with overlay 6 (which defaults to index 5) rather than overlay 7
-(which defaults to index 1).
+Overlay 8's own first act at `dc24` is a codec write, and it is register 4
+again - `040a` or `0406`, selected on a status bit, with `@7b << 2` added
+conditionally, through a third inlined copy of the secondary-frame handshake.
+Gain, not rate.
+
+## Which overlay is which
+
+Overlay 8 is the **V.90 layer**, not the whole PCM datapump. The Ja descriptor -
+V.90's digital impairment learning, the `SP`/`TP` pair from
+[vpcm-datapump.md](vpcm-datapump.md) - is at program `e599` in overlay 8 and
+appears in **no other overlay**.
+
+Its partner is overlay 6, not overlay 7:
+
+| | into overlay-6-only space (`9d00..b000`) | into overlay-7-only space (`c9f6..cd4b`) |
+|---|---:|---:|
+| overlay 8's branch targets | 8 | 0 |
+
+| | into overlay 8's span |
+|---|---:|
+| overlay 6 | 29 |
+| overlay 7 | 5 |
+
+Overlays 6 and 7 overlap and are alternatives; overlay 8 overlaps neither and
+can load beside either. The traffic says it runs beside 6. That fits the reading
+that **overlay 6 is the PCM datapump core and overlay 8 the V.90 layer on top of
+it** - overlay 6 sets the 8000 Hz rate and carries no descriptor, overlay 8
+carries the descriptor and no rate.
+
+Not established: that overlay 6 is specifically *x2* rather than a shared PCM
+core. Nothing here separates an x2 core from a V.90 one, which is the same limit
+[vpcm-datapump.md](vpcm-datapump.md) records for the descriptor itself.
+
+Caveat on the traffic counts: both windows are also resident space when the
+overlay in question is not loaded, so a target there could be a resident
+routine. The argument is the asymmetry - if these were resident calls there is
+no reason for 8 in one window and 0 in the other.
 
 ## What this closes and what it does not
 
