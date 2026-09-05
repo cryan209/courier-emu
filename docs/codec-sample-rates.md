@@ -177,10 +177,12 @@ at that offset. Tracking `ldp` separates them:
 Every claim below is about the DP 7 variable, and every site named has been
 checked for its data page.
 
-> **Retraction.** An earlier version of this document argued, from an argmax
-> loop at `91e1` over two six-entry arrays, that the index is a reduction over
-> the transmit and receive symbol rates. That loop writes `0x35b`, on DP 6 - the
-> *other* variable. The argument was about the wrong word and is withdrawn.
+> **Retraction, narrowed.** An earlier version argued, from the argmax loop at
+> `91e1`, that *the codec index* is a reduction over the transmit and receive
+> symbol rates. The loop is a genuine two-direction symbol-rate negotiation -
+> see the INFO section below - but it writes `0x35b`, on DP 6, and the codec is
+> programmed from DP 7. So the claim about the codec index is withdrawn; the
+> claim about the negotiation stands.
 > `971c` does take the `max` of two 3-bit fields drawn from the call-mode and
 > answer-mode frame buffers, but its result goes to `@7f`/`@7c` and is not shown
 > to reach the rate index. **Whether the transmit and receive symbol rates are
@@ -270,6 +272,87 @@ the optional 3429 - and must decline the optional 3000. That is a prediction
 about the product, not just the code, and it follows from the divider table
 alone. It also explains `9299`: forcing the index to 4 and declaring it outward
 is this modem taking the one rate it is obliged to support and is able to run.
+
+## The INFO parser and builder, and how a symbol rate is disabled
+
+The frame carries a **six-entry capability block, one 9-bit field per V.34
+symbol rate**, and the firmware has a builder and a parser for it.
+
+**Builder**, at `91a5`, into the outgoing buffer `ff1a`:
+
+```text
+91a5: lar ar0, #ff1a
+91a7: calld 8774 ; splk @7f, #004c    ; one field at bit 76
+91ab: splk @7f, #003f                 ; then start at bit 63
+91ad: lar ar2, #ff20                  ; our array A, six entries
+91af: lar ar3, #ff28                  ; our array B, six entries
+91b1: lar ar4, #05                    ; six iterations
+91b3: calld 8774 ; lacl *+, ar3 ; add *+, ar1, 5
+                                      ; value = A[i] + (B[i] << 5)
+91b7: lacl @7f ; sub #09 ; sacl @7f   ; step down 9 bits
+91bb: banz 91b2, *-, ar1
+```
+
+**Parser**, at `91c2`, out of the received buffer `ff08`:
+
+```text
+91c8: lar ar0, #ff08
+91ca: lar ar2, #ff30                  ; their array, six entries
+91cd: lacl #3a                        ; start at bit 58
+91cf: call 8785 ; and #000f           ; read, keep 4 bits
+91d4: sacl *+, ar3
+91d5: lacl @7d ; sub #09              ; step down 9 bits
+91d7: banz
+```
+
+Nine bits per entry, six entries, one per symbol rate, in both directions.
+`8785` takes the bit offset in the accumulator and the width from `@7b`; `8774`
+takes the value in the accumulator and the offset in `@7f`.
+
+**A rate is disabled by writing zero into its entry.** `92d2` normalises an
+array: it takes the maximum over the six, forms `0x0f - max`, and adds that to
+each entry **only where the entry is non-zero** (`xc 1, neq ; add @7c`). Zeros
+are left as zeros. And `9615` finds the argmax and then zeroes everything past
+it (`rpt @7e ; sach *-`). So the capability block is a per-rate quality figure
+in which **zero means "not offered"**, and there are routines whose job is to
+zero entries.
+
+**Selection is over both directions.** `91e1` walks our array and theirs in
+parallel - `ff2d` and `ff35`, descending, six entries each - takes `min` at each
+rate and keeps the argmax:
+
+```text
+91ed: lacl *-, ar2 ; sacb      ; theirs
+91ef: lacl *-, ar3 ; crlt      ; min(ours, theirs)
+91f1: lacl @7d     ; crgt      ; running best
+91f4: xc 2, nc ; lamm @13 ; sacl @5b    ; record the index
+```
+
+So the negotiation genuinely is two-directional: it picks the rate that is best
+for the worse direction. What is **not** established is that its result reaches
+the codec - it writes the DP 6 variable, and the codec is programmed from DP 7.
+Two symbol-rate indices exist and their relationship is open. That is where the
+transmit-versus-receive question lives.
+
+**Overlay 8 uses the DP 7 index against our own capability array:**
+
+```text
+dc4a: lar ar0, @5b        ; DP 7 - the rate index
+dc4b: lar ar1, #ff20      ; our per-rate array
+dc4d: mar *0+ ; lacl *    ; our entry for the selected rate
+```
+
+which is the same pairing the resident makes at `9735`, immediately after
+programming the codec at `9730`. There is a further six-entry, two-word-per-entry
+table at program `967a`, also indexed by the DP 7 index.
+
+**Not established: which rates this modem actually offers.** The advertised
+values live in data RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time,
+so "3200 and 3429 enabled, the rest zeroed" is not something the ROM states
+outright. The *mechanism* for exactly that is present - zero-means-unsupported,
+plus routines that zero entries - and the prediction is consistent with `9299`
+forcing index 4 and declaring it. Confirming it means finding what writes
+`ff20..ff25`, or watching those six words on hardware during Phase 2.
 
 ## Which overlay is which
 
