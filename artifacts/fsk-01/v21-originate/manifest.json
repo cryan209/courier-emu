@@ -6,9 +6,9 @@
     "increment_mark": "0x22d8",
     "increment_space": "0x29f5"
   },
-  "baud": 300.0,
   "bit_errors": 0,
   "bits": 511,
+  "harness_keying_rate": 300.0,
   "mark_hz": 980,
   "measured": {
     "frequency_hz": 967.25,

@@ -175,7 +175,9 @@ def main():
         'mode': args.mode, 'rate_hz': RATE,
         'mark_hz': mark, 'space_hz': space,
         'bits': len(bits), 'samples_per_bit': args.samples_per_bit,
-        'baud': round(RATE / args.samples_per_bit, 2),
+        # This harness's keying rate, not a measurement of the firmware's own
+        # bit clock - see docs/fsk-modulation.md.
+        'harness_keying_rate': round(RATE / args.samples_per_bit, 2),
         'armed': {k: hex(v) for k, v in armed.items()},
         'bit_errors': errors,
         'measured': measure(samples),

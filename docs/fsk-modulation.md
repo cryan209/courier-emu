@@ -53,9 +53,10 @@ d977  sach   @47, 1     ; the transmit sample
 ```
 
 `courier_emu.fsk` calls the ROM's own setup routine, installs `d95f`, and runs
-the same mixer and serial ISR as `audio312` and `answer_tone`. At 24 samples a
-bit - 7200/24, exactly **300 baud** - a 511-bit maximal-length sequence
-modulates and demodulates with **zero bit errors** in three of the four bands:
+the same mixer and serial ISR as `audio312` and `answer_tone`. **This harness
+supplies the data bit from outside, once every 24 samples**, and on that basis
+a 511-bit maximal-length sequence modulates and demodulates with zero bit
+errors in three of the four bands:
 
 | mode | mark | space | bit errors over 511 |
 |---|---:|---:|---:|
@@ -65,10 +66,24 @@ modulates and demodulates with **zero bit errors** in three of the four bands:
 | `bell103-originate` | 1270 | 1070 | 34 |
 
 The last row is a limit of the **demodulator in this tool**, not of the
-firmware: its two tones are 200 Hz apart at 300 baud, which is closer than
+firmware: its two tones are 200 Hz apart at one bit per 24 samples, closer than
 non-coherent energy detection can separate, and a real Bell 103 receiver uses a
 discriminator rather than two matched filters. The modulator itself is exact -
 holding the bit produces 1270.0 Hz and 1070.0 Hz measured.
+
+> **Withdrawn: the 300 baud figure was this harness's, not the firmware's.**
+> An earlier version of this document called 24 samples a bit "exactly
+> 300 baud", because 7200/24 is 300. That is arithmetic about a number this
+> harness chose, not a measurement of the ROM. The firmware has its own
+> transmit bit clock and it says something else: `@50` is a shift register that
+> `d978`-`d983` shifts right **once per modulator invocation**, reloading when
+> the marker bit falls out, so it presents one data bit per invocation. Since
+> the same invocation advances the carrier phase by an increment that is only a
+> V.21 frequency at 7200 Hz, taking both at face value gives 7200 bps, which is
+> not a 300 bps modulation. Something about how often this datapump's callback
+> actually runs is therefore still unaccounted for, and until it is, no baud
+> figure here is the firmware's. What the increments do establish is the
+> **modulation's identity** - the frequencies are exact - not its bit rate.
 
 ```sh
 .venv/bin/python -m courier_emu.fsk \
@@ -101,11 +116,31 @@ listening to itself, which is what analogue loopback needs. So four of these
 eight entries are the loopback self-test's datapump configuration, one per
 300 bps modulation.
 
-That is an argument from the table's structure, and it is worth saying what it
-does not establish: **this harness has not run a loopback**. It renders the
-transmitter. Closing the loop needs the demodulator at `d8a0`/`d8aa` fed from
-the modulator through the codec, and the supervisor state machine that picks a
-dispatch entry - neither of which is exercised here.
+That is an argument from the table's structure. It is not a run.
+
+## The loopback attempt, and where it stops
+
+Closing the loop was tried and **does not work yet**. The bring-up itself does:
+replaying entry `d7fc`'s own calls - `d7b4` transmit config, `d7a4` receive
+config, then `d829`'s `d94e`, `d895` and `d879` - leaves the firmware's own
+state installed, with `@1a` = `d95f`, `@1b` = `d8aa`, and `@70` = `0x0013`. The
+receiver raises `INTR 17` every sample, which needs a vector at program `0x0022`
+that the resident bank does not contain; a bare `RETE` there lets the path run.
+With each transmitted `DXR` fed back as the next `DRR` through
+`queue_serial_rx`, 1152 samples execute without leaving the firmware.
+
+Two things then stop it, and neither is resolved:
+
+* `DXR` reads zero from the second sample on, although the mixer's output cell
+  `@47` and the sample buffer are both varying correctly. With the receiver
+  installed the circular buffer advances differently than it does in the
+  transmit-only harness, and this harness's habit of forcing the pointer back
+  to `0x0bc0` each frame is no longer right.
+* The demodulator's soft decision at `@6a` stays positive throughout, so no bit
+  is ever recovered.
+
+So: the transmitter is confirmed, the receiver is installed and executing, and
+the loop is not closing. Reporting it as anything more would be wrong.
 
 ## The core bug that hid all of this
 

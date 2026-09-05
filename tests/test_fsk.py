@@ -26,9 +26,49 @@ def test_each_mode_keys_its_own_two_frequencies(rom, mode, mark, space):
         assert measure(samples)['frequency_hz'] == pytest.approx(expected, abs=1.0)
 
 
-def test_the_symbol_rate_is_300_baud(rom):
-    """24 samples a bit at the dial path's 7200 Hz is exactly 300 baud."""
-    assert fsk.RATE / 24 == 300.0
+def test_the_firmware_bit_clock_advances_once_per_invocation(rom):
+    """@50 is a shift register the modulator advances every call.
+
+    This is why no baud figure in this harness is the firmware's: the ROM
+    presents one data bit per modulator invocation, which does not reconcile
+    with 300 bps at the 7200 Hz the carrier increments imply.
+    """
+    import struct
+
+    from courier_emu.answer_tone import FIXTURES
+    from courier_emu.dsp import NativeC5x
+
+    driver = [0xBC07, 0xBF01, 0xBF0F, 0x0BC0, 0x7980, 0x80C7,
+              0xBC07, 0x7A80, 0xD7B4, 0x7A80, 0xD94E, 0x7980, 0]
+    driver += [0] * (0x23 - len(driver))
+    driver[0x22] = 0xBE3A          # RETE for the receiver's INTR 17
+
+    with NativeC5x(rom) as core:
+        core.load_rom(struct.pack('<%dH' % len(driver), *driver))
+        core.set_mpmc_pin(0)
+        for address, value in FIXTURES:
+            core.set_data(address, value)
+        core.set_pc(6)
+
+        def until(pc, limit):
+            for _ in range(limit):
+                core.step(1)
+                if core.state()['pc'] == pc:
+                    return
+            raise RuntimeError(hex(pc))
+
+        until(0, 400)
+        assert core.data(0x3D0) == 0x0704   # d94e's own reload
+        seen = []
+        for _ in range(6):
+            seen.append(core.data(0x3D0))
+            until(0x80C3, 900)
+            core.set_pc(0x8178)
+            until(0x8199, 150)
+            core.set_data(0x390, 0x0BC0)
+            core.set_pc(0)
+
+    assert seen == [0x0704, 0x0382, 0x01C1] * 2
 
 
 def test_a_511_bit_pattern_survives_modulation(rom):
