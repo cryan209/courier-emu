@@ -259,7 +259,9 @@ each modulation's slot is fixed by which flag it sets. Nine slots:
 | 8 | `@26` bit 9 | `d7e9` | `d7d8` | Bell 103, own band |
 
 `courier_emu.fsk.mode_tables` and `mode_flags` read both out of the image
-rather than repeating them.
+rather than repeating them. All nine slots are named in
+[datapump-slots.md](datapump-slots.md), which also accounts for the two things
+the table does not carry: the PCM downstream layer and the fax modulations.
 
 A second dispatcher on the **same flag bits** - `9da6`, `a00d`, `9dc1`, `a054` -
 branches instead to the four cross-band FSK entries `d7f4`, `d7e3`, `d802`,
@@ -286,8 +288,9 @@ four 300 bps bands, all eight transmit/receive pairings, and both dispatchers
 are resident.
 
 What the overlays do have is a place in the table: slots 0 and 1 are their
-entry addresses. Their loopback behaviour is **not** established here, and two
-things say to leave it that way. No overlay tests `@6f` bit 14, and none of
+entry addresses - V.34 and V.FC, per
+[datapump-slots.md](datapump-slots.md). Their loopback behaviour is **not**
+established here, and two things say to leave it that way. No overlay tests `@6f` bit 14, and none of
 them calls any of the five resident routines that do - their entries set the
 bit and go. And what that bit means is itself unsettled: the `8d6f` reading
 above is as consistent with an answer-side flag as with a self-test flag, and
