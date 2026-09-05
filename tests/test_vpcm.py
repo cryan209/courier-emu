@@ -55,3 +55,27 @@ class DescriptorTests(unittest.TestCase):
     def test_the_ladder_is_not_a_table_in_the_flash(self) -> None:
         data = CourierRom.load(IMAGE).data
         self.assertNotIn(bytes(self.desc["ucodes"][:24]), data)
+
+
+class UcodeLevelTests(unittest.TestCase):
+    """Reference arithmetic for scoring a DIL. Not a claim about the ROM."""
+
+    def test_the_chord_decomposition_matches_a_known_level(self) -> None:
+        # Ucode 100 is chord 6, step 4: (2*4 + 33) << 6 = 2624, and 10496 once
+        # scaled to 16 bits.
+        self.assertEqual(vpcm.ucode_level(100), 10496)
+
+    def test_levels_rise_with_the_ucode_inside_a_chord(self) -> None:
+        for chord in range(8):
+            levels = [vpcm.ucode_level((chord << 4) | step) for step in range(16)]
+            self.assertEqual(levels, sorted(levels))
+            self.assertEqual(len(set(levels)), 16)
+
+    @unittest.skipUnless(IMAGE.exists(), "no board capture in this working tree")
+    def test_the_ladder_spans_the_range_a_dil_needs(self) -> None:
+        levels = vpcm.ladder_levels(vpcm.assemble(CourierRom.load(IMAGE)))
+        self.assertEqual(len(levels), 197)
+        # The ladder walks from the top of the range down to the bottom, which
+        # is what makes it useful for finding where the channel clips or pads.
+        self.assertEqual(max(levels), vpcm.ucode_level(116))
+        self.assertEqual(min(levels), vpcm.ucode_level(0))

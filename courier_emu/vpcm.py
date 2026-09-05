@@ -67,3 +67,31 @@ def assemble(rom, *, limit=400_000):
         'ucodes': ucodes[:n],
         'instructions': instructions,
     }
+
+
+# --- reference arithmetic, not recovered from the ROM -----------------------
+# A DIL is scored by comparing what arrives against the level each training
+# Ucode should have produced. The mapping is the G.711 chord decomposition:
+# chord = u >> 4 selects the segment, step = u & 15 the position in it. In the
+# unbiased form, and scaled to a 16-bit linear sample, Ucode 100 is 10496.
+#
+# This is the standard's arithmetic written out here for comparison against a
+# capture. **No routine computing it has been located in the firmware** - the
+# images hold no companding table of any kind, so whatever does the matching
+# computes it, but that code has not been found. Do not cite this as a finding
+# about the ROM.
+MU_BIAS = 33
+
+
+def ucode_level(ucode: int, *, bits: int = 16) -> int:
+    """The linear magnitude a mu-law training Ucode stands for."""
+    if not 0 <= ucode <= 127:
+        raise ValueError('a training Ucode is 0..127')
+    chord, step = ucode >> 4, ucode & 15
+    magnitude = (2 * step + MU_BIAS) << chord
+    return magnitude << (bits - 14)
+
+
+def ladder_levels(descriptor, *, bits: int = 16) -> list[int]:
+    """The descriptor's training ladder, as linear levels."""
+    return [ucode_level(u, bits=bits) for u in descriptor['ucodes']]

@@ -197,3 +197,37 @@ setting it sends every store through `AR0`, and the run produces a descriptor
 that is *almost* right: the ladder appears, but shifted, with its first Ucode
 missing, because `banz *-, ar1` at `e807` sets `ARP` partway through. `vpcm.py`
 selects `AR1` first, the way the firmware's own `mar *, ar1` does.
+
+## The matcher itself has not been found
+
+Scoring a DIL means comparing what arrives against the level each training
+Ucode should have produced, and the levels are linear: chord `u >> 4`, step
+`u & 15`, magnitude `(2 * step + 33) << chord`, which puts Ucode 100 at 10496
+in a 16-bit sample. `vpcm.ucode_level` writes that out for comparison against a
+capture. It is the standard's arithmetic, not a recovered routine.
+
+The routine that does it is **not located**. What is established is narrower,
+and worth keeping separate from the expectation:
+
+* There is **no companding table** in any of the four images - not the mu-law
+  chord ladder (33, 99, 231, 495, 1023, 2079, 4191) in either direction, and no
+  monotonic run of levels anywhere. So the conversion is computed. That is
+  consistent with the Courier working in linear levels, and with V.90 needing
+  both A-law and mu-law, neither of which is worth a table if the chord
+  arithmetic is a few instructions.
+* **Overlay 8 cannot be receiving the DIL.** It has no serial-port access at
+  all; the samples exist only in overlay 6. The two are co-resident, so a
+  matcher spans them - which is why searching overlay 8 alone would not find it.
+
+Two searches that failed, recorded so they are not repeated. Tracing readers of
+the descriptor buffer at `0940` is dominated by false leads, because overlay 8
+reuses that address as a bit-field (`bit 8, *`, `opl *, #1000`). And the
+variable-shift instructions that would implement a chord expansion - `lact`,
+`addt`, `subt` - are not a usable filter: overlay 6's apparent cluster is a data
+table read as code, and overlay 8's real one at `ea91` is a mask generator,
+`samm @0d` then `lact @7b` then `sub #01`, which is `2^n - 1`.
+
+Finding it wants a dynamic trace rather than cross-references: run the datapump
+in the core and watch which addresses are read back after the descriptor is
+assembled. `vpcm.assemble` already sets up a working entry, including the ARP
+detail above; what is missing is a plausible state to enter the receive path in.
