@@ -437,37 +437,23 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class _DialingCore(_Core):
-    """A core whose `set_dtmf_digits` really puts the digits on the line.
-
-    The exchange only learns the number from the transmit stream, so a fake
-    core that records the digits and transmits nothing would never route a
-    call. This one renders them at the codec rate, which is what the C52's
-    tone generator does with the same request.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.transmitted: list[int] = []
-
-    def set_dtmf_digits(self, digits: str) -> None:
-        super().set_dtmf_digits(digits)
-        for digit in digits:
-            self.transmitted.extend(dtmf(digit, 70))
-            self.transmitted.extend(silence(70))
-
-    def line_tx_samples(self, start: int = 0) -> list[int]:
-        return self.transmitted[start:]
-
 
 class ExchangeTests(unittest.TestCase):
+    """The firmware's own interfaces, driven the way the board drives them.
+
+    Nothing here hands the bridge a dial string. The hook comes from the board
+    latch the supervisor writes, and the digits arrive as the tone messages its
+    dialer sends, which is all the bridge sees on hardware.
+    """
+
     @staticmethod
-    def _make(exchange: LineExchange, daa: CourierDaa) -> tuple[CourierDspBridge, _DialingCore]:
+    def _make(exchange: LineExchange, daa: CourierDaa,
+              **arguments: object) -> tuple[CourierDspBridge, _Core]:
         image = _Image()
-        core = _DialingCore()
+        core = _Core()
         with patch("courier_emu.bridge.NativeC5x", return_value=core):
             bridge = CourierDspBridge(  # type: ignore[arg-type]
-                image, daa=daa, exchange=exchange
+                image, daa=daa, exchange=exchange, **arguments  # type: ignore[arg-type]
             )
             BridgeTests._bootstrap(bridge, image.program)
         return bridge, core
@@ -477,81 +463,154 @@ class ExchangeTests(unittest.TestCase):
         for _ in range(count * LINE_FRAME_INSTRUCTIONS):
             bridge.clock_x86()
 
-    def test_seizure_hears_the_exchange_rather_than_a_set_line_state(self) -> None:
+    @staticmethod
+    def _send(bridge: CourierDspBridge, header: int, data: int) -> None:
+        """Send one supervisor-to-board message over the runtime ports."""
+        bridge.write(0x58, 1, header & 0xFF)
+        bridge.write(0x5A, 1, (header >> 8) & 0xFF)
+        bridge.write(0x5C, 1, data & 0xFF)
+        bridge.write(0x5E, 1, (data >> 8) & 0xFF)
+
+    def _dial(self, bridge: CourierDspBridge, index: int, frames: int = 2) -> None:
+        """One digit the way the dialer sends it: tone on, hold, tone off."""
+        self._send(bridge, 0x0016, 0x0000)
+        self._send(bridge, 0x0013, index)
+        self._frames(bridge, frames)
+        self._send(bridge, 0x0016, 0x0000)
+        self._frames(bridge, 1)
+
+    def test_the_dial_command_is_not_read_out_of_the_dte_text(self) -> None:
         daa = CourierDaa("quiet")
         exchange = LineExchange()
-        bridge, core = self._make(exchange, daa)
+        bridge, _ = self._make(exchange, daa)
 
-        # A quiet line stays quiet while the modem is on hook.
+        bridge.arm_dial_tones(b"DT5551212")
+
+        # No seizure, no parsed number, no line change: the command belongs to
+        # the firmware, which has not written its hook relay yet.
+        self.assertFalse(daa.off_hook)
+        self.assertEqual(daa.operation, "idle")
+        self.assertEqual(bridge.dial_digits, "")
         self._frames(bridge, 2)
         self.assertEqual(exchange.state, "idle")
-        self.assertEqual(daa.line_state, "quiet")
 
-        bridge.arm_dial_tones(b"DT5551212")
-        self.assertEqual(daa.operation, "originate")
-
-        # The line state the DAA reports is the exchange's, not one
-        # arm_dial_tones chose: the seizure is what produced dial tone, and
-        # the detector window it qualifies on is the exchange's own audio.
-        self.assertEqual(exchange.state, "dial-tone")
-        self.assertEqual(daa.line_state, "dial-tone")
-        self.assertTrue(daa.dial_tone_present)
-        self.assertTrue(daa.detector_qualified)
-
-        # And it stops being dial tone only because the modem dialed into
-        # it, one frame later.
-        self._frames(bridge, 1)
-        self.assertEqual(exchange.state, "collecting")
-        self.assertEqual(daa.line_state, "quiet")
-
-    def test_the_firmware_dials_into_the_line_and_the_exchange_routes_it(self) -> None:
-        daa = CourierDaa("quiet")
-        exchange = LineExchange(
-            directory={"5551212": "busy"}, answer_after_rings=1, answer_tone_ms=0
-        )
-        bridge, core = self._make(exchange, daa)
-        bridge.arm_dial_tones(b"DT5551212")
-
-        # Five frames of dial tone qualify the supervisor's detector, which is
-        # what releases the digits onto the line.
-        self._frames(bridge, 7)
-        self.assertTrue(daa.detector_qualified)
-        self.assertEqual(core.dtmf, "5551212")
-
-        # The exchange decodes them off the transmit stream; nothing hands it
-        # the number.
-        self._frames(bridge, 20)
-        self.assertEqual(exchange.dialed, "5551212")
-        self.assertEqual(exchange.outcome, "busy")
-        self.assertEqual(exchange.state, "busy")
-
-    def test_an_answered_call_reaches_the_connected_state(self) -> None:
-        daa = CourierDaa("quiet")
-        exchange = LineExchange(answer_after_rings=1, answer_tone_ms=500)
-        bridge, _ = self._make(exchange, daa)
-        bridge.arm_dial_tones(b"DT1234")
-
-        self._frames(bridge, 200)
-        self.assertEqual(exchange.dialed, "1234")
-        self.assertEqual(exchange.state, "connected")
-        self.assertIn(exchange.outcome, ("answer",))
-
-    def test_dial_tone_reaches_the_codec_receive_queue(self) -> None:
+    def test_the_hook_relay_is_what_seizes_the_line(self) -> None:
         daa = CourierDaa("quiet")
         exchange = LineExchange()
-        bridge, core = self._make(exchange, daa)
-        bridge.arm_dial_tones(b"DT9")
+        bridge, _ = self._make(exchange, daa)
+        self._frames(bridge, 1)
+        self.assertEqual(exchange.state, "idle")
 
-        self._frames(bridge, 3)
+        bridge.set_line_hook(True)
+        self.assertTrue(daa.off_hook)
+        self.assertEqual(daa.operation, "originate")
 
-        self.assertTrue(core.queued)
-        self.assertEqual(peaks(core.queued[:960], (350, 440, 480, 620, 2_100)), {350, 440})
+        self._frames(bridge, 1)
+        self.assertEqual(exchange.state, "dial-tone")
+        self.assertEqual(daa.line_state, "dial-tone")
+
+        # A break during dialing could be a dial pulse, so the exchange only
+        # calls it a hangup once it outlasts a flash.
+        bridge.set_line_hook(False)
+        self.assertFalse(daa.off_hook)
+        self._frames(bridge, 15)
+        self.assertEqual(exchange.state, "idle")
+
+    def test_answering_a_ringing_loop_is_an_answer_seizure(self) -> None:
+        daa = CourierDaa("quiet")
+        exchange = LineExchange()
+        bridge, _ = self._make(exchange, daa)
+        exchange.ring("5551000")
+        self._frames(bridge, 1)
+
+        bridge.set_line_hook(True)
+        self.assertEqual(daa.operation, "answer")
+        self._frames(bridge, 1)
+        self.assertEqual(exchange.state, "connected")
+
+    def test_the_detector_qualifies_on_the_exchange_dial_tone(self) -> None:
+        daa = CourierDaa("quiet")
+        bridge, _ = self._make(LineExchange(), daa)
+        bridge.set_line_hook(True)
+
+        self._frames(bridge, 4)
+        self.assertFalse(daa.detector_qualified)
+        self._frames(bridge, 2)
+        self.assertTrue(daa.detector_qualified)
+        self.assertTrue(daa.dial_tone_qualified)
+
+    def test_a_tone_message_puts_that_digit_on_the_line(self) -> None:
+        daa = CourierDaa("quiet")
+        exchange = LineExchange()
+        bridge, _ = self._make(exchange, daa)
+        bridge.set_line_hook(True)
+        self._frames(bridge, 2)
+
+        self._dial(bridge, 5)
+
+        self.assertEqual(exchange.dialed, "5")
+        self.assertEqual(exchange.decoder.digits, "5")
+        # And the tone stops with the silence message, so the next digit is a
+        # separate press rather than a continuation of this one.
+        self.assertIsNone(bridge._dial_tone_digit)
+
+    def test_the_firmware_dials_its_number_over_the_line(self) -> None:
+        daa = CourierDaa("quiet")
+        exchange = LineExchange(directory={"5551212": "busy"})
+        bridge, _ = self._make(exchange, daa)
+        bridge.set_line_hook(True)
+        self._frames(bridge, 2)
+
+        for index in (5, 5, 5, 1, 2, 1, 2):
+            self._dial(bridge, index)
+
+        self.assertEqual(exchange.dialed, "5551212")
+        self.assertEqual(bridge.dial_digits, "5551212")
+        self.assertEqual(exchange.outcome, "busy")
+        self.assertEqual(daa.operation, "dialing")
+
+    def test_the_keypad_index_is_the_supervisor_encoding(self) -> None:
+        # 0x6353c leaves '0'-'9' as themselves and folds the rest above them:
+        # '#' to 0x0a, '*' to 0x0b, 'A'-'D' to 0x0c-0x0f.
+        daa = CourierDaa("quiet")
+        exchange = LineExchange(interdigit_ms=60_000)
+        bridge, _ = self._make(exchange, daa)
+        bridge.set_line_hook(True)
+        self._frames(bridge, 2)
+
+        for index in (0, 9, 0x0B, 0x0C):
+            self._dial(bridge, index)
+
+        self.assertEqual(exchange.dialed, "09*A")
+
+    def test_a_tone_message_off_hook_only(self) -> None:
+        daa = CourierDaa("quiet")
+        exchange = LineExchange()
+        bridge, _ = self._make(exchange, daa)
+        self._frames(bridge, 1)
+
+        self._dial(bridge, 5)
+
+        self.assertIsNone(bridge._dial_tone_digit)
+        self.assertEqual(exchange.dialed, "")
+
+    def test_a_queued_reply_owns_the_data_lanes(self) -> None:
+        # The receive handler at 0x6ad6e takes the tag from 0x58/0x5a and then
+        # the word from 0x5e/0x5c. Serving the C52 status latch there instead
+        # hands the detector consumer 0xffff for a reply already queued.
+        daa = CourierDaa("quiet")
+        bridge, _ = self._make(LineExchange(), daa)
+        bridge._queue_runtime_message(0x007C, 0x0030)
+
+        self.assertEqual(bridge.read(0x58, 1), 0x7C)
+        self.assertEqual(bridge.read(0x5C, 1), 0x30)
+        self.assertEqual(bridge.read(0x5E, 1), 0x00)
 
     def test_an_incoming_call_rings_the_codec_detectors(self) -> None:
         daa = CourierDaa("quiet")
         exchange = LineExchange(ring_on_ms=300, ring_off_ms=300)
         image = _Image()
-        with patch("courier_emu.bridge.NativeC5x", return_value=_DialingCore()):
+        with patch("courier_emu.bridge.NativeC5x", return_value=_Core()):
             bridge = CourierDspBridge(  # type: ignore[arg-type]
                 image, daa=daa, exchange=exchange, codec=CodecBringUp(SiliconDaa())
             )
@@ -570,14 +629,10 @@ class ExchangeTests(unittest.TestCase):
         daa = CourierDaa("quiet")
         exchange = LineExchange()
         bridge, _ = self._make(exchange, daa)
-        bridge.arm_dial_tones(b"DT7")
+        bridge.set_line_hook(True)
         self._frames(bridge, 2)
 
         status = bridge.status()
         assert status.exchange is not None
-        # Two frames is enough for the whole loop: seizure, the detector
-        # window the seizure itself supplied, and the digit dialed back into
-        # the line.
-        self.assertEqual(status.exchange["state"], "collecting")
-        self.assertEqual(status.exchange["dialed"], "7")
+        self.assertEqual(status.exchange["state"], "dial-tone")
         self.assertTrue(status.exchange["off_hook"])

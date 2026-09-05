@@ -3601,6 +3601,57 @@ Still unresolved: the armed callback at `0x5d37f` is not what places this call.
 Reaching it needs the supervisor's own dial code at `0x85000`-`0x87000`, which
 no run has entered.
 
+### The firmware's own dial code, running
+
+Traced 2026-09-05 on `main211.xmf` with `ATDT5551212`, `--exchange`, and every
+DTE-level stand-in removed. The earlier conclusion in this file - that the dial
+code is never entered and that `[0x298]` is an armed dial callback - was wrong
+on both counts. `[0x298]` holds the supervisor's serial transmit ISR pointer
+(`0x5d37f` ends in `iret` after pushing a byte to `0xff6a`), chosen between
+three variants at `0x5d334`. It has nothing to do with dialing.
+
+**The dial path, all of it the firmware's:**
+
+| step | address | what it does |
+|---|---|---|
+| parse | `0x82652` | reads the dial string, folds `P`/`p` to `T` under `[0x94b]` |
+| settle | `0x5db51` | off-hook settle, `[0x289] = 0x1f4` |
+| detect | `0x5dbda` | `[0x289] = 0x2580`, then waits for `[0x649] >= 5` |
+| give up | `0x5dc4a` | `call 0x63491; db 8` - the `NO DIAL TONE` result |
+| encode | `0x6353c` | character to keypad index: `'0'`-`'9'` pass through, `'#'` to `0x0a`, `'*'` to `0x0b`, `'A'`-`'D'` to `0x0c`-`0x0f` |
+| dial | `0x63553` | sends `0x1600`, waits `[0x161] = 0x0c`, sends `0x13` + index |
+| hold | `0x82342` | tone duration from S11 at `[0x8e9]`, `/0x6b` |
+| gap | `0x8235b` | interdigit, the same countdown less `0x30` |
+| pulse | `0x822a3` | the pulse-dial loop, break/make from `bx`/`dx` |
+
+`[0x649]` is the five-hit line detector, fed from the `0x7c` poll's reading at
+`[0x285]`, which `0x5e4c4` bands: at or below `0x60` present, above it counted
+against `[0x92a]` and then aborted with result `0x27`. `[0x66c]` bit 7 is "a
+result code is pending", not dial tone; `0x63491` is the inline-argument
+setter that raises it and stores the code in `[0x823]`.
+
+**What was blocking it.** The receive handler at `0x6ad6e` reads a tag from
+`0x58`/`0x5a` and the word from `0x5e`/`0x5c`. The bridge served the C52 status
+latch on `0x5c`/`0x5e` whenever the core was active, so a reply it had already
+queued arrived as `0xffff`: the detector consumer banded that above `0x60` and
+hung up after one reading. With queued replies owning the data lanes, the
+firmware counts its own hits and accepts dial tone on its own.
+
+**What it produces.** Each digit goes out as `0x16:0000`, the tone generator's
+three constant lanes (`0x19:020d`, `0x1a:3000`, `0x1b:0c08`), the digit on
+`0x13`, and `0x16:0000` again when the tone ends. For `5551212` that is
+`0013:0005` three times, then `0001`, `0002`, `0001`, `0002`, each about 600 ms
+apart on the firmware's own timers. The bridge renders them, the exchange
+decodes them back off the line, and the number arrives whole.
+
+The call-start block uses the same `0x13`/`0x16` lanes with the same constants;
+nothing in a single message tells the two uses apart. What separates them here
+is the line - a digit only means anything while the loop is seized and the call
+has not come up.
+
+Still outstanding: the result code. `ATD` ends in command mode, because the
+exchange answers with 2100 Hz and nothing behind it trains.
+
 ## Repro notes
 
 Analysis tooling: Python + `capstone` (x86-16). macOS blocks reads under

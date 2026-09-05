@@ -8,7 +8,7 @@ from typing import Any
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
-from .exchange import LineExchange
+from .exchange import DTMF_COLUMN_FREQUENCIES, DTMF_KEYS, DTMF_ROW_FREQUENCIES, LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import RateConverter, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
@@ -102,6 +102,22 @@ DETECTOR_TAG = 0x7C
 # Any reading inside the low band does the same thing; the middle of it is
 # chosen so neither boundary is being relied on.
 DETECTOR_PRESENT_LEVEL = 0x30
+
+# How the supervisor's dialer asks for a tone. `0x6353c` folds a dial-string
+# character down to its keypad index and sends it as this tag; the encoder
+# emits `0x1600` first and again when the tone ends, so a digit is exactly a
+# `0x13` between two `0x1600`s. Both tags are also register lanes in the
+# call-start block, which is why the preceding message decides.
+DIAL_TONE_TAG = 0x13
+DIAL_SILENCE = (0x16, 0x0000)
+# Level per component, matching what the exchange renders its own tones at.
+DIAL_TONE_LEVEL = 4_000
+# The keypad index the supervisor sends, decoded from its own encoder at
+# 0x6353c: characters below '*' gain 6 and characters below '0' gain 0x11, so
+# '#' lands on 0x0a and '*' on 0x0b; 'A'-'D' lose 5 to land on 0x0c-0x0f; and
+# '0'-'9' pass through, leaving the low nibble equal to the digit. It is one
+# nibble, because the encoder masks it to one before it sends.
+DIAL_TONE_DIGITS = "0123456789#*ABCD"
 
 
 @dataclass
@@ -236,6 +252,8 @@ class CourierDspBridge:
         self._exchange_instructions = 0
         self._exchange_tx_index = 0
         self._exchange_rx_samples: deque[int] = deque()
+        self._dial_tone_digit: str | None = None
+        self._dial_tone_index = 0
         self._codec_instructions = 0
         self._line_instructions = 0
         self._line_tx_index = 0
@@ -523,6 +541,13 @@ class CourierDspBridge:
             self.core.configure_line_frame_interrupt(C52_TDM_IRQ, C52_TDM_ISR)
 
     def arm_dial_tones(self, command: bytes) -> None:
+        if self.exchange is not None:
+            # With a modeled line the command is the firmware's alone. It
+            # parses the dial string, seizes the loop through its own hook
+            # relay, qualifies dial tone from its own detector count and
+            # sequences its own digits; reading the text here could only
+            # duplicate or pre-empt that.
+            return
         text = command.decode("ascii", "ignore").upper()
         # The supervisor's attention front-end strips the leading ``AT``
         # before calling us, so a real terminal supplies ``A`` here. Tests
@@ -547,23 +572,6 @@ class CourierDspBridge:
         self.dial_digits = "".join(ch for ch in dial if ch in "0123456789*#ABCD")
         if self.daa is not None:
             self.daa.seize("originate")
-            if self.exchange is not None:
-                # The exchange decides what the seizure hears; setting the
-                # line state here would be the harness answering its own
-                # question. The line does keep running while the supervisor
-                # parses ATD, though, so make the five-frame detector window
-                # available before the command-mode timeout expires - out of
-                # the exchange's own audio.
-                samples = self.exchange.service(
-                    True, [], DAA_FRAME_SAMPLES * 5
-                )
-                self.daa.line_state = self.exchange.line_state
-                self.daa.observe(len(samples))
-                if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
-                    self.core.queue_codec_rx(samples)
-                else:
-                    self.core.queue_serial_rx(samples)
-                return
             if self.line is not None and self.line.connected:
                 # A dedicated line link represents an already-present loop;
                 # the originating side hears central-office dial tone as soon
@@ -584,6 +592,32 @@ class CourierDspBridge:
             and (self.daa is None or self.daa.operation == "dialing")
         ):
             self.core.set_dtmf_digits(self.dial_digits)
+
+    def set_line_hook(self, off_hook: bool) -> None:
+        """Follow the firmware's own hook relay.
+
+        The supervisor drives the relay through board latch 0 bit 0x04, and
+        `CourierPanel` decodes it. Taking the hook from there rather than from
+        a parsed `ATD` is what makes the seizure the firmware's: nothing here
+        decides when the line is taken, only what the line does about it.
+
+        Which operation the seizure is depends on the line, not on this class:
+        answering a ringing loop is an answer, and anything else originates.
+        """
+        if self.exchange is None:
+            # Without a modeled line the seizure is still the stand-in's: the
+            # DAA is driven from the parsed command, and following the relay
+            # as well would have the two fight over the same hook.
+            return
+        if self.daa is None or self.daa.off_hook == off_hook:
+            return
+        if not off_hook:
+            self.daa.release()
+            if self.exchange is not None:
+                self.exchange.service(False, [], 1)
+            return
+        answering = self.exchange is not None and self.exchange.state == "ringing"
+        self.daa.seize("answer" if answering else "originate")
 
     def begin_dialing(self) -> None:
         if self.daa is not None:
@@ -682,6 +716,7 @@ class CourierDspBridge:
         previous = self.asic_registers.get(header, 0)
         self.asic_registers[header] = data
         self.asic_writes[header] += 1
+        self._observe_dial_tone(header, data)
         if (
             header == 0x82
             and data == 0x00A0
@@ -715,7 +750,13 @@ class CourierDspBridge:
         # corrupts a running datapump. The deferred overlay commit snapshots
         # the complete block at the recovered ASIC service slot below.
         self._asic_dsp_register_commits += 1
-        if not self._v8_armed and self.dial_digits:
+        if not self._v8_armed and self.exchange is not None:
+            # The firmware published this block itself, after dialing on its
+            # own. The commit is the call boundary; there are no digits to
+            # supply, because the digits already went out over the line.
+            self._v8_armed = True
+            self._call_resume_pending = True
+        elif not self._v8_armed and self.dial_digits:
             self._v8_armed = True
             # The command commit is the real call boundary on main211; it does
             # not perform the second bootstrap older notes expected.
@@ -728,6 +769,56 @@ class CourierDspBridge:
         ):
             self._v8_armed = True
             self._call_resume_pending = True
+
+    def _observe_dial_tone(self, header: int, data: int) -> None:
+        """Play what the supervisor's dialer just asked the board to play.
+
+        The ASIC owns the tone generator, and its firmware is not in this
+        image, so the board half of the dial is modeled here. Everything
+        before it is the supervisor's: the number came from the dial string it
+        parsed, the digit from its own encoder, and the moment from its own
+        tone and interdigit timers.
+
+        Each digit goes out as a small block - `0x16:0000`, then the tone
+        generator's three constant lanes, with `0x13` carrying the keypad
+        index - and `0x16:0000` again when the tone ends. So the digit lane
+        starts the tone and the silence lane stops it.
+
+        The call-start block uses the same lanes with the same constants, and
+        nothing in a single message separates the two uses. What separates
+        them here is the line: a digit only means anything while the loop is
+        seized and the call has not come up, which is exactly the window the
+        dialer runs in.
+        """
+        if self.exchange is None or self.daa is None:
+            return
+        if (header, data) == DIAL_SILENCE:
+            self._dial_tone_digit = None
+            return
+        if header != DIAL_TONE_TAG:
+            return
+        if not self.daa.off_hook or self.exchange.connected:
+            return
+        index = data & 0xFF
+        if index < len(DIAL_TONE_DIGITS):
+            self._dial_tone_digit = DIAL_TONE_DIGITS[index]
+            self._dial_tone_index = 0
+
+    def _dial_tone_samples(self, count: int) -> list[int]:
+        """Render the held digit as line audio for one block."""
+        key = DTMF_KEYS.index(self._dial_tone_digit or "1")
+        row = DTMF_ROW_FREQUENCIES[key // len(DTMF_COLUMN_FREQUENCIES)]
+        column = DTMF_COLUMN_FREQUENCIES[key % len(DTMF_COLUMN_FREQUENCIES)]
+        rate = self.exchange.sample_rate
+        start = self._dial_tone_index
+        self._dial_tone_index += count
+        return [
+            round(
+                DIAL_TONE_LEVEL * math.sin(2 * math.pi * row * index / rate)
+                + DIAL_TONE_LEVEL * math.sin(2 * math.pi * column * index / rate)
+            )
+            for index in range(start, start + count)
+        ]
 
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
@@ -971,6 +1062,14 @@ class CourierDspBridge:
             # acceptance bits between groups. They are synthesized, as the
             # boot ROM that drives them is not available.
             return (1 << (size * 8)) - 1
+        if port in (0x5C, 0x5E) and self._runtime_inbound:
+            # A queued board-to-supervisor message owns the data lanes while
+            # it stands. The receive handler at 0x6ad6e reads the tag from
+            # 0x58/0x5a and then the word from 0x5e/0x5c, so serving the C52
+            # status latch here instead handed the detector consumer 0xffff
+            # for a reply the bridge had already queued.
+            _, data = self._runtime_inbound[0]
+            return (data >> (8 if port == 0x5E else 0)) & 0xFF
         if port in (0x5C, 0x5E) and self.active and hasattr(self.core, "io"):
             # The ASIC exposes the C52's 16-bit status latch as high byte at
             # 5E and low byte at 5C. These are the ports read by the
@@ -1121,16 +1220,12 @@ class CourierDspBridge:
                     else:
                         self.core.queue_serial_rx(samples)
                 if (
-                    self.dial_digits
+                    self.exchange is None
+                    and self.dial_digits
                     and self.daa.operation == "originate"
                     and self.daa.dial_tone_qualified
                     and (
-                        # A modeled line dials on its own dial tone. Waiting
-                        # for the ASIC call engine here would deadlock against
-                        # the engine, which now waits for the exchange to put
-                        # the call through.
-                        self.exchange is not None
-                        or self._asic_call_engine_started
+                        self._asic_call_engine_started
                         or self._call_overlay is None
                     )
                 ):
@@ -1198,6 +1293,15 @@ class CourierDspBridge:
         off_hook = self.daa is not None and self.daa.off_hook
         samples = self.core.line_tx_samples(self._exchange_tx_index)[:LINE_FRAME_SAMPLES]
         self._exchange_tx_index += len(samples)
+        if self._dial_tone_digit is not None:
+            # A held dial tone is what the board is putting on the line, so it
+            # replaces the datapump's block rather than mixing with it.
+            samples = self._dial_tone_samples(LINE_FRAME_SAMPLES)
+        elif len(samples) < LINE_FRAME_SAMPLES:
+            # The codec clocks whether or not the datapump has a block ready,
+            # and what it clocks out is silence. The exchange has to hear that
+            # silence: it is the gap that separates two presses of one key.
+            samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
         incoming = self.exchange.service(off_hook, samples, LINE_FRAME_SAMPLES)
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
@@ -1222,6 +1326,12 @@ class CourierDspBridge:
             # and with an exchange attached they arrive from the exchange
             # instead of from the DAA's own generator.
             self.daa.observe(LINE_FRAME_SAMPLES)
+            if self.exchange.dialed and self.daa.operation == "originate":
+                # Digits on the line are what makes this a dialing seizure.
+                self.daa.begin_dialing()
+            # What the line heard is the only record of the number here; the
+            # bridge no longer reads it out of the command text.
+            self.dial_digits = self.exchange.dialed
 
     def _service_line(self) -> None:
         """Hand one frame to the far end and take its frame off the line.

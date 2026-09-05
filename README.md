@@ -982,21 +982,65 @@ gets, `--exchange-answer-after` the ringback cycles before pickup, and
 `LineExchange.ring()` offers an incoming call, which drives the codec's ring
 detectors directly rather than through `--ring`.
 
-Two things change in the bridge when an exchange is attached, both of them
-handing a decision back to the line. `arm_dial_tones` no longer sets the DAA's
-line state - the exchange decides what a seizure hears. And the ASIC call
-engine waits for the exchange to put the call through instead of starting on
-the line detector's debounce, because a datapump that starts at seizure emits
-V.8 calling tone over the dial tone and never dials at all. That is what a run
-does without the gate: 1300 Hz for ten seconds and reorder at the timeout.
+### The firmware places this call
 
-What the exchange does not model: loop current and its supervision, DTMF from
-anything but the modem's own transmit path, and any far end. A connected call
-is silent unless `peer_audio` is given something to return, so this reaches an
-answered call, not a trained one. Pulse dialing is implemented and tested, but
-only resolves at service blocks well under the 60 ms loop break - the bridge
-services the exchange at the 100 ms ASIC frame, so pulse digits are not
-available there.
+With `--exchange` there is no DTE-level dial stand-in left. `arm_dial_tones`
+returns without reading the command, and every step below is the supervisor's
+own, running against the modeled line:
+
+| step | what the firmware does | where |
+|---|---|---|
+| parse | reads the dial string out of its own command buffer | `0x82652` |
+| seize | drives the hook relay, board latch 0 bit `0x04`, low | `0x5e317` |
+| qualify | counts its own five detector hits before accepting dial tone | `0x5dbee` |
+| encode | folds each character to a keypad index | `0x6353c` |
+| dial | sends `0x16:0000`, the digit on tag `0x13`, `0x16:0000` | `0x63553` |
+| time | holds each tone and gap on its own `[0x161]` countdown | `0x82342` |
+
+`--exchange` therefore implies `--tick-source dsp`: the dial-tone wait, the
+tone duration and the interdigit gap all count on the supervisor's countdown
+chain, and unpaced the harness has to stand in for every one of them, which is
+the arrangement the exchange exists to replace. Two board-side pieces are
+modeled here rather than executed, because their firmware is in the missing
+ASIC/customer ROM: the tone generator turns tag `0x13` into the two
+frequencies, and the line detector answers the `0x7c` poll with a low-band
+reading while the loop carries tone. Everything between them is the image's.
+
+`ATDT5551212` end to end, with nothing supplying the number:
+
+```text
+5.1s  tone 5   decoded '5'          9.6s  tone 3   decoded '55512'
+6.3s  tone 5   decoded '55'        10.7s  tone 2   decoded '555121'
+7.4s  tone 5   decoded '555'       11.8s  tone 2   decoded '5551212'
+8.5s  tone 1   decoded '5551'      -> ringback, answered, connected
+```
+
+One bug had to be fixed for any of it to run. The receive handler at `0x6ad6e`
+takes a message tag from ports `0x58`/`0x5a` and then its word from
+`0x5e`/`0x5c`, and the bridge was serving the C52 status latch on those two
+ports even while a reply stood queued. The detector consumer at `0x5e4c4` read
+`0xffff` for a reading the bridge had already answered, counted it as
+out-of-band, and hung up. Queued replies now own the data lanes.
+
+The ASIC call engine also waits for the exchange to put the call through
+instead of starting on the detector's debounce. Without that gate the datapump
+starts at seizure, transmits a flat 1300 Hz V.8 calling tone for ten seconds
+and never dials; the exchange then times out into reorder, which is a fair
+report of what happened.
+
+What is still not the firmware's, and what is not modeled: the result code.
+`ATD` ends in command mode rather than reporting `CONNECT` or `BUSY`, because
+there is no answering modem behind the exchange to train with - `peer_audio`
+has to be given one. Call-progress tone detection is the DSP's and no run has
+reached it, so a busy route stops at the tone without a `BUSY`. Loop current
+and its supervision are not modeled, and neither is DTMF from anything but the
+modem's own transmit path. Pulse dialing is implemented and tested in the
+exchange, but only resolves at service blocks well under the 60 ms loop break,
+and the bridge services it at the 100 ms ASIC frame.
+
+Without `--exchange` nothing above applies: the `--daa-line`, `link` and SIP
+paths keep the stand-ins they had, including the parsed `ATD`, the faked line
+transition and the harness-generated digits.
 
 ## Two instances on one line
 

@@ -168,6 +168,13 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--daa-line", daa_line))
     if args.exchange:
         command.append("--exchange")
+        if not args.tick_source:
+            # A modeled line hands the call back to the firmware, and the
+            # firmware's dial-tone wait, digit duration and interdigit gap all
+            # count on the supervisor's countdown chain. Unpaced, the harness
+            # has to stand in for every one of them, which is the arrangement
+            # the exchange exists to replace.
+            command.extend(("--tick-source", "dsp"))
         for entry in args.exchange_number:
             command.extend(("--exchange-number", entry))
         command.extend(("--exchange-outcome", args.exchange_outcome))

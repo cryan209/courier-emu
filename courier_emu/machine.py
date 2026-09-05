@@ -1172,7 +1172,7 @@ class CourierMachine:
             # After dial-tone qualification the dialer waits on the S6-style
             # pre-dial countdown at 0000:08d6, normally decremented by the
             # board timer ISR.
-            if self.fast_delays and address == 0x828A6:
+            if self.fast_delays and self.tick_source is None and address == 0x828A6:
                 _uc.mem_write(0x8D6, b"\x00\x00")
                 self.accelerated_delays += 1
             # Successful completion of the originating dialer returns through
@@ -1182,7 +1182,15 @@ class CourierMachine:
             # for that event, leaving ATD parked in command mode after the
             # digits.  Reproduce the recovered event edge once per seizure.
             # Inter-digit cadence uses the timer word at 0000:0161.
-            if self.fast_delays and address in (0x6355F, 0x822E0, 0x82342, 0x8235B):
+            if (
+                self.fast_delays
+                and self.tick_source is None
+                and address in (0x6355F, 0x822E0, 0x82342, 0x8235B)
+            ):
+                # With the chain paced these are the dialer's own tone and
+                # interdigit timers. Zeroing them makes the dialer outrun the
+                # supervisor's 24-word send ring, which then drops every digit
+                # after the first.
                 _uc.mem_write(0x161, b"\x00\x00")
                 self.accelerated_delays += 1
             # The same initialization waits for an 80186 peripheral-ready
@@ -1570,7 +1578,18 @@ class CourierMachine:
             pc = current_pc()
             self._record_io("out", port, size, value, pc)
             if size == 1:
+                previous_hook = self.panel.off_hook
                 self.panel.observe_write(port, value, pc, self.instructions)
+                if (
+                    self.dsp_bridge is not None
+                    and self.panel.off_hook != previous_hook
+                ):
+                    # The hook relay is a board output like any other, so the
+                    # line hears the seizure the firmware actually performed.
+                    self.dsp_bridge.set_line_hook(self.panel.off_hook)
+                    self._trace_serial(
+                        f"hook {'off' if self.panel.off_hook else 'on'} pc={pc:05x}"
+                    )
                 if self.nvram is not None and port == 0x10:
                     self.nvram.write_latch(value)
             if 0xFF00 <= port <= 0xFFFF:
