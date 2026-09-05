@@ -69,29 +69,53 @@ def assemble(rom, *, limit=400_000):
     }
 
 
-# --- reference arithmetic, not recovered from the ROM -----------------------
+# --- companded levels ------------------------------------------------------
 # A DIL is scored by comparing what arrives against the level each training
-# Ucode should have produced. The mapping is the G.711 chord decomposition:
-# chord = u >> 4 selects the segment, step = u & 15 the position in it. In the
-# unbiased form, and scaled to a 16-bit linear sample, Ucode 100 is 10496.
+# Ucode stands for. A Ucode is a G.711 chord decomposition - `u >> 4` picks the
+# segment, `u & 15` the position in it - and the level depends on which law the
+# analog modem asked for.
 #
-# This is the standard's arithmetic written out here for comparison against a
-# capture. **No routine computing it has been located in the firmware** - the
-# images hold no companding table of any kind, so whatever does the matching
-# computes it, but that code has not been found. Do not cite this as a finding
-# about the ROM.
-MU_BIAS = 33
+# The A-law form is **verified against hardware**: every one of the 197 segments
+# in `artifacts/dil-requested-alaw.g711`, a DIL a digital modem sent in answer
+# to this Courier's own Ja, carries exactly the level below for the Ucode this
+# firmware generated for that segment. The mu-law form is the standard's
+# arithmetic and has no capture behind it here.
+#
+# The two are close but not equal, and the difference is systematic: mu-law
+# carries a 132 bias that A-law does not, and A-law's first chord is a different
+# slope. So Ucode 100 is 10496 in A-law and 10364 in mu-law. The law matters and
+# cannot be left implicit.
+MU_BIAS = 0x84    # 132: mu-law carries a bias that A-law does not
 
 
-def ucode_level(ucode: int, *, bits: int = 16) -> int:
-    """The linear magnitude a mu-law training Ucode stands for."""
+def ucode_level(ucode: int, *, law: str = 'a') -> int:
+    """The linear magnitude a training Ucode stands for, in G.711's domain."""
     if not 0 <= ucode <= 127:
         raise ValueError('a training Ucode is 0..127')
     chord, step = ucode >> 4, ucode & 15
-    magnitude = (2 * step + MU_BIAS) << chord
-    return magnitude << (bits - 14)
+    if law == 'a':
+        if chord == 0:
+            return (step << 4) + 8
+        return ((step << 4) + 0x108) << (chord - 1)
+    if law == 'mu':
+        return (((step << 3) + MU_BIAS) << chord) - MU_BIAS
+    raise ValueError("law is 'a' or 'mu'")
 
 
-def ladder_levels(descriptor, *, bits: int = 16) -> list[int]:
+def ladder_levels(descriptor, *, law: str = 'a') -> list[int]:
     """The descriptor's training ladder, as linear levels."""
-    return [ucode_level(u, bits=bits) for u in descriptor['ucodes']]
+    return [ucode_level(u, law=law) for u in descriptor['ucodes']]
+
+
+def alaw_decode(byte: int) -> int:
+    """One G.711 A-law octet as a signed linear sample."""
+    byte ^= 0x55
+    magnitude = (byte & 0x0F) << 4
+    chord = (byte & 0x70) >> 4
+    if chord == 0:
+        magnitude += 8
+    elif chord == 1:
+        magnitude += 0x108
+    else:
+        magnitude = (magnitude + 0x108) << (chord - 1)
+    return magnitude if byte & 0x80 else -magnitude

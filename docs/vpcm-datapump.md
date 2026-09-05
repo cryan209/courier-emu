@@ -198,6 +198,31 @@ that is *almost* right: the ladder appears, but shifted, with its first Ucode
 missing, because `banz *-, ar1` at `e807` sets `ARP` partway through. `vpcm.py`
 selects `AR1` first, the way the firmware's own `mar *, ar1` does.
 
+## The far end sent exactly the ladder this ROM generated
+
+`artifacts/dil-alaw-01/` is a DIL a digital modem sent downstream in answer to
+this Courier's own Ja. It is 13,002 bytes of G.711 A-law, which is `197 x 66` -
+N segments of LSP symbols, both numbers out of the descriptor - so the capture's
+length alone confirms the request it answers. Checked against the ROM:
+
+| | result |
+|---|---|
+| signs | all 13,002 follow the descriptor's `SP` |
+| `TP` = 0 slots | every one carries Ucode 0's level, magnitude 8 |
+| `TP` = 1 slots | each segment holds one level across its twelve |
+| that level | is the level of the Ucode this firmware generates for that segment |
+| overall | 117 distinct Ucodes to 117 distinct levels, one to one, no exceptions |
+
+So the generated ladder is not merely plausible - the far end answered it
+symbol for symbol. `tests/test_vpcm.py` pins all four.
+
+The levels also settle the law. A Ucode is a G.711 chord decomposition, and the
+two laws differ by mu-law's 132 bias and by A-law's first chord: Ucode 100 is
+10496 in A-law and 10364 in mu-law. Every segment matches the A-law form
+exactly, which is what the capture's name says was requested.
+`vpcm.ucode_level` carries both, with A-law verified here and mu-law only the
+standard's arithmetic.
+
 ## The matcher itself has not been found
 
 Scoring a DIL means comparing what arrives against the level each training

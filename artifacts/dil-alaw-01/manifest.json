@@ -1,0 +1,19 @@
+{
+  "capture": "dil-requested-alaw.g711",
+  "what": "A V.90 DIL a digital modem sent downstream in answer to this Courier's Ja",
+  "format": "G.711 A-law, 8 kHz, one octet per symbol, no header",
+  "bytes": 13002,
+  "sha256": "6f5e3a57e85c3aafaf8e3edb37d7fb794f13d25e0310c778ffa0570df5deb448",
+  "seconds": 1.62525,
+  "shape": "197 segments x 66 symbols - N, LSP and LTP straight out of the descriptor",
+  "provenance": "supplied by the user from their own capture; not produced by this repo",
+  "verified_against_the_rom": {
+    "signs": "all 13002 follow the descriptor's SP",
+    "reference_slots": "every TP=0 slot carries Ucode 0's level, magnitude 8",
+    "training_slots": "each segment's 12 TP=1 slots hold one level, and it is the level of the Ucode this firmware generates for that segment",
+    "mapping": "117 distinct Ucodes to 117 distinct levels, one to one, no exceptions"
+  },
+  "law": "A-law. Ucode 100 is 10496 here; mu-law would be 10364.",
+  "tests": "tests/test_vpcm.py::DilAgainstTheLadderTests",
+  "recorded_utc": "2026-09-05T12:04:43.790910+00:00"
+}

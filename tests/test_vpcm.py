@@ -58,24 +58,62 @@ class DescriptorTests(unittest.TestCase):
 
 
 class UcodeLevelTests(unittest.TestCase):
-    """Reference arithmetic for scoring a DIL. Not a claim about the ROM."""
-
-    def test_the_chord_decomposition_matches_a_known_level(self) -> None:
-        # Ucode 100 is chord 6, step 4: (2*4 + 33) << 6 = 2624, and 10496 once
-        # scaled to 16 bits.
-        self.assertEqual(vpcm.ucode_level(100), 10496)
+    def test_the_laws_differ_by_their_bias(self) -> None:
+        # Ucode 100 is chord 6, step 4. A-law has no bias; mu-law carries 132.
+        self.assertEqual(vpcm.ucode_level(100, law='a'), 10496)
+        self.assertEqual(vpcm.ucode_level(100, law='mu'), 10364)
+        # Each law reaches its own full scale.
+        self.assertEqual(vpcm.ucode_level(127, law='a'), 32256)
+        self.assertEqual(vpcm.ucode_level(127, law='mu'), 32124)
 
     def test_levels_rise_with_the_ucode_inside_a_chord(self) -> None:
-        for chord in range(8):
-            levels = [vpcm.ucode_level((chord << 4) | step) for step in range(16)]
-            self.assertEqual(levels, sorted(levels))
-            self.assertEqual(len(set(levels)), 16)
+        for law in ('a', 'mu'):
+            for chord in range(8):
+                levels = [vpcm.ucode_level((chord << 4) | s, law=law) for s in range(16)]
+                self.assertEqual(levels, sorted(levels))
+                self.assertEqual(len(set(levels)), 16)
 
-    @unittest.skipUnless(IMAGE.exists(), "no board capture in this working tree")
-    def test_the_ladder_spans_the_range_a_dil_needs(self) -> None:
-        levels = vpcm.ladder_levels(vpcm.assemble(CourierRom.load(IMAGE)))
-        self.assertEqual(len(levels), 197)
-        # The ladder walks from the top of the range down to the bottom, which
-        # is what makes it useful for finding where the channel clips or pads.
-        self.assertEqual(max(levels), vpcm.ucode_level(116))
-        self.assertEqual(min(levels), vpcm.ucode_level(0))
+
+DIL = ROOT / "artifacts/dil-alaw-01/dil-requested-alaw.g711"
+SP = "101010101101001010110100101011010010110101001011010100101101010010"
+TP = "000000001000010000100001000010000100010000100001000010000100001000"
+
+
+@unittest.skipUnless(IMAGE.exists() and DIL.exists(), "no board capture in this working tree")
+class DilAgainstTheLadderTests(unittest.TestCase):
+    """A DIL a digital modem sent in answer to this Courier's own Ja.
+
+    The firmware generates the ladder; the far end sends levels for it. These
+    check the two against each other, which is the comparison the datapump's
+    own matcher makes.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        raw = DIL.read_bytes()
+        cls.linear = [vpcm.alaw_decode(b) for b in raw]
+        cls.segments = [cls.linear[i * 66:(i + 1) * 66] for i in range(197)]
+        cls.ucodes = vpcm.assemble(CourierRom.load(IMAGE))["ucodes"]
+
+    def test_the_capture_is_one_cycle_of_the_requested_shape(self) -> None:
+        # N segments of LSP symbols, all three straight out of the descriptor.
+        self.assertEqual(len(self.linear), 197 * 66)
+
+    def test_every_sign_follows_the_descriptor(self) -> None:
+        wrong = [(s, i) for s in range(197) for i in range(66)
+                 if (self.segments[s][i] > 0) != (SP[i] == '1')]
+        self.assertEqual(wrong, [])
+
+    def test_the_reference_slots_carry_the_reference_level(self) -> None:
+        for s in range(197):
+            for i, flag in enumerate(TP):
+                if flag == '0':
+                    self.assertEqual(abs(self.segments[s][i]), vpcm.ucode_level(0))
+
+    def test_each_segment_carries_the_level_of_its_generated_ucode(self) -> None:
+        training = [i for i, flag in enumerate(TP) if flag == '1']
+        for s, ucode in enumerate(self.ucodes):
+            levels = {abs(self.segments[s][i]) for i in training}
+            self.assertEqual(len(levels), 1, f'segment {s} is not one level')
+            self.assertEqual(levels.pop(), vpcm.ucode_level(ucode, law='a'),
+                             f'segment {s} does not carry Ucode {ucode}')
