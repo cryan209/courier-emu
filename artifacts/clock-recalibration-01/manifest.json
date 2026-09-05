@@ -1,0 +1,22 @@
+{
+  "what": "The answered-call runs before and after INSTRUCTIONS_PER_MS moved from 1,111 to 4,348 and RING_START_MS from 8,000 to 2,000 ms.",
+  "image": "main211.xmf",
+  "why": "docs/hardware-timebase-and-audio-path.md - the board measures the firmware tick at 5.000 ms, which refutes the 1,111 calibration and leaves the codec-clocked 4,348.",
+  "runs": {
+    "link-40M-before.json": "./courier link main211.xmf --instructions 40000000 --summary, at 1,111",
+    "link-156M-after.json": "./courier link main211.xmf --instructions 156000000 --summary, at 4,348 - 156M chosen so the line time matches the 40M baseline (357 frames against 354)",
+    "link-dsp-40M-before.json": "same link with --tick-source dsp, at 1,111",
+    "link-dsp-40M-after.json": "same link with --tick-source dsp, at 4,348"
+  },
+  "result": {
+    "receive_backlog_ratio": "4.88 -> 1.25 at equal line time",
+    "codec_rx_consumed": "66,267 -> 271,475",
+    "preserved": "CONNECT on both sides, v8_dispatches 89, online_mode true",
+    "tick_source_dsp": "the two sides were asymmetric before - side b reported no serial text, 9,785 ticks against side a's 1,455, 710 detector replies against 45, and zero line frames. They are now symmetric: both OK, both 1,455 ticks, both 45 detector replies, both 11 frames, both seeing the peer off hook."
+  },
+  "limits": [
+    "The residual 1.25 says the balancing rate for this path is nearer 5,435 instructions per millisecond, which is 4.75 cycles per instruction at main211's 25.8048 MHz. 4,348 is the figure the codec measurement published, not a fit to this run.",
+    "The link path paces the line on INSTRUCTIONS_PER_MS. The --exchange path already paces on the codec and is unaffected by this change, which is why its numbers barely move.",
+    "Neither figure is a measurement of a physical 80186's throughput; both inherit the harness's C5x cycle model and 5:4 scheduling ratio."
+  ]
+}

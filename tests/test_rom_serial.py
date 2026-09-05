@@ -17,7 +17,7 @@ BOARD_ID = 7
 @pytest.mark.skipif(not CAPTURE_ROM.exists(), reason="board ROM capture not present")
 def test_rom_emits_its_plug_and_play_identifier():
     machine = CourierMachine(
-        load_image(CAPTURE_ROM), tick_ms=10, board_id=BOARD_ID, serial_input=b"ATI\r"
+        load_image(CAPTURE_ROM), tick_ms=5, board_id=BOARD_ID, serial_input=b"ATI\r"
     )
     machine.run(60_000_000)
     # Seven-bit data with the eighth bit set on the wire.
@@ -34,7 +34,7 @@ def test_seeded_ticked_rom_opens_dte_and_answers_at():
     machine = CourierMachine(
         load_image(REFERENCE_ROM),
         nvram=CourierNvram.idsl302_fixture(),
-        tick_ms=10,
+        tick_ms=5,
         board_id=BOARD_ID,
         serial_input=b"AT\r",
     )

@@ -9,18 +9,42 @@ DAA_FRAME_SAMPLES = 960
 DAA_LINE_STATES = ("disconnected", "quiet", "dial-tone", "ringing")
 
 # The harness has no wall clock; its only time base is the 80186 instruction
-# count. The answer machine calibrates that: it accepts a ring burst once its
-# tick counter at [0x1d50] reaches the country minimum at [0x1f5c], which this
-# firmware loads with 180, and a 2,000,000-instruction burst is exactly what
-# takes that counter to 180. At the North American 2 s ring that puts one
-# firmware tick at 10 ms and the instruction clock at 1,111 per millisecond.
-INSTRUCTIONS_PER_MS = 1_111
+# count, so this constant sets what a millisecond means everywhere on the line.
+#
+# It used to be 1,111, calibrated by assuming the burst that takes the answer
+# machine's tick counter at [0x1d50] to the country minimum of 180 at [0x1f5c]
+# is one 2 s ring. That assumption is now known to be wrong, and the derivation
+# was circular besides: machine.py synthesizes the tick itself at
+# tick_ms * INSTRUCTIONS_PER_MS, so "2,000,000 instructions reaches 180 ticks"
+# is arithmetic on the two constants rather than a measurement of either.
+#
+# What is measured is the tick. See docs/hardware-timebase-and-audio-path.md:
+# the board fits 1.000031 seconds per S18 unit over twelve &T1 runs, both
+# builds convert S-register seconds to ticks by multiplying by 200, and both
+# program 80186 Timer 0 - which counts at CLKOUT/4 - for exactly 5.000 ms on
+# their own crystal. One tick is 5 ms, so 180 ticks is 900 ms: a minimum ring
+# qualification, not a whole 2 s burst.
+#
+# That leaves the codec-clocked figure as the only one standing. It is what the
+# native C52 bridge actually consumes: 132,480 samples in 60,000,000
+# instructions is 13.80 s of line time, or 4,348 instructions per millisecond.
+# main211 is the 25.8048 MHz build (its Timer 0 max count is 0x7e00, which only
+# lands on 5 ms at that clock), so 4,348 is 5.9 cycles per instruction - an
+# ordinary 80186 mix, where 1,111 would have been 23.
+#
+# This is still the harness's own rate rather than a measurement off a board:
+# it inherits the C5x cycle model and the 5:4 scheduling ratio, and it varies
+# with how much the DSP stalls in a given run. Runs that keep the datapump busy
+# imply nearer 5,800. What is no longer in doubt is the order of magnitude.
+INSTRUCTIONS_PER_MS = 4_348
 
 RING_ON_MS = 2_000
 RING_OFF_MS = 4_000
 # The supervisor needs roughly five million instructions to reach its command
-# loop, so the first burst waits until the modem is actually listening.
-RING_START_MS = 8_000
+# loop, so the first burst waits until the modem is actually listening. At
+# 4,348 instructions per millisecond that is 1.15 s, and this keeps the old
+# instruction offset rather than the old millisecond figure.
+RING_START_MS = 2_000
 
 
 @dataclass

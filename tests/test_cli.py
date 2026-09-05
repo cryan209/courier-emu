@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from courier_emu.cli import _worker_command, build_parser, daa_codec_wanted, main, ring_cadence
+from courier_emu.daa import RING_OFF_MS, RING_ON_MS
 from courier_emu.parameters import FEATURE_BITS, ParameterSector, features_value
 
 
@@ -206,9 +207,19 @@ class CliTests(unittest.TestCase):
         self.assertEqual(switches["no-auto-answer"], "open")
         self.assertIn("S00=001", run["serial_text"])
 
+    def test_the_default_ring_cadence_is_north_american(self) -> None:
+        self.assertEqual((RING_ON_MS, RING_OFF_MS), (2_000, 4_000))
+
     def test_the_ring_detector_follows_the_configured_cadence(self) -> None:
         # The answer machine at 0x70fb4 polls input port 0x14 bit 0x02 and
         # every state waits on an edge, so the run has to see whole bursts.
+        #
+        # Bursts are counted in line milliseconds, so the instruction budget a
+        # given number of them needs scales with INSTRUCTIONS_PER_MS. Three at
+        # the default 6 s cadence is 20 s of line time, which is 87M
+        # instructions at 4,348 and too slow to run here. A short cadence tests
+        # the same edge delivery in a quarter of the budget; the default
+        # cadence itself is asserted above.
         output = StringIO()
         with redirect_stdout(output):
             result = main(
@@ -216,17 +227,19 @@ class CliTests(unittest.TestCase):
                     "run",
                     str(ROOT / "main211.xmf"),
                     "--instructions",
-                    "30000000",
+                    "25000000",
                     "--ring",
+                    "--ring-cadence",
+                    "500:1000",
                     "--ring-start",
-                    "8000",
+                    "1000",
                     "--summary",
                 ]
             )
         self.assertEqual(result, 0)
         run = json.loads(output.getvalue())
-        self.assertEqual(run["ring"]["on_ms"], 2_000)
-        self.assertEqual(run["ring"]["off_ms"], 4_000)
+        self.assertEqual(run["ring"]["on_ms"], 500)
+        self.assertEqual(run["ring"]["off_ms"], 1_000)
         self.assertGreaterEqual(run["ring"]["bursts_delivered"], 3)
 
     def test_two_linked_instances_reach_connect(self) -> None:

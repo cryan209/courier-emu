@@ -45,6 +45,14 @@ CPU port carrying samples. And the C52's mask ROM is not what the modem
 executes - the firmware supplies program words `0000..75d9`, including the
 reset code, and programs external-memory wait states.
 
+The constants that rested on the old calibration have been moved with it:
+`INSTRUCTIONS_PER_MS` 1,111 -> 4,348, `SUGGESTED_TICK_MS` 10 -> 5, and
+`RING_START_MS` 8,000 -> 2,000 ms so the first ring keeps its old instruction
+offset. At equal line time the linked pair's receive backlog falls from 4.88x
+to 1.25x, `codec_rx_consumed` from 66,267 to 271,475, and both sides still
+reach `CONNECT`. Runs now cover about four times less line time per
+instruction, so `link` needs roughly 156M instructions to see what 40M used to.
+
 The [boot-block flash loader](docs/sdl-boot-block.md) documents the downloader
 FreeLSD and SDL.EXE talk to, and `python -m courier_emu.sdl_download` implements
 the host side for a raw 512 KiB image. Building and checking a record stream is

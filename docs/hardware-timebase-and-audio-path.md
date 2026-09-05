@@ -64,8 +64,46 @@ That leaves the codec-implied figure as the only one still standing. 4,348
 instructions per millisecond at 20.16 MHz is 4.64 cycles per instruction, an
 ordinary 80186 mix. 1,111 would be 18.1 cycles per instruction, which is not.
 
-So the harness wants `tick_ms = 5` and `INSTRUCTIONS_PER_MS` near 4,348. This
-document does not make that change; it removes the reason to doubt it.
+### The change, and what it did to the answered-call runs
+
+Applied: `INSTRUCTIONS_PER_MS` 1,111 -> 4,348, `SUGGESTED_TICK_MS` 10 -> 5, and
+`RING_START_MS` 8,000 -> 2,000 ms, which keeps the old *instruction* offset now
+that a millisecond is worth four times as many instructions.
+
+Measured at equal line time - the 40M baseline against 156M at the new rate, so
+both runs carry about 355 line frames (`artifacts/clock-recalibration-01/`):
+
+| `./courier link main211.xmf --summary` | before | after |
+|---|---:|---:|
+| line frames | 354 | 357 |
+| `codec_rx_queued` | 323,520 | 338,880 |
+| `codec_rx_consumed` | 66,267 | 271,475 |
+| **backlog ratio** | **4.88** | **1.25** |
+| `v8_dispatches` | 89 | 89 |
+| result | `CONNECT` | `CONNECT` |
+
+The receive backlog was the thing that invalidated every earlier reading of
+whether the datapump had heard the line. It is not gone, but it is down from
+five times to a quarter, and `CONNECT` and the overlay's dispatch count are
+unchanged, so the call still comes up the same way.
+
+`--tick-source dsp` gains something separate. The two sides used to disagree -
+side b reported no serial text at all, 9,785 ticks against side a's 1,455, 710
+detector replies against 45, and zero line frames. They are now symmetric: both
+`OK`, both 1,455 ticks, both 45 detector replies, both 11 frames, and both
+seeing the peer off hook.
+
+`--exchange` barely moves, which is the check that this went in the right
+place: that path was already paced on the codec rather than on
+`INSTRUCTIONS_PER_MS`, so it should be insensitive to the constant, and it is
+(8,800 ms of line time against 9,000, same `dtmf_blocks`, same dial-tone stall).
+
+What is left is the residual 1.25. The rate that would balance this path is
+nearer 5,435 instructions per millisecond - 4.75 cycles per instruction at
+main211's 25.8048 MHz, as ordinary as 4,348's 5.9. Two honest options remain,
+and this document takes neither: fit the constant to the balance, or pace the
+link on the codec the way the modeled line already is. The second is the
+structural fix; the first is a number.
 
 ## 2. Audio reaches the DSP on the C5x serial port, not through the CPU
 

@@ -68,7 +68,7 @@ TICK_VECTOR = 0x0F
 # not driven by default: supplying it changes call timing, and the linked
 # pair answers OK where an undriven run reports NO CARRIER, so which of
 # those is faithful is still open.
-SUGGESTED_TICK_MS = 10
+SUGGESTED_TICK_MS = 5
 # The board's frame edge is the coprocessor's, far faster than the tick. The
 # true rate is the codec's and is not recovered, so this stands in at the
 # interrupt poll's own granularity - fast enough for the firmware's line
