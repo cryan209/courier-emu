@@ -14,10 +14,31 @@ not in frame, so nothing here says what is on it.
 | `S80C186` | the Intel supervisor |
 | `TLC...320AC01CFN` | the voice-band codec, PLCC, next to the DSP |
 | `ECLIPTEK EC11 40.320M` | the master oscillator |
+| `NEC D43256BGU-70LL` x2 | the **80186's** SRAM: 2 x 32Kx8, 64 KB |
+| `CY7C199-15VC` x2 | the **DSP's** SRAM: 2 x 32Kx8, 64 KB = 32K words on a 16-bit bus |
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
 | `74VHC573`, `74VHC32`, `74VHC04` | bus glue |
 | Atmel 8-pin | serial EEPROM, the NVRAM the settings cache comes from |
+
+## The DSP's RAM is 32K words, and that is its program space
+
+Two `CY7C199-15VC` give 64 KB, which on the C5x's 16-bit program bus is
+**32K words - exactly `0x8000`-`0xffff`**. That is the range the supervisor's
+downloads fill: the overlay table writes `0x8000`-`0xf8b5` on 302 and
+`0x8000`-`0xf949` on 403, about 31K words, so the part is sized for the job
+with a little to spare. It also retires the arithmetic in
+[who-produces-the-events.md](who-produces-the-events.md) that could not fit
+those downloads into one 32Kx8 device: there are two, and they are the DSP's,
+not the supervisor's.
+
+What it does not explain is the two handlers *below* that range - `0x23f0`,
+which 302's mailbox dispatcher calls on every message, and `0x7e80`, tag
+`0x7b`'s handler on both images. Those are outside the external RAM, so they
+have to be on-chip, unless the board decodes fewer address lines and low
+program space mirrors the top. Mirroring was tested and is not supported:
+`0x0080` would alias to `0x8080`, and `0x8080` holds ordinary code rather than
+the interrupt vector table the firmware's `IPTR` implies.
 
 ## The NEC part is the ASIC
 
