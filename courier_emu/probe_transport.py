@@ -29,6 +29,14 @@ STATUS = SUM + 2
 # monitor, the relocated routines and the kernel, and below the stack the
 # monitor sets at 0xeff0.
 ROM_DUMP_RESULT = 0x8000
+# Where the ROM-dump build places itself. The default layout is not usable on
+# the board: docs/ram-probe-delivery.md surveyed live RAM for pages that read
+# as zero, and 0x2000-0x20ff and 0x2c00-0x2dff are not among them, so an image
+# spanning 0x2000-0x306f would be written over RAM the firmware is using and
+# could crash it before the hook is armed. This layout sits entirely inside the
+# surveyed 20 KiB block at 0x2e00-0x7eff, with the result buffer in the 12 KiB
+# block at 0x8000.
+ROM_DUMP_ENTRY, ROM_DUMP_ROUTINES, ROM_DUMP_KERNEL = 0x3000, 0x3400, 0x4000
 REFERENCE_START = 0xE370
 REFERENCE_END = 0xE598
 STATUS_NAMES = {0: "complete", 1: "reset-timeout", 2: "download-timeout",
@@ -37,7 +45,8 @@ STATUS_NAMES = {0: "complete", 1: "reset-timeout", 2: "download-timeout",
 
 class Code:
     """Emit the small 80188 program with checked 16-bit label relocations."""
-    def __init__(self):
+    def __init__(self, origin: int = ENTRY):
+        self.origin = origin
         self.data = bytearray()
         self.labels: dict[str, int] = {}
         self.fixups: list[tuple[int, str, bool]] = []
@@ -51,7 +60,7 @@ class Code:
     def label(self, name: str):
         if name in self.labels:
             raise ValueError(f"duplicate label {name}")
-        self.labels[name] = ENTRY + len(self.data)
+        self.labels[name] = self.origin + len(self.data)
 
     def absolute(self, opcode: str, target: str):
         self.emit(opcode)
@@ -71,13 +80,13 @@ class Code:
 
     def call_address(self, address: int):
         self.emit("e8")
-        self.word((address - (ENTRY + len(self.data) + 2)) & 0xFFFF)
+        self.word((address - (self.origin + len(self.data) + 2)) & 0xFFFF)
 
     def finish(self) -> bytes:
         for offset, name, relative in self.fixups:
             address = self.labels[name]
             if relative:
-                address = (address - (ENTRY + offset + 2)) & 0xFFFF
+                address = (address - (self.origin + offset + 2)) & 0xFFFF
             struct.pack_into("<H", self.data, offset, address)
         return bytes(self.data)
 
@@ -94,6 +103,11 @@ class Diagnostic:
     result_base: int = RESULT
     sum_at: int = SUM
     status_at: int = STATUS
+    # Where this build loads. The ROM dump moves off the default layout to sit
+    # in RAM the board survey found free.
+    entry: int = ENTRY
+    routines_at: int = ROUTINES
+    kernel_at: int = KERNEL
 
 
 def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> Diagnostic:
@@ -110,6 +124,9 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> D
         raise ValueError("unsupported reference ROM: exact IDSDL302 profile required")
     probe = build_rom_dump_probe() if rom_dump else build_probe(mailbox=True)
     count = ROM_DUMP_WORDS if rom_dump else 0x38
+    entry = ROM_DUMP_ENTRY if rom_dump else ENTRY
+    routines_at = ROM_DUMP_ROUTINES if rom_dump else ROUTINES
+    kernel_at = ROM_DUMP_KERNEL if rom_dump else KERNEL
     result_base = ROM_DUMP_RESULT if rom_dump else RESULT
     sum_at = result_base + 2 * count
     status_at = sum_at + 2
@@ -117,10 +134,16 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> D
     if routines.count(bytes.fromhex("b808a9")) != 2:
         raise ValueError("reference source-segment relocation mismatch")
     # All near branches/calls stay within this contiguous block. Only two
-    # source-segment immediates change from flash A908 to RAM 0300.
-    routines = routines.replace(bytes.fromhex("b808a9"), bytes.fromhex("b80003"))
-    relocated = lambda address: ROUTINES + address - REFERENCE_START
-    c = Code()
+    # source-segment immediates change, from the flash segment A908 to the one
+    # holding the kernel - which is why the kernel has to sit on a paragraph
+    # boundary, and why moving it means moving this constant with it.
+    if kernel_at % 16:
+        raise ValueError("kernel must be paragraph-aligned to be addressed as a segment")
+    routines = routines.replace(
+        bytes.fromhex("b808a9"),
+        b"\xb8" + struct.pack("<H", kernel_at >> 4))
+    relocated = lambda address: routines_at + address - REFERENCE_START
+    c = Code(entry)
     c.label("entry")
     c.emit("fa fc 31c0 8ed8 8ec0 8ed0 bcf0ef")  # CLI; CLD; DS=ES=SS=0; SP=eff0
     c.emit("c606"); c.word(status_at); c.emit("ff")
@@ -211,14 +234,15 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> D
                        ("tag_text", "CDRP1 ERR TAG\r\n")):
         c.label(name); c.data.extend(text.encode() + b"\0")
     code = c.finish()
-    if ENTRY + len(code) > ROUTINES or ROUTINES + len(routines) > KERNEL:
+    if entry + len(code) > routines_at or routines_at + len(routines) > kernel_at:
         raise ValueError("diagnostic memory regions overlap")
-    ram = bytearray(KERNEL + len(probe.payload) - ENTRY)
+    ram = bytearray(kernel_at + len(probe.payload) - entry)
     ram[:len(code)] = code
-    ram[ROUTINES - ENTRY:ROUTINES - ENTRY + len(routines)] = routines
-    ram[KERNEL - ENTRY:] = probe.payload
+    ram[routines_at - entry:routines_at - entry + len(routines)] = routines
+    ram[kernel_at - entry:] = probe.payload
     return Diagnostic(reference, probe, bytes(ram), c.labels,
-                      count, result_base, sum_at, status_at)
+                      count, result_base, sum_at, status_at,
+                      entry, routines_at, kernel_at)
 
 
 def parse_capture(data: bytes) -> dict:
@@ -292,10 +316,10 @@ class TransportMachine:
         self.cpu.mem_map(0, 0x10000)
         self.cpu.mem_map(0x80000, 0x80000, uc.UC_PROT_READ | uc.UC_PROT_EXEC)
         self.cpu.mem_write(0x80000, diagnostic.reference.data)
-        self.cpu.mem_write(ENTRY, diagnostic.ram)
+        self.cpu.mem_write(diagnostic.entry, diagnostic.ram)
         self.cpu.mem_write(0xFF56, b"\xdb\0")
         self.cpu.reg_write(r.UC_X86_REG_CS, 0)
-        self.cpu.reg_write(r.UC_X86_REG_IP, ENTRY)
+        self.cpu.reg_write(r.UC_X86_REG_IP, diagnostic.entry)
         self.cpu.reg_write(r.UC_X86_REG_EFLAGS, 2)
         self.core = NativeC5x(_EmptyDSP())
         self.fixture = tuple((0x1234 + i * 0x193) & 0xFFFF for i in range(4096))
@@ -561,9 +585,9 @@ def main() -> int:
         (args.output / "diagnostic-ram.bin").write_bytes(diagnostic.ram)
         (args.output / "probe-c5x.bin").write_bytes(diagnostic.probe.payload)
         (args.output / "serial.txt").write_bytes(result["serial_text"].encode("ascii"))
-        result["load_map"] = {"entry": "0000:2000", "ram_image_base": ENTRY,
-                              "ram_image_bytes": len(diagnostic.ram), "copied_routines": ROUTINES,
-                              "kernel_source": KERNEL,
+        result["load_map"] = {"entry": f"0000:{diagnostic.entry:04x}", "ram_image_base": diagnostic.entry,
+                              "ram_image_bytes": len(diagnostic.ram), "copied_routines": diagnostic.routines_at,
+                              "kernel_source": diagnostic.kernel_at,
                               "result_buffer": diagnostic.result_base,
                               "status_byte": diagnostic.status_at,
                               "words_expected": diagnostic.count,

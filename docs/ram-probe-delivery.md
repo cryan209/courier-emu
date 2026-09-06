@@ -212,6 +212,62 @@ anything is written, the candidate region should be cross-referenced against
 the supervisor's own data accesses in the ROM, or at least re-read while the
 modem is doing something.
 
+## Placing the ROM-dump image, concretely
+
+`tools/emit_ram_writes.py` turns a built image into the commands, rather than
+having them typed:
+
+```sh
+python -m courier_emu.probe_transport \
+  --reference IDSDL302.ROM --output artifacts/dsp-rom-dump-v1 --rom-dump
+python tools/emit_ram_writes.py \
+  artifacts/dsp-rom-dump-v1/diagnostic-ram.bin \
+  --base 0x3000 --output artifacts/dsp-rom-dump-v1/commands
+```
+
+It writes three files, kept separate because they carry different risk:
+
+| file | what it does |
+|---|---|
+| `place.txt` | 2104 `ATGLK2W` word writes, the image itself. RAM only. |
+| `verify.txt` | 17 `ATGLK2=` page dumps covering what was written |
+| `arm.txt` | the IVT hook that **starts** it - read by hand before sending |
+
+The generator reads its own output back and compares it against the image
+before writing anything, because a transcription or endianness slip here would
+be silent and would then run as code.
+
+**The layout was wrong for the board and has been moved.** `probe_transport`'s
+default puts the monitor at `0x2000`, and the image is contiguous from there,
+so it spanned `0x2000`-`0x306f` - crossing `0x2000`-`0x20ff` and
+`0x2c00`-`0x2dff`, neither of which is in the survey above. The `--rom-dump`
+build now loads at `0x3000` with its routines at `0x3400`, its kernel at
+`0x4000` and its result buffer at `0x8000`, so the image occupies
+`0x3000`-`0x406f`, entirely inside the 20 KiB block, and the buffer sits in the
+12 KiB block. One constraint that came out of moving it: the download routine
+addresses the kernel through a **segment** immediate patched into the relocated
+copy, so the kernel has to be paragraph-aligned and that constant has to move
+with it. It does now; it did not before, and the build failed loudly rather
+than silently transferring the wrong bytes.
+
+Order of operations:
+
+1. `ATGLK2=0000` and keep the timer-0 vector at `0x20`-`0x23`; the hook
+   overwrites it and only a power cycle restores it.
+2. Send `place.txt`. This is inert - it writes RAM and nothing runs.
+3. Send `verify.txt` and diff the pages against `diagnostic-ram.bin`. Do not
+   skip this: the next step executes whatever is there.
+4. Open the serial capture, then send `arm.txt`. Timer 0 fires every 5 ms, so
+   the monitor starts within milliseconds and the modem stops responding to AT
+   commands - it has been taken over, which is expected.
+5. Capture until `CDRP1 DONE`. At 2052 lines this is roughly 20 KiB of text.
+6. Power cycle to get the modem back. Everything written was RAM.
+7. `python -m courier_emu.probe_transport --capture <file>` validates the frame
+   and writes `<file>.rom.bin`, 4096 bytes.
+
+The standing rules still apply, and none of these commands break them: nothing
+writes ports `0x10`, `0x12` or `0x14`, and nothing issues a flash sequence.
+
 ## What it would buy
 
 The thing the serial monitor cannot do is sample fast. Every port read is a
