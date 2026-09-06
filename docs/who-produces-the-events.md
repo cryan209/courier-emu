@@ -178,12 +178,41 @@ block clears cover `0x0100-0x04ff`, `0x0800-0x08ff` and `0x0b80-0x0bff`; the
 they are not, and `0x23f0` in particular is beyond what a 3K SARAM part would
 cover, which points at the larger member rather than the smaller.
 
-So the likely answer to "what else are we missing" is the **memory map**: a
-C5x with SARAM, with `PMST.RAM` and `PMST.OVLY` honoured, rather than a C52
-with them stubbed out. That is a bigger change than anything else in this note
-and it has not been made or tested; the reasoning above is from the firmware's
-own PMST write and the addresses it uses, not from a part marking - the board
-photo shows only `TI DSP 16-912 (C) US ROBOTICS D17140PQ`.
+### How far the code pins the part down
+
+Reading the dispatch table for every handler below the resident bank gives the
+sharpest evidence available, and it is only three addresses:
+
+| image | handlers below `0x8000` | which tag |
+|---|---|---|
+| 302 | `0x23f0` | `0x7c`, the detector poll - and the dispatcher's own `calld` helper |
+| 302, 403 | `0x7e80` | `0x7b`, the DAA identity |
+
+Neither is filler: twelve slots are `0x0000` and eight share a common handler
+at `0x8222`, while `0x23f0` and `0x7e80` are each reached from exactly one tag,
+and `0x23f0` is additionally called by the dispatcher itself on every message.
+
+What that establishes, and what it does not:
+
+* **A part with SARAM.** `PMST.RAM` and `PMST.OVLY` are both set, and data at
+  `0x0800-0x08ff` and `0x0b80-0x0bff` is cleared and used - the 302 ring lives
+  at `0x0bd0`. A member with no SARAM has nothing to map there.
+* **External program memory as well.** `0x7e80` is beyond every C5x's on-chip
+  SARAM, on any member. With `RAM` set, SARAM maps into program space from
+  `0x0800` upward, and even the largest option does not reach `0x7e80`. So the
+  board must have program memory off-chip that this harness does not model,
+  and both images use it.
+* **Not the member.** Because `0x7e80` has to be external anyway, `0x23f0`
+  need not be on-chip either, and the discriminator that would have separated a
+  9K-SARAM part from a 3K one dissolves. The code shows *what memory exists*,
+  not *which C5x*.
+
+So the correction to make is the memory map rather than the part number: SARAM
+mapped by `PMST.RAM`/`OVLY` instead of stubbed, and program space above the
+DARAM that is not simply `External`-and-empty. That is a bigger change than
+anything else in this note and has not been made or tested. None of it comes
+from a part marking - the board photo shows only
+`TI DSP 16-912 (C) US ROBOTICS D17140PQ`.
 
 ### The original family note
 
