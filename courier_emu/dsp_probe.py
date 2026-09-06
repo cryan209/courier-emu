@@ -23,6 +23,63 @@ MAPPING_HEADER = (0xC052, 2, 0, MAPPING_SAMPLE_WORDS, 0, 8,
                   MAPPING_SAMPLE_WORDS, 0)
 COMPLETE = 0xD00E
 
+# The full on-chip ROM dump. A 'C50 carries 2K words at program 0000..07ff,
+# which microcomputer mode maps and which docs/dsp-map-302.md argues the part
+# is executing at reset.
+ROM_DUMP_WORDS = 0x0800
+ROM_DUMP_GADGET = 0x0900      # inside SARAM, 0x0800-0x2bff under PMST.RAM
+ROM_DUMP_BUFFER = 0x1000      # the same SARAM seen through data space, PMST.OVLY
+ROM_DUMP_TAG_BASE = 0x5200
+# The status latch's send-window bit. `BIT dma, code` tests bit 15 - code, so
+# the resident's `4e7d` - printed as "bit 14, @7d" - waits on bit 1.
+SEND_FREE_BIT = 1
+
+
+def build_rom_dump_probe(words_wanted: int = ROM_DUMP_WORDS) -> "RomProbe":
+    """A kernel that reads the on-chip ROM from SARAM and mails it out.
+
+    Why the read loop is staged into SARAM instead of run where it sits: TI's
+    program-memory protection option blocks instructions fetched from off-chip
+    memory, DARAM B0, external DMA and the emulator from reading on-chip
+    program memory, and does not name SARAM. The firmware's own prologue shows
+    the move - `bldp` from data memory to program memory through BMAR, which is
+    how it installs its mailbox helper at 0x23f0.
+
+    The sender is the resident's outbound pattern, as build_probe already
+    reproduces it: tag to port 0x5e, word to 0x5f, then 2 into @57, with the
+    tag doubling as the sequence number the host reassembles by.
+    """
+    gadget = [0x8B8A,                                  # mar  *, ar2
+              0xBF0A, ROM_DUMP_BUFFER,                 # lar  ar2, #buffer
+              0xBF80, 0x0000,                          # lacc #0        program 0
+              0xBEC4, words_wanted - 1, 0xA6A0,        # rpt ; tblr *+
+              0xEF00]                                  # ret
+    words = [0xBE41, 0xBC00]                           # setc intm ; ldp #000
+    words += [0x5D07, 0x0030]                          # opl @07,#0030  RAM|OVLY
+    words += [0xBF80, ROM_DUMP_GADGET, 0x881F]         # BMAR = the SARAM landing
+    words += [0x8B89]                                  # mar *, ar1
+    gadget_source = len(words) + 2 + 12                # filled in below
+    words += [0xBF09, 0x0000]                          # lar ar1, #<gadget words>
+    source_index = len(words) - 1
+    words += [0xBEC4, len(gadget) - 1, 0x57A0]         # rpt ; bldp *+
+    words += [0x7A80, ROM_DUMP_GADGET]                 # call it, now on-chip
+    # The sender.
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, ROM_DUMP_BUFFER]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + words_wanted) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]                            # b self
+    words[source_index] = ORIGIN + len(words)
+    words += gadget
+    while len(words) % 8:
+        words.append(0x8B00)   # the transfer routine rounds to 16-byte chunks
+    return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
+
 
 @dataclass(frozen=True)
 class RomProbe:

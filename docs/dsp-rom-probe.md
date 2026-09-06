@@ -231,6 +231,51 @@ assumptions. The reference is pinned to SHA-256
 The input ROM is opened for reading; its emulated flash mapping is also
 protected against CPU writes.
 
+### The whole-ROM variant
+
+`--rom-dump` swaps the 56-word sample probe for the 2048-word reader described
+above - the one that stages its `TBLR` loop into SARAM - and moves every count
+and buffer the monitor bakes in:
+
+```sh
+python -m courier_emu.probe_transport \
+  --reference IDSDL302.ROM --output artifacts/dsp-rom-dump-v1 --rom-dump
+python -m courier_emu.probe_transport \
+  --capture artifacts/dsp-rom-dump-v1/serial.txt
+```
+
+The frame declares its own length - `CDRP1 DATA 0800` rather than
+`CDRP1 DATA 0038` - so one parser serves both, and a capture that parses as a
+ROM dump is written out beside it as `serial.rom.bin`, 4096 bytes.
+
+What differs from the sample probe, and why:
+
+| | sample probe | `--rom-dump` |
+|---|---|---|
+| DSP kernel | reads 32 words from `0x0000` at `0x8000` | stages a loop into SARAM and reads 2048 |
+| words returned | 56, with controls and a completion marker | 2048 raw program words |
+| result buffer | `0x4000`, 112 bytes | `0x8000`, 4096 bytes |
+| DSP step budget | 10,000 | `10000 + 40 * count` |
+| capture check | controls and marker, via `inspect_buffer` | frame integrity and checksum only |
+
+That last row is the important caveat. A ROM dump carries no controls and no
+completion marker, so nothing inside the payload can vouch for it: the checks
+are the tag sequence, the frame's own word count and the checksum. **Uniform,
+repeating or bus-like data is not proof of a readable ROM**, and neither is
+plausible-looking data. Compare two runs, and compare against the external
+control the mapping probe provides.
+
+**What the offline run does and does not establish.** In the modelled machine
+it completes: `download_matches_kernel` and `download_checksum_matches` true,
+`dsp_launched` true, 2048 packets and 2048 acknowledgements, and
+`rom_matches_fixture` true - every word returned equals the fixture the harness
+mapped as on-chip ROM. That exercises the whole chain: the reference's own
+launch and download routines relocated into RAM, the boot handshake, the
+transfer, the SARAM staging, the block read, the mailbox sender, the monitor's
+collection loop and the serial frame. It establishes **nothing about the
+silicon**: the fixture is synthetic, and this core models neither the mask-ROM
+protection option nor a real boot loader.
+
 The supervisor executes a contiguous copy of reference routines
 `8000:e370..e597`. Keeping the block together preserves its relative calls
 and branches. The only two patched immediates change the download/checksum

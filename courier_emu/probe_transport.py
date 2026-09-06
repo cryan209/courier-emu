@@ -14,7 +14,8 @@ from pathlib import Path
 import re
 import struct
 
-from .dsp_probe import RomProbe, build_probe, inspect_buffer
+from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
+                        build_rom_dump_probe, inspect_buffer)
 from .rom import CourierRom
 
 REFERENCE_DIGEST = "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5"
@@ -24,6 +25,10 @@ KERNEL = 0x3000
 RESULT = 0x4000
 SUM = RESULT + 112
 STATUS = SUM + 2
+# The ROM dump needs 4096 bytes rather than 112, so it is put well clear of the
+# monitor, the relocated routines and the kernel, and below the stack the
+# monitor sets at 0xeff0.
+ROM_DUMP_RESULT = 0x8000
 REFERENCE_START = 0xE370
 REFERENCE_END = 0xE598
 STATUS_NAMES = {0: "complete", 1: "reset-timeout", 2: "download-timeout",
@@ -83,13 +88,31 @@ class Diagnostic:
     probe: RomProbe
     ram: bytes
     labels: dict[str, int]
+    # Where this build put its result buffer and how many words it expects.
+    # The ROM dump moves both, so nothing may assume the module constants.
+    count: int = 0x38
+    result_base: int = RESULT
+    sum_at: int = SUM
+    status_at: int = STATUS
 
 
-def build_diagnostic(reference_path: str | Path) -> Diagnostic:
+def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> Diagnostic:
+    """Build the RAM monitor and the DSP kernel it delivers.
+
+    With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
+    the 56-word sample probe: 2048 words instead of 56, which moves the result
+    buffer and every count baked into the monitor. Everything else - the
+    relocated launch and download routines, the mailbox collection, the
+    serial frame - is the same path.
+    """
     reference = CourierRom.load(reference_path)
     if reference.digest != REFERENCE_DIGEST:
         raise ValueError("unsupported reference ROM: exact IDSDL302 profile required")
-    probe = build_probe(mailbox=True)
+    probe = build_rom_dump_probe() if rom_dump else build_probe(mailbox=True)
+    count = ROM_DUMP_WORDS if rom_dump else 0x38
+    result_base = ROM_DUMP_RESULT if rom_dump else RESULT
+    sum_at = result_base + 2 * count
+    status_at = sum_at + 2
     routines = reference.data[REFERENCE_START:REFERENCE_END]
     if routines.count(bytes.fromhex("b808a9")) != 2:
         raise ValueError("reference source-segment relocation mismatch")
@@ -100,7 +123,7 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c = Code()
     c.label("entry")
     c.emit("fa fc 31c0 8ed8 8ec0 8ed0 bcf0ef")  # CLI; CLD; DS=ES=SS=0; SP=eff0
-    c.emit("c606"); c.word(STATUS); c.emit("ff")
+    c.emit("c606"); c.word(status_at); c.emit("ff")
     def puts(label):
         c.absolute("be", label); c.jump("puts", "e8")
     puts("start_text")
@@ -113,8 +136,8 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c.emit("31c0 b9"); c.word(len(probe.payload))
     c.call_address(relocated(0xE47B))
     c.branch(0x72, "download_error")
-    c.emit("bb0052 bf"); c.word(RESULT)
-    c.emit("b93800 31d2")  # BX expected tag; DI buffer; CX count; DX checksum
+    c.emit("bb0052 bf"); c.word(result_base)
+    c.emit("b9"); c.word(count); c.emit("31d2")  # BX expected tag; DI buffer; CX count; DX checksum
     c.label("next_word")
     c.emit("bdffff")
     c.label("rx_wait")
@@ -129,10 +152,10 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c.emit("e45e 88c4 e45c ab 01c2")  # data high/low; STOSW; ADD DX,AX
     c.emit("b002 e61c 30c0 e61e 43 49")
     c.branch(0x75, "next_word")
-    c.emit("8916"); c.word(SUM)
+    c.emit("8916"); c.word(sum_at)
     puts("data_text")
-    c.emit("be"); c.word(RESULT)
-    c.emit("31db b93800")
+    c.emit("be"); c.word(result_base)
+    c.emit("31db b9"); c.word(count)
     c.label("print_word")
     c.emit("89d8"); c.jump("hex", "e8")
     c.emit("b03a"); c.jump("putc", "e8")
@@ -140,16 +163,16 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c.jump("newline", "e8")
     c.emit("43 49"); c.branch(0x75, "print_word")
     puts("sum_text")
-    c.emit("a1"); c.word(SUM); c.jump("hex", "e8")
+    c.emit("a1"); c.word(sum_at); c.jump("hex", "e8")
     c.jump("newline", "e8")
     puts("done_text")
-    c.emit("c606"); c.word(STATUS); c.emit("00")
+    c.emit("c606"); c.word(status_at); c.emit("00")
     c.jump("halt")
     for label, status, message in (("reset_error", 1, "reset_text"),
                                     ("download_error", 2, "download_text"),
                                     ("mailbox_error", 3, "mailbox_text"),
                                     ("tag_error", 4, "tag_text")):
-        c.label(label); c.emit("c606"); c.word(STATUS); c.data.append(status)
+        c.label(label); c.emit("c606"); c.word(status_at); c.data.append(status)
         puts(message); c.jump("halt")
     c.label("puts")
     c.emit("ac 84c0"); c.branch(0x74, "puts_end")
@@ -161,7 +184,7 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c.emit("f70666ff0800")
     c.branch(0x75, "tx_ready")
     c.emit("49"); c.branch(0x75, "tx_wait")
-    c.emit("c606"); c.word(STATUS); c.emit("05")
+    c.emit("c606"); c.word(status_at); c.emit("05")
     c.jump("halt")
     c.label("tx_ready")
     c.emit("30e4 a36aff 59 58 c3")
@@ -180,7 +203,7 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     c.emit("b00a"); c.jump("putc", "e8"); c.emit("c3")
     c.label("halt"); c.emit("fa f4"); c.jump("halt")
     for name, text in (("start_text", "CDRP1 START\r\n"),
-                       ("data_text", "CDRP1 DATA 0038\r\n"), ("sum_text", "SUM:"),
+                       ("data_text", f"CDRP1 DATA {count:04X}\r\n"), ("sum_text", "SUM:"),
                        ("done_text", "CDRP1 DONE\r\n"),
                        ("reset_text", "CDRP1 ERR RESET\r\n"),
                        ("download_text", "CDRP1 ERR DOWNLOAD\r\n"),
@@ -194,7 +217,8 @@ def build_diagnostic(reference_path: str | Path) -> Diagnostic:
     ram[:len(code)] = code
     ram[ROUTINES - ENTRY:ROUTINES - ENTRY + len(routines)] = routines
     ram[KERNEL - ENTRY:] = probe.payload
-    return Diagnostic(reference, probe, bytes(ram), c.labels)
+    return Diagnostic(reference, probe, bytes(ram), c.labels,
+                      count, result_base, sum_at, status_at)
 
 
 def parse_capture(data: bytes) -> dict:
@@ -204,10 +228,18 @@ def parse_capture(data: bytes) -> dict:
     except UnicodeDecodeError as exc:
         raise ValueError("capture is not ASCII") from exc
     lines = text.splitlines()
-    if len(lines) != 60 or lines[:2] != ["CDRP1 START", "CDRP1 DATA 0038"] or lines[-1] != "CDRP1 DONE":
+    # The frame declares its own length, so one parser serves the 56-word
+    # sample probe and the 2048-word ROM dump.
+    if len(lines) < 4 or lines[0] != "CDRP1 START" or lines[-1] != "CDRP1 DONE":
         raise ValueError("incomplete, repeated or failed diagnostic frame")
+    header = re.fullmatch(r"CDRP1 DATA ([0-9A-F]{4})", lines[1])
+    if not header:
+        raise ValueError("missing or malformed data header")
+    count = int(header[1], 16)
+    if len(lines) != count + 4:
+        raise ValueError("frame length does not match its declared word count")
     words = []
-    for index, line in enumerate(lines[2:58]):
+    for index, line in enumerate(lines[2:2 + count]):
         if not re.fullmatch(r"[0-9A-F]{4}:[0-9A-F]{4}", line):
             raise ValueError("invalid diagnostic word record")
         position, value = (int(v, 16) for v in line.split(":"))
@@ -216,9 +248,18 @@ def parse_capture(data: bytes) -> dict:
         words.append(value)
     if not re.fullmatch(r"SUM:[0-9A-F]{4}", lines[-2]) or int(lines[-2][4:], 16) != sum(words) & 0xFFFF:
         raise ValueError("diagnostic checksum mismatch")
-    result = inspect_buffer(words)
-    if result["status"] != "sample-captured":
-        raise ValueError("probe controls or completion marker failed")
+    if count == ROM_DUMP_WORDS:
+        # A ROM dump is raw program words with no header or controls, so there
+        # is nothing to inspect - only the frame's own integrity, checked
+        # above. Uniform or bus-like data is still not proof of a readable ROM.
+        result = {"status": "rom-dump-captured", "word_count": count,
+                  "words": words,
+                  "rom_sha256": sha256(struct.pack(f"<{count}H", *words)).hexdigest(),
+                  "distinct_values": len(set(words))}
+    else:
+        result = inspect_buffer(words)
+        if result["status"] != "sample-captured":
+            raise ValueError("probe controls or completion marker failed")
     result["capture_sha256"] = sha256(data).hexdigest()
     return result
 
@@ -243,6 +284,10 @@ class TransportMachine:
         if fault not in (None, "reset", "checksum", "no-dsp", "tag", "uart", "stale"):
             raise ValueError("unknown transport fault")
         self.diagnostic, self.fault, self.uc, self.r = diagnostic, fault, uc, r
+        # The DSP's budget has to cover its send loop, which is per word, plus
+        # the ROM dump's own `rpt`-driven block read. 10000 was sized for the
+        # 56-word probe and is not enough for 2048.
+        self.dsp_step_limit = 10_000 + 40 * diagnostic.count
         self.cpu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_16)
         self.cpu.mem_map(0, 0x10000)
         self.cpu.mem_map(0x80000, 0x80000, uc.UC_PROT_READ | uc.UC_PROT_EXEC)
@@ -340,7 +385,7 @@ class TransportMachine:
             if self.core.state()["pc"] == self.diagnostic.probe.halt_address:
                 self.active = False
                 return
-            if self.dsp_steps >= 10000:
+            if self.dsp_steps >= self.dsp_step_limit:
                 self.error = "DSP instruction limit"
                 self.active = False
                 return
@@ -437,7 +482,7 @@ class TransportMachine:
                 self.cpu.emu_start(ENTRY, 0x10000, count=instructions)
             except self.uc.UcError as exc:
                 self.error = self.error or str(exc)
-            status_byte = self.cpu.mem_read(STATUS, 1)[0]
+            status_byte = self.cpu.mem_read(self.diagnostic.status_at, 1)[0]
             status = STATUS_NAMES.get(status_byte, "unknown-status") if self.halted else "instruction-limit"
             if self.error:
                 status = "execution-error"
@@ -455,7 +500,15 @@ class TransportMachine:
                     "hardware_tested": False, "uploadable_sdl_image": False,
                     "rom_mapped_fixture": self.rom_mapped, "fault": self.fault,
                     "serial_text": self.serial.decode("ascii", errors="backslashreplace"),
-                    "capture": decoded, "sample_matches_fixture": decoded is not None and decoded["sample"] == expected,
+                    "capture": decoded,
+                    "sample_matches_fixture": decoded is not None
+                        and decoded.get("sample") == expected,
+                    # The ROM dump has no sample/controls; what checks it here
+                    # is the whole word list against the fixture this machine
+                    # mapped as the on-chip ROM.
+                    "rom_matches_fixture": decoded is not None
+                        and "words" in decoded
+                        and decoded["words"] == list(self.fixture[:decoded["word_count"]]),
                     "download_matches_kernel": bytes(self.captured) == self.diagnostic.probe.payload,
                     "download_checksum_matches": self.checksum_ok, "dsp_launched": self.launched,
                     "packets": self.packets, "acks": self.acks, "events": self.events,
@@ -481,16 +534,28 @@ def main() -> int:
     parser.add_argument("--capture", type=Path, help="validate a saved CDRP1 serial frame")
     parser.add_argument("--external-fixture", action="store_true")
     parser.add_argument("--fault", choices=("reset", "checksum", "no-dsp", "tag", "uart", "stale"))
+    parser.add_argument("--rom-dump", action="store_true",
+                        help="carry the full 2048-word on-chip ROM reader instead of "
+                             "the 56-word sample probe")
     args = parser.parse_args()
     try:
         if args.capture:
-            print(json.dumps(parse_capture(args.capture.read_bytes()), indent=2))
+            decoded = parse_capture(args.capture.read_bytes())
+            words = decoded.pop("words", None)
+            if words is not None:
+                # A real capture of this kind is the object of the exercise:
+                # write it out beside the capture rather than printing 2048
+                # words of JSON.
+                image = args.capture.with_suffix(".rom.bin")
+                image.write_bytes(struct.pack(f"<{len(words)}H", *words))
+                decoded["rom_image"] = str(image)
+            print(json.dumps(decoded, indent=2))
             return 0
         if not args.reference or not args.output:
             parser.error("--reference and --output are required to build and verify")
         if args.output.exists():
             parser.error("output directory already exists")
-        diagnostic = build_diagnostic(args.reference)
+        diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump)
         result = TransportMachine(diagnostic, rom_mapped=not args.external_fixture, fault=args.fault).run()
         args.output.mkdir(parents=True)
         (args.output / "diagnostic-ram.bin").write_bytes(diagnostic.ram)
@@ -498,7 +563,10 @@ def main() -> int:
         (args.output / "serial.txt").write_bytes(result["serial_text"].encode("ascii"))
         result["load_map"] = {"entry": "0000:2000", "ram_image_base": ENTRY,
                               "ram_image_bytes": len(diagnostic.ram), "copied_routines": ROUTINES,
-                              "kernel_source": KERNEL, "result_buffer": RESULT, "status_byte": STATUS,
+                              "kernel_source": KERNEL,
+                              "result_buffer": diagnostic.result_base,
+                              "status_byte": diagnostic.status_at,
+                              "words_expected": diagnostic.count,
                               "labels": diagnostic.labels,
                               "reference_sha256": diagnostic.reference.digest,
                               "ram_image_sha256": sha256(diagnostic.ram).hexdigest()}
