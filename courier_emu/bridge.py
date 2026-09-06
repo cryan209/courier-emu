@@ -103,6 +103,28 @@ DETECTOR_TAG = 0x7C
 # chosen so neither boundary is being relied on.
 DETECTOR_PRESENT_LEVEL = 0x30
 
+# The DSP's own half of the mailbox, read out of the resident bank rather than
+# inferred from port traffic (docs/who-produces-the-events.md). Its dispatcher
+# at program 0x8387 polls bit 15 of the status latch, takes the tag from cell
+# 0x5e and the word from 0x5f, acknowledges with bit 0, rejects tags above
+# 0x7f, and vectors through a 128-entry table at program 0x83e9. `lamm`/`samm`
+# mask the address to 0x7f, so these are plain data cells 0x0057/0x005e/0x005f.
+HOST_STATUS_CELL = 0x57
+HOST_TAG_CELL = 0x5E
+HOST_WORD_CELL = 0x5F
+HOST_MESSAGE_PENDING = 0x8000
+
+# The return leg. The DSP's message sender at 0x83d6 puts the queued word on
+# its own port 0x5e and the second half on 0x5f, then completes with
+# `lacl #02 ; samm @57`; the stream sender at 0x849e writes port 0x60 and
+# raises `#04`. The CPU sees those two as 0x1c bits 1 and 2, and reads the
+# tag from 0x58/0x5a, the word from 0x5c/0x5e and the stream from 0x60/0x62.
+DSP_SEND_COMPLETE = 0x02
+DSP_STREAM_READY = 0x04
+DSP_TAG_PORT = 0x5E
+DSP_WORD_PORT = 0x5F
+DSP_STREAM_PORT = 0x60
+
 # How the supervisor's dialer asks for a tone. `0x6353c` folds a dial-string
 # character down to its keypad index and sends it as this tag; the encoder
 # emits `0x1600` first and again when the tone ends, so a digit is exactly a
@@ -134,6 +156,9 @@ class BridgeStatus:
     runtime_message_first_pc: dict[str, str]
     runtime_words_queued: int
     detector_replies: int
+    host_messages_delivered: int
+    dsp_messages_taken: int
+    dsp_stream_acks: int
     error: str | None
     dsp: dict[str, int | bool]
     dsp_host_ports: dict[str, dict[str, int]]
@@ -225,6 +250,9 @@ class CourierDspBridge:
         self._asic_dsp_register_commits = 0
         self._v8_armed = False
         self.detector_replies = 0
+        self.host_messages_delivered = 0
+        self.dsp_messages_taken = 0
+        self.dsp_stream_acks = 0
         self._runtime_mode = False
         self._runtime_ready = False
         self._runtime_ready_delay = 0
@@ -815,6 +843,41 @@ class CourierDspBridge:
             self._dial_tone_digit = DIAL_TONE_DIGITS[index]
             self._dial_digits_commanded += self._dial_tone_digit
 
+    def _deliver_host_message(self, header: int, data: int) -> bool:
+        """Hand a mailbox message to the DSP the way the ASIC does.
+
+        Writing the two cells and raising bit 15 is the whole of the board's
+        write path: the dispatcher polls for that bit, and its own handler
+        clears it by acknowledging with bit 0. Nothing here chooses a handler -
+        the tag does, through the DSP's table.
+        """
+        core = self.core
+        if not self.active or not hasattr(core, "set_data") or not hasattr(core, "data"):
+            return False
+        core.set_data(HOST_TAG_CELL, header & 0xFFFF)
+        core.set_data(HOST_WORD_CELL, data & 0xFFFF)
+        status = core.data(HOST_STATUS_CELL) | HOST_MESSAGE_PENDING
+        core.set_data(HOST_STATUS_CELL, status & 0xFFFF)
+        self.host_messages_delivered += 1
+        return True
+
+    def _dsp_status(self) -> int:
+        core = self.core
+        if not self.active or not hasattr(core, "data"):
+            return 0
+        return core.data(HOST_STATUS_CELL) & 0xFFFF
+
+    def _clear_dsp_status(self, bits: int) -> None:
+        """Acknowledge, the way the board does - the CPU's ack resumes the DSP."""
+        core = self.core
+        if not self.active or not hasattr(core, "set_data"):
+            return
+        core.set_data(HOST_STATUS_CELL, core.data(HOST_STATUS_CELL) & ~bits & 0xFFFF)
+
+    def _dsp_port_half(self, port: int, high: bool) -> int:
+        word = self.core.io(port) & 0xFFFF
+        return (word >> 8) & 0xFF if high else word & 0xFF
+
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
 
@@ -890,6 +953,7 @@ class CourierDspBridge:
                     self._observe_asic_command(*words)
                     if pc is not None:
                         self.runtime_message_first_pc.setdefault(message, f"{pc:05x}")
+                    self._deliver_host_message(*words)
                     self._answer_runtime_request(*words)
             return
         if port == 0x1C:
@@ -909,6 +973,14 @@ class CourierDspBridge:
                 if not (value & 1):
                     self._runtime_ready = False
                     self._runtime_ready_delay = self.batch
+                if value & DSP_STREAM_READY:
+                    # Acknowledging bit 2 is what makes the DSP emit the next
+                    # word, exactly as bit 0 commits a message to it.
+                    self._clear_dsp_status(DSP_STREAM_READY)
+                    self.dsp_stream_acks += 1
+                if value & 2 and self._dsp_status() & DSP_SEND_COMPLETE:
+                    self._clear_dsp_status(DSP_SEND_COMPLETE)
+                    self.dsp_messages_taken += 1
                 if (
                     not (value & 2)
                     and self._runtime_inbound
@@ -1052,12 +1124,27 @@ class CourierDspBridge:
             # the C52's next quantum; the two agree on ordering, not polarity.
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
-            return int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
+            status = int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
+            # The DSP's own two completions, reported where the CPU looks for
+            # them: bit 1 for a message the sender at 0x83d6 has put on its
+            # ports, bit 2 for a word from the stream sender at 0x849e.
+            dsp = self._dsp_status()
+            if dsp & DSP_SEND_COMPLETE:
+                status |= 2
+            if dsp & DSP_STREAM_READY:
+                status |= 4
+            return status
         if port == self.transfer.command_port:
             # The downloader polls this port for the boot ROM's ready and
             # acceptance bits between groups. They are synthesized, as the
             # boot ROM that drives them is not available.
             return (1 << (size * 8)) - 1
+        if port in (0x58, 0x5A) and self._dsp_status() & DSP_SEND_COMPLETE:
+            return self._dsp_port_half(DSP_TAG_PORT, port == 0x5A)
+        if port in (0x5C, 0x5E) and self._dsp_status() & DSP_SEND_COMPLETE:
+            return self._dsp_port_half(DSP_WORD_PORT, port == 0x5E)
+        if port in (0x60, 0x62) and self._dsp_status() & DSP_STREAM_READY:
+            return self._dsp_port_half(DSP_STREAM_PORT, port == 0x62)
         if port in (0x5C, 0x5E) and self._runtime_inbound:
             # A queued board-to-supervisor message owns the data lanes while
             # it stands. The receive handler at 0x6ad6e reads the tag from
@@ -1453,6 +1540,9 @@ class CourierDspBridge:
             runtime_message_first_pc=dict(self.runtime_message_first_pc),
             runtime_words_queued=self.runtime_words_queued,
             detector_replies=self.detector_replies,
+            host_messages_delivered=self.host_messages_delivered,
+            dsp_messages_taken=self.dsp_messages_taken,
+            dsp_stream_acks=self.dsp_stream_acks,
             error=self.error,
             dsp=self._core_state(),
             dsp_host_ports=(
