@@ -113,6 +113,15 @@ HOST_STATUS_CELL = 0x57
 HOST_TAG_CELL = 0x5E
 HOST_WORD_CELL = 0x5F
 HOST_MESSAGE_PENDING = 0x8000
+# The two builds reach these three registers by different routes. 3.1.2 loads
+# a short immediate - `b157` is `lar ar1, #57` in one word - and reads through
+# `lamm`, which masks the address to 0x7f. 3.0.13 loads a long immediate -
+# `bf09 ff57` - and reads the full address through its own helper. Since
+# 0xff57 & 0x7f is 0x57 these are one register on the part, seen through the
+# MMR window and through the 0xff00 mirror. A flat model has two locations, so
+# every access has to land on both or the halves cannot see each other - 3.0.13
+# even acknowledges with `samm @57`, masked to 0x57, having read 0xff57.
+HOST_MIRROR = 0xFF00
 
 # The return leg. The DSP's message sender at 0x83d6 puts the queued word on
 # its own port 0x5e and the second half on 0x5f, then completes with
@@ -880,26 +889,41 @@ class CourierDspBridge:
         core = self.core
         if not self.active or not hasattr(core, "set_data") or not hasattr(core, "data"):
             return False
-        core.set_data(HOST_TAG_CELL, header & 0xFFFF)
-        core.set_data(HOST_WORD_CELL, data & 0xFFFF)
-        status = core.data(HOST_STATUS_CELL) | HOST_MESSAGE_PENDING
-        core.set_data(HOST_STATUS_CELL, status & 0xFFFF)
+        self._write_host_cell(HOST_TAG_CELL, header & 0xFFFF)
+        self._write_host_cell(HOST_WORD_CELL, data & 0xFFFF)
+        self._write_host_cell(
+            HOST_STATUS_CELL, self._read_host_cell(HOST_STATUS_CELL)
+            | HOST_MESSAGE_PENDING
+        )
         self.host_messages_delivered += 1
         return True
+
+    def _write_host_cell(self, cell: int, value: int) -> None:
+        """Write both views of one host-window register."""
+        core = self.core
+        core.set_data(cell, value & 0xFFFF)
+        core.set_data(HOST_MIRROR | cell, value & 0xFFFF)
+
+    def _read_host_cell(self, cell: int) -> int:
+        """Read whichever view the running build has been writing."""
+        core = self.core
+        low = core.data(cell) & 0xFFFF
+        high = core.data(HOST_MIRROR | cell) & 0xFFFF
+        return low | high
 
     def _dsp_status(self) -> int:
         core = self.core
         if not self.active or not hasattr(core, "data"):
             return 0
-        return core.data(HOST_STATUS_CELL) & 0xFFFF
+        return self._read_host_cell(HOST_STATUS_CELL)
 
     def _set_dsp_status(self, set_bits: int = 0, clear_bits: int = 0) -> None:
         """Acknowledge, the way the board does - the CPU's ack resumes the DSP."""
         core = self.core
         if not self.active or not hasattr(core, "set_data"):
             return
-        status = core.data(HOST_STATUS_CELL)
-        core.set_data(HOST_STATUS_CELL, (status & ~clear_bits | set_bits) & 0xFFFF)
+        status = self._read_host_cell(HOST_STATUS_CELL)
+        self._write_host_cell(HOST_STATUS_CELL, status & ~clear_bits | set_bits)
 
     def _clear_dsp_status(self, bits: int) -> None:
         self._set_dsp_status(clear_bits=bits)
