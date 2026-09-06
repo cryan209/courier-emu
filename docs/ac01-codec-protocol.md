@@ -318,21 +318,86 @@ for the whole run.
 Measured on the 302 boot: 1911 frame syncs, 1911 samples consumed - one word
 each, exactly - with `DRR` holding live audio instead of a stale zero.
 
-**The boot table is not the sample stream.** The ROM loader polls `DRR` for its
-boot table over the same port, before the codec is programmed, so a frame sync
-consuming those words breaks the download outright - which is what happened the
-first time this was wired up. `queue_codec_boot` keeps them in their own queue,
-drained by the loader's polls and never by a frame.
+### The boot table shares the port, and the Hi-Z window is how
+
+The AC01 is on the DSP's **primary serial port**, not a port of its own. TI's
+application guide (`slaa006.pdf`) wires it `DOUT -> DR`, `DIN -> DX`,
+`SCLK -> CLKR/CLKX`, `FS -> FSR/FSX` and `RESET <- XF`, with the second (TDM)
+port's pins pulled to COM through 100 kOhm and unused. The firmware agrees on
+both counts: it drives `DRR`/`DXR`/`SPC` at `0x20`-`0x22`, and it configures
+`TSPC` once at `0x808a` and never touches the TDM port again.
+
+The ROM boot loader is on that same port. It is receive-only - it never writes
+`DXR` and never polls `XRDY`:
+
+```
+06e8  1020  lacc @20      ; DRR
+06de  4522  bit  5, @22   ; SPC bit 10 = RRDY
+06f3  a720  tblw @20      ; ...into program memory
+```
+
+So the boot table and the codec's samples arrive on one port, and something has
+to keep them apart on the real board. The datasheet says what:
+
+> During the eight register programming cycles, DOUT is in the high-impedance
+> state. DOUT is released on the rising edge of the eighth primary internal
+> frame-sync interval.
+
+And the firmware issues **exactly eight primary frames** before normal
+operation: the two priming writes at `0x8095`/`0x809a` carrying control bits
+`01`, plus the six register writes. That is measurable - `phase_shifts` is 2 and
+`secondary_frames` is 6 - and it means the two apparently wasted priming words
+are what bring the count to eight, so `DOUT` goes live exactly when the codec
+is fully programmed. Until then the codec's output is tri-stated and the ASIC
+can drive `DR` with the boot table unopposed.
+
+`queue_codec_boot` keeps those words in their own queue, drained by the
+loader's polls and never by a frame sync. Wiring the frame clock up without
+that split broke the download outright, because the frames ate the boot table.
+
+The guide also runs the codec's `RESET` from the DSP's `XF` pin, and the serial
+ISR does manipulate `XF` (`clrc xf` at `0x818e` under an `xc 2, eq`, `setc xf`
+at `0x81a3`). That is a second plausible arbitration mechanism, but what those
+`XF` edges are for has not been established here.
+
+### XRDY follows the frame clock
+
+`XRDY` says `DXR` can accept another word, which becomes true when a frame sync
+moves the last one into the transmit shift register. It was reported set
+whenever `XRST` was set, so the reset handshake at `0x8097` -
+
+```
+8095  lacl #01 ; samm @21   ; DXR = 0001
+8097  bit  4, *             ; SPC bit 11 = XRDY
+8098  bcnd 8097, ntc        ; spin until the shifter has taken it
+809a  samm @21              ; and again
+```
+
+\- fell straight through instead of waiting a frame. Now:
+
+| point | XRDY |
+|---|---|
+| out of reset, `DXR` empty | set |
+| after writing `DXR` | clear |
+| mid-frame | clear |
+| after a frame sync | set |
+
+with a `0 -> 1` edge on `XRST` also releasing it.
+
+**One scoping decision:** only the AC01 path has a frame clock to set `XRDY`
+again. The legacy TDM path models no framing on this port, so there a spin
+would never end - four tests on that path hang without this - and it keeps the
+optimistic answer it always had. That is a limit of this model, not something
+the hardware does.
 
 ### What is still not modelled
 
-`SPC` still reports `XRDY` set whenever `XRST` is set rather than following the
-frame clock, so the reset spin at `0x8097` and the `idle` at `0x814c` fall
-through rather than waiting. The gain, high-pass and loopback settings are
-decoded and reported but do not yet alter the samples. Phase-shift requests are
-counted and otherwise ignored. The legacy TDM path (`m_rom_codec` false) still
-decimates at a fixed 9600 Hz; it is not the AC01 path and this change
-deliberately left it alone.
+The gain, high-pass and loopback settings are decoded and reported but do not
+yet alter the samples. Phase-shift requests are counted and otherwise ignored,
+as is `DOUT`'s high-impedance window - the model lets the boot queue stand in
+for it rather than tri-stating anything. The legacy TDM path (`m_rom_codec`
+false) still decimates at a fixed 9600 Hz and keeps the optimistic `XRDY`; it
+is not the AC01 path and this change deliberately left it alone.
 
 ## What this does not establish
 

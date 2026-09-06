@@ -271,6 +271,7 @@ void C5xCore::codec_frame(bool secondary)
         m_serial.drr = m_codec.readback_armed ? m_codec.readback : 0;
         m_codec.readback_armed = false;
         m_codec.rx_ready = true;
+        m_codec.tx_ready = true;
         return;
     }
     // The ADC converts whether or not the line is doing anything. An empty
@@ -284,6 +285,7 @@ void C5xCore::codec_frame(bool secondary)
             uint16_t(std::abs(int(int16_t(sample)))));
     }
     ++m_codec.frames_clocked;
+    m_codec.tx_ready = true;   // DXR has gone to the shift register
     m_serial.drr = sample;
     m_codec.rx_ready = true;
     // Feed the same word to the V.8 tone detector the harness runs alongside
@@ -695,7 +697,19 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         // has taken the word, so readiness follows XRST rather than a frame
         // this core does not run.
         uint16_t value = m_serial.spc & uint16_t(~(SPC_XRDY | SPC_RRDY));
-        if (m_serial.spc & SPC_XRST) value |= SPC_XRDY;
+        // XRDY says DXR can accept another word, which becomes true when a
+        // frame sync moves the last one into the transmit shift register. It
+        // therefore follows the codec's frame clock rather than merely the
+        // transmitter being out of reset, which is what the reset handshake at
+        // program 0x8097 spins on.
+        // Only the AC01 path has a frame clock to set it. The legacy TDM path
+        // models no framing on this port, so nothing there would ever set XRDY
+        // again after a write and a firmware spin would never end; it keeps the
+        // optimistic answer it always had. That is a scoping decision about
+        // this model, not something the hardware does.
+        if (m_serial.spc & SPC_XRST) {
+            if (!m_rom_codec || m_codec.tx_ready) value |= SPC_XRDY;
+        }
         // On the AC01 path a word is receivable once a frame sync has clocked
         // one in, not merely because the harness has audio queued.
         const bool ready = m_rom_codec
@@ -758,6 +772,7 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x21:
         m_serial.dxr = value; ++m_serial.dxr_writes;
         m_serial.last_dxr_pc = uint16_t(m_pc - 1);
+        m_codec.tx_ready = false;
         // Whether this word is a sample or a control register is the codec's
         // business, not the caller's: the previous frame's control bits decided
         // it. This used to be two hardcoded ISR addresses, which recognised the
@@ -765,6 +780,8 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         codec_transmit(value);
         return;
     case 0x22:
+        // A 0 -> 1 edge on XRST releases the transmitter with DXR empty.
+        if (!(m_serial.spc & SPC_XRST) && (value & SPC_XRST)) m_codec.tx_ready = true;
         m_serial.spc = value; ++m_serial.spc_writes;
         m_serial.last_spc_pc = uint16_t(m_pc - 1); return;
     case 0x24: m_timer.tim = value; return; case 0x25: m_timer.prd = value; return;

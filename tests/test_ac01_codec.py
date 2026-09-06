@@ -208,3 +208,56 @@ def test_unprogrammed_codec_passes_line_audio_through():
     converter = LineToCodec(9600)
     samples = list(range(100))
     assert converter.convert(samples, 0.0) == samples
+
+
+def test_xrdy_follows_the_frame_clock():
+    """XRDY says DXR can take another word, which a frame sync makes true.
+
+    The firmware's reset handshake at program 0x8097 spins on it, so reporting
+    it set whenever the transmitter is out of reset let that spin fall straight
+    through instead of waiting a frame.
+    """
+    from courier_emu.dsp import NativeC5x
+
+    class Image:
+        def dsp_program_segments(self):
+            return [(0, bytes.fromhex('2208') * 8192)]  # LAMM @22 - read SPC
+
+    core = NativeC5x(Image())
+    try:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.host_write(0x22, 0x40C8)  # XRST and RRST out of reset
+
+        def xrdy():
+            core.step(1)
+            return bool(core.state()['acc'] & (1 << 11))
+
+        assert xrdy()            # DXR is empty, so the first write need not wait
+        core.host_write(0x21, 0x0001)
+        assert not xrdy()        # DXR holds a word the shifter has not taken
+        core.step(200)
+        assert not xrdy()        # still inside the frame
+        core.step(6000)          # past a frame sync at 3472 cycles
+        assert xrdy()
+        assert core.codec_state()['frames_clocked'] == 1
+    finally:
+        core.close()
+
+
+def test_reset_handshake_waits_for_a_frame():
+    """The two priming writes at 0x8095/0x809a are a frame apart, not adjacent.
+
+    They are also what brings the count of primary frames to the eight the
+    datasheet requires before DOUT leaves the high-impedance state: two priming
+    words plus the six register writes.
+    """
+    bridge = _boot('IDSDL302.ROM')
+    try:
+        bridge.core.step(1_500_000)
+        codec = bridge.core.codec_state()
+        assert codec['phase_shifts'] == 2
+        assert codec['secondary_frames'] == 6
+        assert codec['phase_shifts'] + codec['secondary_frames'] == 8
+    finally:
+        bridge.core.close()

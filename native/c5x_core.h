@@ -337,6 +337,8 @@ private:
         bool rate_programmed = false, secondary_pending = false;
         bool secondary_now = false, readback_armed = false;
         bool secondary_due = false, rx_ready = false;
+        // DXR is empty out of reset, so the first write need not wait.
+        bool tx_ready = true;
     } m_codec;
     void codec_frame(bool secondary);
     void codec_transmit(uint16_t word);
