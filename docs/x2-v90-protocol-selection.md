@@ -190,6 +190,102 @@ overlay 6 at `a5ab`, and in overlay 8 at `e201` and `e29e`.
 `0004`, `0008`, `0010`, `0020`, `0040`, `0080`, `0100`, and `0200`; tag `70`
 initializes `0001`. It is therefore not the host's compact diagnostic enum.
 The adjacent host strings (remote-not-x2, remote-not-server, incompatible
-versions, and so on) must be selected by a later host-side bitmap decoder.
-That decoder—not the tag-70 `fff1` setup path—is the remaining target for
-recovering the exact remote-server/version tests.
+versions, and so on) are selected by a later host-side bitmap decoder, which
+the next section recovers.
+
+## How the x2 diagnostic enum is built
+
+It is not an enum the DSP sends. The host builds it from the condition
+bitmap, one string per bit, and the ten bits are exactly the ten `fff7`
+masks.
+
+### The host's copy of the bitmap
+
+The mailbox receive handlers are a family of one-word readers, each `in
+al,#5e / mov ah,al / in al,#5c` followed by a store. In the capture ROM the
+x2 handler at `13c42` stores the word in `0a23`; its siblings fill `01fe`,
+`0200`, `0202`, `0204`, `0206`, and `0a1a`. The same handler shape appears in
+firmware 2.3.31 at file `2c7e7`, storing into `1ca7`. So the word the
+formatter decodes is the DSP's tag-`75` status word, transferred verbatim.
+
+### The string table and its consumer
+
+Flash `1c21d` holds nine near pointers, resolved against segment base
+`0x16fc0`:
+
+| index | pointer | file | string |
+|---|---|---|---|
+| 0 | `526f` | `1c22f` | Unspecified impairment |
+| 1 | `5286` | `1c246` | x2 disabled on local modem |
+| 2 | `52a1` | `1c261` | 3200 baud disabled on local modem |
+| 3 | `52c3` | `1c283` | Remote modem is not x2 |
+| 4 | `52da` | `1c29a` | Multiple CODECs in channel |
+| 5 | `52f5` | `1c2b5` | Remote modem is not a Server |
+| 6 | `5312` | `1c2d2` | Incompatible versions |
+| 7 | `5328` | `1c2e8` | Channel will not support 3200 baud |
+| 8 | `534b` | `1c30b` | Channel is x2-capable but feature not installed |
+
+The consumer is a plain indexed fetch and print:
+
+```text
+522f  a1 1d 0a         mov  ax, [0a1d]
+5232  90 90 90         (three bytes replaced by NOPs)
+5235  25 ff 02         and  ax, 02ff
+5238  9a a1 9d 00 80   lcall 8000:9da1     ; four-digit hex printer
+523d  eb 15            jmp  5254           ; ...and skip the string
+523f  90 90 90         (three bytes replaced by NOPs)
+5242  75 03            jne  5247
+5244  b8 08 00         mov  ax, 8
+5247  d1 e0            shl  ax, 1
+5249  05 5d 52         add  ax, 525d       ; the table above
+524c  8b f0            mov  si, ax
+524e  2e 8b 34         mov  si, cs:[si]
+5251  e8 4d e4         call 36a1            ; print string at si
+```
+
+Two things follow from the surviving bytes. The mask `02ff` keeps bits
+`0..7` and bit `9` - **nine** bits, for nine strings - and drops bit `8`
+alone. And the `jne`/`mov ax,8` pair is the tail of a first-set-bit scan over
+the low byte, with index `8` (bit `9`) as the answer when the low byte
+contributes nothing. So the index is a bit position, and the table is in bit
+order.
+
+This build does not run that path: `9da1` is the four-hex-digit printer, so
+the patched code prints the raw masked word and jumps over the table lookup.
+The ten bytes at `5238..5241` and the three at `5232` that computed the index
+are gone. A three-byte `xor ax,#ffff` before the mask would make the scan
+find the first *un*met condition, which is what a table of failures needs,
+but those bytes are NOPs here and that step is inference, not recovery.
+
+### Firmware 2.3.31 confirms the bit numbering
+
+The later firmware abandoned the compact enum for a printed list, and that
+list is a straight run of `test word [1ca7], mask` / `jz` / print, with the
+masks ascending one bit at a time:
+
+| bit | mask | 2.3.31 string |
+|---|---|---|
+| 1 | `0002` | V.90 enabled on local modem |
+| 2 | `0004` | V.8 negotiation completed |
+| 3 | `0008` | V.90 Server/client pair established |
+| 4 | `0010` | Remote modem supports x2 |
+| 5 | `0020` | Channel supports x2/V.90 |
+| 6 | `0040` | High frequency rolloff is normal |
+| 7 | `0080` | High frequency rolloff is marginal |
+| 8 | `0100` | Retrained before x2/V.90 connection |
+| 9 | `0200` | Remote modem is an x2 server |
+
+That is the same word, the same ten bits, and one string per bit - which is
+what establishes that the capture ROM's nine-entry table is indexed by bit
+position rather than by an opaque code. The two vocabularies are
+complementary readings of the same conditions (bit set = precondition met;
+the capture ROM names the precondition that is missing), and the assignments
+are not identical across the two firmware generations - 2.3.31 renumbered
+and rewrote them for V.90. Only the mechanism, not a single merged bit
+dictionary, is established.
+
+What is now closed: the host does not receive a diagnostic code. It receives
+`fff7`, and both firmware generations turn it into text purely by bit
+position. What remains open is the DSP-side writer for each individual bit;
+`fff7`'s ten OR sites are known but not yet each tied to the test that sets
+them.
