@@ -170,6 +170,50 @@ chosen word on its next run. That is a hardware-validated way to make the DSP
 emit an event - unlike forcing `AL` at the CPU's `in al, 0x58`, which
 fabricates a word no device produced.
 
+## Probing the DSP from the CPU: the full round trip
+
+With both halves mapped, one mailbox probe is:
+
+| step | side | action |
+|---|---|---|
+| 1 | CPU | tag low to port `0x58`, high to `0x5a` |
+| 2 | CPU | word low to `0x5c`, high to `0x5e` |
+| 3 | CPU | commit - write bit 0 back to port `0x1c` |
+| 4 | ASIC | lands tag in DSP cell `@5e`, word in `@5f`, sets `@57` bit 15 |
+| 5 | DSP | `0x8387` sees bit 15, reads `@5e`/`@5f`, acks with `lacl #01 ; samm @57` |
+| 6 | DSP | rejects tag > `0x7f`, else `tblr` from `0x83e9 + tag` and `bacc` |
+| 7 | DSP | the handler appends its reply to the ring at `ar0 = #ff60` (`@78`/`@79`) |
+| 8 | DSP | sender `0x83d6` writes ports `0x5e`/`0x5f`; `lacl #02 ; samm @57` |
+| 9 | ASIC | remaps those to CPU `0x58`/`0x5a`, raises `0x1c` bit 1 |
+| 10 | CPU | the ISR reads the tag and calls `[0x298]` |
+
+The stream variant differs only after step 6: tag `0x06` vectors to `0x8470`,
+which runs the coroutine at `0x8480`, and each word leaves through
+`out *, 0060` with `lacl #04 ; samm @57` - the CPU's `0x1c` bit 2, collected by
+the chain vector (`[0x02d3]` under 7.3.14, `[0x01cd]` under 7.4.16).
+
+`dsp_mailbox.py` drives steps 1-3 directly over the `ATGLK2` monitor on a
+physical modem, which is why its notes already name `0x8470`, `0x42` and the
+ring at data `0bd0`.
+
+### In the emulator the probe stops at step 4
+
+`CourierDspBridge.write` intercepts all four mailbox ports, assembles the
+header and data, records the message, and calls `_answer_runtime_request`.
+**Nothing writes `@5e`, `@5f` or `@57` bit 15**, so the DSP's dispatcher at
+`0x8387` never runs and no handler ever executes. The C5x core is loaded and
+stepping, but deaf to the supervisor.
+
+`_answer_runtime_request` stands in for it, and only for two tags: `0x7c`, the
+detector poll, and `0x54`. Every other tag - including `0x45`, the one `ATY12`
+sends - is recorded and dropped. That is the gap behind the empty displays, and
+it is upstream of everything else in this note: no handler runs, so nothing
+reaches the ring, so the sender has nothing to drain.
+
+The one `host_write` the bridge does perform writes DSP data cells directly and
+is labelled in its own comment as "a convenience for seeding the modelled C52's
+call registers, not a model of the board's write path".
+
 ## What this does not establish
 
 Two `out` sites is what a scan for `out` against those port numbers finds; an
