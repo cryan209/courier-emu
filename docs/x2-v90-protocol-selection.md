@@ -591,21 +591,20 @@ never announces this, so the modem has to detect it from the line itself.
 That is what `da15` is for. The array it indexes is a spectral vector, and
 the firmware's own use of it says so:
 
-* `93c7` builds `da00..da17` - **24 entries** - by summing a double-word
-  accumulator pair per entry out of `d982`, so `d982` is 24 accumulators and
-  `da00` is their totals.
-* `9467` rescales all 24 (`mpy #0c0b`, `spac`, `bsar 5`) into `ffc0`.
-* `9475` sums `da01..da16` and divides by 23 for a mean; `9483` takes the
+* `93c7` builds the array by summing a double-word accumulator pair per entry
+  out of `d982`, so `d982` is a bank of accumulators and `da00` their totals.
+* `9467` rescales every entry (`mpy #0c0b`, `spac`, `bsar 5`) into `ffc0`.
+* `9475` sums a span and divides by **23** for a mean; `9483` takes the
   maximum across the same span with `crgt`; `948c` and `9495` then store the
-  peak-relative deviation of the **bottom** entry in `@5e` and of the **top**
-  entry in `@5f`.
+  peak-relative deviation of the bottom entry in `@5e` and of a top entry in
+  `@5f`.
 
 A mean, a peak, and both band-edge deviations is band-shape extraction over a
 per-tone magnitude estimate. Against that, `[da15] - [da18] > 1fe4` is a
-comparison between one high entry and its neighbourhood - which is how you
-detect a tandem conversion without any cooperation from the far end, since an
-extra codec reshapes and band-limits the channel in a way a single-conversion
-path does not.
+slope across the top of the band - which is how you detect a tandem
+conversion without any cooperation from the far end, since an extra codec
+band-limits and reshapes the channel in a way a single-conversion path does
+not.
 
 This also dissolves the bits 6/7/8 disagreement recorded above, without
 either side being wrong. The stock build names the same measurement by its
@@ -616,6 +615,42 @@ earlier note that the two builds "disagree about which word and which bit it
 drives" stands as a fact about the encoding, but is not evidence that the
 measurement is two different things.
 
-`da18` itself is still unidentified: the array proper is `da00..da17`, so the
-subtrahend is the word immediately past it, and nothing in these images
-writes it under a name.
+### `da18` is the top bin of that vector
+
+An earlier reading of this called `da18` "one past the array". That was an
+off-by-one in the loop counts, and the firmware's own divisor catches it.
+
+`BANZ` tests the auxiliary register *before* the `*-` decrement, so
+`lar arN,#count` followed by a `banz` body runs **count + 1** times. Applying
+that:
+
+| site | init | span | entries |
+|---|---|---|---:|
+| `93c7` fill | `lar ar5,#18` | `da00..da18` | 25 |
+| `9467` rescale | `lar ar3,#18` | `da00..da18` | 25 |
+| `9475` mean | `lar ar2,#16` from `da01` | `da01..da17` | 23 |
+| `9483` peak | `lar ar2,#16` from `da01` | `da01..da17` | 23 |
+
+The mean loop then divides by `#0017` - **23** - which is exactly the number
+of entries it just summed. That divisor is the check: the counts are
+count + 1, the vector is `da00..da18`, 25 entries, and the statistics
+deliberately skip the extreme bin at each end.
+
+So `da18` holds the **topmost bin of the probe magnitude vector**, and `da00`
+the bottommost; those two are the guard bins the mean and peak exclude.
+`[da15] - [da18]` is therefore bin 21 against bin 24 - the drop across the
+last three bins, which is high-frequency rolloff read literally.
+
+Two other sites agree. `940a` clears `da14..da18` with
+`lar ar1,#da14 / rptz #0004 / sach *+` - exactly five words, ending on
+`da18` - when the comparison at `9401..9408` fails, which is a
+"the top of the band is unusable, zero those bins" action and only makes
+sense if `da18` is the last bin. And `94c8` is a three-tap interpolator
+(`lacl *+ / mar *+ / adds *- / add #01 / sfr / sacl *+`) that fills an entry
+from its two neighbours, called four times from `945b` onwards - the probe
+measures alternate bins and the odd ones are filled in.
+
+This makes 4.03's naming the literal one. The quantity really is a
+high-frequency rolloff slope; the stock build simply reports the diagnosis it
+draws from that slope - a second codec in the path - rather than the
+measurement.
