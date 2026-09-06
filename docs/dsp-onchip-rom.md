@@ -104,3 +104,57 @@ the 56-word sample probe returned `0x0000`-`0x001f` separately.
 
 `MP/MC` itself was not read off the pin. What shows on-chip ROM is mapped is
 that program `0x0000` holds this table rather than the kernel's own words.
+
+## Running it in the emulator
+
+Loading the recovered image with `load_rom`, setting `MP/MC = 0` and starting
+the core at `0x0000` boots it exactly as the disassembly reads:
+
+```
+0000 -> 0670 -> PMST and wait-state setup -> read data 0xffff -> serial boot
+```
+
+**The boot mode is the word at data `0xffff`.** The loader takes its low two
+bits first (`and #0003`, and only `0` reaches the serial paths), then `bit 12`
+and `bit 13` of it - bits 3 and 2 - to choose between three variants. With the
+cell reading `0` the loader picks the **8-bit** serial mode at `0x06f7`, which
+assembles words from byte pairs; setting **bit 2** picks the 16-bit mode at
+`0x06e2`. That single bit is what the ASIC has to present.
+
+The boot table it then reads over the serial port is
+
+| word | meaning |
+|---|---|
+| 1 | destination address, kept in `@66` and loaded into `AR1` |
+| 2 | length; added to the destination and stored in `ARCR` |
+| 3.. | the block, written with `TBLW` and `MAR *+` |
+
+with one detail that matters when feeding it: **the terminating `CMPR EQ` runs
+at the top of the loop, before the write**, so after the last block word one
+further word has to clock through for the comparison to fire. Without it the
+loader sits in its wait at `0x06dc` having written the whole block correctly -
+which is exactly what the first attempt here did, and it looks like a failure
+until the iteration count is examined.
+
+With destination `0x8000`, the 27710-word 302 resident and one trailing word,
+the loader completes and branches to `0x8000`. The firmware then runs its
+prologue **once** and parks in the `idle` at `0x814d` - the same place the
+harness's hand-forced `set_pc(entry_word)` reaches, now arrived at through the
+part's own boot path.
+
+Two consequences worth stating:
+
+* **The ASIC feeds the DSP serially.** The supervisor writes a parallel window
+  at ports `0x40`-`0x5e`; the loader reads `DRR` and polls `SPC`. So the ASIC
+  is converting those parallel writes into serial words on the DSP's port,
+  which is a role for it this repository had not identified.
+* **The vectors now have memory under them.** Interrupts dispatch through the
+  ROM's `lamm @6x / bacc` table rather than into unloaded space, so the timer
+  runaway at `0x0088` that
+  [dsp-map-302.md](dsp-map-302.md) records is a consequence of having no ROM,
+  not a fault in the firmware.
+
+**Not yet wired into the bridge.** This was run standalone; `bridge.py` still
+forces the PC and runs `MP/MC = 1`. Note also that `RRDY` in this core is fed
+from the codec receive queue, so the experiment used `queue_codec_rx` - that is
+the harness's plumbing, not a claim about which pin the ASIC drives.
