@@ -861,13 +861,51 @@ image gives:
 
 | field | code | meaning as used |
 |---|---|---|
-| bits 8:4 | `lacl * / bsar 7 / and #001f` | a 5-bit count; `+1` into `0309`, halved into `f999` |
+| bits 11:7 | `lacl * / bsar 7 / and #001f` | a 5-bit count; `+1` into `0309`, halved into `f999` |
 | bit 13 | `bit 2` | sets `fff4` bit 0 |
 | bit 12 | `bit 3` | clear sets `fff4` bit 8 |
-| bits 12:9 | `lacc *,5 / and #0f00` | a 4-bit value, negated and offset against `[ff26]` |
+| bits 6:3 | `lacc *,5 / and #0f00` | a 4-bit value, negated and offset against `[ff26]` |
 
-Note that the bit read at `909e` falls **inside** the 5-bit count at bits
-8:4, so the fallback is testing that count's top bit rather than an
-independent flag. Naming the fields themselves needs the x2 INFO0 layout,
+Shifts and masks are plain bit numbers - only a `bit` instruction's operand
+is a code - so the two extracted fields are `11:7` and `6:3`. Note that the
+bit read at `909e` falls **inside** the 5-bit count at bits `11:7`, so the
+fallback is testing a bit of that count rather than an independent flag. Naming the fields themselves needs the x2 INFO0 layout,
 which these images do not state; what the firmware fixes is the shape - a
 5-bit count, two flags, and a 4-bit value compared against `ff26`.
+
+## Audit: every bit claim in the docs, rechecked
+
+Mechanically, against both 512 KiB images: extract all 1,924 `BIT` sites from
+the resident and three overlays, then take every documentation line that names
+a four-hex address and a bit number and compare the claim against `15 - code`.
+Shift-and-mask extractions were checked separately, since those carry plain
+bit numbers and no code.
+
+**The other documents were already right.** Every one of them either converts
+explicitly or quotes without claiming:
+
+* `dsp-rom-probe.md` annotates its conversions inline - "TI numbering: the low
+  bit" at `83a3` (code 15), "TI numbering: bit 2" at `8482` (code 13), "TI bit
+  10 is bit 5" at `ae15`, and the `ae18..ae21` ladder follows it.
+* `pcm-x2-v90.md` states the rule and applies it - `de0d` code 8 as bit 7,
+  `a45b` code 9 as bit 6, the `adf1..adfd` ladder as bits 5 down to 1, `81e4`
+  code 7 as `@1f` bit 8, and the `c9d2`/`c9f3`/`c5e0` note that code 13 is
+  bit 2.
+* `fsk-modulation.md` gives the rule as `~code & 0xf` and its slot table is in
+  converted numbering; `d95f` code 7 is annotated "bit 8 of the cell".
+  `9b42` "sets `@6f` bit 14" is mask-derived (`opl @6f, #4040`) and correct,
+  though the same instruction also sets bit 6.
+* `datapump-slots.md` inherits the same converted table.
+* `codec-sample-rates.md`'s bit numbers are frame **offsets** for the
+  bit-field routines, not `BIT` operands, as is "received bit 12".
+* `vpcm-datapump.md`, `window-312-baseline.md`, `what-the-asic-does.md`,
+  `codec-rate-312.md`, `mailbox-312-comparison.md` and `sdl-boot-block.md`
+  refer to x86 port and mask bits, which are literal.
+* `c52-v8-static-analysis.md` quotes `bit 5` and `bit 1` without deriving a
+  bit number from either.
+
+**This document was the only one with the error**, introduced with the `fff7`
+work, and it is corrected above. Two of the corrections were themselves
+wrong on the first pass and are fixed here: the INFO0 parser's extracted
+fields come from shifts, not `BIT`, so they are bits `11:7` and `6:3` in plain
+numbering and must not be converted a second time.
