@@ -290,3 +290,82 @@ carries the NVRAM strobe, so a routine that misbehaves near the latches could
 disturb stored settings, which a power cycle does not fix. The routine must
 never touch `0x10`, `0x12` or `0x14`, and must not execute a flash command
 sequence.
+
+## The peripheral control block, read off the board
+
+Read-only, `ATGLK2=FF00`, decoded against the `80C186EB` manual in `docs/`.
+The PCB is at physical `0xff00`-`0xffff`, and the EB's map is **not** the plain
+80186's - several addresses the notes had guessed at are different registers.
+
+| address | register | value | what it says |
+|---|---|---|---|
+| `ff08` | `IMASK` | `0068` | |
+| `ff12` | `TCUCON` | `0002` | timer unit **unmasked**, priority 2 |
+| `ff14` | `SCUCON` | `0000` | serial unit unmasked, priority 0 |
+| `ff18` | `I0CON` | `0002` | **INT0 unmasked**, priority 2 |
+| `ff1a` | `I1CON` | `0008` | masked |
+| `ff1c` | `I2CON` | `0019` | masked |
+| `ff1e` | `I3CON` | `0003` | **INT3 unmasked**, priority 3 |
+| `ff30` | `T0CNT` | counting | `23d7` -> `23a2` between two reads |
+| `ff32` | `T0CMPA` | `6270` | **25200** - the 5 ms tick |
+| `ff36` | `T0CON` | `8021` | `EN=1 INH=0 INT=0 MC=1 ALT=1` |
+| `ff3e` | `T1CON` | `2001` | `INT=1` but `EN=0` - timer 1 is off |
+| `ff46` | `T2CON` | `2001` | same; the download routine turns it on |
+| `ff56` | `P1LTCH` | `ffdb` | Port 1 output latch |
+
+Three of these correct readings made elsewhere in this repository.
+
+**`0xff56` is `P1LTCH`, not a timer register.** The pulse the supervisor's
+launch routine performs before the DSP download - bit 3 low, delay, bit 3 high -
+is therefore a **PIO pin**, and `P1.3` is the DSP's reset line. It currently
+reads high, which is reset released. That turns the argument in
+[dsp-map-302.md](dsp-map-302.md) from "reset-shaped" into a named pin.
+
+**`0xff46` is `T2CON`, and `0xff40`/`0xff42` are `T2CNT`/`T2CMPA`.** So the
+download routine's `mov [0xff46], 0xc000` starts timer 2 and its
+`test [0xff46], 0x20` polls that timer's max-count bit. Those are a **timeout**,
+not an ASIC status handshake.
+
+**Timer 0 runs but never interrupts.** `T0CON = 0x8021` has `EN` set and the
+counter is moving, with `T0CMPA` at exactly the 25200 the timebase note derived
+- but bit 13, `INT`, is **clear**. The tick is polled, not vectored. That is why
+pointing interrupt vector 8 at a routine did nothing while the modem stayed
+completely alive, and it is a better answer than any amount of vector probing:
+the vector was right and the source was silent.
+
+The fix is one bit: `T0CON = 0xa021` enables the interrupt, and `TCUCON` already
+has the timer unit unmasked, so type 8 then fires every 5 ms.
+
+**The serial unit does not use `INT0`.** The manual gives channel 0 receive as
+interrupt **type 20** and transmit as **type 21**, so vector `0x0c` is `INT0`,
+an external pin - on this board almost certainly the ASIC. An earlier note here
+guessed `0x0c` was the UART because interposing on it jammed the RD light;
+that guess was wrong about which peripheral, though the caution stands.
+
+**The monitor's serial output path is correct.** `probe_transport` emits
+`f70666ff0800`, which assembles to `test word ptr [0xff66], 8` - `S0STS` bit 3 -
+and writes the byte to `0xff6a`, `S0TBUF`. That is exactly what the firmware's
+own transmit loop does at file `0x27f04`:
+
+```
+27f04  mov  word ptr ss:[0xff6a], ax
+27f08  test word ptr [0xff66], 8
+27f0e  je   0x27f08
+```
+
+## What is still to do, and what is now known to work
+
+* **Placement works.** 2104 `ATGLK2W` commands placed the 4208-byte image at
+  `0x3000`-`0x406f` with zero failures, and a read-back compared byte for byte
+  against `diagnostic-ram.bin` with **zero mismatches**.
+* **The trigger did not.** Vector 8 was installed correctly and never fired,
+  for the reason above.
+* **Do not probe vectors by interposition.** Chaining a counting stub onto each
+  vector in turn reached `0x0c`, which fires, and jammed the modem - RD stuck
+  on, no AT response, recovered only by a power cycle. Reading the interrupt
+  control registers answers the same question with no writes at all, and should
+  have been done first.
+
+The next attempt is: place the image, point vector 8 at it, then write
+`T0CON = 0xa021`. Everything remains RAM, so a power cycle still undoes all of
+it.
