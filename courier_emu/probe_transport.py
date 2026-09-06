@@ -15,7 +15,8 @@ import re
 import struct
 
 from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
-                        build_rom_dump_probe, inspect_buffer)
+                        build_rom_dump_probe, build_boot_word_probe,
+                        BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES, inspect_buffer)
 from .rom import CourierRom
 
 REFERENCE_DIGEST = "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5"
@@ -113,7 +114,10 @@ class Diagnostic:
 def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      relocated_layout: bool = False,
                      rom_words: int = ROM_DUMP_WORDS,
-                     rom_origin: int = 0) -> Diagnostic:
+                     rom_origin: int = 0,
+                     boot_word: bool = False,
+                     boot_word_address: int = BOOT_WORD_ADDRESS,
+                     boot_word_samples: int = BOOT_WORD_SAMPLES) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
     With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
@@ -129,13 +133,23 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     # half, and printing the whole 2048 words does not fit inside that: the run
     # that found this got 491 words out and was cut off mid-line. A window lets
     # the dump be taken in pieces that do fit.
-    probe = (build_rom_dump_probe(rom_words, origin=rom_origin) if rom_dump
-             else build_probe(mailbox=True))
-    count = rom_words if rom_dump else 0x38
+    if rom_dump and boot_word:
+        raise ValueError("choose one DSP kernel: the ROM dump or the boot word")
+    if boot_word:
+        # Sixteen words print well inside the watchdog window that truncated
+        # the ROM dump, so this one needs no windowing.
+        probe = build_boot_word_probe(boot_word_address, boot_word_samples)
+        count = boot_word_samples
+    elif rom_dump:
+        probe = build_rom_dump_probe(rom_words, origin=rom_origin)
+        count = rom_words
+    else:
+        probe = build_probe(mailbox=True)
+        count = 0x38
     # The relocated layout is the one that fits the surveyed-free RAM on the
     # board; the default is kept only because existing artifacts record it.
-    relocate = rom_dump or relocated_layout
-    compact = rom_dump
+    relocate = rom_dump or boot_word or relocated_layout
+    compact = rom_dump or boot_word
     entry = ROM_DUMP_ENTRY if relocate else ENTRY
     routines_at = ROM_DUMP_ROUTINES if relocate else ROUTINES
     kernel_at = ROM_DUMP_KERNEL if relocate else KERNEL
@@ -599,6 +613,13 @@ def main() -> int:
                         help="load at 0x3000/0x3400/0x4000 instead of the default "
                              "0x2000/0x2400/0x3000, which straddles RAM the board "
                              "survey found in use (implied by --rom-dump)")
+    parser.add_argument("--boot-word", action="store_true",
+                        help="read the DSP's boot-mode word at data 0xffff "
+                             "instead of dumping the ROM (docs/dsp-boot-transport.md)")
+    parser.add_argument("--boot-word-address", type=lambda v: int(v, 0),
+                        default=BOOT_WORD_ADDRESS)
+    parser.add_argument("--boot-word-samples", type=lambda v: int(v, 0),
+                        default=BOOT_WORD_SAMPLES)
     parser.add_argument("--rom-dump", action="store_true",
                         help="carry the full 2048-word on-chip ROM reader instead of "
                              "the 56-word sample probe")
@@ -621,6 +642,9 @@ def main() -> int:
         if args.output.exists():
             parser.error("output directory already exists")
         diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump,
+                                      boot_word=args.boot_word,
+                                      boot_word_address=args.boot_word_address,
+                                      boot_word_samples=args.boot_word_samples,
                                      relocated_layout=args.relocate,
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)

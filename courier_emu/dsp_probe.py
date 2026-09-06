@@ -88,6 +88,56 @@ def build_rom_dump_probe(words_wanted: int = ROM_DUMP_WORDS,
     return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
 
 
+# The boot-mode word. The on-chip ROM reads data 0xffff at reset and dispatches
+# on it: bit 3 selects the parallel XF/BIO loader at program 0x072c over the
+# serial one, and bit 2 picks 16-bit over 8-bit. See docs/dsp-boot-transport.md.
+# The harness assumes 4 (serial, 16-bit); this reads what the board's own ASIC
+# presents there.
+BOOT_WORD_ADDRESS = 0xFFFF
+BOOT_WORD_SAMPLES = 16
+
+
+def build_boot_word_probe(address: int = BOOT_WORD_ADDRESS,
+                          samples: int = BOOT_WORD_SAMPLES) -> "RomProbe":
+    """A kernel that reads one DSP data address repeatedly and mails the values.
+
+    It samples the same address rather than a window for two reasons. The top
+    data page is the ASIC's mailbox window, so sweeping it risks consuming
+    something the firmware is using; and repetition is the actual question -
+    a strap the ASIC holds reads the same every time, while mailbox traffic
+    does not.
+
+    The sender is the one build_rom_dump_probe uses, which is the resident's
+    own outbound pattern and is the half already proven on the board.
+    """
+    if not 1 <= samples <= 0x100:
+        raise ValueError(f"sample count {samples} is outside 1..256")
+
+    # ar1 holds the address under test and never advances; ar2 walks the
+    # buffer. `lacl *, ar2` reads without post-modifying, so every pass reads
+    # the same cell.
+    words = [0xBE41, 0xBC00]                       # setc intm ; ldp #000
+    words += [0x5D07, 0x0030]                      # opl @07, #0030  RAM|OVLY
+    words += [0x8B8A, 0xBF0A, ROM_DUMP_BUFFER]     # mar *, ar2 ; lar ar2, #buffer
+    words += [0x8B89, 0xBF09, address & 0xFFFF]    # mar *, ar1 ; lar ar1, #address
+    for _ in range(samples):
+        words += [0x698A, 0x90A9]                  # lacl *, ar2 ; sacl *+, ar1
+
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, ROM_DUMP_BUFFER]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + samples) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]                        # b self
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
+
+
 @dataclass(frozen=True)
 class RomProbe:
     words: tuple[int, ...]
