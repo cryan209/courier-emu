@@ -130,6 +130,24 @@ public:
         uint16_t negotiation_d26, negotiation_indx, negotiation_arp, negotiation_pm;
     };
 
+    // The TLC320AC01 on the DSP's serial port. See docs/ac01-codec-protocol.md:
+    // the DAC word is 14 bits with two control bits in its LSBs, `11` requests a
+    // secondary frame, and that frame carries a control-register write. The
+    // conversion rate is the part's own, from the A and B registers off MCLK,
+    // because the firmware puts it in free-run mode.
+    struct CodecState {
+        uint16_t registers[9];
+        uint32_t mclk_hz;
+        uint64_t sample_rate_millihz;
+        unsigned frame_period;
+        uint64_t secondary_frames, register_writes, register_reads;
+        uint64_t phase_shifts, primary_frames;
+        uint16_t last_control_word;
+        bool rate_programmed, secondary_pending, force_secondary;
+        bool free_run, high_pass_enabled, loopback, sixteen_bit;
+        uint8_t input_gain, output_gain, monitor_gain, input_select;
+    };
+
     // Where a C52 address lands. The two parts that move are the boot ROM,
     // which appears at the bottom of program space only in microcomputer
     // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
@@ -192,7 +210,11 @@ public:
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
-    void configure_rom_codec(bool enabled) { m_rom_codec = enabled; m_line_frame_period = enabled ? 3472 : 258; }
+    void configure_rom_codec(bool enabled);
+    void set_codec_mclk(uint32_t hz);
+    CodecState codec_state() const;
+    // Conversion rate in milli-hertz, so 7578.947 Hz survives the trip.
+    uint64_t codec_sample_rate_millihz() const { return m_codec.sample_rate_millihz; }
     void schedule_line_frame_entry(uint16_t address) { m_line_frame_entry = address; }
     void schedule_call_overlay(uint16_t origin, const uint16_t *words,
         std::size_t count, uint16_t entry, const uint16_t *registers,
@@ -296,6 +318,22 @@ private:
         uint64_t drr_reads = 0, dxr_writes = 0, spc_writes = 0, rx_consumed = 0;
         uint16_t last_drr_pc = 0, last_dxr_pc = 0, last_spc_pc = 0;
     } m_serial;
+    // Datasheet section 2.20 power-up values: A and B both 18, gain register
+    // 0x05 (0 dB in and out, monitor squelched), analog configuration 0x01
+    // (IN+/IN-, high-pass in the path), frame-sync number 1.
+    struct Ac01 {
+        uint16_t registers[9] = {0, 18, 18, 0, 0x05, 0x01, 0x00, 0x00, 0x01};
+        uint32_t mclk_hz = 2'880'000;
+        uint64_t sample_rate_millihz = 0;
+        uint64_t secondary_frames = 0, register_writes = 0, register_reads = 0;
+        uint64_t phase_shifts = 0, primary_frames = 0;
+        uint16_t last_control_word = 0, readback = 0;
+        bool rate_programmed = false, secondary_pending = false;
+        bool secondary_now = false, readback_armed = false;
+    } m_codec;
+    void codec_transmit(uint16_t word);
+    void codec_apply_register(uint16_t word);
+    void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
     std::deque<int16_t> m_v8_rx_window;
     std::deque<uint16_t> m_line_rx;

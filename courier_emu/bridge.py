@@ -23,6 +23,62 @@ DSP_WINDOW_STRIDE = 2
 # The downloaded low bank contains the C52 TDM transmit ISR at 0x0228. Its
 # branch vector itself is in unavailable customer mask ROM; match the ISR's
 # opening words before supplying that one recovered vector.
+# The rate at which this harness carries the analog line: the DAA, the
+# exchange and the peer link all speak it. The line itself has no sample rate,
+# so this is a representation, not a measurement - which is exactly why it must
+# not leak into the DSP. See docs/ac01-codec-protocol.md.
+LINE_RATE = 9_600
+
+
+class LineToCodec:
+    """Resample harness line audio to the rate the codec is currently set to.
+
+    The AC01's conversion rate is its own, from the A and B registers off MCLK,
+    and the firmware retunes B at runtime for each V.34 symbol rate - 7200,
+    7578.95 or 8000 Hz. Handing it samples at a fixed rate makes every
+    frequency the firmware sees wrong by that ratio, which is what this
+    harness did while it assumed 9600.
+    """
+
+    def __init__(self, input_rate: int = LINE_RATE) -> None:
+        self.input_rate = input_rate
+        self.output_rate = 0.0
+        self.converted = 0
+        self._position = 1.0
+        self._previous = 0
+
+    def convert(self, samples: list[int], output_rate: float) -> list[int]:
+        if not samples:
+            return []
+        if output_rate <= 0 or output_rate == self.input_rate:
+            # Nothing has programmed the codec yet, or it happens to agree.
+            self._previous = samples[-1]
+            return list(samples)
+        if output_rate != self.output_rate:
+            # A rate change restarts the phase. Carrying a fractional position
+            # across it would mean nothing at the new step size.
+            self.output_rate = output_rate
+            self._position = 1.0
+        step = self.input_rate / output_rate
+        # Index 0 is the sample carried over from the last batch, so a value
+        # interpolated across the seam has both of its neighbours.
+        window = [self._previous, *samples]
+        limit = len(window) - 1
+        position = max(self._position, 0.0)
+        result: list[int] = []
+        while position <= limit:
+            index = int(position)
+            fraction = position - index
+            first = window[index]
+            second = window[index + 1] if index < limit else first
+            result.append(int(round(first + (second - first) * fraction)))
+            position += step
+        self._position = position - len(samples)
+        self._previous = samples[-1]
+        self.converted += len(result)
+        return result
+
+
 C52_TDM_IRQ = 7
 C52_TDM_ISR = 0x0228
 C52_TDM_ISR_SIGNATURE = bytes.fromhex("ffbd5208b0bf030090bf")
@@ -331,10 +387,27 @@ class CourierDspBridge:
         self._carrier_best_score = 0.0
         self._rate_trace_enabled = False
         self._sip_tx_index = 0
-        self._sip_tx_rate = RateConverter(9_600, 8_000)
-        self._sip_rx_rate = RateConverter(8_000, 9_600)
+        self._sip_tx_rate = RateConverter(LINE_RATE, 8_000)
+        self._sip_rx_rate = RateConverter(8_000, LINE_RATE)
+        self._line_to_codec = LineToCodec(LINE_RATE)
         self._sip_rx_samples: deque[int] = deque()
         self._completion_probe = False
+
+    def codec_sample_rate(self) -> float:
+        """What the codec's own registers say it is converting at.
+
+        Zero before the firmware has programmed them, which `LineToCodec`
+        reads as "leave the samples alone".
+        """
+        return float(getattr(self.core, "codec_sample_rate", 0.0) or 0.0)
+
+    def _queue_line_audio(self, samples: list[int]) -> None:
+        """Hand line audio to the codec at the codec's rate, not the line's."""
+        if not samples:
+            return
+        converted = self._line_to_codec.convert(samples, self.codec_sample_rate())
+        if converted:
+            self.core.queue_codec_rx(converted)
 
     def _negotiation_audio_status(self) -> dict[str, int]:
         """Summarize the latest codec frame at the V.8 signaling frequencies."""
@@ -476,7 +549,7 @@ class CourierDspBridge:
             and hasattr(self.core, "queue_codec_rx")
             and not self._rx_samples_codec_queued
         ):
-            self.core.queue_codec_rx(self.rx_samples)
+            self._queue_line_audio(self.rx_samples)
             self._rx_samples_codec_queued = True
 
     @staticmethod
@@ -694,7 +767,7 @@ class CourierDspBridge:
                 # to the C52 before its short command-mode timeout expires.
                 samples = self.daa.render(DAA_FRAME_SAMPLES * 5)
                 if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
-                    self.core.queue_codec_rx(samples)
+                    self._queue_line_audio(samples)
                 else:
                     self.core.queue_serial_rx(samples)
         if (
@@ -1187,7 +1260,7 @@ class CourierDspBridge:
                 if self.bootstraps >= 2 and self.rx_samples and not self._rx_samples_queued:
                     self.core.queue_serial_rx(self.rx_samples)
                     if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
-                        self.core.queue_codec_rx(self.rx_samples)
+                        self._queue_line_audio(self.rx_samples)
                         self._rx_samples_codec_queued = True
                     self._rx_samples_queued = True
                 if (
@@ -1404,7 +1477,7 @@ class CourierDspBridge:
                         # across the call-entry boundary. Sending it through
                         # the idle serial FIFO before the overlay is published
                         # discarded the CI/ANSam burst the caller needs.
-                        self.core.queue_codec_rx(samples)
+                        self._queue_line_audio(samples)
                     else:
                         self.core.queue_serial_rx(samples)
                 if (
@@ -1520,7 +1593,7 @@ class CourierDspBridge:
                 (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                 and hasattr(self.core, "queue_codec_rx")
             ):
-                self.core.queue_codec_rx(incoming)
+                self._queue_line_audio(incoming)
                 self._codec_queue_peak = max(
                     self._codec_queue_peak, max(abs(sample) for sample in incoming)
                 )
@@ -1605,7 +1678,7 @@ class CourierDspBridge:
                 # Deliver the peer frame at the line exchange boundary. This
                 # avoids losing the first CI/ANSam frames between the line
                 # socket service and the batched DSP scheduler.
-                self.core.queue_codec_rx(incoming)
+                self._queue_line_audio(incoming)
                 self._codec_queue_peak = max(
                     self._codec_queue_peak, max(abs(sample) for sample in incoming)
                 )

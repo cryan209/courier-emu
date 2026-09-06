@@ -184,6 +184,10 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
         lib.courier_c5x_configure_rom_codec.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_codec_mclk.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+        lib.courier_c5x_get_codec_state.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
+        ]
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_host_write.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
@@ -439,6 +443,46 @@ class NativeC5x:
         if state["negotiation_acc"] & 0x80000000:
             state["negotiation_acc"] -= 0x100000000
         return state
+
+    # Names follow docs/ac01-codec-protocol.md; `registers` is indexed by the
+    # datasheet's own numbering, so registers[0] is the no-op pseudo-register.
+    _CODEC_FIELDS = (
+        "mclk_hz", "sample_rate_millihz", "frame_period",
+        "secondary_frames", "register_writes", "register_reads",
+        "phase_shifts", "primary_frames", "last_control_word",
+        "rate_programmed", "secondary_pending", "force_secondary",
+        "free_run", "high_pass_enabled", "loopback", "sixteen_bit",
+        "input_gain", "output_gain", "monitor_gain", "input_select",
+    )
+    _CODEC_FLAGS = frozenset({
+        "rate_programmed", "secondary_pending", "force_secondary",
+        "free_run", "high_pass_enabled", "loopback", "sixteen_bit",
+    })
+    # Register 4's two-bit gain codes, datasheet section 2.20.5.
+    INPUT_GAIN_DB = (None, 0, 6, 12)
+    OUTPUT_GAIN_DB = (None, 0, -6, -12)
+
+    def codec_state(self) -> dict[str, Any]:
+        values = (ctypes.c_uint64 * 30)()
+        self.library.courier_c5x_get_codec_state(self.handle, values, len(values))
+        state: dict[str, Any] = {"registers": [int(values[i]) for i in range(9)]}
+        for offset, name in enumerate(self._CODEC_FIELDS, start=9):
+            value = int(values[offset])
+            state[name] = bool(value) if name in self._CODEC_FLAGS else value
+        state["sample_rate"] = state["sample_rate_millihz"] / 1000.0
+        return state
+
+    @property
+    def codec_sample_rate(self) -> float:
+        """Conversion rate the codec's own A and B registers currently select.
+
+        Zero until the firmware has programmed them, which is the caller's cue
+        that there is nothing to resample to yet.
+        """
+        return self.codec_state()["sample_rate"]
+
+    def set_codec_mclk(self, hz: int) -> None:
+        self.library.courier_c5x_set_codec_mclk(self.handle, int(hz))
 
     def data_write_count(self, address: int) -> int:
         return int(self.library.courier_c5x_get_data_write_count(self.handle, address))

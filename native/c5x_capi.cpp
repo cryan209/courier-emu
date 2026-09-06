@@ -359,3 +359,27 @@ extern "C" void courier_c5x_configure_rom_codec(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->configure_rom_codec(enabled != 0);
 }
+
+extern "C" void courier_c5x_set_codec_mclk(void *handle, uint32_t hz)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_codec_mclk(hz);
+}
+
+extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std::size_t count)
+{
+    if (!handle || !values || count < 30) return;
+    auto codec = static_cast<C5xCore *>(handle)->codec_state();
+    uint64_t result[] = {
+        codec.registers[0], codec.registers[1], codec.registers[2],
+        codec.registers[3], codec.registers[4], codec.registers[5],
+        codec.registers[6], codec.registers[7], codec.registers[8],
+        codec.mclk_hz, codec.sample_rate_millihz, codec.frame_period,
+        codec.secondary_frames, codec.register_writes, codec.register_reads,
+        codec.phase_shifts, codec.primary_frames, codec.last_control_word,
+        codec.rate_programmed, codec.secondary_pending, codec.force_secondary,
+        codec.free_run, codec.high_pass_enabled, codec.loopback,
+        codec.sixteen_bit, codec.input_gain, codec.output_gain,
+        codec.monitor_gain, codec.input_select,
+    };
+    std::copy(std::begin(result), std::end(result), values);
+}

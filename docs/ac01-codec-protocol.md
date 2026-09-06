@@ -143,7 +143,7 @@ run agree.
 | `0214` | 2, B register | 20 | `fs = FCLK / B` = MCLK/400 |
 | `0300` | 3, A' register | 0 | no phase-shift adjustment |
 | `0409` | 4, amplifier gain | `0x09` | monitor squelch; **analog input +6 dB**; analog output 0 dB |
-| `0505` | 5, analog config | `0x05` | **high-pass filter enabled**; `IN+`/`IN-` selected (not AUXIN), no loopback |
+| `0505` | 5, analog config | `0x05` | DS02 set: **high-pass filter bypassed**; `IN+`/`IN-` selected (not AUXIN), no loopback |
 | `0620` | 6, digital config | `0x20` | DS05 set: **ADC and DAC conversion free run** |
 
 All six have DS15:DS14 = `00` (no phase shift) and DS13 = 0 (write mode). No
@@ -196,8 +196,12 @@ Two things fall out that read as design rather than coincidence:
 * **A is never reprogrammed, and that is why.** The anti-alias low-pass corner
   is `FCLK/40`, which depends on A alone - a fixed **3.6 kHz** across all three
   sample rates, the standard voiceband corner. Only B moves, so changing the
-  sample rate does not disturb the filter. The high-pass corner is `fs/200`:
-  36 Hz at 7200, 40 Hz at 8000.
+  sample rate does not disturb the filter.
+
+The part's own high-pass filter is switched **out** (register 5 DS02 = 1), so
+the `fs/200` corner never applies and the DAC and ADC paths are DC-coupled as
+far as the codec is concerned. Whatever removes DC is downstream, in the DSP or
+the ASIC.
 
 An earlier revision of this section said the design point was 9600 Hz and that
 MCLK was therefore 3.840 MHz, an awkward 10.5 division of the 40.320 MHz can.
@@ -243,12 +247,60 @@ V.8 bootstrap needing a native detector rather than the firmware's own - but it
 is a candidate, not a demonstration. Nothing here has been re-run at 7200 Hz to
 show the tones are then recognised.
 
-A faithful model needs: a frame clock at `fs` raising XINT; `DXR`'s two LSBs
-decoded per Table 2-3; a one-frame secondary state that parses
-`[ctrl][R/W][5-bit addr][8-bit data]` into a nine-register file; `DRR` returning
-the ADC word on primary frames, zero on a secondary write and the register
-contents on a secondary read; and the register file actually driving rate, gain,
-filter and loopback.
+## The model (2026-09-07)
+
+`C5xCore::codec_transmit` now decodes every `DXR` write the way the part does.
+Which kind of frame a word belongs to is decided by the *previous* frame's
+control bits, so the model needs no knowledge of where the write came from -
+this replaces a test against two hardcoded ISR addresses, `0x818f` and `0x81a0`,
+which recognised the samples of two known builds and nothing else.
+
+* Primary word: sample is the top 14 bits; `11` in the LSBs arms a secondary
+  frame, `01`/`10` count as phase-shift requests and are otherwise ignored.
+* Secondary word: parsed into a nine-entry register file. Register 0 is the
+  no-op. `DS13` set is a read, which returns the register in `DRR`'s low byte
+  and programs nothing. Register 6 `DS02` forces every frame secondary;
+  `DS01` is a software reset and restores the power-up defaults.
+* **The sample rate is derived, never assumed.** Writing register 1 or 2
+  recomputes `fs = MCLK/(2 x A x B)` and with it the frame period in C5x
+  cycles. `configure_rom_codec` still starts at 3472 - it has no way to know
+  what the ASIC clocks the port at before the firmware programs anything - but
+  from the firmware's first divider write the rate is the part's own.
+
+`courier_emu/dsp.py` exposes `codec_state()` and `codec_sample_rate`.
+
+Booting 302 through the ROM and reading the model back:
+
+```
+registers      ['0x00', '0x0a', '0x14', '0x00', '0x09', '0x05', '0x20', '0x00', '0x01']
+sample rate    7200.0 Hz          frame period 3472 cycles
+secondary 6    reg writes 6       reg reads 0    phase shifts 2
+free_run=True  high_pass=False    loopback=False
+input gain 6 dB   output gain 0 dB
+```
+
+The six registers are the six words above, the rate falls out of B, and the two
+phase shifts are the reset priming writes.
+
+### Line audio meets the codec at the codec's rate
+
+`bridge.LineToCodec` resamples everything entering the receive queue from the
+harness's line rate to whatever the codec currently converts at, with linear
+interpolation and a carried sample so a batch seam does not click. Every audio
+path in `bridge.py` now goes through `_queue_line_audio`; the boot table, which
+is not audio, still goes straight to `queue_codec_rx`.
+
+A 2100 Hz tone carried at 9600 and delivered to a 7200 Hz codec measures
+2100 Hz after conversion, where handing it over unresampled measured 1575.
+
+### What is still not modelled
+
+`SPC` still reports `XRDY` set whenever `XRST` is set rather than following a
+frame clock, so the reset spin at `0x8097` and the `idle` at `0x814c` fall
+through rather than waiting. The gain, high-pass and loopback settings are
+decoded and reported but do not yet alter the samples. The legacy TDM path
+(`m_rom_codec` false) still decimates at a fixed 9600 Hz; it is not the AC01
+path and this change deliberately left it alone.
 
 ## What this does not establish
 

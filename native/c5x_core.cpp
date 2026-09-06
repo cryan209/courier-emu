@@ -158,6 +158,125 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
     m_io_read = std::move(read); m_io_write = std::move(write);
 }
 
+// The C5x's own cycle clock, which is what m_line_frame_period counts in.
+// 3472 cycles is 7200 Hz here, which is the figure this core shipped with.
+static constexpr uint64_t C5X_CLOCK_HZ = 25'000'000;
+
+void C5xCore::configure_rom_codec(bool enabled)
+{
+    m_rom_codec = enabled;
+    m_codec = Ac01{};
+    // Until the firmware programs the A and B registers the harness keeps the
+    // period it has always used. The datasheet's power-up A = B = 18 would put
+    // the part at 4444 Hz, which is a rate this board never runs at; nothing
+    // here knows what the ASIC clocks the port at before programming, so this
+    // stands in for it rather than claiming to model it.
+    m_line_frame_period = enabled ? 3472 : 258;
+}
+
+void C5xCore::set_codec_mclk(uint32_t hz)
+{
+    m_codec.mclk_hz = hz;
+    if (m_codec.rate_programmed) codec_recompute_rate();
+}
+
+// fs = MCLK / (2 x A x B), datasheet equations 11 and 20.
+void C5xCore::codec_recompute_rate()
+{
+    const uint64_t a = m_codec.registers[1], b = m_codec.registers[2];
+    if (!a || !b) return;  // an unusable divider leaves the last good rate
+    const uint64_t divisor = 2 * a * b;
+    m_codec.sample_rate_millihz = uint64_t(m_codec.mclk_hz) * 1000 / divisor;
+    m_codec.rate_programmed = true;
+    if (!m_rom_codec) return;
+    // Frame period in C5x cycles. With A = 10 and B = 20 this is 3472, the
+    // constant it replaces.
+    const unsigned period = unsigned(C5X_CLOCK_HZ * divisor / m_codec.mclk_hz);
+    if (period) m_line_frame_period = period;
+}
+
+// One secondary word: [DS15:14 control][DS13 R/W][DS12:8 address][DS7:0 data].
+void C5xCore::codec_apply_register(uint16_t word)
+{
+    m_codec.last_control_word = word;
+    ++m_codec.secondary_frames;
+    const unsigned address = (word >> 8) & 0x1f;
+    const bool read = (word >> 13) & 1;
+    if (address == 0 || address > 8) return;  // register 0 is the no-op
+    if (read) {
+        // Read mode returns the register in the low byte and writes nothing.
+        m_codec.readback = m_codec.registers[address] & 0xff;
+        m_codec.readback_armed = true;
+        ++m_codec.register_reads;
+        return;
+    }
+    m_codec.registers[address] = word & 0xff;
+    ++m_codec.register_writes;
+    if (address == 1 || address == 2) codec_recompute_rate();
+    if (address == 6 && (word & 0x02)) {
+        // Software reset returns every register to its power-up value and
+        // clears itself.
+        const uint32_t mclk = m_codec.mclk_hz;
+        m_codec = Ac01{};
+        m_codec.mclk_hz = mclk;
+    }
+}
+
+// A word the DSP wrote to DXR. Which kind of frame it is was decided by the
+// previous frame's two control bits, not by where the write came from.
+void C5xCore::codec_transmit(uint16_t word)
+{
+    const bool secondary = m_codec.secondary_now
+        || (m_codec.registers[6] & 0x04);  // register 6 DS02 forces every frame
+    m_codec.secondary_now = false;
+    if (secondary) {
+        codec_apply_register(word);
+        // DS15:DS14 carry the same request encoding as a primary word.
+        m_codec.secondary_now = (word >> 14) == 3;
+        return;
+    }
+    ++m_codec.primary_frames;
+    switch (word & 3) {
+    case 3: m_codec.secondary_now = true; break;
+    case 1: case 2: ++m_codec.phase_shifts; break;
+    default: break;
+    }
+    if (!m_rom_codec) return;
+    // The sample is the top 14 bits; the low two were never data.
+    const uint16_t sample = uint16_t(word & 0xfffc);
+    m_line_tx.push_back(sample);
+    if (sample) ++m_line_tx_nonzero;
+    m_line_tx_last_pc = uint16_t(m_pc - 1);
+}
+
+C5xCore::CodecState C5xCore::codec_state() const
+{
+    CodecState out{};
+    for (unsigned index = 0; index < 9; ++index)
+        out.registers[index] = m_codec.registers[index];
+    out.mclk_hz = m_codec.mclk_hz;
+    out.sample_rate_millihz = m_codec.sample_rate_millihz;
+    out.frame_period = m_line_frame_period;
+    out.secondary_frames = m_codec.secondary_frames;
+    out.register_writes = m_codec.register_writes;
+    out.register_reads = m_codec.register_reads;
+    out.phase_shifts = m_codec.phase_shifts;
+    out.primary_frames = m_codec.primary_frames;
+    out.last_control_word = m_codec.last_control_word;
+    out.rate_programmed = m_codec.rate_programmed;
+    out.secondary_pending = m_codec.secondary_now;
+    out.force_secondary = (m_codec.registers[6] & 0x04) != 0;
+    out.free_run = (m_codec.registers[6] & 0x20) != 0;
+    out.sixteen_bit = (m_codec.registers[6] & 0x08) != 0;
+    out.high_pass_enabled = (m_codec.registers[5] & 0x04) == 0;
+    out.loopback = (m_codec.registers[5] & 0x03) == 0;
+    out.input_select = uint8_t(m_codec.registers[5] & 0x03);
+    out.monitor_gain = uint8_t((m_codec.registers[4] >> 4) & 3);
+    out.input_gain = uint8_t((m_codec.registers[4] >> 2) & 3);
+    out.output_gain = uint8_t(m_codec.registers[4] & 3);
+    return out;
+}
+
 void C5xCore::set_io(uint16_t port, uint16_t value) { m_io[port] = value; }
 void C5xCore::host_write(uint16_t address, uint16_t value)
 {
@@ -496,6 +615,13 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     case 0x1e: return m_cbcr; case 0x1f: return m_bmar;
     case 0x20:
         ++m_serial.drr_reads; m_serial.last_drr_pc = uint16_t(m_pc - 1);
+        if (m_codec.readback_armed) {
+            // A secondary read returns the register in the low byte with the
+            // high byte zero, and consumes no ADC sample.
+            m_codec.readback_armed = false;
+            m_serial.drr = m_codec.readback;
+            return m_serial.drr;
+        }
         if (!m_codec_rx.empty()) {
             m_serial.drr = m_codec_rx.front(); m_codec_rx.pop_front();
             ++m_serial.rx_consumed;
@@ -567,11 +693,11 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x21:
         m_serial.dxr = value; ++m_serial.dxr_writes;
         m_serial.last_dxr_pc = uint16_t(m_pc - 1);
-        if (m_rom_codec && (m_pc - 1 == 0x818f || m_pc - 1 == 0x81a0)) {
-            m_line_tx.push_back(value & 0xfffc);
-            if (value & 0xfffc) ++m_line_tx_nonzero;
-            m_line_tx_last_pc = uint16_t(m_pc - 1);
-        }
+        // Whether this word is a sample or a control register is the codec's
+        // business, not the caller's: the previous frame's control bits decided
+        // it. This used to be two hardcoded ISR addresses, which recognised the
+        // samples of two known builds and no others.
+        codec_transmit(value);
         return;
     case 0x22:
         m_serial.spc = value; ++m_serial.spc_writes;
