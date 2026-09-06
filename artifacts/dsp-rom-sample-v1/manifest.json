@@ -1,0 +1,10361 @@
+{
+  "status": "complete",
+  "error": null,
+  "capture_error": null,
+  "instructions": 20192,
+  "dsp_steps": 971,
+  "hardware_tested": false,
+  "uploadable_sdl_image": false,
+  "rom_mapped_fixture": true,
+  "fault": null,
+  "serial_text": "CDRP1 START\r\nCDRP1 DATA 0038\r\n0000:C051\r\n0001:0001\r\n0002:0000\r\n0003:0020\r\n0004:D00E\r\n0005:0008\r\n0006:0000\r\n0007:0000\r\n0008:1357\r\n0009:2468\r\n000A:A55A\r\n000B:5AA5\r\n000C:0000\r\n000D:FFFF\r\n000E:8001\r\n000F:7FFE\r\n0010:1234\r\n0011:13C7\r\n0012:155A\r\n0013:16ED\r\n0014:1880\r\n0015:1A13\r\n0016:1BA6\r\n0017:1D39\r\n0018:1ECC\r\n0019:205F\r\n001A:21F2\r\n001B:2385\r\n001C:2518\r\n001D:26AB\r\n001E:283E\r\n001F:29D1\r\n0020:2B64\r\n0021:2CF7\r\n0022:2E8A\r\n0023:301D\r\n0024:31B0\r\n0025:3343\r\n0026:34D6\r\n0027:3669\r\n0028:37FC\r\n0029:398F\r\n002A:3B22\r\n002B:3CB5\r\n002C:3E48\r\n002D:3FDB\r\n002E:416E\r\n002F:4301\r\n0030:1357\r\n0031:2468\r\n0032:A55A\r\n0033:5AA5\r\n0034:0000\r\n0035:FFFF\r\n0036:8001\r\n0037:7FFE\r\nSUM:5350\r\nCDRP1 DONE\r\n",
+  "capture": {
+    "status": "sample-captured",
+    "control_before": [
+      4951,
+      9320,
+      42330,
+      23205,
+      0,
+      65535,
+      32769,
+      32766
+    ],
+    "sample": [
+      4660,
+      5063,
+      5466,
+      5869,
+      6272,
+      6675,
+      7078,
+      7481,
+      7884,
+      8287,
+      8690,
+      9093,
+      9496,
+      9899,
+      10302,
+      10705,
+      11108,
+      11511,
+      11914,
+      12317,
+      12720,
+      13123,
+      13526,
+      13929,
+      14332,
+      14735,
+      15138,
+      15541,
+      15944,
+      16347,
+      16750,
+      17153
+    ],
+    "control_after": [
+      4951,
+      9320,
+      42330,
+      23205,
+      0,
+      65535,
+      32769,
+      32766
+    ],
+    "complete": true,
+    "rom_access_proven": false,
+    "interpretation": "A valid buffer proves execution and program-RAM reads. A ROM sample still needs mapping/protection checks; all-zero/all-one data is inconclusive.",
+    "capture_sha256": "f2e57771de4e000008874657047fc4f7eb6d30c274159a865a825e93d4093ce9"
+  },
+  "sample_matches_fixture": true,
+  "rom_matches_fixture": false,
+  "download_matches_kernel": true,
+  "download_checksum_matches": true,
+  "dsp_launched": true,
+  "packets": 56,
+  "acks": 56,
+  "events": [
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2070,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2086,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2102,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2118,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2134,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2150,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2166,
+      "address": 65386,
+      "size": 2,
+      "value": 83
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2182,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2198,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2214,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2230,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2246,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 2262,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "io-write",
+      "pc": 13376,
+      "instruction": 2280,
+      "port": 64,
+      "size": 1,
+      "value": 248
+    },
+    {
+      "kind": "io-write",
+      "pc": 13383,
+      "instruction": 2284,
+      "port": 66,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13393,
+      "instruction": 2289,
+      "address": 65366,
+      "size": 2,
+      "value": 217
+    },
+    {
+      "kind": "dsp-reset",
+      "pc": 13393,
+      "instruction": 2289,
+      "requested_origin": 65528
+    },
+    {
+      "kind": "io-write",
+      "pc": 13402,
+      "instruction": 2292,
+      "port": 24,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13408,
+      "instruction": 2295,
+      "port": 26,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13414,
+      "instruction": 2298,
+      "port": 28,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13421,
+      "instruction": 2302,
+      "port": 30,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13430,
+      "instruction": 2806,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13436,
+      "instruction": 2807,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13442,
+      "instruction": 2808,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13462,
+      "instruction": 2815,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13466,
+      "instruction": 2818,
+      "address": 65366,
+      "size": 2,
+      "value": 211
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13477,
+      "instruction": 2827,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "io-write",
+      "pc": 13514,
+      "instruction": 2843,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "bootstrap-ready",
+      "pc": 13514,
+      "instruction": 2843,
+      "requested_origin": 65528
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2849,
+      "port": 64,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2853,
+      "port": 66,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2858,
+      "port": 68,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2862,
+      "port": 70,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2867,
+      "port": 72,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2871,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2876,
+      "port": 76,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2880,
+      "port": 78,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2885,
+      "port": 80,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2889,
+      "port": 82,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2894,
+      "port": 84,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2898,
+      "port": 86,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2903,
+      "port": 88,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2907,
+      "port": 90,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2912,
+      "port": 92,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2916,
+      "port": 94,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13346,
+      "instruction": 2922,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13358,
+      "instruction": 2927,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "io-write",
+      "pc": 13376,
+      "instruction": 2939,
+      "port": 64,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13383,
+      "instruction": 2943,
+      "port": 66,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13393,
+      "instruction": 2948,
+      "address": 65366,
+      "size": 2,
+      "value": 217
+    },
+    {
+      "kind": "dsp-reset",
+      "pc": 13393,
+      "instruction": 2948,
+      "requested_origin": 32768
+    },
+    {
+      "kind": "io-write",
+      "pc": 13402,
+      "instruction": 2951,
+      "port": 24,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13408,
+      "instruction": 2954,
+      "port": 26,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13414,
+      "instruction": 2957,
+      "port": 28,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13421,
+      "instruction": 2961,
+      "port": 30,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13430,
+      "instruction": 3465,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13436,
+      "instruction": 3466,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13442,
+      "instruction": 3467,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13462,
+      "instruction": 3474,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13466,
+      "instruction": 3477,
+      "address": 65366,
+      "size": 2,
+      "value": 211
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13477,
+      "instruction": 3486,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "io-write",
+      "pc": 13514,
+      "instruction": 3502,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "bootstrap-ready",
+      "pc": 13514,
+      "instruction": 3502,
+      "requested_origin": 32768
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13591,
+      "instruction": 3744,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13597,
+      "instruction": 3745,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13603,
+      "instruction": 3746,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 3764,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 3769,
+      "port": 64,
+      "size": 1,
+      "value": 65
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 3771,
+      "port": 66,
+      "size": 1,
+      "value": 190
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 3773,
+      "port": 68,
+      "size": 1,
+      "value": 6
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 3775,
+      "port": 70,
+      "size": 1,
+      "value": 188
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 3777,
+      "port": 72,
+      "size": 1,
+      "value": 137
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 3779,
+      "port": 74,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 3781,
+      "port": 76,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 3783,
+      "port": 78,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 3785,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 3791,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3795,
+      "port": 80,
+      "size": 1,
+      "value": 81
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3799,
+      "port": 82,
+      "size": 1,
+      "value": 192
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3805,
+      "port": 84,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3809,
+      "port": 86,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3815,
+      "port": 88,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3819,
+      "port": 90,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3825,
+      "port": 92,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3829,
+      "port": 94,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 3835,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 3843,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 3848,
+      "port": 64,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 3850,
+      "port": 66,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 3852,
+      "port": 68,
+      "size": 1,
+      "value": 3
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 3854,
+      "port": 70,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 3856,
+      "port": 72,
+      "size": 1,
+      "value": 32
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 3858,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 3860,
+      "port": 76,
+      "size": 1,
+      "value": 4
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 3862,
+      "port": 78,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 3864,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 3870,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3874,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3878,
+      "port": 82,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3884,
+      "port": 84,
+      "size": 1,
+      "value": 5
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3888,
+      "port": 86,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3894,
+      "port": 88,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3898,
+      "port": 90,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3904,
+      "port": 92,
+      "size": 1,
+      "value": 6
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3908,
+      "port": 94,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 3914,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 3922,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 3927,
+      "port": 64,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 3929,
+      "port": 66,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 3931,
+      "port": 68,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 3933,
+      "port": 70,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 3935,
+      "port": 72,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 3937,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 3939,
+      "port": 76,
+      "size": 1,
+      "value": 9
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 3941,
+      "port": 78,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 3943,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 3949,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3953,
+      "port": 80,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3957,
+      "port": 82,
+      "size": 1,
+      "value": 3
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3963,
+      "port": 84,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3967,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3973,
+      "port": 88,
+      "size": 1,
+      "value": 64
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3977,
+      "port": 90,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3983,
+      "port": 92,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3987,
+      "port": 94,
+      "size": 1,
+      "value": 187
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 3993,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4001,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4006,
+      "port": 64,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4008,
+      "port": 66,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4010,
+      "port": 68,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4012,
+      "port": 70,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4014,
+      "port": 72,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4016,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4018,
+      "port": 76,
+      "size": 1,
+      "value": 31
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4020,
+      "port": 78,
+      "size": 1,
+      "value": 187
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4022,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4028,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4032,
+      "port": 80,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4036,
+      "port": 82,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4042,
+      "port": 84,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4046,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4052,
+      "port": 88,
+      "size": 1,
+      "value": 64
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4056,
+      "port": 90,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4062,
+      "port": 92,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4066,
+      "port": 94,
+      "size": 1,
+      "value": 187
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4072,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4080,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4085,
+      "port": 64,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4087,
+      "port": 66,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4089,
+      "port": 68,
+      "size": 1,
+      "value": 4
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4091,
+      "port": 70,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4093,
+      "port": 72,
+      "size": 1,
+      "value": 14
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4095,
+      "port": 74,
+      "size": 1,
+      "value": 208
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4097,
+      "port": 76,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4099,
+      "port": 78,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4101,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4107,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4111,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4115,
+      "port": 82,
+      "size": 1,
+      "value": 82
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4121,
+      "port": 84,
+      "size": 1,
+      "value": 9
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4125,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4131,
+      "port": 88,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4135,
+      "port": 90,
+      "size": 1,
+      "value": 3
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4141,
+      "port": 92,
+      "size": 1,
+      "value": 10
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4145,
+      "port": 94,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4151,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4159,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4164,
+      "port": 64,
+      "size": 1,
+      "value": 87
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4166,
+      "port": 66,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4168,
+      "port": 68,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4170,
+      "port": 70,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4172,
+      "port": 72,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4174,
+      "port": 74,
+      "size": 1,
+      "value": 16
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4176,
+      "port": 76,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4178,
+      "port": 78,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4180,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4186,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4190,
+      "port": 80,
+      "size": 1,
+      "value": 137
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4194,
+      "port": 82,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4200,
+      "port": 84,
+      "size": 1,
+      "value": 125
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4204,
+      "port": 86,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4210,
+      "port": 88,
+      "size": 1,
+      "value": 125
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4214,
+      "port": 90,
+      "size": 1,
+      "value": 78
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4220,
+      "port": 92,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4224,
+      "port": 94,
+      "size": 1,
+      "value": 226
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4230,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4238,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4243,
+      "port": 64,
+      "size": 1,
+      "value": 39
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4245,
+      "port": 66,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4247,
+      "port": 68,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4249,
+      "port": 70,
+      "size": 1,
+      "value": 12
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4251,
+      "port": 72,
+      "size": 1,
+      "value": 94
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4253,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4255,
+      "port": 76,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4257,
+      "port": 78,
+      "size": 1,
+      "value": 12
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4259,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4265,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4269,
+      "port": 80,
+      "size": 1,
+      "value": 95
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4273,
+      "port": 82,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4279,
+      "port": 84,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4283,
+      "port": 86,
+      "size": 1,
+      "value": 185
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4289,
+      "port": 88,
+      "size": 1,
+      "value": 87
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4293,
+      "port": 90,
+      "size": 1,
+      "value": 136
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4299,
+      "port": 92,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4303,
+      "port": 94,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4309,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4317,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4322,
+      "port": 64,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4324,
+      "port": 66,
+      "size": 1,
+      "value": 184
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4326,
+      "port": 68,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4328,
+      "port": 70,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4330,
+      "port": 72,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4332,
+      "port": 74,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4334,
+      "port": 76,
+      "size": 1,
+      "value": 56
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4336,
+      "port": 78,
+      "size": 1,
+      "value": 82
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4338,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4344,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4348,
+      "port": 80,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4352,
+      "port": 82,
+      "size": 1,
+      "value": 227
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4358,
+      "port": 84,
+      "size": 1,
+      "value": 39
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4362,
+      "port": 86,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4368,
+      "port": 88,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4372,
+      "port": 90,
+      "size": 1,
+      "value": 121
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4378,
+      "port": 92,
+      "size": 1,
+      "value": 62
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4382,
+      "port": 94,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4388,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4396,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4401,
+      "port": 64,
+      "size": 1,
+      "value": 87
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4403,
+      "port": 66,
+      "size": 1,
+      "value": 19
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4405,
+      "port": 68,
+      "size": 1,
+      "value": 104
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4407,
+      "port": 70,
+      "size": 1,
+      "value": 36
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4409,
+      "port": 72,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4411,
+      "port": 74,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4413,
+      "port": 76,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4415,
+      "port": 78,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4417,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4423,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4427,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4431,
+      "port": 82,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4437,
+      "port": 84,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4441,
+      "port": 86,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4447,
+      "port": 88,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4451,
+      "port": 90,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4457,
+      "port": 92,
+      "size": 1,
+      "value": 254
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4461,
+      "port": 94,
+      "size": 1,
+      "value": 127
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4467,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13782,
+      "instruction": 4477,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13794,
+      "instruction": 4480,
+      "port": 64,
+      "size": 1,
+      "value": 92
+    },
+    {
+      "kind": "io-write",
+      "pc": 13801,
+      "instruction": 4484,
+      "port": 66,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13807,
+      "instruction": 4488,
+      "port": 24,
+      "size": 1,
+      "value": 4
+    },
+    {
+      "kind": "download-checksum",
+      "pc": 13807,
+      "instruction": 4488,
+      "supplied": 32860,
+      "computed": 32860,
+      "accepted": true,
+      "bytes": 144
+    },
+    {
+      "kind": "modeled-dsp-launch",
+      "pc": 13807,
+      "instruction": 4488,
+      "origin": 32768,
+      "assumption": "boot ROM accepts checksum/end strobe and starts requested origin"
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4503,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20992
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4503,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 49233
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4503,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4503,
+      "tag": 20992,
+      "value": 49233
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4518,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4518,
+      "tag": 20992
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4520,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4526,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20993
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4526,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 1
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4526,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4526,
+      "tag": 20993,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4541,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4541,
+      "tag": 20993
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4543,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4549,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20994
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4549,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4549,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4549,
+      "tag": 20994,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4564,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4564,
+      "tag": 20994
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4566,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4572,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20995
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4572,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 32
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4572,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4572,
+      "tag": 20995,
+      "value": 32
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4587,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4587,
+      "tag": 20995
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4589,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4595,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20996
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4595,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 53262
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4595,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4595,
+      "tag": 20996,
+      "value": 53262
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4610,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4610,
+      "tag": 20996
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4612,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4618,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20997
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4618,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 8
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4618,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4618,
+      "tag": 20997,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4633,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4633,
+      "tag": 20997
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4635,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4641,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20998
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4641,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4641,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4641,
+      "tag": 20998,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4656,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4656,
+      "tag": 20998
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4658,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4664,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 20999
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4664,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4664,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4664,
+      "tag": 20999,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4679,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4679,
+      "tag": 20999
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4681,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4687,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21000
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4687,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 4951
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4687,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4687,
+      "tag": 21000,
+      "value": 4951
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4702,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4702,
+      "tag": 21000
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4704,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4710,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21001
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4710,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 9320
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4710,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4710,
+      "tag": 21001,
+      "value": 9320
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4725,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4725,
+      "tag": 21001
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4727,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4733,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21002
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4733,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4733,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4733,
+      "tag": 21002,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4748,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4748,
+      "tag": 21002
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4750,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4756,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21003
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4756,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4756,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4756,
+      "tag": 21003,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4771,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4771,
+      "tag": 21003
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4773,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4779,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21004
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4779,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4779,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4779,
+      "tag": 21004,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4794,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4794,
+      "tag": 21004
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4796,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4802,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21005
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4802,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 65535
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4802,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4802,
+      "tag": 21005,
+      "value": 65535
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4817,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4817,
+      "tag": 21005
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4819,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4825,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21006
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4825,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 32769
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4825,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4825,
+      "tag": 21006,
+      "value": 32769
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4840,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4840,
+      "tag": 21006
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4842,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4848,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21007
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4848,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 32766
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4848,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4848,
+      "tag": 21007,
+      "value": 32766
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4863,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4863,
+      "tag": 21007
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4865,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4871,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21008
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4871,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 4660
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4871,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4871,
+      "tag": 21008,
+      "value": 4660
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4886,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4886,
+      "tag": 21008
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4888,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4894,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21009
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4894,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 5063
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4894,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4894,
+      "tag": 21009,
+      "value": 5063
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4909,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4909,
+      "tag": 21009
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4911,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4917,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21010
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4917,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 5466
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4917,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4917,
+      "tag": 21010,
+      "value": 5466
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4932,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4932,
+      "tag": 21010
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4934,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4940,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21011
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4940,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 5869
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4940,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4940,
+      "tag": 21011,
+      "value": 5869
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4955,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4955,
+      "tag": 21011
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4957,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4963,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21012
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4963,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 6272
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4963,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4963,
+      "tag": 21012,
+      "value": 6272
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 4978,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 4978,
+      "tag": 21012
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 4980,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4986,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21013
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4986,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 6675
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 4986,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 4986,
+      "tag": 21013,
+      "value": 6675
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5001,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5001,
+      "tag": 21013
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5003,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5009,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21014
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5009,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 7078
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5009,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5009,
+      "tag": 21014,
+      "value": 7078
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5024,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5024,
+      "tag": 21014
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5026,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5032,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21015
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5032,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 7481
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5032,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5032,
+      "tag": 21015,
+      "value": 7481
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5047,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5047,
+      "tag": 21015
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5049,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5055,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21016
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5055,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 7884
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5055,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5055,
+      "tag": 21016,
+      "value": 7884
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5070,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5070,
+      "tag": 21016
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5072,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5078,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21017
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5078,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 8287
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5078,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5078,
+      "tag": 21017,
+      "value": 8287
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5093,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5093,
+      "tag": 21017
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5095,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5101,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21018
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5101,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 8690
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5101,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5101,
+      "tag": 21018,
+      "value": 8690
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5116,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5116,
+      "tag": 21018
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5118,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5124,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21019
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5124,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 9093
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5124,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5124,
+      "tag": 21019,
+      "value": 9093
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5139,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5139,
+      "tag": 21019
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5141,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5147,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21020
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5147,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 9496
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5147,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5147,
+      "tag": 21020,
+      "value": 9496
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5162,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5162,
+      "tag": 21020
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5164,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5170,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21021
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5170,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 9899
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5170,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5170,
+      "tag": 21021,
+      "value": 9899
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5185,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5185,
+      "tag": 21021
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5187,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5193,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21022
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5193,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 10302
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5193,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5193,
+      "tag": 21022,
+      "value": 10302
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5208,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5208,
+      "tag": 21022
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5210,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5216,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21023
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5216,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 10705
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5216,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5216,
+      "tag": 21023,
+      "value": 10705
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5231,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5231,
+      "tag": 21023
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5233,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5239,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21024
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5239,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 11108
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5239,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5239,
+      "tag": 21024,
+      "value": 11108
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5254,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5254,
+      "tag": 21024
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5256,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5262,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21025
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5262,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 11511
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5262,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5262,
+      "tag": 21025,
+      "value": 11511
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5277,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5277,
+      "tag": 21025
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5279,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5285,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21026
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5285,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 11914
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5285,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5285,
+      "tag": 21026,
+      "value": 11914
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5300,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5300,
+      "tag": 21026
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5302,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5308,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21027
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5308,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 12317
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5308,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5308,
+      "tag": 21027,
+      "value": 12317
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5323,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5323,
+      "tag": 21027
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5325,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5331,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21028
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5331,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 12720
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5331,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5331,
+      "tag": 21028,
+      "value": 12720
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5346,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5346,
+      "tag": 21028
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5348,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5354,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21029
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5354,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 13123
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5354,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5354,
+      "tag": 21029,
+      "value": 13123
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5369,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5369,
+      "tag": 21029
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5371,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5377,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21030
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5377,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 13526
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5377,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5377,
+      "tag": 21030,
+      "value": 13526
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5392,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5392,
+      "tag": 21030
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5394,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5400,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21031
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5400,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 13929
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5400,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5400,
+      "tag": 21031,
+      "value": 13929
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5415,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5415,
+      "tag": 21031
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5417,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5423,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21032
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5423,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 14332
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5423,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5423,
+      "tag": 21032,
+      "value": 14332
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5438,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5438,
+      "tag": 21032
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5440,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5446,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21033
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5446,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 14735
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5446,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5446,
+      "tag": 21033,
+      "value": 14735
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5461,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5461,
+      "tag": 21033
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5463,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5469,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21034
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5469,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 15138
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5469,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5469,
+      "tag": 21034,
+      "value": 15138
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5484,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5484,
+      "tag": 21034
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5486,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5492,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21035
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5492,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 15541
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5492,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5492,
+      "tag": 21035,
+      "value": 15541
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5507,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5507,
+      "tag": 21035
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5509,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5515,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21036
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5515,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 15944
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5515,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5515,
+      "tag": 21036,
+      "value": 15944
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5530,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5530,
+      "tag": 21036
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5532,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5538,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21037
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5538,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 16347
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5538,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5538,
+      "tag": 21037,
+      "value": 16347
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5553,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5553,
+      "tag": 21037
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5555,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5561,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21038
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5561,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 16750
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5561,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5561,
+      "tag": 21038,
+      "value": 16750
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5576,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5576,
+      "tag": 21038
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5578,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5584,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21039
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5584,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 17153
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5584,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5584,
+      "tag": 21039,
+      "value": 17153
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5599,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5599,
+      "tag": 21039
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5601,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5607,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21040
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5607,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 4951
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5607,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5607,
+      "tag": 21040,
+      "value": 4951
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5622,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5622,
+      "tag": 21040
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5624,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5630,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21041
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5630,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 9320
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5630,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5630,
+      "tag": 21041,
+      "value": 9320
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5645,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5645,
+      "tag": 21041
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5647,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5653,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21042
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5653,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5653,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5653,
+      "tag": 21042,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5668,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5668,
+      "tag": 21042
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5670,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5676,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21043
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5676,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5676,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5676,
+      "tag": 21043,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5691,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5691,
+      "tag": 21043
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5693,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5699,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21044
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5699,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5699,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5699,
+      "tag": 21044,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5714,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5714,
+      "tag": 21044
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5716,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5722,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21045
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5722,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 65535
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5722,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5722,
+      "tag": 21045,
+      "value": 65535
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5737,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5737,
+      "tag": 21045
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5739,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5745,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21046
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5745,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 32769
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5745,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5745,
+      "tag": 21046,
+      "value": 32769
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5760,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5760,
+      "tag": 21046
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5762,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5768,
+      "dsp_pc": 32818,
+      "port": 94,
+      "value": 21047
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5768,
+      "dsp_pc": 32820,
+      "port": 95,
+      "value": 32766
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5768,
+      "dsp_pc": 32822,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5768,
+      "tag": 21047,
+      "value": 32766
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5783,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5783,
+      "tag": 21047
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5785,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5803,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5819,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5835,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5851,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5867,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5883,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5899,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5915,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5931,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5947,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5963,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5979,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 5995,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6011,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6027,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6043,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6059,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6095,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6117,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6139,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6161,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6181,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6208,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6230,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6252,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6274,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6295,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6308,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6340,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6362,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6384,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6406,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6426,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6453,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6475,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6497,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6519,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6540,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6553,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6585,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6607,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6629,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6651,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6671,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6698,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6720,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6742,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6764,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6785,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6798,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6830,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6852,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6874,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6896,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6916,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6943,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6965,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 6987,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7009,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7030,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7043,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7075,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7097,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7119,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7141,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7161,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7188,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7210,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7232,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7254,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7275,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7288,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7320,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7342,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7364,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7386,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7406,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7433,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7455,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7477,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7499,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7520,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7533,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7565,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7587,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7609,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7631,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7651,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7678,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7700,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7722,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7744,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7765,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7778,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7810,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7832,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7854,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7876,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7896,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7923,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7945,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7967,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 7989,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8010,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8023,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8055,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8077,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8099,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8121,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8141,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8168,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8190,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8212,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8234,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8255,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8268,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8300,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8322,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8344,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8366,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8386,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8413,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8435,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8457,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8479,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8500,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8513,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8545,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8567,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8589,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8611,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8631,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8658,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8680,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8702,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8724,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8745,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8758,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8790,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8812,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8834,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8856,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8876,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8903,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8925,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8947,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8969,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 8990,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9003,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9035,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9057,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9079,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9101,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9121,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9148,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9170,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9192,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9214,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9235,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9248,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9280,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9302,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9324,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9346,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9366,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9393,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9415,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9437,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9459,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9480,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9493,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9525,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9547,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9569,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9591,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9611,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9638,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9660,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9682,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9704,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9725,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9738,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9770,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9792,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9814,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9836,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9856,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9883,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9905,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9927,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9949,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9970,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 9983,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10015,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10037,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10059,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10081,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10101,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10128,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10150,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10172,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10194,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10215,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10228,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10260,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10282,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10304,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10326,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10346,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10373,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10395,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10417,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10439,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10460,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10473,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10505,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10527,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10549,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10571,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10591,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10618,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10640,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10662,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10684,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10705,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10718,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10750,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10772,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10794,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10816,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10836,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10863,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10885,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10907,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10929,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10950,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10963,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 10995,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11017,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11039,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11061,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11081,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11108,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11130,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11152,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11174,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11195,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11208,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11240,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11262,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11284,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11306,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11326,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11353,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11375,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11397,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11419,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11440,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11453,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11485,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11507,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11529,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11551,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11571,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11598,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11620,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11642,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11664,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11685,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11698,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11730,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11752,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11774,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11796,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11816,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11843,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11865,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11887,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11909,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11930,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11943,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11975,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 11997,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12019,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12041,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12061,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12088,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12110,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12132,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12154,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12175,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12188,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12220,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12242,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12264,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12286,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12306,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12333,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12355,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12377,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12399,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12420,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12433,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12465,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12487,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12509,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12531,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12551,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12578,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12600,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12622,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12644,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12665,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12678,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12710,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12732,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12754,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12776,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12796,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12823,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12845,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12867,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12889,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12910,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12923,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12955,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12977,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 12999,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13021,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13041,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13068,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13090,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13112,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13134,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13155,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13168,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13200,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13222,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13244,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13266,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13286,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13313,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13335,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13357,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13379,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13400,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13413,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13445,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13467,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13489,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13511,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13531,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13558,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13580,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13602,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13624,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13645,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13658,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13690,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13712,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13734,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13756,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13776,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13803,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13825,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13847,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13869,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13890,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13903,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13935,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13957,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 13979,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14001,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14021,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14048,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14070,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14092,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14114,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14135,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14148,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14180,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14202,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14224,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14246,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14266,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14293,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14315,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14337,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14359,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14380,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14393,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14425,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14447,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14469,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14491,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14511,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14538,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14560,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14582,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14604,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14625,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14638,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14670,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14692,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14714,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14736,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14756,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14783,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14805,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14827,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14849,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14870,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14883,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14915,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14937,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14959,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 14981,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15001,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15028,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15050,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15072,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15094,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15115,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15128,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15160,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15182,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15204,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15226,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15246,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15273,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15295,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15317,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15339,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15360,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15373,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15405,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15427,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15449,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15471,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15491,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15518,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15540,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15562,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15584,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15605,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15618,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15650,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15672,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15694,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15716,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15736,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15763,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15785,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15807,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15829,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15850,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15863,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15895,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15917,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15939,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15961,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 15981,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16008,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16030,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16052,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16074,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16095,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16108,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16140,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16162,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16184,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16206,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16226,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16253,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16275,
+      "address": 65386,
+      "size": 2,
+      "value": 57
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16297,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16319,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16340,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16353,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16385,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16407,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16429,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16451,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16471,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16498,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16520,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16542,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16564,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16585,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16598,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16630,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16652,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16674,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16696,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16716,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16743,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16765,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16787,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16809,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16830,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16843,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16875,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16897,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16919,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16941,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16961,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 16988,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17010,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17032,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17054,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17075,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17088,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17120,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17142,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17164,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17186,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17206,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17233,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17255,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17277,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17299,
+      "address": 65386,
+      "size": 2,
+      "value": 66
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17320,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17333,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17365,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17387,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17409,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17431,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17451,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17478,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17500,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17522,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17544,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17565,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17578,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17610,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17632,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17654,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17676,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17696,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17723,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17745,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17767,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17789,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17810,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17823,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17855,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17877,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17899,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17921,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17941,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17968,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 17990,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18012,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18034,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18055,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18068,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18100,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18122,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18144,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18166,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18186,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18213,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18235,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18257,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18279,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18300,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18313,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18345,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18367,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18389,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18411,
+      "address": 65386,
+      "size": 2,
+      "value": 50
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18431,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18458,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18480,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18502,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18524,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18545,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18558,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18590,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18612,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18634,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18656,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18676,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18703,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18725,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18747,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18769,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18790,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18803,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18835,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18857,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18879,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18901,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18921,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18948,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18970,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 18992,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19014,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19035,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19048,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19080,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19102,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19124,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19146,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19166,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19193,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19215,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19237,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19259,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19280,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19293,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19325,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19347,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19369,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19391,
+      "address": 65386,
+      "size": 2,
+      "value": 54
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19411,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19438,
+      "address": 65386,
+      "size": 2,
+      "value": 56
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19460,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19482,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19504,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19525,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19538,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19570,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19592,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19614,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19636,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19656,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19683,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19705,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19727,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19749,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19770,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19783,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19804,
+      "address": 65386,
+      "size": 2,
+      "value": 83
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19820,
+      "address": 65386,
+      "size": 2,
+      "value": 85
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19836,
+      "address": 65386,
+      "size": 2,
+      "value": 77
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19852,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19885,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19907,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19929,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19951,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19972,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 19985,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20003,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20019,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20035,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20051,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20067,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20083,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20099,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20115,
+      "address": 65386,
+      "size": 2,
+      "value": 79
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20131,
+      "address": 65386,
+      "size": 2,
+      "value": 78
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20147,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20163,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12590,
+      "instruction": 20179,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    }
+  ],
+  "io_read_counts": {
+    "0x18": 24,
+    "0x1a": 2,
+    "0x1c": 58,
+    "0x1e": 2,
+    "0x58": 56,
+    "0x5a": 56,
+    "0x5c": 56,
+    "0x5e": 56
+  },
+  "source_file_unchanged": true,
+  "flash_array_unchanged": true,
+  "assumptions": [
+    "Entry is 0000:2000 with PCB already at ff00, initialized DTE UART, RAM and chip selects.",
+    "All result words travel through actual DSP mailbox instructions and actual supervisor IN/UART stores.",
+    "ASIC latch/status cross-wiring is inferred from paired firmware routines, not measured on hardware.",
+    "Boot-ROM reset acknowledgements, checksum acceptance and jump to the requested 8000 are modeled.",
+    "DSP scheduling is driven by supervisor polling; not cycle accurate. UART is immediately ready.",
+    "ROM contents are synthetic; optional C5x ROM protection is not modeled.",
+    "RAM loading mechanism and a compatible flashable SDL container are not implemented."
+  ],
+  "load_map": {
+    "entry": "0000:3000",
+    "ram_image_base": 12288,
+    "ram_image_bytes": 4240,
+    "copied_routines": 13312,
+    "kernel_source": 16384,
+    "result_buffer": 32768,
+    "status_byte": 32882,
+    "words_expected": 56,
+    "labels": {
+      "entry": 12288,
+      "next_word": 12358,
+      "rx_wait": 12361,
+      "rx_ready": 12379,
+      "print_word": 12434,
+      "reset_error": 12487,
+      "download_error": 12501,
+      "mailbox_error": 12515,
+      "tag_error": 12529,
+      "puts": 12543,
+      "puts_end": 12557,
+      "putc": 12558,
+      "tx_wait": 12563,
+      "tx_ready": 12588,
+      "hex": 12596,
+      "digit": 12605,
+      "decimal": 12624,
+      "digit_out": 12626,
+      "newline": 12640,
+      "halt": 12651,
+      "start_text": 12656,
+      "data_text": 12670,
+      "sum_text": 12688,
+      "done_text": 12693,
+      "reset_text": 12706,
+      "download_text": 12724,
+      "mailbox_text": 12745,
+      "tag_text": 12765
+    },
+    "reference_sha256": "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5",
+    "ram_image_sha256": "7ded56f40c94d4b5bdd414db91924a9f7c2ab086cbc77cea6b56f06f406813bd"
+  }
+}

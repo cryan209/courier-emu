@@ -110,7 +110,10 @@ class Diagnostic:
     kernel_at: int = KERNEL
 
 
-def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> Diagnostic:
+def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
+                     relocated_layout: bool = False,
+                     rom_words: int = ROM_DUMP_WORDS,
+                     rom_origin: int = 0) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
     With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
@@ -122,12 +125,23 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> D
     reference = CourierRom.load(reference_path)
     if reference.digest != REFERENCE_DIGEST:
         raise ValueError("unsupported reference ROM: exact IDSDL302 profile required")
-    probe = build_rom_dump_probe() if rom_dump else build_probe(mailbox=True)
-    count = ROM_DUMP_WORDS if rom_dump else 0x38
-    entry = ROM_DUMP_ENTRY if rom_dump else ENTRY
-    routines_at = ROM_DUMP_ROUTINES if rom_dump else ROUTINES
-    kernel_at = ROM_DUMP_KERNEL if rom_dump else KERNEL
-    result_base = ROM_DUMP_RESULT if rom_dump else RESULT
+    # The board's watchdog resets a halted monitor after about a second and a
+    # half, and printing the whole 2048 words does not fit inside that: the run
+    # that found this got 491 words out and was cut off mid-line. A window lets
+    # the dump be taken in pieces that do fit.
+    probe = (build_rom_dump_probe(rom_words, origin=rom_origin) if rom_dump
+             else build_probe(mailbox=True))
+    count = rom_words if rom_dump else 0x38
+    # The relocated layout is the one that fits the surveyed-free RAM on the
+    # board; the default is kept only because existing artifacts record it.
+    relocate = rom_dump or relocated_layout
+    compact = rom_dump
+    entry = ROM_DUMP_ENTRY if relocate else ENTRY
+    routines_at = ROM_DUMP_ROUTINES if relocate else ROUTINES
+    kernel_at = ROM_DUMP_KERNEL if relocate else KERNEL
+    # The relocated kernel sits at 0x4000, which is the default result buffer,
+    # so the buffer moves whenever the layout does - not only for the ROM dump.
+    result_base = ROM_DUMP_RESULT if relocate else RESULT
     sum_at = result_base + 2 * count
     status_at = sum_at + 2
     routines = reference.data[REFERENCE_START:REFERENCE_END]
@@ -180,11 +194,22 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False) -> D
     c.emit("be"); c.word(result_base)
     c.emit("31db b9"); c.word(count)
     c.label("print_word")
-    c.emit("89d8"); c.jump("hex", "e8")
-    c.emit("b03a"); c.jump("putc", "e8")
-    c.emit("ad"); c.jump("hex", "e8")
-    c.jump("newline", "e8")
-    c.emit("43 49"); c.branch(0x75, "print_word")
+    if compact:
+        # `NNNN:VVVV\r\n` is eleven bytes a word, and 2048 of those take about
+        # two seconds to clock out at 115200 - longer than the board's watchdog
+        # allows a halted monitor to live. The run that found this printed 491
+        # words and was reset mid-line. Four bytes a word fits; the tag
+        # sequence already ordered the words during collection, and the
+        # checksum still covers them.
+        c.emit("ad"); c.jump("hex", "e8")
+        c.emit("49"); c.branch(0x75, "print_word")
+        c.jump("newline", "e8")
+    else:
+        c.emit("89d8"); c.jump("hex", "e8")
+        c.emit("b03a"); c.jump("putc", "e8")
+        c.emit("ad"); c.jump("hex", "e8")
+        c.jump("newline", "e8")
+        c.emit("43 49"); c.branch(0x75, "print_word")
     puts("sum_text")
     c.emit("a1"); c.word(sum_at); c.jump("hex", "e8")
     c.jump("newline", "e8")
@@ -260,19 +285,27 @@ def parse_capture(data: bytes) -> dict:
     if not header:
         raise ValueError("missing or malformed data header")
     count = int(header[1], 16)
-    if len(lines) != count + 4:
-        raise ValueError("frame length does not match its declared word count")
-    words = []
-    for index, line in enumerate(lines[2:2 + count]):
-        if not re.fullmatch(r"[0-9A-F]{4}:[0-9A-F]{4}", line):
-            raise ValueError("invalid diagnostic word record")
-        position, value = (int(v, 16) for v in line.split(":"))
-        if position != index:
-            raise ValueError("missing, duplicate or out-of-order word")
-        words.append(value)
+    joined = "".join(lines[2:-2])
+    if re.fullmatch(r"[0-9A-F]+", joined or "x") and len(joined) == count * 4:
+        # The compact form the ROM dump uses: four hex digits a word, no
+        # position prefix, because the addressed form does not clock out inside
+        # the board's watchdog window. Ordering was enforced by the tag
+        # sequence during collection and the checksum still covers the words.
+        words = [int(joined[i:i + 4], 16) for i in range(0, len(joined), 4)]
+    else:
+        if len(lines) != count + 4:
+            raise ValueError("frame length does not match its declared word count")
+        words = []
+        for index, line in enumerate(lines[2:2 + count]):
+            if not re.fullmatch(r"[0-9A-F]{4}:[0-9A-F]{4}", line):
+                raise ValueError("invalid diagnostic word record")
+            position, value = (int(v, 16) for v in line.split(":"))
+            if position != index:
+                raise ValueError("missing, duplicate or out-of-order word")
+            words.append(value)
     if not re.fullmatch(r"SUM:[0-9A-F]{4}", lines[-2]) or int(lines[-2][4:], 16) != sum(words) & 0xFFFF:
         raise ValueError("diagnostic checksum mismatch")
-    if count == ROM_DUMP_WORDS:
+    if len(words) != 0x38:
         # A ROM dump is raw program words with no header or controls, so there
         # is nothing to inspect - only the frame's own integrity, checked
         # above. Uniform or bus-like data is still not proof of a readable ROM.
@@ -558,6 +591,14 @@ def main() -> int:
     parser.add_argument("--capture", type=Path, help="validate a saved CDRP1 serial frame")
     parser.add_argument("--external-fixture", action="store_true")
     parser.add_argument("--fault", choices=("reset", "checksum", "no-dsp", "tag", "uart", "stale"))
+    parser.add_argument("--rom-words", type=lambda v: int(v, 0), default=ROM_DUMP_WORDS,
+                        help="how many words this run reads (default 2048)")
+    parser.add_argument("--rom-origin", type=lambda v: int(v, 0), default=0,
+                        help="program address this run starts at (default 0)")
+    parser.add_argument("--relocate", action="store_true",
+                        help="load at 0x3000/0x3400/0x4000 instead of the default "
+                             "0x2000/0x2400/0x3000, which straddles RAM the board "
+                             "survey found in use (implied by --rom-dump)")
     parser.add_argument("--rom-dump", action="store_true",
                         help="carry the full 2048-word on-chip ROM reader instead of "
                              "the 56-word sample probe")
@@ -579,7 +620,10 @@ def main() -> int:
             parser.error("--reference and --output are required to build and verify")
         if args.output.exists():
             parser.error("output directory already exists")
-        diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump)
+        diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump,
+                                     relocated_layout=args.relocate,
+                                     rom_words=args.rom_words,
+                                     rom_origin=args.rom_origin)
         result = TransportMachine(diagnostic, rom_mapped=not args.external_fixture, fault=args.fault).run()
         args.output.mkdir(parents=True)
         (args.output / "diagnostic-ram.bin").write_bytes(diagnostic.ram)
