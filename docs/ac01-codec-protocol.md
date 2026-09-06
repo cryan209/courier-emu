@@ -163,26 +163,46 @@ That is the concrete version of the claim in
 [board-parts.md](board-parts.md) that "the ASIC fronts the codec" - it is true
 of the data path, and false of the conversion clock.
 
-### The rate, and one thing this does not settle
+### The rate: MCLK is 2.880 MHz, and it is over-determined
 
-With A = 10 and B = 20 the datasheet's equations give
+The datasheet's equations are `FCLK = MCLK/(2 x A)` and `fs = FCLK/B`.
+[codec-sample-rates.md](codec-sample-rates.md) establishes the three sample
+rates independently of any clock - from the dial path's DTMF phase increments
+and from a six-row table indexed by V.34's negotiated symbol rate, which
+reprograms **register 2 only**, with `0214`, `0213` or `0212`. Solving for MCLK
+with A fixed at 10:
 
-* `fs = MCLK / 400`
-* low-pass corner `= FCLK/40 = fs/2`
-* high-pass corner `= fs/200`
+| B | fs | implied MCLK | FCLK |
+|---:|---|---|---|
+| 20 | 7200 Hz | 2.880000 MHz | 144.000 kHz |
+| 19 | 7578.95 Hz | 2.880001 MHz | 144.000 kHz |
+| 18 | 8000 Hz | 2.880000 MHz | 144.000 kHz |
 
-The B/A ratio is what sets the filter shape, and 20/10 puts the low-pass corner
-at half the sample rate - wider than the datasheet's default A = B = 18, which
-gives `0.45 fs`. At the harness's 9600 Hz that is a 4.8 kHz low-pass and a 48 Hz
-high-pass, which is a sensible voiceband channel and is consistent with 9600
-being the design point.
+Three independent rates converge on one value. **MCLK = 2.880 MHz**, and
 
-**MCLK itself is not established.** 9600 Hz requires MCLK = 3.840 MHz, and that
-is not an integer division of the board's 40.320 MHz can (it would be 10.5), so
-either the ASIC divides some other clock or there is a second oscillator near
-the codec. The board photograph in `board-parts.md` does not resolve it. What
-is measured here is only the ratio `fs = MCLK/400`; the 9600 Hz figure still
-comes from the harness, not from this part.
+```
+40.320 MHz / 2.880 MHz = 14.000
+```
+
+exactly - so the codec clock is an integer division of the board's master
+oscillator, and the second can on the board does not have to be its source.
+
+Two things fall out that read as design rather than coincidence:
+
+* **FCLK = 144.000 kHz is the datasheet's own characterization point.** Every
+  filter and distortion table in section 3.5 is specified at "FCLK = 144 kHz,
+  fs = 8 kHz", and B = 18 gives exactly 8.000 kHz. The board runs the part where
+  TI characterized it.
+* **A is never reprogrammed, and that is why.** The anti-alias low-pass corner
+  is `FCLK/40`, which depends on A alone - a fixed **3.6 kHz** across all three
+  sample rates, the standard voiceband corner. Only B moves, so changing the
+  sample rate does not disturb the filter. The high-pass corner is `fs/200`:
+  36 Hz at 7200, 40 Hz at 8000.
+
+An earlier revision of this section said the design point was 9600 Hz and that
+MCLK was therefore 3.840 MHz, an awkward 10.5 division of the 40.320 MHz can.
+That was wrong - it took the harness's `DAA_SAMPLE_RATE` for a measurement. The
+9600 figure appears nowhere in the firmware, the datasheet or the arithmetic.
 
 ## What the emulator does with all of this today: nothing
 
@@ -196,6 +216,32 @@ and the `idle` at `0x814c` both fall straight through.
 
 `courier_emu/codec.py` models an Si3038 register map instead, which this board's
 DSP never drives.
+
+### And the sample rate is wrong on the side that generates audio
+
+`configure_rom_codec` sets `m_line_frame_period = 3472`, which is `25e6/7200` -
+the frame *interrupt* already arrives at the 2400-baud rate. But everything that
+*fills* the receive queue assumes 9600 Hz:
+
+| site | what assumes 9600 |
+|---|---|
+| `courier_emu/daa.py` | `DAA_SAMPLE_RATE`, and the 350/440 Hz dial tone it renders |
+| `courier_emu/line.py` | `LINE_FRAME_MS`, the frame unit two linked instances exchange |
+| `courier_emu/bridge.py` | the SIP rate converters and three tone mixers |
+| `native/c5x_core.cpp:396` | the V.8 1300 Hz and 2100 Hz correlator references |
+| `native/c5x_core.cpp:419` | the answer-tone cadence |
+| `native/c5x_core.cpp:754` | the line-sample phase accumulator |
+
+So samples are synthesized at 9600 Hz and consumed by firmware that believes
+they arrived at 7200. **Every frequency the firmware sees is scaled by 4/3.**
+Dial tone reaches it as 262/330 Hz instead of 350/440; the 2100 Hz answer tone
+arrives as 1575 Hz; DTMF lands nowhere near its detector's tolerance, which
+[codec-rate-312.md](codec-rate-312.md) already showed is only ±1.5%.
+
+This is a candidate explanation for `--exchange` hearing silence and for the
+V.8 bootstrap needing a native detector rather than the firmware's own - but it
+is a candidate, not a demonstration. Nothing here has been re-run at 7200 Hz to
+show the tones are then recognised.
 
 A faithful model needs: a frame clock at `fs` raising XINT; `DXR`'s two LSBs
 decoded per Table 2-3; a one-frame secondary state that parses
