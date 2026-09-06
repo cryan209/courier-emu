@@ -121,6 +121,11 @@ HOST_MESSAGE_PENDING = 0x8000
 # tag from 0x58/0x5a, the word from 0x5c/0x5e and the stream from 0x60/0x62.
 DSP_SEND_COMPLETE = 0x02
 DSP_STREAM_READY = 0x04
+# The resume poll at DSP 0x8462 tests *bit 13* of the status latch, not the
+# absence of bit 2: `bit 13, @7d / retc ntc`, then it reads the vector the
+# tag-06 handler armed at cell 0x039e and `bacc`s into the coroutine. So the
+# CPU's acknowledgement has to raise bit 13 - one word per acknowledgement.
+DSP_STREAM_RESUME = 0x2000
 DSP_TAG_PORT = 0x5E
 DSP_WORD_PORT = 0x5F
 DSP_STREAM_PORT = 0x60
@@ -867,12 +872,16 @@ class CourierDspBridge:
             return 0
         return core.data(HOST_STATUS_CELL) & 0xFFFF
 
-    def _clear_dsp_status(self, bits: int) -> None:
+    def _set_dsp_status(self, set_bits: int = 0, clear_bits: int = 0) -> None:
         """Acknowledge, the way the board does - the CPU's ack resumes the DSP."""
         core = self.core
         if not self.active or not hasattr(core, "set_data"):
             return
-        core.set_data(HOST_STATUS_CELL, core.data(HOST_STATUS_CELL) & ~bits & 0xFFFF)
+        status = core.data(HOST_STATUS_CELL)
+        core.set_data(HOST_STATUS_CELL, (status & ~clear_bits | set_bits) & 0xFFFF)
+
+    def _clear_dsp_status(self, bits: int) -> None:
+        self._set_dsp_status(clear_bits=bits)
 
     def _dsp_port_half(self, port: int, high: bool) -> int:
         word = self.core.io(port) & 0xFFFF
@@ -974,9 +983,9 @@ class CourierDspBridge:
                     self._runtime_ready = False
                     self._runtime_ready_delay = self.batch
                 if value & DSP_STREAM_READY:
-                    # Acknowledging bit 2 is what makes the DSP emit the next
-                    # word, exactly as bit 0 commits a message to it.
-                    self._clear_dsp_status(DSP_STREAM_READY)
+                    # One acknowledgement, one word: take bit 2 down and raise
+                    # the bit the resume poll at 0x8462 is waiting on.
+                    self._set_dsp_status(DSP_STREAM_RESUME, DSP_STREAM_READY)
                     self.dsp_stream_acks += 1
                 if value & 2 and self._dsp_status() & DSP_SEND_COMPLETE:
                     self._clear_dsp_status(DSP_SEND_COMPLETE)

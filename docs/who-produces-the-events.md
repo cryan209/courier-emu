@@ -196,13 +196,49 @@ the chain vector (`[0x02d3]` under 7.3.14, `[0x01cd]` under 7.4.16).
 physical modem, which is why its notes already name `0x8470`, `0x42` and the
 ring at data `0bd0`.
 
-### In the emulator the probe stops at step 4
+### Wiring the bridge to the real dispatcher: how far it gets
 
-`CourierDspBridge.write` intercepts all four mailbox ports, assembles the
-header and data, records the message, and calls `_answer_runtime_request`.
-**Nothing writes `@5e`, `@5f` or `@57` bit 15**, so the DSP's dispatcher at
-`0x8387` never runs and no handler ever executes. The C5x core is loaded and
-stepping, but deaf to the supervisor.
+`_deliver_host_message` now does the ASIC's write side - tag to DSP cell
+`0x5e`, word to `0x5f`, bit 15 of `@57` - and the return leg reports the DSP's
+own completions where the CPU looks for them, with the acknowledgement raising
+**bit 13**, which is what the resume poll actually tests:
+
+```
+8462  calld 80e8, * / lar ar1, #57     ; read the status latch
+8469  bit  13, @7d
+846a  retc ntc                          ; bit 13 clear - nothing to resume
+846b  lar  ar1, #039e
+846d  lacc *                            ; the vector the handler armed
+846e  retc eq                           ; unarmed - return
+846f  bacc                              ; continue the coroutine
+```
+
+Both stream handlers arm that cell the same way: tag `0x06` at `0x8470` writes
+`splk @1e, #8474`, and tag `0x45` - the one `ATY12` sends - at `0x860a` writes
+`splk @1e, #860e`. `@1e` under `ldp #007` is cell `0x039e`.
+
+**The message is delivered and never consumed.** Instrumenting the
+acknowledgement shows the state at that moment:
+
+```
+ACK set=2000 clr=0004   @57 8000 -> a000   io60=ffff   cell 039e=0000
+```
+
+`@57` still carries bit 15, so the dispatcher at `0x8387` has not read the
+message - it acknowledges by writing bit 0 - and `0x039e` is still zero, so no
+handler has armed a stream. The modelled core is executing, but nothing in it
+calls the dispatcher, so a delivered message sits pending forever.
+
+An earlier revision of this note read a jump in `@57` and ring-pointer write
+counts after the tag-`0x45` delivery as the handler running. That was wrong:
+those counts are the DSP's own periodic work, and `039e = 0000` shows no
+handler ran at all.
+
+### The stand-in the wiring replaces
+
+`CourierDspBridge.write` used to intercept all four mailbox ports, assemble the
+header and data, record the message, and call `_answer_runtime_request` -
+writing nothing to `@5e`, `@5f` or `@57`.
 
 `_answer_runtime_request` stands in for it, and only for two tags: `0x7c`, the
 detector poll, and `0x54`. Every other tag - including `0x45`, the one `ATY12`
