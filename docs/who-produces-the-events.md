@@ -289,9 +289,43 @@ harness slices it, carries only the `0x8000` bank. The C5x fetches its vectors
 from low program memory, so IRQ 5 vectors into memory that was never
 populated and the core runs away instead of servicing anything.
 
-Nothing at program `0x8000..0x803f` looks like a vector table either - no slot
-holds a `bd` - so the vectors are not simply relocated into the resident bank
-by `IPTR`; they are in the block this configuration does not have.
+### Looking for the low block
+
+`CourierRom.dsp_program_segments` builds its single segment from the download
+call site, taking `entry_word` as the origin, and its own docstring already
+flags the limit: "Whether the rest of the datapump region reaches the DSP by
+some other path is not established."
+
+The segment it produces starts with the same prologue that an XMF places at
+origin `0x0000`:
+
+```
+main211 @0000  bc00 ae57 ffff ae7a 0000 be41 bc00 ae2a 0010 ae28 000a ae29 ...
+rom     @8000  bc00 ae57 ffff      be41 bc00 ae2a 0010 ae28 000a ae29 ...
+```
+
+- the same sequence with a two-word deletion, so a positional comparison shows
+only 3 of the first 16 words equal while the shape is plainly shared. So the
+ROM's one segment is the datapump's opening, placed at `0x8000`.
+
+Two things say the vectors should then be at `0x0000`, not there. The core
+implements `IPTR` as `(iptr << 11) | ((op & 0x1f) << 1)`, and `c5x_core.cpp`
+notes that the firmware's own `APL #0x07f8, @07` "keeps bit 3 and clears
+IPTR" - and that instruction is in this very prologue, at offset `0x14`. A
+part that clears `IPTR` fetches its vectors from `0x0000`.
+
+Loading the same segment a second time at origin `0x0000` was tried as an
+experiment. It does change the failure - the woken core now runs real code
+across low addresses (`0x000c`, `0x001d`, `0x0024`, `0x0028`, `0x0077`, ...)
+instead of running away - but `ATY12` still times out, and the experiment is
+not a model of anything: it puts one program at two origins. It is recorded
+here only to say the low range is reachable once populated.
+
+**So the low block has not been found.** What the ROM slicer extracts is the
+resident bank; where a ROM board's vector block comes from - a second download
+the call-site scan does not find, or a region the supervisor copies by another
+path - is exactly the question `CourierRom.dsp_program_segments` says is
+open.
 
 An earlier revision of this note read a jump in `@57` and ring-pointer write
 counts after the tag-`0x45` delivery as the handler running. That was wrong:
