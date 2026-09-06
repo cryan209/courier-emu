@@ -406,13 +406,73 @@ install a vector table over it afterwards. It does not: logging every
 total**, all the `bldp` at `0x80a7` into `0x23f0`-`0x23f2`. Nothing writes a
 vector anywhere, in any space, ever.
 
-### The on-chip boot loader supplies the mechanism the ROM reading was missing
+### The supervisor's own download code settles the order, and the order decides it
+
+This is the argument that does not rest on any reading of `PMST`, on the board,
+or on anything the emulator models. It is the 80186's download path,
+disassembled out of `IDSDL302.ROM`.
+
+The call site passes the destination and the length:
+
+```
+0046f  mov  ax, 0x8000        ; the destination
+00472  call 0xe3aa            ; the launch routine  <- before the data
+00475  mov  ax, 0
+00478  mov  cx, 0xd87c        ; 55420 bytes, the payload
+0047b  call 0xe47b            ; the block transfer  <- the data
+```
+
+The launch routine at `0xe3aa`, in order:
+
+```
+0e3ad  mov  dx, 0x40 / out dx, al ... out 0x42   ; destination 0x8000 into the window
+0e3c4  out  0x18/0x1a <- ffff ; out 0x1c/0x1e <- ffff
+0e3e1  mov  cx, 0x1f4 / loop                     ; a delay
+0e3f9  mov  bx, 0xff56                           ; a PCB register
+0e3fc  mov  ax, [bx] / or ax, 2
+0e403  mov  cx, ax   / and cx, 0xfff7            ; the same word with bit 3 clear
+0e406  mov  [bx], ax / nop / nop
+0e40a  mov  [bx], cx                             ; bit 3 low
+0e40d  or   ax, 8    / mov cx, 5 / loop
+0e415  mov  [0xff56], ax                         ; bit 3 high again
+0e41a  test [0xff46], 0x20 / in 0x18 / in 0x1c   ; wait for the far side
+0e438  mov  al, 2 / out 0x1c, al                 ; then a command
+0e43d  ret
+```
+
+A line pulsed low and back high across a delay is reset-shaped, and it happens
+**before a single byte of the program is sent**. The routine then waits for the
+far side to answer before returning.
+
+And the transfer routine at `0xe47b` ends without ever starting anything:
+
+```
+0e54c  mov  ax, [0xe39] / out 0x40, al / out 0x42, al   ; the checksum
+0e55d  mov  al, 4 / out 0x18, al                        ; submit it
+0e569  in   al, 0x18 / test al, 4                       ; wait for the ack
+0e56f  pop  es / clc / ret
+```
+
+**No entry address is written after the block, and no "go" command is issued.**
+The only entry address in the whole path is the `0x8000` written into the
+window *before* the reset pulse.
+
+That order forces the conclusion. The part is released from reset first and the
+program arrives afterwards, so it is executing something while the block is
+being fed to it, and something must transfer control when the block ends
+because the supervisor never does. At that moment external program memory is
+the RAM this download is about to fill - and with A15 unwired, program
+`0x0000` is that same empty RAM. So the DSP cannot be executing external memory
+at reset. **It is executing on-chip ROM, which means MP/MC = 0, microcomputer
+mode.**
+
+### The on-chip boot loader is what it is executing
 
 The C5x on-chip ROM carries an optional boot loader that "can be used to
 transfer a program automatically from data memory or the serial port to
 anywhere in program memory", with the source on any 1K-word boundary in data
 memory, and which "releases control to the program for execution" once the
-transfer is done.
+transfer is done - which is exactly the missing "go".
 
 That is the piece the microcomputer-mode reading lacked, and it fits what this
 repository already measured, without needing anything new:
@@ -431,6 +491,30 @@ repository already measured, without needing anything new:
   the 2K on-chip ROM at `0x0000`-`0x07FF`, which is memory the firmware neither
   owns nor writes - consistent with the measurement above finding no vector
   writes at all.
+
+### The map, as it now stands
+
+| program | what answers | how it is known |
+|---|---|---|
+| `0000`-`07ff` | **on-chip ROM**: boot loader, and the vector table `IPTR = 1` selects at `0x0080` | forced by the download order; contents not recovered |
+| `0800`-`2bff` | on-chip SARAM, mapped by `PMST.RAM` | `opl @07, #00b0`; the `bldp` helper at `0x23f0` runs |
+| `2c00`-`7fff` | external RAM, the same cells as `ac00`-`ffff` | A15 unwired |
+| `8000`-`ffff` | external RAM, 32K words, where every download lands | overlay origins; `bootstrap_match` |
+
+| data | what answers |
+|---|---|
+| `0000`-`005f` | memory-mapped registers; `0x50`-`0x5f` are the ASIC's host window |
+| `0060`-`007f`, `0100`-`04ff` | on-chip DARAM B2, B0, B1 |
+| `0800`-`2bff` | the same SARAM, mapped by `PMST.OVLY` |
+| `2c00`-`feff` | external RAM, the same memory as program space; unreferenced below `0x8000` |
+| `ff00`-`ffff` | the ASIC window |
+
+**What the harness does instead.** `bridge.py` runs the part with `MP/MC = 1`
+and calls `set_pc(entry_word)` to place it at `0x8000` by hand. That is a
+stand-in for the boot loader, and it is why the timer runs away at `0x0088`:
+there is no ROM under the vector table. Supplying a ROM image would replace
+both the forced PC and that runaway, and `tools/rom_dump_gadget.py` is the
+attempt to obtain one.
 
 ### A15 is not wired, and that decides the decode without deciding the mode
 
