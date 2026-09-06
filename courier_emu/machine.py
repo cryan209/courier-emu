@@ -550,6 +550,9 @@ class CourierMachine:
             ) from exc
 
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
+        # Diagnostics that need to read emulated RAM (a console script sampling
+        # a firmware variable, for example) have no other handle on the engine.
+        self.uc = uc
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
         uc.mem_write(self.image.load_base, self.image.data)
         if self.parameter_sector is not None:
