@@ -165,6 +165,41 @@ the aliasing build - would say whether the shared window is narrower than
 entirely. Both changes were reverted; only the SARAM window from `8f34738`
 remains.
 
+## The 0x8000 in these addresses is not independently established
+
+`0x8000` is also where the *CPU's* flash lives - physical `0x80000`, segment
+`0x8000` - and the two uses have not been kept apart.
+
+* `CourierRom.dsp_download` **filters** on `DSP_ENTRY_WORD = 0x8000` and
+  discards any candidate whose entry word is anything else, so the ROM path's
+  origin is an assumption the scan enforces, not a measurement.
+* `main211.xmf`'s segments are worse. Its first segment is loaded at origin
+  `0x0000`, but the code in it is linked for `0x8000`: the stream sender sits
+  at word offset `0x05d5` and the instructions around it read
+
+```
+05cb  bd    85d5, *
+05cf  calld 85da, *
+05d1  splk  *, #85c9
+05d5  out   *, 0060
+```
+
+  Branch targets `0x85d5`, `0x85da` and `0x85c9` against offsets `0x05xx`. The
+  third segment, the one actually labelled origin `0x8000`, holds different
+  content and contains no sender at all - the first 4096 words of the two
+  agree in 11 places.
+
+So the harness's segment origins do not match the link addresses in the code,
+in both directions. Either an origin is wrong, or the DSP's program space
+ignores A15 and every label here is only meaningful modulo `0x8000`.
+
+The one strand that does not depend on the harness is `dsp_mailbox.py`'s
+constants - the sender at `84b7`/`849e`, the table at `8401`, tag `0x42`'s
+handler at `b05e` - which were taken through the `ATGLK2` monitor on a physical
+modem. Those agree with the addresses used throughout this document. Whether
+they were read back by address from the part, or derived under the same origin
+assumption, is not recorded, and settling that would settle the rest.
+
 ## What this does not establish
 
 The map is static: every address was read from the image, and only the sender
