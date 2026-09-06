@@ -318,7 +318,23 @@ for the whole run.
 Measured on the 302 boot: 1911 frame syncs, 1911 samples consumed - one word
 each, exactly - with `DRR` holding live audio instead of a stale zero.
 
-### The boot table shares the port, and the Hi-Z window is how
+### The boot table is probably not on this port at all
+
+> **Retracted.** An earlier version of this section argued that the boot table
+> and the codec share the primary serial port, and that the AC01's
+> high-impedance window is what keeps them apart. **The arithmetic does not
+> work**: `DOUT` is tri-stated for eight primary frames, and the download is
+> 27,710 words. The window is three orders of magnitude too small.
+>
+> The premise was also wrong. The ROM has **two** boot transports, and the
+> serial one is not the only candidate - see
+> [the boot transport note](dsp-boot-transport.md). The harness selects the
+> serial path by writing 4 to data `0xffff`, which is a harness choice, not a
+> measurement of what the ASIC presents.
+
+What follows is what is actually established about the port itself.
+
+### The codec is on the primary serial port
 
 The AC01 is on the DSP's **primary serial port**, not a port of its own. TI's
 application guide (`slaa006.pdf`) wires it `DOUT -> DR`, `DIN -> DX`,
@@ -327,8 +343,8 @@ port's pins pulled to COM through 100 kOhm and unused. The firmware agrees on
 both counts: it drives `DRR`/`DXR`/`SPC` at `0x20`-`0x22`, and it configures
 `TSPC` once at `0x808a` and never touches the TDM port again.
 
-The ROM boot loader is on that same port. It is receive-only - it never writes
-`DXR` and never polls `XRDY`:
+The ROM boot loader's *serial* path is on that same port - it is receive-only,
+never writing `DXR` or polling `XRDY`:
 
 ```
 06e8  1020  lacc @20      ; DRR
@@ -336,29 +352,19 @@ The ROM boot loader is on that same port. It is receive-only - it never writes
 06f3  a720  tblw @20      ; ...into program memory
 ```
 
-So the boot table and the codec's samples arrive on one port, and something has
-to keep them apart on the real board. The datasheet says what:
+but that path is only one of two the ROM offers, and the evidence points at the
+other one. See [dsp-boot-transport.md](dsp-boot-transport.md).
 
-> During the eight register programming cycles, DOUT is in the high-impedance
-> state. DOUT is released on the rising edge of the eighth primary internal
-> frame-sync interval.
+`queue_codec_boot` keeps the harness's boot words in their own queue, drained by
+the loader's polls and never by a frame sync. That was introduced because the
+frame clock otherwise ate the boot table, and it stands whichever transport is
+real - but if the parallel transport is the right one, the split stops being a
+workaround and becomes unnecessary, because the boot never touches this port.
 
-And the firmware issues **exactly eight primary frames** before normal
-operation: the two priming writes at `0x8095`/`0x809a` carrying control bits
-`01`, plus the six register writes. That is measurable - `phase_shifts` is 2 and
-`secondary_frames` is 6 - and it means the two apparently wasted priming words
-are what bring the count to eight, so `DOUT` goes live exactly when the codec
-is fully programmed. Until then the codec's output is tri-stated and the ASIC
-can drive `DR` with the boot table unopposed.
-
-`queue_codec_boot` keeps those words in their own queue, drained by the
-loader's polls and never by a frame sync. Wiring the frame clock up without
-that split broke the download outright, because the frames ate the boot table.
-
-The guide also runs the codec's `RESET` from the DSP's `XF` pin, and the serial
-ISR does manipulate `XF` (`clrc xf` at `0x818e` under an `xc 2, eq`, `setc xf`
-at `0x81a3`). That is a second plausible arbitration mechanism, but what those
-`XF` edges are for has not been established here.
+The design guide also runs the codec's `RESET` from the DSP's `XF` pin, and both
+the serial ISR and **the parallel boot loader's own fetch routine** drive `XF`.
+That is very likely how the codec is kept quiet during the download, but it has
+not been established here.
 
 ### XRDY follows the frame clock
 
