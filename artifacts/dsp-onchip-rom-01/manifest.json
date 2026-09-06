@@ -1,0 +1,30 @@
+{
+  "what": "TMS320C5x on-chip ROM, read from the DSP of a live Courier",
+  "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+  "date": "2026-09-07",
+  "method": "probe_transport --rom-dump, delivered to supervisor RAM with ATGLK2W and started by enabling timer 0's interrupt (T0CON.INT), read with RPT/TBLR from a kernel at program 0x8000 and returned through the DSP mailbox",
+  "words": 2048,
+  "bytes": 4096,
+  "sha256": "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67",
+  "halves": [
+    {
+      "origin": 0,
+      "words": 1024,
+      "sha256": "947ed1765e9eed6eb0a15a2a9e384934d06d73201fff295b451cf77e562f0c7e",
+      "frame": "half0-frame.txt"
+    },
+    {
+      "origin": 1024,
+      "words": 1024,
+      "sha256": "cab1dfe6d78ca4114fe2961aa000ed23f441e7e17b3de3225086dc5e4c936f3c",
+      "frame": "half1-frame.txt"
+    }
+  ],
+  "corroboration": "an earlier truncated run returned words 0x0000-0x01ea and agrees with this one on all 491, and the 56-word sample probe independently returned 0x0000-0x001f",
+  "distinct_values": 1307,
+  "reset_vector": "0000: b 0670",
+  "caveats": [
+    "The frame carries no controls or completion marker; what checks it is the tag sequence during collection, the declared word count and the checksum.",
+    "MP/MC was not read directly. That program 0x0000 holds a vector table and not the kernel's own first words is what shows on-chip ROM is mapped there."
+  ]
+}
