@@ -688,18 +688,49 @@ def x2_status_transport(rom):
     return {'tag': X2_STATUS_TAG, 'word': X2_STATUS_WORD, 'sites': tuple(sites)}
 
 
+# `opl *, #mask`, the only instruction that sets a bit in the status word.
+# `apl` is 0x5e80 and appears in the same neighbourhoods, so the two must not
+# be confused: matching on `apl` finds no writer at all.
+X2_STATUS_SET = 0x5D80
+
+# Half the writers are guarded, and the guard sits between the pointer load and
+# the `opl`: `xc 2, lt` at 9682, `retd` at d5a3. So the `opl` is two or three
+# words after the `lar`, not always two. See the writer table in
+# docs/x2-v90-protocol-selection.md, which this reproduces.
+X2_STATUS_SET_WINDOW = (2, 3)
+
+
+def x2_status_flag_writers(rom):
+    """Every `opl *, #mask` on the status word, as {mask: (image, opl pc)}.
+
+    One writer per bit, which is what makes the bitmap readable as progress: a
+    mask reached twice would mean two different conditions set the same bit.
+    """
+    writers = {}
+    for index in (5, 6, 8):
+        w = _image(rom, index)
+        for pc in range(0x8000, len(w) - max(X2_STATUS_SET_WINDOW) - 1):
+            if w[pc:pc + 2] != [LAR_AR1_, X2_STATUS_WORD]:
+                continue
+            for offset in X2_STATUS_SET_WINDOW:
+                if w[pc + offset] != X2_STATUS_SET:
+                    continue
+                mask = w[pc + offset + 1]
+                if mask in writers:
+                    raise ValueError(f'mask {mask:#06x} has two writers')
+                writers[mask] = (index, pc + offset)
+                break
+    if not writers:
+        raise ValueError('no x2 status flag writers in the DSP images')
+    return writers
+
+
 def x2_status_flag_masks(rom):
     """All immediate condition bits ORed into the x2 DSP status word.
 
     These are condition flags, not the host's textual error-number enum.
     """
-    masks = {0x0001}  # tag 70 handler at resident 8d35..8d37
-    for index in (5, 6, 8):
-        w = _image(rom, index)
-        for pc in range(0x8000, len(w) - 3):
-            if w[pc:pc + 2] == [LAR_AR1_, X2_STATUS_WORD] and w[pc + 2] == 0x5E80:
-                masks.add(w[pc + 3])
-    return tuple(sorted(masks))
+    return tuple(sorted(x2_status_flag_writers(rom)))
 
 
 # --- V.90's INFO1a selector -----------------------------------------------

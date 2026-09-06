@@ -302,3 +302,18 @@ def test_x2_dsp_status_is_a_tagged_bitmap_not_a_text_enum(rom):
         0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020,
         0x0040, 0x0080, 0x0100, 0x0200,
     )
+
+
+def test_every_x2_status_bit_has_one_writer_in_the_resident_bank(rom):
+    """The writer table in docs/x2-v90-protocol-selection.md, from the image.
+
+    The masks alone did not catch matching on the wrong opcode - `apl` (5e80)
+    for `opl` (5d80) - because a seeded 0x0001 made an empty scan look partly
+    right. Pinning each writer's address makes that visible.
+    """
+    assert datapumps.x2_status_flag_writers(rom) == {
+        0x0001: (5, 0x8D37), 0x0002: (5, 0xD5A4), 0x0004: (5, 0xD571),
+        0x0008: (5, 0xD62C), 0x0010: (5, 0xD763), 0x0020: (5, 0x9028),
+        0x0040: (5, 0x9683), 0x0080: (5, 0x8DAE), 0x0100: (5, 0x968F),
+        0x0200: (5, 0x9052),
+    }
