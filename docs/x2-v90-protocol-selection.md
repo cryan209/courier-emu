@@ -578,3 +578,44 @@ suggests `da15` is a channel-impairment measure rather than the
 high-frequency rolloff the 4.03 string list names - but the two builds
 disagree about which word and which bit it drives, so it settles nothing on
 its own.
+
+## What the "Multiple CODECs" test actually measures
+
+"Multiple CODECs in channel" means more than one analogue/digital conversion
+in the path - a tandem codec, typically a digital PBX or a second carrier hop
+ahead of the one x2 expects. x2 needs exactly one D/A in the downstream
+direction, because it decodes the PCM codeword levels directly; a second
+conversion re-quantises them and there is nothing left to decode. The far end
+never announces this, so the modem has to detect it from the line itself.
+
+That is what `da15` is for. The array it indexes is a spectral vector, and
+the firmware's own use of it says so:
+
+* `93c7` builds `da00..da17` - **24 entries** - by summing a double-word
+  accumulator pair per entry out of `d982`, so `d982` is 24 accumulators and
+  `da00` is their totals.
+* `9467` rescales all 24 (`mpy #0c0b`, `spac`, `bsar 5`) into `ffc0`.
+* `9475` sums `da01..da16` and divides by 23 for a mean; `9483` takes the
+  maximum across the same span with `crgt`; `948c` and `9495` then store the
+  peak-relative deviation of the **bottom** entry in `@5e` and of the **top**
+  entry in `@5f`.
+
+A mean, a peak, and both band-edge deviations is band-shape extraction over a
+per-tone magnitude estimate. Against that, `[da15] - [da18] > 1fe4` is a
+comparison between one high entry and its neighbourhood - which is how you
+detect a tandem conversion without any cooperation from the far end, since an
+extra codec reshapes and band-limits the channel in a way a single-conversion
+path does not.
+
+This also dissolves the bits 6/7/8 disagreement recorded above, without
+either side being wrong. The stock build names the same measurement by its
+**cause** ("Multiple CODECs in channel"); 4.03 names it by its **symptom**
+("High frequency rolloff is normal / marginal"), and grades it in two bands
+rather than one. Same array, same difference, two vocabularies - so the
+earlier note that the two builds "disagree about which word and which bit it
+drives" stands as a fact about the encoding, but is not evidence that the
+measurement is two different things.
+
+`da18` itself is still unidentified: the array proper is `da00..da17`, so the
+subtrahend is the word immediately past it, and nothing in these images
+writes it under a name.
