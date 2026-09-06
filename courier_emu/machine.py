@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, deque
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -170,6 +171,53 @@ class RunResult:
         value["hot_addresses"] = [list(item) for item in self.hot_addresses]
         return value
 
+
+
+# The serial callback table, located in the image rather than transcribed.
+#
+# The supervisor keeps three near vectors side by side - the RX callback, the
+# TX callback, and the command-state callback - and both installs them with
+# `mov word [addr], imm16` and enters them with `call word ptr [addr]`. So the
+# table is three consecutive words that are each an indirect-call target and
+# each the destination of many different immediate stores.
+#
+# That predicate alone leaves three candidates in an XMF (the serial table and
+# two neighbouring dispatch tables), which their call counts separate: the
+# serial table's base is entered about five times against the others' twelve
+# or thirteen. Taking the least-entered candidate picks 02a8 in every XMF
+# supervisor - 2.1.1, 2.2.05, 2.3.33 and 3453B alike, where 02a8 is already
+# known - and 026a in IDSDL302.ROM, whose table is nowhere near 02a8.
+#
+# This exists because the traces used to read 02a8 for every image, so a ROM
+# whose callbacks were installed and working reported `final callbacks=0000`.
+SERIAL_CALLBACK_STORE = re.compile(rb"\xc7\x06(..)(..)", re.S)
+SERIAL_CALLBACK_CALL = re.compile(rb"\xff\x16(..)", re.S)
+SERIAL_CALLBACK_SEARCH = range(0x100, 0x2000, 2)
+SERIAL_CALLBACK_STORES = 10
+
+
+def serial_callback_table(data: bytes) -> int | None:
+    """Return the base of the image's three-word serial callback table."""
+    calls: Counter[int] = Counter()
+    stores: dict[int, set[int]] = {}
+    for match in SERIAL_CALLBACK_CALL.finditer(data):
+        calls[int.from_bytes(match.group(1), "little")] += 1
+    for match in SERIAL_CALLBACK_STORE.finditer(data):
+        target = int.from_bytes(match.group(1), "little")
+        stores.setdefault(target, set()).add(
+            int.from_bytes(match.group(2), "little")
+        )
+    slots = (0, 2, 4)
+    candidates = [
+        base
+        for base in SERIAL_CALLBACK_SEARCH
+        if all(calls.get(base + slot) for slot in slots)
+        and all(len(stores.get(base + slot, ())) >= SERIAL_CALLBACK_STORES
+                for slot in slots)
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda base: calls[base])
 
 class CourierMachine:
     """A 1 MiB 80186 execution harness with observable board I/O."""
@@ -366,6 +414,11 @@ class CourierMachine:
             0x7E133: "startup-crc",
             0x65512: "main-loop",
         }
+        # Located in this image, not assumed: an image whose table is
+        # elsewhere used to report its callbacks as zero.
+        self._serial_callbacks = (
+            serial_callback_table(getattr(image, "data", b"")) or 0x02A8
+        )
         self._alternate_supervisor = supervisor_offset == 0x1B600
         self._supervisor_23 = supervisor_offset == 0x17BB0
         # main2205 keeps the same supervisor ABI but relocates several
@@ -949,7 +1002,7 @@ class CourierMachine:
                 )
             ):
                 self.serial_trace.append(f"iret {self._previous_address:05x}")
-                callbacks = bytes(_uc.mem_read(0x2A8, 6))
+                callbacks = bytes(_uc.mem_read(self._serial_callbacks, 6))
                 rx_callback = int.from_bytes(callbacks[:2], "little")
                 tx_callback = int.from_bytes(callbacks[2:4], "little")
                 command_callback = int.from_bytes(callbacks[4:6], "little")
@@ -1971,9 +2024,9 @@ class CourierMachine:
             "flags": UC_X86_REG_FLAGS,
         }
         registers = {name: uc.reg_read(reg) for name, reg in register_ids.items()}
-        final_callbacks = bytes(uc.mem_read(0x2A8, 6))
+        final_callbacks = bytes(uc.mem_read(self._serial_callbacks, 6))
         self.serial_trace.append(
-            "final callbacks="
+            f"final callbacks[{self._serial_callbacks:03x}]="
             + ",".join(
                 f"{int.from_bytes(final_callbacks[index:index + 2], 'little'):04x}"
                 for index in range(0, 6, 2)
