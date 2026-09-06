@@ -21,7 +21,8 @@ Addresses are DSP program words; the linear file mapping is
 | tag cell | **`0xFF5E`** | `0x5E` |
 | word cell | **`0xFF5F`** | `0x5F` |
 | cell-read helper | `0x23f0` | `0x80e8` (`lamm *`) |
-| receive dispatcher | `0x839c` | `0x8387` |
+| service loop | `0x80c8` | `0x80bb` |
+| receive dispatcher | `0x839b` | `0x8387` |
 | dispatch table base | `0x8401` | `0x83e9` |
 | outbound ring base | **`0x0bd0`** | `0xff60` |
 | ring write / read pointers | `@78` / `@79` | `@78` / `@79` |
@@ -55,6 +56,34 @@ Table entries confirm the identification against constants this repository
 derived from hardware: tag `0x06` to `0x8489`, and tag `0x42` to **`0xb05e`**,
 which is exactly the "Tag 42's handler at b05e" in `dsp_mailbox.py` - so that
 comment describes 3.0.13, not 3.1.2.
+
+## The service loop, at 0x80c8
+
+```
+80c6  call 8223, *
+80c8  call 839b, *, ar1     ; the receive dispatcher
+80ca  call 83d6, *, ar1     ; the message sender
+80cc  call 847a, *, ar1     ; the stream resume poll
+80ce  call 80f8, *
+80d0  lar  ar0, @10 / cmpr eq
+80d2  bcnd 80c8, tc         ; loop
+```
+
+Same three calls per iteration as 3.1.2's loop at `0x80bb`. Note the dispatcher
+entry is `0x839b`, one word before the `setc intm` this document first quoted -
+`ldp #000` comes first, as it does in 3.1.2.
+
+**The DSP does not reach it.** Sampling the core's PC across a run puts nothing
+at `0x80c8`, `0x839b`, `0x83d6` or `0x847a`, and the run's own `idle` wait poll
+at `0x814d` collects 237 samples while `0x80ac`, in the call sequence before
+the loop, collects 26.
+
+One caution on reading that histogram: its largest entries are an artefact.
+`0x801d` takes 1617 of 3999 samples, `0x8024` 406, `0x8028` 207 - but those are
+the reset prologue's block clears, `rptz #03ff` / `sach *+` and friends, where
+one instruction repeats 1024, 256 and 128 times. A sampler lands there in
+proportion to the repeat count. It does **not** mean the part is resetting over
+and over: a run creates the core once and bootstraps once.
 
 ## Two things this map exposes
 
