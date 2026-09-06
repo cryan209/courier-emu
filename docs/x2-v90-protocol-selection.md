@@ -312,18 +312,95 @@ digit printer instead and jumps over the lookup entirely.
 inferred that from the nine-strings-for-nine-bits fit; the ten-entry table
 above refutes it. Bit 0 is "x2 enabled on local modem", whose failure is
 entry **1**, "x2 disabled on local modem"; bit 4 is "Remote modem supports
-x2", whose failure is entry **3**. No single shift reconciles the two lists,
-and several failure strings ("Multiple CODECs in channel", "Incompatible
-versions") have no counterpart among the ten bits at all. The nine failure
-strings are their own progression, and the arithmetic that maps the bitmap
-onto them is precisely the code that was patched out. It is not recoverable
-from this image.
+x2", whose failure is entry **3**. No single shift reconciles the two lists.
 
-So the enum's *mechanism* is settled - one word in, one of nine strings out,
-by an index computed from the masked bitmap - and its *table* is settled, but
-the index arithmetic is not. What is closed is that the host never receives a
-diagnostic code: it receives `fff7` and turns it into text locally, twice
-over, by two different rules.
+### The arithmetic, from the unpatched builds
+
+`IDSDL302.ROM` and the stock capture `courier-board-21210-capture-01` are
+byte-identical over this routine, and neither has been overwritten. The whole
+of it:
+
+```text
+50bb  80 3e 3f 03 00   cmp   byte [033f], 0
+50c0  74 27            je    50e9
+50c2  eb 25            jmp   50e9            ; unconditional - see below
+50c4  a1 2f 0b         mov   ax, [0b2f]
+50c7  c1 e8 08         shr   ax, 8
+50ca  25 07 00         and   ax, 7
+50cd  3d 01 00         cmp   ax, 1
+50d0  75 0a            jne   50dc
+50d2  f6 06 9d 08 20   test  byte [089d], 20
+50d7  75 03            jne   50dc
+50d9  b8 08 00         mov   ax, 8
+50dc  d1 e0            shl   ax, 1
+50de  05 f2 50         add   ax, 50f2        ; the nine-pointer table
+50e1  8b f0            mov   si, ax
+50e3  2e 8b 34         mov   si, cs:[si]
+50e6  e8 38 e4         call  print
+50e9  e8 23 e4         call  print "\r\n"
+```
+
+So the index is
+
+```text
+index = ([0b2f] >> 8) & 7
+if index == 1 and ([089d] & 0x20) == 0:
+    index = 8
+```
+
+- **A three-bit code field, not a bit scan.** `[0b2f]` bits `10:8` are read as
+  a number `0..7`, which indexes entries 0 through 7 directly.
+- **Entry 8 is an override, not a ninth code.** "Channel is x2-capable but
+  feature not installed" replaces entry 1 ("x2 disabled on local modem")
+  when the option byte `089d` bit `20` is clear. That byte is the feature
+  mask - the same bit gates the whole `x2 Status` display at `1c044`, and
+  `08f7..091b` builds it from a source word bit by bit - so the override
+  reads "x2 is off locally, and the reason is that the feature is not
+  installed". There is no code value 8.
+- **`[0b2f]` is the x2 status word, not the condition bitmap.** Its only
+  writer is the mailbox receive stub at `13c50` (`13c46` in the 4.03 image,
+  storing to `0a23`), and its other readers are the `x2 Status` line, which
+  formats bits `15:14` and `7:6` of the same word.
+
+### What that makes of the 4.03 image
+
+The patched routine in the capture ROM is this routine, edit for edit - the
+byte counts line up exactly:
+
+| stock | 4.03 |
+|---|---|
+| `a1 2f 0b` `mov ax,[0b2f]` | `a1 1d 0a` `mov ax,[0a1d]` |
+| `c1 e8 08` `shr ax,8` | `90 90 90` |
+| `25 07 00` `and ax,7` | `25 ff 02` `and ax,02ff` |
+| `3d 01 00` `cmp ax,1` + `75 0a` `jne` | `9a a1 9d 00 80` `lcall` hex printer |
+| `f6 06 9d 08 20` `test [089d],20` | `eb 15` `jmp` + `90 90 90` |
+
+So 4.03 is a debug build: it added the tag-`75` handler that captures raw
+`fff7` into `0a1d`, then rewired this routine to hex-dump that word instead
+of naming a code. The `and ax,02ff` is a **display mask for the debug dump**,
+not part of the original logic - which retires the earlier argument that the
+mask told us anything about the table.
+
+### Both builds skip it anyway
+
+`50c2 eb 25` jumps to the same place as the `je` two instructions above it,
+so the string is never printed in either firmware. The routine prints its
+heading and a newline and nothing between. The nine strings, the table and
+the arithmetic are all intact and all unreachable - the compact enum is a
+disabled feature, and the ten-line bit report at `4a03e` is what these builds
+actually show.
+
+### What still is not known
+
+Which DSP code produces the three-bit field. Resident `90cd` packs
+`fff7 & 7` into bits `10:8` of the only word the DSP sends under tag `6b`,
+and also sets bit `14`, which the `x2 Status` line prints - the positions
+match. But the nine strings do not read as a function of `fff7` bits `0..2`:
+code 1 would be "bit 0 set alone", and bit 0 is "x2 enabled on local modem",
+whose entry-1 string says the opposite. Either the field is not `fff7 & 7`
+in this firmware, or the 4.03 bit names do not apply to the stock DSP.
+Settling that needs the tag-`6b` routing traced through the host's stub
+dispatcher, which this image has not yielded.
 
 ## Which DSP test sets each `fff7` bit
 
