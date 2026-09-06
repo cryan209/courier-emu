@@ -148,6 +148,45 @@ reads as `0x1c` bit 2.
 
 ## Which DSP
 
+**Not an older TI part.** The instruction census settles the family: `splk`,
+`samm`, `lamm`, `bsar`, `bd`/`calld`/`retd`/`retcd`, `lacc16`, `bcnd`, `bldd`,
+`smmr`/`lmmr` and `apl`/`opl`/`xpl` all appear in a 1200-word window, and none
+of them has a C2x encoding. A TMS320C25 cannot run this program.
+
+**But it is probably not a C52 either, and the model assumes one.**
+`c5x_core.h` says the part has "4K words of program ROM and three DARAM blocks
+and **no SARAM at all**, which makes PMST.RAM and PMST.OVLY don't-cares", and
+`program_region`/`data_region` implement exactly that: everything from `0x0800`
+up is `External`, and `PMST.RAM` "does nothing here".
+
+The firmware disagrees. Its prologue is
+
+```
+8014  apl @07, #07f8      ; keep bits 3-10
+      opl @07, #00b0      ; set bits 4, 5 and 7
+```
+
+and on a C5x bit 4 is **RAM** and bit 5 is **OVLY** - the two bits that map
+on-chip SARAM into program space and overlay on-chip memory into both spaces.
+A build sets them only on a part that has SARAM to map. Bit 7 is IPTR's LSB,
+putting the vector table at `0x0080`, which likewise needs on-chip memory there.
+
+Everything else this note has traced sits in the same place. The prologue's
+block clears cover `0x0100-0x04ff`, `0x0800-0x08ff` and `0x0b80-0x0bff`; the
+302 mailbox ring is at `0x0bd0`; and the dispatcher's own helper is at program
+`0x23f0`. On the modelled C52 the last three are off-chip. On a C5x with SARAM
+they are not, and `0x23f0` in particular is beyond what a 3K SARAM part would
+cover, which points at the larger member rather than the smaller.
+
+So the likely answer to "what else are we missing" is the **memory map**: a
+C5x with SARAM, with `PMST.RAM` and `PMST.OVLY` honoured, rather than a C52
+with them stubbed out. That is a bigger change than anything else in this note
+and it has not been made or tested; the reasoning above is from the firmware's
+own PMST write and the addresses it uses, not from a part marking - the board
+photo shows only `TI DSP 16-912 (C) US ROBOTICS D17140PQ`.
+
+### The original family note
+
 The board photo shows a custom marking - `TI DSP 16-912 (C) US ROBOTICS
 D17140PQ` - so the part number is not readable, and `board-parts.md` says only
 "C5x-family" while other notes say "C52".
