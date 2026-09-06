@@ -353,12 +353,58 @@ ROM is what the C5x puts there, in microcomputer mode, and a ROM vector table
 dispatching into fixed addresses in the downloaded bank would explain the frame
 ISR entry at `0x816b` that this document could only infer from its position.
 
-**Neither reading is complete.** The alias reproduces reset exactly and needs no
-ROM image; microcomputer mode explains the vector base and the entry at
-`0x8000` being straight-line code, but needs a mask ROM this repository does not
-have. They disagree about one thing only - what answers program
-`0x0000`-`0x07ff` - and a continuity check on the board would settle it:
-whether A15 reaches the SRAMs, and whether `MP/MC` is tied, floating, or pulled.
+One rescue for the alias is available in principle and is ruled out by
+measurement. The prologue at `0x8080`-`0x80bf` runs once, so the firmware could
+install a vector table over it afterwards. It does not: logging every
+`PM_WRITE16` across a 20M-instruction bridge run of 302 gives **three writes in
+total**, all the `bldp` at `0x80a7` into `0x23f0`-`0x23f2`. Nothing writes a
+vector anywhere, in any space, ever.
+
+### The on-chip boot loader supplies the mechanism the ROM reading was missing
+
+The C5x on-chip ROM carries an optional boot loader that "can be used to
+transfer a program automatically from data memory or the serial port to
+anywhere in program memory", with the source on any 1K-word boundary in data
+memory, and which "releases control to the program for execution" once the
+transfer is done.
+
+That is the piece the microcomputer-mode reading lacked, and it fits what this
+repository already measured, without needing anything new:
+
+* **It explains the entry.** Program `0x8000` is `ldp #000` and straight-line
+  initialisation, with no branch and no vector table. A boot loader that
+  transfers a block and then jumps to it lands on exactly that.
+* **It explains the origin.** `CourierRom.dsp_download` filters candidates on
+  `entry_word == 0x8000` and discards the rest, which this document flagged as
+  an assumption the scan enforces rather than a measurement. Under the boot
+  loader it is neither: it is the destination address in the boot table the
+  supervisor hands over, which is why every overlay in both images carries one.
+* **It explains why nothing is downloaded below `0x8000`.** The transfer is a
+  block copy to one destination, not a link map.
+* **It puts the vector base somewhere legal.** `IPTR = 1` gives `0x0080`, inside
+  the 2K on-chip ROM at `0x0000`-`0x07FF`, which is memory the firmware neither
+  owns nor writes - consistent with the measurement above finding no vector
+  writes at all.
+
+**What still keeps this open.** The boot loader is optional and its ROM is mask
+programmed, so its presence on a USR-marked part is not established here, and
+this repository has no image of it. And one caution about the vector base
+argument in either direction: **no hardware-vectored interrupt has ever been
+observed on this firmware.** `_configure_frame_interrupt` installs an explicit
+vector and the core takes that override before consulting `IPTR`, so `0x0080`
+is read off `PMST`, not off a jump anyone has watched the part take.
+
+The two readings still disagree about one thing only - what answers program
+`0x0000`-`0x07ff` - and the board settles it. Note that A15 cannot be an
+*address* input to a 32Kx8 part at all: those have fifteen address pins, so
+A0-A14 go to both RAMs in parallel with the data split D0-D7 / D8-D15, and A15
+can only appear in the chip-select decode. So the question is not "does A15
+reach the RAMs" but **what drives their `/CE`**: tied low, they answer every
+external cycle in both spaces, which is the shared window and the alias
+together; gated on A15 they answer one half; gated on `/PS` and `/DS` they
+answer whichever spaces the glue admits. The `74VHC32` and `74VHC04` in
+[board-parts.md](board-parts.md) are the parts that would do that gating.
+
 Only the shared *data* window is in the core; the alias was reverted.
 
 The one strand that does not depend on the harness is `dsp_mailbox.py`'s
