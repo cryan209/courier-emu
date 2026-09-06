@@ -180,52 +180,27 @@ cover, which points at the larger member rather than the smaller.
 
 ### How far the code pins the part down
 
-Reading the dispatch table for every handler below the resident bank gives the
-sharpest evidence available, and it is only three addresses:
+An earlier revision of this section claimed two dispatch-table handlers below
+the resident bank, `0x23f0` and `0x7e80`. **Both were misreads.** The table is
+121 entries, `0x00`-`0x78`, exactly as `dsp-rom-probe.md` says; reading `0x80`
+of them runs off the end into the code that follows. The words that appear at
+"tags" `0x79`-`0x7c` are identical in both builds because they are
+instructions, not entries:
 
-| image | handlers below `0x8000` | which tag |
-|---|---|---|
-| 302 | `0x23f0` | `0x7c`, the detector poll - and the dispatcher's own `calld` helper |
-| 302, 403 | `0x7e80` | `0x7b`, the DAA identity |
+```
+847a  bc00   ldp  #000        <- "tag 79"
+847b  be41   setc intm        <- "tag 7a"
+847c  7e80 23f0  calld 23f0   <- "tag 7b", "tag 7c"
+```
 
-Neither is filler: twelve slots are `0x0000` and eight share a common handler
-at `0x8222`, while `0x23f0` and `0x7e80` are each reached from exactly one tag,
-and `0x23f0` is additionally called by the dispatcher itself on every message.
+That is the stream resume poll's own prologue, sitting immediately after the
+table. So **no handler is below `0x8000`**, and tag `0x7b` - the DAA identity -
+is an outbound tag with no inbound slot at all.
 
-What that establishes, and what it does not:
-
-* **A part with SARAM.** `PMST.RAM` and `PMST.OVLY` are both set, and data at
-  `0x0800-0x08ff` and `0x0b80-0x0bff` is cleared and used - the 302 ring lives
-  at `0x0bd0`. A member with no SARAM has nothing to map there.
-* **External program memory as well.** `0x7e80` is beyond every C5x's on-chip
-  SARAM, on any member. With `RAM` set, SARAM maps into program space from
-  `0x0800` upward, and even the largest option does not reach `0x7e80`. So the
-  board must have program memory off-chip that this harness does not model,
-  and both images use it.
-* **Not the member.** Because `0x7e80` has to be external anyway, `0x23f0`
-  need not be on-chip either, and the discriminator that would have separated a
-  9K-SARAM part from a 3K one dissolves. The code shows *what memory exists*,
-  not *which C5x*.
-
-### How much external program memory the downloads imply
-
-The overlay table gives the extent directly, since every one of them is written
-into program space:
-
-| image | span written | words | bytes |
-|---|---|---|---|
-| 302 | `0x8000`-`0xf8b5` | 30902 | 61804 |
-| 403 | `0x8000`-`0xf949` | 31050 | 62100 |
-
-So roughly **31K words - about 62 KB - of writable program memory above
-`0x8000`**, before counting the handlers at `0x23f0` and `0x7e80` below it.
-That is more than the one `ISSI IS61C256AH-15J` in the parts list can hold: a
-32Kx8 part is 32 KB, which is 16K words on a 16-bit program bus, about half of
-what the downloads fill. Either a second such part is on the board - the photo
-does not cover it - or some of this program memory is inside the ASIC, which is
-already the part that "holds the DSP in reset and writes its program RAM".
-`board-parts.md` lists that SRAM without saying whose bus it is on, so nothing
-here settles which.
+What survives is narrower and still real: 302's dispatcher and its resume poll
+both `calld 0x23f0`, so that helper is genuinely program memory below the
+external RAM. 403 puts the same helper in-bank at `0x80e8`, so only the older
+build needs it.
 
 So the correction to make is the memory map rather than the part number: SARAM
 mapped by `PMST.RAM`/`OVLY` instead of stubbed, and program space above the

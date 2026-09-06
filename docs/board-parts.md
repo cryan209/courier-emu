@@ -32,13 +32,17 @@ with a little to spare. It also retires the arithmetic in
 those downloads into one 32Kx8 device: there are two, and they are the DSP's,
 not the supervisor's.
 
-What it does not explain is the two handlers *below* that range - `0x23f0`,
-which 302's mailbox dispatcher calls on every message, and `0x7e80`, tag
-`0x7b`'s handler on both images. Those are outside the external RAM, so they
-have to be on-chip, unless the board decodes fewer address lines and low
-program space mirrors the top. Mirroring was tested and is not supported:
-`0x0080` would alias to `0x8080`, and `0x8080` holds ordinary code rather than
-the interrupt vector table the firmware's `IPTR` implies.
+The one address it does not cover is `0x23f0`, which 302's mailbox dispatcher
+and its stream resume poll both `calld` on every pass. That is below the
+external RAM, so on this reading it is on-chip program memory - consistent with
+the firmware setting `PMST.RAM` and `OVLY`, which map on-chip SARAM into
+program space from `0x0800` up. Reaching `0x23f0` that way needs about 7.2K
+words of SARAM, which points at a larger C5x member than the C52 the core
+models. 403 has the same helper in-bank at `0x80e8` and needs none of this.
+
+(An earlier revision also listed a handler at `0x7e80`. That was a misread of
+the 121-entry dispatch table's tail as data; `0x7e80` is a `calld` opcode in
+the routine after it.)
 
 ## The NEC part is the ASIC
 
