@@ -62,10 +62,67 @@ on `0000..001f`, with known program-memory controls before and after it.
 If protection **is** programmed, TI specifies that an instruction fetched from
 off-chip memory reads invalid bus data for an on-chip program operand, and that
 the emulator cannot access on-chip program memory. The downloaded `8000` probe
-and ordinary JTAG dump then both fail by design. Code fetched from the protected
-ROM is the remaining non-invasive avenue: a boot-loader read command, table-read
-gadget, or control-flow flaw would be required. Failing that, recovery becomes
-a fault-injection or invasive-silicon problem rather than a software dump.
+and ordinary JTAG dump then both fail by design.
+
+### But SARAM is not on the exclusion list
+
+The protection covers instructions fetched from **off-chip memory, DARAM B0,
+external DMA, and the emulator**. On-chip SARAM is not named, and this part has
+9K of it, which `PMST.RAM` maps into program space at `0x0800`-`0x2bff`.
+
+The firmware itself supplies the technique for getting code there. Its prologue
+block-moves its mailbox helper into SARAM with `bldp`, a data-memory-to-program-
+memory move through `BMAR`:
+
+```
+80a0  lacc #000023f0 / samm @1f     ; BMAR = 0x23f0
+80a4  lar  ar1, #80f5
+80a6  rpt  #02 / bldp *+            ; data 0x80f5.. -> program at BMAR
+```
+
+So a probe can stage its **read loop** the same way and call it, and the `TBLR`
+that reads the ROM is then executed from on-chip memory rather than from the
+downloaded bank. `tools/rom_dump_gadget.py` builds exactly that:
+
+```
+8000  setc intm
+8001  ldp  #000
+8002  opl  @07, #0030        ; PMST.RAM | PMST.OVLY - map SARAM into both spaces
+8004  lacc #00000900 / samm @1f     ; BMAR = 0x0900, in SARAM
+8007  mar  *, ar1 / lar ar1, #8040  ; the gadget's words, in this image
+800a  rpt  #0008 / bldp *+          ; stage it into SARAM
+800d  call 0900                     ; and run it there
+```
+
+with the staged loop being
+
+```
+0900  mar  *, ar2 / lar ar2, #1000  ; destination, SARAM through OVLY
+0903  lacc #00000000                ; program address 0
+0905  rpt  #07ff / tblr *+          ; 2K words -> data 0x1000..0x17ff
+0908  ret
+```
+
+`rom_dump_gadget.py` run with no arguments executes this against a synthetic
+2K ROM in the native core and checks all 2048 words come back; `--disasm`
+prints the kernel through this repository's own disassembler rather than
+trusting the hand-assembled opcodes. Both pass.
+
+**What that does and does not establish.** It establishes the instruction
+sequence: the staging move, the SARAM call and the `RPT`/`TBLR` block read are
+correct and produce the ROM's contents. It establishes nothing about
+protection, because **this core does not model the protection option at all** -
+a passing offline run cannot distinguish a part that would have refused. The
+value is that if protection is programmed, this is the variant with a reason to
+work where the `0x8000`-resident probe has a reason to fail, and it costs one
+extra block move to try.
+
+Delivery is no longer the obstacle it was when this section was written: see
+[ram-probe-delivery.md](ram-probe-delivery.md), where `ATGLK2W<address>,<value>`
+gives an arbitrary supervisor memory write on the firmware this board runs.
+
+Failing all of that, recovery becomes a fault-injection or invasive-silicon
+problem rather than a software dump.
 
 The decisive controlled probe therefore compares the same low addresses in
 both mappings: first set PMST.MP/MC=1 and capture the external shadow, then set
