@@ -185,7 +185,13 @@ call-progress events on the already-working channel 1, drawn from the 36
 codes above, delivered as values below `0x76` rather than the `0xff` the port
 currently returns.
 
-## What ATY4 prints, established by injection
+## What ATY4 prints, established by forging events
+
+**The events below are fabricated.** Forcing `AL` at `0xf492` writes a value the
+hardware never produced; it exercises the firmware's display path and says
+nothing about the line. Read this section as a test of the printer, not as a
+model of anything.
+
 
 Channel 1 is live but carries nothing usable: the active `in al, 0x58` site is
 file `0xf490`, and across a whole `ATY4` dial it reads `0xff` on all 5596
@@ -258,12 +264,37 @@ none is discoverable. The likeliest reading is the same one proved for
 `0x491a5` is called from `0x49202`, which waits on `[0x02cf]` for a received
 DTMF digit. But that is inference from position, not a demonstration.
 
+## Running it against the real bridge instead
+
+The project does model the line: `CourierDspBridge` owns exactly the event
+ports (`DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)`, plus `0x1C`) and carries
+a `CourierDaa`, `LineLink`, `LineExchange` and the `NativeC5x` core. Every run
+in this document until now used none of it: the probe builds a CPU-only
+`CourierMachine`, which is what its own manifest calls an "offline CPU-only ROM
+AT-command smoke test".
+
+Re-running the `ATY4` dial with `with_dsp=True` and a `CourierDaa` changes the
+execution - the dial reaches 68.8M instructions rather than 43.7M - but the
+display stays empty. The event port is read **once**, and delivers `0xff`,
+which `cmp al, 0x76` rejects. So the bridge does not synthesize a
+supervisor-facing call-progress event stream, and enabling it is not a
+substitute for one.
+
+Two related gaps sit next to this. `asic_ports.IDLE` records hardware idle
+values for these ports - `0x58: 0x20`, `0x1C: 0xFD`, `0x60: 0x4B` - and
+`machine.py` does not import `asic_ports` at all, so a CPU-only run answers
+`0xff` and the `0x1C` latch echo instead. Seeding those would not manufacture
+events either; a constant idle level is not an event stream, and `0x20` is not
+one of the 36 codes.
+
 ## What this does not establish
 
 The 36 event codes are read off the dispatch table; their meanings are not
 known, and no mapping from a line condition to a code has been demonstrated.
-The injection above proves the display path works when fed, not that any
-particular value is what real hardware would send. Nothing here identifies the
+The injection proves the display path works when fed. It does not show that any
+of those values is what hardware would send, in what order, or with what
+timing, and no run in this document has produced a single genuine
+call-progress event. Nothing here identifies the
 `AH=0x45` / `AL=0x3f` operation behind the `ATY12` queue, or the units of the
 values in its buffer.
 
