@@ -722,3 +722,63 @@ would do to report a borderline channel rather than only reject it.
 places; the nearest candidate is the training sequencer's counter, set to 3
 at `9317` and `9367` and decremented at `9326`, but nothing here proves that
 is the same variable this test reads.
+
+## `@63` is `03e3`, and it carries `fff4` bit 0
+
+### Fixing the page
+
+`@63` is direct-addressed, so it means "offset `63` on the current data
+page", not an address. The page is pinned by `@1f`, which this module uses
+constantly:
+
+* `8da0 ldp #007` is immediately followed by `8da1 bit 1, @1f`,
+* and other code reaches the same flags word indirectly - `lar ar1,#039f`
+  at `9040`, `opl *,#4081` at `d628`, `opl *,#4040` at `d75e`.
+
+Page 7 offset `1f` is `380 + 1f` = `039f`. They are the same word, so this
+module runs on **DP 7**, and there is no `ldp` between `92b4` and `972a` to
+change it across the probe code. Therefore `@63` is `380 + 63` = **`03e3`**.
+
+That turns an ambiguous scratch reference into a searchable address, and the
+writers that matter address it indirectly, with no page dependence at all.
+
+### The writer that decides the threshold
+
+```text
+d45b  lar   ar1, #fff4
+d45d  bit   0, *              ; TC = fff4 bit 0
+d45e  lar   ar1, #03e3
+d460  bcndd d468, ntc         ; two delay slots...
+d462  splk  *, #0012          ; ...so this always runs
+d464  call  d952
+d466  b     d46a
+d468  call  d94e              ; d94e: lar ar1,#03e3 / splk *,#0000
+```
+
+`03e3` is set to `0012` unconditionally in the branch's delay slots, and then
+zeroed by `d94e` when `fff4` bit 0 is **clear**. It is a two-valued flag:
+`0012` or `0`.
+
+So `cpl @63, #0000` in the rolloff test is asking *"was `fff4` bit 0 clear?"*,
+and the answer is what moves both grade boundaries down by `07fa`. `fff4`
+bit 0 is itself built at `9060..9072` from `fff6` bit 14 when `fff6` bit 15 is
+set, and from `[ff00]` bit 7 otherwise, OR-ed into `fff4` so it only ever
+latches on.
+
+### The other users of the same word, and why they are not it
+
+`03e3` is reused across phases - it is state, not a named variable:
+
+* `9317`/`9367` `splk @63,#0003`, decremented at `9326`, with
+  `cc 9367, eq` reloading it to 3 the moment it reaches zero. It is a
+  divide-by-three inside the 21-pass probe loop at `931a..932c`, making the
+  sequencer do extra work every third pass.
+* `d358` uses `#03e3` as the base of a three-tap `mads` window.
+* `d6aa`/`d6be` negate it and negate it back.
+
+None of these can produce the zero the rolloff test looks for. The counter
+reloads to 3 in the same instruction that observes zero, and 21 decrements
+from 3 land back on 3 at loop exit, so it is never zero when read from
+outside. Negating `0012` leaves it non-zero either way. Only `d94e` writes a
+zero, so `fff4` bit 0 is what the test is reading - by elimination as much as
+by the write itself.
