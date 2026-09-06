@@ -66,6 +66,8 @@ rather than by the ordering alone:
   that table `9b48` is the originate side.
 * **V.21 and Bell 103**, measured in [fsk-modulation.md](fsk-modulation.md).
 
+Slot 0 has since been executed: see [v34-arming.md](v34-arming.md).
+
 Two rest on weaker evidence and are worth re-testing:
 
 * **V.32** for slot 2, whose region writes `@08` = `#4000` = 1800.0 Hz at 7200.
