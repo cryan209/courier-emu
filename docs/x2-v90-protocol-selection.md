@@ -59,6 +59,12 @@ incorrect.
 | Wire-level selector | not recovered | INFO1a `37:39 = 6` |
 | PCM result ladder | 16 rate entries | 28 rate entries |
 
+An exhaustive scan of direct `test byte [S58],mask` instructions yields only
+seven sites: `0x01` at `8ea1`/`8f39` (x2 gate/setup), `0x20` at `8e60`/`8f06`
+(V.90 gate/setup), `0x04` at `8f47` and `0x10` at `8f56` (the x2 capability
+edits), and `0x02` at `8dba` (BLER monitoring). Thus no additional direct S58
+bit selects a hidden x2 or V.90 DSP image in this firmware.
+
 ## What x2 puts in the DSP that V.90 does not
 
 The x2 setup is more than its S58 eligibility bit.  At supervisor `8f43`, it
@@ -85,6 +91,24 @@ overlay test is an x2 test.
 The analogous V.90 branch at supervisor `8edb` does the shared reset but then
 returns without emitting a scheme-specific host tag.  Its protocol declaration
 is instead visible at the INFO1a writer described above.
+
+### Where the x2 base capability word comes from
+
+The `call 8a1f` immediately before the x2 edits is a banked call, not an
+unknown arithmetic stub. It enters `C800:0060` (flash `48060`), whose jump
+vector reaches `49db4`. That routine builds `BX` from:
+
+* S54 (`4c4`): its enabled symbol-rate bits are inverted and mapped through
+  the five-byte table at banked `1e41`. S54's labels are 2400, 2743, 2800,
+  3000, 3200, and 3429 symbols/s plus the V.8 flags.
+* S56 (`4c6`): nonlinear coding, TX-level deviation, preemphasis, precoding,
+  shaping, V.34+/V.34, and V.FC options contribute/clear capability bits.
+* channel capability byte `73d`: it removes low-byte choices or enables bits
+  9, 10, and 12 according to the detected channel.
+
+Thus the x2 tag-`70` payload is a **generic modem/channel capability mask with
+x2-specific constraints applied**, rather than a bare x2 mode number. V.90
+does not send this word at all in this image.
 
 ## Observable result and diagnostic differences
 
@@ -118,9 +142,9 @@ x2 or V.90, and neither belongs in the scheme-selection model.
 ## The `fff1` message selector is separate state
 
 At resident `8e4a`, the DSP tests bit 6 of `@1f`: set selects `fff1`, clear
-selects `fff2`, and the chosen 16-bit word is packed into `ff18`.  This is not
-the overlay-8 family fork (which tests bit 7), and **tag 70 does not set bit
-6**.  Its complete handler is only:
+selects `fff2`, and the chosen 16-bit word is packed into `ff18` at bit offset
+16. This is not the overlay-8 family fork (which tests bit 7), and **tag 70
+does not set bit 6**. Its complete handler is only:
 
 ```text
 8d29  smmr  @7a, #fff1       ; host argument -> fff1
@@ -134,13 +158,38 @@ The host command that replaces `@1f` is tag `1d`, whose handler at `9b94`
 calculates `(@7a << 2) + @7a` before storing the low word in `@1f`. The
 supervisor sends it at `bcb5`, with `BX = zero_extend([4ab])`; therefore the
 selector receives **five times** the transferred configuration value, not the
-raw byte. That is a generic datapump-state transfer adjacent to tags `1c` and
-`2a`, not evidence that x2 directly sets the bit-6 selector. Decoding the
-producer of `[4ab]` is the remaining route to determine whether x2 configures
-this particular capability-message bit.
+raw byte. `4ab` is S29 (`48e + 29`), whereas x2 and V.90 are S58 bits. S29 is
+labelled **"V21 Handshake"** by the firmware's own help and acts as a V.21
+fallback-timing control. Therefore it establishes only a shared sequencing
+dependency for the `fff1`/`fff2` selection; it does **not** establish the
+on-wire frame, or prove that a particular bit is the remote-x2/server
+discriminator.
 
-The unresolved item is the **x2 wire-level selector**, not whether V.90 has
-one.  x2 cannot use the V.90 `37:39 = 6` declaration; it must branch through a
-proprietary negotiation/training path.  The static route to follow is the
-producer of `ff26`/`ff27` and the call-state bits examined by `9267`, together
-with the x2-only host tag `0x70 -> fff1`.
+The static image establishes the local half (`x2 setup -> fff1 ->
+ff18[16..31]`) and proves that it is not V.90 `INFO1a[37:39]`. It does not yet
+establish the reciprocal receive buffer or the individual proprietary bit
+assignments. Those require a trace of a successful x2 call or an x2 protocol
+specification.
+
+The code-side selection audit is complete for this image: the S58 gates,
+x2-only capability construction/transfer, V.90 INFO1a writer, result ladders,
+and status paths are all distinct and accounted for above. What remains
+unparsed is the **external meaning and framing** of the x2-conditioned
+capability payload after the DSP packs it into `ff18`. It is not a second
+`INFO1a[37:39]` selector. Resolving its named on-wire fields would need a
+protocol trace or an x2 specification, rather than another supervisor
+S-register branch.
+
+## x2 status: the DSP sends a bitmap, not the diagnostic string number
+
+The DSP's outbound queue routine uses tag `0x75` for x2 status. Its report
+sequence queues `0x8075` and then the current `fff7` word. It occurs in
+overlay 6 at `a5ab`, and in overlay 8 at `e201` and `e29e`.
+
+`fff7` is a condition bitmap. Its writers OR the ten masks `0001`, `0002`,
+`0004`, `0008`, `0010`, `0020`, `0040`, `0080`, `0100`, and `0200`; tag `70`
+initializes `0001`. It is therefore not the host's compact diagnostic enum.
+The adjacent host strings (remote-not-x2, remote-not-server, incompatible
+versions, and so on) must be selected by a later host-side bitmap decoder.
+That decoder—not the tag-70 `fff1` setup path—is the remaining target for
+recovering the exact remote-server/version tests.

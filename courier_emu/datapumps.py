@@ -218,6 +218,21 @@ def s_register_bits(rom, number):
     return found
 
 
+def pcm_option_tests(rom):
+    """Every direct supervisor test of S58, grouped by bit mask.
+
+    This is the complete local option surface for the PCM schemes in the
+    captured image: BLER once, the x2 and V.90 gates twice each, and x2's two
+    otherwise-undocumented capability modifiers.
+    """
+    options = S_REGISTER_BASE + PCM_OPTIONS
+    pattern = re.compile(rb'\xf6\x06' + bytes((options & 0xff, options >> 8)) + rb'(.)')
+    found = {}
+    for match in pattern.finditer(rom.data):
+        found.setdefault(match[1][0], []).append(match.start())
+    return {bit: tuple(sites) for bit, sites in sorted(found.items())}
+
+
 def pcm_ladders(rom):
     """The rates each scheme has a result code for, from the CONNECT strings."""
     found = {'x2': set(), 'V90': set()}
@@ -587,10 +602,12 @@ def rate_choice_selects(rom):
 
 # --- which scheme a call ends up in ----------------------------------------
 #
-# The DSP packs one of two 16-bit capability words into its startup message.
-# The choice is flag bit 6 in its datapump register.  This is *not* overlay
-# 8's family fork (bit 7), and static analysis has not yet proved what sets
-# the bit-6 selector for an x2 call.
+# The DSP packs one of two 16-bit capability words into a message-preparation
+# path. The choice is flag bit 6 in its datapump register, which tag 1d derives
+# from S29. S29 is a V.21-handshake/fallback timing control, so this proves a
+# shared sequencing dependency only—not the frame carrying the word or any
+# remote-x2 marker. This is also not overlay 8's family fork (bit 7), nor an
+# S58 x2/V.90 selector.
 
 X2_CAPABILITY, OTHER_CAPABILITY = 0xFFF1, 0xFFF2   # the two words it can send
 MESSAGE_BUFFER = 0xFF18                            # the bit-packed message
@@ -598,6 +615,7 @@ BIT_PACKER = 0x8769                                # writes acc into it, @7f wid
 CAPABILITY_FLAG_BIT, E_FAMILY_FLAG_BIT = 6, 7      # separate flag bits
 BLDD_AT_7D = 0xA87D
 DATAPUMP_FLAG_TRANSFER = (0x127A, 0x207A, 0xBC10, 0x901F, 0xEF00)
+DATAPUMP_FLAG_S_REGISTER = 0x04AB - S_REGISTER_BASE
 
 
 def capability_choice(rom):
@@ -606,7 +624,10 @@ def capability_choice(rom):
     `bit <code>, @1f ; bldd @7d, #fff1 ; xc 2, ntc ; bldd @7d, #fff2` chooses
     `fff1` when its bit-6 selector is set and `fff2` when clear, then pushes
     the chosen 16-bit word into the message buffer. Tag `0x70` writes `fff1`
-    on the x2 setup path; the selector's setter is still untraced.
+    on the x2 setup path; tag `0x51` supplies the `fff2` counterpart. The
+    S29-derived selector can be a V.21 fallback timer/state control, rather
+    than an on-wire protocol selector. This proves the local setup path, not
+    the message framing or individual remote capability-bit definitions.
     """
     w = _image(rom, 5)
     for pc in range(0x8000, 0xEEA0):
@@ -629,7 +650,7 @@ def datapump_flag_transfer(rom):
     """The tag-1d conversion that installs the DSP datapump flag word.
 
     It computes five times the mailbox argument before storing `@1f`; host
-    code supplies that argument from configuration byte `[4ab]`.
+    code supplies that argument from S29 (`[4ab]`).
     """
     w = _image(rom, 5)
     sites = tuple(pc for pc in range(0x8000, 0xEEA0 - len(DATAPUMP_FLAG_TRANSFER))
@@ -637,7 +658,48 @@ def datapump_flag_transfer(rom):
     if len(sites) != 1:
         raise ValueError(f'expected one tag-1d datapump-flag handler, found {len(sites)}')
     return {'site': sites[0], 'input_cell': 0x007A,
-            'destination': DATAPUMP_FLAGS, 'multiplier': 5}
+            'destination': DATAPUMP_FLAGS, 'multiplier': 5,
+            'host_s_register': DATAPUMP_FLAG_S_REGISTER}
+
+
+# --- x2 status transport ----------------------------------------------------
+#
+# Tag 70 initializes `fff7` bit 0 as part of x2 setup.  The resident and its
+# overlays subsequently OR individual condition bits into the same word.  The
+# C5x reports that *bitmap*, not a pre-rendered diagnostic enum: the delayed
+# `calld 83b1` queues tag 8075 and the following call queues `fff7` as its
+# argument.  The supervisor must therefore translate the bitmap to the x2
+# error strings later.
+
+X2_STATUS_TAG, X2_STATUS_WORD = 0x75, 0xFFF7
+X2_STATUS_REPORT = (0x7E80, 0x83B1, 0xBF80, 0x8075,
+                    0xBF09, X2_STATUS_WORD, 0x1080, 0x7A80, 0x83B1)
+
+
+def x2_status_transport(rom):
+    """Report sites where the DSP sends `fff7` to the host as tag 0x75."""
+    sites = []
+    for index in (6, 8):
+        w = _image(rom, index)
+        sites.extend((index, pc) for pc in range(0x8000, len(w) - len(X2_STATUS_REPORT))
+                     if tuple(w[pc:pc + len(X2_STATUS_REPORT)]) == X2_STATUS_REPORT)
+    if not sites:
+        raise ValueError('no x2 status reports in DSP overlays')
+    return {'tag': X2_STATUS_TAG, 'word': X2_STATUS_WORD, 'sites': tuple(sites)}
+
+
+def x2_status_flag_masks(rom):
+    """All immediate condition bits ORed into the x2 DSP status word.
+
+    These are condition flags, not the host's textual error-number enum.
+    """
+    masks = {0x0001}  # tag 70 handler at resident 8d35..8d37
+    for index in (5, 6, 8):
+        w = _image(rom, index)
+        for pc in range(0x8000, len(w) - 3):
+            if w[pc:pc + 2] == [LAR_AR1_, X2_STATUS_WORD] and w[pc + 2] == 0x5E80:
+                masks.add(w[pc + 3])
+    return tuple(sorted(masks))
 
 
 # --- V.90's INFO1a selector -----------------------------------------------

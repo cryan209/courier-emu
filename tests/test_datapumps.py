@@ -93,6 +93,16 @@ def test_the_help_text_names_the_option_bits(rom):
         assert datapumps._test_byte(options, bit) in rom.data
 
 
+def test_all_direct_s58_uses_are_accounted_for(rom):
+    assert datapumps.pcm_option_tests(rom) == {
+        0x01: (0x8EA1, 0x8F39),  # x2 gate and x2 setup
+        0x02: (0x8DBA,),         # BLER monitor
+        0x04: (0x8F47,),         # x2 capability bit 9
+        0x10: (0x8F56,),         # x2 capability bit 10 suppression
+        0x20: (0x8E60, 0x8F06),  # V.90 gate and empty V.90 setup
+    }
+
+
 def test_x2_and_v90_are_two_bits_over_one_receiver(rom):
     control = datapumps.pcm_control(rom)
     assert control['x2']['disable_bit'] == 1
@@ -279,4 +289,16 @@ def test_capability_selector_gets_a_scaled_host_configuration_word(rom):
     assert datapumps.datapump_flag_transfer(rom) == {
         'site': 0x9B94, 'input_cell': 0x007A,
         'destination': datapumps.DATAPUMP_FLAGS, 'multiplier': 5,
+        'host_s_register': 29,
     }
+
+
+def test_x2_dsp_status_is_a_tagged_bitmap_not_a_text_enum(rom):
+    assert datapumps.x2_status_transport(rom) == {
+        'tag': 0x75, 'word': 0xFFF7,
+        'sites': ((6, 0xA5AB), (8, 0xE201), (8, 0xE29E)),
+    }
+    assert datapumps.x2_status_flag_masks(rom) == (
+        0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020,
+        0x0040, 0x0080, 0x0100, 0x0200,
+    )
