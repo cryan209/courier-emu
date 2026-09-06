@@ -14,16 +14,41 @@
 
 namespace courier {
 
-// TMS320C52 on-chip memory, from tables 8-3 and 8-10 of the C5x User's Guide
-// (SPRU056D). The C52 carries 4K words of program ROM and three DARAM blocks
-// and **no SARAM at all**, which makes PMST.RAM and PMST.OVLY don't-cares on
-// this part.
+// TMS320C50 on-chip memory, from the C5x User's Guide (SPRU056D) figures for
+// program space in both MP/MC modes and for local data memory. The board's
+// part is a 'C50 or 'LC50 - 1056 words of DARAM, 9K of SARAM, 2K of ROM - not
+// the 'C52 this core was first written against. See docs/board-parts.md.
 //
-// NOTE: the board is probably not a C52. Its firmware sets PMST.RAM and OVLY,
-// which only mean something on a part with SARAM, and 302's mailbox helper is
-// at program 0x23f0 - inside the 9K part's 0x0800-0x2BFF SARAM window and
-// outside a 3K or 6K part's. See docs/board-parts.md. Data outside the blocks below is off-chip from 0x0800 up, and
-// reserved in the two gaps.
+// The guide's three maps, checked region by region against what follows:
+//
+//   program, MP/MC=1   0000-003F external (vectors)   0040-07FF external
+//                      0800-2BFF SARAM if PMST.RAM, else external
+//                      2C00-FDFF external
+//                      FE00-FFFF DARAM B0 if CNF, else external
+//   program, MP/MC=0   as above, but 0000-07FF is the on-chip ROM
+//   data               0000-005F memory-mapped registers
+//                      0060-007F DARAM B2      0080-00FF reserved
+//                      0100-02FF DARAM B0, reserved when CNF
+//                      0300-04FF DARAM B1      0500-07FF reserved
+//                      0800-2BFF SARAM if PMST.OVLY, else external
+//                      2C00-FFFF external
+//
+// Two things matter for this board. The SARAM is one physical memory
+// reached from both spaces, which is the point of OVLY and why the two spaces
+// cannot be backed by separate storage there. And **the whole top of data
+// space is external** - there is nothing on-chip above 0x2BFF in data space,
+// and nothing on-chip above 0x2BFF in program space either with CNF clear, as
+// this firmware runs it. So an external address in 0x8000-0xFEFF is an
+// ordinary off-chip bus cycle in either space, and one RAM answering both is
+// a board that does not separate the two strobes rather than a trick. That is
+// the shared window declared below.
+//
+// C5X_ROM_WORDS is the one constant that does not follow the figure: a 'C50's
+// ROM is 2K, at 0x0000-0x07FF, not the 4K here. It is left at the 'C52's size
+// because nothing models the board with it - the firmware runs MP/MC=1, where
+// the window does not exist - and the probe kernels in dsp_probe.py and fsk.py
+// use microcomputer mode to host 4K synthetic drivers of their own. Shrinking
+// it would break those fixtures and model nothing.
 constexpr uint16_t C5X_ROM_WORDS = 0x1000;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
 constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;

@@ -78,6 +78,39 @@ So the DSP is a **TMS320C50 or LC50**, not the `'C52` the core models. That is
 inferred from the firmware's memory use against the guide's tables, not from
 the part marking, which is a custom USR number.
 
+### The guide's figures, checked against the core region by region
+
+The three memory-map figures - program space in each MP/MC mode, and local
+data memory - agree with `native/c5x_core.h` everywhere except one constant:
+
+| region | guide | core |
+|---|---|---|
+| program `0000`-`003F`, MP/MC=1 | external (vectors) | external |
+| program `0800`-`2BFF` | SARAM if `PMST.RAM`, else external | same |
+| program `2C00`-`FDFF` | external | external |
+| program `FE00`-`FFFF` | DARAM B0 if `CNF`, else external | same |
+| program `0000`-`07FF`, MP/MC=0 | 2K on-chip ROM | **4K**, `0000`-`0FFF` |
+| data `0000`-`005F` | memory-mapped registers | same |
+| data `0060`-`007F` / `0080`-`00FF` | DARAM B2 / reserved | same |
+| data `0100`-`02FF` | DARAM B0, reserved when `CNF` | same |
+| data `0300`-`04FF` / `0500`-`07FF` | DARAM B1 / reserved | same |
+| data `0800`-`2BFF` | SARAM if `PMST.OVLY`, else external | same |
+| data `2C00`-`FFFF` | external | external, less the shared window |
+
+The ROM row is a harness fixture rather than a claim about the board: the
+firmware runs MP/MC=1, where that window does not exist, and the probe kernels
+in `dsp_probe.py` and `fsk.py` use microcomputer mode to host 4K synthetic
+drivers of their own. It is recorded in the header and left alone.
+
+**The last row is why the shared external window is ordinary.** The guide puts
+*nothing* on-chip above `0x2BFF` in data space, and nothing above it in program
+space either with `CNF` clear, which is how this firmware runs. So a reference
+to `0x8000`-`0xFEFF` is an off-chip bus cycle in **both** spaces - the same
+address driven on the same pins. One RAM answering both is then not a trick but
+a board that does not separate the two strobes, which is exactly what 302's
+`bldp` from data `0x80f5` needs and what
+[dsp-map-302.md](dsp-map-302.md) measures.
+
 ## The NEC part is the ASIC
 
 `1-016-905` is a US Robotics part number, not an NEC catalogue number: NEC
