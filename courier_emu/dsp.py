@@ -122,6 +122,10 @@ def decode_wait_states(pdwsr: int, iowsr: int, cwsr: int) -> dict[str, Any]:
     }
 
 
+# Mirrors C5X_SHARED_FIRST / C5X_SHARED_LAST in native/c5x_core.h.
+SHARED_WINDOW = (0x8000, 0xFEFF)
+
+
 class NativeC5x:
     """Incrementally stepped C52 instance used by the dual-processor harness."""
 
@@ -132,6 +136,14 @@ class NativeC5x:
         if not self.handle:
             raise RuntimeError("failed to create C5x core")
         try:
+            origins = [origin for origin, _ in image.dsp_program_segments()]
+            # The board's external RAM answers both spaces at 0x8000-0xfeff,
+            # but that is only usable for an image whose program is actually
+            # linked there. main211.xmf offers a segment at origin 0x0000 as
+            # well, and which of its two is the real payload is unresolved, so
+            # the window is switched off rather than guessed at.
+            if origins and min(origins) < SHARED_WINDOW[0]:
+                self.library.courier_c5x_set_shared_window(self.handle, 0xFFFF, 0x0000)
             for origin, segment in image.dsp_program_segments():
                 storage = (ctypes.c_uint8 * len(segment)).from_buffer_copy(segment)
                 error = ctypes.create_string_buffer(512)
@@ -165,6 +177,9 @@ class NativeC5x:
             ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
         ]
         lib.courier_c5x_set_mpmc_pin.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_shared_window.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
+        ]
         lib.courier_c5x_get_memory_map.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]

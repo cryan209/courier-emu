@@ -165,11 +165,22 @@ no more**:
 | `0x80a7` | `0x80f5`, `0x80f6`, `0x80f7` | **reads** |
 | `0x0bf7`, `0x0bf8` | `0xff60`, `0xff61` | reads |
 
-So in `0x8000`-`0xfeff` the firmware performs exactly **three** data accesses,
-all reads, all the `bldp` at `0x80a7`. There is no second read that "must not
-return program words": there is no second read at all. Everything else above
-`0x2c00` is at `0xff51` and up, which is the ASIC window the firmware reaches
-through DP `0x1fe`/`0x1ff` - and that is where the shared window has to stop.
+So along the resident's boot path the firmware performs exactly **three** data
+accesses in `0x8000`-`0xfeff`, all reads, all the `bldp` at `0x80a7`.
+Everything else above `0x2c00` is at `0xff51` and up, which is the ASIC window
+the firmware reaches through DP `0x1fe`/`0x1ff` - and that is where the shared
+window has to stop.
+
+> **That count is the boot path only, and taking it for the whole firmware was
+> a mistake.** The overlays read data in the window too: the V.34 arming path
+> reads data `0xfea1` six times from `0xd668`, walking the capability
+> descriptor list [v34-arming.md](v34-arming.md) recovered. That does not
+> contradict the shared model - `0xfea1` is above the resident's `0xec3d` and
+> above the highest overlay's `0xf8b5`, so it is free RAM being used as data,
+> which is exactly what one memory answering both spaces predicts. What it
+> broke was the *harness*: `set_data` staged the descriptor into the data array
+> while the running program now read the program one, two arrays for one RAM.
+> Both accessors follow the window now.
 
 With `0x8000`-`0xfeff` backed by the program storage in both spaces, the
 `bldp` reads `1080 0880 ef00` - `lacc * / lamm * / ret`, the helper this
@@ -197,6 +208,19 @@ that nothing in the harness yet delivers.
 run is identical either way, because it keeps the same helper in-bank at
 `0x80e8` and never reads program space as data. That is the prediction this
 document already made, now measured.
+
+### The window applies to the ROM images, not to every image
+
+`main211.xmf` presents a first segment at origin `0x0000` *and* one at
+`0x8000`, and which of those is its real payload is the unresolved question at
+the end of this document. For an image like that the harness cannot say where
+the board's RAM sits, so `NativeC5x` switches the window off when any program
+segment origin is below `0x8000`, and that image's data space behaves exactly
+as it did before the window existed. Turning it on for `main211` regressed its
+call-overlay run to the point of never arming `IMR`.
+
+So the window is a fact established for the 20.16 MHz ROM downloads, whose
+segments are all at `0x8000` or above, and an open question everywhere else.
 
 **What is still not settled** is the window's exact edges. The evidence bounds
 them only between `0x80f7` and `0xff50`; `0xfeff` is chosen because the
@@ -283,17 +307,64 @@ reproduces the boot exactly: the same single prologue pass, the same `rptz`
 repeat counts at the aliased `0x001d`/`0x0024`/`0x0028`, and the same `idle` at
 `0x814d` once a branch to an absolute `0x8xxx` label carries it up.
 
-So the `0x8000` in these addresses is best read as **`0x8000` and `0x0000` being
-the same cell**, which is the second of the two possibilities this section
-raised, and it dissolves the `main211.xmf` problem: a segment placed at origin
-`0x0000` whose code is linked for `0x8000` is not a contradiction on a board
-that decodes fifteen address lines.
+That reading - **`0x8000` and `0x0000` being the same cell** - is the second of
+the two possibilities this section raised, and it would dissolve the
+`main211.xmf` problem: a segment placed at origin `0x0000` whose code is linked
+for `0x8000` is no contradiction on a board that decodes fifteen address lines.
 
-**This is not yet modelled.** Implementing the alias would make `main211`'s
-origin-`0x0000` and origin-`0x8000` segments overwrite each other, and which of
-those two is the real payload is the open question at the top of this section.
-The experiment above was run and reverted; the shared *data* window from the
-commit before it is what remains in the core.
+### But the vector base does not fit it, and that points the other way
+
+Two further checks cut against a bare alias.
+
+**`0x23f0` is on-chip, not aliased RAM.** If external program space ignored A15,
+program `0x23f0` would be the same cell as `0xa3f0` - and `0xa3f0` is ordinary
+mid-routine code in both builds, and *different* code in each:
+
+```
+302   a3f0  ef08       retc neq            403   a3f0  7a80 a4ae  call a4ae
+      a3f1  7a80 adf0  call adf0                 a3f2  7a80 8766  call 8766
+```
+
+The prologue's three-word `bldp` into `BMAR = 0x23f0` would overwrite that,
+destroying a live routine, and both images would have to leave a three-word
+hole there by coincidence. They do not. So `0x23f0` is SARAM, `PMST.RAM` really
+is set, and the core's PMST field layout - `RAM` bit 4, `OVLY` bit 5 - is the
+one the firmware is written against.
+
+**Which forces bit 7 to be IPTR's LSB, and that breaks the alias.** `opl
+#00b0` sets it, so `IPTR = 1` and hardware vectoring puts the vector base at
+`0x0080`. Under the alias `0x0080` is image `0x8080` - and `0x8080` is prologue
+code, `splk *, #32d6`, not a vector table. Without the alias `0x0080` is
+external RAM that no download ever writes. Neither is a place vectors can live.
+
+Note what the harness does about that: `_configure_frame_interrupt` overrides
+hardware vectoring entirely, arming IRQ 5 at `origin + 0x0c` = `0x800c`. The
+core takes that override before consulting `IPTR`:
+
+```
+m_pc = vector != 0xffff ? vector : uint16_t((m_pmst.iptr << 7) | ((irq + 1) << 1));
+```
+
+So "the resident bank's vectors are at its own base" is the harness's
+assumption, not something the part's own `PMST` supports. The firmware asks for
+`0x0080`.
+
+**The reading that fits all of it is microcomputer mode.** With `MP/MC = 0`,
+program `0x0000`-`0x07FF` is on-chip ROM: reset lands in a mask ROM that boots
+and enters the downloaded bank, and `0x0080` is a ROM vector table dispatching
+into fixed addresses in it. That accounts for the vector base the firmware
+selects, for the entry at `0x8000` being straight-line code that something else
+jumps to, for nothing ever being downloaded below `0x8000`, and for a
+USR-custom-marked TI part being a mask-ROM part. It also fits the board: the
+`MP/MC` pin appears unwired, and unwired is the microcomputer end.
+
+**None of this is modelled, and one strand of it is now doubtful.** The A15
+experiment above really does reproduce the boot, so it cannot be dismissed - but
+it explains reset only, and it contradicts both the vector base and `0x23f0`.
+The competing account needs an on-chip ROM image this repository does not have.
+What would separate them is a single measurement on the board: whether `MP/MC`
+is tied high, tied low, or floating, and whether A15 reaches the SRAMs at all.
+Only the shared *data* window is in the core; the alias was reverted.
 
 The one strand that does not depend on the harness is `dsp_mailbox.py`'s
 constants - the sender at `84b7`/`849e`, the table at `8401`, tag `0x42`'s

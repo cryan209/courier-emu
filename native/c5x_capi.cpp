@@ -86,6 +86,11 @@ void courier_c5x_set_mpmc_pin(void *handle, int level)
     if (handle) static_cast<C5xCore *>(handle)->set_mpmc_pin(uint16_t(level));
 }
 
+void courier_c5x_set_shared_window(void *handle, uint16_t first, uint16_t last)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_shared_window(first, last);
+}
+
 void courier_c5x_get_memory_map(void *handle, uint64_t *values, std::size_t count)
 {
     if (!handle || !values || count < 21) return;

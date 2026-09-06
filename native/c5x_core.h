@@ -69,6 +69,12 @@ constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
 // The top page is not RAM - the firmware's ASIC window is DP 0x1fe/0x1ff -
 // so the shared window stops below it. See docs/dsp-map-302.md.
 constexpr uint16_t C5X_SHARED_FIRST = 0x8000, C5X_SHARED_LAST = 0xFEFF;
+// ...but only for an image whose program actually lives there. main211.xmf
+// presents a first segment at origin 0x0000 alongside one at 0x8000, and which
+// of those is the real payload is unresolved (see docs/dsp-map-302.md). For
+// such an image the harness cannot say where the board's RAM sits, so the
+// window is disabled rather than guessed at, and its data space behaves as it
+// did before the window existed.
 
 class C5xCore {
 public:
@@ -156,6 +162,7 @@ public:
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void load_rom(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void set_mpmc_pin(uint16_t level);
+    void set_shared_window(uint16_t first, uint16_t last);
     MemoryMap memory_map() const;
     void set_io_callbacks(IoRead read, IoWrite write);
     void set_io(uint16_t port, uint16_t value);
@@ -235,6 +242,7 @@ private:
     // wait states only apply off-chip, so it does not expect a boot ROM under
     // the download.
     uint16_t m_mpmc_pin = 1;
+    uint16_t m_shared_first = C5X_SHARED_FIRST, m_shared_last = C5X_SHARED_LAST;
     mutable MemoryMap m_map{};
     IoRead m_io_read;
     IoWrite m_io_write;

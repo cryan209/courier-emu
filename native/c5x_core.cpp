@@ -141,6 +141,12 @@ void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin
     m_rom_present = true;
 }
 
+void C5xCore::set_shared_window(uint16_t first, uint16_t last)
+{
+    m_shared_first = first;
+    m_shared_last = last;
+}
+
 void C5xCore::set_mpmc_pin(uint16_t level)
 {
     m_mpmc_pin = level ? 1 : 0;
@@ -191,8 +197,20 @@ void C5xCore::set_v8_answering(bool enabled)
 }
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
-uint16_t C5xCore::data(uint16_t address) const { return m_data[address]; }
-void C5xCore::set_data(uint16_t address, uint16_t value) { m_data[address] = value; }
+// These reach the same storage the running program does, so a cell staged
+// from the harness lands where the firmware's own read will find it. Without
+// the region check, a value seeded into the shared window would go to the data
+// array while the DSP read the program one - two arrays for one RAM.
+uint16_t C5xCore::data(uint16_t address) const
+{
+    return data_region(address) == Region::Shared ? m_program[address]
+                                                  : m_data[address];
+}
+void C5xCore::set_data(uint16_t address, uint16_t value)
+{
+    if (data_region(address) == Region::Shared) m_program[address] = value;
+    else m_data[address] = value;
+}
 
 C5xCore::MemoryMap C5xCore::memory_map() const
 {
@@ -242,7 +260,7 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
         return Region::Saram;
     // The board's external RAM answers both spaces. See the shared-window
     // constants in c5x_core.h.
-    if (address >= C5X_SHARED_FIRST && address <= C5X_SHARED_LAST)
+    if (address >= m_shared_first && address <= m_shared_last)
         return Region::Shared;
     // Without SARAM mapped, everything from 0x0800 up is off-chip and the two
     // gaps below it are reserved.
