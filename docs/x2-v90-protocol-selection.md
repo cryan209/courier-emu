@@ -654,3 +654,71 @@ This makes 4.03's naming the literal one. The quantity really is a
 high-frequency rolloff slope; the stock build simply reports the diagnosis it
 draws from that slope - a second codec in the path - rather than the
 measurement.
+
+## What separates the two rolloff grades
+
+One number, two thresholds. The grading is at 4.03 resident `9674..9691`,
+called from `93c4` inside the probe-analysis routine that fills the array:
+
+```text
+9674  lar   ar0, #03
+9675  lar   ar1, #da15
+9677  lacl  *0+            ; S = [da15]
+9678  sub   *              ;   - [da18]
+9679  cpl   @63, #0000     ; TC = (@63 == 0)
+967b  sub   #1d3c
+967d  xc    2, tc
+967e  add   #07fa          ; ...so the bar is 1542 when TC, else 1d3c
+9680  lar   ar1, #fff7
+9682  xc    2, lt
+9683  opl   *, #0040       ; "normal"
+9685  retc  lt             ; and stop
+9686  lar   ar1, #fff4
+9688  sub   #0e9e
+968a  opl   *, #1000       ; not-normal flag, unconditional
+968c  lar   ar1, #fff7
+968e  xc    2, lt
+968f  opl   *, #0100       ; "marginal"
+9691  retc  lt
+```
+
+With `S` the top-of-band slope and `T` the first bar:
+
+| outcome | condition |
+|---|---|
+| normal | `S < T` |
+| marginal | `T <= S < T + 0e9e` |
+| neither | `S >= T + 0e9e` |
+
+So the two grades are told apart by **a single extra margin of `0e9e`**. That
+margin is the entire width of the "marginal" band; it sits immediately above
+the "normal" limit, and there is no second measurement, no hysteresis and no
+other input. `T` is `1d3c`, shifted down to `1542` when `@63` is zero, which
+moves both boundaries together and does not change the width.
+
+There is also a **third, unnamed outcome**. A slope past `T + 0e9e` sets
+neither bit, so the report simply prints no rolloff line at all - "not even
+marginal" is expressed by absence, not by a string. And `fff4` bit 12 is set
+unconditionally on the way past the first test, so that flag means precisely
+"graded worse than normal", covering both of the remaining cases.
+
+### The grades straddle the stock build's single limit
+
+The stock firmware does not grade: `96b3` and `902c..9034` both test the same
+slope against one threshold, `1fe4`. Lining the three up:
+
+```text
+1542 / 1d3c   4.03 "normal" limit  (with / without the @63 shift)
+1fe4          stock pass/fail limit
+23e0 / 2bda   4.03 "marginal" limit
+```
+
+The stock boundary falls inside 4.03's marginal band in both variants. So
+4.03 did not move the decision - it split the stock build's single pass/fail
+line into a band around itself and named the two halves, which is what you
+would do to report a borderline channel rather than only reject it.
+
+`@63` is not identified. It is a page-0 scratch location written from many
+places; the nearest candidate is the training sequencer's counter, set to 3
+at `9317` and `9367` and decremented at `9326`, but nothing here proves that
+is the same variable this test reads.
