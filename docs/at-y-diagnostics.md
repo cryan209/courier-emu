@@ -87,7 +87,7 @@ three bits:
 |---|---|---|---|
 | 0 | transmit ready | `out 0x5c`/`0x5e`, `out 0x58`/`0x5a` | drains the ring at `[0x29e]` |
 | 1 | event word ready | `in 0x5a`/`0x58` | `call [0x298]`, the modem state machine |
-| 2 | diagnostic word ready | `in 0x62`/`0x60` | `lcall 0x8000:0674` -> `call [0x2d3]` |
+| 2 | **DSP word ready** | `in 0x62`/`0x60` | `lcall 0x8000:0674` -> `call [0x2d3]` |
 
 After the bit-1 dispatch it calls `[0x27d]`, then re-reads the status and
 tests bit 2:
@@ -99,6 +99,27 @@ jz  skip
 mov [0x285], ax
 lcall 0x8000:0674          ; -> call word ptr [0x2d3]
 ```
+
+### Channel 2 is the DSP's outbound window, not a diagnostic side-channel
+
+`dsp_mailbox.py` already settles the producer, against hardware: the DSP's
+sender - `84b7` in DSP 3.0.13, `849e` in 3.1.2 - is `out *, 0060` followed by
+`lacl #04 ; samm @57`, and that 4 is the status bit the CPU reads as `0x1c`
+bit 2. So the window's producer is **the DSP, one word per interrupt**; the
+ASIC only bridges CPU I/O ports to DSP data cells. Acknowledging bit 2 resumes
+the DSP and makes it emit the next word.
+
+`ATY12` is a sibling of the stream that tool already drives. The documented
+trigger at `0x6d08` arms `[0x2d3] = 0x1fdb` and enqueues `AL=0x3f, AH=0x06` -
+tag `0x063f`, matching `STREAM_TAG`/`STREAM_DATA`. `ATY12` at `0x6eb2` arms
+`[0x2d3] = 0x20fa`, sets the count to 32, and enqueues `AH=0x45` with the same
+`0x3f`: tag `0x453f`, a longer collector on the same window.
+
+**These addresses are supervisor 7.3.14's.** Under 7.4.16 the chain vector is
+`[0x01cd]`, not `[0x02d3]`. The 403 board image confirms the whole shape at its
+own addresses: the trampoline `call word ptr [0x01cd]` at `0x0067b`, the tag-06
+trigger at `0x06d52`, and `ATY12` at `0x06efe` arming `[0x01cd] = 0x212c` with
+the count cell at `[0x0836]` rather than `[0x0942]`.
 
 ## Why the measurement displays are empty
 
