@@ -857,6 +857,10 @@ cache can instead be attached in memory. This leaves every EEPROM word except
   --tick-ms 10 --nvram-fixture idsl302 --at AT --summary
 ```
 
+The 20 MHz 302/403 ROM serial adapter runs the firmware's attention detector,
+parser, and UART transmit path. See [ROM serial execution](docs/rom-serial-adapter.md)
+for the tested board settings, captured 403 command, and autobaud limitations.
+
 The fixture reverses all three byte encodings used for each redundant record;
 it is mutually exclusive with a persistent `--nvram` image.
 

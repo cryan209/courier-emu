@@ -1,0 +1,19 @@
+{
+  "kind": "offline CPU-only ROM AT-command smoke test",
+  "date": "2026-09-06",
+  "roms": {
+    "IDSDL302.ROM": "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5",
+    "artifacts/courier-board-21210-capture-403/courier-board.rom": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6"
+  },
+  "settings": {
+    "board_id": 7,
+    "tick_ms": 5,
+    "nvram_fixture": "idsl302",
+    "physical_modem_used": false
+  },
+  "notes": [
+    "Uses the byte-oriented ROM serial adapter.",
+    "EEPROM fixture is mostly erased, not a full saved user profile.",
+    "No external serial device or phone connection is used."
+  ]
+}

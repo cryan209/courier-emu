@@ -184,6 +184,20 @@ DIP_SWITCHES: dict[str, tuple[int, int, str]] = {
     "no-auto-answer": (0x14, 0x10, "0x63eb5 leaves S0 at [0x08de] clear"),
 }
 
+# The 20 MHz 302/403 resident profile builder samples a different switch
+# wiring from the XMF supervisor. Its input selector 3 is port 12h; selector
+# 4 is port 14h. See IDSDL302 87daa..87e69 and 82876.
+ROM_DIP_SWITCHES = {
+    "result-codes": (0x12, 0x01),
+    "numeric-results": (0x12, 0x02),
+    "no-auto-answer": (0x12, 0x04),
+    "no-echo": (0x12, 0x08),
+    "quiet-answer": (0x12, 0x10),
+    "quiet-answer-alt": (0x12, 0x80),
+    "dtr-override": (0x12, 0x20),
+    "carrier-detect-override": (0x14, 0x40),
+}
+
 # A directly attached DTE wants the modem to report result codes, which is the
 # closed position of that switch. Everything else idles open, matching an input
 # that is not driven — which for `no-auto-answer` means S0 keeps its flash
@@ -259,11 +273,11 @@ class CourierPanel:
             known = ", ".join(sorted(DIP_SWITCHES))
             raise ValueError(f"unknown option switch {sorted(unknown)}; known switches are {known}")
 
-    def dip_input(self, port: int) -> int:
+    def dip_input(self, port: int, *, rom: bool = False) -> int:
         """Return the mask of bits this port's closed option switches pull low."""
         low = 0
         for name in self.dip_closed:
-            switch_port, mask, _ = DIP_SWITCHES[name]
+            switch_port, mask = ROM_DIP_SWITCHES[name] if rom else DIP_SWITCHES[name][:2]
             if switch_port == port:
                 low |= mask
         return low

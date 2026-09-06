@@ -26,6 +26,7 @@ from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
 from .timers import INT0_VECTOR, INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
 from .uart import EbSerial
+from .rom_serial import locate_rom_serial
 
 
 ADDRESS_SPACE_SIZE = 0x100000
@@ -419,6 +420,11 @@ class CourierMachine:
         self._serial_callbacks = (
             serial_callback_table(getattr(image, "data", b"")) or 0x02A8
         )
+        self._rom_serial = (
+            locate_rom_serial(image.data, self._serial_callbacks)
+            if self.uart is not None else None
+        )
+        self._terminal_connected = bool(serial_input) or console is not None
         self._alternate_supervisor = supervisor_offset == 0x1B600
         self._supervisor_23 = supervisor_offset == 0x17BB0
         # main2205 keeps the same supervisor ABI but relocates several
@@ -484,9 +490,11 @@ class CourierMachine:
         The board's UART callbacks are installed once, as the supervisor
         reaches its main loop. Queued input is known by then; a console's
         first byte may still be minutes away, so an attached console counts
-        as input in its own right.
+        as input in its own right. Draining a command queue does not detach
+        that terminal or lower DTR while its result is being generated.
         """
-        return bool(self.serial_rx) or self.console is not None
+        self._terminal_connected |= bool(self.serial_rx) or self.console is not None
+        return self._terminal_connected
 
     def request_stop(self) -> None:
         """Ask the run to finish at the next instruction boundary."""
@@ -1025,34 +1033,6 @@ class CourierMachine:
                     # iret so the two never nest.
                     self._tick_owed = True
             self.instructions += 1
-            if (
-                self._rom_tick
-                and not self._rom_dte_opened
-                and self._terminal_attached
-                and self.instructions >= DTE_READY_INSTRUCTIONS
-                and bytes(_uc.mem_read(0x0695, 1))[0] & 1
-            ):
-                # The ROM's board/DSP startup normally posts the event whose
-                # handler at 0x8246b changes the serial state from startup to
-                # command mode and opens the buffered DTE channel. A ROM run
-                # has no executable C52 attached, so complete that hardware-
-                # facing half once the firmware has accepted its EEPROM
-                # settings and a DTE exists. Command parsing and result-code
-                # generation remain in the ROM.
-                _uc.mem_write(0x033E, b"\x02")
-                flags = bytes(_uc.mem_read(0x0B88, 1))[0]
-                _uc.mem_write(0x0B88, bytes((flags | 0x40,)))
-                _uc.mem_write(0x0B7E, b"\x00")
-                _uc.mem_write(0x0B7F, (0x9B0A).to_bytes(2, "little"))
-                output = bytes(_uc.mem_read(0x0EA7, 1))[0]
-                _uc.mem_write(0x0EA7, bytes((output | 0x01,)))
-                _uc.mem_write(0x3424, b"\x01")
-                _uc.mem_write(0x3CA4, (0x3800).to_bytes(2, "little"))
-                _uc.mem_write(0x0050, b"\x23\x0f\x00\x80")
-                self.uart.control = 0x21
-                self._rom_dte_opened = True
-            if self._rom_dte_opened and address == 0x815F0:
-                self._capture_serial(_uc.reg_read(UC_X86_REG_AX) & 0xFF)
             if self.console is not None and not self.instructions % self.console.poll_instructions:
                 typed = self.console.poll()
                 if typed:
@@ -1370,6 +1350,15 @@ class CourierMachine:
                     and interrupts_on
                     and self.instructions >= DTE_TYPING_INSTRUCTIONS
                     and (
+                        not self._rom_dte_opened
+                        or self.uart.holding
+                        # Let the parser finish its command/result before
+                        # starting the next queued byte. Its busy RX handler
+                        # deliberately discards input during this interval.
+                        or int.from_bytes(_uc.mem_read(self._serial_callbacks + 4, 2), "little")
+                        in (self._rom_serial.command_idle, self._rom_serial.command_collecting)
+                    )
+                    and (
                         not self._rom_tick
                         # The ROM must have a receive callback installed
                         # before a character means anything to it. Requiring
@@ -1379,9 +1368,30 @@ class CourierMachine:
                         # the whole run, so no ROM but that one could ever
                         # take input. What the callback has to be is present.
                         or self._rom_dte_opened
-                        or int.from_bytes(_uc.mem_read(0x026A, 2), "little") != 0
+                        or int.from_bytes(_uc.mem_read(self._serial_callbacks, 2), "little") != 0
                     )
                 ):
+                    if self._rom_serial is not None and not self._rom_dte_opened:
+                        # CPU-only DTE adapter: enter the ROM's byte-oriented
+                        # attention detector after boot. This substitutes for
+                        # raw-pin autobaud, not for AT parsing or UART output.
+                        layout = self._rom_serial
+                        _uc.mem_write(layout.mode, b"\x02")
+                        _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
+                        _uc.mem_write(layout.callbacks + 4, layout.command_idle.to_bytes(2, "little"))
+                        flags = _uc.mem_read(layout.output_flags, 1)[0]
+                        _uc.mem_write(layout.output_flags, bytes((flags & ~1,)))
+                        self._rom_dte_opened = True
+                        self._trace_serial("rom-dte: firmware attention adapter")
+                    elif self._rom_dte_opened and not self.uart.holding:
+                        layout = self._rom_serial
+                        command = int.from_bytes(_uc.mem_read(layout.callbacks + 4, 2), "little")
+                        if command == layout.command_idle:
+                            # Firmware has finished the previous command and
+                            # requested attention/autobaud again. Retain its
+                            # command state; route the next byte through its
+                            # A/T detector instead of the raw-pin sampler.
+                            _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
                     # Put the character on the wire before handing it over.
                     # The ROM's callback chain watches the raw line for the
                     # idle-then-start transition, so a byte that appeared in
@@ -1396,12 +1406,17 @@ class CourierMachine:
                         self.uart.holding = False
                         if self._rom_dte_opened:
                             # Temporary autobaud handlers reuse type 0x14.
-                            # Once the board-side open event has completed,
-                            # the received character belongs at the ROM's
-                            # final integrated-UART ISR.
-                            _uc.mem_write(0x0050, b"\x23\x0f\x00\x80")
+                            # The byte-oriented adapter delivers through this
+                            # image's integrated-UART ISR.
+                            vector = self._rom_serial.receive_isr.to_bytes(2, "little")
+                            _uc.mem_write(0x0050, vector + b"\x00\x80")
                             self.uart.control = 0x21
-                        self.uart.deliver(self.serial_rx.popleft())
+                        byte = self.serial_rx.popleft()
+                        self._trace_serial(
+                            f"rom-rx {byte:02x} callbacks="
+                            + bytes(_uc.mem_read(self._serial_callbacks, 6)).hex()
+                        )
+                        self.uart.deliver(byte)
                         _uc.emu_stop()
                 if (
                     self._int0_pending is None
@@ -1569,7 +1584,7 @@ class CourierMachine:
                 value = self.port_values.get(port, bridged if bridged is not None else mask)
                 if port in (0x10, 0x12, 0x14) and size == 1:
                     # A closed option switch pulls its latch input bit low.
-                    value &= ~self.panel.dip_input(port)
+                    value &= ~self.panel.dip_input(port, rom=self._rom_serial is not None)
                 if port == 0x12 and size == 1:
                     # The ROM's latch table maps input selector 3 to port
                     # 0x12. Bit 6 is the active-low DTE DTR input: an
