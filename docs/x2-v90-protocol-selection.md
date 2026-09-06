@@ -782,3 +782,78 @@ from 3 land back on 3 at loop exit, so it is never zero when read from
 outside. Negating `0012` leaves it non-zero either way. Only `d94e` writes a
 zero, so `fff4` bit 0 is what the test is reading - by elimination as much as
 by the write itself.
+
+## `fff4` bit 0 selects which evidence the x2 tests trust
+
+### How it is computed
+
+One writer, in both builds, and it latches:
+
+```text
+9095  lar   ar1, #fff5        ; 4.03: #fff6 - one word along
+9097  bit   14, *
+9098  lacl  #00
+9099  xc    1, tc
+909a  lacl  #01               ; value := scheme-word bit 14
+909b  bit   15, *
+909c  bcnd  90a4, tc          ; ...if bit 15 says that word is valid
+909e  lar   ar1, #ff00
+90a0  bit   7, *
+90a1  lacl  #00
+90a2  xc    1, tc
+90a3  lacl  #01               ; else value := [ff00] bit 7
+90a4  lar   ar1, #fff4
+90a6  or    *
+90a7  sacl  *                 ; OR-ed in: sets, never clears
+```
+
+So `fff4` bit 0 is the scheme word's bit 14 when its bit 15 marks it valid,
+and `[ff00]` bit 7 otherwise. `fff4` is only cleared at reset (`8071`), and
+this site only ORs, so the flag latches on for the rest of the call. Stock
+reads `fff5`, 4.03 reads `fff6` - the same shift by one word seen where 4.03's
+tag builder reads `fff7` and stock's reads `fff6`.
+
+### What it does
+
+Exactly three consumers, and they agree on its sense.
+
+**It picks the source for "is the remote x2".** In the stock code generator:
+
+```text
+9070  bit   0, *              ; fff4 bit 0
+9071  lar   ar1, #039f
+9073  bcnd  903a, ntc         ; clear -> the fff6 bit 12 path
+9075  bit   9, *              ; set   -> the 039f bit 9 path
+9076  splk  @7d, #0003
+9078  bcnd  9049, ntc         ; -> "Remote modem is not x2"
+```
+
+Both roads answer the same question and can both end at code 3, then code 2.
+The difference is what they believe: the `039f` route goes on to compare
+`ff18` bit 10 and `[ff00] & 0c00` - the negotiated words - while the `903a`
+route settles it from `fff6` bit 12 alone.
+
+**It loosens the channel bar.** At `d47f` it puts `0012` in `03e3`, or `0`
+when clear, which is the `07fa` shift on both rolloff thresholds. Set means
+the *looser* bar (`1d3c` rather than `1542`).
+
+**It gates the flags word.** At `d76f` the `xc 2, gt, tc` makes
+`opl 039f,#4040` conditional on it as well as on the measurement, so `039f`
+is only maintained while the flag holds.
+
+### What that makes it
+
+A source-of-truth selector: *the negotiated capability words are usable, so
+trust them*. Set, the firmware reads `039f`, `ff00` and `ff18`, keeps `039f`
+current, and judges the channel against the more forgiving threshold - which
+is what you would do holding real negotiated information rather than an
+inference. Clear, it falls back to a single bit in `fff6` and tightens the
+bar.
+
+That is a functional reading, not a name out of the firmware. The nearest
+lead on a name: 4.03's debug report prints **"Remote X2/V90 INFO0 is:"** and
+**"Main V34/X2/V90 INFO0 is:"** from host word pairs `083a`/`083c` and
+`085a`/`085c`, so the received/transmitted pair this flag arbitrates over is
+very likely the INFO0 exchange, making the flag "INFO0 gave us a usable
+answer". Neither host word has a direct store in the image - they arrive by
+block copy - so the link is unproven.
