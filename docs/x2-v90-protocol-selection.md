@@ -840,21 +840,8 @@ read once, at `909e` (`9069` in 4.03), as the fallback source for `fff4`
 bit 0 - the mask-`0001` bit, not the setup flag - when the scheme word's own
 validity bit is clear.
 
-**And that bit has a second writer this document missed.** At `9231`:
-
-```text
-9231  bit   2, *              ; ff00 bit 13
-9232  lar   ar1, #fff4
-9234  xc    2, tc
-9235  opl   *, #0001          ; fff4 bit 0 := ff00 bit 13
-9237  lar   ar1, #ff00
-9239  bit   3, *              ; ff00 bit 12
-923c  xc    2, ntc
-923d  opl   *, #0100          ; fff4 bit 8 := NOT ff00 bit 12
-```
-
-So `fff4` bit 0 is fed from `ff00` **bit 13** in the INFO0 parser and from
-`ff00` **bit 8** in the fallback at `909e`; both only ever set it.
+**And that bit has a second writer this document missed.** The full chain is
+in the next section.
 
 The INFO0 parser at `9223` is the best description of the word's layout the
 image gives:
@@ -909,3 +896,74 @@ work, and it is corrected above. Two of the corrections were themselves
 wrong on the first pass and are fixed here: the INFO0 parser's extracted
 fields come from shifts, not `BIT`, so they are bits `11:7` and `6:3` in plain
 numbering and must not be converted a second time.
+
+## The `fff4` bit 0 chain, in correct numbering
+
+Bit 0 here means the mask-`0001` bit, which is what `opl *, #0001` writes.
+It is **not** the bit the three `bit 0, *` sites read - those are bit code 0,
+i.e. bit 15, the x2 setup flag covered above. Enumerated across both images by
+resolving the `ar1` each `fff4` access loads, the complete picture is:
+
+### Two writers, both OR-only
+
+```text
+9095  lar   ar1, #fff5            ; 4.03: #fff6
+9097  bit   14, *                 ; code 14 -> fff5 bit 1
+9098  lacl  #00 / xc 1,tc / lacl #01
+909b  bit   15, *                 ; code 15 -> fff5 bit 0
+909c  bcnd  90a4, tc              ; ...bit 0 set: keep the value from bit 1
+909e  lar   ar1, #ff00
+90a0  bit   7, *                  ; code 7 -> ff00 bit 8
+90a1  lacl  #00 / xc 1,tc / lacl #01
+90a4  lar   ar1, #fff4
+90a6  or    * / sacl *            ; OR the 0/1 in
+```
+
+```text
+9231  bit   2, *                  ; code 2 -> ff00 bit 13   (ar1 still ff00)
+9232  lar   ar1, #fff4
+9234  xc    2, tc
+9235  opl   *, #0001              ; the only opl of this bit in any image
+```
+
+So:
+
+| source | condition | site |
+|---|---|---|
+| `fff5` bit 1 | when `fff5` bit 0 is set | `9095..909c` |
+| `ff00` bit 8 | when `fff5` bit 0 is clear | `909e..90a3` |
+| `ff00` bit 13 | unconditionally OR-ed | `9231..9235` |
+
+Both writers only ever set it. It is cleared in exactly two places: `8071` at
+reset, and `8d3c` `splk *, #8000` - the tag-`70` x2 setup, which writes the
+whole word. **An x2 setup therefore clears this bit and sets bit 15**, which
+is the cleanest evidence that the two are unrelated flags that my earlier
+reading had merged.
+
+### Two readers, both `bit 15` (code 15)
+
+```text
+9257  lar   ar1, #fff4            ; and ov8 e1a5, identically
+9259  bit   15, *
+925a  lacl  #00 / xc 1,tc / lacl #42
+925d  sacl  @61                   ; DP 6 -> [0361] := 0042 or 0
+```
+
+```text
+e0d0  lar   ar1, #fff4            ; overlay 8, assembling a word
+e0d2  bit   15, *
+e0d3  lar   ar1, #0361
+e0d5  xc    2, tc
+e0d6  or    #4000                 ; set bit 14 when fff4 bit 0 is set
+e0d8  cpl   *, #0000              ; and then, on [0361]...
+e0db  xc    2, ntc
+e0dc  or    #2000                 ; set bit 13 when [0361] is non-zero
+```
+
+The value `0042` and the word overlay 8 assembles are not identified; what is
+established is the wiring. `fff4` bit 0 is a **latched capability bit sourced
+from the INFO0 exchange** - `ff00` bit 13 always, plus either `ff00` bit 8 or
+`fff5` bit 1 depending on `fff5` bit 0 - whose only effect is to put `0042`
+in `0361` and to set two bits of a word overlay 8 sends. It gates nothing in
+the diagnostic path, and it has no bearing on the rolloff thresholds or the
+code generator; those all read bit 15.
