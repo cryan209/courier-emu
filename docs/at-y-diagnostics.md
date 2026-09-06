@@ -77,31 +77,51 @@ The printer at `0x6fbb` then gives the buffer layout:
 
 So 32 words: sixteen Recv at `0x0946` and sixteen Xmit at `0x0966`.
 
-## Why every measurement display is empty
+## The interrupt that feeds everything, and its three channels
 
-The consumer that runs a `[0x2d3]` step is the trampoline at `0x0674`
-(`call word ptr [0x2d3]; retf`). Its four call sites all read a status port
-first:
+One ISR, at file `0x12d3c`, drives every consumer discussed here. It reads a
+status word from ports `0x1E` (high) and `0x1C` (low) and acts on the low
+three bits:
+
+| Status bit | Channel | Data ports | Consumer |
+|---|---|---|---|
+| 0 | transmit ready | `out 0x5c`/`0x5e`, `out 0x58`/`0x5a` | drains the ring at `[0x29e]` |
+| 1 | event word ready | `in 0x5a`/`0x58` | `call [0x298]`, the modem state machine |
+| 2 | diagnostic word ready | `in 0x62`/`0x60` | `lcall 0x8000:0674` -> `call [0x2d3]` |
+
+After the bit-1 dispatch it calls `[0x27d]`, then re-reads the status and
+tests bit 2:
 
 ```
-in  al, 0x1c
+in  al, 0x1e / in al, 0x1c
 and ax, 4
 jz  skip
 mov [0x285], ax
-lcall 0x8000:0674
+lcall 0x8000:0674          ; -> call word ptr [0x2d3]
 ```
 
-**Port `0x1C` bit 2 is the word-ready signal, and it never asserts in the
-harness.** During an `ATY12` run the port is read 2882 times and returns `0x01`
-every time; `asic_ports` carries a `0x1C` idle default of `0xFD` and a
-loopback value of `0xF9`, but the value observed at runtime comes from the
-output latch - `out 0x1c, 1` occurs 5764 times, paired with the reads.
+## Why the measurement displays are empty
 
-The consequence is directly observable. Sampling `[0x2d3]` across a run shows
-three different producers arming a sequence - `0x1fdb`, `0x20fa`, `0x4420` -
-and the vector never advancing past the armed entry, because no step ever
-runs. Sampling the `ATY12` handshake shows the request issued and then timing
-out:
+**Only channel 2 is dead.** Counting port traffic across an `ATY12` run
+separates it cleanly:
+
+| Port | Traffic |
+|---|---|
+| `0x1C`, `0x1E` | 2882 reads each - the ISR runs |
+| `0x58`, `0x5A` | 2878 reads, 3469 writes - channel 1 and the transmit path are live |
+| `0x5C`, `0x5E` | 3469 writes - live |
+| `0x60`, `0x62` | **0 reads** |
+
+So the modem event machine is running normally; it is specifically the
+diagnostic channel that never signals. Port `0x1C` bit 2 never asserts: the
+port returns `0x01` on all 2882 reads, which is the output-latch echo of the
+`out 0x1c, 1` the ISR itself performs.
+
+The consequence is directly observable on the `[0x2d3]` side. Sampling that
+vector across a run shows three different producers arming a sequence -
+`0x1fdb`, `0x20fa`, `0x4420` - and the vector never advancing past the armed
+entry, because no step ever runs. Sampling the `ATY12` handshake shows the
+request issued and then timing out:
 
 ```
 flag=00 retry=00 count=00   (idle)
@@ -115,29 +135,71 @@ The buffer at `0x0946` stays zero throughout. `0x6eb2` ignores the carry flag
 `0x6ede` returns, so it prints sixteen rows of `0000` regardless: the zeros
 are a **timeout, not an empty reply**.
 
+## What ATY4 actually arms
+
+The banner site at `0xbf28` is the whole call-progress entry, and tracing its
+memory writes shows the sequence:
+
+```
+mov byte [0be0], 0
+cmp byte [0608], 4 / jne ...      ; print "\r\nCALL PROGRESS\r\n"
+mov word [0298], 0x5782           ; the call-progress state handler
+xor bx, bx / mov ax, 0x1500
+lcall 0x8f43:0228                 ; enqueue command 0x1500
+mov byte [0aef], 0
+mov byte [0bd4], 5                ; blanking guard
+mov di, 0bd6 / mov cx, 10 / rep stosb   ; clear the cadence counters
+```
+
+The module's code segment is **`0x8f43`**, not a round `0x9000`, so
+`[0x298] = 0x5782` resolves to physical `0x94bb2` (file `0x14bb2`). That
+handler is a table dispatch through the generic matcher at `0xf78a`
+(`repne scasb` then `jmp word ptr cs:[bx+di]`), over a **36-entry
+call-progress event table**: match bytes at file `0x14b40`, handler words at
+file `0x14b64`.
+
+```
+83 07 3a 21 08 3d 3a 28 29 2a 2b 2c 2d 2f 47 0b 2e 23
+45 46 48 30 34 35 36 37 6a 6c 6d 70 71 73 74 6b 6e 44
+```
+
+These event codes are what `ATY4` reports. Offline the arming happens six
+times - `[0x0bd4] = 5` is written six times, once per dial retry - and the
+state at `0x94bb2` is entered only once, so the counters at `[0x0bd6..0x0bdf]`
+stay zero and no row is ever produced.
+
 ## What would have to be modelled
 
-One mechanism, feeding every display above:
+For the `ATY11`/`ATY12`/`ATY17` displays, channel 2 alone:
 
 1. Port `0x1C` bit 2 asserted when a reply word is available.
 2. Ports `0x62` (high byte) and `0x60` (low byte) returning that word.
-3. Whatever advances 1 and 2 once per word until the requested count is met.
+3. Whatever advances 1 and 2 once per word until `[0x942]` is satisfied.
 
 `ATY12` is the cheapest probe for it: it prints its sixteen rows at the
 command prompt with no dial and no timeout, so a populated source shows up
 immediately.
 
+`ATY4` needs something different - not channel 2, but a source of
+call-progress events on the already-working channel 1, drawn from the 36
+codes above.
+
 ## What this does not establish
 
-The `ATY4` row printers are traced only as far as the `[0x0608]` gates listed
-above. `0x14f13` emits the row indent, and the call-progress detector beside
+The `ATY4` row printer itself is still unlocated. `0x14f13` emits a CRLF and a
+two-space row indent under the `[0x0608]` gate, and the cadence detector beside
 it at `0x14f31` compares `[0x0bda]` and `[0x0bde]` against threshold pairs at
-`[0x081d..0x0823]`, but no static caller of `0x14f13` was found by near call,
-far call, or a scan for its offset as a table word, so what drives it - and
-whether the levels it prints arrive over the same `0x60`/`0x62` path - is
-unconfirmed. The `0x49xxx` Y4 gates are inside the `ATG` monitor extension and
-echo characters, not levels. Nothing here identifies the `AH=0x45` / `AL=0x3f`
-operation on the far side of the queue, or the units of the values.
+`[0x081d..0x0823]`, but hooking execution over `0x94e20..0x94fc0` for a whole
+`ATY4` dial records **zero** instructions there, and no reference to it exists
+by near call, far call, or as a table word at its segment-`0x8f43` offset
+`0x5ae3`. It may be unreachable in this build. Of the six `[0x0608]` gates,
+only the banner at `0x8bf2d` executes offline; the three in the `0x49xxx`
+`ATG` monitor extension echo characters rather than levels.
+
+Nothing here identifies the `AH=0x45` / `AL=0x3f` operation on the far side of
+the queue, the meaning of the 36 event codes, or the units of any printed
+value. The mapping from an event code to a row like `00 00 02 08 07` is
+inferred from the table's contents, not observed.
 
 The command table was measured on `IDSDL302.ROM`. The 403 board image produces
 the same `CALL PROGRESS` behaviour for `ATY4DT`, but its `ATY` handler bytes
