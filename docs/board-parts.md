@@ -34,15 +34,34 @@ not the supervisor's.
 
 The one address it does not cover is `0x23f0`, which 302's mailbox dispatcher
 and its stream resume poll both `calld` on every pass. That is below the
-external RAM, so on this reading it is on-chip program memory - consistent with
-the firmware setting `PMST.RAM` and `OVLY`, which map on-chip SARAM into
-program space from `0x0800` up. Reaching `0x23f0` that way needs about 7.2K
-words of SARAM, which points at a larger C5x member than the C52 the core
-models. 403 has the same helper in-bank at `0x80e8` and needs none of this.
+external RAM, so it has to be on-chip - and the C5x User's Guide (SPRU056D)
+turns that into a part identification.
 
-(An earlier revision also listed a handler at `0x7e80`. That was a misread of
-the 121-entry dispatch table's tail as data; `0x7e80` is a `calld` opcode in
-the routine after it.)
+**Table 1-1, on-chip memory in 16-bit words:**
+
+| device | DARAM | SARAM | ROM | serial ports |
+|---|---|---|---|---|
+| 'C50 | 1056 | **9K** | 2K | 2, includes TDM |
+| 'C51 | 1056 | 1K | 8K | 2, includes TDM |
+| 'C52 | 1056 | **none** | 4K | **1**, no TDM |
+| 'C53 | 1056 | 3K | 16K | 2, includes TDM |
+| 'LC56 | 1056 | 6K | 32K | 2, BSP |
+
+With `PMST.RAM` set the SARAM is mapped into program space, and for the 9K
+part the guide gives its range as **`0x0800`-`0x2BFF`**. `0x23f0` is inside it.
+A 3K part reaches only `0x13ff` and a 6K part only `0x1fff`; a `'C52` has no
+SARAM at all, so `PMST.RAM` and `OVLY` - both of which this firmware sets -
+would be meaningless on it.
+
+Two further details agree. The `'C52` has one serial port and no TDM, while
+this harness models a TDM ISR for the part. And the guide notes the 9K SARAM
+decodes with **A15-A14 ignored**, so it appears at `0x0000-0x2BFF` and again at
+`0x4000-0x6BFF` and above - the mirroring that a single-bit test at `0x8080`
+was too narrow to see.
+
+So the DSP is a **TMS320C50 or LC50**, not the `'C52` the core models. That is
+inferred from the firmware's memory use against the guide's tables, not from
+the part marking, which is a custom USR number.
 
 ## The NEC part is the ASIC
 

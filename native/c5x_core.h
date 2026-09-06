@@ -17,7 +17,12 @@ namespace courier {
 // TMS320C52 on-chip memory, from tables 8-3 and 8-10 of the C5x User's Guide
 // (SPRU056D). The C52 carries 4K words of program ROM and three DARAM blocks
 // and **no SARAM at all**, which makes PMST.RAM and PMST.OVLY don't-cares on
-// this part. Data outside the blocks below is off-chip from 0x0800 up, and
+// this part.
+//
+// NOTE: the board is probably not a C52. Its firmware sets PMST.RAM and OVLY,
+// which only mean something on a part with SARAM, and 302's mailbox helper is
+// at program 0x23f0 - inside the 9K part's 0x0800-0x2BFF SARAM window and
+// outside a 3K or 6K part's. See docs/board-parts.md. Data outside the blocks below is off-chip from 0x0800 up, and
 // reserved in the two gaps.
 constexpr uint16_t C5X_ROM_WORDS = 0x1000;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
