@@ -967,3 +967,75 @@ from the INFO0 exchange** - `ff00` bit 13 always, plus either `ff00` bit 8 or
 in `0361` and to set two bits of a word overlay 8 sends. It gates nothing in
 the diagnostic path, and it has no bearing on the rolloff thresholds or the
 code generator; those all read bit 15.
+
+## `fff5` bit 0 is the tag-`52` argument's bit 0, and it is always zero
+
+### `fff5` is a host command's payload
+
+The DSP's host-command table is at resident `8401` in the stock image and
+`83e9` in 4.03, indexed by tag. It checks out against the tags this document
+already named - tag `70` reaches `8d30`/`8d29`, tag `71` the `fff3` handler at
+`8d49`/`8d3a`, tag `1d` reaches `9bb8`/`9b94` - and tag **`52`** reaches
+`8d22`/`8d17`:
+
+```text
+stock                                   4.03
+8d22  smmr  @7a, #ff2e                  8d17  smmr  @7a, #ff2e
+8d24  lar   ar1, #f99b                  8d19  smmr  @7a, #fff6
+8d26  splk  *+, #003f                   8d1b  lar   ar1, #f99b
+8d28  splk  *, #ffff                    8d1d  splk  *+, #003f
+8d2a  call  8d40                        8d1f  splk  *, #ffff
+        8d42  apl  ff2e, #ffef          8d21  lar   ar1, #fffa
+        8d44  lacc ff2e                 8d23  splk  *, #0000
+        8d47  sacl fff5
+```
+
+So the word the `909b` test reads is **the tag-`52` argument**: stock copies it
+through `ff2e` with bit 4 cleared into `fff5`, 4.03 stores it straight into
+`fff6`. That is the same one-word shift seen elsewhere between the two builds,
+and it confirms `fff5`/`fff6` are the same thing under two names. `fff5` has
+exactly one writer and one reader in the whole stock image.
+
+### What the supervisor puts in it
+
+Both tag-`52` sends (`8a11` and, in the other caller, the same sequence) build
+the argument at supervisor `8a55` and pass it in `BX`:
+
+```text
+8a55  mov bx, 1ef0
+8a58  and bx, ffc7                  ; -> 1ec0
+8a5b  test [04c6], 01 / jne         ; S56 bit 0 clear -> or bx, 0008
+8a65  test [04c6], 08 / jne         ; S56 bit 3 clear -> or bx, 0020
+8a6f  test [04c6], 10 / jne         ; S56 bit 4 clear -> or bx, 0010
+8a79  cmp [04e9] against 0, 4, 5    ; otherwise            and bx, ffbf
+8a91  test [04c5], 80 / je          ; S55 bit 7 set   -> or bx, 0100
+8a9c  mov ax, 52 / lcall the mailbox thunk
+```
+
+`04c6` is S56, the V.34 options register this document already uses for the
+capability word, and `04c5` is S55. The reachable bits are **3 through 12** and
+nothing else: the base constant `1ef0` has bits 0, 1, 2 clear, the mask `ffc7`
+only clears, and the three `or`s are `0008`, `0020`, `0010` and `0100`.
+
+### Therefore
+
+**`fff5` bit 0 can never be set.** The test at `909b` (`bit 15, *`, code 15) is
+always false, the `bcnd 90a4, tc` at `909c` never branches, and the
+`fff5` bit 1 source is unreachable - that bit is always zero for the same
+reason. `fff4` bit 0 is in practice fed from **`ff00` bit 8 alone**, plus the
+unconditional OR from `ff00` bit 13 at `9235`.
+
+So `fff5` is not an x2 word at all: it is the datapump's V.34 options mask,
+built from S55 and S56, and the branch in the `fff4` bit 0 computation that
+consults it is dead in this firmware.
+
+### A disassembler caveat this rests on
+
+`BLDD` has two forms and the disassembler prints both as `bldd dma, #lk`:
+`A9` copies **dma into the long address**, `A8` copies **the long address into
+dma**. Everything above, and the code generator's `bldd @7d, #fff6` (`A9`,
+so `@7d` into `fff6`), depends on that split. The reading is self-consistent -
+`A9` at `9049` makes the `splk @7d,#N` codes reach `fff6`, and `A8` at `9419`
+(`bldd *, #ff2e`, `ar1 = 0345`) makes `ff2e` the source feeding `0345`, which
+is the direction the surrounding code needs - but the mnemonic alone does not
+show it.
