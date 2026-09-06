@@ -1310,7 +1310,7 @@ void C5xCore::op_intr()
 	PUSH_STACK(m_pc);
 	m_st0.intm = 1;
 	save_interrupt_context();
-	CHANGE_PC(uint16_t((m_pmst.iptr << 7) | ((m_op & 0x1f) << 1)));
+	CHANGE_PC(uint16_t((m_pmst.iptr << 11) | ((m_op & 0x1f) << 1)));
 	m_idle = false;
 	CYCLES(4);
 }

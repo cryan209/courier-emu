@@ -89,10 +89,11 @@ the loader itself transfers control.
 * **The boot loader is real and is what starts the downloaded program**, so
   `dsp_download`'s `entry_word == 0x8000` is a boot-table destination rather
   than an assumption the scan enforces.
-* **The vector base makes sense.** With `IPTR = 1` the firmware's vectors sit at
-  `0x0080`, inside this ROM, which is why nothing in either build ever writes a
-  vector table and why the emulator's timer runs away at `0x0088` - it has no
-  ROM under it.
+* **The vector base is zero.** The firmware sets PMST bit 7 (`AVIS`), not
+  `IPTR`. The earlier emulator incorrectly decoded IPTR as bits 15–7. TI's
+  Figure 4–3 puts IPTR at 15–11 and AVIS at 7; vectors occupy 2K-word pages.
+  The timer therefore vectors to `0x0008`, through `lamm @63 / bacc`.
+  `0x0088` is a numeric table in the captured ROM, not an interrupt vector.
 
 ## What it does not settle
 
@@ -154,7 +155,32 @@ Two consequences worth stating:
   [dsp-map-302.md](dsp-map-302.md) records is a consequence of having no ROM,
   not a fault in the firmware.
 
-**Not yet wired into the bridge.** This was run standalone; `bridge.py` still
-forces the PC and runs `MP/MC = 1`. Note also that `RRDY` in this core is fed
-from the codec receive queue, so the experiment used `queue_codec_rx` - that is
-the harness's plumbing, not a claim about which pin the ASIC drives.
+## Bridge integration (2026-09-07)
+
+`--with-dsp` now selects this ROM automatically for the captured 20.16 MHz
+DSP 3.0.13 and 3.1.2 payloads (302 and 403), identified by payload SHA-256.
+The bridge clears the preloaded resident, starts at reset in microcomputer mode,
+and serializes the supervisor's captured download through the ROM loader.
+It repeats this procedure on a second download. Other payloads retain their
+existing behavior; the captured mask ROM is not assumed to fit the 25 MHz board.
+
+The interrupt-vector override is removed for these payloads. Correct PMST
+field decoding keeps IPTR at zero, so timer and serial interrupts run through
+ROM into the handlers the firmware installs in B2 RAM. This also corrects the
+earlier `IPTR = 1` interpretation in this document and `dsp-map-302.md`.
+
+A second core correction lets an IMR-enabled interrupt wake `IDLE` with INTM
+set, resuming after IDLE without entering an ISR. Both fixes follow
+[TI SPRU056D, Figure 4–3 and section 4.10.1](https://www.ti.com/lit/ug/spru056d/spru056d.pdf).
+
+`tests/test_dsp_boot_rom.py` transfers both builds through the two ASIC windows,
+including a second reset/download, checks that the resident was initially empty,
+and verifies real serial ISR activity and zero ROM holes. It separately tests
+PMST field placement, vector relocation and masked-IDLE wakeup.
+
+The ASIC transport remains a model: it buffers the parallel transfer and feeds
+the serial boot table when the supervisor submits its checksum. This does not
+reproduce per-word hardware timing or validate the ASIC checksum circuit.
+`queue_codec_rx` still supplies DRR/RRDY, so boot words appear in the codec
+receive counters. A successful boot and AT response do not establish modem
+training or a working data connection.

@@ -1,5 +1,10 @@
 # Courier XMF emulator harness
 
+The captured 20.16 MHz DSP boot ROM is now integrated for the 302/403
+firmware under `--with-dsp`. The DSP executes reset and downloads its resident
+through the ROM loader, with corrected PMST vector decoding and IDLE wakeup.
+See [boot-ROM integration](docs/dsp-onchip-rom.md#bridge-integration-2026-09-07).
+
 The [DSP 3.1.2 audio trace](docs/audio-312-path.md) now runs the original
 tone selector, oscillator, mixer and serial ISR to produce all 16 DTMF pairs.
 It fixes square, product-load and normalization instruction errors that

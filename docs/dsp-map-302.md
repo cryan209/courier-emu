@@ -1,3 +1,8 @@
+> **2026-09-07 correction:** the recovered ROM is now integrated. The IPTR
+> interpretation below was wrong: PMST bit 7 is AVIS; IPTR occupies bits
+> 15–11. These builds retain vector base zero, with timer vector `0x0008`.
+> See [the integration and validation](dsp-onchip-rom.md#bridge-integration-2026-09-07).
+
 # The DSP mailbox map for IDSDL302.ROM only
 
 **These addresses are `IDSDL302.ROM` (DSP 3.0.13) and nothing else.** They are

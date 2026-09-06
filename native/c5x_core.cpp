@@ -478,7 +478,7 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     switch (offset) {
     case 0x04: return m_imr;
     case 0x06: return m_ifr;
-    case 0x07: return uint16_t((m_pmst.iptr << 7) | (m_pmst.avis << 6) |
+    case 0x07: return uint16_t((m_pmst.iptr << 11) | (m_pmst.avis << 7) |
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
         (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
     case 0x09: return uint16_t(m_brcr);
@@ -545,12 +545,9 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x04: m_imr = value; return;
     case 0x06: m_ifr &= ~value; return;
     case 0x07:
-        // PMST per SPRU056: IPTR is bits 15-7 and the vector base is
-        // IPTR << 7; AVIS is bit 6. Reading IPTR from bits 15-11 and AVIS
-        // from bit 7 put this firmware's own `apl #07f8 / opl #00b0` - which
-        // leaves bit 7 set, so IPTR 1 and a vector base of 0x0080 - into the
-        // wrong fields, and left every interrupt vectoring to 0x0000.
-        m_pmst.iptr = (value >> 7) & 0x1ff; m_pmst.avis = (value >> 6) & 1;
+        // SPRU056D Figure 4-3: IPTR is bits 15-11 (2K-word pages),
+        // AVIS is bit 7; bits 10-8 and 6 are reserved and read as zero.
+        m_pmst.iptr = (value >> 11) & 0x1f; m_pmst.avis = (value >> 7) & 1;
         m_pmst.ovly = (value >> 5) & 1; m_pmst.ram = (value >> 4) & 1;
         m_pmst.mpmc = (value >> 3) & 1; m_pmst.ndx = (value >> 2) & 1;
         m_pmst.trm = (value >> 1) & 1; m_pmst.braf = value & 1; return;
@@ -627,14 +624,19 @@ void C5xCore::check_interrupts()
         uint16_t vector = m_interrupt_vectors[irq];
         m_pc = vector != 0xffff
             ? vector
-            : uint16_t((m_pmst.iptr << 7) | ((irq + 1) << 1));
+            : uint16_t((m_pmst.iptr << 11) | ((irq + 1) << 1));
         m_ifr &= ~(1u << irq); m_idle = false; save_interrupt_context(); return;
     }
 }
 void C5xCore::interrupt(unsigned irq)
 {
     if (irq >= 16) throw std::out_of_range("C5x interrupt number");
-    if (m_imr & (1u << irq)) m_ifr |= uint16_t(1u << irq);
+    if (m_imr & (1u << irq)) {
+        m_ifr |= uint16_t(1u << irq);
+        // SPRU056D 4.10.1: an enabled interrupt wakes IDLE even with
+        // INTM set; in that case execution resumes after IDLE, without ISR.
+        m_idle = false;
+    }
     check_interrupts();
 }
 

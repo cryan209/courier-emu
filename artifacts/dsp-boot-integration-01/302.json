@@ -1,0 +1,4431 @@
+{
+  "status": "instruction-limit",
+  "instructions": 60000000,
+  "registers": {
+    "ax": 0,
+    "bx": 0,
+    "cx": 0,
+    "dx": 246,
+    "si": 42083,
+    "di": 32760,
+    "bp": 0,
+    "sp": 292,
+    "cs": 32768,
+    "ip": 37431,
+    "ds": 0,
+    "es": 0,
+    "ss": 0,
+    "flags": 582
+  },
+  "milestones": [],
+  "io_events": [
+    {
+      "direction": "out",
+      "port": 65444,
+      "size": 2,
+      "value": 32768,
+      "pc": 1048567
+    },
+    {
+      "direction": "out",
+      "port": 65330,
+      "size": 2,
+      "value": 25200,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65334,
+      "size": 2,
+      "value": 49153,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65444,
+      "size": 2,
+      "value": 32768,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65446,
+      "size": 2,
+      "value": 65486,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65440,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65442,
+      "size": 2,
+      "value": 8202,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65408,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65410,
+      "size": 2,
+      "value": 136,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65412,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65414,
+      "size": 2,
+      "value": 2,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65416,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65418,
+      "size": 2,
+      "value": 2,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65424,
+      "size": 2,
+      "value": 32768,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65426,
+      "size": 2,
+      "value": 49102,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65428,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65430,
+      "size": 2,
+      "value": 2,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65432,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65434,
+      "size": 2,
+      "value": 2,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65310,
+      "size": 2,
+      "value": 11,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65300,
+      "size": 2,
+      "value": 8,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65376,
+      "size": 2,
+      "value": 32789,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65378,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65380,
+      "size": 2,
+      "value": 33,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65374,
+      "size": 2,
+      "value": 192,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65368,
+      "size": 2,
+      "value": 192,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65372,
+      "size": 2,
+      "value": 11,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65366,
+      "size": 2,
+      "value": 219,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65360,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65364,
+      "size": 2,
+      "value": 1,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65296,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65294,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65292,
+      "size": 2,
+      "value": 0,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65290,
+      "size": 2,
+      "value": 7,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65464,
+      "size": 2,
+      "value": 2,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65288,
+      "size": 2,
+      "value": 121,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 65448,
+      "size": 2,
+      "value": 4351,
+      "pc": 1038910
+    },
+    {
+      "direction": "out",
+      "port": 0,
+      "size": 1,
+      "value": 192,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 0,
+      "size": 1,
+      "value": 64,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 10,
+      "size": 1,
+      "value": 255,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 12,
+      "size": 1,
+      "value": 96,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 22,
+      "size": 1,
+      "value": 21,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 0,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 14,
+      "size": 1,
+      "value": 1,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 18,
+      "size": 1,
+      "value": 127,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 20,
+      "size": 1,
+      "value": 245,
+      "pc": 1038924
+    },
+    {
+      "direction": "out",
+      "port": 14,
+      "size": 1,
+      "value": 1,
+      "pc": 1082
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1091
+    },
+    {
+      "direction": "out",
+      "port": 14,
+      "size": 1,
+      "value": 121,
+      "pc": 1279
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1283
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 0,
+      "pc": 1290
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1300
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 48,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 112,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 48,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 48,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 112,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 48,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1263
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1274
+    },
+    {
+      "direction": "out",
+      "port": 14,
+      "size": 1,
+      "value": 105,
+      "pc": 1126
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1130
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 32,
+      "pc": 1319
+    },
+    {
+      "direction": "in",
+      "port": 16,
+      "size": 1,
+      "value": 255,
+      "pc": 1136
+    },
+    {
+      "direction": "out",
+      "port": 16,
+      "size": 1,
+      "value": 96,
+      "pc": 1309
+    }
+  ],
+  "mmio_events": [
+    {
+      "direction": "write",
+      "address": 65448,
+      "size": 2,
+      "value": 255,
+      "pc": 1038893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 893
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    },
+    {
+      "direction": "write",
+      "address": 65282,
+      "size": 2,
+      "value": 32768,
+      "pc": 773
+    }
+  ],
+  "dsp_queue_writes": [
+    {
+      "direction": "write",
+      "address": 770,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 768,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 768,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 768,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 766,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 766,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 766,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 764,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 764,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 764,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 762,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 762,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 762,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 760,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 760,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 760,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 758,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 758,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 758,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 756,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 756,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 756,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 754,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 754,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 754,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 752,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 752,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 752,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 750,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 750,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 750,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 748,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 748,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 748,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 746,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 746,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 746,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 744,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 744,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 744,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 742,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 742,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 742,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 740,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 740,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 740,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 738,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 738,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 738,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 736,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 736,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 736,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 734,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 734,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 734,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 732,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 732,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 732,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 730,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 730,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 730,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 728,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 728,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 728,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 726,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 726,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 726,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 724,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 724,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 724,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 722,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 722,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 722,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 720,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 720,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 720,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 718,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 718,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 718,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 716,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 716,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 716,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 714,
+      "size": 2,
+      "value": 21845,
+      "pc": 526363
+    },
+    {
+      "direction": "write",
+      "address": 714,
+      "size": 2,
+      "value": 43690,
+      "pc": 526369
+    },
+    {
+      "direction": "write",
+      "address": 714,
+      "size": 2,
+      "value": 0,
+      "pc": 526371
+    },
+    {
+      "direction": "write",
+      "address": 782,
+      "size": 1,
+      "value": 22015,
+      "pc": 534317
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 22015,
+      "pc": 534318
+    },
+    {
+      "direction": "write",
+      "address": 782,
+      "size": 1,
+      "value": 254,
+      "pc": 534322
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 127,
+      "pc": 534327
+    },
+    {
+      "direction": "write",
+      "address": 782,
+      "size": 1,
+      "value": 65278,
+      "pc": 534462
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 639,
+      "pc": 534418
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 64893,
+      "pc": 534462
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 639,
+      "pc": 534418
+    },
+    {
+      "direction": "write",
+      "address": 746,
+      "size": 2,
+      "value": 750,
+      "pc": 532316
+    },
+    {
+      "direction": "write",
+      "address": 748,
+      "size": 2,
+      "value": 750,
+      "pc": 532319
+    },
+    {
+      "direction": "write",
+      "address": 759,
+      "size": 2,
+      "value": 763,
+      "pc": 532325
+    },
+    {
+      "direction": "write",
+      "address": 761,
+      "size": 2,
+      "value": 763,
+      "pc": 532328
+    },
+    {
+      "direction": "write",
+      "address": 725,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 726,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 727,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 728,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 729,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 730,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 731,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 732,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 733,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 734,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 735,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 736,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 737,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 738,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 723,
+      "size": 2,
+      "value": 8155,
+      "pc": 532821
+    },
+    {
+      "direction": "write",
+      "address": 725,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 726,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 727,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 728,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 729,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 730,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 731,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 732,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 733,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 734,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 735,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 736,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 737,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 738,
+      "size": 1,
+      "value": 11264,
+      "pc": 532819
+    },
+    {
+      "direction": "write",
+      "address": 723,
+      "size": 2,
+      "value": 8155,
+      "pc": 532821
+    },
+    {
+      "direction": "write",
+      "address": 783,
+      "size": 1,
+      "value": 64893,
+      "pc": 534462
+    }
+  ],
+  "dsp_queue_write_counts": {
+    "pc=82792 address=030f size=1 value=27f": 2,
+    "pc=827be address=030f size=1 value=fd7d": 2,
+    "pc=82153 address=02d5 size=1 value=2c00": 2,
+    "pc=82153 address=02d6 size=1 value=2c00": 2,
+    "pc=82153 address=02d7 size=1 value=2c00": 2,
+    "pc=82153 address=02d8 size=1 value=2c00": 2,
+    "pc=82153 address=02d9 size=1 value=2c00": 2,
+    "pc=82153 address=02da size=1 value=2c00": 2,
+    "pc=82153 address=02db size=1 value=2c00": 2,
+    "pc=82153 address=02dc size=1 value=2c00": 2,
+    "pc=82153 address=02dd size=1 value=2c00": 2,
+    "pc=82153 address=02de size=1 value=2c00": 2,
+    "pc=82153 address=02df size=1 value=2c00": 2,
+    "pc=82153 address=02e0 size=1 value=2c00": 2,
+    "pc=82153 address=02e1 size=1 value=2c00": 2,
+    "pc=82153 address=02e2 size=1 value=2c00": 2,
+    "pc=82155 address=02d3 size=2 value=1fdb": 2,
+    "pc=fda61 address=02ca size=2 value=4620": 1,
+    "pc=fda61 address=02cc size=2 value=5249": 1,
+    "pc=fda61 address=02ce size=2 value=574d": 1,
+    "pc=fda61 address=02d0 size=2 value=5241": 1,
+    "pc=fda61 address=02d2 size=2 value=2045": 1,
+    "pc=fda61 address=02d4 size=2 value=4f44": 1,
+    "pc=fda61 address=02d6 size=2 value=4e57": 1,
+    "pc=fda61 address=02d8 size=2 value=4f4c": 1,
+    "pc=fda61 address=02da size=2 value=4441": 1,
+    "pc=fda61 address=02dc size=2 value=4920": 1,
+    "pc=fda61 address=02de size=2 value=2053": 1,
+    "pc=fda61 address=02e0 size=2 value=454e": 1,
+    "pc=fda61 address=02e2 size=2 value=4543": 1,
+    "pc=fda61 address=02e4 size=2 value=5353": 1,
+    "pc=fda61 address=02e6 size=2 value=5241": 1,
+    "pc=fda61 address=02e8 size=2 value=2e59": 1,
+    "pc=fda61 address=02ea size=2 value=0d20": 1,
+    "pc=fda61 address=02ec size=2 value=000a": 1,
+    "pc=fda61 address=02ee size=2 value=0a0d": 1,
+    "pc=fda61 address=02f0 size=2 value=6c46": 1,
+    "pc=fda61 address=02f2 size=2 value=7361": 1,
+    "pc=fda61 address=02f4 size=2 value=2068": 1,
+    "pc=fda61 address=02f6 size=2 value=4f52": 1,
+    "pc=fda61 address=02f8 size=2 value=204d": 1,
+    "pc=fda61 address=02fa size=2 value=6166": 1,
+    "pc=fda61 address=02fc size=2 value=6c69": 1,
+    "pc=fda61 address=02fe size=2 value=7275": 1,
+    "pc=fda61 address=0300 size=2 value=2e65": 1,
+    "pc=fda61 address=0302 size=2 value=0a0d": 1,
+    "pc=fda61 address=0304 size=2 value=c700": 1,
+    "pc=fda61 address=0306 size=2 value=0206": 1,
+    "pc=fda61 address=0308 size=2 value=00ff": 1,
+    "pc=fda61 address=030a size=2 value=cf80": 1,
+    "pc=fda61 address=030c size=2 value=60fb": 1,
+    "pc=fda61 address=030e size=2 value=b806": 1,
+    "pc=804db address=02ca size=2 value=0000": 1,
+    "pc=804db address=02cc size=2 value=0000": 1,
+    "pc=804db address=02ce size=2 value=0000": 1,
+    "pc=804db address=02d0 size=2 value=0000": 1,
+    "pc=804db address=02d2 size=2 value=0000": 1,
+    "pc=804db address=02d4 size=2 value=0000": 1,
+    "pc=804db address=02d6 size=2 value=0000": 1,
+    "pc=804db address=02d8 size=2 value=0000": 1,
+    "pc=804db address=02da size=2 value=0000": 1,
+    "pc=804db address=02dc size=2 value=0000": 1,
+    "pc=804db address=02de size=2 value=0000": 1,
+    "pc=804db address=02e0 size=2 value=0000": 1,
+    "pc=804db address=02e2 size=2 value=0000": 1,
+    "pc=804db address=02e4 size=2 value=0000": 1,
+    "pc=804db address=02e6 size=2 value=0000": 1,
+    "pc=804db address=02e8 size=2 value=0000": 1,
+    "pc=804db address=02ea size=2 value=0000": 1,
+    "pc=804db address=02ec size=2 value=0000": 1,
+    "pc=804db address=02ee size=2 value=0000": 1,
+    "pc=804db address=02f0 size=2 value=0000": 1,
+    "pc=804db address=02f2 size=2 value=0000": 1,
+    "pc=804db address=02f4 size=2 value=0000": 1,
+    "pc=804db address=02f6 size=2 value=0000": 1,
+    "pc=804db address=02f8 size=2 value=0000": 1,
+    "pc=804db address=02fa size=2 value=0000": 1,
+    "pc=804db address=02fc size=2 value=0000": 1,
+    "pc=804db address=02fe size=2 value=0000": 1,
+    "pc=804db address=0300 size=2 value=0000": 1,
+    "pc=804db address=0302 size=2 value=0000": 1,
+    "pc=804db address=0304 size=2 value=0000": 1,
+    "pc=804db address=0306 size=2 value=0000": 1,
+    "pc=804db address=0308 size=2 value=0000": 1,
+    "pc=804db address=030a size=2 value=0000": 1,
+    "pc=804db address=030c size=2 value=0000": 1,
+    "pc=804db address=030e size=2 value=0000": 1,
+    "pc=8081b address=030e size=2 value=5555": 1,
+    "pc=80821 address=030e size=2 value=aaaa": 1,
+    "pc=80823 address=030e size=2 value=0000": 1,
+    "pc=8081b address=030c size=2 value=5555": 1,
+    "pc=80821 address=030c size=2 value=aaaa": 1,
+    "pc=80823 address=030c size=2 value=0000": 1,
+    "pc=8081b address=030a size=2 value=5555": 1,
+    "pc=80821 address=030a size=2 value=aaaa": 1,
+    "pc=80823 address=030a size=2 value=0000": 1,
+    "pc=8081b address=0308 size=2 value=5555": 1,
+    "pc=80821 address=0308 size=2 value=aaaa": 1,
+    "pc=80823 address=0308 size=2 value=0000": 1,
+    "pc=8081b address=0306 size=2 value=5555": 1,
+    "pc=80821 address=0306 size=2 value=aaaa": 1,
+    "pc=80823 address=0306 size=2 value=0000": 1,
+    "pc=8081b address=0304 size=2 value=5555": 1,
+    "pc=80821 address=0304 size=2 value=aaaa": 1,
+    "pc=80823 address=0304 size=2 value=0000": 1,
+    "pc=8081b address=0302 size=2 value=5555": 1,
+    "pc=80821 address=0302 size=2 value=aaaa": 1,
+    "pc=80823 address=0302 size=2 value=0000": 1,
+    "pc=8081b address=0300 size=2 value=5555": 1,
+    "pc=80821 address=0300 size=2 value=aaaa": 1,
+    "pc=80823 address=0300 size=2 value=0000": 1,
+    "pc=8081b address=02fe size=2 value=5555": 1,
+    "pc=80821 address=02fe size=2 value=aaaa": 1,
+    "pc=80823 address=02fe size=2 value=0000": 1,
+    "pc=8081b address=02fc size=2 value=5555": 1,
+    "pc=80821 address=02fc size=2 value=aaaa": 1,
+    "pc=80823 address=02fc size=2 value=0000": 1,
+    "pc=8081b address=02fa size=2 value=5555": 1,
+    "pc=80821 address=02fa size=2 value=aaaa": 1,
+    "pc=80823 address=02fa size=2 value=0000": 1,
+    "pc=8081b address=02f8 size=2 value=5555": 1,
+    "pc=80821 address=02f8 size=2 value=aaaa": 1,
+    "pc=80823 address=02f8 size=2 value=0000": 1,
+    "pc=8081b address=02f6 size=2 value=5555": 1,
+    "pc=80821 address=02f6 size=2 value=aaaa": 1,
+    "pc=80823 address=02f6 size=2 value=0000": 1,
+    "pc=8081b address=02f4 size=2 value=5555": 1,
+    "pc=80821 address=02f4 size=2 value=aaaa": 1,
+    "pc=80823 address=02f4 size=2 value=0000": 1,
+    "pc=8081b address=02f2 size=2 value=5555": 1,
+    "pc=80821 address=02f2 size=2 value=aaaa": 1,
+    "pc=80823 address=02f2 size=2 value=0000": 1,
+    "pc=8081b address=02f0 size=2 value=5555": 1,
+    "pc=80821 address=02f0 size=2 value=aaaa": 1,
+    "pc=80823 address=02f0 size=2 value=0000": 1,
+    "pc=8081b address=02ee size=2 value=5555": 1,
+    "pc=80821 address=02ee size=2 value=aaaa": 1,
+    "pc=80823 address=02ee size=2 value=0000": 1,
+    "pc=8081b address=02ec size=2 value=5555": 1,
+    "pc=80821 address=02ec size=2 value=aaaa": 1,
+    "pc=80823 address=02ec size=2 value=0000": 1,
+    "pc=8081b address=02ea size=2 value=5555": 1,
+    "pc=80821 address=02ea size=2 value=aaaa": 1,
+    "pc=80823 address=02ea size=2 value=0000": 1,
+    "pc=8081b address=02e8 size=2 value=5555": 1,
+    "pc=80821 address=02e8 size=2 value=aaaa": 1,
+    "pc=80823 address=02e8 size=2 value=0000": 1,
+    "pc=8081b address=02e6 size=2 value=5555": 1,
+    "pc=80821 address=02e6 size=2 value=aaaa": 1,
+    "pc=80823 address=02e6 size=2 value=0000": 1,
+    "pc=8081b address=02e4 size=2 value=5555": 1,
+    "pc=80821 address=02e4 size=2 value=aaaa": 1,
+    "pc=80823 address=02e4 size=2 value=0000": 1,
+    "pc=8081b address=02e2 size=2 value=5555": 1,
+    "pc=80821 address=02e2 size=2 value=aaaa": 1,
+    "pc=80823 address=02e2 size=2 value=0000": 1,
+    "pc=8081b address=02e0 size=2 value=5555": 1,
+    "pc=80821 address=02e0 size=2 value=aaaa": 1,
+    "pc=80823 address=02e0 size=2 value=0000": 1,
+    "pc=8081b address=02de size=2 value=5555": 1,
+    "pc=80821 address=02de size=2 value=aaaa": 1,
+    "pc=80823 address=02de size=2 value=0000": 1,
+    "pc=8081b address=02dc size=2 value=5555": 1,
+    "pc=80821 address=02dc size=2 value=aaaa": 1,
+    "pc=80823 address=02dc size=2 value=0000": 1,
+    "pc=8081b address=02da size=2 value=5555": 1,
+    "pc=80821 address=02da size=2 value=aaaa": 1,
+    "pc=80823 address=02da size=2 value=0000": 1,
+    "pc=8081b address=02d8 size=2 value=5555": 1,
+    "pc=80821 address=02d8 size=2 value=aaaa": 1,
+    "pc=80823 address=02d8 size=2 value=0000": 1,
+    "pc=8081b address=02d6 size=2 value=5555": 1,
+    "pc=80821 address=02d6 size=2 value=aaaa": 1,
+    "pc=80823 address=02d6 size=2 value=0000": 1,
+    "pc=8081b address=02d4 size=2 value=5555": 1,
+    "pc=80821 address=02d4 size=2 value=aaaa": 1,
+    "pc=80823 address=02d4 size=2 value=0000": 1,
+    "pc=8081b address=02d2 size=2 value=5555": 1,
+    "pc=80821 address=02d2 size=2 value=aaaa": 1,
+    "pc=80823 address=02d2 size=2 value=0000": 1,
+    "pc=8081b address=02d0 size=2 value=5555": 1,
+    "pc=80821 address=02d0 size=2 value=aaaa": 1,
+    "pc=80823 address=02d0 size=2 value=0000": 1,
+    "pc=8081b address=02ce size=2 value=5555": 1,
+    "pc=80821 address=02ce size=2 value=aaaa": 1,
+    "pc=80823 address=02ce size=2 value=0000": 1,
+    "pc=8081b address=02cc size=2 value=5555": 1,
+    "pc=80821 address=02cc size=2 value=aaaa": 1,
+    "pc=80823 address=02cc size=2 value=0000": 1,
+    "pc=8081b address=02ca size=2 value=5555": 1,
+    "pc=80821 address=02ca size=2 value=aaaa": 1,
+    "pc=80823 address=02ca size=2 value=0000": 1,
+    "pc=8272d address=030e size=1 value=55ff": 1,
+    "pc=8272e address=030f size=1 value=55ff": 1,
+    "pc=82732 address=030e size=1 value=fe": 1,
+    "pc=82737 address=030f size=1 value=7f": 1,
+    "pc=827be address=030e size=1 value=fefe": 1,
+    "pc=81f5c address=02ea size=2 value=02ee": 1,
+    "pc=81f5f address=02ec size=2 value=02ee": 1,
+    "pc=81f65 address=02f7 size=2 value=02fb": 1,
+    "pc=81f68 address=02f9 size=2 value=02fb": 1
+  },
+  "io_event_count": 105391,
+  "mmio_event_count": 112536,
+  "io_summary": {
+    "out 0x001c/1": 9654,
+    "in 0x0018/1": 8150,
+    "in 0x0014/1": 7725,
+    "out 0x0018/1": 6938,
+    "in 0x001c/1": 6038,
+    "in 0x001e/1": 6038,
+    "out 0x0040/1": 3472,
+    "out 0x0042/1": 3472,
+    "out 0x0058/1": 3468,
+    "out 0x005a/1": 3468,
+    "out 0x005c/1": 3468,
+    "out 0x005e/1": 3468,
+    "out 0x0044/1": 3466,
+    "out 0x0046/1": 3466,
+    "out 0x0048/1": 3466,
+    "out 0x004a/1": 3466,
+    "out 0x004c/1": 3466,
+    "out 0x004e/1": 3466,
+    "out 0x0050/1": 3466,
+    "out 0x0052/1": 3466,
+    "out 0x0054/1": 3466,
+    "out 0x0056/1": 3466,
+    "out 0x0014/1": 2742,
+    "in 0x001a/1": 1215,
+    "out 0x0000/1": 536,
+    "in 0x0000/1": 266,
+    "out 0x0010/1": 249,
+    "in 0x0012/1": 208,
+    "in 0x0010/1": 19,
+    "out 0x000e/1": 9,
+    "out 0x000c/1": 8,
+    "in 0x000c/1": 6,
+    "out 0x0012/1": 6,
+    "out 0x001a/1": 4,
+    "out 0x001e/1": 4,
+    "out 0x0016/1": 3,
+    "out 0xffa4/2": 3,
+    "out 0x000a/1": 2,
+    "out 0xff08/2": 2,
+    "out 0xff0a/2": 2,
+    "out 0xff0c/2": 2,
+    "out 0xff0e/2": 2,
+    "out 0xff10/2": 2,
+    "out 0xff14/2": 2,
+    "out 0xff1e/2": 2,
+    "out 0xff32/2": 2,
+    "out 0xff36/2": 2,
+    "out 0xff50/2": 2,
+    "out 0xff54/2": 2,
+    "out 0xff56/2": 2,
+    "out 0xff58/2": 2,
+    "out 0xff5c/2": 2,
+    "out 0xff5e/2": 2,
+    "out 0xff60/2": 2,
+    "out 0xff62/2": 2,
+    "out 0xff64/2": 2,
+    "out 0xff80/2": 2,
+    "out 0xff82/2": 2,
+    "out 0xff84/2": 2,
+    "out 0xff86/2": 2,
+    "out 0xff88/2": 2,
+    "out 0xff8a/2": 2,
+    "out 0xff90/2": 2,
+    "out 0xff92/2": 2,
+    "out 0xff94/2": 2,
+    "out 0xff96/2": 2,
+    "out 0xff98/2": 2,
+    "out 0xff9a/2": 2,
+    "out 0xffa0/2": 2,
+    "out 0xffa2/2": 2,
+    "out 0xffa6/2": 2,
+    "out 0xffa8/2": 2,
+    "out 0xffb8/2": 2,
+    "in 0x0058/1": 1,
+    "in 0x005a/1": 1,
+    "out 0x0002/1": 1,
+    "out 0x0003/1": 1,
+    "out 0x0006/1": 1,
+    "out 0x0007/1": 1,
+    "out 0xff12/2": 1,
+    "out 0xff16/2": 1,
+    "out 0xff18/2": 1,
+    "out 0xff1a/2": 1,
+    "out 0xff1c/2": 1,
+    "out 0xff3e/2": 1,
+    "out 0xff40/2": 1,
+    "out 0xff42/2": 1,
+    "out 0xff46/2": 1,
+    "out 0xff70/2": 1,
+    "out 0xff72/2": 1,
+    "out 0xff74/2": 1,
+    "out 0xff8c/2": 1,
+    "out 0xff8e/2": 1,
+    "out 0xff9c/2": 1,
+    "out 0xff9e/2": 1
+  },
+  "output_latches": {
+    "0x0000": 51,
+    "0x0002": 255,
+    "0x0003": 255,
+    "0x0006": 255,
+    "0x0007": 255,
+    "0x000a": 255,
+    "0x000c": 223,
+    "0x000e": 7,
+    "0x0010": 254,
+    "0x0012": 125,
+    "0x0014": 229,
+    "0x0016": 0,
+    "0x0018": 4,
+    "0x001a": 255,
+    "0x001c": 0,
+    "0x001e": 255,
+    "0x0040": 0,
+    "0x0042": 0,
+    "0x0044": 131,
+    "0x0046": 0,
+    "0x0048": 131,
+    "0x004a": 0,
+    "0x004c": 131,
+    "0x004e": 0,
+    "0x0050": 131,
+    "0x0052": 0,
+    "0x0054": 131,
+    "0x0056": 0,
+    "0x0058": 1,
+    "0x005a": 0,
+    "0x005c": 63,
+    "0x005e": 0,
+    "0xff08": 104,
+    "0xff0a": 7,
+    "0xff0c": 0,
+    "0xff0e": 0,
+    "0xff10": 0,
+    "0xff12": 10,
+    "0xff14": 8,
+    "0xff16": 15,
+    "0xff18": 10,
+    "0xff1a": 15,
+    "0xff1c": 17,
+    "0xff1e": 11,
+    "0xff32": 25200,
+    "0xff36": 49153,
+    "0xff3e": 24577,
+    "0xff40": 0,
+    "0xff42": 0,
+    "0xff46": 24577,
+    "0xff50": 0,
+    "0xff54": 1,
+    "0xff56": 221,
+    "0xff58": 192,
+    "0xff5c": 11,
+    "0xff5e": 192,
+    "0xff60": 32898,
+    "0xff62": 0,
+    "0xff64": 33,
+    "0xff70": 33026,
+    "0xff72": 0,
+    "0xff74": 33,
+    "0xff80": 0,
+    "0xff82": 136,
+    "0xff84": 0,
+    "0xff86": 2,
+    "0xff88": 64,
+    "0xff8a": 128,
+    "0xff8c": 0,
+    "0xff8e": 0,
+    "0xff90": 0,
+    "0xff92": 2,
+    "0xff94": 0,
+    "0xff96": 2,
+    "0xff98": 0,
+    "0xff9a": 2,
+    "0xff9c": 0,
+    "0xff9e": 2,
+    "0xffa0": 0,
+    "0xffa2": 8202,
+    "0xffa4": 32768,
+    "0xffa6": 65486,
+    "0xffa8": 4351,
+    "0xffb8": 2
+  },
+  "mmio_summary": {
+    "write 0xff56/2": 18566,
+    "read 0xff56/2": 18558,
+    "write 0xff02/2": 16495,
+    "write 0xff40/2": 15384,
+    "read 0xff46/2": 8148,
+    "write 0xff42/2": 4485,
+    "write 0xff46/2": 4482,
+    "write 0xff64/2": 4482,
+    "write 0xff1a/2": 4476,
+    "read 0xff64/2": 4474,
+    "read 0xff5a/2": 4258,
+    "read 0xff5e/2": 3180,
+    "write 0xff5e/2": 3180,
+    "read 0xff66/2": 719,
+    "read 0xff58/2": 530,
+    "write 0xff58/2": 530,
+    "write 0xff6a/2": 513,
+    "write 0xff3e/2": 12,
+    "read 0xff68/2": 11,
+    "write 0xff60/2": 11,
+    "write 0xff62/2": 11,
+    "read 0xff38/2": 7,
+    "write 0xff38/2": 7,
+    "write 0xff3a/2": 7,
+    "write 0xff12/2": 3,
+    "read 0xff5a/1": 2,
+    "write 0xff58/1": 2,
+    "write 0xffa8/2": 2,
+    "write 0xff32/2": 1
+  },
+  "hot_addresses": [
+    [
+      570467,
+      1178547
+    ],
+    [
+      562896,
+      1178543
+    ],
+    [
+      562914,
+      1178536
+    ],
+    [
+      570377,
+      1178534
+    ],
+    [
+      570307,
+      1178531
+    ],
+    [
+      561719,
+      1178528
+    ],
+    [
+      561735,
+      1178527
+    ],
+    [
+      561746,
+      1178527
+    ],
+    [
+      562928,
+      1178526
+    ],
+    [
+      570312,
+      1178524
+    ],
+    [
+      570315,
+      1178523
+    ],
+    [
+      561730,
+      1178523
+    ],
+    [
+      570314,
+      1178522
+    ],
+    [
+      562926,
+      1178522
+    ],
+    [
+      570300,
+      1178520
+    ],
+    [
+      570370,
+      1178520
+    ],
+    [
+      561751,
+      1178519
+    ],
+    [
+      570375,
+      1178518
+    ],
+    [
+      570305,
+      1178515
+    ],
+    [
+      570462,
+      1178514
+    ]
+  ],
+  "last_addresses": [
+    561951,
+    561952,
+    561954,
+    561983,
+    561984,
+    561985,
+    561746,
+    561748,
+    562891,
+    562896,
+    562914,
+    562916,
+    562920,
+    562923,
+    562926,
+    562928,
+    562930,
+    562965,
+    562966,
+    561751,
+    561719,
+    570300,
+    570305,
+    570307,
+    570312,
+    570314,
+    570315,
+    561722,
+    570370,
+    570375,
+    570377,
+    570382,
+    570413,
+    570414,
+    561725,
+    561727,
+    570462,
+    570467,
+    570488,
+    561730,
+    561735,
+    561740,
+    561742,
+    561949,
+    561951,
+    561952,
+    561954,
+    561983,
+    561984,
+    561985,
+    561746,
+    561748,
+    562891,
+    562896,
+    562914,
+    562916,
+    562920,
+    562923,
+    562926,
+    562928,
+    562930,
+    562965,
+    562966,
+    561751
+  ],
+  "serial_text": "\\x8d\n\\xcfK\\x8d\n\\x8d\n\\xc9D_SD\\xcc\\xa0\\xf63.0\\xb2\\xa006\\xaf06\\xaf9\\xb8\\xac\\xa0\\xd2USS\\xc9A\\xac\\xa0K\\xe8\\xe1\\xe2\\xe1ro\\xf6\\xf3\\xeb\\xac\\xa0\\xc9\\xe7or\\xa0Di\\xe1\\xe7ile\\xf6\\xa0(\\xa0i\\xe4\\xc0re\\xe4co\\xed.r\\xf5\\xa0\\xa9\\x8d\nUS\\xd2o\\xe2otic\\xf3\\xa0\\xc3o\\xf5rier\\xa0V.\\xc5\\xf6er\\xf9t\\xe8i\\xee\\xe7\\xa0\\xc3o\\xeefi\\xe7\\xf5r\\xe1tio\\xee\\xa0Profile...\\x8d\n\\x8d\nPro\\xe4\\xf5ct\\xa0t\\xf9\\xf0e\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0US\\xaf\\xc3\\xe1\\xee\\xe1\\xe4\\xe1\\xa0\\xc5xter\\xee\\xe1l\\x8d\n\\xcf\\xf0tio\\xee\\xf3\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0HS\\xd4\\xacV3\\xb2\\xe2i\\xf3\\xac\\xd4er\\xe2o\\xacV\\xc6\\xc3\\xacV3\\xb4+\\xacx\\xb2\\xacV90\\x8d\n\\xc6\\xe1x\\xa0\\xcf\\xf0tio\\xee\\xf3\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xc3l\\xe1\\xf3\\xf3\\xa0\\xb1\\xac\\xc3l\\xe1\\xf3\\xf3\\xa0\\xb2.0\\x8d\n\\xc3loc\\xeb\\xa0\\xc6req\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xb20.\\xb16M\\xe8\\xfa\\x8d\n\\xc6l\\xe1\\xf3\\xe8\\xa0\\xd2\\xcfM\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa05\\xb1\\xb2\\xeb\\x8d\n\\xd2\\xe1\\xed\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa06\\xb4\\xeb\\x8d\n\\x8d\nS\\xf5\\xf0er\\xf6i\\xf3or\\xa0\\xe4\\xe1te\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa003\\xaf\\xb13\\xaf9\\xb8\\x8d\nDSP\\xa0\\xe4\\xe1te\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa003\\xaf\\xb13\\xaf9\\xb8\\x8d\n\\x8d\nS\\xf5\\xf0er\\xf6i\\xf3or\\xa0re\\xf6\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xb7.3.\\xb1\\xb4\\x8d\nDSP\\xa0re\\xf6\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa0\\xa03.0.\\xb13\\x8d\n\\x8d\n\\xcfK\\x8d\n",
+  "data_rx_bytes": 0,
+  "data_tx_bytes": 0,
+  "online_mode": false,
+  "serial_truncated": false,
+  "serial_input_remaining": 0,
+  "serial_interrupts": 0,
+  "timer_interrupts": 4479,
+  "ticks": 2732,
+  "serial_trace": [
+    "hook off pc=fda4c",
+    "hook on pc=827c2",
+    "rom-dte: firmware attention adapter",
+    "rom-rx 41 callbacks=70f1031d1d93",
+    "rom-rx 54 callbacks=8ef1031db093",
+    "rom-rx 0d callbacks=069a031db093",
+    "rom-rx 41 callbacks=70f1031d1d93",
+    "rom-rx 54 callbacks=8ef1031db093",
+    "rom-rx 49 callbacks=069a031db093",
+    "rom-rx 37 callbacks=069a031db093",
+    "rom-rx 0d callbacks=069a031db093",
+    "final callbacks[26a]=9a06,1d03,931d",
+    "final settings=0652:00,092e:00,092f:00,08ed:00,1fec:00,1cf0:00"
+  ],
+  "console": null,
+  "accelerated_delays": 0,
+  "error": null,
+  "dsp_bridge": {
+    "active": true,
+    "bootstrap_bytes": 55424,
+    "bootstrap_match": true,
+    "bootstraps": 1,
+    "transfer_commands": 6930,
+    "mailbox_commands": 2,
+    "mailbox_windows": {
+      "8300830083008300": 2
+    },
+    "runtime_messages": [
+      "0083:0083",
+      "000f:0000",
+      "0001:003f"
+    ],
+    "runtime_message_counts": {
+      "0083:0083": 1,
+      "000f:0000": 1,
+      "0001:003f": 1
+    },
+    "runtime_inbound_delivered": {},
+    "runtime_message_first_seen": {
+      "0083:0083": 5624890,
+      "000f:0000": 5720112,
+      "0001:003f": 5844010
+    },
+    "runtime_message_first_pc": {
+      "0083:0083": "8e387",
+      "000f:0000": "8f545",
+      "0001:003f": "8f479"
+    },
+    "runtime_words_queued": 6,
+    "detector_replies": 0,
+    "host_messages_delivered": 3,
+    "dsp_messages_taken": 0,
+    "dsp_stream_acks": 1,
+    "error": null,
+    "dsp": {
+      "pc": 32992,
+      "op": 48706,
+      "acc": 0,
+      "accb": 0,
+      "preg": 0,
+      "dp": 896,
+      "arp": 1,
+      "flags": 18,
+      "idle": false,
+      "instructions": 68328320,
+      "cycles": 113046195,
+      "io_events": 4062,
+      "ar0": 3026,
+      "ar1": 65367,
+      "ar2": 0,
+      "ar3": 0,
+      "ar4": 0,
+      "ar5": 975,
+      "ar6": 0,
+      "ar7": 3032
+    },
+    "dsp_host_ports": {
+      "0x51": {
+        "reads": 4049,
+        "writes": 0,
+        "last_read": 131,
+        "last_write": 0,
+        "last_read_pc": 33297,
+        "last_write_pc": 0
+      },
+      "0x56": {
+        "reads": 0,
+        "writes": 1,
+        "last_read": 0,
+        "last_write": 65535,
+        "last_read_pc": 0,
+        "last_write_pc": 32813
+      },
+      "0x57": {
+        "reads": 3,
+        "writes": 2,
+        "last_read": 1,
+        "last_write": 1,
+        "last_read_pc": 9201,
+        "last_write_pc": 33716
+      },
+      "0x5e": {
+        "reads": 1,
+        "writes": 0,
+        "last_read": 65535,
+        "last_write": 0,
+        "last_read_pc": 9201,
+        "last_write_pc": 0
+      },
+      "0x5f": {
+        "reads": 1,
+        "writes": 0,
+        "last_read": 65535,
+        "last_write": 0,
+        "last_read_pc": 9201,
+        "last_write_pc": 0
+      }
+    },
+    "dsp_memory_map": {
+      "mpmc_pin": 0,
+      "mpmc": 0,
+      "ovly": 1,
+      "ram": 1,
+      "cnf": 0,
+      "iptr": 0,
+      "pdwsr": 10,
+      "iowsr": 1,
+      "cwsr": 16,
+      "rom_present": true,
+      "program_rom": 3195350,
+      "program_daram": 0,
+      "program_saram": 15,
+      "program_external": 76444656,
+      "data_registers": 273514,
+      "data_daram": 27582327,
+      "data_saram": 2573653,
+      "data_reserved": 0,
+      "data_shared": 3,
+      "data_external": 8104,
+      "rom_holes": 0,
+      "wait_states": {
+        "io_mapping": "8K blocks",
+        "external": [
+          {
+            "space": "program",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 2
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          }
+        ],
+        "regions": [
+          {
+            "space": "program",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 0
+          },
+          {
+            "space": "program",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 8192,
+            "last": 16383
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 16384,
+            "last": 24575
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 24576,
+            "last": 32767
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 32768,
+            "last": 40959
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 40960,
+            "last": 49151
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 49152,
+            "last": 57343
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 57344,
+            "last": 65535
+          }
+        ]
+      }
+    },
+    "asic": {
+      "registers": {
+        "83": 131
+      },
+      "writes": {
+        "83": 1
+      },
+      "call_engine_started": false,
+      "v8_armed": false,
+      "commit_edges": 0,
+      "dsp_register_commits": 0,
+      "call_overlay_available": true,
+      "call_overlay_active": false,
+      "call_resume_state": null,
+      "connected_event_queued": false,
+      "carrier_probe_frames": 0,
+      "carrier_best_score": 0,
+      "negotiation_audio": {
+        "samples": 960,
+        "rms": 1,
+        "hz_980": 0,
+        "hz_1180": 0,
+        "hz_1300": 0,
+        "hz_1875": 0,
+        "hz_2100": 0,
+        "v21_mark_symbols": 30,
+        "v21_space_symbols": 0,
+        "v21_strong_symbols": 0
+      },
+      "dsp_registers": {},
+      "rate_writes": [],
+      "call_cell_writes": {
+        "0306": 1,
+        "039f": 1,
+        "a51b": 0,
+        "a517": 0,
+        "d2a8": 0,
+        "fff8": 0,
+        "fff9": 0
+      },
+      "call_cells": {
+        "006f": 0,
+        "0304": 0,
+        "0306": 0,
+        "035c": 0,
+        "039f": 0,
+        "03c8": 0,
+        "03ca": 0,
+        "03fe": 0,
+        "069c": 0,
+        "0b26": 0,
+        "0b49": 0,
+        "a51b": 48905,
+        "d2a8": 33736,
+        "fff8": 0,
+        "fff9": 0,
+        "fffa": 0,
+        "fffd": 0,
+        "fffe": 0,
+        "ffff": 4
+      },
+      "control_82": 0,
+      "line_phase": "idle",
+      "line_enable": false,
+      "start_strobe": false,
+      "engine_hold": false,
+      "ring_indicate": true
+    },
+    "serial_port": {
+      "drr": 0,
+      "dxr": 0,
+      "spc": 16584,
+      "drr_reads": 186314,
+      "dxr_writes": 158610,
+      "spc_writes": 5,
+      "rx_consumed": 0,
+      "rx_queued": 0,
+      "codec_rx_consumed": 27713,
+      "codec_rx_queued": 27713,
+      "last_drr_pc": 33171,
+      "last_dxr_pc": 33184,
+      "last_spc_pc": 32916,
+      "trcv": 0,
+      "tdxr": 0,
+      "tspc": 248,
+      "trcv_reads": 0,
+      "tdxr_writes": 1199429,
+      "tspc_writes": 2,
+      "last_trcv_pc": 0,
+      "last_tdxr_pc": 33225,
+      "last_tspc_pc": 32908,
+      "line_tx_writes": 43410,
+      "line_tx_nonzero": 43409,
+      "line_frame_interrupts": 160244,
+      "line_tx_last": 65535,
+      "line_tx_last_pc": 35877,
+      "imr": 42,
+      "v8_rx_state": 0,
+      "v8_rx_peak": 0,
+      "codec_rx_peak": 32768,
+      "negotiation_loop_entries": 0,
+      "negotiation_loop_pc": 0,
+      "negotiation_source": 0,
+      "negotiation_pair": 0,
+      "negotiation_source_value": 0,
+      "negotiation_pair_value": 0,
+      "negotiation_acc": 0,
+      "v8_dispatches": 0,
+      "v8_record": 0,
+      "v8_handler": 0,
+      "v8_countdown": 0,
+      "v8_flags": 0,
+      "negotiation_d76": 0,
+      "negotiation_d77": 0,
+      "negotiation_d78": 0,
+      "negotiation_d79": 0,
+      "negotiation_d26": 0,
+      "negotiation_indx": 0,
+      "negotiation_arp": 0,
+      "negotiation_pm": 0
+    },
+    "v8_io_events": [
+      {
+        "write": true,
+        "port": 86,
+        "value": 65535,
+        "pc": 32813,
+        "instruction": 278634
+      },
+      {
+        "write": false,
+        "port": 94,
+        "value": 65535,
+        "pc": 9201,
+        "instruction": 281677
+      }
+    ],
+    "dsp_pc_trace": [],
+    "dsp_data_events": [],
+    "dial_digits": "",
+    "daa": null,
+    "sip": null,
+    "line": null,
+    "codec": null,
+    "exchange": null
+  },
+  "supervisor_call_cells": {
+    "0158": 0,
+    "027b": 0,
+    "027c": 0,
+    "0941": 0,
+    "094e": 0,
+    "094f": 0,
+    "0950": 0,
+    "1cf0": 0,
+    "1cf1": 0,
+    "0681": 0,
+    "0682": 0,
+    "0683": 0,
+    "1c77": 0,
+    "0283": 0,
+    "0285": 0,
+    "026a": 39430,
+    "0313": 32777,
+    "031a": 132,
+    "0607": 0,
+    "0695": 7,
+    "0ea7": 0,
+    "0b7c": 46201,
+    "0b7e": 0,
+    "0b88": 0,
+    "0a96": 0,
+    "033e": 2,
+    "3424": 0,
+    "3ca4": 0,
+    "0298": 336,
+    "026e": 37661,
+    "0b8e": 18690
+  },
+  "panel": {
+    "latches": {
+      "0x0e": 7,
+      "0x10": 254,
+      "0x12": 125,
+      "0x14": 229
+    },
+    "writes": {
+      "0x0e": 9,
+      "0x10": 249,
+      "0x12": 6,
+      "0x14": 2742
+    },
+    "signals": {
+      "off-hook-aux": false,
+      "board-02": true,
+      "hook-relay": false,
+      "nvram-strobe": true,
+      "nvram-data-in": true,
+      "nvram-chip-select": true,
+      "nvram-clock": true,
+      "board-80": true,
+      "indicator-12-01": true,
+      "id-strap-drive-b": false,
+      "indicator-12-04": true,
+      "blink-code-bit": true,
+      "indicator-12-10": true,
+      "indicator-12-20": true,
+      "indicator-12-40": true,
+      "indicator-12-80": false,
+      "carrier-detect-a": false,
+      "indicator-14-02": false,
+      "indicator-14-04": true,
+      "dte-handshake-b": false,
+      "id-strap-drive-c": false,
+      "id-strap-drive-d": true,
+      "id-strap-drive-a": true,
+      "carrier-detect-b": false
+    },
+    "off_hook": false,
+    "board_id": 7,
+    "board_capability": 34,
+    "dip_switches": {
+      "carrier-detect-override": "open",
+      "dtr-override": "open",
+      "no-auto-answer": "open",
+      "no-echo": "open",
+      "numeric-results": "open",
+      "quiet-answer": "open",
+      "quiet-answer-alt": "open",
+      "result-codes": "closed"
+    },
+    "events": [
+      "i=225 port=0x10 value=0x00 pc=0xfda4c initial",
+      "i=230 port=0x0e value=0x01 pc=0xfda4c initial",
+      "i=235 port=0x12 value=0x7f pc=0xfda4c initial",
+      "i=240 port=0x14 value=0xf5 pc=0xfda4c initial",
+      "i=3523 port=0x0e value=0x79 pc=0x004ff",
+      "i=3525 port=0x10 value=0x20 pc=0x00503 +nvram-chip-select",
+      "i=3531 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=3539 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=3559 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3567 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3577 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=3582 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=3590 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=3605 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=3613 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=3622 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=3627 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3635 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3649 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3657 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3671 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3679 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3693 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3701 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3715 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3723 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3737 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3745 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3759 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3767 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3781 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3789 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3803 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3811 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3823 port=0x0e value=0x69 pc=0x00466",
+      "i=3830 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3838 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3854 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3862 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3878 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3886 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3902 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3910 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3926 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3934 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3950 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3958 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3974 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=3982 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=3998 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4006 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4022 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4030 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4046 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4054 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4070 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4078 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4094 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4102 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4118 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4126 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4142 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4150 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4166 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4174 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4190 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4198 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4214 port=0x0e value=0x79 pc=0x004ff",
+      "i=4222 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=4230 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=4250 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4258 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4268 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=4273 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=4281 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=4290 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=4295 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4303 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4317 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4325 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4335 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=4340 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=4348 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=4363 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=4371 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=4380 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=4385 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4393 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4407 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4415 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4429 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4437 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4451 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4459 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4473 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4481 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4495 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4503 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4516 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=4524 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=4544 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4552 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4562 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=4567 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=4575 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=4584 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=4589 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4597 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4607 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=4612 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=4620 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=4629 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=4634 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4642 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4656 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4664 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4678 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4686 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4700 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4708 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4722 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4730 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4744 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4752 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4766 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4774 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4788 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4796 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4817 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4825 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4839 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4847 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4861 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4869 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4883 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4891 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4905 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4913 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4927 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4935 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4949 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4957 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4971 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=4979 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=4993 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5001 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5015 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5023 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5037 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5045 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5059 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5067 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5081 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5089 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5103 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5111 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5125 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5133 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5147 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5155 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5168 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=5176 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=5181 port=0x0e value=0x69 pc=0x004ac",
+      "i=5189 port=0x0e value=0x79 pc=0x004ff",
+      "i=5197 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=5205 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=5225 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5233 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5243 port=0x10 value=0x30 pc=0x004ef +nvram-data-in",
+      "i=5248 port=0x10 value=0x70 pc=0x0051d +nvram-clock",
+      "i=5256 port=0x10 value=0x30 pc=0x00527 -nvram-clock",
+      "i=5265 port=0x10 value=0x20 pc=0x004ef -nvram-data-in",
+      "i=5270 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5278 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5292 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5300 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5314 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5322 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5336 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5344 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5358 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5366 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5380 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5388 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5402 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5410 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5424 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5432 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5446 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5454 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5468 port=0x10 value=0x60 pc=0x0051d +nvram-clock",
+      "i=5476 port=0x10 value=0x20 pc=0x00527 -nvram-clock",
+      "i=5489 port=0x10 value=0x00 pc=0x0050a -nvram-chip-select",
+      "i=5497 port=0x10 value=0x20 pc=0x00514 +nvram-chip-select",
+      "i=5505 port=0x10 value=0x00 pc=0x00530 -nvram-chip-select",
+      "i=5507 port=0x0e value=0x01 pc=0x00534",
+      "i=5061846 port=0x0e value=0x07 pc=0x8042f",
+      "i=5599397 port=0x10 value=0xfe pc=0x827c2 +board-02 -hook-relay +nvram-strobe +nvram-data-in +nvram-chip-select +nvram-clock +board-80",
+      "i=5599454 port=0x14 value=0xff pc=0x82796 +indicator-14-02 +dte-handshake-b",
+      "i=5599545 port=0x14 value=0xbf pc=0x827c2 -id-strap-drive-a",
+      "i=5599588 port=0x14 value=0xff pc=0x82796 +id-strap-drive-a",
+      "i=5599612 port=0x12 value=0x7d pc=0x827c2 -id-strap-drive-b",
+      "i=5599656 port=0x12 value=0x7f pc=0x82796 +id-strap-drive-b",
+      "i=5599680 port=0x14 value=0xef pc=0x827c2 -id-strap-drive-c",
+      "i=5599724 port=0x14 value=0xff pc=0x82796 +id-strap-drive-c",
+      "i=5599770 port=0x14 value=0xdf pc=0x827c2 -id-strap-drive-d",
+      "i=5599814 port=0x14 value=0xff pc=0x82796 +id-strap-drive-d",
+      "i=5916629 port=0x14 value=0xef pc=0x827c2 -id-strap-drive-c",
+      "i=6050562 port=0x14 value=0xe7 pc=0x827c2 -dte-handshake-b",
+      "i=6050595 port=0x14 value=0xe5 pc=0x827c2 -indicator-14-02",
+      "i=6050791 port=0x12 value=0x7d pc=0x827c2 -id-strap-drive-b"
+    ],
+    "events_truncated": false
+  },
+  "nvram": {
+    "device": "93c66-microwire",
+    "words": 256,
+    "path": null,
+    "reads": 266,
+    "writes": 1,
+    "erases": 0,
+    "write_enabled": false,
+    "programmed_words": [
+      "0x00=0x0000",
+      "0x5e=0x9664",
+      "0x5f=0x0803",
+      "0x60=0x1a0b",
+      "0x61=0x9664",
+      "0x62=0xef03",
+      "0x63=0x1d87",
+      "0x64=0x87ef",
+      "0x65=0xef1d",
+      "0x66=0x1d87"
+    ],
+    "trace": [
+      "read 0x00=0xffff",
+      "write-enable",
+      "write 0x00=0x0000",
+      "write-disable",
+      "read 0x5e=0x9664",
+      "read 0x5f=0x0803",
+      "read 0x60=0x1a0b",
+      "read 0x61=0x9664",
+      "read 0x62=0xef03",
+      "read 0x63=0x1d87",
+      "read 0x64=0x87ef",
+      "read 0x65=0xef1d",
+      "read 0x66=0x1d87",
+      "read 0x00=0x0000",
+      "read 0x01=0xffff",
+      "read 0x02=0xffff",
+      "read 0x03=0xffff",
+      "read 0x04=0xffff",
+      "read 0x05=0xffff",
+      "read 0x06=0xffff",
+      "read 0x07=0xffff",
+      "read 0x08=0xffff",
+      "read 0x09=0xffff",
+      "read 0x0a=0xffff",
+      "read 0x0b=0xffff",
+      "read 0x0c=0xffff",
+      "read 0x0d=0xffff",
+      "read 0x0e=0xffff",
+      "read 0x0f=0xffff",
+      "read 0x10=0xffff",
+      "read 0x11=0xffff",
+      "read 0x12=0xffff",
+      "read 0x13=0xffff",
+      "read 0x14=0xffff",
+      "read 0x15=0xffff",
+      "read 0x16=0xffff",
+      "read 0x17=0xffff",
+      "read 0x18=0xffff",
+      "read 0x19=0xffff",
+      "read 0x1a=0xffff",
+      "read 0x1b=0xffff",
+      "read 0x1c=0xffff",
+      "read 0x1d=0xffff",
+      "read 0x1e=0xffff",
+      "read 0x1f=0xffff",
+      "read 0x20=0xffff",
+      "read 0x21=0xffff",
+      "read 0x22=0xffff",
+      "read 0x23=0xffff",
+      "read 0x24=0xffff",
+      "read 0x25=0xffff",
+      "read 0x26=0xffff",
+      "read 0x27=0xffff",
+      "read 0x28=0xffff",
+      "read 0x29=0xffff",
+      "read 0x2a=0xffff",
+      "read 0x2b=0xffff",
+      "read 0x2c=0xffff",
+      "read 0x2d=0xffff",
+      "read 0x2e=0xffff",
+      "read 0x2f=0xffff",
+      "read 0x30=0xffff",
+      "read 0x31=0xffff",
+      "read 0x32=0xffff",
+      "read 0x33=0xffff",
+      "read 0x34=0xffff",
+      "read 0x35=0xffff",
+      "read 0x36=0xffff",
+      "read 0x37=0xffff",
+      "read 0x38=0xffff",
+      "read 0x39=0xffff",
+      "read 0x3a=0xffff",
+      "read 0x3b=0xffff",
+      "read 0x3c=0xffff",
+      "read 0x3d=0xffff",
+      "read 0x3e=0xffff",
+      "read 0x3f=0xffff",
+      "read 0x40=0xffff",
+      "read 0x41=0xffff",
+      "read 0x42=0xffff",
+      "read 0x43=0xffff",
+      "read 0x44=0xffff",
+      "read 0x45=0xffff",
+      "read 0x46=0xffff",
+      "read 0x47=0xffff",
+      "read 0x48=0xffff",
+      "read 0x49=0xffff",
+      "read 0x4a=0xffff",
+      "read 0x4b=0xffff",
+      "read 0x4c=0xffff",
+      "read 0x4d=0xffff",
+      "read 0x4e=0xffff",
+      "read 0x4f=0xffff",
+      "read 0x50=0xffff",
+      "read 0x51=0xffff",
+      "read 0x52=0xffff",
+      "read 0x53=0xffff",
+      "read 0x54=0xffff",
+      "read 0x55=0xffff",
+      "read 0x56=0xffff",
+      "read 0x57=0xffff",
+      "read 0x58=0xffff",
+      "read 0x59=0xffff",
+      "read 0x5a=0xffff",
+      "read 0x5b=0xffff",
+      "read 0x5c=0xffff",
+      "read 0x5d=0xffff",
+      "read 0x5e=0x9664",
+      "read 0x5f=0x0803",
+      "read 0x60=0x1a0b",
+      "read 0x61=0x9664",
+      "read 0x62=0xef03",
+      "read 0x63=0x1d87",
+      "read 0x64=0x87ef",
+      "read 0x65=0xef1d",
+      "read 0x66=0x1d87",
+      "read 0x67=0xffff",
+      "read 0x68=0xffff",
+      "read 0x69=0xffff",
+      "read 0x6a=0xffff",
+      "read 0x6b=0xffff",
+      "read 0x6c=0xffff",
+      "read 0x6d=0xffff",
+      "read 0x6e=0xffff",
+      "read 0x6f=0xffff",
+      "read 0x70=0xffff",
+      "read 0x71=0xffff",
+      "read 0x72=0xffff",
+      "read 0x73=0xffff",
+      "read 0x74=0xffff",
+      "read 0x75=0xffff",
+      "read 0x76=0xffff",
+      "read 0x77=0xffff",
+      "read 0x78=0xffff",
+      "read 0x79=0xffff",
+      "read 0x7a=0xffff",
+      "read 0x7b=0xffff",
+      "read 0x7c=0xffff",
+      "read 0x7d=0xffff",
+      "read 0x7e=0xffff",
+      "read 0x7f=0xffff",
+      "read 0x80=0xffff",
+      "read 0x81=0xffff",
+      "read 0x82=0xffff",
+      "read 0x83=0xffff",
+      "read 0x84=0xffff",
+      "read 0x85=0xffff",
+      "read 0x86=0xffff",
+      "read 0x87=0xffff",
+      "read 0x88=0xffff",
+      "read 0x89=0xffff",
+      "read 0x8a=0xffff",
+      "read 0x8b=0xffff",
+      "read 0x8c=0xffff",
+      "read 0x8d=0xffff",
+      "read 0x8e=0xffff",
+      "read 0x8f=0xffff",
+      "read 0x90=0xffff",
+      "read 0x91=0xffff",
+      "read 0x92=0xffff",
+      "read 0x93=0xffff",
+      "read 0x94=0xffff",
+      "read 0x95=0xffff",
+      "read 0x96=0xffff",
+      "read 0x97=0xffff",
+      "read 0x98=0xffff",
+      "read 0x99=0xffff",
+      "read 0x9a=0xffff",
+      "read 0x9b=0xffff",
+      "read 0x9c=0xffff",
+      "read 0x9d=0xffff",
+      "read 0x9e=0xffff",
+      "read 0x9f=0xffff",
+      "read 0xa0=0xffff",
+      "read 0xa1=0xffff",
+      "read 0xa2=0xffff",
+      "read 0xa3=0xffff",
+      "read 0xa4=0xffff",
+      "read 0xa5=0xffff",
+      "read 0xa6=0xffff",
+      "read 0xa7=0xffff",
+      "read 0xa8=0xffff",
+      "read 0xa9=0xffff",
+      "read 0xaa=0xffff",
+      "read 0xab=0xffff",
+      "read 0xac=0xffff",
+      "read 0xad=0xffff",
+      "read 0xae=0xffff",
+      "read 0xaf=0xffff",
+      "read 0xb0=0xffff",
+      "read 0xb1=0xffff",
+      "read 0xb2=0xffff",
+      "read 0xb3=0xffff",
+      "read 0xb4=0xffff",
+      "read 0xb5=0xffff",
+      "read 0xb6=0xffff",
+      "read 0xb7=0xffff",
+      "read 0xb8=0xffff",
+      "read 0xb9=0xffff",
+      "read 0xba=0xffff",
+      "read 0xbb=0xffff",
+      "read 0xbc=0xffff",
+      "read 0xbd=0xffff",
+      "read 0xbe=0xffff",
+      "read 0xbf=0xffff",
+      "read 0xc0=0xffff",
+      "read 0xc1=0xffff",
+      "read 0xc2=0xffff",
+      "read 0xc3=0xffff",
+      "read 0xc4=0xffff",
+      "read 0xc5=0xffff",
+      "read 0xc6=0xffff",
+      "read 0xc7=0xffff",
+      "read 0xc8=0xffff",
+      "read 0xc9=0xffff",
+      "read 0xca=0xffff",
+      "read 0xcb=0xffff",
+      "read 0xcc=0xffff",
+      "read 0xcd=0xffff",
+      "read 0xce=0xffff",
+      "read 0xcf=0xffff",
+      "read 0xd0=0xffff",
+      "read 0xd1=0xffff",
+      "read 0xd2=0xffff",
+      "read 0xd3=0xffff",
+      "read 0xd4=0xffff",
+      "read 0xd5=0xffff",
+      "read 0xd6=0xffff",
+      "read 0xd7=0xffff",
+      "read 0xd8=0xffff",
+      "read 0xd9=0xffff",
+      "read 0xda=0xffff",
+      "read 0xdb=0xffff",
+      "read 0xdc=0xffff",
+      "read 0xdd=0xffff",
+      "read 0xde=0xffff",
+      "read 0xdf=0xffff",
+      "read 0xe0=0xffff",
+      "read 0xe1=0xffff",
+      "read 0xe2=0xffff",
+      "read 0xe3=0xffff",
+      "read 0xe4=0xffff",
+      "read 0xe5=0xffff",
+      "read 0xe6=0xffff",
+      "read 0xe7=0xffff",
+      "read 0xe8=0xffff",
+      "read 0xe9=0xffff",
+      "read 0xea=0xffff",
+      "read 0xeb=0xffff",
+      "read 0xec=0xffff",
+      "read 0xed=0xffff",
+      "read 0xee=0xffff",
+      "read 0xef=0xffff",
+      "read 0xf0=0xffff",
+      "read 0xf1=0xffff",
+      "read 0xf2=0xffff"
+    ]
+  },
+  "flash": null,
+  "ring": null,
+  "timers": {
+    "fast": true,
+    "modelled": true,
+    "interrupts": 4479,
+    "reads": 8155,
+    "writes": 24386,
+    "accelerated_waits": 1,
+    "granted_ticks": 65532,
+    "controller": {
+      "writes": 4490,
+      "masked": {
+        "timer": false,
+        "dma0": false,
+        "dma1": false,
+        "int0": true,
+        "int1": false,
+        "int2": true,
+        "int3": true
+      }
+    },
+    "timers": [
+      {
+        "control": "0x8021",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 25200,
+        "compare_b": 0,
+        "count": 5443,
+        "max_counts": 10715
+      },
+      {
+        "control": "0xa021",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 54166,
+        "compare_b": 0,
+        "count": 38095,
+        "max_counts": 4461
+      },
+      {
+        "control": "0xa001",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 65535,
+        "compare_b": 0,
+        "count": 32255,
+        "max_counts": 24
+      }
+    ]
+  },
+  "interrupt_vectors": {
+    "0x00": "8000:5555",
+    "0x01": "8000:0f39",
+    "0x02": "8000:0f3e",
+    "0x03": "8000:0f43",
+    "0x04": "8000:0f48",
+    "0x05": "8000:0f4d",
+    "0x06": "8000:0f52",
+    "0x07": "8000:0f57",
+    "0x08": "8000:105e",
+    "0x09": "8000:0f5c",
+    "0x0a": "8000:0f61",
+    "0x0b": "8000:0f66",
+    "0x0c": "8f43:0000",
+    "0x0d": "9ea4:04f0",
+    "0x0e": "8000:1d05",
+    "0x0f": "8000:0a70",
+    "0x10": "8000:0f75",
+    "0x11": "8000:105e",
+    "0x12": "9ea4:0334",
+    "0x13": "9ea4:04fd",
+    "0x14": "9ea4:071b",
+    "0x15": "8000:0f1c",
+    "0x33": "0673:0000",
+    "0x34": "8f43:00cb",
+    "0x35": "00cb:0673",
+    "0x36": "8000:8f43",
+    "0x37": "37c9:7ff8",
+    "0x38": "00ec:0000",
+    "0x39": "00f6:0217",
+    "0x3a": "0937:0000",
+    "0x3b": "0f04:00ea",
+    "0x3c": "0000:0f08",
+    "0x3d": "02a6:7ff8",
+    "0x3e": "0104:0000",
+    "0x3f": "0217:0217",
+    "0x40": "0000:00f6",
+    "0x41": "00cb:0673",
+    "0x42": "0000:8f43",
+    "0x43": "a463:7ff8",
+    "0x44": "011c:0000",
+    "0x45": "00f6:0000",
+    "0x47": "8000:b409",
+    "0x48": "9257:0246",
+    "0x49": "009c:5001",
+    "0x4a": "09c4:0000",
+    "0x4e": "0000:2c30",
+    "0x4f": "0000:8452",
+    "0x50": "0001:2c00",
+    "0x52": "0200:0000",
+    "0x88": "5555:0000",
+    "0x97": "0001:0000",
+    "0x9a": "9a06:0000",
+    "0x9b": "931d:1d03",
+    "0xa2": "0a7f:3f00",
+    "0xa3": "0300:0002",
+    "0xa4": "0000:9813",
+    "0xa5": "0000:00f0",
+    "0xa6": "02a6:0150",
+    "0xa7": "ff00:02a6",
+    "0xa8": "0000:000f",
+    "0xa9": "0000:013f",
+    "0xb4": "db00:0000",
+    "0xb5": "0000:001f",
+    "0xba": "02ee:0000",
+    "0xbb": "0000:02ee",
+    "0xbd": "fb00:0000",
+    "0xbe": "0002:fb02",
+    "0xc3": "7dfe:0000",
+    "0xc4": "09ff:ffe5",
+    "0xc5": "0000:0080",
+    "0xc6": "0084:29c0",
+    "0xc7": "0f04:0800",
+    "0xc8": "0000:002b",
+    "0xc9": "9a40:3600",
+    "0xca": "004e:9a4e",
+    "0xcc": "0102:0000",
+    "0xcf": "0002:0000",
+    "0xd3": "c000:c000",
+    "0xd4": "9000:9000",
+    "0xd5": "c000:0000",
+    "0xd6": "2c00:c000",
+    "0xd7": "b000:2c00",
+    "0xd8": "b000:b000",
+    "0xd9": "1a80:0000",
+    "0xda": "1a80:1a80",
+    "0xe6": "0012:1200",
+    "0xe7": "e0ff:ff00",
+    "0xe8": "0009:8008",
+    "0xe9": "0200:4001",
+    "0xea": "0000:00f4",
+    "0xeb": "4000:0000",
+    "0xec": "300a:170e",
+    "0xed": "0011:2a2c",
+    "0xef": "0100:0001",
+    "0xf0": "0000:ff00",
+    "0xf1": "0001:ff00",
+    "0xf4": "ff08:0000",
+    "0xfc": "09c4:0000"
+  }
+}

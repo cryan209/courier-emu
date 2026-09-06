@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass
 import math
+from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from .codec import CodecBringUp
@@ -169,6 +171,7 @@ DIAL_TONE_DIGITS = "0123456789#*ABCD"
 @dataclass
 class BridgeStatus:
     active: bool
+    boot_rom_enabled: bool
     bootstrap_bytes: int
     bootstrap_match: bool | None
     bootstraps: int
@@ -238,7 +241,14 @@ class CourierDspBridge:
                 0xCBC0 if getattr(image, "supervisor_offset", 0) == 0x17BB0
                 else DSP_BOOT_SIZE
             )
+        # Match the measured 20.16 MHz DSP payloads, not unrelated 25 MHz
+        # ROMs or XMF images whose customer mask ROM has not been captured.
+        self.boot_rom_enabled = sha256(self.expected_bootstrap).hexdigest() in {
+            "b87b2b30e217aed19a3499209b935432707adc1ed7c6e28eb0ec7c2cca92f886",
+            "d0287e33c37ef0af3487cc0a5d613dbd2981aad5bb40d85846a90044116b5b7b",
+        }
         self.core = NativeC5x(image)
+        self._configure_boot_rom()
         self._configure_frame_interrupt()
         self._call_overlay = self._find_call_overlay()
         self._call_overlay_active = False
@@ -595,7 +605,26 @@ class CourierDspBridge:
             return
         self.core.set_synthetic_line(False)
 
+    def _configure_boot_rom(self) -> None:
+        if not self.boot_rom_enabled:
+            return
+        rom = (Path(__file__).resolve().parent.parent /
+               "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin").read_bytes()
+        if sha256(rom).hexdigest() != "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67":
+            raise ValueError("recovered DSP boot ROM checksum mismatch")
+        self.core.load_rom(rom)
+        self.core.set_mpmc_pin(0)
+        origin, resident = self.image.dsp_program_segments()[0]
+        # The boot loader must write the resident, not execute a preloaded copy.
+        self.core.load_program(bytes(len(resident)), origin)
+        self.core.host_write(0xFFFF, 4)  # ASIC's 16-bit serial boot strap.
+        self.core.set_pc(0)
+
     def _configure_frame_interrupt(self) -> None:
+        if self.boot_rom_enabled:
+            # 0xffff selects hardware vectoring through PMST.IPTR and the ROM.
+            self.core.configure_line_frame_interrupt(C52_ROM_FRAME_IRQ, 0xFFFF)
+            return
         if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
             if hasattr(self.core, "configure_line_frame_interrupt"):
                 self.core.configure_line_frame_interrupt(5, 0x0206)
@@ -1073,15 +1102,18 @@ class CourierDspBridge:
             self.transfer.checksum_strobe is not None
             and strobe == self.transfer.checksum_strobe
         ):
-            # The ROM's downloader submits its 16-bit word sum here and polls
-            # for acceptance. On the part, the DSP's boot ROM checks that sum
-            # and jumps to the entry the supervisor requested; that mask ROM
-            # is not available, so the jump is performed here instead. An
-            # update payload needs no equivalent: it carries a boot block at
-            # origin 0, so its reset address is program the core already has.
+            # The ASIC accepts the supervisor's transfer and serializes its
+            # destination, length and program for the DSP's mask-ROM loader.
             self.checksum_submits += 1
             if self.active and not self.launched and hasattr(self.core, "set_pc"):
-                self.core.set_pc(self.entry_word)
+                if self.boot_rom_enabled:
+                    payload = self.bootstrap[:self.bootstrap_target_size]
+                    words = [int.from_bytes(payload[i:i + 2], "little")
+                             for i in range(0, len(payload), 2)]
+                    # One trailing word clocks the loader's final comparison.
+                    self.core.queue_codec_rx([self.entry_word, len(words), *words, 0])
+                else:
+                    self.core.set_pc(self.entry_word)
                 self.launched = True
             return
         if strobe not in self._windows:
@@ -1098,6 +1130,7 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            self._configure_boot_rom()
             self._configure_frame_interrupt()
             self._configure_synthetic_line()
             self._call_overlay_active = False
@@ -1264,7 +1297,7 @@ class CourierDspBridge:
             # bring-up runs from board reset rather than from the download that
             # starts the C52.
             self._service_codec()
-        if not self.active or self.error:
+        if not self.active or self.error or (self.boot_rom_enabled and not self.launched):
             return
         if self._runtime_mode and not self._runtime_ready:
             if self._runtime_ready_delay > 0:
@@ -1598,6 +1631,7 @@ class CourierDspBridge:
     def status(self) -> BridgeStatus:
         return BridgeStatus(
             active=self.active,
+            boot_rom_enabled=self.boot_rom_enabled,
             bootstrap_bytes=len(self.bootstrap),
             bootstrap_match=self.bootstrap_match,
             bootstraps=self.bootstraps,

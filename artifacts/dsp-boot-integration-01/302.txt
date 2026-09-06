@@ -1,0 +1,20 @@
+
+OK
+
+ID_SDL v3.02 06/06/98, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )
+USRobotics Courier V.Everything Configuration Profile...
+
+Product type           US/Canada External
+Options                HST,V32bis,Terbo,VFC,V34+,x2,V90
+Fax Options            Class 1,Class 2.0
+Clock Freq             20.16Mhz
+Flash ROM              512k
+Ram                    64k
+
+Supervisor date        03/13/98
+DSP date               03/13/98
+
+Supervisor rev         7.3.14
+DSP rev                3.0.13
+
+OK
