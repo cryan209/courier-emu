@@ -226,8 +226,45 @@ ACK set=2000 clr=0004   @57 8000 -> a000   io60=ffff   cell 039e=0000
 
 `@57` still carries bit 15, so the dispatcher at `0x8387` has not read the
 message - it acknowledges by writing bit 0 - and `0x039e` is still zero, so no
-handler has armed a stream. The modelled core is executing, but nothing in it
-calls the dispatcher, so a delivered message sits pending forever.
+handler has armed a stream.
+
+### What calls the dispatcher, and why it never runs here
+
+The DSP's service loop, at `0x80bb`, calls all three mailbox routines on every
+iteration:
+
+```
+80b9  call 8212, *
+80bb  call 8387, *, ar1     ; the receive dispatcher
+80bd  call 83bf, *, ar1     ; the message sender
+80bf  call 8462, *, ar1     ; the stream resume poll
+80c1  call 80ea, *
+80c3  lar  ar0, @10 / cmpr eq
+80c5  bcnd 80bb, tc         ; loop
+```
+
+Reaching it means getting past six `call 8138` sites earlier in the same
+routine, and `0x8138` is a wait:
+
+```
+8138  samm @6c
+8139  lacl #03
+813a  samm @6b
+813b  idle              ; halt
+813c  lamm @6b
+813d  bcnd 813b, neq    ; back to idle until @6b reaches zero
+813f  ret
+```
+
+Sampling the core's own state during a run settles it: `idle` is **true**, and
+1316 of 3999 PC samples sit in that region. The C52 is parked in `idle`
+waiting for interrupts that never arrive, so the loop at `0x80bb` never runs a
+single iteration and `0x8387` is never called.
+
+So the mailbox wiring is not what is missing. **The DSP's periodic interrupt
+is.** `_configure_frame_interrupt` arms one only for a supervisor at offset
+`0x17BB0` or a bootstrap matching the TDM ISR signature; neither applies to
+these flash images, so nothing wakes the part.
 
 An earlier revision of this note read a jump in `@57` and ring-pointer write
 counts after the tag-`0x45` delivery as the handler running. That was wrong:
