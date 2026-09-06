@@ -112,7 +112,10 @@ DETECTOR_PRESENT_LEVEL = 0x30
 HOST_STATUS_CELL = 0x57
 HOST_TAG_CELL = 0x5E
 HOST_WORD_CELL = 0x5F
-HOST_MESSAGE_PENDING = 0x8000
+# `BIT dma, code` on the C5x tests bit (15 - code), not bit `code`. The
+# dispatcher's poll is `4f7d`, which disassembles as `bit 15, @7d` and tests
+# **bit 0**, so the pending flag the ASIC raises is bit 0 and not bit 15.
+HOST_MESSAGE_PENDING = 0x0001
 # The two builds reach these three registers by different routes. 3.1.2 loads
 # a short immediate - `b157` is `lar ar1, #57` in one word - and reads through
 # `lamm`, which masks the address to 0x7f. 3.0.13 loads a long immediate -
@@ -134,7 +137,8 @@ DSP_STREAM_READY = 0x04
 # absence of bit 2: `bit 13, @7d / retc ntc`, then it reads the vector the
 # tag-06 handler armed at cell 0x039e and `bacc`s into the coroutine. So the
 # CPU's acknowledgement has to raise bit 13 - one word per acknowledgement.
-DSP_STREAM_RESUME = 0x2000
+# and by the same inversion `bit 13, @7d` (`4d7d`) tests **bit 2**.
+DSP_STREAM_RESUME = 0x0004
 
 # A ROM build's frame interrupt. Firing each candidate at the core is what
 # picks 5: 4 and 6 leave it in `idle` and 5 takes it out, which agrees with
@@ -899,17 +903,30 @@ class CourierDspBridge:
         return True
 
     def _write_host_cell(self, cell: int, value: int) -> None:
-        """Write both views of one host-window register."""
+        """Write every view of one host-window register.
+
+        The I/O view is the one that matters, and it was the one missing. The
+        302 helper at 0x23f0 is `lacc * / lamm * / ret`, and `lamm` masks the
+        address to 0x7f and reads it as a memory-mapped register - which for
+        0x50-0x5f this core resolves through the I/O ports, not through the
+        data array. So a delivery written only with `set_data` landed in a cell
+        nothing reads: the `lacc` half loads it and the `lamm` half immediately
+        overwrites the accumulator with the register. Both data views are still
+        written, for any reader that takes the `lacc` value.
+        """
         core = self.core
         core.set_data(cell, value & 0xFFFF)
         core.set_data(HOST_MIRROR | cell, value & 0xFFFF)
+        if hasattr(core, "set_io"):
+            core.set_io(cell, value & 0xFFFF)
 
     def _read_host_cell(self, cell: int) -> int:
         """Read whichever view the running build has been writing."""
         core = self.core
         low = core.data(cell) & 0xFFFF
         high = core.data(HOST_MIRROR | cell) & 0xFFFF
-        return low | high
+        port = core.io(cell) & 0xFFFF if hasattr(core, "io") else 0
+        return low | high | port
 
     def _dsp_status(self) -> int:
         core = self.core

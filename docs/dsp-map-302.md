@@ -35,9 +35,24 @@ Addresses are DSP program words; the linear file mapping is
 | idle wait | `0x8149` | `0x8138` |
 | frame ISR entry | `0x816b` | (not located) |
 
-The status bits are the same in both: bit 15 a message is pending, bit 14 the
-send window is free, bit 13 resume the stream; and the DSP writes `1` to
-acknowledge a receive, `2` to complete a send, `4` for a stream word.
+The status bits are the same in both, and the DSP writes `1` to acknowledge a
+receive, `2` to complete a send, `4` for a stream word.
+
+> **Corrected: those are bit *codes*, not bit numbers.** `BIT dma, code` on the
+> C5x tests bit `15 - code` - this core evaluates `(~op >> 8) & 0xf` - so the
+> instructions this document read as "bit 15", "bit 14" and "bit 13" test bits
+> **0**, **1** and **2**:
+>
+> | instruction | disassembles as | tests | meaning |
+> |---|---|---|---|
+> | `4f7d` | `bit 15, @7d` | **bit 0** | a message is pending |
+> | `4e7d` | `bit 14, @7d` | **bit 1** | the send window is free |
+> | `4d7d` | `bit 13, @7d` | **bit 2** | resume the stream |
+>
+> This is not cosmetic: `bridge.py` raised `0x8000` for pending and `0x2000`
+> for resume, so the dispatcher's poll never saw either. It is the direct cause
+> of the symptom recorded further down this document - "the tag and word
+> arriving and bit 15 never being consumed".
 
 ## The dispatcher, at 0x839c
 
@@ -107,6 +122,37 @@ Note also that 302 *writes* its acknowledgement with `samm @57`, which masks to
 presumably the same register seen twice; in a flat model they are two
 locations, so a DSP acknowledgement would not be visible to the DSP's own read
 path either.
+
+### Both halves of that are now measured, and both were wrong
+
+Driving the dispatcher directly settles it. Run the resident from `0x8000` only
+as far as the `bldp` - so the helper is installed at `0x23f0` - then stage a
+tag, a word and a status, and enter through the service loop's own call site at
+`0x80c8`, which is what sets `ARP` to 1 (jumping straight to `0x839b` instead
+leaves `*` reading whichever `AR` the prologue left selected, and the helper
+reads the wrong address):
+
+| pending flag | `@7d` | `@57` after | `@7a` | outcome |
+|---|---|---|---|---|
+| bit 15, as `bridge.py` raised it | `8100` | `8100` | `0000` | returns, nothing consumed |
+| **bit 0**, what `bit 15, @7d` tests | `0001` | **`0001`** | **`beef`** | word arrives, acknowledged |
+
+The status was staged as `0x0100 | flag`, so `@57` reading exactly `0x0001`
+afterwards is the dispatcher's own `lacl #01 / samm @57` overwriting the
+marker - an acknowledgement, not the value handed in.
+
+So there were **two** faults on this path, not one:
+
+1. **The wrong bit.** Bit 15 for pending, per the bit-code inversion above.
+2. **The wrong storage.** The tag and word in that passing run were staged in
+   the **I/O ports**, not in data cells. `lamm` masks to `0x7f` and reads a
+   memory-mapped register, and this core resolves `0x50`-`0x5f` through the I/O
+   ports; `_write_host_cell` used `set_data` alone, so it wrote a cell nothing
+   reads. The `lacc *` half does load the data cell, but `lamm *` immediately
+   overwrites the accumulator with the register.
+
+`_write_host_cell` now writes the I/O view alongside both data views, and
+`_read_host_cell` folds it in.
 
 **Some handlers are outside the loaded segment.** The 302 image's one segment
 is origin `0x8000`, 27710 words, spanning `0x8000..0xec3d`. The dispatch table
