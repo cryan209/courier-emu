@@ -1,4 +1,15 @@
-# The DSP's boot ROM has two transports, and the harness picked the other one
+# The DSP's boot ROM has two transports, and the board uses neither
+
+> **Answered by measurement, 2026-09-07.** The board's ASIC presents **`0x0083`**
+> at DSP data `0xffff`. Its low two bits are `3` - a fourth mode that transfers
+> nothing and branches straight to program `0x8000`. So neither loader below
+> runs on this unit, and the ASIC must write the resident into the DSP's
+> external RAM itself. See
+> [artifacts/dsp-boot-word-01/result.md](../artifacts/dsp-boot-word-01/result.md).
+>
+> The two loaders and the argument for the parallel one are kept below because
+> the loaders are real and the reasoning is what led to the measurement - but
+> the conclusion it was reaching for is superseded.
 
 The recovered on-chip ROM (`artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin`)
 contains **two** boot loaders, not one. Earlier notes here -
@@ -113,17 +124,45 @@ firmware runs its prologue, programs the codec's six registers and reaches its
 idle. So this is not a bug that shows up as a failure - it is a transport that
 works in the model and probably is not the one on the board.
 
-## What would settle it
+## What settled it
 
-The boot word comes from the ASIC, so the question is what the ASIC drives onto
-the DSP's data bus at `0xffff` during reset. Two approaches:
+The board, via the RAM-monitor rig that recovered the ROM. `--boot-word` builds
+a DSP kernel that reads one data address sixteen times and mails the values
+back. All sixteen read `0x0083`.
 
-* **From the board.** The same RAM-monitor rig that recovered the ROM can read
-  data `0xffff` after a reset, before the supervisor's download.
-* **From the model.** Implement the parallel loader - drive `BIO` and present
-  words at `0x50` from the existing transfer buffer - and see whether the
-  supervisor's own download stream feeds it without the reframing the serial
-  path needs. A transport that consumes the captured stream as-is is evidence;
-  one that needs the harness to reshape the data is not.
+Decoding that against the dispatch above: `0x0083 & 3 == 3`, which falls past
+all three tested branches to `0x0696`, where the loader moves
+`(0x0083 << 8) & 0xfc00 = 0x8000` into `@66` and does `bacc`. **It transfers
+nothing and branches to program `0x8000`** - the resident's origin, and the
+address the supervisor's download targets. The entry is carried in the boot
+word's own bits 7:2.
 
-Neither has been done.
+Running the recovered ROM in the emulator with each candidate confirms the
+decode:
+
+| boot word | outcome |
+|---|---|
+| `0x0083` (measured) | reaches program `0x8000` |
+| `0x0004` (what the harness assumes) | parks at `0x06dc`, the serial loader's wait |
+| `0x000c` (the parallel hypothesis) | parks at `0x0779`, the XF/BIO loader's wait |
+
+So the ASIC writes the resident into the DSP's external RAM directly - the two
+`CY7C199` at program `0x8000`-`0xffff` - while the DSP is held in reset, and
+releasing reset is the "go". That is also why the download sequence has no "go"
+command after it, which `dsp-map-302.md` noticed and explained differently.
+
+**What the harness does is therefore wrong in mechanism but right in outcome.**
+It writes 4 to `0xffff` and serialises the supervisor's transfer through the
+ROM's serial loader; the resident ends up at `0x8000` either way, which is why
+this never showed as a failure. Modelling it faithfully means the ASIC placing
+the resident in DSP RAM and the ROM warm-starting - simpler than what is there
+now.
+
+### The caveat
+
+The read was taken while the modem was running normally, after its own
+download. What is strictly measured is that the ASIC holds `0x0083` there
+**during normal operation**; that it holds the same value during the reset
+window is an inference. Sixteen identical reads make it a held level rather
+than traffic, and it decodes to exactly the download destination, which a stale
+mailbox word would not do by chance.
