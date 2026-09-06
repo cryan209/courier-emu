@@ -28,6 +28,12 @@ constexpr uint16_t C5X_ROM_WORDS = 0x1000;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
 constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;
 constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
+// SARAM, for the members that have it. SPRU056D puts the 9K part's block at
+// 0x0800-0x2bff in program space when PMST.RAM is set and at the same
+// addresses in data space when PMST.OVLY is set - one physical memory seen
+// from both, which is the whole point of OVLY and why the two spaces cannot
+// be backed by separate storage here.
+constexpr uint16_t C5X_SARAM_FIRST = 0x0800, C5X_SARAM_LAST = 0x2BFF;
 // CNF moves B0 out of data space and into the top of program space.
 constexpr uint16_t C5X_B0_PROGRAM_FIRST = 0xFE00;
 constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
@@ -90,7 +96,7 @@ public:
     // which appears at the bottom of program space only in microcomputer
     // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
     // 0xfe00. Everything else is off-chip or reserved.
-    enum class Region { Rom, Daram, Registers, Reserved, External };
+    enum class Region { Rom, Daram, Saram, Registers, Reserved, External };
 
     struct MemoryMap {
         // Sampled from the pin and the mode bits, so a run can report which
@@ -101,8 +107,8 @@ public:
         // records them so a run reports the board it thinks it is on.
         uint16_t pdwsr, iowsr, cwsr;
         bool rom_present;
-        uint64_t program_rom, program_daram, program_external;
-        uint64_t data_registers, data_daram, data_reserved, data_external;
+        uint64_t program_rom, program_daram, program_saram, program_external;
+        uint64_t data_registers, data_daram, data_saram, data_reserved, data_external;
         // Fetches from on-chip ROM this harness does not have. An XMF carries
         // the downloaded program and nothing else, so in microcomputer mode
         // every one of these is a hole rather than a byte.

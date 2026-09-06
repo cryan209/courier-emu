@@ -222,6 +222,8 @@ C5xCore::Region C5xCore::program_region(uint16_t address) const
     // at the top. The C52 has no SARAM, so PMST.RAM does nothing here.
     if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
     if (m_st1.cnf && address >= C5X_B0_PROGRAM_FIRST) return Region::Daram;
+    if (m_pmst.ram && address >= C5X_SARAM_FIRST && address <= C5X_SARAM_LAST)
+        return Region::Saram;
     return Region::External;
 }
 
@@ -236,8 +238,10 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
         return m_st1.cnf ? Region::Reserved : Region::Daram;
     if (address >= C5X_B1_FIRST && address < C5X_B1_FIRST + C5X_B1_WORDS)
         return Region::Daram;
-    // The C52 has no SARAM, so everything from 0x0800 up is off-chip and the
-    // two gaps below it are reserved. PMST.OVLY is a don't-care on this part.
+    if (m_pmst.ovly && address >= C5X_SARAM_FIRST && address <= C5X_SARAM_LAST)
+        return Region::Saram;
+    // Without SARAM mapped, everything from 0x0800 up is off-chip and the two
+    // gaps below it are reserved.
     if (address >= C5X_DATA_EXTERNAL_FIRST) return Region::External;
     return Region::Reserved;
 }
@@ -254,6 +258,9 @@ uint16_t C5xCore::fetch(uint16_t address)
         if (!m_rom_present) { ++m_map.rom_holes; break; }
         return m_rom[address];
     case Region::Daram: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
+    // SARAM is one memory in both spaces, so a fetch reads what data stores
+    // put there - which is how the firmware's own block moves get executed.
+    case Region::Saram: ++m_map.program_saram; return m_data[address];
     default: ++m_map.program_external; break;
     }
     return m_program[address];
@@ -264,9 +271,12 @@ void C5xCore::CHANGE_PC(uint16_t new_pc) { m_pc = new_pc; }
 uint16_t C5xCore::PM_READ16(uint16_t address) { return fetch(address); }
 void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
 {
-    if (program_region(address) == Region::Rom) {
+    switch (program_region(address)) {
+    case Region::Rom:
         if (m_rom_present) m_rom[address] = value;
         return;
+    case Region::Saram: m_data[address] = value; return;
+    default: break;
     }
     m_program[address] = value;
 }
@@ -275,6 +285,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     switch (data_region(address)) {
     case Region::Registers: ++m_map.data_registers; break;
     case Region::Daram: ++m_map.data_daram; break;
+    case Region::Saram: ++m_map.data_saram; break;
     case Region::Reserved: ++m_map.data_reserved; break;
     default: ++m_map.data_external; break;
     }

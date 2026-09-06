@@ -289,14 +289,14 @@ class NativeC5x:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
 
     def memory_map(self) -> dict[str, Any]:
-        values = (ctypes.c_uint64 * 18)()
+        values = (ctypes.c_uint64 * 20)()
         self.library.courier_c5x_get_memory_map(self.handle, values, len(values))
         names = (
             "mpmc_pin", "mpmc", "ovly", "ram", "cnf", "iptr",
             "pdwsr", "iowsr", "cwsr", "rom_present",
-            "program_rom", "program_daram", "program_external",
-            "data_registers", "data_daram", "data_reserved", "data_external",
-            "rom_holes",
+            "program_rom", "program_daram", "program_saram", "program_external",
+            "data_registers", "data_daram", "data_saram", "data_reserved",
+            "data_external", "rom_holes",
         )
         state: dict[str, Any] = dict(zip(names, map(int, values), strict=True))
         state["rom_present"] = bool(state["rom_present"])
