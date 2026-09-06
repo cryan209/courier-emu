@@ -86,6 +86,66 @@ computation, done in the DSP. That is the strongest indication in this
 repository that the line measurements the supervisor displays are the DSP's
 work rather than the ASIC's.
 
+## The receive side: the DSP's mailbox handler at 0x8387
+
+The CPU-to-DSP direction does not arrive as an `in` instruction - the DSP
+program contains no `in` from any mailbox port. It arrives as memory-mapped
+cells, polled by this handler:
+
+```
+8387  ldp  #000
+8388  setc intm
+8389  calld 80e8, *      ; the guarded host-cell read helper
+838b  lar  ar1, #57      ;   @57, the status latch
+838d  sacl @7d
+838e  bit  15, @7d
+838f  retc ntc           ; bit 15 clear - nothing pending, return
+8391  calld 80e8, *
+8393  lar  ar1, #5e      ;   @5e - the TAG
+8395  sacl @7d
+8397  calld 80e8, *
+8399  lar  ar1, #5f      ;   @5f - the DATA word
+839b  sacl @7a
+839c  lacl #01
+839d  samm @57           ; acknowledge by setting status bit 0
+839e  lacl @7d
+839f  sub  #7f
+83a0  retc gt            ; tag above 0x7f - reject
+83a1  add  #00008468     ; tag - 0x7f + 0x8468 = tag + 0x83e9
+83a3  tblr @7c           ; read the handler address from program memory
+83a4  lacc @7c
+83a5  bacc               ; branch to it
+```
+
+So the protocol on the DSP side is: **bit 15 of the status latch `@57` means a
+message is waiting; the tag is cell `@5e` and the word is cell `@5f`; the DSP
+acknowledges by writing bit 0 to `@57`;** tags above `0x7f` are rejected, and
+the rest index a table.
+
+The arithmetic puts the **table base at program `0x83e9`**, 128 entries running
+to `0x8468`. (`c5x_core.cpp` says "the jump table at program word 8401"; that is
+this table indexed from tag `0x18`.) Reading it back confirms the tags this
+repository already knows from the other side:
+
+| tag | handler | known as |
+|---|---|---|
+| `0x06` | `0x8470` | `STREAM_TAG` - matches "handler 8470 in 3.1.2" |
+| `0x42` | `0xb03a` | `SIMPLE_WRITE_TAG` |
+| `0x45` | `0x860a` | the tag `ATY12` sends |
+| `0x7c` | `0x80e8` | `DETECTOR_TAG` |
+| `0x08` | `0x8212` | - |
+| `0x7b` | `0x7e80` | the DAA identity tag |
+
+Immediately after the dispatch, at `0x83a6`, is the outbound producer a handler
+uses to reply: it compares the ring pointers `@78` (write) and `@79` (read),
+refuses when the ring is within six of full, and appends at `ar0 = #ff60`. That
+is the same ring the sender at `0x83d6` drains.
+
+The two status-latch writes distinguish the directions: `lacl #01 ; samm @57`
+acknowledges a received message, `lacl #02 ; samm @57` at `0x83e5` completes a
+send, and `lacl #04 ; samm @57` after the stream sender is the bit the CPU
+reads as `0x1c` bit 2.
+
 ## Which DSP
 
 The board photo shows a custom marking - `TI DSP 16-912 (C) US ROBOTICS
