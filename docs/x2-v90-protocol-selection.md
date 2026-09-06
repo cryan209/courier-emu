@@ -503,3 +503,78 @@ the result-code layer by the same route; the bitmap only explains, after the
 fact, which precondition was missing. The two vocabularies are for two
 different audiences - `ATI` diagnostics versus the `CONNECT` line - and this
 firmware keeps them completely separate.
+
+## Where the code comes from, and why 6 never appears
+
+The stock DSP builds the field. In `IDSDL302.ROM` (and the identical stock
+capture) the tag-`6b` word is assembled at resident `9106`:
+
+```text
+9106  bf80 806b      lacc  #806b          ; the tag
+9108  bf09 fff6      lar   ar1, #fff6
+910a  1880           lacc  *, 8
+910b  bfb8 0007      and   #0700          ; fff6 bits 2:0 -> word bits 10:8
+910d  907d           sacl  @7d
+...
+9117  bfce 0001      or    #4000
+```
+
+- the field the host reads as `([0b2f] >> 8) & 7` is **`fff6 & 7`**,
+- `fff6`'s only writer anywhere in the four images is `bldd @7d, #fff6`
+  (`9049`, `90d0`, `90fc`, `d77a`) - it is always a copy of `@7d`,
+- and the 4.03 image reads `fff7` here instead. This paragraph is about the
+  stock DSP, which is the one whose host-side arithmetic survives.
+
+### The code generator
+
+Resident `9018..9049` is a run of "assume this failure, then test": each
+`splk @7d,#N` is immediately followed by a conditional branch to the commit
+at `9049`.
+
+| code | set at | test that commits it | string |
+|---:|---|---|---|
+| 7 | `9027` | the `ff2d` downward scan stops less than four words above `ff27` | Channel will not support 3200 baud |
+| 4 | `9032` | `[da15] - [da18]` exceeds `1fe4` | Multiple CODECs in channel |
+| 1 | `9036` | fallthrough - nothing else matched | x2 disabled on local modem |
+| 3 | `9076` | `039f` bit 9 clear | Remote modem is not x2 |
+| 2 | `9081` | `ff18` bit 10 clear | 3200 baud disabled on local modem |
+| 5 | `9087` | `[ff00] & 0c00` is zero | Remote modem is not a Server |
+
+That the codes and the strings belong together is not an assumption. Code 5's
+test is the exact complement of the condition that sets the "Remote modem is
+an x2 server" bit (`ff18` bit 10 **and** `[ff00] & 0c00` nonzero, at `9052`
+in the 4.03 resident): same two operands, opposite outcome. Code 3 turns on
+`039f` bit 9, code 2 on `ff18` bit 10, and code 1 is the default - each
+matching its string's sense. Six independent agreements, on a table nobody
+chose to line up.
+
+### 6 has no producer
+
+Sweeping all four downloaded images of the stock ROM for `splk @7d,#0006`, and
+for any `splk`/`opl` of `0006` into `fff6`, finds nothing. The generator emits
+1, 2, 3, 4, 5 and 7; `d777` sets `@7d` to 8, which the three-bit field
+truncates to 0; and no path produces 6.
+
+So **nothing sets "Incompatible versions"**. It is a string in the table with
+no code that selects it. The most likely reading is a retired test - the entry
+sits between "Remote modem is not a Server" and "Channel will not support
+3200 baud", exactly where a version-compatibility check between two x2 modems
+would belong, and the generator has a hole at that value rather than a
+compacted list. But this image holds no evidence of what that test was.
+
+It is moot in these builds regardless: the `eb 25` at `50c2` jumps over the
+whole lookup, so none of the nine strings is ever printed. `4.03` went
+further and deleted the code generator - its resident has no `splk @7d,#N`
+assignments in this range at all, and the same word position now carries
+`fff7 & 7`.
+
+### One loose end this tightens
+
+The measurement at `da15`, which sets `fff7` bit 6 in the 4.03 resident
+against a threshold of `1d3c`, is the same array and the same difference the
+stock generator tests against `1fe4` to report **"Multiple CODECs in
+channel"**. That is a lead on the bits 6/7/8 tension recorded above - it
+suggests `da15` is a channel-impairment measure rather than the
+high-frequency rolloff the 4.03 string list names - but the two builds
+disagree about which word and which bit it drives, so it settles nothing on
+its own.
