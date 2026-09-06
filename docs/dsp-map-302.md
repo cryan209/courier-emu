@@ -139,19 +139,31 @@ it keeps the same helper in-bank at `0x80e8`. So SARAM is filled by the
 firmware reading its own downloaded program **through data space** and writing
 it into program space.
 
-### The obvious model fix for that is wrong
+### The obvious model fix for that is wrong, and reads are why
 
-`bldp` reads its source from data memory, so `m_data[0x80f5]` has to hold what
-the download put at program `0x80f5`. Making the external RAM answer both
-spaces - routing data accesses in `0x8000`-`0xfeff` to the program storage -
-was tried and **regressed the run**: the DSP went from running across its
-prologue to `idle` with 3991 of 3999 samples parked on the wait at `0x814d`.
-Data writes in that range were landing on program code.
+`bldp` sources from data memory, so `m_data[0x80f5]` has to hold what the
+download put at program `0x80f5`. Making the external RAM answer both spaces
+in `0x8000`-`0xfeff` **regressed the run**: the DSP went from running across
+its prologue to `idle`, 3991 of 3999 samples parked on the wait at `0x814d`.
 
-So the two spaces are not simply the same memory at the same addresses over
-the whole range, and how a data read at `0x80f5` reaches the downloaded image
-is still open. The change was reverted; only the SARAM window from
-`8f34738` remains.
+Narrowing it to a read-only path - data writes still going to their own
+storage, only reads falling back to the program image - regressed it
+identically. So it is the **reads** that wedge the part, not the writes: some
+read in that range must not return program words, and the firmware depends on
+what it currently gets.
+
+Its own direct addressing is consistent with that. Every `ldp` page it uses is
+DARAM `0x00`-`0x07`, SARAM `0x10` and `0x17` - the ring's page - or the ASIC
+window `0x1fe`/`0x1ff`. It has no direct data page in `0x8000`-`0xfeff` at all,
+so whatever reads there is indirect, through an address register.
+
+That leaves a sharp question rather than a vague one: `0x80f5` must read as the
+program image and something else in the same range must not. Finding which
+read changes behaviour - logging data reads in the range with their PC under
+the aliasing build - would say whether the shared window is narrower than
+`0x8000`-`0xfeff`, or whether the ASIC presents the image somewhere else
+entirely. Both changes were reverted; only the SARAM window from `8f34738`
+remains.
 
 ## What this does not establish
 
