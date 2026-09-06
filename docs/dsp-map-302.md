@@ -233,6 +233,68 @@ So the harness's segment origins do not match the link addresses in the code,
 in both directions. Either an origin is wrong, or the DSP's program space
 ignores A15 and every label here is only meaningful modulo `0x8000`.
 
+### The firmware never chooses the mode, and reset lands on the image
+
+Two measurements narrow this.
+
+**MP/MC is never written.** Disassembling all four overlays of both images and
+keeping only writes to `@07` reached with `DP=0` - the memory-mapped `PMST` -
+finds **exactly two in each image, both in the resident, none in any overlay**:
+
+```
+8012  apl  @07, #07f8     ; keep bits 3-10, clear the rest
+8014  opl  @07, #00b0     ; set RAM (4), OVLY (5), IPTR bit 0 (7)
+```
+
+`apl`'s mask preserves bit 3, and `opl`'s does not touch it. Bit 3 is MP/MC.
+So the firmware sets `RAM` and `OVLY` and then **defers entirely to whatever
+the pin latched at reset** - it never selects microprocessor or microcomputer
+mode, in either build. (The pin's name carries a bar over `MC` because it is
+one pin read in two polarities: high is microprocessor mode, low is
+microcomputer mode. There is no second pin.)
+
+Every run in this repository therefore has `MP/MC` set by the harness, not by
+the firmware, and no path reaches microcomputer mode with `PMST.RAM` set: the
+probe kernels that force the pin low write `PMST` as `0x0000`, so `RAM` is
+clear there.
+
+**Nothing is ever downloaded below `0x8000`.** All four overlay origins in both
+images are `0x8000`, `0x9d00`, `0xb000` and `0xdc00`. But a C5x comes out of
+reset fetching from program `0x0000`, and `bridge.py` covers that gap by hand -
+it calls `set_pc(entry_word)` to place the part at `0x8000`. So how the real
+part gets there is unmodelled.
+
+The image says how. Program `0x8000` is not a branch and not a vector table:
+
+```
+8000  ldp   #000
+8001  splk  @57, #ffff
+8003  setc  intm
+8004  ldp   #000
+8005  splk  @2a, #0010
+```
+
+That is straight-line initialisation - exactly what reset should land *on*, not
+what a reset vector points *with*. And it does land on it if external program
+space ignores A15, which is what wiring a 32K-word RAM across a 64K space gives
+you unless something else decodes the top bit. Aliasing external program fetches
+to `address | 0x8000` and starting the part at `0x0000` instead of `0x8000`
+reproduces the boot exactly: the same single prologue pass, the same `rptz`
+repeat counts at the aliased `0x001d`/`0x0024`/`0x0028`, and the same `idle` at
+`0x814d` once a branch to an absolute `0x8xxx` label carries it up.
+
+So the `0x8000` in these addresses is best read as **`0x8000` and `0x0000` being
+the same cell**, which is the second of the two possibilities this section
+raised, and it dissolves the `main211.xmf` problem: a segment placed at origin
+`0x0000` whose code is linked for `0x8000` is not a contradiction on a board
+that decodes fifteen address lines.
+
+**This is not yet modelled.** Implementing the alias would make `main211`'s
+origin-`0x0000` and origin-`0x8000` segments overwrite each other, and which of
+those two is the real payload is the open question at the top of this section.
+The experiment above was run and reverted; the shared *data* window from the
+commit before it is what remains in the core.
+
 The one strand that does not depend on the harness is `dsp_mailbox.py`'s
 constants - the sender at `84b7`/`849e`, the table at `8401`, tag `0x42`'s
 handler at `b05e` - which were taken through the `ATGLK2` monitor on a physical
