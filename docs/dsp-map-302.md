@@ -111,6 +111,48 @@ That contradicts the conclusion in the other note that a ROM needs nothing
 below `0x8000`, which was reached from the overlay entry words alone. Both
 observations are recorded; which is wrong is not resolved here.
 
+## What fills the SARAM
+
+The prologue does, with a block move, and the three words it copies are the
+mailbox helper itself:
+
+```
+80a0  lacc #000023f0
+80a2  samm @1f          ; BMAR = 0x23f0
+80a3  mar  *, ar1
+80a4  lar  ar1, #80f5
+80a6  rpt  #02          ; three words
+80a7  bldp *+           ; data 0x80f5.. -> program at BMAR
+```
+
+and at `0x80f5` in the downloaded image:
+
+```
+80f5  1080  lacc *
+80f6  0880  lamm *
+80f7  ef00  ret
+```
+
+`lacc * / lamm * / ret` is exactly the cell-read helper the dispatcher and the
+resume poll `calld` at `0x23f0` on every pass - and 403 needs no copy because
+it keeps the same helper in-bank at `0x80e8`. So SARAM is filled by the
+firmware reading its own downloaded program **through data space** and writing
+it into program space.
+
+### The obvious model fix for that is wrong
+
+`bldp` reads its source from data memory, so `m_data[0x80f5]` has to hold what
+the download put at program `0x80f5`. Making the external RAM answer both
+spaces - routing data accesses in `0x8000`-`0xfeff` to the program storage -
+was tried and **regressed the run**: the DSP went from running across its
+prologue to `idle` with 3991 of 3999 samples parked on the wait at `0x814d`.
+Data writes in that range were landing on program code.
+
+So the two spaces are not simply the same memory at the same addresses over
+the whole range, and how a data read at `0x80f5` reaches the downloaded image
+is still open. The change was reverted; only the SARAM window from
+`8f34738` remains.
+
 ## What this does not establish
 
 The map is static: every address was read from the image, and only the sender
