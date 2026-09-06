@@ -207,9 +207,30 @@ What that establishes, and what it does not:
   9K-SARAM part from a 3K one dissolves. The code shows *what memory exists*,
   not *which C5x*.
 
+### How much external program memory the downloads imply
+
+The overlay table gives the extent directly, since every one of them is written
+into program space:
+
+| image | span written | words | bytes |
+|---|---|---|---|
+| 302 | `0x8000`-`0xf8b5` | 30902 | 61804 |
+| 403 | `0x8000`-`0xf949` | 31050 | 62100 |
+
+So roughly **31K words - about 62 KB - of writable program memory above
+`0x8000`**, before counting the handlers at `0x23f0` and `0x7e80` below it.
+That is more than the one `ISSI IS61C256AH-15J` in the parts list can hold: a
+32Kx8 part is 32 KB, which is 16K words on a 16-bit program bus, about half of
+what the downloads fill. Either a second such part is on the board - the photo
+does not cover it - or some of this program memory is inside the ASIC, which is
+already the part that "holds the DSP in reset and writes its program RAM".
+`board-parts.md` lists that SRAM without saying whose bus it is on, so nothing
+here settles which.
+
 So the correction to make is the memory map rather than the part number: SARAM
 mapped by `PMST.RAM`/`OVLY` instead of stubbed, and program space above the
-DARAM that is not simply `External`-and-empty. That is a bigger change than
+DARAM that is not simply `External`-and-empty but writable and persistent
+across the whole `0x0800`-`0xffff` range the firmware uses. That is a bigger change than
 anything else in this note and has not been made or tested. None of it comes
 from a part marking - the board photo shows only
 `TI DSP 16-912 (C) US ROBOTICS D17140PQ`.
