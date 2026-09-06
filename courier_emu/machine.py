@@ -1112,13 +1112,7 @@ class CourierMachine:
                     )
                 )
                 for pointer, fallback in serial_callbacks:
-                    if (
-                        (pointer == 0x2A8 or (self._supervisor_23 and pointer == 0x2AA))
-                        and self._terminal_attached
-                    ):
-                        _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
-                        self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
-                    elif bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
+                    if bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
                 if self._terminal_attached:
@@ -1576,7 +1570,7 @@ class CourierMachine:
                 if port in (0x10, 0x12, 0x14) and size == 1:
                     # A closed option switch pulls its latch input bit low.
                     value &= ~self.panel.dip_input(port)
-                if self.uart is not None and port == 0x12 and size == 1:
+                if port == 0x12 and size == 1:
                     # The ROM's latch table maps input selector 3 to port
                     # 0x12. Bit 6 is the active-low DTE DTR input: an
                     # attached terminal pulls it low, which opens the normal
@@ -1592,7 +1586,7 @@ class CourierMachine:
                         value |= STRAP_SENSE_BIT
                     else:
                         value &= ~STRAP_SENSE_BIT
-                if self.uart is not None and port == 0x14 and size == 1:
+                if port == 0x14 and size == 1:
                     # DTR is high while an ordinary terminal remains
                     # attached. The serial-PnP state machine deliberately
                     # looks for a high-to-low strobe followed by RX-ready in
