@@ -183,6 +183,7 @@ class NativeC5x:
         lib.courier_c5x_get_memory_map.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
+        lib.courier_c5x_configure_rom_codec.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_host_write.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
@@ -261,6 +262,9 @@ class NativeC5x:
         result = self.library.courier_c5x_step(self.handle, count, error, len(error))
         if result:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
+
+    def configure_rom_codec(self, enabled: bool = True) -> None:
+        self.library.courier_c5x_configure_rom_codec(self.handle, int(enabled))
 
     def set_io(self, port: int, value: int) -> None:
         self.library.courier_c5x_set_io(self.handle, port, value)

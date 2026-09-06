@@ -354,3 +354,8 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
 }
 
 } // extern "C"
+
+extern "C" void courier_c5x_configure_rom_codec(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->configure_rom_codec(enabled != 0);
+}

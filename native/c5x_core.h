@@ -192,6 +192,7 @@ public:
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
+    void configure_rom_codec(bool enabled) { m_rom_codec = enabled; m_line_frame_period = enabled ? 3472 : 258; }
     void schedule_line_frame_entry(uint16_t address) { m_line_frame_entry = address; }
     void schedule_call_overlay(uint16_t origin, const uint16_t *words,
         std::size_t count, uint16_t entry, const uint16_t *registers,
@@ -268,6 +269,7 @@ private:
     int m_line_frame_irq = -1;
     uint64_t m_line_frame_interrupts = 0;
     uint64_t m_line_frame_next_cycle = 0;
+    bool m_rom_codec = false;
     unsigned m_line_frame_period = 258;
     uint16_t m_line_frame_phase = 0;
     uint32_t m_line_sample_phase = 0;

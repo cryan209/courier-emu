@@ -367,7 +367,9 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     if (port == 0xb2e5 && m_synthetic_line
         && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
         value = m_io[port];
-    m_io[port] = value;
+    if (m_rom_codec && port == 0x57 && !(value & ~3u))
+        m_io[port] &= uint16_t(~value); // mailbox acknowledgement, preserve other flags
+    else m_io[port] = value;
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
     // resident image uses external port 006a at high program addresses. The
@@ -564,7 +566,13 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x20: m_serial.drr = value; return;
     case 0x21:
         m_serial.dxr = value; ++m_serial.dxr_writes;
-        m_serial.last_dxr_pc = uint16_t(m_pc - 1); return;
+        m_serial.last_dxr_pc = uint16_t(m_pc - 1);
+        if (m_rom_codec && (m_pc - 1 == 0x818f || m_pc - 1 == 0x81a0)) {
+            m_line_tx.push_back(value & 0xfffc);
+            if (value & 0xfffc) ++m_line_tx_nonzero;
+            m_line_tx_last_pc = uint16_t(m_pc - 1);
+        }
+        return;
     case 0x22:
         m_serial.spc = value; ++m_serial.spc_writes;
         m_serial.last_spc_pc = uint16_t(m_pc - 1); return;
@@ -731,6 +739,11 @@ void C5xCore::step()
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
         do m_line_frame_next_cycle += m_line_frame_period;
         while (m_cycles >= m_line_frame_next_cycle);
+        if (m_rom_codec) {
+            if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;
+            interrupt(unsigned(m_line_frame_irq));
+            return;
+        }
         // LAMM @52 at the ISR entry masks this ASIC word to two bits and
         // indexes its four phase descriptors. Preserve any board status bits
         // while advancing the slot number supplied by the frame master.

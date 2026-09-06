@@ -612,6 +612,7 @@ class CourierDspBridge:
                "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin").read_bytes()
         if sha256(rom).hexdigest() != "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67":
             raise ValueError("recovered DSP boot ROM checksum mismatch")
+        self.core.configure_rom_codec()
         self.core.load_rom(rom)
         self.core.set_mpmc_pin(0)
         origin, resident = self.image.dsp_program_segments()[0]
@@ -714,7 +715,7 @@ class CourierDspBridge:
         Which operation the seizure is depends on the line, not on this class:
         answering a ringing loop is an answer, and anything else originates.
         """
-        if self.exchange is None:
+        if self.exchange is None and not self.boot_rom_enabled:
             # Without a modeled line the seizure is still the stand-in's: the
             # DAA is driven from the parsed command, and following the relay
             # as well would have the two fight over the same hook.
@@ -1335,7 +1336,7 @@ class CourierDspBridge:
                 and not self.rx_samples
             ):
                 serial = self.core.serial_state()
-                if self._call_overlay_active:
+                if self._call_overlay_active or self.boot_rom_enabled:
                     queued = serial.get("codec_rx_queued", 0) - serial.get(
                         "codec_rx_consumed", 0
                     )
@@ -1396,7 +1397,7 @@ class CourierDspBridge:
                             self._codec_queue_peak, max(abs(sample) for sample in samples)
                         )
                     if (
-                        (self._call_overlay_active or self._call_resume_pending)
+                        (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                         and hasattr(self.core, "queue_codec_rx")
                     ):
                         # Hold the far-end waveform in the ASIC codec FIFO
@@ -1516,7 +1517,7 @@ class CourierDspBridge:
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
             if (
-                (self._call_overlay_active or self._call_resume_pending)
+                (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                 and hasattr(self.core, "queue_codec_rx")
             ):
                 self.core.queue_codec_rx(incoming)
@@ -1598,7 +1599,7 @@ class CourierDspBridge:
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
             if (
-                (self._call_overlay_active or self._call_resume_pending)
+                (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                 and hasattr(self.core, "queue_codec_rx")
             ):
                 # Deliver the peer frame at the line exchange boundary. This
