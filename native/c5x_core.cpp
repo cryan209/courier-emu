@@ -240,6 +240,10 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
         return Region::Daram;
     if (m_pmst.ovly && address >= C5X_SARAM_FIRST && address <= C5X_SARAM_LAST)
         return Region::Saram;
+    // The board's external RAM answers both spaces. See the shared-window
+    // constants in c5x_core.h.
+    if (address >= C5X_SHARED_FIRST && address <= C5X_SHARED_LAST)
+        return Region::Shared;
     // Without SARAM mapped, everything from 0x0800 up is off-chip and the two
     // gaps below it are reserved.
     if (address >= C5X_DATA_EXTERNAL_FIRST) return Region::External;
@@ -282,14 +286,18 @@ void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
 }
 uint16_t C5xCore::DM_READ16(uint16_t address)
 {
-    switch (data_region(address)) {
+    const Region region = data_region(address);
+    switch (region) {
     case Region::Registers: ++m_map.data_registers; break;
     case Region::Daram: ++m_map.data_daram; break;
     case Region::Saram: ++m_map.data_saram; break;
     case Region::Reserved: ++m_map.data_reserved; break;
+    case Region::Shared: ++m_map.data_shared; break;
     default: ++m_map.data_external; break;
     }
-    uint16_t value = address < 0x60 ? cpuregs_r(address) : m_data[address];
+    uint16_t value = address < 0x60 ? cpuregs_r(address)
+                   : region == Region::Shared ? m_program[address]
+                   : m_data[address];
     if (m_trace_data_writes &&
         (address == 0x006f || address == 0x035c || address == 0x069c ||
          address == 0x0b49 || address == 0x039f || address == 0x03c8 || address == 0x03ca)) {
@@ -305,7 +313,9 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
         if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
-    if (address < 0x60) cpuregs_w(address, value); else m_data[address] = value;
+    if (address < 0x60) cpuregs_w(address, value);
+    else if (data_region(address) == Region::Shared) m_program[address] = value;
+    else m_data[address] = value;
     // Which ASIC slot the line datapump's output word lands in. The ISR at
     // 0x0228 keeps a 32-bit phase accumulator in @7c/@7d - 0xfffc/0xfffd at
     // DP 0x1ff - and reading 0xfffd gives that phase, which is a linear ramp

@@ -85,6 +85,14 @@ one instruction repeats 1024, 256 and 128 times. A sampler lands there in
 proportion to the repeat count. It does **not** mean the part is resetting over
 and over: a run creates the core once and bootstraps once.
 
+> **Corrected.** The last sentence is right about the harness and wrong about
+> the part. The harness bootstraps once, but the *firmware* was re-entering its
+> own reset prologue - four passes in 200k instructions, forty in 2M - because
+> the helper copied into `0x23f0` was three zero words. With the shared external
+> window below it now models, the prologue runs once. The `idle` at `0x814d`
+> that this section reads as a failure to reach the loop is where a correctly
+> booted part waits.
+
 ## Two things this map exposes
 
 **The delivery this harness performs cannot work on 302.** `_deliver_host_message`
@@ -139,31 +147,63 @@ it keeps the same helper in-bank at `0x80e8`. So SARAM is filled by the
 firmware reading its own downloaded program **through data space** and writing
 it into program space.
 
-### The obvious model fix for that is wrong, and reads are why
+### The external RAM answers both spaces, and the earlier retraction was wrong
 
-`bldp` sources from data memory, so `m_data[0x80f5]` has to hold what the
-download put at program `0x80f5`. Making the external RAM answer both spaces
-in `0x8000`-`0xfeff` **regressed the run**: the DSP went from running across
-its prologue to `idle`, 3991 of 3999 samples parked on the wait at `0x814d`.
+`bldp` sources from data memory, so a data read of `0x80f5` has to return what
+the download put at program `0x80f5`. An earlier attempt at that reported a
+regression and was reverted; the measurement it asked for has now been taken,
+and it says the opposite.
 
-Narrowing it to a read-only path - data writes still going to their own
-storage, only reads falling back to the program image - regressed it
-identically. So it is the **reads** that wedge the part, not the writes: some
-read in that range must not return program words, and the firmware depends on
-what it currently gets.
+Logging every data access at or above `0x2c00` with its PC, across a 2M
+instruction standalone run of the 302 resident, gives **twenty-five sites and
+no more**:
 
-Its own direct addressing is consistent with that. Every `ldp` page it uses is
-DARAM `0x00`-`0x07`, SARAM `0x10` and `0x17` - the ring's page - or the ASIC
-window `0x1fe`/`0x1ff`. It has no direct data page in `0x8000`-`0xfeff` at all,
-so whatever reads there is indirect, through an address register.
+| PC | addresses | direction |
+|---|---|---|
+| `0x8070`-`0x8081` | `0xfff0`, `0xfff3`, `0xfff4`, `0xfff6`, `0xfff7` | writes |
+| `0x80ac` | `0xff51`-`0xff5f`, sixteen cells | writes |
+| `0x80a7` | `0x80f5`, `0x80f6`, `0x80f7` | **reads** |
+| `0x0bf7`, `0x0bf8` | `0xff60`, `0xff61` | reads |
 
-That leaves a sharp question rather than a vague one: `0x80f5` must read as the
-program image and something else in the same range must not. Finding which
-read changes behaviour - logging data reads in the range with their PC under
-the aliasing build - would say whether the shared window is narrower than
-`0x8000`-`0xfeff`, or whether the ASIC presents the image somewhere else
-entirely. Both changes were reverted; only the SARAM window from `8f34738`
-remains.
+So in `0x8000`-`0xfeff` the firmware performs exactly **three** data accesses,
+all reads, all the `bldp` at `0x80a7`. There is no second read that "must not
+return program words": there is no second read at all. Everything else above
+`0x2c00` is at `0xff51` and up, which is the ASIC window the firmware reaches
+through DP `0x1fe`/`0x1ff` - and that is where the shared window has to stop.
+
+With `0x8000`-`0xfeff` backed by the program storage in both spaces, the
+`bldp` reads `1080 0880 ef00` - `lacc * / lamm * / ret`, the helper this
+document predicted - instead of three zero words, and the part's behaviour
+changes completely:
+
+| | prologue passes in 200k instructions | ending PC | SARAM fetches | external program fetches |
+|---|---|---|---|---|
+| before | 4 | `0x814d` | 1,373,184 | 16,281,745 |
+| after | **1** | `0x814d` | 7,155 | 67,128 |
+
+The "before" column is a runaway. Copying zeros into `0x23f0` makes the
+dispatcher's `calld 23f0` execute nothing, the part falls off into unloaded low
+memory - the 20M-instruction bridge run ends with its PC at `0x0115` - and it
+re-enters its own reset prologue over and over. That, not a healthy run, is
+what the earlier note recorded as "running across its prologue", and reaching
+`idle` at `0x814d` was the improvement it mistook for a regression.
+
+After the change the 302 resident boots **once**, executes its real helper out
+of SARAM, and parks in the `idle` at `0x814d` waiting for an interrupt - which
+is the correct place for a part whose service loop is entered from a frame ISR
+that nothing in the harness yet delivers.
+
+403 is unaffected in both directions: its `data_shared` count is zero and its
+run is identical either way, because it keeps the same helper in-bank at
+`0x80e8` and never reads program space as data. That is the prediction this
+document already made, now measured.
+
+**What is still not settled** is the window's exact edges. The evidence bounds
+them only between `0x80f7` and `0xff50`; `0xfeff` is chosen because the
+firmware's own ASIC pages are `0x1fe`/`0x1ff`, not because a read distinguishes
+`0xfeff` from `0xfe00` or `0xff00`. Nothing in either build reads or writes
+data between `0x8100` and `0xff50`, so no run this harness can perform will
+narrow it further; that needs the board.
 
 ## The 0x8000 in these addresses is not independently established
 

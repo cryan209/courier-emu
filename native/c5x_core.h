@@ -37,6 +37,13 @@ constexpr uint16_t C5X_SARAM_FIRST = 0x0800, C5X_SARAM_LAST = 0x2BFF;
 // CNF moves B0 out of data space and into the top of program space.
 constexpr uint16_t C5X_B0_PROGRAM_FIRST = 0xFE00;
 constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
+// The board's own memory, not the part's. Two 32Kx8 SRAMs give 32K words at
+// program 0x8000-0xffff, and that same RAM answers data space: 302's prologue
+// block-moves its mailbox helper into SARAM with `bldp` from data 0x80f5,
+// which only yields code if a data read there returns the downloaded program.
+// The top page is not RAM - the firmware's ASIC window is DP 0x1fe/0x1ff -
+// so the shared window stops below it. See docs/dsp-map-302.md.
+constexpr uint16_t C5X_SHARED_FIRST = 0x8000, C5X_SHARED_LAST = 0xFEFF;
 
 class C5xCore {
 public:
@@ -96,7 +103,7 @@ public:
     // which appears at the bottom of program space only in microcomputer
     // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
     // 0xfe00. Everything else is off-chip or reserved.
-    enum class Region { Rom, Daram, Saram, Registers, Reserved, External };
+    enum class Region { Rom, Daram, Saram, Registers, Reserved, Shared, External };
 
     struct MemoryMap {
         // Sampled from the pin and the mode bits, so a run can report which
@@ -108,7 +115,7 @@ public:
         uint16_t pdwsr, iowsr, cwsr;
         bool rom_present;
         uint64_t program_rom, program_daram, program_saram, program_external;
-        uint64_t data_registers, data_daram, data_saram, data_reserved, data_external;
+        uint64_t data_registers, data_daram, data_saram, data_reserved, data_shared, data_external;
         // Fetches from on-chip ROM this harness does not have. An XMF carries
         // the downloaded program and nothing else, so in microcomputer mode
         // every one of these is a hole rather than a byte.
