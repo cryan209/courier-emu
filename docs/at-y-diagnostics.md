@@ -287,6 +287,63 @@ values for these ports - `0x58: 0x20`, `0x1C: 0xFD`, `0x60: 0x4B` - and
 events either; a constant idle level is not an event stream, and `0x20` is not
 one of the 36 codes.
 
+## How the detector qualifies, and why the DAA model does not fit this image
+
+Two different things are called "qualified", and they do not measure the same
+quantity.
+
+`CourierDaa.detector_qualified` is a sample count: `qualified_samples >= 5 *
+DAA_FRAME_SAMPLES`, five 100 ms frames of audio accrued while `detector_present`
+holds, zeroed by `seize()` and `release()`. It never inspects a level.
+
+`main211.xmf` counts something else. The wait at `0x1dbee` is
+`cmp byte [0649], 5 / jb`, and the counter at `0x1e442` is driven by the reply
+value in `[0x0285]`:
+
+| `[0x0285]` | Effect on `[0x0649]` |
+|---|---|
+| `0xff` | nothing - the "no reply pending" sentinel |
+| `0` | reset |
+| `1..0x60` | increment - one qualifying hit |
+| `> 0x60` | reset, and increment `[0x064a]` instead |
+
+then `mov word [0285], 0xff` consumes it. So five consecutive polled replies
+whose level lands inside `1..0x60`. The bridge's `DETECTOR_PRESENT_LEVEL = 0x30`
+is correctly in that window; what never happens is the poll, which is what
+`detector_replies: 0` reports.
+
+**`IDSDL302.ROM` does not use that path at all.** It has no `[0x0649]` access
+and no `[0x0285]` level comparison; in this image `[0x0285]` is the ISR status
+word. Its detector counter is `[0x0cc0]`, its wait is at `0xb784`
+(`cmp byte [0cc0], 5 / jb 0xb76f`, with `mov byte [0cc0], 0` arming it at
+`0xb76a`), and the counter is updated by the four-instruction routine at
+`0x14fca`:
+
+```
+14fca  test ah, 1
+14fcd  je   14fd4
+14fcf  inc  byte [0cc0]      ; a qualifying hit
+14fd3  ret
+14fd4  mov  byte [0cc0], 0   ; reset
+```
+
+`AH` there is the high byte of the **data word that accompanies event `0x08`**,
+read at `0x14dd8` from ports `0x5e`/`0x5c` immediately before the call to
+extension entry 8. The two call sites, `0x14df1` and `0x14e05`, are gated on
+`[0x0ea7] & 1` and `[0x0ea6] & 1`.
+
+So this supervisor qualifies its detector from **bit 0 of the high byte of
+event `0x08`'s data word** - five consecutive sets - not from a polled level.
+The 403 board image is the same design with different addresses: counter
+`[0x0b9e]`, the identical `test ah, 1` routine at `0x14fdc`, and the wait at
+`0x0b7c2`.
+
+That puts the requirement squarely back on the channel that currently carries
+nothing. For these images the bridge would have to emit event `0x08` with a
+data word whose high byte has bit 0 set, five times running, before the dial
+can proceed - and the DAA's sample-count model is not a stand-in for it,
+because it is modelling a different supervisor's mechanism.
+
 ## What this does not establish
 
 The 36 event codes are read off the dispatch table; their meanings are not
