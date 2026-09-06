@@ -141,7 +141,7 @@ public:
         uint64_t sample_rate_millihz;
         unsigned frame_period;
         uint64_t secondary_frames, register_writes, register_reads;
-        uint64_t phase_shifts, primary_frames;
+        uint64_t phase_shifts, primary_frames, frames_clocked;
         uint16_t last_control_word;
         bool rate_programmed, secondary_pending, force_secondary;
         bool free_run, high_pass_enabled, loopback, sixteen_bit;
@@ -187,6 +187,10 @@ public:
     void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
+    // The boot table the ASIC clocks into the same serial port before the
+    // codec matters. It is not audio and must not be consumed by a frame sync,
+    // so the ROM loader's DRR polls drain it ahead of the sample stream.
+    void queue_codec_boot(const uint16_t *words, std::size_t count);
     void set_dtmf_digits(const char *digits, std::size_t count);
     void set_v8_calling(bool enabled);
     void set_v8_answering(bool enabled);
@@ -327,14 +331,19 @@ private:
         uint64_t sample_rate_millihz = 0;
         uint64_t secondary_frames = 0, register_writes = 0, register_reads = 0;
         uint64_t phase_shifts = 0, primary_frames = 0;
+        uint64_t frames_clocked = 0;
+        uint64_t secondary_cycle = 0;
         uint16_t last_control_word = 0, readback = 0;
         bool rate_programmed = false, secondary_pending = false;
         bool secondary_now = false, readback_armed = false;
+        bool secondary_due = false, rx_ready = false;
     } m_codec;
+    void codec_frame(bool secondary);
     void codec_transmit(uint16_t word);
     void codec_apply_register(uint16_t word);
     void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
+    std::deque<uint16_t> m_codec_boot;
     std::deque<int16_t> m_v8_rx_window;
     std::deque<uint16_t> m_line_rx;
     uint16_t m_v8_rx_state = 0, m_v8_rx_peak = 0, m_codec_rx_peak = 0;

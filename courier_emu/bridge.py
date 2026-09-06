@@ -1185,7 +1185,7 @@ class CourierDspBridge:
                     words = [int.from_bytes(payload[i:i + 2], "little")
                              for i in range(0, len(payload), 2)]
                     # One trailing word clocks the loader's final comparison.
-                    self.core.queue_codec_rx([self.entry_word, len(words), *words, 0])
+                    self.core.queue_codec_boot([self.entry_word, len(words), *words, 0])
                 else:
                     self.core.set_pc(self.entry_word)
                 self.launched = True

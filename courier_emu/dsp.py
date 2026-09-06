@@ -198,6 +198,9 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
+        lib.courier_c5x_queue_codec_boot.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
+        ]
         lib.courier_c5x_set_dtmf_digits.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t
         ]
@@ -345,6 +348,17 @@ class NativeC5x:
         storage = (ctypes.c_uint16 * len(samples))(*(sample & 0xFFFF for sample in samples))
         self.library.courier_c5x_queue_codec_rx(self.handle, storage, len(storage))
 
+    def queue_codec_boot(self, words: list[int] | tuple[int, ...]) -> None:
+        """Boot-table words the ASIC clocks into the serial port.
+
+        Kept apart from the sample stream because a frame sync must not consume
+        them: the ROM loader polls DRR for them before the codec is programmed.
+        """
+        if not words:
+            return
+        storage = (ctypes.c_uint16 * len(words))(*(word & 0xFFFF for word in words))
+        self.library.courier_c5x_queue_codec_boot(self.handle, storage, len(storage))
+
     def set_dtmf_digits(self, digits: str) -> None:
         encoded = digits.encode("ascii")
         self.library.courier_c5x_set_dtmf_digits(self.handle, encoded, len(encoded))
@@ -449,7 +463,7 @@ class NativeC5x:
     _CODEC_FIELDS = (
         "mclk_hz", "sample_rate_millihz", "frame_period",
         "secondary_frames", "register_writes", "register_reads",
-        "phase_shifts", "primary_frames", "last_control_word",
+        "phase_shifts", "primary_frames", "frames_clocked", "last_control_word",
         "rate_programmed", "secondary_pending", "force_secondary",
         "free_run", "high_pass_enabled", "loopback", "sixteen_bit",
         "input_gain", "output_gain", "monitor_gain", "input_select",
@@ -463,7 +477,7 @@ class NativeC5x:
     OUTPUT_GAIN_DB = (None, 0, -6, -12)
 
     def codec_state(self) -> dict[str, Any]:
-        values = (ctypes.c_uint64 * 30)()
+        values = (ctypes.c_uint64 * 31)()
         self.library.courier_c5x_get_codec_state(self.handle, values, len(values))
         state: dict[str, Any] = {"registers": [int(values[i]) for i in range(9)]}
         for offset, name in enumerate(self._CODEC_FIELDS, start=9):

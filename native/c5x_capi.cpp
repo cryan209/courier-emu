@@ -133,6 +133,11 @@ void courier_c5x_queue_serial_rx(void *handle, const uint16_t *samples, std::siz
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_serial_rx(samples, count);
 }
 
+void courier_c5x_queue_codec_boot(void *handle, const uint16_t *words, std::size_t count)
+{
+    if (handle && words) static_cast<C5xCore *>(handle)->queue_codec_boot(words, count);
+}
+
 void courier_c5x_queue_codec_rx(void *handle, const uint16_t *samples, std::size_t count)
 {
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_codec_rx(samples, count);
@@ -367,7 +372,7 @@ extern "C" void courier_c5x_set_codec_mclk(void *handle, uint32_t hz)
 
 extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 30) return;
+    if (!handle || !values || count < 31) return;
     auto codec = static_cast<C5xCore *>(handle)->codec_state();
     uint64_t result[] = {
         codec.registers[0], codec.registers[1], codec.registers[2],
@@ -375,7 +380,8 @@ extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std:
         codec.registers[6], codec.registers[7], codec.registers[8],
         codec.mclk_hz, codec.sample_rate_millihz, codec.frame_period,
         codec.secondary_frames, codec.register_writes, codec.register_reads,
-        codec.phase_shifts, codec.primary_frames, codec.last_control_word,
+        codec.phase_shifts, codec.primary_frames, codec.frames_clocked,
+        codec.last_control_word,
         codec.rate_programmed, codec.secondary_pending, codec.force_secondary,
         codec.free_run, codec.high_pass_enabled, codec.loopback,
         codec.sixteen_bit, codec.input_gain, codec.output_gain,

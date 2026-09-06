@@ -293,14 +293,46 @@ is not audio, still goes straight to `queue_codec_rx`.
 A 2100 Hz tone carried at 9600 and delivered to a 7200 Hz codec measures
 2100 Hz after conversion, where handing it over unresampled measured 1575.
 
+### The frame clock, per the datasheet
+
+`C5xCore::codec_frame` runs at every frame sync, and it is what the harness did
+without: `DRR` used to be filled lazily when the firmware happened to read it,
+so a run whose receive queue was empty returned the same stale word every frame
+for the whole run.
+
+* **One ADC word per primary frame** - "one word for each primary
+  communication interval", section 2.4. The converter runs whether or not the
+  DSP is listening, and an empty queue is silence on the line, so it delivers a
+  zero rather than repeating the last word.
+* **A secondary frame delivers no sample.** Section 2.4 again: DOUT carries the
+  addressed register when a read was requested and is otherwise all zeros. The
+  register value therefore arrives when the secondary frame sync does, not when
+  the host reads `DRR`.
+* **The secondary frame sync arrives half a frame period after the primary that
+  requested it** - Figure 2-1's note gives `(B/2)` FCLK periods, and since
+  `fs = FCLK/B` that is `fs/2`. It is serviced ahead of the next primary rather
+  than replacing it.
+* `RRDY` now follows a word actually having been clocked in, rather than the
+  harness merely having audio queued.
+
+Measured on the 302 boot: 1911 frame syncs, 1911 samples consumed - one word
+each, exactly - with `DRR` holding live audio instead of a stale zero.
+
+**The boot table is not the sample stream.** The ROM loader polls `DRR` for its
+boot table over the same port, before the codec is programmed, so a frame sync
+consuming those words breaks the download outright - which is what happened the
+first time this was wired up. `queue_codec_boot` keeps them in their own queue,
+drained by the loader's polls and never by a frame.
+
 ### What is still not modelled
 
-`SPC` still reports `XRDY` set whenever `XRST` is set rather than following a
+`SPC` still reports `XRDY` set whenever `XRST` is set rather than following the
 frame clock, so the reset spin at `0x8097` and the `idle` at `0x814c` fall
 through rather than waiting. The gain, high-pass and loopback settings are
-decoded and reported but do not yet alter the samples. The legacy TDM path
-(`m_rom_codec` false) still decimates at a fixed 9600 Hz; it is not the AC01
-path and this change deliberately left it alone.
+decoded and reported but do not yet alter the samples. Phase-shift requests are
+counted and otherwise ignored. The legacy TDM path (`m_rom_codec` false) still
+decimates at a fixed 9600 Hz; it is not the AC01 path and this change
+deliberately left it alone.
 
 ## What this does not establish
 

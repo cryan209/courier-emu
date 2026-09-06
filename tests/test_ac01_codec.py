@@ -102,26 +102,85 @@ def test_secondary_word_addresses_and_readback():
 
     class Image:
         def dsp_program_segments(self):
-            return [(0, bytes.fromhex('2008'))]  # LAMM @20 - read DRR
+            # A loop of LAMM @20, so every instruction reads DRR.
+            return [(0, bytes.fromhex('2008') * 2048)]
 
     core = NativeC5x(Image())
     try:
         core.configure_rom_codec()
-        # Write register 4, then read it back: DS13 set puts the part in read
-        # mode, and DRR returns the contents in the low byte.
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        # Write register 4, then ask for it back: DS13 set puts the part in
+        # read mode, which programs nothing and returns the register on DOUT
+        # during the secondary frame.
         core.host_write(0x21, 0x0003)
         core.host_write(0x21, 0x0409)
         assert core.codec_state()['registers'][4] == 0x09
         core.host_write(0x21, 0x0003)
         core.host_write(0x21, 0x2400)  # DS13 | address 4
         assert core.codec_state()['register_reads'] == 1
-        core.step(1)
-        assert core.state()['acc'] == 0x09
+        # The value arrives when the secondary frame sync does, half a frame
+        # period later - not on whatever instruction happens to read DRR.
+        for _ in range(4000):
+            core.step(1)
+            if core.state()['acc'] == 0x09:
+                break
+        else:
+            raise AssertionError('the secondary frame never delivered the register')
         # A no-op secondary (register 0) programs nothing.
         writes = core.codec_state()['register_writes']
         core.host_write(0x21, 0x0003)
         core.host_write(0x21, 0x0055)
         assert core.codec_state()['register_writes'] == writes
+    finally:
+        core.close()
+
+
+def test_every_primary_frame_clocks_one_adc_word():
+    """The ADC converts whether or not the DSP is listening.
+
+    Before this, DRR was filled lazily when the firmware happened to read it,
+    so a run whose queue was empty saw the same stale word every frame.
+    """
+    from courier_emu.dsp import NativeC5x
+
+    class Image:
+        def dsp_program_segments(self):
+            return [(0, bytes.fromhex('8beb') * 2048)]  # NOP
+
+    core = NativeC5x(Image())
+    try:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.queue_codec_rx([1000] * 500)
+        core.step(20_000)
+        codec = core.codec_state()
+        serial = core.serial_state()
+        # One word per frame, and the DSP never read DRR at all.
+        assert codec['frames_clocked'] > 0
+        assert serial['codec_rx_consumed'] == codec['frames_clocked']
+        assert serial['drr_reads'] == 0
+        assert serial['drr'] == 1000
+    finally:
+        core.close()
+
+
+def test_boot_words_are_not_consumed_by_a_frame_sync():
+    """The ROM loader's table shares the port but is not the sample stream."""
+    from courier_emu.dsp import NativeC5x
+
+    class Image:
+        def dsp_program_segments(self):
+            return [(0, bytes.fromhex('8beb') * 2048)]
+
+    core = NativeC5x(Image())
+    try:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.queue_codec_boot([0x1234] * 8)
+        core.step(20_000)  # many frame syncs pass
+        # The boot words are still there for the loader to poll.
+        assert core.codec_state()['frames_clocked'] > 4
+        assert core.serial_state()['codec_rx_consumed'] == 0
     finally:
         core.close()
 

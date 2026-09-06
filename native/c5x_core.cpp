@@ -78,6 +78,7 @@ void C5xCore::reset()
     // Both wait-state registers come out of reset at maximum.
     m_pdwsr = m_iowsr = 0xffff; m_cwsr = 0x000e;
     m_codec_rx.clear();
+    m_codec_boot.clear();
     m_line_rx.clear();
     m_line_tx.clear();
     m_line_rx_consumed = m_line_tx_nonzero = 0;
@@ -237,7 +238,14 @@ void C5xCore::codec_transmit(uint16_t word)
     }
     ++m_codec.primary_frames;
     switch (word & 3) {
-    case 3: m_codec.secondary_now = true; break;
+    case 3:
+        m_codec.secondary_now = true;
+        // Half a frame period after this one - (B/2) FCLK periods, which is
+        // B/2 divided by FCLK = fs/2. Scheduled from now rather than from the
+        // frame boundary, since the DSP writes DXR from inside the ISR.
+        m_codec.secondary_due = true;
+        m_codec.secondary_cycle = m_cycles + m_line_frame_period / 2;
+        break;
     case 1: case 2: ++m_codec.phase_shifts; break;
     default: break;
     }
@@ -247,6 +255,41 @@ void C5xCore::codec_transmit(uint16_t word)
     m_line_tx.push_back(sample);
     if (sample) ++m_line_tx_nonzero;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
+}
+
+// One frame sync: the codec clocks a word each way, whether or not the DSP has
+// anything to say. This is the part of the model the harness did without - DRR
+// used to be filled lazily when the firmware happened to read it, so a run
+// whose receive queue was empty returned the same stale word every frame.
+void C5xCore::codec_frame(bool secondary)
+{
+    if (secondary) {
+        // Datasheet 2.4: during secondary communications DOUT carries the
+        // addressed register when a read was requested, and is otherwise zero.
+        // Either way no conversion result is delivered, so the ADC stream is
+        // one word per *primary* frame.
+        m_serial.drr = m_codec.readback_armed ? m_codec.readback : 0;
+        m_codec.readback_armed = false;
+        m_codec.rx_ready = true;
+        return;
+    }
+    // The ADC converts whether or not the line is doing anything. An empty
+    // queue is silence on the line, which is a delivered zero, not a repeat.
+    uint16_t sample = 0;
+    if (!m_codec_rx.empty()) {
+        sample = m_codec_rx.front();
+        m_codec_rx.pop_front();
+        ++m_serial.rx_consumed;
+        m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,
+            uint16_t(std::abs(int(int16_t(sample)))));
+    }
+    ++m_codec.frames_clocked;
+    m_serial.drr = sample;
+    m_codec.rx_ready = true;
+    // Feed the same word to the V.8 tone detector the harness runs alongside
+    // the firmware, which previously only saw samples on the legacy TDM path.
+    m_v8_rx_window.push_back(int16_t(sample));
+    if (m_v8_rx_window.size() > 960) m_v8_rx_window.pop_front();
 }
 
 C5xCore::CodecState C5xCore::codec_state() const
@@ -262,6 +305,7 @@ C5xCore::CodecState C5xCore::codec_state() const
     out.register_reads = m_codec.register_reads;
     out.phase_shifts = m_codec.phase_shifts;
     out.primary_frames = m_codec.primary_frames;
+    out.frames_clocked = m_codec.frames_clocked;
     out.last_control_word = m_codec.last_control_word;
     out.rate_programmed = m_codec.rate_programmed;
     out.secondary_pending = m_codec.secondary_now;
@@ -299,6 +343,11 @@ void C5xCore::queue_codec_rx(const uint16_t *samples, std::size_t count)
         m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,
             uint16_t(std::abs(int16_t(samples[index]))));
     }
+}
+void C5xCore::queue_codec_boot(const uint16_t *words, std::size_t count)
+{
+    for (std::size_t index = 0; index < count; ++index)
+        m_codec_boot.push_back(words[index]);
 }
 void C5xCore::set_dtmf_digits(const char *digits, std::size_t count)
 {
@@ -615,9 +664,20 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     case 0x1e: return m_cbcr; case 0x1f: return m_bmar;
     case 0x20:
         ++m_serial.drr_reads; m_serial.last_drr_pc = uint16_t(m_pc - 1);
+        if (m_rom_codec) {
+            if (!m_codec_boot.empty()) {
+                // The ROM boot loader polling its table. This is the ASIC
+                // clocking words in, not a conversion result.
+                m_serial.drr = m_codec_boot.front();
+                m_codec_boot.pop_front();
+                ++m_serial.rx_consumed;
+                return m_serial.drr;
+            }
+            // The frame clock loaded this; reading it only clears RRDY.
+            m_codec.rx_ready = false;
+            return m_serial.drr;
+        }
         if (m_codec.readback_armed) {
-            // A secondary read returns the register in the low byte with the
-            // high byte zero, and consumes no ADC sample.
             m_codec.readback_armed = false;
             m_serial.drr = m_codec.readback;
             return m_serial.drr;
@@ -636,7 +696,12 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         // this core does not run.
         uint16_t value = m_serial.spc & uint16_t(~(SPC_XRDY | SPC_RRDY));
         if (m_serial.spc & SPC_XRST) value |= SPC_XRDY;
-        if ((m_serial.spc & SPC_RRST) && !m_codec_rx.empty()) value |= SPC_RRDY;
+        // On the AC01 path a word is receivable once a frame sync has clocked
+        // one in, not merely because the harness has audio queued.
+        const bool ready = m_rom_codec
+            ? (m_codec.rx_ready || !m_codec_boot.empty())
+            : !m_codec_rx.empty();
+        if ((m_serial.spc & SPC_RRST) && ready) value |= SPC_RRDY;
         return value;
     }
     case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
@@ -862,10 +927,23 @@ void C5xCore::step()
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
     // must come from elapsed C5x cycles rather than from observing an OUT.
+    // The AC01's own frame sequence. A secondary frame sync arrives (B/2) FCLK
+    // periods after the primary that requested it (datasheet Figure 2-1, note),
+    // and since fs = FCLK/B that is exactly half a frame - so it is serviced
+    // ahead of the next primary rather than replacing it.
+    if (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due
+        && m_cycles >= m_codec.secondary_cycle) {
+        m_codec.secondary_due = false;
+        codec_frame(true);
+        if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;
+        interrupt(unsigned(m_line_frame_irq));
+        return;
+    }
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
         do m_line_frame_next_cycle += m_line_frame_period;
         while (m_cycles >= m_line_frame_next_cycle);
         if (m_rom_codec) {
+            codec_frame(false);
             if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;
             interrupt(unsigned(m_line_frame_irq));
             return;
