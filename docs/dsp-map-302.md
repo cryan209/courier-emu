@@ -312,58 +312,53 @@ the two possibilities this section raised, and it would dissolve the
 `main211.xmf` problem: a segment placed at origin `0x0000` whose code is linked
 for `0x8000` is no contradiction on a board that decodes fifteen address lines.
 
-### But the vector base does not fit it, and that points the other way
+### The vector base is what argues against it, not the RAM
 
-Two further checks cut against a bare alias.
+An earlier revision of this section claimed the alias was disproved because
+program `0x23f0` would then be the same cell as `0xa3f0`, which is live code in
+both builds. **That argument is wrong.** `program_region` tests SARAM before
+external, and `PMST.RAM` is set, so `0x23f0` is on-chip whichever way A15
+decodes: an aliased external RAM is never consulted there. The alias survives
+that test untouched.
 
-**`0x23f0` is on-chip, not aliased RAM.** If external program space ignored A15,
-program `0x23f0` would be the same cell as `0xa3f0` - and `0xa3f0` is ordinary
-mid-routine code in both builds, and *different* code in each:
+The sizing objection does not land either. Two 32Kx8 SRAMs are 32K **words**,
+and the C5x addresses 64K words, so the RAM covers *half* the space however it
+is decoded. The bottom half is empty unless something aliases into it, and a 2K
+on-chip ROM at `0x0000`-`0x07FF` therefore shadows nothing and wastes nothing.
 
-```
-302   a3f0  ef08       retc neq            403   a3f0  7a80 a4ae  call a4ae
-      a3f1  7a80 adf0  call adf0                 a3f2  7a80 8766  call 8766
-```
+What does argue against the alias is the vector base, and it comes out of the
+same `opl` this document has been reading:
 
-The prologue's three-word `bldp` into `BMAR = 0x23f0` would overwrite that,
-destroying a live routine, and both images would have to leave a three-word
-hole there by coincidence. They do not. So `0x23f0` is SARAM, `PMST.RAM` really
-is set, and the core's PMST field layout - `RAM` bit 4, `OVLY` bit 5 - is the
-one the firmware is written against.
-
-**Which forces bit 7 to be IPTR's LSB, and that breaks the alias.** `opl
-#00b0` sets it, so `IPTR = 1` and hardware vectoring puts the vector base at
-`0x0080`. Under the alias `0x0080` is image `0x8080` - and `0x8080` is prologue
-code, `splk *, #32d6`, not a vector table. Without the alias `0x0080` is
-external RAM that no download ever writes. Neither is a place vectors can live.
-
-Note what the harness does about that: `_configure_frame_interrupt` overrides
-hardware vectoring entirely, arming IRQ 5 at `origin + 0x0c` = `0x800c`. The
-core takes that override before consulting `IPTR`:
+* The core's PMST layout is confirmed **behaviourally**, not from the guide
+  alone: `RAM` must be bit 4 and `OVLY` bit 5, because `opl #00b0` has to map
+  SARAM for the `bldp` into `0x23f0` to produce a helper, and the 302 boot only
+  completes when it does. A layout placing those bits elsewhere leaves SARAM
+  unmapped and reproduces the broken run.
+* That same layout makes bit 7 `IPTR`'s LSB. `opl #00b0` sets it, so
+  `IPTR = 1` and the vector base is `0x0080`. The frame interrupt, IRQ 5, would
+  vector to `0x0080 + (5 + 1) * 2` = `0x008c`.
+* Under the alias `0x008c` is image `0x808c`, which is
 
 ```
-m_pc = vector != 0xffff ? vector : uint16_t((m_pmst.iptr << 7) | ((irq + 1) << 1));
+808b  b9f8       lacl  #f8
+808c  8832       samm  @32      ; TSPC - live prologue code
 ```
 
-So "the resident bank's vectors are at its own base" is the harness's
-assumption, not something the part's own `PMST` supports. The firmware asks for
-`0x0080`.
+  and the prologue enables interrupts at `0x809f`, thirty-odd words later. The
+  part would be enabling interrupts whose vectors sit on top of the
+  instructions it is executing.
 
-**The reading that fits all of it is microcomputer mode.** With `MP/MC = 0`,
-program `0x0000`-`0x07FF` is on-chip ROM: reset lands in a mask ROM that boots
-and enters the downloaded bank, and `0x0080` is a ROM vector table dispatching
-into fixed addresses in it. That accounts for the vector base the firmware
-selects, for the entry at `0x8000` being straight-line code that something else
-jumps to, for nothing ever being downloaded below `0x8000`, and for a
-USR-custom-marked TI part being a mask-ROM part. It also fits the board: the
-`MP/MC` pin appears unwired, and unwired is the microcomputer end.
+So `0x0080`-`0x00bf` has to be memory that is *not* the aliased RAM. On-chip
+ROM is what the C5x puts there, in microcomputer mode, and a ROM vector table
+dispatching into fixed addresses in the downloaded bank would explain the frame
+ISR entry at `0x816b` that this document could only infer from its position.
 
-**None of this is modelled, and one strand of it is now doubtful.** The A15
-experiment above really does reproduce the boot, so it cannot be dismissed - but
-it explains reset only, and it contradicts both the vector base and `0x23f0`.
-The competing account needs an on-chip ROM image this repository does not have.
-What would separate them is a single measurement on the board: whether `MP/MC`
-is tied high, tied low, or floating, and whether A15 reaches the SRAMs at all.
+**Neither reading is complete.** The alias reproduces reset exactly and needs no
+ROM image; microcomputer mode explains the vector base and the entry at
+`0x8000` being straight-line code, but needs a mask ROM this repository does not
+have. They disagree about one thing only - what answers program
+`0x0000`-`0x07ff` - and a continuity check on the board would settle it:
+whether A15 reaches the SRAMs, and whether `MP/MC` is tied, floating, or pulled.
 Only the shared *data* window is in the core; the alias was reverted.
 
 The one strand that does not depend on the harness is `dsp_mailbox.py`'s
