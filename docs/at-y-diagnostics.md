@@ -182,25 +182,67 @@ immediately.
 
 `ATY4` needs something different - not channel 2, but a source of
 call-progress events on the already-working channel 1, drawn from the 36
-codes above.
+codes above, delivered as values below `0x76` rather than the `0xff` the port
+currently returns.
+
+## What ATY4 prints, established by injection
+
+Channel 1 is live but carries nothing usable: the active `in al, 0x58` site is
+file `0xf490`, and across a whole `ATY4` dial it reads `0xff` on all 5596
+invocations. The very next instruction is the rejection:
+
+```
+in  al, 0x58
+cmp al, 0x76
+jb  dispatch
+jmp skip            ; 0xff is discarded here
+```
+
+Event codes must be below `0x76`, so a floating `0xff` bus is rejected before
+`call [0x298]` ever runs. That, not a missing display, is why nothing prints.
+
+Forcing `AL` to a table event code at `0xf492` - and only while
+`[0x298] == 0x5782`, since the vector is otherwise the idle state `0x0150` -
+produces the row:
+
+```
+\r\nCALL PROGRESS\r\n00  
+```
+
+and the execution hook shows `0x94f13` running, with `AL = 0x00`. **`0x14f13`
+is the `ATY4` row printer**, and it is reachable; an earlier revision of this
+document wrongly called it dead on the strength of a static scan that found no
+caller. Its body prints the event byte through `0x8000:0x9da6`, which lands on
+`aam 0x0a` at `0x9dbd` and emits **two decimal digits**, then two spaces.
+
+So an `ATY4` row is a run of call-progress **event codes in decimal**, two
+digits each - the shape of a reported hardware line such as
+`00 00 02 08 07`, whose values are codes `0, 0, 2, 8, 7`, not signal levels.
+
+Only one row appears per injection run because the first table event, `0x83`,
+dispatches to file `0x14bbe`, which sets `[0x298] = 0x150` and returns the
+machine to idle. Feeding a sequence that avoids `0x83` keeps the vector out of
+`0x5782` entirely and prints nothing, so a plausible ordered event sequence -
+not an arbitrary one - is what a model has to supply.
 
 ## What this does not establish
 
-The `ATY4` row printer itself is still unlocated. `0x14f13` emits a CRLF and a
-two-space row indent under the `[0x0608]` gate, and the cadence detector beside
-it at `0x14f31` compares `[0x0bda]` and `[0x0bde]` against threshold pairs at
-`[0x081d..0x0823]`, but hooking execution over `0x94e20..0x94fc0` for a whole
-`ATY4` dial records **zero** instructions there, and no reference to it exists
-by near call, far call, or as a table word at its segment-`0x8f43` offset
-`0x5ae3`. It may be unreachable in this build. Of the six `[0x0608]` gates,
-only the banner at `0x8bf2d` executes offline; the three in the `0x49xxx`
-`ATG` monitor extension echo characters rather than levels.
+The 36 event codes are read off the dispatch table; their meanings are not
+known, and no mapping from a line condition to a code has been demonstrated.
+The injection above proves the display path works when fed, not that any
+particular value is what real hardware would send. Nothing here identifies the
+`AH=0x45` / `AL=0x3f` operation behind the `ATY12` queue, or the units of the
+values in its buffer.
 
-Nothing here identifies the `AH=0x45` / `AL=0x3f` operation on the far side of
-the queue, the meaning of the 36 event codes, or the units of any printed
-value. The mapping from an event code to a row like `00 00 02 08 07` is
-inferred from the table's contents, not observed.
+The remaining two unreferenced gates, `0x48e32` and `0x491b9`, still have no
+discoverable caller and did not execute in any run; both are in the `ATG`
+monitor extension and echo characters rather than event codes. `0x491a5`, the
+third extension gate, is called from `0x49202`, a helper that waits on
+`[0x02cf]` and translates a nibble through the DTMF table `"0123456789#*ABCD"`
+at `0x49209` - so under `ATY4` the extension echoes received DTMF digits as
+well.
 
-The command table was measured on `IDSDL302.ROM`. The 403 board image produces
-the same `CALL PROGRESS` behaviour for `ATY4DT`, but its `ATY` handler bytes
-were not located, so the two builds are not shown to implement `Y` alike.
+The command table was measured on `IDSDL302.ROM`. The 403 board image holds the
+same six gates against `[0x0500]` rather than `[0x0608]` - `0x02984`, `0x0bf79`,
+`0x14f25`, `0x4960a`, `0x4a1c4`, `0x4a1d8` - with the mode byte stored at
+`0x262d1`, so the two builds are structurally alike but not address-compatible.
