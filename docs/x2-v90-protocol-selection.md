@@ -286,6 +286,82 @@ dictionary, is established.
 
 What is now closed: the host does not receive a diagnostic code. It receives
 `fff7`, and both firmware generations turn it into text purely by bit
-position. What remains open is the DSP-side writer for each individual bit;
-`fff7`'s ten OR sites are known but not yet each tied to the test that sets
-them.
+position. The next section pairs each bit with the DSP test that sets it.
+
+## Which DSP test sets each `fff7` bit
+
+Every bit is set by exactly one `opl` site, and all ten are in the resident
+bank. Scanning the four downloaded images for the immediate `fff7` separates
+the address uses (`lar ar1,#fff7` followed by an `opl`/`lacc`) from the sites
+where `fff7` is merely a mask constant (`apl @6f,#fff7` and friends, which
+are unrelated). What remains is one writer per mask, four readers, and one
+clear:
+
+| bit | mask | writer | guard | tests |
+|---:|---|---|---|---|
+| 0 | `0001` | `8d37` | none | host tag `70` - the x2 setup command itself |
+| 1 | `0002` | `d5a4` | `retc neq` at `d5a0` | `(@7a & 0x00ff) >> 4 == 2` |
+| 2 | `0004` | `d571` | `retc ntc` at `d56e` | bit 13 of `@70`, after `call d876` |
+| 3 | `0008` | `d62c` | branches at `d613`..`d624` | field `0d` of `fea1` and of `fedd` both present, `fedd`'s bit 8 set, and `(value & 0x60) == 0x60` |
+| 4 | `0010` | `d763` | `xc 2, gt` | a summed-difference measurement over the `02a4` buffer, scaled by `2d00`, is positive |
+| 5 | `0020` | `9028` | `retc lt` at `9025` | the first nonzero entry scanning `ff2d` downwards is at least four words above `ff27` |
+| 6 | `0040` | `9683` | `xc 2, lt` | `[da15] - [da18]` is below `1d3c` (below `1542` when `@63` is nonzero) |
+| 7 | `0080` | `8dae` | branches at `8da2`/`8da8` | `@1f` bit 1 set **and** `fff4` bit 14 clear |
+| 8 | `0100` | `968f` | `xc 2, lt` | the same measurement as bit 6, against a threshold `0e9e` lower |
+| 9 | `0200` | `9052` | branches at `904a`/`904e` | `ff18` bit 10 set **and** `[ff00] & 0x0c00` nonzero |
+
+`fff7` is cleared once, at reset: `8074 lar ar1,#fff7 / 8076 sach *` in the
+initialisation run that also clears `fff3`, `fff4` and `fff8`. Nothing clears
+it again, so the bits are cumulative for the life of a call - which is what a
+progress bitmap has to be for "the first condition not reached" to mean
+anything.
+
+The four readers are the report path and one internal use: overlay 6 `a5af`
+and overlay 8 `e205`/`e2a2` load the word and queue it behind tag `0x75`
+(this is the transfer the previous section describes), and resident `90cd`
+folds `fff7`'s bits `0..2` into a different status word alongside `ff00`.
+
+### Two observations that fall out of the addresses
+
+**The overlays cannot reach these tests.** Overlay 6 occupies `9d00..ce32`,
+overlay 7 `b000..cd4a` and overlay 8 `dc00..f94a`. Every one of the ten
+writers is at `8d37..968f` or `d571..d763`, so none of them is in space any
+overlay overwrites. The condition bitmap is built entirely by resident code
+and merely *reported* by whichever overlay is loaded, which is why the same
+three report sites appear in two different overlays.
+
+**Bits 6 and 8 are one graded measurement, and that is why bit 8 has no
+string.** They are set 12 words apart from the same value, against two
+thresholds `0e9e` apart - the shape of a "good / merely acceptable" channel
+grading, not two independent conditions. The host's `and ax,02ff` drops
+exactly bit 8 and nothing else. A nine-entry failure table has no room for
+the second grade, so the finer bit is masked off before the scan. Firmware
+2.3.31, which prints a line per bit instead of one string, keeps both: its
+bits 6 and 7 are "High frequency rolloff is normal" and "...is marginal".
+
+### What this does and does not name
+
+The pairing of bit to string is fixed by the host table (index = bit
+position), so the tests above are pinned to the capture ROM's own wording:
+bit 1 to "x2 disabled on local modem", bit 3 to "Remote modem is not x2", bit
+5 to "Remote modem is not a Server", bit 9 to "Channel is x2-capable but
+feature not installed", and so on. Under the same-image reading, a set bit is
+a condition **reached**, and the reported string names the first one that was
+not - which is consistent with bit 0 being set by the x2 setup command itself
+and index 0 reading "Unspecified impairment", i.e. x2 was never started.
+
+Firmware 2.3.31 confirms that polarity on the bits it did not renumber: its
+bit 1 is "V.90 enabled on local modem" against the capture ROM's "x2 disabled
+on local modem", an exact complement. It does not confirm the others - its
+bits 4 and 5 are "Remote modem supports x2" and "Channel supports x2/V.90",
+which do not complement the capture ROM's bits 4 and 5. The renumbering
+between the two generations is real, so each image must be read against its
+own table.
+
+What is **not** established is an independent name for each test. The
+guards above are what the code does - a field comparison, a buffer scan
+length, a scaled sum against a threshold - not a demonstration that, say,
+`[da15] - [da18]` is a high-frequency rolloff measurement. Confirming that
+would need either a trace with known line conditions or the x2
+specification. The claim here is narrower and complete: which test sets which
+bit, and therefore which test each diagnostic string is reporting on.
