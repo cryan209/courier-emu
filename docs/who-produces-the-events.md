@@ -266,6 +266,33 @@ is.** `_configure_frame_interrupt` arms one only for a supervisor at offset
 `0x17BB0` or a bootstrap matching the TDM ISR signature; neither applies to
 these flash images, so nothing wakes the part.
 
+### Which interrupt, and why arming it is not enough
+
+Firing each candidate at the core and watching its state answers the first
+half. **IRQ 5** wakes it - `idle` goes false - and IRQ 6 and IRQ 4 leave it
+parked exactly as before. That matches the one the harness already arms for
+the XMF build, `configure_line_frame_interrupt(5, 0x0206)`, and it matches the
+waiting routine: the ISR that clears `@6b` is at `0x8188`, ends in `rete`, and
+reads `@6b`, compares it to 3, and zeroes it - which is what releases the
+`idle` loop at `0x813b`.
+
+But the woken core does not reach the service loop. Its PC goes to program
+`0x000c` and stays there, because **the low program block is not loaded**:
+
+```
+courier-board.rom   origin 8000 words 28327
+main211.xmf         origin 0000 words 30170 | origin de83 words 2478 | origin 8000 words 23024
+```
+
+An update payload carries a segment at origin `0x0000`; a flash image, as this
+harness slices it, carries only the `0x8000` bank. The C5x fetches its vectors
+from low program memory, so IRQ 5 vectors into memory that was never
+populated and the core runs away instead of servicing anything.
+
+Nothing at program `0x8000..0x803f` looks like a vector table either - no slot
+holds a `bd` - so the vectors are not simply relocated into the resident bank
+by `IPTR`; they are in the block this configuration does not have.
+
 An earlier revision of this note read a jump in `@57` and ring-pointer write
 counts after the tag-`0x45` delivery as the handler running. That was wrong:
 those counts are the DSP's own periodic work, and `039e = 0000` shows no
