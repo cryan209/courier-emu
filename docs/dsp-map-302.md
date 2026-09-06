@@ -386,13 +386,82 @@ repository already measured, without needing anything new:
   owns nor writes - consistent with the measurement above finding no vector
   writes at all.
 
+### A15 is not wired, and that decides the decode without deciding the mode
+
+Read off the board: **the DSP's A15 goes nowhere.** It cannot be an address
+input to a 32Kx8 part in any case - those have fifteen address pins - and it is
+not in the chip-select decode either. So nothing distinguishes external
+`0x0000`-`0x7fff` from `0x8000`-`0xffff`: the 32K-word RAM answers both as the
+same cells, in whichever spaces its `/CE` admits. The alias is a fact about the
+board, not a hypothesis.
+
+What that does **not** settle is `MP/MC`, and the reason is that the alias turns
+out to be invisible almost everywhere the firmware goes. Across a 20M
+instruction bridge run of 302 plus the V.34, FSK and VPCM probe runs, there are
+**no data accesses at all in `0x2c00`-`0x7fff`** - the range where a data-side
+alias would show - so the whole low half of data space is unreferenced, and the
+shared window this core models at `0x8000`-`0xfeff` covers every access there
+actually is.
+
+### Where the alias is not invisible: the vectors, and the part runs away there
+
+The same instrumentation counts external *program* fetches below `0x8000`, and
+finds 2,524 of them, contiguous, **starting at `0x0088`**.
+
+`0x0088` is not arbitrary. With `IPTR = 1` the vector base is `0x0080`, and the
+C5x lays its vectors out two words apart from there:
+
+| IFR bit | interrupt | vector |
+|---|---|---|
+| 3 | `TINT`, the timer | **`0x0088`** |
+| 5 | `XINT` | `0x008c` |
+
+So the **timer interrupt is being taken and hardware-vectored to `0x0088`**,
+where it finds nothing, and the part then runs contiguously up through empty
+program memory until it reaches `0x8000` and re-enters its own reset prologue.
+That is the mechanism behind a discrepancy this document had not explained: the
+`bldp` at `0x80a7` executes **40 times** in a bridge run while the standalone
+run executes it once. The DSP is restarting forty times, and the timer vector is
+why.
+
+Note also that `XINT` at `0x008c` is the same slot `_configure_frame_interrupt`
+arms by hand at `origin + 0x0c` = `0x800c`. The harness installs an explicit
+vector for the one interrupt it cares about and leaves the rest to hardware
+vectoring, which is why only the timer runs away.
+
+This corrects a claim made earlier in this section. Hardware-vectored
+interrupts **are** observed on this firmware; `0x0080` is not merely read off
+`PMST`. And it sharpens what the vector table needs to be, now that A15 is
+known: under the alias `0x0088` is image `0x8088`, which is
+
+```
+8088  7718  dmov @18
+```
+
+live prologue code, not a vector. So `0x0080`-`0x00bf` cannot be the aliased
+RAM either way, and the only thing the C5x can put there is **on-chip ROM, in
+microcomputer mode** - which is also where the boot loader lives, and which is
+consistent with `MP/MC` being unwired.
+
+That makes one coherent account of the whole board:
+
+* `MP/MC` unwired, so microcomputer mode; on-chip ROM at `0x0000`-`0x07ff`
+  holds the boot loader **and** the vector table the firmware points at with
+  `IPTR = 1`.
+* The boot loader transfers the supervisor's block from data memory to program
+  `0x8000` and releases control to it, which is why `0x8000` is straight-line
+  init with no branch and why nothing is ever downloaded below it.
+* `PMST.RAM` maps SARAM at `0x0800`-`0x2bff`, holding the mailbox helper the
+  prologue's `bldp` writes to `0x23f0`.
+* The external RAM is 32K words with A15 unwired, so it answers `0x2c00`-`0x7fff`
+  and `0x8000`-`0xffff` as one memory, in both spaces - and since the firmware
+  references only `0x8000` and up, the aliasing never shows.
+
 **What still keeps this open.** The boot loader is optional and its ROM is mask
 programmed, so its presence on a USR-marked part is not established here, and
-this repository has no image of it. And one caution about the vector base
-argument in either direction: **no hardware-vectored interrupt has ever been
-observed on this firmware.** `_configure_frame_interrupt` installs an explicit
-vector and the core takes that override before consulting `IPTR`, so `0x0080`
-is read off `PMST`, not off a jump anyone has watched the part take.
+this repository has no image of it. The vector-base caution this paragraph
+used to carry - that no hardware-vectored interrupt had ever been observed -
+is withdrawn above: the timer is vectored to `0x0088` on every bridge run.
 
 The two readings still disagree about one thing only - what answers program
 `0x0000`-`0x07ff` - and the board settles it. Note that A15 cannot be an
