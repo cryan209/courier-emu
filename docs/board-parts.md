@@ -53,11 +53,26 @@ A 3K part reaches only `0x13ff` and a 6K part only `0x1fff`; a `'C52` has no
 SARAM at all, so `PMST.RAM` and `OVLY` - both of which this firmware sets -
 would be meaningless on it.
 
-Two further details agree. The `'C52` has one serial port and no TDM, while
-this harness models a TDM ISR for the part. And the guide notes the 9K SARAM
-decodes with **A15-A14 ignored**, so it appears at `0x0000-0x2BFF` and again at
-`0x4000-0x6BFF` and above - the mirroring that a single-bit test at `0x8080`
-was too narrow to see.
+The guide gives the location twice, and both match what this firmware does:
+
+* **Program space.** With `CNF=0`, `RAM=1`, `MP/MC=1` - microprocessor mode,
+  which is how this part runs - the 9K SARAM occupies **`0x0800`-`0x2BFF`**,
+  with `0x0000`-`0x07FF` and `0x2C00`-`0xFFFF` off-chip. `0x23f0` is inside it,
+  and the external RAM at `0x8000`-`0xFFFF` sits in the off-chip part, exactly
+  as the download map needs.
+* **Data space.** Table 8-8, `'C50` Local Data Memory Configuration, `OVLY=1`:
+  registers `0x0000`-`0x005F`, B2 `0x0060`-`0x007F`, B0 `0x0100`-`0x02FF`,
+  B1 `0x0300`-`0x04FF`, **SARAM `0x0800`-`0x2BFF`**, off-chip `0x2C00`-`0xFFFF`.
+  The prologue's clears of `0x0800`-`0x08FF` and `0x0B80`-`0x0BFF`, and the 302
+  mailbox ring at `0x0BD0`, all land in that SARAM window.
+
+One further detail agrees: the `'C52` has one serial port and no TDM, while
+this harness models a TDM ISR for the part.
+
+An earlier revision of this section said the 9K SARAM "decodes with A15-A14
+ignored" and therefore mirrors. That is **Table 8-15, address ranges during
+external DMA**, and applies to a DMA master reaching the SARAM - not to the
+CPU's own program and data addressing, which is the two tables above.
 
 So the DSP is a **TMS320C50 or LC50**, not the `'C52` the core models. That is
 inferred from the firmware's memory use against the guide's tables, not from
