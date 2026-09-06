@@ -415,14 +415,14 @@ clear:
 |---:|---|---|---|---|
 | 0 | `0001` | `8d37` | none | host tag `70` - the x2 setup command itself |
 | 1 | `0002` | `d5a4` | `retc neq` at `d5a0` | `(@7a & 0x00ff) >> 4 == 2` |
-| 2 | `0004` | `d571` | `retc ntc` at `d56e` | bit 13 of `@70`, after `call d876` |
-| 3 | `0008` | `d62c` | branches at `d613`..`d624` | field `0d` of `fea1` and of `fedd` both present, `fedd`'s bit 8 set, and `(value & 0x60) == 0x60` |
+| 2 | `0004` | `d571` | `retc ntc` at `d56e` | `@70` bit 2 (`bit 13`, a bit code), after `call d876` |
+| 3 | `0008` | `d62c` | branches at `d613`..`d624` | field `0d` of `fea1` and of `fedd` both present, `fedd`'s bit 7 set (`bit 8`, a bit code), and `(value & 0x60) == 0x60` |
 | 4 | `0010` | `d763` | `xc 2, gt` | a summed-difference measurement over the `02a4` buffer, scaled by `2d00`, is positive |
 | 5 | `0020` | `9028` | `retc lt` at `9025` | the first nonzero entry scanning `ff2d` downwards is at least four words above `ff27` |
 | 6 | `0040` | `9683` | `xc 2, lt` | `[da15] - [da18]` is below `1d3c` (below `1542` when `@63` is nonzero) |
-| 7 | `0080` | `8dae` | branches at `8da2`/`8da8` | `@1f` bit 1 set **and** `fff4` bit 14 clear |
+| 7 | `0080` | `8dae` | branches at `8da2`/`8da8` | `@1f` bit 14 set **and** `fff4` bit 1 clear (bit codes 1 and 14) |
 | 8 | `0100` | `968f` | `xc 2, lt` | the same measurement as bit 6, against a threshold `0e9e` lower |
-| 9 | `0200` | `9052` | branches at `904a`/`904e` | `ff18` bit 10 set **and** `[ff00] & 0x0c00` nonzero |
+| 9 | `0200` | `9052` | branches at `904a`/`904e` | `ff18` bit 5 set (`bit 10`, a bit code) **and** `[ff00] & 0x0c00` nonzero |
 
 `fff7` is cleared once, at reset: `8074 lar ar1,#fff7 / 8076 sach *` in the
 initialisation run that also clears `fff3`, `fff4` and `fff8`. Nothing clears
@@ -458,7 +458,7 @@ it sets bit 8. That is a two-grade measurement.
 
 The names pair a two-grade measurement too - but at bits **6 and 7**: "High
 frequency rolloff is normal" and "...is marginal". Bit 7's only writer is
-`8dae`, whose guard is `@1f` bit 1 set and `fff4` bit 14 clear - a pair of
+`8dae`, whose guard is `@1f` bit 14 set and `fff4` bit 1 clear - a pair of
 state flags, not a measurement - and bit 8's name is "Retrained before
 x2/V.90 connection", which is not a threshold either.
 
@@ -536,8 +536,8 @@ at `9049`.
 | 7 | `9027` | the `ff2d` downward scan stops less than four words above `ff27` | Channel will not support 3200 baud |
 | 4 | `9032` | `[da15] - [da18]` exceeds `1fe4` | Multiple CODECs in channel |
 | 1 | `9036` | fallthrough - nothing else matched | x2 disabled on local modem |
-| 3 | `9076` | `039f` bit 9 clear | Remote modem is not x2 |
-| 2 | `9081` | `ff18` bit 10 clear | 3200 baud disabled on local modem |
+| 3 | `9076` | `039f` bit 6 clear (`bit 9`, a bit code) | Remote modem is not x2 |
+| 2 | `9081` | `ff18` bit 5 clear (`bit 10`, a bit code) | 3200 baud disabled on local modem |
 | 5 | `9087` | `[ff00] & 0c00` is zero | Remote modem is not a Server |
 
 That the codes and the strings belong together is not an assumption. Code 5's
@@ -723,7 +723,7 @@ places; the nearest candidate is the training sequencer's counter, set to 3
 at `9317` and `9367` and decremented at `9326`, but nothing here proves that
 is the same variable this test reads.
 
-## `@63` is `03e3`, and it carries `fff4` bit 0
+## `@63` is `03e3`, and it carries the x2-setup flag
 
 ### Fixing the page
 
@@ -746,7 +746,7 @@ writers that matter address it indirectly, with no page dependence at all.
 
 ```text
 d45b  lar   ar1, #fff4
-d45d  bit   0, *              ; TC = fff4 bit 0
+d45d  bit   0, *              ; bit code 0 = fff4 bit 15
 d45e  lar   ar1, #03e3
 d460  bcndd d468, ntc         ; two delay slots...
 d462  splk  *, #0012          ; ...so this always runs
@@ -756,14 +756,10 @@ d468  call  d94e              ; d94e: lar ar1,#03e3 / splk *,#0000
 ```
 
 `03e3` is set to `0012` unconditionally in the branch's delay slots, and then
-zeroed by `d94e` when `fff4` bit 0 is **clear**. It is a two-valued flag:
-`0012` or `0`.
-
-So `cpl @63, #0000` in the rolloff test is asking *"was `fff4` bit 0 clear?"*,
-and the answer is what moves both grade boundaries down by `07fa`. `fff4`
-bit 0 is itself built at `9060..9072` from `fff6` bit 14 when `fff6` bit 15 is
-set, and from `[ff00]` bit 7 otherwise, OR-ed into `fff4` so it only ever
-latches on.
+zeroed by `d94e` when the tested bit is **clear**. It is a two-valued flag:
+`0012` or `0`. So `cpl @63, #0000` in the rolloff test is asking whether that
+`fff4` bit was clear, and the answer is what moves both grade boundaries down
+by `07fa`.
 
 ### The other users of the same word, and why they are not it
 
@@ -780,80 +776,98 @@ None of these can produce the zero the rolloff test looks for. The counter
 reloads to 3 in the same instruction that observes zero, and 21 decrements
 from 3 land back on 3 at loop exit, so it is never zero when read from
 outside. Negating `0012` leaves it non-zero either way. Only `d94e` writes a
-zero, so `fff4` bit 0 is what the test is reading - by elimination as much as
-by the write itself.
+zero.
 
-## `fff4` bit 0 selects which evidence the x2 tests trust
+## Bit codes: a correction that moves several bits
 
-### How it is computed
+The C5x `BIT` instruction takes a **bit code**, and the bit it tests is
+`15 - code` - the convention [pcm-x2-v90.md](pcm-x2-v90.md) already records
+("bit code 8, which is bit 7"). Masks in `opl`/`apl`/`and` are literal and
+unaffected, so everything in this document derived from a mask - the ten
+`fff7` bits, the `02ff` display mask, the three-bit code field, the `da15`
+thresholds, `03e3` - stands unchanged. Everything derived from a `bit`
+instruction was off, and the tables above are now corrected.
 
-One writer, in both builds, and it latches:
+The one that matters most: `bit 0, *` on `fff4`, at `9070`, `d47f` and
+`d76f`, is bit code 0 and therefore **`fff4` bit 15**.
 
-```text
-9095  lar   ar1, #fff5        ; 4.03: #fff6 - one word along
-9097  bit   14, *
-9098  lacl  #00
-9099  xc    1, tc
-909a  lacl  #01               ; value := scheme-word bit 14
-909b  bit   15, *
-909c  bcnd  90a4, tc          ; ...if bit 15 says that word is valid
-909e  lar   ar1, #ff00
-90a0  bit   7, *
-90a1  lacl  #00
-90a2  xc    1, tc
-90a3  lacl  #01               ; else value := [ff00] bit 7
-90a4  lar   ar1, #fff4
-90a6  or    *
-90a7  sacl  *                 ; OR-ed in: sets, never clears
-```
+## What those three sites actually test: the x2 setup flag
 
-So `fff4` bit 0 is the scheme word's bit 14 when its bit 15 marks it valid,
-and `[ff00]` bit 7 otherwise. `fff4` is only cleared at reset (`8071`), and
-this site only ORs, so the flag latches on for the rest of the call. Stock
-reads `fff5`, 4.03 reads `fff6` - the same shift by one word seen where 4.03's
-tag builder reads `fff7` and stock's reads `fff6`.
-
-### What it does
-
-Exactly three consumers, and they agree on its sense.
-
-**It picks the source for "is the remote x2".** In the stock code generator:
+`fff4` bit 15 has one writer, and it is the x2 setup command itself:
 
 ```text
-9070  bit   0, *              ; fff4 bit 0
-9071  lar   ar1, #039f
-9073  bcnd  903a, ntc         ; clear -> the fff6 bit 12 path
-9075  bit   9, *              ; set   -> the 039f bit 9 path
-9076  splk  @7d, #0003
-9078  bcnd  9049, ntc         ; -> "Remote modem is not x2"
+8d3a  lar   ar1, #fff4
+8d3c  splk  *, #8000        ; stock; 4.03 at 8d31-8d33
 ```
 
-Both roads answer the same question and can both end at code 3, then code 2.
-The difference is what they believe: the `039f` route goes on to compare
-`ff18` bit 10 and `[ff00] & 0c00` - the negotiated words - while the `903a`
-route settles it from `fff6` bit 12 alone.
+That is the tag-`70` handler - the x2-only host command this document's
+opening sections identify - and `splk` writes the whole word, so tag `70`
+both sets bit 15 and clears the rest. `fff4` is otherwise cleared only at
+reset (`8071`).
 
-**It loosens the channel bar.** At `d47f` it puts `0012` in `03e3`, or `0`
-when clear, which is the `07fa` shift on both rolloff thresholds. Set means
-the *looser* bar (`1d3c` rather than `1542`).
+So all three consumers are asking one question: **has the host set x2 up?**
 
-**It gates the flags word.** At `d76f` the `xc 2, gt, tc` makes
-`opl 039f,#4040` conditional on it as well as on the measurement, so `039f`
-is only maintained while the flag holds.
+* `9070` in the stock code generator: clear takes the `fff6` bit 3 route to
+  "Remote modem is not x2"; set takes the `039f` bit 6 route, which goes on to
+  compare `ff18` bit 5 and `[ff00] & 0c00`. Without the x2 setup there is no
+  negotiated state to consult, so it falls back to the single inferred bit.
+* `d47f`: with x2 set up, `03e3` becomes `0012` and the rolloff bars relax by
+  `07fa`; without it, the tighter pair applies.
+* `d76f`: `opl 039f,#4040` is conditional on it, so those flags are only
+  maintained on an x2 call.
 
-### What that makes it
+That is a much plainer reading than the "source-of-truth selector" this
+document gave before the bit codes were checked, and it is consistent with
+`fff7` bit 0 - also set by tag `70` - being named "x2 enabled on local modem"
+by the firmware's own string table.
 
-A source-of-truth selector: *the negotiated capability words are usable, so
-trust them*. Set, the firmware reads `039f`, `ff00` and `ff18`, keeps `039f`
-current, and judges the channel against the more forgiving threshold - which
-is what you would do holding real negotiated information rather than an
-inference. Clear, it falls back to a single bit in `fff6` and tightens the
-bar.
+## So what is `ff00` bit 7
 
-That is a functional reading, not a name out of the firmware. The nearest
-lead on a name: 4.03's debug report prints **"Remote X2/V90 INFO0 is:"** and
-**"Main V34/X2/V90 INFO0 is:"** from host word pairs `083a`/`083c` and
-`085a`/`085c`, so the received/transmitted pair this flag arbitrates over is
-very likely the INFO0 exchange, making the flag "INFO0 gave us a usable
-answer". Neither host word has a direct store in the image - they arrive by
-block copy - so the link is unproven.
+Two answers, because the question inherits the numbering error.
+
+**`ff00` is the high half of the received INFO0 pair.** At `9554` the
+firmware reads `ff00` and `ff01` as one 32-bit quantity
+(`lacc16 *+` then `or *-`), and immediately does the same to `ff18`/`ff19`,
+comparing fields of the two. 4.03's debug report prints exactly two such
+pairs from the host side - `083a`/`083c` under **"Remote X2/V90 INFO0 is:"**
+and `085a`/`085c` under **"Main V34/X2/V90 INFO0 is:"**. So `ff00:ff01` is
+the remote INFO0 and `ff18:ff19` the local one. This also refines the earlier
+description of `ff18` as "the outgoing INFO buffer": it is the local INFO0
+word pair.
+
+**The bit called "bit 7" here is bit code 7, so it is `ff00` bit 8.** It is
+read once, at `909e` (`9069` in 4.03), as the fallback source for `fff4`
+bit 0 - the mask-`0001` bit, not the setup flag - when the scheme word's own
+validity bit is clear.
+
+**And that bit has a second writer this document missed.** At `9231`:
+
+```text
+9231  bit   2, *              ; ff00 bit 13
+9232  lar   ar1, #fff4
+9234  xc    2, tc
+9235  opl   *, #0001          ; fff4 bit 0 := ff00 bit 13
+9237  lar   ar1, #ff00
+9239  bit   3, *              ; ff00 bit 12
+923c  xc    2, ntc
+923d  opl   *, #0100          ; fff4 bit 8 := NOT ff00 bit 12
+```
+
+So `fff4` bit 0 is fed from `ff00` **bit 13** in the INFO0 parser and from
+`ff00` **bit 8** in the fallback at `909e`; both only ever set it.
+
+The INFO0 parser at `9223` is the best description of the word's layout the
+image gives:
+
+| field | code | meaning as used |
+|---|---|---|
+| bits 8:4 | `lacl * / bsar 7 / and #001f` | a 5-bit count; `+1` into `0309`, halved into `f999` |
+| bit 13 | `bit 2` | sets `fff4` bit 0 |
+| bit 12 | `bit 3` | clear sets `fff4` bit 8 |
+| bits 12:9 | `lacc *,5 / and #0f00` | a 4-bit value, negated and offset against `[ff26]` |
+
+Note that the bit read at `909e` falls **inside** the 5-bit count at bits
+8:4, so the fallback is testing that count's top bit rather than an
+independent flag. Naming the fields themselves needs the x2 INFO0 layout,
+which these images do not state; what the firmware fixes is the shape - a
+5-bit count, two flags, and a 4-bit value compared against `ff26`.
