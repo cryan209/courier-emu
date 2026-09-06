@@ -201,12 +201,70 @@ masks.
 
 ### The host's copy of the bitmap
 
-The mailbox receive handlers are a family of one-word readers, each `in
-al,#5e / mov ah,al / in al,#5c` followed by a store. In the capture ROM the
-x2 handler at `13c42` stores the word in `0a23`; its siblings fill `01fe`,
-`0200`, `0202`, `0204`, `0206`, and `0a1a`. The same handler shape appears in
-firmware 2.3.31 at file `2c7e7`, storing into `1ca7`. So the word the
-formatter decodes is the DSP's tag-`75` status word, transferred verbatim.
+The store is explicit, and it names the tag:
+
+```text
+4a9cb  3c 75            cmp  al, 75
+4a9cd  75 0b            jne  4a9da
+4a9cf  50               push ax
+4a9d0  e4 5e            in   al, 5e
+4a9d2  8a e0            mov  ah, al
+4a9d4  e4 5c            in   al, 5c
+4a9d6  a3 1d 0a         mov  [0a1d], ax
+```
+
+That is in the same dispatcher that handles tags `34` and `20`. The DSP's
+report queues `8075` and then `fff7` unaltered (`a5af`, `e205`, `e2a2` all
+`lar ar1,#fff7 / lacc * / call 83b1`), so `0a1d` is `fff7` verbatim, not a
+derived code. Firmware 2.3.31 keeps the same word at `1ca7`.
+
+Do not confuse it with `0a23`, which a different receive stub at `13c42`
+fills and which the `x2 Status` line formats; 2.3.31's equivalent is `1cb4`.
+Those are the modulation/version fields, not the condition bitmap.
+
+### The image names all ten bits itself
+
+The capture ROM contains a second, *un*patched decoder for the same word, in
+the `V90 Status:` report at flash `4a03e`. It walks the bitmap one bit at a
+time and prints a line per set bit:
+
+```text
+4a04c  cmp  byte [0238], 0
+4a051  jne  4a064
+4a053  call print "Is absent \r"
+4a064  mov  cx, 000a          ; ten bits
+4a067  mov  dx, [0a1d]
+4a06b  xor  bx, bx
+4a06d  ror  dx, 1             ; CF = next bit, from bit 0 upwards
+4a06f  jnc  4a07c
+4a071  mov  si, cs:[bx+2085]  ; table of ten near pointers
+4a076  call print
+4a079  call newline
+4a07c  inc  bx / inc bx
+4a07e  loop 4a06d
+```
+
+`ror` shifts bit 0 into the carry first and `bx` advances by two every
+iteration whether or not the bit was set, so entry *n* of the table is bit
+*n*, with no room for interpretation. Resolved against segment base `48000`:
+
+| bit | pointer | file | string |
+|---:|---|---|---|
+| 0 | `2099` | `4a099` | x2 enabled on local modem |
+| 1 | `20b3` | `4a0b3` | V.90 enabled on local modem |
+| 2 | `20cf` | `4a0cf` | V.8 negotiation completed |
+| 3 | `20e9` | `4a0e9` | V.90 Server/client pair established |
+| 4 | `210d` | `4a10d` | Remote modem supports x2 |
+| 5 | `2126` | `4a126` | Channel supports x2/V.90 |
+| 6 | `213f` | `4a13f` | High frequency rolloff is normal |
+| 7 | `2160` | `4a160` | High frequency rolloff is marginal |
+| 8 | `2183` | `4a183` | Retrained before x2/V.90 connection |
+| 9 | `21a7` | `4a1a7` | Remote modem is an x2 server |
+
+Bit 0 being "x2 enabled on local modem" is exactly right for a bit the x2
+setup command sets unconditionally, and firmware 2.3.31's list is the same
+one with bit 0 dropped. This is the bit dictionary; everything below is read
+against it.
 
 ### The string table and its consumer
 
@@ -243,50 +301,29 @@ The consumer is a plain indexed fetch and print:
 5251  e8 4d e4         call 36a1            ; print string at si
 ```
 
-Two things follow from the surviving bytes. The mask `02ff` keeps bits
-`0..7` and bit `9` - **nine** bits, for nine strings - and drops bit `8`
-alone. And the `jne`/`mov ax,8` pair is the tail of a first-set-bit scan over
-the low byte, with index `8` (bit `9`) as the answer when the low byte
-contributes nothing. So the index is a bit position, and the table is in bit
-order.
+What survives says this much: the input is the condition bitmap, the mask
+`02ff` keeps bits `0..7` and bit `9` and drops bit `8` alone, index `8` is
+the answer when whatever the removed code scanned came up empty, and the
+result is one string out of nine. The ten bytes at `5238..5241` and the three
+at `5232` that computed the index are gone - this build calls the four-hex-
+digit printer instead and jumps over the lookup entirely.
 
-This build does not run that path: `9da1` is the four-hex-digit printer, so
-the patched code prints the raw masked word and jumps over the table lookup.
-The ten bytes at `5238..5241` and the three at `5232` that computed the index
-are gone. A three-byte `xor ax,#ffff` before the mask would make the scan
-find the first *un*met condition, which is what a table of failures needs,
-but those bytes are NOPs here and that step is inference, not recovery.
+**The index is not the bit number.** An earlier revision of this document
+inferred that from the nine-strings-for-nine-bits fit; the ten-entry table
+above refutes it. Bit 0 is "x2 enabled on local modem", whose failure is
+entry **1**, "x2 disabled on local modem"; bit 4 is "Remote modem supports
+x2", whose failure is entry **3**. No single shift reconciles the two lists,
+and several failure strings ("Multiple CODECs in channel", "Incompatible
+versions") have no counterpart among the ten bits at all. The nine failure
+strings are their own progression, and the arithmetic that maps the bitmap
+onto them is precisely the code that was patched out. It is not recoverable
+from this image.
 
-### Firmware 2.3.31 confirms the bit numbering
-
-The later firmware abandoned the compact enum for a printed list, and that
-list is a straight run of `test word [1ca7], mask` / `jz` / print, with the
-masks ascending one bit at a time:
-
-| bit | mask | 2.3.31 string |
-|---|---|---|
-| 1 | `0002` | V.90 enabled on local modem |
-| 2 | `0004` | V.8 negotiation completed |
-| 3 | `0008` | V.90 Server/client pair established |
-| 4 | `0010` | Remote modem supports x2 |
-| 5 | `0020` | Channel supports x2/V.90 |
-| 6 | `0040` | High frequency rolloff is normal |
-| 7 | `0080` | High frequency rolloff is marginal |
-| 8 | `0100` | Retrained before x2/V.90 connection |
-| 9 | `0200` | Remote modem is an x2 server |
-
-That is the same word, the same ten bits, and one string per bit - which is
-what establishes that the capture ROM's nine-entry table is indexed by bit
-position rather than by an opaque code. The two vocabularies are
-complementary readings of the same conditions (bit set = precondition met;
-the capture ROM names the precondition that is missing), and the assignments
-are not identical across the two firmware generations - 2.3.31 renumbered
-and rewrote them for V.90. Only the mechanism, not a single merged bit
-dictionary, is established.
-
-What is now closed: the host does not receive a diagnostic code. It receives
-`fff7`, and both firmware generations turn it into text purely by bit
-position. The next section pairs each bit with the DSP test that sets it.
+So the enum's *mechanism* is settled - one word in, one of nine strings out,
+by an index computed from the masked bitmap - and its *table* is settled, but
+the index arithmetic is not. What is closed is that the host never receives a
+diagnostic code: it receives `fff7` and turns it into text locally, twice
+over, by two different rules.
 
 ## Which DSP test sets each `fff7` bit
 
@@ -330,38 +367,62 @@ overlay overwrites. The condition bitmap is built entirely by resident code
 and merely *reported* by whichever overlay is loaded, which is why the same
 three report sites appear in two different overlays.
 
-**Bits 6 and 8 are one graded measurement, and that is why bit 8 has no
-string.** They are set 12 words apart from the same value, against two
-thresholds `0e9e` apart - the shape of a "good / merely acceptable" channel
-grading, not two independent conditions. The host's `and ax,02ff` drops
-exactly bit 8 and nothing else. A nine-entry failure table has no room for
-the second grade, so the finer bit is masked off before the scan. Firmware
-2.3.31, which prints a line per bit instead of one string, keeps both: its
-bits 6 and 7 are "High frequency rolloff is normal" and "...is marginal".
+**Bit 0's writer matches its name exactly.** Bit 0 is the only
+unconditional one, set by the tag-`70` handler - the x2 setup command itself
+- and the image's own name for it is "x2 enabled on local modem". That is the
+one place where the DSP side and the string side confirm each other outright.
+
+### One writer and its name do not line up
+
+Bits 6 and 8 are set 12 words apart from the *same* value, against two
+thresholds `0e9e` apart, at `9683` and `968f`, and the first `retc lt` makes
+them mutually exclusive: below the first threshold sets bit 6, the band above
+it sets bit 8. That is a two-grade measurement.
+
+The names pair a two-grade measurement too - but at bits **6 and 7**: "High
+frequency rolloff is normal" and "...is marginal". Bit 7's only writer is
+`8dae`, whose guard is `@1f` bit 1 set and `fff4` bit 14 clear - a pair of
+state flags, not a measurement - and bit 8's name is "Retrained before
+x2/V.90 connection", which is not a threshold either.
+
+The writer scan is exhaustive: sweeping every `opl *,#0040 / #0080 / #0100`
+in all four images and resolving the `ar1` each one loads finds no second
+writer for any of these bits. So one of two things is true - either the graded
+measurement is not the rolloff the names describe, or the string table and
+the bit assignments drifted apart in this build. This document does not
+resolve it, and the pairing for bits 6, 7 and 8 should be treated as open.
 
 ### What this does and does not name
 
-The pairing of bit to string is fixed by the host table (index = bit
-position), so the tests above are pinned to the capture ROM's own wording:
-bit 1 to "x2 disabled on local modem", bit 3 to "Remote modem is not x2", bit
-5 to "Remote modem is not a Server", bit 9 to "Channel is x2-capable but
-feature not installed", and so on. Under the same-image reading, a set bit is
-a condition **reached**, and the reported string names the first one that was
-not - which is consistent with bit 0 being set by the x2 setup command itself
-and index 0 reading "Unspecified impairment", i.e. x2 was never started.
+The bit-to-string pairing is the ten-entry table's, which is mechanical and
+not in doubt. The tests are what the code does - a field comparison, a buffer
+scan length, a scaled sum against a threshold. What is *not* established is
+that those two descriptions agree: nothing here demonstrates that
+`[da15] - [da18]` measures high-frequency rolloff, that the `ff2d` scan
+counts CODECs, or that `(@7a & 0xff) >> 4 == 2` is a V.90-enabled test.
+Confirming any of that needs a trace with known line conditions or the x2
+specification. The claim is narrower and complete: which test sets which bit,
+and what this firmware calls that bit.
 
-Firmware 2.3.31 confirms that polarity on the bits it did not renumber: its
-bit 1 is "V.90 enabled on local modem" against the capture ROM's "x2 disabled
-on local modem", an exact complement. It does not confirm the others - its
-bits 4 and 5 are "Remote modem supports x2" and "Channel supports x2/V.90",
-which do not complement the capture ROM's bits 4 and 5. The renumbering
-between the two generations is real, so each image must be read against its
-own table.
+## The bits do not reach the result code
 
-What is **not** established is an independent name for each test. The
-guards above are what the code does - a field comparison, a buffer scan
-length, a scaled sum against a threshold - not a demonstration that, say,
-`[da15] - [da18]` is a high-frequency rolloff measurement. Confirming that
-would need either a trace with known line conditions or the x2
-specification. The claim here is narrower and complete: which test sets which
-bit, and therefore which test each diagnostic string is reporting on.
+`0a1d` has exactly three references in the whole 512 KiB image:
+
+* `4a9d6` - the tag-`75` store that fills it,
+* `4a067` - the ten-line `V90 Status:` report,
+* `1c1ef` - the compact nine-string enum, which this build has patched out.
+
+Nothing else reads it. The condition bitmap is a diagnostic terminus: it
+feeds two printers and no decision. In particular it does not choose between
+the x2 result block at supervisor result code 182 and the V.90 block at 258,
+does not pick a rate within either ladder, and does not gate the `/x2` or
+`/V90` suffix on a `CONNECT` string. Those come from the rate-and-scheme path
+described earlier in this document - the S58 gates, the tag-`70` capability
+transfer, and the PCM rate ladders - which never consults `fff7`.
+
+So the answer to "which result code does a given bit produce" is: none. A
+call that fails every x2 precondition and one that passes all of them reach
+the result-code layer by the same route; the bitmap only explains, after the
+fact, which precondition was missing. The two vocabularies are for two
+different audiences - `ATI` diagnostics versus the `CONNECT` line - and this
+firmware keeps them completely separate.
