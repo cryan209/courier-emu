@@ -225,6 +225,39 @@ machine to idle. Feeding a sequence that avoids `0x83` keeps the vector out of
 `0x5782` entirely and prints nothing, so a plausible ordered event sequence -
 not an arbitrary one - is what a model has to supply.
 
+## The gates are unreached, not dead
+
+Hooking execution across `0x14dd0..0x14fc0` while events are injected records
+the whole path, and it settles why the static scans found nothing:
+
+```
+14dd8 -> 14dde (lcall c800:0008) -> 14de3 ... 14e08 -> 14e30 (cadence detector)
+      -> 14e40 -> 14ef7 ... 14f0e -> 14f13 (gate taken) -> 14f1b -> prints
+```
+
+`0x14f13` is reached by ordinary sequential flow inside the detector, not by a
+call from anywhere. The scans looked for a caller and there is none to find;
+the routine is simply downstream of an event. The stack at the gate confirms
+the frame belongs to the `call word ptr [0x298]` at `0xf4e2` - the event
+dispatch - with the near return address `0x8f4e6`.
+
+So the answer to "is it dead because the line modelling is dead" is **yes for
+this gate, demonstrably**. Nothing about it is vestigial: it prints the first
+time a valid event reaches the detector.
+
+The same run reaches extension entry 8 (`lcall 0xc800:0008` -> `0x48e3f`), which
+had never executed before either. Entry 8 is the second-word consumer for event
+`0x08`: the handler reads the accompanying data word from ports `0x5e`/`0x5c`
+before calling it.
+
+`0x48e32` and `0x491b9` still did not execute even with events flowing. Both
+are separate routines rather than fallthrough targets - `0x48e32` ends in a
+`ret` immediately before entry 8's body - so each needs an actual caller, and
+none is discoverable. The likeliest reading is the same one proved for
+`0x14f13`, since their neighbours in this family are all on line-driven paths:
+`0x491a5` is called from `0x49202`, which waits on `[0x02cf]` for a received
+DTMF digit. But that is inference from position, not a demonstration.
+
 ## What this does not establish
 
 The 36 event codes are read off the dispatch table; their meanings are not
@@ -234,13 +267,10 @@ particular value is what real hardware would send. Nothing here identifies the
 `AH=0x45` / `AL=0x3f` operation behind the `ATY12` queue, or the units of the
 values in its buffer.
 
-The remaining two unreferenced gates, `0x48e32` and `0x491b9`, still have no
-discoverable caller and did not execute in any run; both are in the `ATG`
-monitor extension and echo characters rather than event codes. `0x491a5`, the
-third extension gate, is called from `0x49202`, a helper that waits on
-`[0x02cf]` and translates a nibble through the DTMF table `"0123456789#*ABCD"`
-at `0x49209` - so under `ATY4` the extension echoes received DTMF digits as
-well.
+`0x491a5`, the third extension gate, is called from `0x49202`, a helper that
+waits on `[0x02cf]` and translates a nibble through the DTMF table
+`"0123456789#*ABCD"` at `0x49209` - so under `ATY4` the extension echoes
+received DTMF digits as well.
 
 The command table was measured on `IDSDL302.ROM`. The 403 board image holds the
 same six gates against `[0x0500]` rather than `[0x0608]` - `0x02984`, `0x0bf79`,
