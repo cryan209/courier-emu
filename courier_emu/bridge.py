@@ -126,6 +126,14 @@ DSP_STREAM_READY = 0x04
 # tag-06 handler armed at cell 0x039e and `bacc`s into the coroutine. So the
 # CPU's acknowledgement has to raise bit 13 - one word per acknowledgement.
 DSP_STREAM_RESUME = 0x2000
+
+# A ROM build's frame interrupt. Firing each candidate at the core is what
+# picks 5: 4 and 6 leave it in `idle` and 5 takes it out, which agrees with
+# the IRQ armed for an update payload and with the ISR that zeroes @6b, the
+# cell the idle wait at 0x813b spins on. The slot is (irq + 1) * 2 from the
+# vector base, so 0x0c above the bank's entry word.
+C52_ROM_FRAME_IRQ = 5
+C52_ROM_FRAME_VECTOR = 0x0C
 DSP_TAG_PORT = 0x5E
 DSP_WORD_PORT = 0x5F
 DSP_STREAM_PORT = 0x60
@@ -586,6 +594,19 @@ class CourierDspBridge:
             ] == C52_TDM_ISR_SIGNATURE
         ):
             self.core.configure_line_frame_interrupt(C52_TDM_IRQ, C52_TDM_ISR)
+            return
+        origin = self.image.dsp_program_segments()[0][0]
+        if hasattr(self.core, "configure_line_frame_interrupt") and origin:
+            # A flash ROM has no origin-0000 image at all - its four overlays
+            # enter at 8000, 9d00, b000 and dc00 - so its vectors sit at the
+            # top of the resident bank rather than in low program memory. The
+            # core vectors a hardware interrupt to (iptr << 11) | ((irq+1) << 1),
+            # which is 000c for irq 5 with iptr zero: unloaded memory, and the
+            # part runs away instead of servicing anything. Point it at the
+            # same slot inside the bank the supervisor actually downloaded.
+            self.core.configure_line_frame_interrupt(
+                C52_ROM_FRAME_IRQ, origin + C52_ROM_FRAME_VECTOR
+            )
 
     def arm_dial_tones(self, command: bytes) -> None:
         if self.exchange is not None:
