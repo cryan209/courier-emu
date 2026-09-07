@@ -497,12 +497,60 @@ leaves about ten instructions:
 80e7  sach  *+, 1      ; the store into the transmit buffer
 ```
 
-and its relationship with the ISR, which loads the same work pointer from `10`
-at `8181`, stores the received sample, sends `@6b or *+` to DXR at `818f`, and
-writes the pointer back at `8190`. The mixer fills from its own `ar7` until it
-meets the pointer at `80c3`/`80c4`; the ISR advances that pointer by two per
-interrupt. Either the store is producing zero, or the two ends are not meeting
-on the same slot.
+and its relationship with the ISR. Both were checked, and neither is at fault.
+
+### The buffer and the work pointer are correct
+
+Watching `390` inside the tone shows a clean circular buffer, written only by
+the ISR at `8190`:
+
+```text
+8190  0bca -> 0bcc -> 0bce -> 0bd0 -> ... -> 0bde -> 0bc0 -> 0bc2
+```
+
+Sixteen slots, `0bc0`..`0bde`, step two, wrapping. Even slots are receive - the
+ISR's `sacl *+` at `8183` - and odd slots are transmit, which the mixer fills
+with `sach *+, 1` at `80e7` and the ISR reads back through `or *+` at `818e`.
+The two ends agree.
+
+Watching the slots themselves in the same window:
+
+```text
+0bc1   80e7  0000     the mixer's store, into a transmit slot
+0bc0   8183  0000     the ISR's receive store
+```
+
+So the mixer does reach its store, on the right slot, and **writes zero**.
+
+### The gain is zero
+
+`--dsp-peek` inside the tone, against a 302 run inside its own first digit:
+
+| cell | 302, audible | 403, silent |
+|---|---|---|
+| `39a` mixer callback | `874e` | `8743` |
+| `3c7` accumulator | `f5db` | `3fd1` |
+| `3f3` amplitude | `1000` | `1000` |
+| **`392` gain** | **`32c8`** | **`0000`** |
+| **`3f1`** | **`0c08`** | **`0000`** |
+| **`3f5`** second amplitude | **`0c08`** | **`0000`** |
+
+`80db` is `mpy @12` - the accumulator times `392`. On 403 that multiplier is
+zero, so the product is zero and `sach *+, 1` stores silence. Everything
+upstream is live; the tone is multiplied by nothing.
+
+And the two zero cells are exactly the two the supervisor sends. Its dial block
+carries `001a:32c8` and `001b:0c08`, and
+[driving-the-tones.md](driving-the-tones.md) has their destinations as DSP data
+`0392` and `03f1`. On 302 those cells hold precisely `32c8` and `0c08`. On 403
+they hold nothing; `3f5` is zero because the handler at `ee2c` copies `3f1`
+into it.
+
+So the 403 silence is the same class of fault as the tag `0x13` handler moving
+from `d82f` to `ee20`: the mailbox values that carry the tone's gain and second
+amplitude land in 3.0.13 and do not land in 3.1.2. Finding where 3.1.2 puts
+them is the next step, and it is now a bounded question - two tags, two
+destinations, with a working 302 run to compare every cell against.
 
 ## What is not established
 
