@@ -441,13 +441,68 @@ oscillator's phase, inside the last window:
 `3f2`. The oscillator is advancing at the right rate, from the right table
 entry, driven by the firmware's own code.
 
-So nothing between the mailbox and the oscillator is at fault. The tone is
-generated and then does not reach the line - `--dsp-tx-pcm` is 66,251 samples
-of zero over the same run. The remaining span is the mixer's output path: the
-product at `80da`-`80dc` is written through the work pointer at `390`, which
-reads `0bd8` in the full-board run while `audio312` - which does produce
-audible output from this same ROM - supplies `0bc0`. That, and the serial ISR
-that drains the buffer to DXR, is the next and now quite narrow place to look.
+### The signal reaches the mixer's accumulator and dies before DXR
+
+The write trace keeps the last 64 events, and both `3c7` and DXR are written
+every sample, so a full-length run only ever shows the idle tail. Ending the
+run inside the first digit instead - `--instructions 47500000`, which lands at
+DSP instruction 52.6M, inside the first `8743` window - catches the tone
+itself.
+
+**The mixer's accumulator carries the tone.** Writes to `3c7` in that window:
+
+```text
+875b  edd2      874e  ...      80d6  0000
+875b  35e3                     (once per frame, the calad delay slot)
+875b  3028
+875b  e4e7
+875b  c0c5
+```
+
+`874e` and `875b` are the two `sach @47, 3` in the pair generator, and the
+values are a waveform. Reading the callback confirms the shape: `8743` loads
+the column increment, calls the sine table at `8b6a`, advances the phase at
+`41`, multiplies by the amplitude at `75`, accumulates into `47`, then falls
+through to `874f` which does the same for the row. `8128` - what the slot holds
+when idle - is a bare `ret`.
+
+**And DXR is zero at the same instant.** Watching MMR `0x21` over the same
+window:
+
+```text
+818f  0000  @dsp 52,674,534
+818f  0000  @dsp 52,677,095
+818f  0000  @dsp 52,679,656
+818f  0000  @dsp 52,682,222
+```
+
+Same run, overlapping instruction counts: `3c7` live, DXR zero.
+
+So every stage from the mailbox to the mixer's accumulator is correct - the
+handler arms, the oscillator advances at the loaded increment, the callback
+accumulates a waveform - and the signal is lost in the stage after it. That
+leaves about ten instructions:
+
+```text
+80da  lt    @47        ; the accumulator the callback just filled
+80db  mpy   @12        ; times the gain at 392
+80dc  pac
+80dd  bit   5, @1f
+80de  add16 @7b
+80df  cc    c4e9, tc
+80e1  and   #7ffe0000
+80e3  mar   *, ar7
+80e4  bd    80c3, *
+80e6  mar   *+
+80e7  sach  *+, 1      ; the store into the transmit buffer
+```
+
+and its relationship with the ISR, which loads the same work pointer from `10`
+at `8181`, stores the received sample, sends `@6b or *+` to DXR at `818f`, and
+writes the pointer back at `8190`. The mixer fills from its own `ar7` until it
+meets the pointer at `80c3`/`80c4`; the ISR advances that pointer by two per
+interrupt. Either the store is producing zero, or the two ends are not meeting
+on the same slot.
 
 ## What is not established
 
