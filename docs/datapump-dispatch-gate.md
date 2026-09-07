@@ -546,11 +546,57 @@ carries `001a:32c8` and `001b:0c08`, and
 they hold nothing; `3f5` is zero because the handler at `ee2c` copies `3f1`
 into it.
 
-So the 403 silence is the same class of fault as the tag `0x13` handler moving
-from `d82f` to `ee20`: the mailbox values that carry the tone's gain and second
-amplitude land in 3.0.13 and do not land in 3.1.2. Finding where 3.1.2 puts
-them is the next step, and it is now a bounded question - two tags, two
-destinations, with a working 302 run to compare every cell against.
+### 3.1.2 puts them exactly where they belong
+
+The dispatcher vectors through a 128-entry table at program `83e9`, and the
+table validates on its own: entry `0x13` is `ee20`, the handler already watched
+running. Reading the two in question out of the 403 image:
+
+```text
+8227   smmr  @7a, #03ad      ; tag 19
+822a   smmr  @7a, #0392      ; tag 1a
+822c   smmr  @7a, #fff0
+8232   smmr  @7a, #03f1      ; tag 1b
+```
+
+`0392` and `03f1` - precisely the destinations
+[driving-the-tones.md](driving-the-tones.md) records. **3.1.2 does not move
+them**, and the guess in the previous revision that it might was wrong.
+
+(The same table read against 302 is meaningless: its entry for `0x13` comes out
+as `8179`, which is inside the serial ISR. The table's address is 3.1.2's, so
+3.0.13's handlers are elsewhere and none of the 302 column can be trusted.)
+
+### The handlers run, and store zero
+
+Every write to `0392` across a 403 dial:
+
+```text
+801d  0000   @dsp    284,014     boot
+807f  32d6   @dsp    284,854
+  ... six such pairs through 40.6M ...
+822b  0000   @dsp 51,286,031     tag 1a, just before digit 1 arms at 51,371,302
+822b  0000   @dsp 55,566,786     digit 2
+822b  0000   @dsp 59,861,340     digit 3
+822b  0000   @dsp 64,154,570     digit 4
+822b  2fd6   @dsp 68,309,089     after the dial
+822b  2fd6   @dsp 68,448,105
+```
+
+The handler fires once per digit, each time a few tens of thousands of
+instructions before that digit's `ee20` arms the oscillator - exactly the
+ordering the supervisor's block implies. And each time it stores **zero**.
+
+So the handler is right, the destination is right, and the value is wrong.
+`smmr @7a` stores whatever MMR `0x7a` holds, and the supervisor sent
+`001a:32c8`. What reaches `0x7a` is not what was sent. The two later writes are
+the same shape: the supervisor's `001a:32d6` arrives as `2fd6`.
+
+That puts the fault in this emulator's host-message delivery rather than in the
+firmware or the DSP build - the tone is generated correctly and then multiplied
+by a gain that was never delivered. Tag `0x13`'s data survives, which is why
+the digits are right while the level is zero, so whatever is wrong is
+selective rather than a dead path.
 
 ## What is not established
 
