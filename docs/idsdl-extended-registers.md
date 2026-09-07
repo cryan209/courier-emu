@@ -67,54 +67,50 @@ Several things were suspected and cleared along the way, and they stay cleared:
 * The board's `ATI2` RAM test passes and the S-registers are all at their
   documented defaults.
 
-## It was DIP switch 10, not a checksum
+## Two separate things, established by flipping the switch back
 
-A separate anomaly turned up on the way: the running configuration after a power
-cycle was the factory-default set, while `ATI5` displayed a configured NVRAM
-profile. An earlier version of this document concluded that the NVRAM image must
-be readable but *invalid* - a bad checksum that the firmware displayed on
-request while ignoring at boot - and that `AT&W` had fixed it by rewriting the
-image. **That was wrong.**
+This section has been wrong twice, so here is the measurement that settles it.
 
-**The operator had been toggling DIP switch 10**, which on a Courier selects
-whether power-on loads the NVRAM profile or the `&F0` factory defaults. The
-switch, not `AT&W`, is why the board started coming up with the stored profile.
+With **DIP 10 returned to the factory-defaults position** and an `ATZ!` reset:
 
-The correction matters because it changes what the fault was:
+```
+running config : &A1 &B0 &G0 &H0 ... , DIAL=PULSE     <- defaults, as the switch selects
++S24           : 13000
++S26           : 3080
+```
 
-* with DIP 10 in the **factory-defaults** position the ID_SDL `+S` block is
-  never loaded from NVRAM at power-on, so it sits at zero - which is why
-  `+S24` and `+S26` read `00` and DTMF was silent;
-* with DIP 10 in the **NVRAM** position the block loads and DTMF works.
+The switch plainly takes effect - the standard USR profile comes up as `&F0`
+defaults rather than the stored one - and **the extended registers are
+untouched by it**. So `+S` is not part of what DIP 10 selects.
 
-Note the boot path and the command are **not** the same thing. `AT&F0` issued
-from the command line does *not* zero the extended registers - measured, they
-stay at `13000`/`3080` across `AT&F0` and a following `ATZ`. Only the DIP-10
-power-on path leaves them unloaded.
+That separates the two faults cleanly, and it also recovers evidence that
+looked lost:
 
-After `AT&W`, an `ATZ!` hardware reset does carry the registers through:
+1. **The DTMF fault was an uninitialised `+S` block in NVRAM.** Before the
+   `AT&W`, `+S24`/`+S26` read `00` at power-on; after it they read
+   `13000`/`3080` at power-on, with the DIP switch in the *same* position both
+   times. The only thing that changed is the NVRAM contents. So the block held
+   zeros - the post-flash `AT+SF`/`AT&W` had never been run on this unit - and
+   `AT+SF` followed by `AT&W` was the necessary fix, not an unnecessary one.
+2. **The profile not being applied at power-on was DIP switch 10**, and is
+   unrelated to the above.
+
+Two faults, not one, and neither is the NVRAM-checksum story an earlier draft
+of this document told.
+
+For the record, what was claimed and withdrawn along the way: first that `AT&W`
+had repaired an invalid NVRAM checksum, folding both symptoms into one cause -
+wrong, DIP 10 explained the profile symptom; then that the DIP switch explained
+*both*, making `AT+SF` unnecessary - also wrong, since the switch demonstrably
+does not touch `+S`. `AT&F0` as a command does not zero the registers either,
+measured.
+
+After `AT&W` the registers survive a hardware reset in either switch position:
 
 ```
 AT+S24? -> 13000    AT+S1?  -> 70
 AT+S26? -> 3080     AT+S22? -> 525
 ```
-
-but that is `&W` having stored them, not evidence about any checksum.
-
-**One piece of evidence was destroyed on the way.** Whether NVRAM already held
-correct `+S` values before the `AT&W` cannot now be established - the write
-overwrote them. If it did, the whole DTMF fault was the DIP switch alone and
-`AT+SF` was never needed.
-
-Two caveats. `ATZ!` is the firmware's hardware reset and does not remove power
-from the NVRAM, ASIC or DSP, so a true power cycle is still worth confirming.
-And `DIAL=HUNT` appears in the running config once `S27=048` is set, where the
-stored dial mode is `TONE` - a display artifact rather than a fault, but not
-chased down.
-
-**Operationally**: putting DIP 10 back to the factory-defaults position should
-make DTMF stop working again, for the reason above. That is the test that would
-confirm this reading, and it costs one switch flip.
 
 ## Doing this on another unit
 
