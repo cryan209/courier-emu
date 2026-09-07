@@ -339,6 +339,48 @@ prerequisite for any cell-level comparison against this board, and it is the
 next thing worth doing, both because it is the firmware the hardware actually
 runs and because without it there is no apples-to-apples reading.
 
+## Why the 403 capture does not dial
+
+It is not the supervisor. Run side by side, 302 and 403 do the same things up
+to the point where sound should appear:
+
+| | 302 (`IDSDL302.ROM`) | 403 (board capture) |
+|---|---|---|
+| bootstrap | match, 1 download | match, 1 download |
+| hook / line | off hook, dial tone qualified | off hook, dial tone qualified |
+| keypad messages sent | `0013:0006 0002 0004 0005` | **the same four** |
+| `0016:0000` | 8 | 8 |
+| host messages / DSP took | 68 / 385 | 70 / 377 |
+| **datapump transmit** | DTMF bursts, peak ~22,700 | **66,251 samples, peak 0** |
+| exchange decoded | `6245` | `""` |
+
+The 403 supervisor dials. Its DSP puts **pure silence** on the line.
+
+And the DSP is not broken, because the same image's tone code works when it is
+driven directly. `courier_emu.audio312` on that very ROM renders one digit
+through the firmware's own selector, oscillator, mixer and serial ISR:
+
+```sh
+.venv/bin/python -m courier_emu.audio312 \
+    --rom artifacts/courier-board-21210-capture-403/courier-board.rom \
+    --digits 6 --output /tmp/one
+```
+
+peak 21,516, row 770, column 1477 - a clean `6`. So the oscillator, the mixer
+and the ISR all work under 3.1.2. What does not happen in the full-board run is
+whatever should arm them when the mailbox carries tag `0x13`.
+
+That is a known divergence between the two DSP builds rather than a surprise:
+[driving-the-tones.md](driving-the-tones.md) records tag `0x13`'s handler at
+`0xd82f` in 3.0.13, while in 3.1.2 `13` enters `0xee20`. 302 carries 3.0.13 and
+the board carries 3.1.2, which is exactly the pair that differs here.
+
+The next probe is the C52's own PC trace, which currently cannot see it: the
+window in `native/c5x_core.cpp` is hardcoded to `0xc700..0xca00` and
+`0x0200..0x0300`. Widening it to cover `0xee20` says immediately whether the
+3.1.2 handler is entered at all, and that splits the remaining question in two -
+the handler never runs, or it runs and leaves the oscillator unarmed.
+
 ## What is not established
 
 Which command sets those flags, and what writes them on a real boot. The
