@@ -503,9 +503,12 @@ board's decode and will accept `0x0e` where the board might not.
   `ATGLK2WFF36,A021`, which is what
   [ram-probe-delivery.md](ram-probe-delivery.md) means by "enabling timer 0's
   interrupt".
-* **The monitor restores vector 8 when it finishes.** A second run needs
+* **The board reboots after every run**, so a second run needs
   `ATGLK2W0020,3000` / `ATGLK2W0022,0000` written again, or it produces no
-  output at all and looks like a failed probe.
+  output at all and looks like a failed probe. An earlier version of this note
+  said "the monitor restores vector 8", which was wrong - see
+  [ram-probe-delivery.md](ram-probe-delivery.md) on the watchdog reset, which
+  restores the vector, clears RAM and brings `AT` back as one event.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 

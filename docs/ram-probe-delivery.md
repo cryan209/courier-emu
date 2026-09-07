@@ -254,15 +254,78 @@ claim shows up as a mismatch before anything executes. That is not hypothetical:
 `--against` the previously placed image was tried and produced 1067 mismatches,
 because of the next paragraph.
 
-### The monitor zeroes its own image when it finishes
+### Every run ends in a watchdog reset, and that is what clears RAM
 
 Measured after several runs: once a probe completes, the whole placed region
-reads back as zero - 4240 bytes of `0x3000`-`0x408f`, every byte, except a word
-written afterwards by hand. So the region is *not* still holding the previous
-image, which is what makes `--against <previous run>` wrong and
-`--assume-zero` **right** for every run after the first. The zero state is
-measured rather than assumed; it is also why a repeat run does not need a power
-cycle first.
+reads back as zero - 4240 bytes of `0x3000`-`0x408f`, every byte. The first
+reading of that was "the monitor zeroes its own image", and it was wrong. **The
+board reboots.**
+
+The test: write `A5A5` to `0x5d80`, which is *outside* the placed image and
+nothing in the probe touches; run a probe; read it back. It is zero afterwards.
+In the same run, IVT vector 8 returned to `8000:108f` and `T0CON` to `0x8021`
+without anyone restoring them.
+
+One cause explains all four observations - the cleared image, the cleared
+sentinel, the restored vector, and `AT` answering again. The board's `ADM707`
+supervisor (see [board-parts.md](board-parts.md)) has a **1.6 second** watchdog,
+which matches the observed bound, and the firmware's reboot path clears RAM and
+rebuilds the IVT.
+
+Consequences worth having:
+
+* **Restoring the vector and `T0CON` by hand after a run is unnecessary.** It is
+  harmless, and it is what several runs here did, but the reset has already
+  done it.
+* `--against <a previously placed image>` is **wrong**, and `--assume-zero` is
+  **right**, for every run after the first. The zero state is measured, not
+  assumed.
+* A repeat run never needs a power cycle - it has effectively just had one.
+* **The ~1.5 s bound is on the whole takeover, not on collection.** The
+  two-halves ROM dump was split because printing 2048 words did not fit, and
+  [dsp-onchip-rom.md](dsp-onchip-rom.md) already notes collection had finished
+  before the reset landed.
+
+### Running longer: cooperate with the firmware rather than drive the watchdog
+
+The obvious way to get more than 1.5 seconds is to feed the watchdog from the
+monitor. **That is the worse of the two options available**, for a reason and a
+risk:
+
+* The `ADM707`'s `WDI` source has **not** been identified. `P1LTCH` (`0xff56`)
+  is not obviously it - the firmware's 76 accesses to it are the NVRAM bit-bang
+  (bit 2 clock, bit 5), a bit-6 pair around the DSP download, and bit 3, the DSP
+  reset line. There is no `xor`, `not`, or any other toggle of that latch
+  anywhere in the image.
+* If `WDI` turns out to be driven from the board latches at ports `0x10`,
+  `0x12` or `0x14`, then feeding it means writing them - and port `0x10` carries
+  the **NVRAM strobe**, the one thing in reach that a power cycle does not undo.
+  The standing rule in this document forbids exactly that.
+
+**The better option needs no watchdog work at all.** Timer 0's own handler, at
+`8000:108f`, is two instructions:
+
+```
+108f  c70602ff0080  mov word ptr [0xff02], 0x8000   ; non-specific EOI
+1095  cf            iret
+```
+
+It does nothing else. So a monitor does not have to *take the machine over*: it
+can hook vector 8, do a bounded slice of work on each 5 ms tick, EOI and `iret`,
+and leave the firmware running underneath. The firmware then keeps feeding its
+own watchdog by whatever means it already does, and the run is unbounded.
+
+That also buys the thing the takeover design cannot do at all: **sampling while
+the firmware runs.** Every reading taken this way so far is of a machine whose
+DSP has just been reset and whose supervisor is not executing - which is exactly
+the caveat on `artifacts/dsp-at10-01/`, where `@10` reads zero at idle and the
+interesting value is expected during a call. A cooperative ISR could sample
+`0x0390` on a live connection; the takeover monitor never can.
+
+What it costs: the work per tick has to fit inside 5 ms and leave the firmware's
+own timing intact, the buffer has to live where the firmware will not touch it,
+and the result has to be read out after the fact rather than printed live -
+printing is what consumed the watchdog window in the first place.
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
