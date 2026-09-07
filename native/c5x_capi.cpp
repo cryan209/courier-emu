@@ -235,7 +235,7 @@ void courier_c5x_set_pc(void *handle, uint16_t address)
 
 void courier_c5x_get_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 20) return;
+    if (!handle || !values || count < 22) return;
     auto state = static_cast<C5xCore *>(handle)->state();
     uint64_t result[] = {
         state.pc, state.op, uint32_t(state.acc), uint32_t(state.accb), uint32_t(state.preg),
@@ -244,6 +244,7 @@ void courier_c5x_get_state(void *handle, uint64_t *values, std::size_t count)
         static_cast<C5xCore *>(handle)->io_events().size(),
         state.ar[0], state.ar[1], state.ar[2], state.ar[3],
         state.ar[4], state.ar[5], state.ar[6], state.ar[7],
+        state.arcr, state.indx,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

@@ -90,6 +90,8 @@ public:
         std::array<uint16_t, 8> ar;
         uint16_t dp;
         uint16_t arp;
+        uint16_t arcr;
+        uint16_t indx;
         uint16_t flags;
         bool idle;
         uint64_t instructions;

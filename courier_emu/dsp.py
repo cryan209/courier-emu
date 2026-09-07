@@ -423,11 +423,12 @@ class NativeC5x:
         self.library.courier_c5x_set_pc(self.handle, address)
 
     def state(self) -> dict[str, int | bool]:
-        values = (ctypes.c_uint64 * 20)()
+        values = (ctypes.c_uint64 * 22)()
         self.library.courier_c5x_get_state(self.handle, values, len(values))
         names = ("pc", "op", "acc", "accb", "preg", "dp", "arp", "flags",
                  "idle", "instructions", "cycles", "io_events",
-                 "ar0", "ar1", "ar2", "ar3", "ar4", "ar5", "ar6", "ar7")
+                 "ar0", "ar1", "ar2", "ar3", "ar4", "ar5", "ar6", "ar7",
+                 "arcr", "indx")
         state = dict(zip(names, map(int, values), strict=True))
         for name in ("acc", "accb", "preg"):
             if state[name] & 0x80000000:

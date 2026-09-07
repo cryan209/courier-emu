@@ -1071,7 +1071,7 @@ void C5xCore::run(uint64_t instruction_limit)
 C5xCore::State C5xCore::state() const
 {
     State result{m_pc, m_op, m_acc, m_accb, m_preg, m_treg0, m_treg1, m_treg2, {},
-        m_st0.dp, m_st0.arp,
+        m_st0.dp, m_st0.arp, m_arcr, m_indx,
         uint16_t((m_st0.intm << 7) | (m_st0.ovm << 6) | (m_st0.ov << 5) |
                  (m_st1.sxm << 4) | (m_st1.c << 3) | (m_st1.tc << 2) |
                  (m_st1.xf << 1) | m_st1.cnf),
