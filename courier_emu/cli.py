@@ -695,7 +695,8 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("idsdl302",),
         metavar="NAME",
         help="attach a deterministic, in-memory settings EEPROM fixture; "
-        "idsdl302 seeds only words 94 through 102 from the recovered six records",
+        "idsdl302 seeds words 94 through 102 from the recovered six records "
+        "and the +S register block AT+SF loads, leaving the rest erased",
     )
     run.add_argument(
         "--dsp-rx-pcm",
