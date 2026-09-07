@@ -629,6 +629,46 @@ while `0x1a` does not is what makes it worth chasing rather than a dead path.
 the tag `0x1a` handler does not run until 51.28M, so they belong to other tags
 and are not evidence of anything here.)
 
+### The two delivery paths, diffed
+
+There are not two competing writers. `_mirror_port` is unreachable for the
+mailbox ports: the runtime-port branch in `io_write` **returns** before the
+`asic_transparent` mirror is reached, so `MIRROR`'s `0x5C -> (0x5F, 0)` and
+`0x5E -> (0x5F, 1)` never fire for `0x58`/`0x5A`/`0x5C`/`0x5E`. One writer
+reaches the DSP's host cells: `_deliver_host_message`.
+
+What differs is *when* each path acts on the message:
+
+| | assembly | delivery |
+|---|---|---|
+| trigger | each port write; the message is **recorded** on the `0x5E` write, the data's high byte | the supervisor's `0x1C` bit 0, in the `boot_rom_enabled` branch |
+| state | one latch pair, `_runtime_header` / `_runtime_data` | reads that same latch, whatever it holds at that instant |
+
+The two are decoupled, and the run says so out loud:
+
+| | messages assembled | delivered to the DSP |
+|---|---|---|
+| 403 | 68 | **70** |
+| 302 | 66 | **68** |
+
+Two more deliveries than there were messages, on both images. A `0x1C`
+acknowledgement that arrives when no new message has been assembled
+re-delivers the stale latch.
+
+The same decoupling explains the zero. `_runtime_header` is updated by the
+`0x58`/`0x5A` writes and `_runtime_data` by `0x5C`/`0x5E`, so between those two
+pairs the latch holds a **new tag with the previous message's data**. A `0x1C`
+bit 0 in that gap delivers exactly that. And the previous message is
+`0016:0000` - the dial block's own start marker, which the run sends eight
+times - so the stale data is `0000`, which is what `839b` read and `822b`
+stored into the gain.
+
+Delivery should be triggered by message completion, the same `0x5E` write that
+records it, rather than by an acknowledgement that can land mid-message. That
+is a bridge change and wants its own measurement afterwards: the assembled and
+delivered counts should agree, `0392` should take `32c8`, and the 403 image
+should put a tone on the line.
+
 ## What is not established
 
 Which command sets those flags, and what writes them on a real boot. The
