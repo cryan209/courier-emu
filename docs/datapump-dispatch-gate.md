@@ -175,14 +175,107 @@ board reporting progress. Of the other two: `[0x5a5]` bit 0 has no setter
 anywhere in the image (only `and [0x5a5], 0xfe` at `882db` and `8982e` clear
 it), and there is no `or [0xa96], 2` either.
 
+## Where it actually stops: the overlay is never requested
+
+Tracing further up found the real end of the chain, and it is not the `0x10`
+message at all.
+
+The C52 gets a datapump by the supervisor *downloading* one.
+[dsp-overlays.md](dsp-overlays.md) has the map - overlays 6, 7 and 8 in flash,
+loaded into program space at `9d00`, `b000` and `dc00`. The loader is at
+`0x8e5da`:
+
+```text
+8e5da  mov  al, [0xe3c]      ; the overlay id
+8e5df  cmp  al, 6
+8e5e3  call 8e5eb            ; id 6 loads first, then
+8e5e6  mov  byte [0xe3c], 8  ; ...switches to 8
+8e5eb  mov  al, [0xe3c]
+8e5ef  and  ax, 0xf
+8e5f2  mov  bl, 6 ; mul bl ; mov bx, e711 ; add bx, ax   ; index the table
+8e5fb  mov  ax, cs:[bx+4]    ; the C52 load address
+8e601  mov  al, 4
+8e603  out  0x1e, al         ; start the transfer
+8e61c  in   al, 0x1e         ; poll for bit 2
+```
+
+That is exactly the transport the bridge already models for the resident
+bootstrap. It is called from the post-dial sequencer at `0x8b5d1`, and only
+when `[0xe3c]` is non-zero:
+
+```text
+8b5ca  cmp  byte [0xe3c], 0
+8b5cf  je   8b5d4
+8b5d1  call 8e5da            ; download the overlay
+```
+
+Measured:
+
+| watch | hits |
+|---|---|
+| `loader-gate` `8b5ca` | 1 |
+| **`call-loader` `8b5d1`** | **0** |
+| `overlay-loader-entry` `8e5da`, `out-1e-cmd4` `8e603`, `poll-1e` `8e61c` | 0 |
+
+`[0xe3c]` is zero, so no overlay is ever requested. That is why the run reports
+`bootstraps: 1`: the resident bank and nothing else.
+
+## One gate explains all of it
+
+`[0xe3c]` is set to 6 or 7 by the selection code at `0x8bbaa`-`0x8bc4d`, and
+that code is guarded by the same discriminator as the `0x10` dispatch:
+
+```text
+8bbaa  call 8b863           ; CF gate
+8bbad  jae  8bbc2
+8bbba  mov  byte [0xe3c], 6
+8bbc2  call 8b84f           ; the discriminator
+8bbc5  jne  8bbca
+8bbc7  jmp  8bc52           ; equal -> skip every [0xe3c] assignment
+```
+
+The run reaches `0x8bc52` - it emits the `001c:0008` that the code just past it
+sends - having skipped all of them. So `0x8b84f` returning equal is the single
+root cause of both symptoms: no overlay downloaded, and no `0x10` dispatched.
+
+It returns equal because `[0xa96]&2`, `[0x5a5]&1` and `[0x685]&1` are all zero,
+and the only reachable setter for any of them is in the thunk cluster at
+`0x876b1`/`0x87752`, reached only from the jump table at `0xa6ade`, reached only
+from `0xa6a6c` - a command handler whose command this run never issues.
+
 ## What is not established
 
-Which command reaches `0xa6a6c`. No far call or far pointer in the image
-targets `a4d2:1d4c`, and no `jmp cs:[bx+...]` dispatcher indexes the table at
-`0xa6615`, so it is reached some other way - a `call word ptr` through that
-table, or a handler address assembled at runtime.
+Which command sets those flags, and whether the emulator can even reach it. The
+handler table at `0xa6615` is never indexed by any `jmp cs:[bx+...]` in the
+image, and no far pointer targets `a4d2:1d4c`.
 
-The open question is therefore no longer "which board event is missing" but
-"which command configures the datapump, and does the emulator's command path
-ever reach it". The next probe is the same hook pointed at the table's other
-handlers and at `0x89cbc` itself, to catch the command dispatcher in the act.
+The leading hypothesis, stated before it is tested: these are **profile
+settings**, not runtime events - the same neighbourhood of cells that
+`0x8b863` reads (`[0x5cd]`, `[0x5fa]`, `[0x600]`) looks like configuration
+rather than call state, and a Courier restores its settings from NVRAM at power
+up. If so the gap is `--nvram-fixture idsdl302` being incomplete, which is a
+modelling gap and not a firmware one - the image would run given the profile
+the hardware has.
+
+The way to settle it without guessing is to watch the cells rather than reason
+about them: record every write to `[0xe3c]`, `[0x685]`, `[0xa96]`, `[0x5a5]`
+and `[0x5fa]` across a run, and compare a power-up against the 4.03d board's
+own NVRAM. Nothing should be written into those cells to make the branch go the
+other way; whatever sets them is real behaviour that is currently missing, and
+that is what wants modelling.
+
+## The supervisor's real dispatcher, for the record
+
+`0x8f564` is `call word ptr [0x298]` - an indirect call through the current
+state handler, with a selector in AL. It is the supervisor's event dispatcher,
+and across a whole dial it runs three times:
+
+| instruction | AL | result |
+|---|---|---|
+| 5,847,937 | `83` | the first `0083:0083` |
+| 35,662,523 | `83` | the second |
+| 59,801,997 | `82` | BX=`704d`, the `0017:704d` the run emits |
+
+So `0x82` on 302 is an internal state selector, not an ASIC register write.
+The bridge waits for `asic_registers[0x82] == 0x00A0`, which is main211's
+protocol; 302 never writes that register at all.

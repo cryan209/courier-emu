@@ -100,7 +100,7 @@ DTE_TYPING_INSTRUCTIONS = DTE_READY_INSTRUCTIONS + 5_000_000
 # is opt-in because the ratio is a choice within that band rather than a
 # measurement, and because it delivers an edge the interrupt controller has
 # masked - see "Pacing the chain from the DSP interrupt".
-PC_WATCH_SAMPLES = 24
+PC_WATCH_SAMPLES = 64
 
 TICK_SOURCES = ("dsp",)
 
@@ -810,7 +810,9 @@ class CourierMachine:
                 # the report with its own repetition.
                 if self.pc_watch_counts[name] <= PC_WATCH_SAMPLES:
                     ax = _uc.reg_read(UC_X86_REG_AX)
-                    self.pc_watch_events.append({
+                    si = _uc.reg_read(UC_X86_REG_SI)
+                    ds = _uc.reg_read(UC_X86_REG_DS)
+                    record = {
                         "name": name,
                         "pc": f"{address:05x}",
                         "instructions": self.instructions,
@@ -819,8 +821,29 @@ class CourierMachine:
                         "bx": f"{_uc.reg_read(UC_X86_REG_BX):04x}",
                         "cx": f"{_uc.reg_read(UC_X86_REG_CX):04x}",
                         "dx": f"{_uc.reg_read(UC_X86_REG_DX):04x}",
+                        "si": f"{si:04x}",
                         "flags": f"{_uc.reg_read(UC_X86_REG_FLAGS):04x}",
-                    })
+                        "cs": f"{_uc.reg_read(UC_X86_REG_CS):04x}",
+                    }
+                    # At a routine's entry the top of stack is its return
+                    # address, which is what names the caller. Both a near
+                    # offset and the segment above it are recorded; which of
+                    # the two applies depends on how the routine was called.
+                    try:
+                        stack = (_uc.reg_read(UC_X86_REG_SS) << 4) + _uc.reg_read(UC_X86_REG_SP)
+                        raw = bytes(_uc.mem_read(stack, 4))
+                        record["ret_off"] = f"{int.from_bytes(raw[0:2], 'little'):04x}"
+                        record["ret_seg"] = f"{int.from_bytes(raw[2:4], 'little'):04x}"
+                    except Exception:
+                        pass
+                    # A string the routine is about to parse is the argument
+                    # that decides the dispatch, so capture a little of it.
+                    try:
+                        text = bytes(_uc.mem_read((ds << 4) + si, 12))
+                        record["at_si"] = text.decode("latin-1")
+                    except Exception:
+                        pass
+                    self.pc_watch_events.append(record)
             if (
                 address == 0x65560
                 and self.dsp_bridge is not None
