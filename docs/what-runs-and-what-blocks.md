@@ -1,5 +1,12 @@
 # What it takes to make a call complete, measured 2026-09-07
 
+**Superseded, same day:** the datapump is no longer silent. With the mailbox
+board fix in, 302 puts real DTMF on the line and the modelled exchange decodes
+the dialled number - `dialed: "6245"`, 537 DTMF blocks, `dsp_messages_taken:
+385`. The "59,589 samples, every one zero" table below is stale. The blocker
+has moved to the datapump dispatch, which is gated on a call-progress event the
+run never delivers: see [datapump-dispatch-gate.md](datapump-dispatch-gate.md).
+
 **Update, 2026-09-07:** fresh board probes explain and fix the NDX/PA7 interaction.
 See [the board comparison and corrections](dsp-mailbox-board-fix.md). The older
 ARCR/INDX blocker conclusions below are historical and superseded.
