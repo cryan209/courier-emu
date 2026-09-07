@@ -132,6 +132,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--uart-port", str(port)))
     for entry in args.trace_pc:
         command.extend(("--trace-pc", entry))
+    for entry in args.peek:
+        command.extend(("--peek", entry))
     if args.real_delays:
         command.append("--real-delays")
     if (
@@ -459,6 +461,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="record 80186 registers each time this physical address executes, "
         "hex, repeatable. hot_addresses is a top-20 profile and cannot say "
         "whether a given branch ran at all",
+    )
+    run.add_argument(
+        "--peek",
+        action="append",
+        default=[],
+        metavar="ADDR[=NAME]",
+        help="report this byte cell's final value, hex, repeatable. The board's "
+        "own ATGLK2 reads the same addresses, so the two compare directly",
     )
     run.add_argument(
         "--libunicorn",

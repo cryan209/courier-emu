@@ -293,18 +293,51 @@ the blocker.
 The `Options` line is identical on both, so the unit's V.34/V.90 entitlement is
 not what is refusing the overlay.
 
+## The cells, read off the hardware
+
+The NVRAM driver sits at the same address on 302 and 403, and ID_SDL has a
+read-only memory dump command - `ATGLK2=<segment>:<offset>`, the one
+`flash_dump.py` already uses to capture the 512 KiB flash. That reads the gate
+cells directly off the running board, so the emulator and the hardware can be
+compared cell by cell instead of argued about. `--peek ADDR[=NAME]` reports the
+same cells from a run.
+
+Board is idle and on-hook; the emulator column is the end of a dial run.
+
+| cell | board 4.03d | emulator 302 | what it gates |
+|---|---|---|---|
+| **`[0x685]`** | **`ff`** | **`00`** | bit 0 is the flag `8b84f` tests |
+| **`[0x5cd]`** | **`e0`** | **`00`** | bit `0x40` is the CF gate at `8b863` |
+| **`[0x33e]`** | **`11`** | **`02`** | bit 2 picks `[0x685] |= 1` over `|= 0x40` |
+| `[0x5a5]` | `08` | `00` | bit 0 clear on both |
+| `[0xa96]` | `00` | `00` | bit 1 clear on both |
+| `[0x5fa]`, `[0x600]`, `[0xea7]`, `[0xe3c]` | `00` | `00` | - |
+
+Three cells differ, and one of them is the flag itself. On the hardware
+`[0x685]` has bit 0 set, which is exactly the condition that makes `8b84f`
+return not-equal and lets both the overlay selection and the `0x10` dispatch
+through. The emulator has zero.
+
+Two honest caveats. `ff` is also what uninitialised RAM reads as, so bit 0
+being set there is not proof it was set deliberately - though `[0x5cd] = e0`
+and `[0x33e] = 11` are structured values rather than erased ones, and the
+emulator reads `00` for all three. And the two columns are not the same moment:
+the board is idle, the run is post-dial. Catching the hardware mid-call needs
+the dump command issued from a second DTE session while a call is up.
+
+What this does establish is that the gap is **cells the emulator never
+initialises**, not a message it fails to deliver and not a profile setting -
+`AT&F` and a parameter sector both leave them at zero. Finding what writes
+`[0x685]`, `[0x5cd]` and `[0x33e]` on a real boot is the next step, and the
+`--peek`/`ATGLK2` pair is now the tool for it: sample the same cells on
+hardware at reset, after `ATZ`, and during a call, and compare each against a
+run at the same point.
+
 ## What is not established
 
-Which command sets those flags. The handler table at `0xa6615` is never indexed
-by any `jmp cs:[bx+...]` in the image, no far pointer targets `a4d2:1d4c`, and
-neither a factory-default profile nor a parameter sector reaches it.
-
-What has not been tried, and is the obvious next thing: the board's own raw
-EEPROM. `ATI5` renders the profile the firmware chooses to show; it is not the
-512 bytes. Reading those needs the NVRAM driver run on the hardware
-(`courier_emu/nvram.py` records it at `5b5e:16e0` for 302, which is not the
-4.03d address), and a faithful `--nvram` image would settle whether anything in
-the store matters here at all.
+Which command sets those flags, and what writes them on a real boot. The
+handler table at `0xa6615` is never indexed by any `jmp cs:[bx+...]` in the
+image, and no far pointer targets `a4d2:1d4c`.
 
 ## The supervisor's real dispatcher, for the record
 

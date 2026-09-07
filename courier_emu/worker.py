@@ -45,6 +45,7 @@ def main() -> int:
     parser.add_argument("--runtime-port", action="append", default=[])
     parser.add_argument("--uart-port", action="append", type=_number, default=[])
     parser.add_argument("--trace-pc", action="append", default=[])
+    parser.add_argument("--peek", action="append", default=[])
     parser.add_argument("--real-delays", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
@@ -183,6 +184,7 @@ def main() -> int:
         runtime_port_values=runtime_ports,
         uart_ports=set(args.uart_port),
         pc_watch=_pc_watch(args.trace_pc),
+        peek=_pc_watch(args.peek),
         fast_delays=not args.real_delays,
         with_dsp=args.with_dsp,
         dsp_rx_samples=dsp_rx_samples,

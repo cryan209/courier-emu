@@ -147,6 +147,7 @@ class RunResult:
     mmio_summary: dict[str, int] = field(default_factory=dict)
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     pc_watch: list[dict[str, Any]] = field(default_factory=list)
+    peek: dict[str, str] = field(default_factory=dict)
     pc_watch_counts: dict[str, int] = field(default_factory=dict)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
@@ -175,6 +176,7 @@ class RunResult:
         value = asdict(self)
         value["hot_addresses"] = [list(item) for item in self.hot_addresses]
         value["pc_watch"] = list(self.pc_watch)
+        value["peek"] = dict(self.peek)
         value["pc_watch_counts"] = dict(self.pc_watch_counts)
         return value
 
@@ -261,6 +263,7 @@ class CourierMachine:
         force_online: bool = False,
         dsp_batch: int = 256,
         pc_watch: dict[int, str] | None = None,
+        peek: dict[int, str] | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -295,6 +298,10 @@ class CourierMachine:
         # with what in AX" - the queue drain at 8f521 demonstrably runs and
         # never appears in it. This does, for addresses named up front.
         self.pc_watch = dict(pc_watch or {})
+        # Byte cells to report at the end of a run. The board's own ATGLK2
+        # reads the same addresses off hardware, so the two can be compared
+        # directly instead of inferred from behaviour.
+        self.peek = dict(peek or {})
         self.pc_watch_events: list[dict[str, Any]] = []
         self.pc_watch_counts: Counter[str] = Counter()
         self.max_io_events = max_io_events
@@ -526,6 +533,21 @@ class CourierMachine:
     def _trace_serial(self, event: str) -> None:
         if len(self.serial_trace) < MAX_SERIAL_TRACE_EVENTS:
             self.serial_trace.append(event)
+
+    def _peek_values(self) -> dict[str, str]:
+        """Read the watched byte cells out of the machine's memory.
+
+        The board's own ATGLK2 reads the same addresses off hardware, so a
+        run and the hardware can be compared cell by cell rather than
+        inferred from behaviour.
+        """
+        values: dict[str, str] = {}
+        for address, name in self.peek.items():
+            try:
+                values[name] = f"{bytes(self.uc.mem_read(address, 1))[0]:02x}"
+            except Exception:
+                values[name] = "??"
+        return values
 
     def run(self, instruction_limit: int = 250_000) -> RunResult:
         try:
@@ -2153,6 +2175,7 @@ class CourierMachine:
             mmio_summary=self._summarize(self.mmio_counts),
             hot_addresses=self.executed.most_common(20),
             pc_watch=self.pc_watch_events,
+            peek=self._peek_values(),
             pc_watch_counts=dict(self.pc_watch_counts),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
