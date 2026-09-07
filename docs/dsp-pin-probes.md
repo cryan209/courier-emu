@@ -228,3 +228,89 @@ which this repository has only ever inferred. The clock mode is set by `CLKMD1`
 > `TCLKX` would mean the `TSPC` decode is wrong, the port is not really
 > enabled, or the pin identification is off - and it would also remove the only
 > reason to think the DSP masters anything.
+
+
+## `M/S` reported switching, `TCLKX` possibly not driven (2026-09-07)
+
+Two reports that pull in the same direction: **the pin numbering needs an
+anchor before any of this is load-bearing.**
+
+### `M/S` sits between two pins that pulse every frame
+
+| FN pin | signal | I/O | behaviour |
+|---|---|---|---|
+| 14 | `MCLK` | in | **2.880 MHz** (derived - see below) |
+| 15 / 16 | `FC0` / `FC1` | in | tied low if unused |
+| 17 | `FSD` | **out** | active-low pulse, one per frame |
+| **18** | **`M/S`** | **in** | static master/slave select |
+| 19 | `EOC` | **out** | high at ADC conversion start, low at end - **one pulse per frame** |
+| 20 | `DGTL GND` | - | DC |
+
+`M/S` is an *input* wedged between two *outputs* that both pulse at the frame
+rate. Off by one in either direction lands on a signal that looks exactly like
+"driven high and low", which is the same trap as `DR` (43) and `TDR` (44).
+
+**The discriminator is phase against `FS` (pin 12).** `FSD` and `EOC` are locked
+to the frame: one pulse per `FS` period, fixed phase, at 7200-8000 Hz. Anything
+locked like that is one of them. If the suspect pin toggles *independently* of
+`FS` - a different rate, bursty, or aperiodic - then it really is `M/S`.
+
+### If it really is `M/S`, that changes the answer
+
+`M/S` is specified as a static select: "when M/S is high, the device is the
+master and when low, it is a slave", and section 2.3 says the *only* difference
+is that `SCLK` and `FS` are outputs when high and inputs when low. So driving it
+dynamically is exactly the primitive you would need to **time-share the primary
+serial bus**: the AC01 masters it and exchanges samples while `M/S` is high, and
+releases `SCLK`/`FS` to the ASIC while it is low.
+
+That would mean the codec ISR's unconditional store of every `DRR` word into the
+ring is picking up **both** codec samples and ASIC words - which is precisely the
+claim retracted in [second-serial-port.md](second-serial-port.md), arriving by a
+mechanism nobody had proposed. It would also make the ring the inbound command
+path, tie the interconnect to the `ARCR` ring gate, and need no wide parallel
+bus. The retraction was of the *argument* (register 6 carries no master/slave
+bit, and it does not); a toggling `M/S` pin would be independent evidence for
+the *conclusion*.
+
+So this is worth resolving carefully rather than either way by assumption.
+
+### Anchor the numbering first - two pins do it, and both pay twice
+
+Neither package's pin 1 has been confirmed against a measurement here, and a
+132-pin BQFP read from the wrong reference shifts **every** DSP number in this
+file.
+
+> **AC01 (44-pin PLCC): find `MCLK`, pin 14.** It should be **2.880 MHz**. That
+> single reading anchors the codec's numbering *and* independently confirms the
+> MCLK value this repository derived from the A and B registers - so if a pin
+> reads 2.880 MHz, both the number and the numbering are right at once.
+>
+> **DSP (132-pin BQFP): find `X2/CLKIN`, pin 96.** It should carry the board
+> oscillator at **40.320 MHz**, which the can is marked with. `CLKOUT1` (110)
+> is the other unmistakable one.
+
+Until one of those lands, treat every pin number here as provisional.
+
+### A correction to withdraw first: "the DSP transmits constantly"
+
+`TCLKX` reading as undriven is less surprising than it first looks, and the
+fault may be this repository's.
+
+[second-serial-port.md](second-serial-port.md) says the DSP transmits on the
+second port continuously, measured at "21,976 `TDXR` writes in one
+60,000-instruction sample window". **That measurement was taken in the emulator,
+and the writer is the idle task at `0x81b7`.** The emulator's DSP never leaves
+idle - that is the `ARCR` blocker this whole investigation is about. So the
+figure says the idle task runs constantly *because the DSP is stuck in it*, not
+because the firmware streams constantly.
+
+On a working board the DSP is doing real work and would be in that idle task far
+less, so a quiet `TDX`/`TCLKX` is consistent with the firmware. The one thing
+that does not fit is that `MCM = 1` should free-run `TCLKX` regardless of
+whether anything is transmitted - so if `TCLKX` is genuinely static, either the
+pin identification is off, or the `TSPC` decode is wrong, or that port is not
+brought up on this board at all.
+
+**This is the same trap as the codec receive queue and the `TRCV` scan**: a
+measurement taken inside the model, describing the model.
