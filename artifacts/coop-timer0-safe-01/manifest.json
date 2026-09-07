@@ -1,0 +1,25 @@
+{
+ "what": "The cooperative sampler, working: armed across AT&T8 with no reset, and it captured traffic",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "the combination that works": "Timer 0's vector, which &T8 does NOT rewrite (unlike INT3's), displacing a handler that is a two-instruction EOI stub - with the sampler placed at 0x1a00, inside the 0x1600-0x2b00 range that &T8 leaves intact. Every earlier failure had one or the other: a vector the firmware repoints mid-run, or a handler sitting in the 0x3000-0x8000 range &T8 zeroes.",
+ "result": {
+  "reset": "none - the sentinel at 0xd000 survived and the code at 0x1a00 was intact afterwards",
+  "AT": "answered before, during and after",
+  "samples": 960,
+  "ring": "filled - 3.2 s of the 8 s run, at timer 0's 200 Hz"
+ },
+ "captured": {
+  "0x18": "8 distinct values, 54 transitions: C0 C4 C8 CC CE D8 DC FF",
+  "0x1a": "3 distinct, 15 transitions: C0 DF FF",
+  "0x1c": "3 distinct, 5 transitions: F9 FD FF",
+  "0x1e": "3 distinct, 2 transitions: FB FC FF"
+ },
+ "means": "This is the first sampling of the ASIC's handshake group on a live board while the firmware is doing something. The idle run (coop-sampler-01) read one constant value per port; here every port moves, and 0x18 in particular walks a repeating pattern. What the values mean is not interpreted here - the run demonstrates that the instrument works under load, which is what four previous builds failed to do.",
+ "limits": [
+  "The ring filled after 3.2 s of an 8 s run. Fewer ports or a buffer in the 0xd000 region would cover a longer event.",
+  "&T8 is not a call. A call may touch different RAM and repoint different vectors, so the placement and the vector choice both need re-checking before a call capture is trusted.",
+  "Disarm remains mandatory: nothing resets the board when this works."
+ ],
+ "hardware_tested": true
+}

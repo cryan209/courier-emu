@@ -43,12 +43,16 @@ import struct
 
 from .probe_transport import Code
 
-# The surveyed-free 20 KiB block is 0x2e00-0x7eff (docs/ram-probe-delivery.md).
-# Code sits at the bottom of it and the ring above, so both stay inside.
-ENTRY = 0x3000
-STATE = 0x3200          # write pointer, then the saved vector
-BUFFER = 0x3400
-BUFFER_END = 0x7E00     # 18 KiB of samples
+# NOT the surveyed-free 0x2e00-0x7eff block. AT&T8 zeroes 0x3000-0x8000, so a
+# co-resident probe placed there is erased mid-run under a live vector - see
+# docs/ram-probe-delivery.md. Only 0x1600-0x2b00 and 0xd000 came through &T8
+# intact, and 0x2c00 is written, so the ring stops short of it. There is live
+# firmware data at 0x1aab, which is why the state word sits below it at 0x1a40
+# rather than on the next page: the placement image must not span it.
+ENTRY = 0x1A00
+STATE = 0x1A40          # the write pointer
+BUFFER = 0x1C00
+BUFFER_END = 0x2B00
 TIMER0_VECTOR = 8
 ORIGINAL_VECTOR = (0x8000, 0x108F)
 
@@ -179,7 +183,10 @@ def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
                          buffer=buffer, buffer_end=end, chain=chain)
     if entry + len(code) > state:
         raise ValueError("sampler outgrew the gap before its state word")
-    image = bytearray(buffer - base)
+    # Only as far as the state word. An image padded out to the buffer would
+    # write zeros over whatever lives in between - which is how a placement at
+    # 0x1a00 once erased the firmware data at 0x1aab.
+    image = bytearray(state - base + 2)
     image[entry - base:entry - base + len(code)] = code
     struct.pack_into("<H", image, state - base, buffer)    # the write pointer
     width = len(ports) or 1

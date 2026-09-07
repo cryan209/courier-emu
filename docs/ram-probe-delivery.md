@@ -487,8 +487,43 @@ the relocation and the chaining changed at the same time.
 
 **So the next thing to try is the combination that has not been tried**: the
 timer-0 hook, whose vector `&T8` leaves alone and whose displaced handler is a
-two-instruction stub, with the sampler placed in surviving RAM at `0x1a77`. If
-placement was the only real problem, that should hold under load.
+two-instruction stub, with the sampler placed in surviving RAM.
+
+### That combination works (2026-09-07)
+
+`artifacts/coop-timer0-safe-01/`. Timer 0's vector, placed at `0x1a00`, armed
+across `AT&T8`:
+
+* **no reset** - the sentinel at `0xd000` survived and the code at `0x1a00` was
+  intact afterwards;
+* `AT` answered before, during and after;
+* the ring **filled**: 960 samples at timer 0's 200 Hz, 3.2 s of an 8 s run.
+
+And it captured traffic. Where the idle run read one constant value per port,
+every port moves under load:
+
+| port | distinct | transitions | values |
+|---|---|---|---|
+| `0x18` | 8 | 54 | `C0 C4 C8 CC CE D8 DC FF` |
+| `0x1a` | 3 | 15 | `C0 DF FF` |
+| `0x1c` | 3 | 5 | `F9 FD FF` |
+| `0x1e` | 3 | 2 | `FB FC FF` |
+
+So the working recipe is **both** conditions at once, and every earlier build
+violated one of them:
+
+1. hook a vector the firmware does not repoint mid-run - timer 0, not INT3;
+2. place the handler and its ring in RAM the firmware does not clear -
+   `0x1600`-`0x2b00`, not `0x3000`-`0x7eff`.
+
+What the captured values *mean* is not interpreted here. The point of the run is
+that the instrument survives load, which four previous builds did not.
+
+Two things still stand between this and a call capture. The ring holds 3.2 s at
+four ports, so a longer event needs fewer ports or the `0xd000` block. And
+**`&T8` is not a call**: a call may clear different RAM and repoint different
+vectors, so both conditions above have to be re-checked against one before a
+capture is trusted.
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
