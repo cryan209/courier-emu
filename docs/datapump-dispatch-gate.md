@@ -243,26 +243,68 @@ and the only reachable setter for any of them is in the thunk cluster at
 `0x876b1`/`0x87752`, reached only from the jump table at `0xa6ade`, reached only
 from `0xa6a6c` - a command handler whose command this run never issues.
 
+## The profile hypothesis, tested and not supported
+
+The previous revision guessed that the three flags were profile settings
+restored from NVRAM, and that `--nvram-fixture idsdl302` being sparse was the
+gap. The settings diff is real, and the hypothesis is still wrong.
+
+**The fixture is a blank EEPROM.** `idsl302_fixture` seeds only words 94..102
+and the `+S` block and leaves the rest erased, and the firmware renders exactly
+that. `ATI5` under the emulator against `ATI5` on the 4.03d hardware:
+
+| | board | fixture |
+|---|---|---|
+| switches | `B0 F1 M1 X7 &A3 &B1 &G2 &H1 &I0 &K1 &L0 &M4 &N0 &P1 &R2 &S0 &T5 &U0 &X2 &Y1 %N6` | `B7 F0 M7 X0 &A3 &B7 &G7 &H7 &I15 &K7 &L3 &M15 &N3213 &P3 &R7 &S7 &T4 &U3213 &X7 &Y7 %N15` |
+| S registers | `S00=001 S07=060 S11=070 S27=048 S58=064` ... | **every one `255`** |
+| baud | 115200 | 110 |
+
+But making the firmware load a real profile through its own command path does
+not move the gate:
+
+| run | `call-loader` `8b5d1` |
+|---|---|
+| `--at 'ATDT6245'` | 0 |
+| `--at 'AT&F' --at 'ATDT6245'` | 0 |
+| `--parameter-sector` with a serial and the V.34/V.90 feature bits | 0 |
+
+`AT&F` loads the ROM defaults into the working profile - the profile the call
+actually uses - so if the flags came from settings, that run would have set
+them. It does not. **The three flags are not profile-derived.**
+
+## A separate gap: the parameter sector is absent
+
+`ATI7` on the hardware ends with a line the emulator does not print at all:
+
+| field | board 4.03d | emulator, 302 + fixture |
+|---|---|---|
+| Product type | Russia (ex. US/Canada) External | US/Canada External |
+| Supervisor rev | 7.4.16 | 7.3.14 |
+| DSP rev | 3.1.2 | 3.0.13 |
+| **Serial Number** | `0009540034268322` | **line absent** |
+
+The serial number lives in the parameter sector, not in NVRAM -
+`courier_emu/parameters.py`, sector `0x11..0x1c` to CPU `0x0a17..0x0a22` - and
+none of the dial runs pass `--parameter-sector` or `--parameter-flash`, so the
+store is simply not there. Supplying one restores the line. It does not affect
+the datapump gate, so it is a real modelling gap on its own account rather than
+the blocker.
+
+The `Options` line is identical on both, so the unit's V.34/V.90 entitlement is
+not what is refusing the overlay.
+
 ## What is not established
 
-Which command sets those flags, and whether the emulator can even reach it. The
-handler table at `0xa6615` is never indexed by any `jmp cs:[bx+...]` in the
-image, and no far pointer targets `a4d2:1d4c`.
+Which command sets those flags. The handler table at `0xa6615` is never indexed
+by any `jmp cs:[bx+...]` in the image, no far pointer targets `a4d2:1d4c`, and
+neither a factory-default profile nor a parameter sector reaches it.
 
-The leading hypothesis, stated before it is tested: these are **profile
-settings**, not runtime events - the same neighbourhood of cells that
-`0x8b863` reads (`[0x5cd]`, `[0x5fa]`, `[0x600]`) looks like configuration
-rather than call state, and a Courier restores its settings from NVRAM at power
-up. If so the gap is `--nvram-fixture idsdl302` being incomplete, which is a
-modelling gap and not a firmware one - the image would run given the profile
-the hardware has.
-
-The way to settle it without guessing is to watch the cells rather than reason
-about them: record every write to `[0xe3c]`, `[0x685]`, `[0xa96]`, `[0x5a5]`
-and `[0x5fa]` across a run, and compare a power-up against the 4.03d board's
-own NVRAM. Nothing should be written into those cells to make the branch go the
-other way; whatever sets them is real behaviour that is currently missing, and
-that is what wants modelling.
+What has not been tried, and is the obvious next thing: the board's own raw
+EEPROM. `ATI5` renders the profile the firmware chooses to show; it is not the
+512 bytes. Reading those needs the NVRAM driver run on the hardware
+(`courier_emu/nvram.py` records it at `5b5e:16e0` for 302, which is not the
+4.03d address), and a faithful `--nvram` image would settle whether anything in
+the store matters here at all.
 
 ## The supervisor's real dispatcher, for the record
 
