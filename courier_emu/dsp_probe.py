@@ -138,6 +138,63 @@ def build_boot_word_probe(address: int = BOOT_WORD_ADDRESS,
     return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
 
 
+# Does an I/O bus cycle on this board land in the DSP's own RAM?
+#
+# The mailbox demonstrably works - the ROM dump came back through `out` to ports
+# 0x5e/0x5f - so *something* latches the DSP's I/O writes. A board inspection
+# reports no traces from the DSP's address/data pins to anything but its RAMs,
+# which would mean the ASIC is not on that bus. The two are hard to reconcile
+# unless I/O cycles alias into the shared RAM, and this asks the part directly.
+IO_ALIAS_MAGIC = 0xA5A5
+IO_ALIAS_PORT = 0x0053      # unused by the resident; 50/51/52/54/57/5e/5f are not
+IO_ALIAS_CONTROL_PORT = 0x0052
+IO_ALIAS_SAMPLES = 6
+
+
+def build_io_alias_probe(magic: int = IO_ALIAS_MAGIC,
+                         port: int = IO_ALIAS_PORT) -> "RomProbe":
+    """Write one word to an I/O port, then read it back six ways.
+
+    The six words mailed back are, in order:
+
+    0. data `0x53` - the memory-mapped alias of the same port (SPRU056D 8.5.1)
+    1. `IN` from the port, the ordinary I/O cycle
+    2. data `0x8053` - the DSP's external RAM, to catch an aliasing decode
+    3. data `0x53` again but reached indirectly, to rule out addressing quirks
+    4. `IN` from a port never written, as a floating-bus control
+    5. the magic itself out of scratch, proving the buffer path carried it
+    """
+    buf = ROM_DUMP_BUFFER
+    words = [0xBE41, 0xBC00]                       # setc intm ; ldp #000
+    words += [0x5D07, 0x0030]                      # opl @07, #0030  RAM|OVLY
+    words += [0x8B8A, 0xBF0A, buf]                 # mar *, ar2 ; lar ar2, #buffer
+    words += [0xAE7C, magic & 0xFFFF]              # splk @7c, #magic
+    words += [0x0C7C, port]                        # out @7c, port
+
+    words += [0x6900 | (port & 0x7F), 0x90A0]      # lacl @53      ; sacl *+
+    words += [0xAF7D, port, 0x697D, 0x90A0]        # in @7d, port  ; lacl @7d ; sacl *+
+    words += [0xBF09, 0x8000 | (port & 0xFF),      # lar ar1, #8053
+              0x8B89, 0x6980, 0x8B8A, 0x90A0]      # mar *,ar1 ; lacl * ; mar *,ar2 ; sacl *+
+    words += [0xBF09, port,
+              0x8B89, 0x6980, 0x8B8A, 0x90A0]      # the same cell, reached indirectly
+    words += [0xAF7D, IO_ALIAS_CONTROL_PORT, 0x697D, 0x90A0]
+    words += [0x697C, 0x90A0]                      # lacl @7c ; sacl *+
+
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, buf]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + IO_ALIAS_SAMPLES) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + buf, halt)
+
+
 @dataclass(frozen=True)
 class RomProbe:
     words: tuple[int, ...]

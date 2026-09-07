@@ -260,6 +260,35 @@ Which leaves a real question rather than a bug: what leaves a ring address in
 `ARCR` on a working board. Nothing found so far does, and the block that would
 receive the message that starts a task is the same block the compare gates.
 
+### The `NDX` lead, tried and reverted (2026-09-07)
+
+The open question above - what leaves a ring address in `ARCR` - has a
+documented mechanism, and it does not work as documented.
+
+The `lar ar0, @10` sitting immediately before each `cmpr eq` (at `0x80d0`,
+`0x8105` and `0x810d`) is pointless if the compare reads `ARCR`. SPRU056D's
+`LAR` page says it is not: "You can maintain software compatibility with the
+'C2x by clearing the NDX bit. This causes any 'C2x instruction that loads
+auxiliary register 0 (AR0) to load the auxiliary register compare register
+(ARCR) and index register (INDX) also." Table 4-3 agrees. And this firmware
+clears `NDX` explicitly at `0x8012` (`apl @07, #07f8`, then `opl @07, #00b0`,
+which does not set bit 2). The core parses `m_pmst.ndx` and never reads it.
+
+Implementing it gives exactly the predicted state - `ARCR` = `0x0bdc`, inside
+the `0x0bd0`-`0x0bdf` ring - and **breaks the firmware**: `INDX` takes the same
+value, a stride of 3036 corrupts all 317 `*0+`/`*0-` sites in the resident, the
+DSP stops reaching its main loop, and the codec goes undriven (`dxr_writes`
+17,931 → 15, `tdxr_writes` 801,645 → 0). Restricting the effect to `ARCR` alone,
+or to the direct/indirect `LAR` encoding alone, does not rescue it. Reverted.
+
+Note SPRU056D contradicts itself on the polarity: its section 3.5 prose says the
+side effect happens when `NDX` is **set**, while the `LAR` page and Table 4-3 say
+when it is **clear**. So the document cannot arbitrate this, and the part's real
+behaviour is the open question. The cheap decider is a hardware probe - clear
+`NDX`, `lar ar0, #1234`, mail back `ARCR` and `INDX`.
+
+See [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
+
 ## Smaller things still known wrong
 
 These are real but none of them block a call:

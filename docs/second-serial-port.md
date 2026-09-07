@@ -1,10 +1,24 @@
 # The DSP's two serial ports, and which end the ASIC is on
 
-> **The short version.** The ASIC is a parallel-to-serial bridge: the 80186
-> writes it in parallel, and it clocks the DSP's primary serial port as bus
-> master. That is not a guess - both the DSP and the codec are programmed as
-> slaves on that bus, so a master is required and the ASIC is the only candidate.
-> See "The ASIC masters the primary serial bus" below.
+> **Retracted (2026-09-07).** The section below titled "The ASIC masters the
+> primary serial bus" does not hold, and the consequence drawn from it - that
+> the ASIC inserts command words into `DRR`, making the ring at `0x0bd0` an
+> inbound command stream - has no support. The argument needs the codec to be a
+> slave on that bus, and reads that off "register 6 = `0x20`". But **register 6
+> carries no master/slave bit**: it is the digital configuration register, and
+> the role is set by the `M/S` **pin** (datasheet Table 2-1), which no
+> measurement here has taken. Free-run (`DS05`) only chooses whether the
+> conversion rate follows A and B or the external frame-sync interval; it is
+> meaningful in codec mode, redundant in stand-alone mode, and consistent with
+> both. Separately, being the clock and frame master is a *timing* role - it
+> would not put the master's data on `DIN`/`DOUT` - so the step from "bus
+> master" to "inserts its own words" does not follow either way. The textbook
+> topology, the AC01 as stand-alone master driving a slave DSP, fits every
+> firmware fact on record and is what [ac01-codec-protocol.md](ac01-codec-protocol.md)
+> already says. See [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
+>
+> What still stands here: the `SPC`/`TSPC` decodes, the DSP mastering the
+> second port, and its transmitting on it continuously.
 
 Prompted by looking at the board: the link between the ASIC and the DSP looks
 like a serial interface. The firmware agrees, and the two serial ports are
