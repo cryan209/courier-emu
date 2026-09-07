@@ -30,36 +30,37 @@ DSP_WINDOW_STRIDE = 2
 LINE_RATE = 9_600
 
 
-class LineToCodec:
-    """Resample harness line audio to the rate the codec is currently set to.
+class Resampler:
+    """Streaming linear resampler between the line's rate and the codec's.
 
     The AC01's conversion rate is its own, from the A and B registers off MCLK,
     and the firmware retunes B at runtime for each V.34 symbol rate - 7200,
-    7578.95 or 8000 Hz. Handing it samples at a fixed rate makes every
-    frequency the firmware sees wrong by that ratio, which is what this
-    harness did while it assumed 9600.
+    7578.95 or 8000 Hz. Carrying audio across that boundary at a fixed rate
+    makes every frequency wrong by the ratio, in whichever direction it is
+    neglected.
     """
 
-    def __init__(self, input_rate: int = LINE_RATE) -> None:
-        self.input_rate = input_rate
+    def __init__(self) -> None:
+        self.input_rate = 0.0
         self.output_rate = 0.0
         self.converted = 0
         self._position = 1.0
         self._previous = 0
 
-    def convert(self, samples: list[int], output_rate: float) -> list[int]:
+    def convert(self, samples: list[int], input_rate: float,
+                output_rate: float) -> list[int]:
         if not samples:
             return []
-        if output_rate <= 0 or output_rate == self.input_rate:
-            # Nothing has programmed the codec yet, or it happens to agree.
+        if input_rate <= 0 or output_rate <= 0 or output_rate == input_rate:
+            # Nothing has programmed the codec yet, or the rates agree.
             self._previous = samples[-1]
             return list(samples)
-        if output_rate != self.output_rate:
+        if output_rate != self.output_rate or input_rate != self.input_rate:
             # A rate change restarts the phase. Carrying a fractional position
             # across it would mean nothing at the new step size.
-            self.output_rate = output_rate
+            self.input_rate, self.output_rate = input_rate, output_rate
             self._position = 1.0
-        step = self.input_rate / output_rate
+        step = input_rate / output_rate
         # Index 0 is the sample carried over from the last batch, so a value
         # interpolated across the seam has both of its neighbours.
         window = [self._previous, *samples]
@@ -77,6 +78,17 @@ class LineToCodec:
         self._previous = samples[-1]
         self.converted += len(result)
         return result
+
+
+class LineToCodec(Resampler):
+    """The line -> codec direction, whose input rate is the harness's own."""
+
+    def __init__(self, input_rate: int = LINE_RATE) -> None:
+        super().__init__()
+        self.fixed_input = float(input_rate)
+
+    def convert(self, samples: list[int], output_rate: float) -> list[int]:
+        return super().convert(samples, self.fixed_input, output_rate)
 
 
 C52_TDM_IRQ = 7
@@ -390,6 +402,10 @@ class CourierDspBridge:
         self._sip_tx_rate = RateConverter(LINE_RATE, 8_000)
         self._sip_rx_rate = RateConverter(8_000, LINE_RATE)
         self._line_to_codec = LineToCodec(LINE_RATE)
+        # The other direction: what the datapump clocks out is at the codec's
+        # rate, and the exchange, the peer link and SIP all speak the line's.
+        self._codec_to_line = Resampler()
+        self._exchange_line_buffer: list[int] = []
         self._sip_rx_samples: deque[int] = deque()
         self._completion_probe = False
 
@@ -400,6 +416,24 @@ class CourierDspBridge:
         reads as "leave the samples alone".
         """
         return float(getattr(self.core, "codec_sample_rate", 0.0) or 0.0)
+
+    def _take_line_audio(self) -> None:
+        """Move the datapump's new output onto the line, at the line's rate.
+
+        `line_tx_samples` is at whatever the codec is converting at, so handing
+        it straight to the exchange made every tone it generated read high by
+        the ratio - a 697 Hz DTMF row tone arriving as 929 Hz, which no
+        detector accepts.
+        """
+        produced = self.core.line_tx_samples(self._exchange_tx_index)
+        if not produced:
+            return
+        self._exchange_tx_index += len(produced)
+        rate = self.codec_sample_rate()
+        self._exchange_line_buffer.extend(
+            self._codec_to_line.convert(produced, rate, LINE_RATE)
+            if rate else produced
+        )
 
     def _queue_line_audio(self, samples: list[int]) -> None:
         """Hand line audio to the codec at the codec's rate, not the line's."""
@@ -1567,20 +1601,22 @@ class CourierDspBridge:
             if self._exchange_idle < LINE_FRAME_INSTRUCTIONS:
                 return
             self._exchange_idle = 0
-            self._exchange_codec_mark = produced
             self._service_exchange_frame()
             return
         self._exchange_codec_last = produced
         self._exchange_idle = 0
-        while produced - self._exchange_codec_mark >= LINE_FRAME_SAMPLES:
-            self._exchange_codec_mark += LINE_FRAME_SAMPLES
+        # Pace on line-rate samples, not codec samples. A 100 ms frame is 720
+        # codec samples at 7200 Hz and 960 line samples; counting the codec's
+        # against the line's figure ran the line 4/3 slow.
+        self._take_line_audio()
+        while len(self._exchange_line_buffer) >= LINE_FRAME_SAMPLES:
             self._service_exchange_frame()
 
     def _service_exchange_frame(self) -> None:
         """One line frame: hand over what the board sent, take what it hears."""
         off_hook = self.daa is not None and self.daa.off_hook
-        samples = self.core.line_tx_samples(self._exchange_tx_index)[:LINE_FRAME_SAMPLES]
-        self._exchange_tx_index += len(samples)
+        samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
+        del self._exchange_line_buffer[:len(samples)]
         if len(samples) < LINE_FRAME_SAMPLES:
             # The codec clocks whether or not the datapump has a block ready,
             # and what it clocks out is silence. The exchange has to hear that
