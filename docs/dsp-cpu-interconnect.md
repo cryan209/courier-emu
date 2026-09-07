@@ -106,6 +106,90 @@ is gated behind the `ARCR` compare, so delivered messages overwrite each other
 unconsumed. That is the blocker, and it is in
 [what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
 
+## The channel discipline is a single-word window with ready/ack
+
+This is the part that can be settled from the firmware, and both sides now
+agree on it. **Every DSP-CPU transfer in this firmware moves one word and then
+stops for an acknowledgement.** Nothing anywhere does a block transfer.
+
+**DSP side, the mailbox sender** (`0x83eb`):
+
+```
+83eb  0c7d 005e      out  @7d, 005e     ; tag
+83ee  0c7d 005f      out  @7d, 005f     ; word
+...            lacl #02 ; samm @57      ; raise "message ready"
+```
+
+**DSP side, the stream sender** (`0x84b7`) - and this one is a *coroutine*:
+
+```
+8499  ae80 849f      splk *, #849f      ; where to resume next time
+849b  7d80 84b7      bd   84b7, *
+849d  bf09 0385      lar  ar1, #0385    ; ...the source for *this* word
+...
+84b7  0c80 0060      out  *, 0060       ; exactly one word
+84b9  ff00           retd
+84ba  b904           lacl #04
+84bb  8857           samm @57           ; raise "stream ready", and return
+```
+
+Each resume point (`0x8499`, `0x849f`, `0x84a5`, `0x84ab`, `0x84b1`) sends one
+more word from a different address and yields again. The resume poll at
+`0x8462` tests bit 13 - by the `bit` inversion, **bit 2** - before continuing.
+
+**CPU side, the stream reader** (`0x1fec`), which is the mirror image:
+
+```
+001fec  e462         in   al, 0x62      ; high byte
+001fee  8ae0         mov  ah, al
+001ff0  e460         in   al, 0x60      ; low byte
+001ff2  8987d502     mov  [bx+0x2d5], ax
+001ff6  80eb02       sub  bl, 2
+001ff9  7805         js   0x2000        ; ...done
+001ffb  881ed102     mov  [0x2d1], bl
+001fff  c3           ret                 ; one word per call
+```
+
+It assembles **one** 16-bit word from two byte reads, stores it, steps a
+counter, and returns; `[0x2d3]` holds the address to resume at, so the whole
+receiver is a state machine re-entered once per acknowledgement. A second
+variant at `0x2037` does the same into a pointer at `[0x8a2]` with a length
+counter at `[0x8a0]`/`[0x8a1]`.
+
+So the ASIC presents a **one-word holding register with ready/ack flow
+control**, in both directions, and the CPU's `0x60`/`0x62` window has 27 read
+sites and **zero** write sites in the whole image.
+
+### What that does and does not prove
+
+It **rules out** shared memory or any random-access window between the two
+processors. There is no buffer either side can index into; there is one word in
+flight, and a handshake per word. That is what a serial link looks like from
+software, and it is consistent with the board.
+
+It does **not**, on its own, exclude a narrow parallel mailbox register, which
+would need the same discipline for the same reason. Stating it as proof of a
+serial medium would be the third over-reading in this document's history, so it
+is not stated that way here. What is fair to say: **nothing in the firmware
+contradicts a serial link, and the thing that was previously taken to
+contradict it does not.**
+
+That thing was "the DSP has a wide parallel window". It does not. The DSP's
+entire I/O footprint is eight ports, touched one word at a time:
+
+| port | use |
+|---|---|
+| `0x5e` / `0x5f` | mailbox tag and word (`out`, `0x83eb`) |
+| `0x60` | the stream sender (`out`, `0x84b7`) |
+| `0x68`-`0x6c` | written at reset (`0x8048`-`0x8056`) and in the ISR region |
+| `0x57` (`PA7`) | the status latch, read by `lamm` from `0xff57` |
+
+The wide window at `0x40`-`0x4e` is on the **CPU** side only. Note also that
+`0x60` and `0x68`-`0x6c` are **outside** `PA0`-`PA15` (`0x50`-`0x5f`), so
+[what-the-asic-does.md](what-the-asic-does.md)'s "the ASIC presents at most
+sixteen 16-bit registers to the DSP" is too narrow - those are ordinary I/O
+addresses that happen not to alias into data space.
+
 ## The physical objection, which is unanswered
 
 The count still has to work. To capture `out` to `PA14`/`PA15` and answer reads
