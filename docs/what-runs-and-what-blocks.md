@@ -284,8 +284,51 @@ or to the direct/indirect `LAR` encoding alone, does not rescue it. Reverted.
 Note SPRU056D contradicts itself on the polarity: its section 3.5 prose says the
 side effect happens when `NDX` is **set**, while the `LAR` page and Table 4-3 say
 when it is **clear**. So the document cannot arbitrate this, and the part's real
-behaviour is the open question. The cheap decider is a hardware probe - clear
-`NDX`, `lar ar0, #1234`, mail back `ARCR` and `INDX`.
+behaviour was the open question. **It has now been measured.**
+
+### The part does it, and it does it with `NDX` clear (2026-09-07)
+
+`artifacts/ndx-probe-01/`, run on the live board. The kernel loads `AR0` three
+ways under each polarity, rewriting sentinels `ARCR = 0xEEEE` / `INDX = 0xDDDD`
+before every load so that "loaded" and "untouched" cannot be confused.
+
+| | `PMST` | `lar ar0, @7b` | `lark ar0, #55` | `lar ar0, #4321` |
+|---|---|---|---|---|
+| **`NDX` clear** | `00b0` | `ARCR`/`INDX` = **`1234`** | = **`0055`** | = **`4321`** |
+| **`NDX` set** | `00b4` | `ARCR`/`INDX` = `EEEE`/`DDDD` | - | - |
+
+Three things follow, and the third was not part of the question:
+
+1. **The side effect is real on this part.** It is not a documentation artefact
+   and not a misreading.
+2. **The `LAR` page and Table 4-3 have the polarity right**; section 3.5's prose
+   is wrong. The firmware clears `NDX` at `0x8012`, so the side effect is
+   **active** on the live board.
+3. **It is not restricted to 'C2x instructions.** `lar ar0, #4321` is the 'C5x
+   long-immediate form, and it loaded `ARCR` and `INDX` as well. So the trigger
+   is loading `AR0` at all, whatever the encoding. The manual's "'C2x
+   compatibility" framing is misleading about scope.
+
+`AR0` was mailed back in both halves (`4321`, then `1234`) to prove the loads
+executed; without it a surviving sentinel could just mean a skipped instruction.
+
+**What this does to the `NDX` lead above: it inverts the conclusion.** That
+section reverted the implementation because it "breaks the firmware" - `INDX`
+takes the same value, a stride of 3036 corrupts all 317 `*0+`/`*0-` sites, the
+DSP stops reaching its main loop and the codec goes undriven. But the board does
+this and runs anyway. So the breakage is **the harness's problem to explain**,
+not evidence against the mechanism, and "the core never reads `m_pmst.ndx`" is
+now a known-wrong model rather than a neutral omission.
+
+That reframes the original question. It is no longer "what leaves a ring address
+in `ARCR`" - `lar ar0, @10` does, on every pass. It is **what `@10` holds**, and
+why the same value is harmless as an `INDX` stride on hardware when it is fatal
+in the harness. `@10` is the thing to read next, and it can be read the same way
+this was.
+
+The emulator is **not** changed by this run: re-landing the side effect without
+resolving the `*0+` breakage would swap a wrong model for a broken one. The
+measurement is recorded so the next attempt starts from the board's answer.
 
 See [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
 

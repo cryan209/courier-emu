@@ -20,7 +20,9 @@ from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
                         BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES,
                         IO_ALIAS_MAGIC, IO_ALIAS_PORT, IO_ALIAS_SAMPLES,
                         PORT_FOLD_TAG_PORT, PORT_FOLD_DATA_PORT,
-                        PORT_FOLD_SAMPLES, PORT_FOLD_PATTERN, inspect_buffer)
+                        PORT_FOLD_SAMPLES, PORT_FOLD_PATTERN,
+                        build_ndx_probe, NDX_SAMPLES, NDX_ARCR_SENTINEL,
+                        NDX_INDX_SENTINEL, inspect_buffer)
 from .bridge import asic_decodes
 from .rom import CourierRom
 
@@ -130,7 +132,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      fold_tag_port: int = PORT_FOLD_TAG_PORT,
                      fold_data_port: int = PORT_FOLD_DATA_PORT,
                      fold_samples: int = PORT_FOLD_SAMPLES,
-                     fold_pattern: int = PORT_FOLD_PATTERN) -> Diagnostic:
+                     fold_pattern: int = PORT_FOLD_PATTERN,
+                     ndx: bool = False) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
     With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
@@ -149,10 +152,14 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     chosen = [name for name, on in (("--rom-dump", rom_dump),
                                     ("--boot-word", boot_word),
                                     ("--io-alias", io_alias),
-                                    ("--port-fold", port_fold)) if on]
+                                    ("--port-fold", port_fold),
+                                    ("--ndx", ndx)) if on]
     if len(chosen) > 1:
         raise ValueError(f"choose one DSP kernel, not {' and '.join(chosen)}")
-    if port_fold:
+    if ndx:
+        probe = build_ndx_probe()
+        count = NDX_SAMPLES
+    elif port_fold:
         # The A4-fold test. Its frame is indistinguishable from any other
         # capture except by payload, which is why the pattern is recognisable.
         probe = build_port_fold_probe(fold_tag_port, fold_data_port, fold_samples,
@@ -174,8 +181,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
         count = 0x38
     # The relocated layout is the one that fits the surveyed-free RAM on the
     # board; the default is kept only because existing artifacts record it.
-    relocate = rom_dump or boot_word or io_alias or port_fold or relocated_layout
-    compact = rom_dump or boot_word or io_alias or port_fold
+    relocate = rom_dump or boot_word or io_alias or port_fold or ndx or relocated_layout
+    compact = rom_dump or boot_word or io_alias or port_fold or ndx
     entry = ROM_DUMP_ENTRY if relocate else ENTRY
     routines_at = ROM_DUMP_ROUTINES if relocate else ROUTINES
     kernel_at = ROM_DUMP_KERNEL if relocate else KERNEL
@@ -671,6 +678,11 @@ def main() -> int:
                              "pattern: the DSP keeps the previous kernel in program "
                              "RAM, so an identical frame cannot distinguish a "
                              "successful run from a re-run of the run before it")
+    parser.add_argument("--ndx", action="store_true",
+                        help="load AR0 three ways under both PMST.NDX polarities "
+                             "and mail back ARCR and INDX. SPRU056D contradicts "
+                             "itself on which polarity carries the 'C2x side "
+                             "effect (docs/what-runs-and-what-blocks.md)")
     parser.add_argument("--rom-dump", action="store_true",
                         help="carry the full 2048-word on-chip ROM reader instead of "
                              "the 56-word sample probe")
@@ -704,6 +716,7 @@ def main() -> int:
                                       fold_data_port=args.fold_data_port,
                                       fold_samples=args.fold_samples,
                                       fold_pattern=args.fold_pattern,
+                                      ndx=args.ndx,
                                      relocated_layout=args.relocate,
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)

@@ -155,6 +155,90 @@ IO_ALIAS_CONTROL_PORT = 0x0052
 IO_ALIAS_SAMPLES = 6
 
 
+# Does loading AR0 also load ARCR and INDX on this part?
+#
+# SPRU056D contradicts itself. The LAR page and Table 4-3 say the 'C2x
+# compatibility side effect - a load of AR0 also loading ARCR and INDX -
+# happens when PMST.NDX is CLEAR; section 3.5's prose says when it is SET. The
+# document cannot arbitrate, and the answer decides whether the resident's
+# `lar ar0, @10` before each `cmpr eq` is what leaves a ring address in ARCR,
+# which is the gate on the DSP's mailbox poll rate. See
+# docs/what-runs-and-what-blocks.md.
+#
+# Sentinels rather than zeroes: ARCR and INDX are set to values the LAR cannot
+# produce, so "loaded" and "untouched" are distinguishable rather than being
+# told apart by a zero that could mean either.
+NDX_ARCR_SENTINEL = 0xEEEE
+NDX_INDX_SENTINEL = 0xDDDD
+NDX_DIRECT_VALUE = 0x1234       # via a scratch cell, the 'C2x direct form
+NDX_SHORT_VALUE = 0x0055        # LARK, also a 'C2x instruction
+NDX_LONG_VALUE = 0x4321         # LAR ARx, #lk - a 'C5x addition, so a control
+NDX_SCRATCH = 0x7B
+NDX_SAMPLES = 12
+
+
+def build_ndx_probe() -> "RomProbe":
+    """Load AR0 three ways under both NDX polarities and mail back ARCR/INDX.
+
+    The twelve words are, in order:
+
+    0.  PMST with NDX cleared - confirms the bit actually went low
+    1.  ARCR after `lar ar0, @7b`   (direct, the form the resident uses)
+    2.  INDX after the same
+    3.  ARCR after `lark ar0, #55`  (short immediate, also 'C2x)
+    4.  INDX after the same
+    5.  ARCR after `lar ar0, #4321` ('C5x long immediate - the control)
+    6.  INDX after the same
+    7.  AR0, proving the loads executed at all
+    8.  PMST with NDX set
+    9.  ARCR after `lar ar0, @7b` with NDX set
+    10. INDX after the same
+    11. AR0 again
+    """
+    buf = ROM_DUMP_BUFFER
+    arcr, indx = 0x8819, 0x8818             # samm @19 / samm @18
+    read_arcr, read_indx = 0x0819, 0x0818   # lamm @19 / lamm @18
+    store = 0x90A0                          # sacl *+
+
+    def sentinels():
+        return [0xBF80, NDX_ARCR_SENTINEL, arcr,
+                0xBF80, NDX_INDX_SENTINEL, indx]
+
+    def capture():
+        return [read_arcr, store, read_indx, store]
+
+    words = [0xBE41, 0xBC00]                       # setc intm ; ldp #000
+    words += [0x5D07, 0x0030]                      # opl @07, #0030  RAM|OVLY
+    words += [0x5E07, 0xFFFB]                      # apl @07, #fffb  NDX = 0
+    words += [0x8B8A, 0xBF0A, buf]                 # mar *, ar2 ; lar ar2, #buffer
+    words += [0x0807, store]                       # lamm @07 ; sacl *+
+    words += [0xAE00 | NDX_SCRATCH, NDX_DIRECT_VALUE]
+
+    words += sentinels() + [NDX_SCRATCH] + capture()        # lar ar0, @7b
+    words += sentinels() + [0xB000 | NDX_SHORT_VALUE] + capture()
+    words += sentinels() + [0xBF08, NDX_LONG_VALUE] + capture()
+    words += [0x80A0]                              # sar ar0, *+
+
+    words += [0x5D07, 0x0004]                      # opl @07, #0004  NDX = 1
+    words += [0x0807, store]                       # lamm @07 ; sacl *+
+    words += sentinels() + [NDX_SCRATCH] + capture()
+    words += [0x80A0]                              # sar ar0, *+
+
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, buf]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + NDX_SAMPLES) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + buf, halt)
+
+
 # Is A4 decoded by the ASIC, or does port 0x4e fold onto PA14?
 #
 # The board reads A0-A3 and A5 to the gate array and not A4 (docs/dsp-pin-probes.md),
