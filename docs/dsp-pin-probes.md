@@ -396,3 +396,51 @@ anywhere other than the codec, the ASIC is the candidate.
 > And on the waveform: a pin switching at **7200-8000 Hz** is `EOC` or `FSD`. A
 > pin sitting high with a **~2-4 us dip every ~8 seconds** is `XF`. Nothing on
 > this board should look like anything in between.
+
+## The data and address buses, anchored (2026-09-07)
+
+A board observation reports the DSP tied to the ASIC across its 16 data pins -
+see [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md). That claim was recorded
+without pin numbers, which every other pin claim in this file has. Here they
+are, from the same SPRU056D Table A-4, 132-pin BQFP, that anchors the rest.
+
+| signal | pins |
+|---|---|
+| `D0`-`D7` | 30, 29, 28, 27, 26, 25, 24, 23 - descending |
+| `D8`-`D15` | 13, 12, 11, 10, 9, 8, 7, 6 - descending |
+| `A0`-`A9` | 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 - ascending |
+| `A10`-`A15` | 72, 73, 74, 75, 76, 77 - ascending |
+| `IS` / `DS` / `PS` | 90 / 89 / 91 |
+| `R/W` / `STRB` | 92 / 93 |
+| `RD` / `WE` | 82 / 83 |
+
+Two things fall out of the numbering, and both are checkable on the board.
+
+**The data bus is one contiguous block: pins 6-13 and 23-30.** What sits
+between them is power and reserved - `VDDD` 14/15, `VSSD` 20/21, and the
+not-connected pins 16-19 and 22 - so all sixteen data lines leave the package
+from one region of one edge. That is consistent with an observation phrased as
+"the 16 data pins": they are visually a single group, and nothing else is
+mixed into them.
+
+**The address lines and the strobes are on a different edge.** `A0`-`A15` run
+55-64 and 72-77, and `IS`, `DS`, `PS`, `R/W` and `STRB` are 89-93, just past
+them. So an inspection that establishes the data bus reaches the ASIC has
+established nothing at all about `IS` - it was not looking at that side of the
+part. This is why the data-pin observation cannot decide between the ASIC
+decoding I/O cycles and the ASIC merely watching the memory bus: the pin that
+separates those two readings is nowhere near the pins that were traced.
+
+**Where to put the meter next**, in order:
+
+1. **`IS` (90) to the ASIC.** The single decider. Low for `IN`/`OUT` and for
+   `PA0`-`PA15`, high for everything the SRAMs answer.
+2. **`A0`-`A3` (55-58) to the ASIC.** Four lines are enough to separate `PA7`,
+   `PA14` and `PA15`. If the ASIC has the data bus and `IS` but no address at
+   all, it cannot tell the mailbox tag port from the data port, and the
+   programming model in the firmware could not work as written.
+3. **`R/W` (92) and `STRB` (93).** Direction and cycle timing; needed for the
+   ASIC to answer a read of `PA7` rather than only latch writes.
+
+The `IS` reading is worth taking before the other two: if it is not connected,
+2 and 3 stop mattering and the alias hypothesis is the live one.
