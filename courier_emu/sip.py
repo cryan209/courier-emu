@@ -243,6 +243,7 @@ class SipSession:
         self.number = ""
         self.target_uri = ""
         self.to_header = ""
+        self.remote_target = ""
         self.state = "idle"
         self.last_status = 0
         self.error = ""
@@ -278,6 +279,7 @@ class SipSession:
         self.call_id = f"{random.getrandbits(64):016x}@{self.local_ip}"
         self.from_tag = f"{random.getrandbits(32):08x}"
         self.number = number
+        self.remote_target = ""
         self.target_uri = self._target(number)
         if not self.target_uri.lower().startswith("sip:"):
             self.target_uri = "sip:" + self.target_uri
@@ -331,7 +333,9 @@ class SipSession:
         if body:
             headers.append("Content-Type: application/sdp")
         headers.append(f"Content-Length: {len(body)}")
-        text = f"{method} {self.target_uri} SIP/2.0\r\n" + "\r\n".join(headers)
+        # In-dialog requests are addressed to the remote target the 2xx gave.
+        uri = self.remote_target if (self.remote_target and method in ("ACK", "BYE")) else self.target_uri
+        text = f"{method} {uri} SIP/2.0\r\n" + "\r\n".join(headers)
         return text.encode("ascii") + b"\r\n\r\n" + body
 
     def _send_invite(self, authorization: tuple[str, str] | None = None) -> None:
@@ -437,6 +441,14 @@ class SipSession:
                 self.error = str(exc)
                 return
             self.to_header = headers.get("to", self.to_header)
+            # RFC 3261 13.2.2.4: the ACK for a 2xx goes to the Contact of the
+            # response, not to the URI the INVITE was addressed to. Asterisk
+            # dropped an ACK addressed to sip:<number>@<host>, retransmitted
+            # its 200, and tore the call down about a second in.
+            contact = headers.get("contact", "")
+            match = re.search(r"<([^>]+)>", contact) or re.search(r"(sips?:\S+)", contact)
+            if match:
+                self.remote_target = match.group(1).split(";")[0]
             self._send_ack(headers)
             self.state = "connected"
             self._next_rtp_at = time.monotonic()
@@ -496,7 +508,10 @@ class SipSession:
             self._rx_audio.extend(ulaw_to_linear(value) for value in packet[12:])
             self.rtp_packets_received += 1
         now = time.monotonic()
-        if self.state in ("inviting", "trying", "ringing") and self._invite:
+        # Only an INVITE that has drawn no response at all is retransmitted.
+        # RFC 3261 stops timer A on the first provisional, and retransmitting
+        # through a long ringback sent the proxy one INVITE a second.
+        if self.state == "inviting" and self._invite:
             if now - self._invite_sent_at >= self._retransmit_after:
                 self.socket.send(self._invite)
                 self._invite_sent_at = now
@@ -576,6 +591,7 @@ class SipSession:
         except OSError:
             pass
         self.state = "idle"
+        self.remote_target = ""
         self.remote_rtp = None
         self._tx_audio.clear()
         self._rx_audio.clear()
