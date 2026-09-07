@@ -30,16 +30,36 @@ FORBIDDEN_PORTS = (0x10, 0x12, 0x14)
 TIMER0_VECTOR = 8
 
 
-def word_writes(image: bytes, base: int) -> list[str]:
+def word_writes(image: bytes, base: int, present: bytes | None = None) -> list[str]:
+    """The ATGLK2W commands that place `image` at `base`.
+
+    Each command is a serial round trip at about 165 ms, so a 4 KiB image costs
+    nearly six minutes and roughly three quarters of that is spent writing
+    zeros. `present` is what the caller believes is already at `base` - the
+    image placed by the previous run, or an all-zero block on a freshly power
+    cycled board - and words that already match it are skipped.
+
+    This trades time for an assumption, so it is only ever safe in company:
+    **always send verify.txt afterwards and diff it against the image.** A
+    wrong `present` shows up there as a mismatch, before anything executes.
+    """
     if base % 2:
         raise ValueError("base must be even so the image is written as words")
     if base + len(image) > 0x10000:
         raise ValueError("image does not fit below 0x10000, which is all the "
                          "write primitive can address")
     padded = image + (b"\0" if len(image) % 2 else b"")
-    return [f"ATGLK2W{base + offset:04X},"
-            f"{int.from_bytes(padded[offset:offset + 2], 'little'):04X}"
-            for offset in range(0, len(padded), 2)]
+    if present is None:
+        skip = lambda offset, word: False
+    else:
+        expected = present + bytes(max(0, len(padded) - len(present)))
+        skip = lambda offset, word: expected[offset:offset + 2] == padded[offset:offset + 2]
+    out = []
+    for offset in range(0, len(padded), 2):
+        word = int.from_bytes(padded[offset:offset + 2], "little")
+        if not skip(offset, word):
+            out.append(f"ATGLK2W{base + offset:04X},{word:04X}")
+    return out
 
 
 def page_reads(base: int, length: int) -> list[str]:
@@ -67,20 +87,41 @@ def main() -> int:
                         help="IVT entry to hook (default 8, timer 0)")
     parser.add_argument("--output", type=Path, required=True,
                         help="directory to write place.txt, verify.txt and arm.txt")
+    parser.add_argument("--assume-zero", action="store_true",
+                        help="skip writing words that are already 0000. About three "
+                             "quarters of a probe image is zeros, so this cuts the "
+                             "placement from ~6 minutes to ~2. Only true on RAM that "
+                             "is actually zero - a freshly power cycled board, not one "
+                             "that already holds a previous image")
+    parser.add_argument("--against", type=Path, default=None,
+                        help="skip words that already match this image - the one "
+                             "previously placed at the same base. Two builds of the "
+                             "same probe differ in a handful of words, so a re-run "
+                             "costs seconds instead of minutes")
     args = parser.parse_args()
 
     image = args.image.read_bytes()
     entry = args.base if args.entry is None else args.entry
-    place = word_writes(image, args.base)
+    if args.against and args.assume_zero:
+        raise SystemExit("--against and --assume-zero are two different claims "
+                         "about what is on the board; pass one")
+    present = None
+    if args.against:
+        present = args.against.read_bytes()
+    elif args.assume_zero:
+        present = bytes(len(image) + 1)
+    place = word_writes(image, args.base, present)
     verify = page_reads(args.base, len(image))
     arm = arm_commands(entry, args.vector)
 
     # Read the placement back out of its own commands: a transcription or
     # endianness error here would be silent and would run as code.
-    rebuilt = bytearray()
+    rebuilt = bytearray(present[:len(image)] if present else b"")
+    rebuilt += bytes(max(0, len(image) - len(rebuilt)))
     for line in place:
+        address = int(line[7:11], 16) - args.base
         value = int(line.split(",")[1], 16)
-        rebuilt += value.to_bytes(2, "little")
+        rebuilt[address:address + 2] = value.to_bytes(2, "little")
     if bytes(rebuilt[:len(image)]) != image:
         raise SystemExit("internal error: emitted commands do not reproduce the image")
 
@@ -91,7 +132,11 @@ def main() -> int:
 
     print(f"  image      {len(image)} bytes at {args.base:#06x}"
           f"..{args.base + len(image) - 1:#06x}")
-    print(f"  place.txt  {len(place)} write commands (round-trip checked)")
+    full = len(image) // 2 + len(image) % 2
+    note = "" if present is None else (
+        f" - {full - len(place)} of {full} skipped as already present; "
+        f"VERIFY IS NOT OPTIONAL")
+    print(f"  place.txt  {len(place)} write commands (round-trip checked){note}")
     print(f"  verify.txt {len(verify)} page dumps")
     print(f"  arm.txt    hooks vector {args.vector:#04x} to {entry:#06x}; "
           f"read the old value first and keep it")

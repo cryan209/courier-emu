@@ -237,6 +237,33 @@ The generator reads its own output back and compares it against the image
 before writing anything, because a transcription or endianness slip here would
 be silent and would then run as code.
 
+### Placing faster: most of an image is zeros
+
+At about 165 ms a command, a 4 KiB image costs nearly six minutes, and roughly
+**three quarters of it is zeros** - 1538 of 2144 words in a typical probe. Two
+flags skip work, and both trade time for a claim about what is already on the
+board:
+
+* `--assume-zero` omits words that are already `0000`. 2144 writes become 606,
+  and a placement drops from ~350 s to ~96 s, measured.
+* `--against <image>` omits words matching a specific image already placed at
+  the same base. Two builds of the same probe differ in a handful of words.
+
+**Neither is safe alone, and `verify.txt` is what makes them safe.** A wrong
+claim shows up as a mismatch before anything executes. That is not hypothetical:
+`--against` the previously placed image was tried and produced 1067 mismatches,
+because of the next paragraph.
+
+### The monitor zeroes its own image when it finishes
+
+Measured after several runs: once a probe completes, the whole placed region
+reads back as zero - 4240 bytes of `0x3000`-`0x408f`, every byte, except a word
+written afterwards by hand. So the region is *not* still holding the previous
+image, which is what makes `--against <previous run>` wrong and
+`--assume-zero` **right** for every run after the first. The zero state is
+measured rather than assumed; it is also why a repeat run does not need a power
+cycle first.
+
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
 so it spanned `0x2000`-`0x306f` - crossing `0x2000`-`0x20ff` and

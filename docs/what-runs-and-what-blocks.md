@@ -321,10 +321,51 @@ not evidence against the mechanism, and "the core never reads `m_pmst.ndx`" is
 now a known-wrong model rather than a neutral omission.
 
 That reframes the original question. It is no longer "what leaves a ring address
-in `ARCR`" - `lar ar0, @10` does, on every pass. It is **what `@10` holds**, and
-why the same value is harmless as an `INDX` stride on hardware when it is fatal
-in the harness. `@10` is the thing to read next, and it can be read the same way
-this was.
+in `ARCR`" - `lar ar0, @10` does, on every pass. It is **what `@10` holds**.
+
+### `@10` is `AR7`'s own save slot, and it reads zero at idle (2026-09-07)
+
+**First, what `@10` resolves to.** Direct addressing is DP-relative, and `ldp
+#007` sits immediately before the `lar ar0, @10` at `0x8105` and `0x810d`, with
+the steady-state loop passing the `ldp #007` at `0x80e6` on every turn. So DP is
+7 and **`@10` is data `0x0390`** - not the memory-mapped `AR0` at data `0x0010`
+that a DP-0 reading would give, which is the trap here.
+
+**And `0x0390` is where `AR7` is kept.** `sar ar7, @10` at `0x808f` and `0x81a1`
+store it; `lar ar7, @10` at `0x80c5` and `0x8192` restore it. So with the `NDX`
+side effect active, the sequence at `0x80d0` is:
+
+```
+80c5  lar  ar7, @10     ; AR7 <- saved ring pointer
+...   the gated block
+80d0  lar  ar0, @10     ; AR0 <- the same cell, and ARCR/INDX with it
+80d1  cmpr eq           ; TC = (AR7 == ARCR)
+80d2  bcnd 80c8, tc     ; ...so: has AR7 moved off its saved value?
+```
+
+The compare is not waiting for an uninitialised register to be filled by
+something unfound. It tests **the live ring pointer against its own saved
+value**, and `ARCR` is reloaded from that slot every pass. The block runs while
+`AR7` still sits where it was stored, and stops once the ring pointer has
+stepped away. That is a coherent mechanism, and it needs nothing external.
+
+**Read on the board, `0x0390` is `0x0000`** - all sixteen samples,
+`artifacts/dsp-at10-01/`. The control matters here, because zero is also what a
+broken probe returns: the same kernel pointed at data `0xffff` returned `0x0083`
+sixteen times, matching `artifacts/dsp-boot-word-01`. So the path reads live
+cells and the zero is a reading.
+
+**What the zero does and does not say.** It was taken with the modem idle and on
+hook, and after the monitor had reset the DSP, so it is the value the resident
+left behind rather than a sample of the running loop. With `@10` at zero, `AR7`
+is restored to zero at `0x80c5`, `ARCR` is set to zero at `0x80d0`, and the
+compare matches - which is consistent with the harness's own observation that
+the block runs during initialisation and then never again. It does **not**
+follow that `@10` is zero during a call: the ring and task machinery may only be
+set up once a connection starts, and that state cannot be captured this way,
+because arming the monitor takes the modem over. **Sampling `0x0390` during a
+call is the next thing worth doing, and it needs a probe that runs alongside the
+firmware rather than replacing it.**
 
 The emulator is **not** changed by this run: re-landing the side effect without
 resolving the `*0+` breakage would swap a wrong model for a broken one. The

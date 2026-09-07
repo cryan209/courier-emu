@@ -1,0 +1,8 @@
+{
+ "what": "Control for dsp-at10-01: the same kernel reading DSP data 0xffff",
+ "date": "2026-09-07",
+ "result": "0x0083 x16",
+ "corroborates": "artifacts/dsp-boot-word-01, which recorded the same value",
+ "means": "the boot-word kernel reads live cells correctly, so dsp-at10-01's zero is a reading",
+ "hardware_tested": true
+}

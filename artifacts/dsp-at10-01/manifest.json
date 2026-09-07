@@ -1,0 +1,18 @@
+{
+ "what": "The value of the DSP's `@10` - data 0x0390 - read on the live board",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2, idle and on hook",
+ "date": "2026-09-07",
+ "why": "`lar ar0, @10` immediately precedes each `cmpr eq` that gates the DSP's mailbox poll. With the NDX side effect measured as active (artifacts/ndx-probe-01), that instruction sets ARCR from @10 on every pass, so @10 is what the gate actually compares against.",
+ "resolving @10": "Direct addressing is DP-relative. `ldp #007` sits immediately before the `lar ar0, @10` at 0x8105 and 0x810d, and the steady-state loop passes the `ldp #007` at 0x80e6 on every turn, so DP = 7 and @10 is data 0x0390 - not the memory-mapped AR0 at data 0x0010 that a DP = 0 reading would give.",
+ "what 0x0390 is": "AR7's save slot. `sar ar7, @10` at 0x808f and 0x81a1 store it; `lar ar7, @10` at 0x80c5 and 0x8192 restore it. So the compare at 0x80d1 tests the live ring pointer against its own saved value.",
+ "method": "probe_transport --boot-word --boot-word-address 0x0390 --boot-word-samples 16",
+ "result": "0x0000, all sixteen samples",
+ "control": "artifacts/dsp-at10-control-01: the same kernel on data 0xffff returned 0x0083 sixteen times, matching artifacts/dsp-boot-word-01. So the probe reads live cells correctly and the zero is a reading, not a broken path.",
+ "caveats": [
+  "Read with the modem idle and on hook, and read after the monitor has reset the DSP - so this is the value the resident left behind, not a sample of the running steady state.",
+  "It does not follow that @10 is zero during a call. The DSP's task and ring machinery may only be set up once a connection starts, and that state cannot be captured this way because arming the monitor takes the modem over.",
+  "A zero here is consistent with the harness's own observation that the gated block runs once during initialisation and then never again."
+ ],
+ "hardware_tested": true,
+ "frame_sha256": "5be0f52c5ea153bde892dc86da0d831b61bed9e5720bac9041f9fa53bcc64dbd"
+}
