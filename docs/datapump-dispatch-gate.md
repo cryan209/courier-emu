@@ -708,6 +708,46 @@ emulator feeding it a misaligned one is the next question, and it is
 answerable: the supervisor assembles these into the ring at `29e` before the
 drain at `8f521` sends them, so watching the 80186 write that ring says which.
 
+### The supervisor enqueues the zero itself
+
+`--mem-watch FIRST:LAST` records 80186 memory writes in a range with the
+program address that made each. The first attempt watched `29e..2cd` on both
+images and looked like a smoking gun - 302 filled by `8f678` with clean
+three-word messages, 403 apparently scribbled over by a dozen unrelated PCs:
+
+```text
+302  [02aa] 001a   [02ac] 32c8   [02ae] ff00
+     [02b0] 001b   [02b2] 0c08
+403  [029f] 0002   [02a0] 00f4   [02a7] 0e00   [02b7] 0001 ...
+```
+
+That was another 302-derived address. 403's drain reads its pointer from
+`[0x194]` and wraps at `0x1c8`, not `[0x29a]`/`0x2ce`, so `29e` on 403 is
+unrelated memory and the "scribble" is just other variables.
+
+Watching **403's own ring** shows its enqueue at `8f668` writing this:
+
+```text
+[01ba] ff00      the marker
+[01bc] 001a      the tag
+[01be] 0000      the data
+[01c0] ff00
+[01c2] 001b
+[01c4] 0000
+```
+
+**The supervisor enqueues zero.** The ring is correct, the drain is correct,
+the delivery is correct, the dispatcher is correct, the handler is correct and
+the oscillator is correct. 7.4.16 computes zero for the tone's gain and second
+amplitude where 7.3.14 computes `32c8` and `0c08`, and every stage after that
+faithfully carries the zero to `mpy @12`.
+
+Nothing in the emulator corrupts these values, and the several revisions of
+this document that said otherwise were each wrong for the same reason: an
+address read off the 302 disassembly and applied to a 403 run. `29a` against
+`194`, and before that the cell addresses in the hardware comparison. On this
+pair of images an address is only meaningful with its image named.
+
 ## What is not established
 
 Which command sets those flags, and what writes them on a real boot. The

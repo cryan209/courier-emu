@@ -140,6 +140,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--dsp-peek", entry))
     if args.dsp_write_watch:
         command.extend(("--dsp-write-watch", args.dsp_write_watch))
+    if args.mem_watch:
+        command.extend(("--mem-watch", args.mem_watch))
     if args.real_delays:
         command.append("--real-delays")
     if (
@@ -496,6 +498,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ADDR",
         help="record every write to this C52 data cell, hex, with the program "
         "address that made it. Unfiltered the trace fills in milliseconds",
+    )
+    run.add_argument(
+        "--mem-watch",
+        default="",
+        metavar="FIRST:LAST",
+        help="record 80186 memory writes in this physical range, hex, with the "
+        "program address that made each",
     )
     run.add_argument(
         "--libunicorn",

@@ -101,6 +101,7 @@ DTE_TYPING_INSTRUCTIONS = DTE_READY_INSTRUCTIONS + 5_000_000
 # measurement, and because it delivers an edge the interrupt controller has
 # masked - see "Pacing the chain from the DSP interrupt".
 PC_WATCH_SAMPLES = 64
+MEM_WATCH_EVENTS = 96
 
 TICK_SOURCES = ("dsp",)
 
@@ -148,6 +149,7 @@ class RunResult:
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     pc_watch: list[dict[str, Any]] = field(default_factory=list)
     peek: dict[str, str] = field(default_factory=dict)
+    mem_watch: list[dict[str, Any]] = field(default_factory=list)
     pc_watch_counts: dict[str, int] = field(default_factory=dict)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
@@ -177,6 +179,7 @@ class RunResult:
         value["hot_addresses"] = [list(item) for item in self.hot_addresses]
         value["pc_watch"] = list(self.pc_watch)
         value["peek"] = dict(self.peek)
+        value["mem_watch"] = list(self.mem_watch)
         value["pc_watch_counts"] = dict(self.pc_watch_counts)
         return value
 
@@ -267,6 +270,7 @@ class CourierMachine:
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
+        mem_watch: tuple[int, int] | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -306,6 +310,11 @@ class CourierMachine:
         # directly instead of inferred from behaviour.
         self.peek = dict(peek or {})
         self.dsp_trace_range = dsp_trace_range
+        # An 80186 memory-write window. The ring the mailbox drain reads from
+        # is at 0290..02ce, which the dsp_queue_write hook only clips the tail
+        # of, and nothing else records who fills it.
+        self.mem_watch = mem_watch
+        self.mem_watch_events: list[dict[str, Any]] = []
         self.pc_watch_events: list[dict[str, Any]] = []
         self.pc_watch_counts: Counter[str] = Counter()
         self.max_io_events = max_io_events
@@ -1973,6 +1982,19 @@ class CourierMachine:
             if len(self.mmio_events) < self.max_io_events:
                 self.mmio_events.append(MmioEvent("write", address, size, value, current_pc()))
 
+        def on_mem_watch(
+            _uc: Any, _access: int, address: int, size: int, value: int, _data: Any
+        ) -> None:
+            if len(self.mem_watch_events) >= MEM_WATCH_EVENTS:
+                self.mem_watch_events.pop(0)
+            self.mem_watch_events.append({
+                "address": f"{address:04x}",
+                "size": size,
+                "value": f"{value & 0xFFFF:04x}",
+                "pc": f"{current_pc():05x}",
+                "instructions": self.instructions,
+            })
+
         def on_dsp_queue_write(
             _uc: Any, _access: int, address: int, size: int, value: int, _data: Any
         ) -> None:
@@ -2030,6 +2052,10 @@ class CourierMachine:
         uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_dsp_queue_write, None, 0x02CA, 0x030F)
+        if self.mem_watch is not None:
+            uc.hook_add(
+                UC_HOOK_MEM_WRITE, on_mem_watch, None, self.mem_watch[0], self.mem_watch[1]
+            )
         status = "instruction-limit"
         error: str | None = None
         try:
@@ -2183,6 +2209,7 @@ class CourierMachine:
             hot_addresses=self.executed.most_common(20),
             pc_watch=self.pc_watch_events,
             peek=self._peek_values(),
+            mem_watch=self.mem_watch_events,
             pc_watch_counts=dict(self.pc_watch_counts),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
