@@ -408,6 +408,58 @@ that actually does something, which is a stricter bar than displacing a no-op.
 
 Until that exists, **do not arm this across a call.**
 
+### The chained version: built, right at idle, still wrong under load
+
+`artifacts/coop-chain-04/`. The handler saves AX/BX/DS, samples, restores and
+`jmp far 8000:0a77`, leaving the interrupt frame untouched so the firmware's own
+handler runs normally and owns both the EOI and the `iret`. At idle it is
+stable, and it measures **INT3 at about 303 Hz** - the ring pointer advanced
+`0x4028` -> `0x44e4` -> `0x49a0` over three seconds.
+
+**Arming it needs one trick worth keeping.** INT3 fires continuously, so its
+vector cannot be rewritten a word at a time - any intermediate state points
+somewhere arbitrary and the next tick runs it. Masking INT3 across the swap was
+tried and **reset the board**: the firmware cannot lose its tick for the third
+of a second two commands take. The swap is instead made atomic by changing only
+the **segment** word, leaving the offset at `0x0a77` and placing the handler at
+`(segment << 4) + 0x0a77`. One command arms it, one disarms it, and there is no
+intermediate state at all.
+
+**It still does not survive `&T8`, and the cause is now unknown.** Everything
+proposed so far has been ruled out by experiment:
+
+| suspect | test | result |
+|---|---|---|
+| the extra EOI | chained build issues none | still resets |
+| interrupt latency | lean `push ax/bx/ds` instead of `pushf`/`pushaw` | still resets |
+| the port reads | `--ports none` | still resets |
+| the handler's work at all | a bare 5-byte `jmp far` stub | still resets |
+| placement in cleared RAM | relocated to `0x1a77`, which `&T8` spares | still resets |
+
+### `AT&T8` zeroes `0x3000`-`0x8000`
+
+That last row rests on a measurement worth having on its own. Markers written
+across low RAM, `&T8` run with **nothing armed**, markers read back:
+
+| region | after `&T8` |
+|---|---|
+| `0x1600`-`0x2b00`, `0xd000` | **survived** |
+| `0x2c00`, `0x9000`, `0xa000` | overwritten with `0x55` |
+| `0x3000`, `0x3a00`, `0x4000`, `0x5000`, `0x6000`, `0x7000`, `0x7d00`, `0x8000` | **zeroed** |
+
+So the surveyed-free 20 KiB block at `0x2e00`-`0x7eff` - where every probe in
+this repository is placed, including the layout recommended above - is mostly
+**erased** by `&T8`. A takeover probe does not care: it runs and dies inside the
+watchdog's 1.6 s. Anything co-resident with the firmware is destroyed mid-run,
+with its handler erased under a vector still pointing at it.
+
+The survey section above warns that "zero is not the same as unused". This is
+that warning coming true in the sharper direction: the region is not merely
+*used*, it is actively *cleared*, and a co-resident probe needs to live in
+`0x1600`-`0x2b00` or `0xd000` instead. That relocation is necessary and it was
+not sufficient - the reset under `&T8` outlives it, and what causes it is the
+open question.
+
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
 so it spanned `0x2000`-`0x306f` - crossing `0x2000`-`0x20ff` and

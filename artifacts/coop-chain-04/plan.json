@@ -1,0 +1,18 @@
+{
+ "entry": 6775,
+ "place_base": 6656,
+ "state": 6912,
+ "buffer": 7168,
+ "buffer_end": 11008,
+ "ports": [
+  "0x18",
+  "0x1a",
+  "0x1c",
+  "0x1e"
+ ],
+ "bytes_per_tick": 4,
+ "capacity_samples": 960,
+ "seconds_at_303hz": 3.2,
+ "code_bytes": 52,
+ "mode": "chained INT3"
+}

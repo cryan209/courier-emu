@@ -1,0 +1,21 @@
+{
+ "what": "Chained INT3 sampler: works at idle, still not survivable across AT&T8",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "what works": {
+  "chaining": "The handler saves AX/BX/DS, samples, restores and `jmp far 8000:0a77`, leaving the interrupt frame untouched so the firmware's own handler runs normally and owns the EOI and the iret. At idle this is stable and the ring fills.",
+  "measured tick": "INT3 runs at ~303 Hz - the pointer advanced 0x4028 -> 0x44e4 -> 0x49a0 over three seconds",
+  "atomic arming": "Masking INT3 across the vector swap was tried and reset the board: the firmware cannot lose its tick for the third of a second two commands take. The swap is instead made atomic by changing only the SEGMENT word, leaving the offset at 0x0a77 and placing the handler at (segment << 4) + 0x0a77. One command arms, one disarms, and there is no intermediate state."
+ },
+ "what does not work": "Armed across AT&T8 the board still resets, and the cause is not yet known. Ruled out along the way: the extra EOI (chained version issues none), interrupt latency (a lean push AX/BX/DS handler fails the same way), the port reads (a --ports none build fails), the handler's work entirely (a bare 5-byte `jmp far` stub fails), and placement in &T8-cleared RAM (relocating to 0x1a77, which &T8 leaves alone, fails the same way).",
+ "the big finding": {
+  "claim": "AT&T8 zeroes 0x3000-0x8000 and writes 0x55 at 0x2c00, 0x9000 and 0xa000.",
+  "method": "markers written across low RAM, &T8 run with NOTHING armed, markers read back",
+  "survived": "0x1600-0x2b00 and 0xd000",
+  "cleared": "0x3000, 0x3a00, 0x4000, 0x5000, 0x6000, 0x7000, 0x7d00, 0x8000",
+  "why it matters": "The surveyed-free 20 KiB block at 0x2e00-0x7eff, where every probe in this repository is placed, is mostly erased by &T8. A takeover probe does not care - it runs and dies inside the watchdog's 1.6 s. Anything co-resident with the firmware is destroyed mid-run. docs/ram-probe-delivery.md warned that 'zero is not the same as unused'; this is that warning coming true, in the other direction - the region is not merely used, it is actively cleared."
+ },
+ "correction to coop-loadonly-01": "Its conclusion 'it is the interrupt, not the port reads' still holds, but the mechanism it proposed - the non-specific EOI - is now ruled out, and so is every other mechanism tried since. The cause is open.",
+ "mistake worth recording": "A full (non --assume-zero) placement at 0x1a00 wrote zeros over a live firmware data block at 0x1aab-0x1ad6 that the region scan had already identified. The modem kept answering AT/ATI3/ATI7 normally and the next reset cleared it anyway, but the write was avoidable: the image spans a whole 512-byte page and only 52 bytes of it are code.",
+ "hardware_tested": true
+}

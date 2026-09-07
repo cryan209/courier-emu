@@ -1,0 +1,17 @@
+{
+ "entry": 12288,
+ "state": 12800,
+ "buffer": 13312,
+ "buffer_end": 32256,
+ "ports": [
+  "0x18",
+  "0x1a",
+  "0x1c",
+  "0x1e"
+ ],
+ "bytes_per_tick": 4,
+ "capacity_samples": 4736,
+ "seconds_at_5ms": 23.7,
+ "code_bytes": 52,
+ "mode": "chained INT3"
+}
