@@ -85,3 +85,18 @@ def test_bad_markers_or_controls_reject_capture(index):
 def test_short_capture_rejected():
     with pytest.raises(ValueError):
         inspect_buffer([0] * 55)
+
+
+def test_port_fold_probe_differs_from_its_control_only_in_the_ports():
+    # The A4-fold test is only a test if the folded kernel and the control
+    # kernel are otherwise identical: any other difference would give the board
+    # a second reason to stay silent, and silence is the negative result.
+    from courier_emu.dsp_probe import build_port_fold_probe
+
+    folded = build_port_fold_probe()
+    control = build_port_fold_probe(0x5E, 0x5F)
+    assert len(folded.words) == len(control.words)
+    differing = [i for i, (a, b) in enumerate(zip(folded.words, control.words)) if a != b]
+    assert [(folded.words[i], control.words[i]) for i in differing] == [
+        (0x4E, 0x5E), (0x4F, 0x5F)]
+    assert folded.halt_address == control.halt_address

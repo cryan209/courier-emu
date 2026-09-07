@@ -16,7 +16,11 @@ import struct
 
 from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
                         build_rom_dump_probe, build_boot_word_probe,
-                        BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES, inspect_buffer)
+                        build_io_alias_probe, build_port_fold_probe,
+                        BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES,
+                        IO_ALIAS_MAGIC, IO_ALIAS_PORT, IO_ALIAS_SAMPLES,
+                        PORT_FOLD_TAG_PORT, PORT_FOLD_DATA_PORT,
+                        PORT_FOLD_SAMPLES, inspect_buffer)
 from .rom import CourierRom
 
 REFERENCE_DIGEST = "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5"
@@ -117,7 +121,14 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      rom_origin: int = 0,
                      boot_word: bool = False,
                      boot_word_address: int = BOOT_WORD_ADDRESS,
-                     boot_word_samples: int = BOOT_WORD_SAMPLES) -> Diagnostic:
+                     boot_word_samples: int = BOOT_WORD_SAMPLES,
+                     io_alias: bool = False,
+                     io_alias_port: int = IO_ALIAS_PORT,
+                     io_alias_magic: int = IO_ALIAS_MAGIC,
+                     port_fold: bool = False,
+                     fold_tag_port: int = PORT_FOLD_TAG_PORT,
+                     fold_data_port: int = PORT_FOLD_DATA_PORT,
+                     fold_samples: int = PORT_FOLD_SAMPLES) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
     With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
@@ -133,9 +144,21 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     # half, and printing the whole 2048 words does not fit inside that: the run
     # that found this got 491 words out and was cut off mid-line. A window lets
     # the dump be taken in pieces that do fit.
-    if rom_dump and boot_word:
-        raise ValueError("choose one DSP kernel: the ROM dump or the boot word")
-    if boot_word:
+    chosen = [name for name, on in (("--rom-dump", rom_dump),
+                                    ("--boot-word", boot_word),
+                                    ("--io-alias", io_alias),
+                                    ("--port-fold", port_fold)) if on]
+    if len(chosen) > 1:
+        raise ValueError(f"choose one DSP kernel, not {' and '.join(chosen)}")
+    if port_fold:
+        # The A4-fold test. Its frame is indistinguishable from any other
+        # capture except by payload, which is why the pattern is recognisable.
+        probe = build_port_fold_probe(fold_tag_port, fold_data_port, fold_samples)
+        count = fold_samples
+    elif io_alias:
+        probe = build_io_alias_probe(io_alias_magic, io_alias_port)
+        count = IO_ALIAS_SAMPLES
+    elif boot_word:
         # Sixteen words print well inside the watchdog window that truncated
         # the ROM dump, so this one needs no windowing.
         probe = build_boot_word_probe(boot_word_address, boot_word_samples)
@@ -148,8 +171,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
         count = 0x38
     # The relocated layout is the one that fits the surveyed-free RAM on the
     # board; the default is kept only because existing artifacts record it.
-    relocate = rom_dump or boot_word or relocated_layout
-    compact = rom_dump or boot_word
+    relocate = rom_dump or boot_word or io_alias or port_fold or relocated_layout
+    compact = rom_dump or boot_word or io_alias or port_fold
     entry = ROM_DUMP_ENTRY if relocate else ENTRY
     routines_at = ROM_DUMP_ROUTINES if relocate else ROUTINES
     kernel_at = ROM_DUMP_KERNEL if relocate else KERNEL
@@ -620,6 +643,22 @@ def main() -> int:
                         default=BOOT_WORD_ADDRESS)
     parser.add_argument("--boot-word-samples", type=lambda v: int(v, 0),
                         default=BOOT_WORD_SAMPLES)
+    parser.add_argument("--io-alias", action="store_true",
+                        help="write one I/O port and read it back six ways. The "
+                             "hypothesis this was built for is dead - IS reaches "
+                             "the ASIC, so I/O cycles do not need to alias into "
+                             "RAM - but it still characterises one port")
+    parser.add_argument("--io-alias-port", type=lambda v: int(v, 0), default=IO_ALIAS_PORT)
+    parser.add_argument("--io-alias-magic", type=lambda v: int(v, 0), default=IO_ALIAS_MAGIC)
+    parser.add_argument("--port-fold", action="store_true",
+                        help="mail a known pattern out through ports 0x4e/0x4f "
+                             "instead of 0x5e/0x5f. A4 is not wired to the ASIC, "
+                             "so if the fold is real the frame arrives anyway "
+                             "(docs/dsp-cpu-interconnect.md)")
+    parser.add_argument("--fold-tag-port", type=lambda v: int(v, 0), default=PORT_FOLD_TAG_PORT,
+                        help="pass 0x5e with --fold-data-port 0x5f for the positive control")
+    parser.add_argument("--fold-data-port", type=lambda v: int(v, 0), default=PORT_FOLD_DATA_PORT)
+    parser.add_argument("--fold-samples", type=lambda v: int(v, 0), default=PORT_FOLD_SAMPLES)
     parser.add_argument("--rom-dump", action="store_true",
                         help="carry the full 2048-word on-chip ROM reader instead of "
                              "the 56-word sample probe")
@@ -645,6 +684,13 @@ def main() -> int:
                                       boot_word=args.boot_word,
                                       boot_word_address=args.boot_word_address,
                                       boot_word_samples=args.boot_word_samples,
+                                      io_alias=args.io_alias,
+                                      io_alias_port=args.io_alias_port,
+                                      io_alias_magic=args.io_alias_magic,
+                                      port_fold=args.port_fold,
+                                      fold_tag_port=args.fold_tag_port,
+                                      fold_data_port=args.fold_data_port,
+                                      fold_samples=args.fold_samples,
                                      relocated_layout=args.relocate,
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)

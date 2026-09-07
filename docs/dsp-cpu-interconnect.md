@@ -427,11 +427,49 @@ never touches those, but a probe can:
   back through the status latch at `0xff57`
 * an `out` to port `0x70` should land wherever `0x60` goes
 
-The second is the one to run: it writes a port the firmware never uses and
-reads the result through a path this repository has already exercised on
-hardware. A kernel in the shape of `build_io_alias_probe` would do it - that
-routine is unwired and had lost its original question, but this is a new one
-worth pointing it at.
+None of those can be tested by writing a value and reading it back: the ASIC's
+DSP-side registers are not general storage - `PA7` returns status bits whoever
+wrote it, and `PA0` is a sample sink and a boot-word source. So the test has to
+be **differential on an observable effect**, and the mailbox is the effect this
+repository has already driven end to end on hardware.
+
+`build_port_fold_probe` in `courier_emu/dsp_probe.py` is that kernel: the proven
+outbound sender, mailing a recognisable pattern, with the tag and data going out
+on **`0x4e`/`0x4f`** instead of `0x5e`/`0x5f`. Nothing else changes - not the
+frame, not the ack, not the host capture. The ack stays `samm @57`, which is a
+data-space MMR write rather than an I/O cycle and so is not part of what is
+under test.
+
+```bash
+.venv/bin/python -m courier_emu.probe_transport \
+  --reference IDSDL302.ROM --output artifacts/port-fold-01 --port-fold
+```
+
+**Run the positive control first**, which is the same kernel on the real ports:
+
+```bash
+.venv/bin/python -m courier_emu.probe_transport \
+  --reference IDSDL302.ROM --output artifacts/port-fold-control-01 \
+  --port-fold --fold-tag-port 0x5e --fold-data-port 0x5f
+```
+
+Reading the result:
+
+| control | folded | conclusion |
+|---|---|---|
+| frame arrives | frame arrives | `A4` is not decoded - the fold is real, and `0x4e` *is* `PA14` |
+| frame arrives | nothing | `A4` is decoded after all, and the visual reading of pin 59 is wrong |
+| nothing | either | the run did not work; the folded result means nothing |
+
+The third row is why the control is not optional. A negative result here is
+silence, and silence has many causes.
+
+**In the emulator both runs behave as the model says they should**: the control
+completes with 8 packets and the payload `4E00..4E07`, and the folded run ends
+in `CDRP1 ERR TAG`, because the harness implements a full address decode and
+nothing answers `0x4e`. That is the emulator stating its own assumption, not
+evidence about the board - if the board's folded run *completes*, the harness is
+the thing that is wrong, and `asic_ports` is where it would be fixed.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 

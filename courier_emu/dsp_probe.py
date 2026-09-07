@@ -140,15 +140,75 @@ def build_boot_word_probe(address: int = BOOT_WORD_ADDRESS,
 
 # Does an I/O bus cycle on this board land in the DSP's own RAM?
 #
-# The mailbox demonstrably works - the ROM dump came back through `out` to ports
-# 0x5e/0x5f - so *something* latches the DSP's I/O writes. A board inspection
-# reports no traces from the DSP's address/data pins to anything but its RAMs,
-# which would mean the ASIC is not on that bus. The two are hard to reconcile
-# unless I/O cycles alias into the shared RAM, and this asks the part directly.
+# SUPERSEDED as a question, kept as an instrument. This was written when a board
+# inspection reported no traces from the DSP's address/data pins to anything but
+# its RAMs, which would have put the ASIC off that bus and made an alias into
+# shared RAM the only way the mailbox could work. The board has since answered:
+# the ASIC is on the 16 data pins and IS (pin 90) reaches it, so it decodes the
+# DSP's I/O cycles directly and no alias is needed. See
+# docs/dsp-cpu-interconnect.md. The six read-back paths are still a fair way to
+# characterise one port, so this stays wired up - but a run of it is not
+# evidence for or against a hypothesis anyone still holds.
 IO_ALIAS_MAGIC = 0xA5A5
 IO_ALIAS_PORT = 0x0053      # unused by the resident; 50/51/52/54/57/5e/5f are not
 IO_ALIAS_CONTROL_PORT = 0x0052
 IO_ALIAS_SAMPLES = 6
+
+
+# Is A4 decoded by the ASIC, or does port 0x4e fold onto PA14?
+#
+# The board reads A0-A3 and A5 to the gate array and not A4 (docs/dsp-pin-probes.md),
+# which predicts that ports differing only in bit 4 are the same register to it.
+# This asks with the one mechanism whose end-to-end effect is already proven on
+# hardware: the mailbox sender. Same kernel, same frame, same host capture - the
+# only change is that the tag and data go out on 0x4e/0x4f instead of 0x5e/0x5f.
+#
+#   frame arrives   -> A4 is not decoded, the fold is real
+#   nothing arrives -> A4 is decoded, and the two banks are distinct
+#
+# The ack stays `samm @57`: that is a data-space MMR write, not an I/O cycle,
+# so it is not part of what is under test and must not be folded with the rest.
+PORT_FOLD_TAG_PORT = 0x004E     # 0x5e with bit 4 cleared
+PORT_FOLD_DATA_PORT = 0x004F    # 0x5f with bit 4 cleared
+PORT_FOLD_SAMPLES = 8
+PORT_FOLD_PATTERN = 0x4E00      # payload is PATTERN + index, obvious in a capture
+
+
+def build_port_fold_probe(tag_port: int = PORT_FOLD_TAG_PORT,
+                          data_port: int = PORT_FOLD_DATA_PORT,
+                          samples: int = PORT_FOLD_SAMPLES,
+                          pattern: int = PORT_FOLD_PATTERN) -> "RomProbe":
+    """Mail a known pattern out through a chosen pair of I/O ports.
+
+    Defaults to the folded pair `0x4e`/`0x4f`. Passing `0x5e`/`0x5f` builds the
+    positive control: an identical kernel on the ports the resident really uses,
+    which must produce a frame, and which distinguishes "A4 is decoded" from
+    "the kernel did not run".
+    """
+    if not 1 <= samples <= 0x100:
+        raise ValueError(f"sample count {samples} is outside 1..256")
+
+    buf = ROM_DUMP_BUFFER
+    words = [0xBE41, 0xBC00]                       # setc intm ; ldp #000
+    words += [0x5D07, 0x0030]                      # opl @07, #0030  RAM|OVLY
+    words += [0x8B8A, 0xBF0A, buf]                 # mar *, ar2 ; lar ar2, #buffer
+    for index in range(samples):
+        words += [0xAEA0, (pattern + index) & 0xFFFF]   # splk *+, #pattern+i
+
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, buf]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, tag_port & 0xFFFF, 0x0CA0, data_port & 0xFFFF,
+              0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + samples) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]                        # b self
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + buf, halt)
 
 
 def build_io_alias_probe(magic: int = IO_ALIAS_MAGIC,
