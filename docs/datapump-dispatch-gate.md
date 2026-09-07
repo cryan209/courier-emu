@@ -588,15 +588,46 @@ instructions before that digit's `ee20` arms the oscillator - exactly the
 ordering the supervisor's block implies. And each time it stores **zero**.
 
 So the handler is right, the destination is right, and the value is wrong.
-`smmr @7a` stores whatever MMR `0x7a` holds, and the supervisor sent
-`001a:32c8`. What reaches `0x7a` is not what was sent. The two later writes are
-the same shape: the supervisor's `001a:32d6` arrives as `2fd6`.
 
-That puts the fault in this emulator's host-message delivery rather than in the
-firmware or the DSP build - the tone is generated correctly and then multiplied
-by a gain that was never delivered. Tag `0x13`'s data survives, which is why
-the digits are right while the level is zero, so whatever is wrong is
-selective rather than a dead path.
+### The delivered word is zero
+
+The dispatcher itself is faithful. `8387` reads three cells through the helper
+at `80e8` (`lamm *`, `ret`):
+
+```text
+8393  lar ar1, #57    ; status - bit 15 is "message pending"
+8399  lar ar1, #5e    ; the tag  -> 7d
+8399  lar ar1, #5f    ; the data -> 7a   (sacl @7a at 839b)
+839f  sub #7f
+83a1  add #00008468   ; tag - 7f + 8468 == tag + 83e9, the table read above
+```
+
+`57`, `5e`, `5f` are exactly `HOST_STATUS_CELL`, `HOST_TAG_CELL` and
+`HOST_WORD_CELL` in `bridge.py`. Nothing is misaddressed.
+
+Watching `7a` - the cell `839b` fills - around the first digit:
+
+```text
+839b  0000   @dsp 51,286,021
+822b  0000   @dsp 51,286,031     tag 1a stores it into 0392, ten instructions later
+839b  0000   @dsp 51,314,394
+839b  0006   @dsp 51,371,284
+ee20  ...    @dsp 51,371,302     tag 13 arms the oscillator with the right digit
+```
+
+So the word delivered alongside tag `0x1a` **is zero**, and the handler stores
+exactly what it was given. The supervisor's own message stream records
+`001a:32c8`. Between the supervisor writing that message and the DSP reading
+it, the data word is lost, while the tag survives - the correct handler runs -
+and a small value like `0006` survives intact.
+
+That is this emulator's host-message delivery, not the firmware. `0x13` working
+while `0x1a` does not is what makes it worth chasing rather than a dead path.
+
+(An earlier reading of this trace pointed at three mangled-looking words -
+`0032`, `c802`, `0400` - as the corrupted `32c8`. They are at DSP 40.6M, and
+the tag `0x1a` handler does not run until 51.28M, so they belong to other tags
+and are not evidence of anything here.)
 
 ## What is not established
 
