@@ -5,19 +5,38 @@ supervisor and the C5x datapump say anything to each other. It separates what
 is hardware-proven from what is inferred, and it retracts one claim that has
 been steering the debugging in the wrong direction.
 
-**The short version.** There is one interprocessor path, and it is parallel:
-the ASIC bridges *80186 I/O ports* to the *C5x's sixteen memory-mapped I/O
-ports* `PA0`-`PA15` (DSP data `0x50`-`0x5F`). That bridge is proven by a round
-trip on real silicon, not inferred. The primary serial port is the codec's, and
-nothing needs the ASIC on it.
+**The short version.** A *logical* path is proven: on the live board a kernel
+running on the DSP wrote its I/O ports `0x5e`/`0x5f` and 2048 words arrived at
+the 80186. What is **not** established is the *physical* arrangement that
+carries it, and a board inspection is in tension with the obvious reading. See
+"The physical objection" below, which is currently unanswered.
 
 ## The proven part
 
-The ROM-dump rig is the proof, and it is a genuine round trip on the board:
-a kernel running on the **DSP** executed `out` to its I/O ports `0x5e`/`0x5f`,
-and the **80186** read those same words back at its I/O ports
-`0x58`/`0x5a`/`0x5c`/`0x5e`. Words crossed from one processor's address space
-to the other's. Nothing about that is an argument from fit.
+The evidence is `artifacts/dsp-onchip-rom-01/`, and **only** that one - "read
+from the DSP of a live Courier", 20.16 MHz board, ID_SDL v4.03d, 2026-09-07. A
+kernel placed in supervisor RAM with `ATGLK2W` and started from Timer 0's
+interrupt ran at DSP program `0x8000`, read the on-chip ROM with `RPT`/`TBLR`,
+and returned 2048 words. Its sender is the resident's own outbound pattern, and
+in `build_rom_dump_probe` that is literally `out @7c, 0x005e` / `out *+,
+0x005f` / `2 -> @57`. The returned image has a plausible reset vector
+(`0000: b 0670`), 1307 distinct values, and two independent runs agree.
+
+So **the DSP's I/O-space writes reach the 80186 on the real board.** That much
+is measured.
+
+> **Do not cite the `dsp-rom-dump-v*`, `dsp-rom-half*`, `dsp-rom-transport-v*`
+> or `dsp-rom-sample-v1` artifacts for this.** Every one of them carries
+> `hardware_tested: false` - they are emulator dry-runs of the same kernel, and
+> `dsp-rom-dump-v2`'s payload is a synthetic ramp (`0x1234 + 0x193n`). An
+> earlier version of this document cited one of them as the proof, which was
+> wrong: in the harness the bridge is *programmed* to connect those ports, so a
+> round trip there shows nothing. The same self-confirming trap as the codec
+> receive queue.
+>
+> `artifacts/dsp-boot-word-01/` is real hardware but does not prove this
+> either: its kernel is placed and started the same way, and it establishes
+> what the ASIC presents at DSP data `0xffff`, not the return path.
 
 The three windows, from `artifacts/io-port-map/board-21210/` and
 `artifacts/cpu-port-map-01/`:
@@ -39,8 +58,9 @@ them.**
 ### Why a board inspection sees no parallel traces
 
 The objection that stalled this - a board inspection reporting no traces from
-the DSP's address/data pins to anything but its two `CY7C199` SRAMs - is not in
-conflict with any of the above, and it never was.
+the DSP's address/data pins to anything but its two `CY7C199` SRAMs - is
+weakened by the following, but **not** disposed of by it. See "The physical
+objection".
 
 SPRU056D Table A-8 gives `DS`, `PS` and `IS` as three *space-select strobes*
 sharing **one** address/data bus: "Data, program, and I/O space select signals.
@@ -48,11 +68,46 @@ Always high unless low level is asserted for communicating to a particular
 external space." So an I/O cycle drives the same address and data pins as a
 data cycle, distinguished only by which strobe goes low.
 
-The ASIC is therefore tapped onto the same traces as the SRAMs and qualifies
-its accesses with `IS`. **There are no separate parallel traces to find**, and
-their absence is not evidence against the mailbox. This also means "the
-ASIC-to-DSP link is serial" is the expected *visual* reading of a board where
-the link is in fact the I/O space of a multiplexed bus.
+So an I/O port on the C5x is not a separate parallel port with its own pins.
+If the ASIC is on that bus at all, it is tapped onto the *same nets* that run
+from the DSP to its SRAMs, qualified by `IS`. That removes one form of the
+objection - nobody should be looking for a second, dedicated 32-wire bus - but
+it does not remove the objection itself.
+
+## The physical objection, which is unanswered
+
+The count still has to work. To capture `out` to `PA14`/`PA15` and answer reads
+of `PA7`, the ASIC needs the DSP's **16 data lines**, enough address to
+separate the ports (~4), and `IS` plus the read/write strobes: roughly **20-23
+connections**, not 32, and all of them taps onto nets that already exist. But
+they must still physically reach the ASIC.
+
+If the board genuinely has no such connection - the reported inspection - then
+one of these is true, and this document cannot say which:
+
+1. **The taps exist and were missed.** The nets are shared with the SRAMs, and
+   the ASIC may sit physically between or beside the DSP and its RAMs, so
+   "traces go from the DSP to its RAMs" and "the ASIC is on those nets" look
+   the same from above. This is a continuity question, not a visual one.
+2. **I/O cycles alias into the shared RAM.** This is the hypothesis
+   `build_io_alias_probe` in `courier_emu/dsp_probe.py` was written to test, and
+   it fits the inspection best: if an `out` lands in the DSP's external RAM, and
+   the ASIC can already read that RAM - which it must, to load 30,172 words of
+   program into it - then the mailbox needs **no** I/O-specific wiring at all.
+   The probe writes one port and reads it back six ways, including from
+   external RAM at data `0x8053`. It is built but not wired to the CLI and has
+   never been run.
+3. **The return path is not what the kernel's code says.** Least likely - the
+   sender is three instructions - but it has not been independently checked.
+
+Reading 2 would also reconcile the boot observation cleanly: the DSP could boot
+by **serial** download (its ROM loader, on the primary port) and still reach the
+supervisor at runtime through RAM-aliased I/O cycles. Serial boot and a working
+mailbox are not mutually exclusive.
+
+**The decider is cheap and does not need the emulator:** run the I/O-alias
+probe on the board, or put a meter on the ASIC's pins against the DSP's data
+bus and `IS`.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 
