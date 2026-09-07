@@ -521,9 +521,29 @@ that the instrument survives load, which four previous builds did not.
 
 Two things still stand between this and a call capture. The ring holds 3.2 s at
 four ports, so a longer event needs fewer ports or the `0xd000` block. And
-**`&T8` is not a call**: a call may clear different RAM and repoint different
-vectors, so both conditions above have to be re-checked against one before a
-capture is trusted.
+**`&T8` is not a call**, which the next section settles.
+
+### What a call actually touches (2026-09-07)
+
+`artifacts/call-ram-sweep-01/`. The same marker method, nothing armed, across
+`ATDT9099`: the modem went off hook and dialled, nothing answered, and it
+returned `NO CARRIER` at the 60 s `S7` timeout. A repeat under `ATX4` produced
+no `NO DIALTONE` inside 25 s, which is what a *present* line looks like - a
+missing one reports that quickly under `X4`.
+
+**Not one marker was cleared.** Only three addresses changed at all - `0x2c00`,
+`0xb000`, `0xc000` - and none is in the sampler's region.
+
+So **a call does not clear `0x3000`-`0x8000`**. That erasure belongs to the
+`&T8` self-test, not to normal operation. Which reframes the earlier finding
+usefully: the old `0x3000` placement was not necessarily unsafe for a *call*, it
+was unsafe for the *test being used to validate it*. The current placement at
+`0x1a00` with the ring ending at `0x2b00` survives both, and `0x2c00` is written
+in both cases, which is exactly why the ring stops short of it.
+
+**Still untested: a connected call.** Nothing answered, so the datapump never
+ran a handshake. The sweep is worth repeating against a number that answers
+before a capture is trusted.
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
