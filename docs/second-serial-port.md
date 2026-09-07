@@ -67,6 +67,45 @@ unused". The receive half is unused; the transmit half is one of the busiest
 things the DSP does. The scan behind that claim looked for `TRCV` reads and drew
 a conclusion about the whole port.
 
+## The receive half really is unused - and here is why that is not circular
+
+The obvious objection to "zero `TRCV` reads" is that the harness never delivers
+a word on that port, so nothing could read one. That objection is correct about
+the *runtime* measurement, which proves nothing on its own - it is the same trap
+as the codec receive queue, where nothing arrived, so the firmware consumed
+nothing, so the model looked consistent with itself.
+
+The static evidence is independent of it, and it agrees:
+
+* **`IMR` is written exactly once**, at `0x809e` during reset, with `0x002a` -
+  INT2, TINT and XINT. `TRNT` is bit 6 and `TXNT` bit 7; **neither is enabled
+  anywhere in the 27,710-word resident**, so an arriving word could not
+  interrupt.
+* **`TSPC` is written twice at reset and never read.** Nothing polls `RRDY` on
+  that port, so an arriving word could not be noticed by polling either.
+* **`TRCV` is never read through MMR addressing anywhere in the resident.**
+
+The one direct-addressed candidate, `lacl @30` at `0xaa4b`, is not a register
+read at all:
+
+```
+aa4b  lacl @30 ; sub #4f52 ; retc neq     ; 0x4f52 = "RO"
+aa4f  lacl @31 ; sub #4b43 ; retc neq     ; 0x4b43 = "CK"
+```
+
+That is an ASCII signature check - "ROCK" - against cells on some other data
+page, sitting in a chain of `retc neq` guards. It is not `TRCV`/`TDXR`.
+
+So the link is **one-way: DSP to ASIC**. `RRST` is set in `TSPC`, leaving the
+receiver out of reset, but nothing in the firmware ever looks at what it
+receives.
+
+Worth noting what the neighbouring routine at `0xaa30` does, since it lands on
+the same registers by coincidence: it writes `@74`, `@75`, `@76`, `@77` with
+`0x0302`, `0x0303` and `0x18`, which are exactly the cells the idle task reads
+to build its `TDXR` word. So that is the configuration of *what* gets streamed
+out this port - two source pointers and a shift.
+
 ## What it does not establish
 
 The other end of the second port has not been traced, and nothing here shows the
