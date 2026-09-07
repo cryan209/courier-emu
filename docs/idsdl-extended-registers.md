@@ -67,37 +67,54 @@ Several things were suspected and cleared along the way, and they stay cleared:
 * The board's `ATI2` RAM test passes and the S-registers are all at their
   documented defaults.
 
-## The second fault was the same fault
+## It was DIP switch 10, not a checksum
 
 A separate anomaly turned up on the way: the running configuration after a power
 cycle was the factory-default set, while `ATI5` displayed a configured NVRAM
-profile with `DIAL=TONE`, `X7`, `115200` - and `ATZ` would not move the running
-config toward it. The stored profile was not being applied at reset.
+profile. An earlier version of this document concluded that the NVRAM image must
+be readable but *invalid* - a bad checksum that the firmware displayed on
+request while ignoring at boot - and that `AT&W` had fixed it by rewriting the
+image. **That was wrong.**
 
-Completing the manual's sequence fixed that too. After `AT&W`, an `ATZ!`
-hardware reset brings the board up with **`&A3 &B1 &G2 &H1`** - the stored
-profile - and the extended registers survive it:
+**The operator had been toggling DIP switch 10**, which on a Courier selects
+whether power-on loads the NVRAM profile or the `&F0` factory defaults. The
+switch, not `AT&W`, is why the board started coming up with the stored profile.
+
+The correction matters because it changes what the fault was:
+
+* with DIP 10 in the **factory-defaults** position the ID_SDL `+S` block is
+  never loaded from NVRAM at power-on, so it sits at zero - which is why
+  `+S24` and `+S26` read `00` and DTMF was silent;
+* with DIP 10 in the **NVRAM** position the block loads and DTMF works.
+
+Note the boot path and the command are **not** the same thing. `AT&F0` issued
+from the command line does *not* zero the extended registers - measured, they
+stay at `13000`/`3080` across `AT&F0` and a following `ATZ`. Only the DIP-10
+power-on path leaves them unloaded.
+
+After `AT&W`, an `ATZ!` hardware reset does carry the registers through:
 
 ```
-AT+S24? -> 13000
-AT+S26? -> 3080
-AT+S1?  -> 70
-AT+S22? -> 525
+AT+S24? -> 13000    AT+S1?  -> 70
+AT+S26? -> 3080     AT+S22? -> 525
 ```
 
-The likely reading is that the NVRAM image was **readable but not valid** - a
-bad or never-initialised checksum. The firmware would display it on request
-while ignoring it at boot, falling back to defaults, and leaving the extended
-registers at zero for the same reason. `AT&W` rewrote NVRAM with a valid
-checksum. So the zeroed `+S24`/`+S26` and the unapplied profile are **one root
-cause, not two**, and both are exactly what the post-flash sequence exists to
-prevent.
+but that is `&W` having stored them, not evidence about any checksum.
+
+**One piece of evidence was destroyed on the way.** Whether NVRAM already held
+correct `+S` values before the `AT&W` cannot now be established - the write
+overwrote them. If it did, the whole DTMF fault was the DIP switch alone and
+`AT+SF` was never needed.
 
 Two caveats. `ATZ!` is the firmware's hardware reset and does not remove power
 from the NVRAM, ASIC or DSP, so a true power cycle is still worth confirming.
 And `DIAL=HUNT` appears in the running config once `S27=048` is set, where the
 stored dial mode is `TONE` - a display artifact rather than a fault, but not
 chased down.
+
+**Operationally**: putting DIP 10 back to the factory-defaults position should
+make DTMF stop working again, for the reason above. That is the test that would
+confirm this reading, and it costs one switch flip.
 
 ## Doing this on another unit
 
