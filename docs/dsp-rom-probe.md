@@ -353,6 +353,13 @@ exercises bounded failure reporting. Tests also reject truncated, repeated,
 reordered and corrupt serial frames, and prohibit DSP memory peeks during
 the integrated run. **All samples remain synthetic, not recovered ROM.**
 
+Since the ROM was read off the board, `--rom-image` maps a file as the on-chip
+ROM in place of the pattern - with no path, the capture in
+`artifacts/dsp-onchip-rom-01`. `rom_matches_fixture` then checks the dump
+against that image, and the manifest records its SHA-256 as `rom_image_sha256`.
+This checks the dumper against the real contents; it does not check the board,
+and the emulator has no watchdog to bound the frame.
+
 ## Existing ATG memory reader in IDSDL302
 
 The modified reference already contains CPU memory-dump commands, established

@@ -378,14 +378,26 @@ class _EmptyDSP:
         return []
 
 
+# The on-chip ROM read off the 20.16 MHz board (docs/dsp-onchip-rom.md). The
+# harness maps a synthetic pattern by default, because it predates this capture
+# and its job is to check the chain rather than the silicon; `rom_image` puts
+# the real one under the dumper instead.
+CAPTURED_ROM = Path(__file__).resolve().parent.parent / "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin"
+ROM_CAPACITY = 4096
+
+
 class TransportMachine:
     """Execute a RAM monitor and its downloaded DSP through a modeled mailbox.
 
     Result bytes must travel through DSP OUT/SAMM -> modeled latches -> CPU IN
     -> CPU UART store. No emulator data-buffer reads feed the serial output.
+
+    `rom_image` replaces the synthetic on-chip ROM with a supplied one, padded
+    with zeros to the 4096 words the core maps; `rom_matches_fixture` then
+    checks the dump against that image.
     """
     def __init__(self, diagnostic: Diagnostic, *, rom_mapped: bool = True,
-                 fault: str | None = None):
+                 fault: str | None = None, rom_image: bytes | None = None):
         import unicorn as uc
         from unicorn import x86_const as r
         from .dsp import NativeC5x
@@ -407,9 +419,18 @@ class TransportMachine:
         self.cpu.reg_write(r.UC_X86_REG_IP, diagnostic.entry)
         self.cpu.reg_write(r.UC_X86_REG_EFLAGS, 2)
         self.core = NativeC5x(_EmptyDSP())
-        self.fixture = tuple((0x1234 + i * 0x193) & 0xFFFF for i in range(4096))
+        if rom_image is None:
+            self.fixture = tuple((0x1234 + i * 0x193) & 0xFFFF
+                                 for i in range(ROM_CAPACITY))
+            self.rom_image_sha256 = None
+        else:
+            if not rom_image or len(rom_image) % 2 or len(rom_image) > 2 * ROM_CAPACITY:
+                raise ValueError("ROM image must be 1 to 4096 little-endian words")
+            words = struct.unpack(f"<{len(rom_image) // 2}H", rom_image)
+            self.fixture = words + (0,) * (ROM_CAPACITY - len(words))
+            self.rom_image_sha256 = sha256(rom_image).hexdigest()
         self.external_fixture = tuple((0xA55A ^ i * 0x101) & 0xFFFF for i in range(32))
-        self.core.load_rom(struct.pack("<4096H", *self.fixture))
+        self.core.load_rom(struct.pack(f"<{ROM_CAPACITY}H", *self.fixture))
         self.core.load_program(struct.pack("<32H", *self.external_fixture), 0)
         self.core.set_mpmc_pin(0 if rom_mapped else 1)
         self.core.set_io(0x57, 2)
@@ -612,6 +633,7 @@ class TransportMachine:
                     "instructions": self.instructions, "dsp_steps": self.dsp_steps,
                     "hardware_tested": False, "uploadable_sdl_image": False,
                     "rom_mapped_fixture": self.rom_mapped, "fault": self.fault,
+                    "rom_image_sha256": self.rom_image_sha256,
                     "serial_text": self.serial.decode("ascii", errors="backslashreplace"),
                     "capture": decoded,
                     "sample_matches_fixture": decoded is not None
@@ -636,7 +658,9 @@ class TransportMachine:
                         "ASIC latch/status cross-wiring is inferred from paired firmware routines, not measured on hardware.",
                         "Boot-ROM reset acknowledgements, checksum acceptance and jump to the requested 8000 are modeled.",
                         "DSP scheduling is driven by supervisor polling; not cycle accurate. UART is immediately ready.",
-                        "ROM contents are synthetic; optional C5x ROM protection is not modeled.",
+                        ("ROM contents are the supplied image; optional C5x ROM protection is not modeled."
+                         if self.rom_image_sha256 else
+                         "ROM contents are synthetic; optional C5x ROM protection is not modeled."),
                         "RAM loading mechanism and a compatible flashable SDL container are not implemented."]}
         finally:
             self.core.close()
@@ -648,6 +672,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--capture", type=Path, help="validate a saved CDRP1 serial frame")
     parser.add_argument("--external-fixture", action="store_true")
+    parser.add_argument("--rom-image", type=Path, nargs="?", const=CAPTURED_ROM,
+                        help="map this file (little-endian words) as the DSP's on-chip "
+                             "ROM instead of the synthetic pattern; with no path, the "
+                             "ROM read off the board in artifacts/dsp-onchip-rom-01")
     parser.add_argument("--fault", choices=("reset", "checksum", "no-dsp", "tag", "uart", "stale"))
     parser.add_argument("--rom-words", type=lambda v: int(v, 0), default=ROM_DUMP_WORDS,
                         help="how many words this run reads (default 2048)")
@@ -711,6 +739,9 @@ def main() -> int:
             parser.error("--reference and --output are required to build and verify")
         if args.output.exists():
             parser.error("output directory already exists")
+        if args.rom_image and args.external_fixture:
+            parser.error("--rom-image maps on-chip ROM, which --external-fixture unmaps")
+        rom_image = args.rom_image.read_bytes() if args.rom_image else None
         diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump,
                                       boot_word=args.boot_word,
                                       boot_word_address=args.boot_word_address,
@@ -727,7 +758,8 @@ def main() -> int:
                                      relocated_layout=args.relocate,
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)
-        result = TransportMachine(diagnostic, rom_mapped=not args.external_fixture, fault=args.fault).run()
+        result = TransportMachine(diagnostic, rom_mapped=not args.external_fixture,
+                                  fault=args.fault, rom_image=rom_image).run()
         args.output.mkdir(parents=True)
         (args.output / "diagnostic-ram.bin").write_bytes(diagnostic.ram)
         (args.output / "probe-c5x.bin").write_bytes(diagnostic.probe.payload)
