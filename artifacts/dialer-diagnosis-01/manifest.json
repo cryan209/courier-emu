@@ -1,0 +1,35 @@
+{
+ "what": "What the firmware's own help and settings say about the missing DTMF",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "the firmware's built-in help": {
+  "screens": "AT$, AT&$, AT%$, ATD$ all answer, paged with a keypress",
+  "content": "standard USRobotics Courier command set - nothing ID_SDL-specific appears in any help screen. The Russian firmware's additions are the ATGLK2 selectors (= R W I O B H T F A), which are undocumented in help and were recovered by disassembly in docs/ram-probe-delivery.md.",
+  "useful finds": {
+   "ATI2": "RAM test",
+   "Z!": "hardware reset",
+   "ATI5": "NVRAM settings",
+   "%T": "touch tone RECOGNITION, not generation"
+  }
+ },
+ "self tests": {
+  "ATI2 RAM test": "OK",
+  "ATI1 checksum": "6C04",
+  "flash": "byte-identical to capture, artifacts/flash-verify-01"
+ },
+ "NVRAM is intact and is not being applied": {
+  "ATI5 (NVRAM)": "DIAL=TONE, X7, BAUD=115200, &A3 &B1 &G2 &H1 &P1 &R2 &X2",
+  "ATI4 (running, after power cycle)": "DIAL=PULSE, X1, BAUD=57600, &A1 &B0 &G0 &H0 &P0 &R1 &X0",
+  "ATZ": "does NOT change the running config toward NVRAM - it stays at the factory-default set",
+  "ATT": "does work, flipping the running config to DIAL=TONE",
+  "conclusion": "The NVRAM contents are intact and clearly operator-configured, and this ID_SDL build is not applying them at reset. So the stored DIAL=TONE was never in force. That is a real fault in its own right, and it is NOT the cause of the missing DTMF - forcing tone mode by hand does not restore tones."
+ },
+ "final DTMF attempt": {
+  "settings": "ATM2 speaker always on, ATT, ATX4, AT&G0 no guard tone, ATS11=95",
+  "note": "ATI4 then reported DIAL=HUNT rather than TONE, which is worth chasing separately",
+  "result": "no DTMF audible, no result code in 45 s"
+ },
+ "where this leaves it": "Flash intact, NVRAM intact, RAM test passes, S-registers all at documented defaults, pulse dialling audibly works, tone dialling produces nothing. The fault is in tone generation, which is the DSP's job, and it is not caused by anything this session wrote.",
+ "next": "Command the DSP to emit a tone directly over the mailbox - the dial path is six messages (0x16 start, 0x19/0x1a/0x1b constants, 0x13 keypad index, 0x16 stop) and courier_emu.dsp_mailbox already sends that shape, confirmed on hardware in artifacts/dsp-mailbox-command-02. That separates DSP tone generation from the supervisor's dial path. docs/driving-the-tones.md is written against DSP 3.0.13 and must be adapted to the board's 3.1.2 first.",
+ "hardware_tested": true
+}
