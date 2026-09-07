@@ -163,3 +163,68 @@ builds differ:
 `CBCR` is `0x00ef` in both. Everything in this repository that quotes
 "`0x0bd0`-`0x0bdf`" is describing `IDSDL302.ROM`; **on the user's board the ring
 is `0x0bc0`-`0x0bdf`.**
+
+
+## `TCLKX` and `CLKX` are driven differently - and that is the prediction
+
+A probe reports the two transmit clocks behaving unlike each other. That is
+exactly what the register decodes require, and it converts into the measurement
+that settles the `M/S` question **without probing `M/S`**.
+
+| pin | signal | `MCM` | direction | driven by |
+|---|---|---|---|---|
+| 124 | `CLKX` (primary) | `SPC` bit 4 = **0** | **input** | whatever masters the codec bus |
+| 123 | `TCLKX` (second) | `TSPC` bit 4 = **1** | **output** | the DSP itself |
+
+So they *must* differ. The useful part is that both sides have a predicted
+frequency.
+
+### `CLKX` decides the retraction
+
+If the AC01 is the master, its `SCLK` is "generated internally by dividing the
+master clock signal frequency by four" (datasheet terminal table, `SCLK` pin 13
+FN). This repository already fixed **MCLK = 2.880 MHz** independently, from the
+reset control words `A = 10`, `B = 20` reproducing exactly 7200 Hz through the
+part's own rate equation, and `B = 19`/`B = 18` reproducing exactly 7578.95 and
+8000 Hz - see [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md). So:
+
+> **`CLKX` (124) at 720 kHz** = MCLK/4 with MCLK = 2.880 MHz. Two independent
+> routes to the same number, and the AC01 is the master - which means the ASIC
+> is **not** on the primary serial bus, and the retraction in
+> `second-serial-port.md` stands.
+>
+> **`CLKX` at anything else** - the AC01 is not generating it, and the only
+> other candidate on that bus is the ASIC.
+
+There is a second, independent discriminator on the same pin that does not need
+a frequency counter:
+
+> **Continuous or bursty?** An AC01 in master mode divides MCLK by four and
+> free-runs, so `CLKX` is a continuous 720 kHz square wave whatever the frame
+> rate. A bridge clocking words across would instead produce **bursts of 16
+> clocks**, one per frame. Bursty `CLKX` means something is moving words on
+> demand, and that is not what the codec does.
+
+For scale, at 720 kHz sixteen clocks take **22.2 us**, against a frame period of
+138.9 us at 7200 Hz, 131.9 us at 7578.95 Hz or 125.0 us at 8000 Hz - so the two
+cases are easy to tell apart on a scope: continuously busy, or ~18% busy.
+
+### `TCLKX` gives the DSP's core clock, which nothing here has measured
+
+`TCLKX` is driven at **CLKOUT1/4**. The board's oscillator is 40.320 MHz, so:
+
+| DSP `CLKOUT1` | `TCLKX` | ratio to a 720 kHz `CLKX` |
+|---|---|---|
+| 20.16 MHz (oscillator / 2) | **5.04 MHz** | 7x |
+| 40.32 MHz (oscillator x 1) | **10.08 MHz** | 14x |
+
+Measuring `TCLKX` therefore reads the DSP's core clock straight off the pin,
+which this repository has only ever inferred. The clock mode is set by `CLKMD1`
+(pin 71) and `CLKMD2` (pin 103) if the frequency needs corroborating.
+
+> **If `TCLKX` is not driven at all**, that is a different and more serious
+> result: `TSPC = 0x00f8` sets `MCM = 1` and `XRST = 1`, and the idle task
+> writes `TDXR` continuously, so the pin should be actively clocking. A static
+> `TCLKX` would mean the `TSPC` decode is wrong, the port is not really
+> enabled, or the pin identification is off - and it would also remove the only
+> reason to think the DSP masters anything.
