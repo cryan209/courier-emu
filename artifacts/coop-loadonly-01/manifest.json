@@ -1,0 +1,31 @@
+{
+ "what": "Does the cooperative timer-0 sampler survive the firmware being busy? No.",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "runs": [
+  {
+   "n": 1,
+   "armed": "default ports 0x18,0x1a,0x1c,0x1e",
+   "activity": "AT&T8 for 12 s",
+   "result": "board rebooted - RAM cleared, sampler image at 0x3000 gone, ring pointer and buffer zero"
+  },
+  {
+   "n": 2,
+   "armed": "nothing",
+   "activity": "AT&T8 for 10 s",
+   "result": "sentinel at 0x2200 SURVIVED, AT answered - so &T8 alone does not reboot the board"
+  },
+  {
+   "n": 3,
+   "armed": "--ports none, the load-only control: the ISR fires, saves, bounds-checks, increments and returns, and touches no ASIC port",
+   "activity": "2 s idle (AT answered), then AT&T8 for 10 s",
+   "result": "board rebooted again - sentinel, ring pointer and code all cleared"
+  }
+ ],
+ "conclusion": "It is the interrupt, not the port reads. A 200 Hz timer-0 interrupt that the firmware never enables for itself is survivable while the modem is idle and is not survivable while it is busy.",
+ "why this matters": "It voids the plan it was built for. Capturing a live call means running exactly the load that crashes it, so this sampler cannot be armed across a call in its current form.",
+ "likely mechanism, not established": "The handler ends with the non-specific EOI it copied from the vestigial vector-8 handler (mov [0xff02], 0x8000). A non-specific EOI clears the highest-priority in-service bit, so one issued from an interrupt the firmware did not expect can dismiss another handler's in-service state. That would corrupt the firmware's interrupt handling precisely when other interrupts are active, which is the observed pattern. Not proven - the alternative is that the firmware's self-test has timing the extra 200 Hz of ISR simply breaks.",
+ "the fix worth trying next": "Stop injecting a new interrupt source. Hook an interrupt the firmware already takes and services - INT3/tick at 8000:0a77 is the obvious one - sample on the way through, then chain to the original handler so it does its own EOI and its own work. No new interrupt, no extra EOI, and the sampling rate becomes whatever the firmware's own tick already is.",
+ "supersedes": "artifacts/coop-sampler-01's 'the firmware is undisturbed' - true at idle, false under load, and the idle run did not test what mattered.",
+ "hardware_tested": true
+}

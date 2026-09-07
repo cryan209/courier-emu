@@ -365,8 +365,48 @@ Three things to know before using it:
 * **Read the ring after disarming, not during.** RAM only clears on reboot, and
   no reboot happens here, so the buffer keeps until it is read.
 
-The obvious next run is the same one with something happening: arm, place a
-call, disarm, read the ring.
+### It does not survive the firmware being busy (2026-09-07)
+
+`artifacts/coop-loadonly-01/`. The idle run above proved less than it looked
+like it did. Armed across `AT&T8` - the self-test this repository has used as a
+load before - **the board rebooted**: RAM cleared, the sampler image at `0x3000`
+gone, the ring pointer and buffer zero.
+
+Two controls place the blame:
+
+| armed | activity | result |
+|---|---|---|
+| default ports | `AT&T8`, 12 s | **reboot** |
+| nothing | `AT&T8`, 10 s | sentinel at `0x2200` survived, `AT` answered |
+| `--ports none` (load only) | `AT&T8`, 10 s | **reboot** |
+
+`&T8` on its own does not reset the board, and a sampler that touches **no ASIC
+port at all** - it fires, saves, bounds-checks, increments and returns - still
+kills it. **So it is the interrupt, not the port reads.** A 200 Hz timer-0
+interrupt the firmware never enables for itself is survivable while the modem is
+idle and not survivable while it is busy.
+
+That voids the plan this was built for: capturing a live call means running
+exactly the load that crashes it.
+
+**A likely mechanism, not established.** The handler ends with the non-specific
+EOI it copied from the vestigial vector-8 handler, `mov [0xff02], 0x8000`. A
+non-specific EOI clears the *highest-priority in-service* bit, so one issued
+from an interrupt the firmware never expected can dismiss some other handler's
+in-service state - which would corrupt interrupt handling exactly when other
+interrupts are active, and that is the observed pattern. The alternative is
+duller: `&T8` has timing that an extra 200 Hz of ISR simply breaks. Nothing here
+distinguishes them yet.
+
+**The fix worth trying next is to stop injecting an interrupt at all.** Hook one
+the firmware already takes and services - INT3/tick at `8000:0a77` is the
+obvious candidate, and it is a real handler rather than a stub - sample on the
+way through, and chain to the original so it does its own EOI and its own work.
+No new interrupt source, no extra EOI, and the sample rate becomes the
+firmware's own tick. The cost is that the hook must be transparent to a handler
+that actually does something, which is a stricter bar than displacing a no-op.
+
+Until that exists, **do not arm this across a call.**
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,

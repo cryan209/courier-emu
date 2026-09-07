@@ -72,8 +72,9 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
             raise ValueError(f"port {port:#04x} carries a board latch and is never sampled")
         if not 0 <= port <= 0xFF:
             raise ValueError(f"port {port:#04x} is outside the 8-bit I/O space")
-    if not ports:
-        raise ValueError("no ports to sample")
+    # An empty port set is the load-only control: the ISR still fires, saves,
+    # bounds-checks and returns, but touches no ASIC port. It separates "the
+    # interrupt load broke the firmware" from "reading those ports broke it".
     if buffer_end <= buffer or buffer_end > 0x8000:
         raise ValueError("buffer must be non-empty and stay below 0x8000")
 
@@ -93,6 +94,8 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
         c.emit(f"e4{port:02x}")            # in al, port
         c.emit("8807")                     # mov [bx], al
         c.emit("43")                       # inc bx
+    if not ports:
+        c.emit("43")                       # inc bx - count ticks, sample nothing
     c.emit("891e"); c.word(state)          # mov [state], bx
     c.label("full")
     # EOI exactly as the handler this replaces, then hand the machine back.
@@ -112,12 +115,13 @@ def build_image(ports: tuple[int, ...] = DEFAULT_PORTS) -> tuple[bytes, dict]:
     image = bytearray(BUFFER - ENTRY)
     image[0:len(code)] = code
     struct.pack_into("<H", image, STATE - ENTRY, BUFFER)   # the write pointer
+    width = len(ports) or 1
     plan = {
         "entry": ENTRY, "state": STATE, "buffer": BUFFER, "buffer_end": BUFFER_END,
         "ports": [f"{p:#04x}" for p in ports],
-        "bytes_per_tick": len(ports),
-        "capacity_samples": (BUFFER_END - BUFFER) // len(ports),
-        "seconds_at_5ms": round((BUFFER_END - BUFFER) / len(ports) * 0.005, 1),
+        "bytes_per_tick": width,
+        "capacity_samples": (BUFFER_END - BUFFER) // width,
+        "seconds_at_5ms": round((BUFFER_END - BUFFER) / width * 0.005, 1),
         "code_bytes": len(code),
     }
     return bytes(image), plan
@@ -174,7 +178,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--ports", type=lambda v: tuple(int(p, 0) for p in v.split(",")),
+    parser.add_argument("--ports",
+                        type=lambda v: () if v in ("", "none") else tuple(int(p, 0) for p in v.split(",")),
                         default=DEFAULT_PORTS,
                         help="comma-separated ports to sample each tick (default "
                              "0x18,0x1a,0x1c,0x1e - the status and handshake group). "

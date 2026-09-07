@@ -1,0 +1,11 @@
+{
+ "entry": 12288,
+ "state": 12800,
+ "buffer": 13312,
+ "buffer_end": 32256,
+ "ports": [],
+ "bytes_per_tick": 1,
+ "capacity_samples": 18944,
+ "seconds_at_5ms": 94.7,
+ "code_bytes": 35
+}
