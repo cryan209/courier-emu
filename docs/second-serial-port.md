@@ -1,8 +1,57 @@
-# The DSP's second serial port, where the ASIC probably is
+# The DSP's two serial ports, and which end the ASIC is on
+
+> **The short version.** The ASIC is a parallel-to-serial bridge: the 80186
+> writes it in parallel, and it clocks the DSP's primary serial port as bus
+> master. That is not a guess - both the DSP and the codec are programmed as
+> slaves on that bus, so a master is required and the ASIC is the only candidate.
+> See "The ASIC masters the primary serial bus" below.
 
 Prompted by looking at the board: the link between the ASIC and the DSP looks
 like a serial interface. The firmware agrees, and the two serial ports are
 configured for opposite roles.
+
+## The ASIC masters the primary serial bus
+
+The two register decodes below are each unremarkable on their own. Together they
+force a conclusion:
+
+* **The DSP is a slave on the primary port.** `SPC = 0x40c8` has `MCM = 0`, so
+  `CLKX` is an input, and `TXM = 0`, so `FSX` is an input. The DSP neither
+  clocks nor frames that bus.
+* **The codec is a slave on it too.** Register 6 = `0x20` puts the AC01 in
+  free-run, and it is wired in slave/codec mode, where - datasheet section 2.13 -
+  "the shift clock and the frame sync are both externally generated".
+
+Two slaves on one synchronous serial bus need a master, and **the only other
+device on it is the ASIC**. So the ASIC generates `SCLK` and `FS` for the
+DSP-codec link and decides when every word moves.
+
+That makes the ASIC exactly the parallel-to-serial bridge its 80186 side looks
+like: the supervisor writes it through a parallel window at ports `0x40`-`0x5e`,
+and it clocks words into the DSP over a serial bus it owns.
+
+### The consequence the harness has not modelled
+
+The codec ISR stores **every** word that arrives at `DRR` into the ring at
+`0x0bd0`, unconditionally:
+
+```
+8190  mar *, ar7 ; sar ar7, @11 ; lar ar7, @10   ; the ring write pointer
+8193  lamm @20                                   ; DRR - whatever was clocked in
+8194  sacl *+                                    ; into the ring
+```
+
+and the resident's main loop walks that same ring with `AR7`. So the ring is not
+a codec-sample buffer that happens to be read - it is **the DSP's inbound serial
+stream**, and the main loop is its consumer.
+
+The harness only ever puts line audio on that bus. If the ASIC, as bus master,
+also inserts its own words - which is what a parallel-to-serial bridge exists to
+do - then the inbound command path runs through `DRR` and the harness has never
+supplied a single word of it.
+
+That is a different candidate for why the DSP never leaves its idle task than
+the `ARCR` gate, and it is not exclusive with it.
 
 ## What the firmware programs
 
