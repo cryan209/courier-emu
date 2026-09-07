@@ -245,6 +245,50 @@ these cannot be attributed to `0x006f` by reading alone. The surrounding
 `MACD`/`MPY`/`APAC` argues they belong to a filter and not to this word, but
 that is an impression, not a measurement.
 
-What is still not shown is what decides to run `9090`'s yield in the first
-place - the trace upward stops there.
+### What decides to run the yield
+
+`9083` appears nowhere in the image, because it is not branched to: it is
+reached by a **skip-return**. `907f` calls `901a`, and the two-word `b 9099` at
+`9081` is either executed or stepped over depending on how that call returns.
+
+```text
+901a: lar  ar1, #ff2d
+901c: lacl *-            ; scan down for the first non-zero word
+901d: bcnd 901c, eq
+901f: sar  ar1, @5b      ; where the scan stopped
+9021: sub  #ff27         ; as an index
+9024: sub  #04
+9025: retc lt            ; index < 4 -> ordinary return, and 9081 runs
+902a: bit  1, @1f        ; bit 14
+902b: retc ntc           ; clear -> ordinary return
+902c: call 90c3
+902e: pop
+902f: add  #02           ; return address + 2: step over the branch
+9030: bacc               ; -> 9083, the yield
+```
+
+Both conditions were checked by running the call site with the table and the
+flag seeded, and reading where control lands:
+
+| highest non-zero word | index | `@1f` bit 14 | lands on |
+|---|---|---|---|
+| `ff2b` or below | 0-3 | set | `9099` (normal) |
+| `ff2c` | 4 | set | **`9083`** (yield) |
+| `ff2d` | 5 | set | **`9083`** (yield) |
+| `ff2d` | 5 | clear | `9099` (normal) |
+
+So the yield - and 1288 frames later the two gate bits, and after that the
+answer tone - runs only when the table ending at `0xff2d` is filled to within
+two words of its top **and** bit 14 of `@1f` is set. Either condition alone is
+not enough.
+
+Two cautions for anyone re-running this. The scan stops at the *first* non-zero
+from the top, so the index measures how high the table is filled, not how many
+entries it holds; populating more words below the top does not change it. And
+the call site must be entered with `DP` already 6, as `9077` leaves it -
+entering at `907f` with `DP` at 0 sends `sar ar1, @5b` to the wrong cell and
+every case falls through to `9099`, which looks exactly like the gate being
+closed.
+
+What is still not shown is what fills that table, or what sets bit 14 of `@1f`.
 
