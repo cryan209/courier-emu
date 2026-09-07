@@ -1,0 +1,32 @@
+[
+  {
+    "tag": 7,
+    "before": 6,
+    "committed": 7,
+    "status": 3,
+    "reply": [
+      49,
+      0
+    ],
+    "after_ack": 1
+  },
+  {
+    "tag": 45,
+    "before": 6,
+    "committed": 7,
+    "status": 1,
+    "reply": null,
+    "after_ack": 1
+  },
+  {
+    "tag": 7,
+    "before": 6,
+    "committed": 7,
+    "status": 3,
+    "reply": [
+      49,
+      0
+    ],
+    "after_ack": 1
+  }
+]

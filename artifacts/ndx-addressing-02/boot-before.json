@@ -1,0 +1,184 @@
+{
+  "state": {
+    "pc": 33204,
+    "op": 48730,
+    "acc": 0,
+    "accb": 0,
+    "preg": 0,
+    "dp": 0,
+    "arp": 5,
+    "flags": 146,
+    "idle": false,
+    "instructions": 1800000,
+    "cycles": 3209221,
+    "io_events": 103,
+    "ar0": 3018,
+    "ar1": 87,
+    "ar2": 0,
+    "ar3": 0,
+    "ar4": 0,
+    "ar5": 975,
+    "ar6": 0,
+    "ar7": 3022,
+    "arcr": 61095,
+    "indx": 0
+  },
+  "serial": {
+    "drr": 0,
+    "dxr": 0,
+    "spc": 16584,
+    "drr_reads": 28959,
+    "dxr_writes": 638,
+    "spc_writes": 5,
+    "rx_consumed": 0,
+    "rx_queued": 0,
+    "codec_rx_consumed": 28330,
+    "codec_rx_queued": 28330,
+    "last_drr_pc": 33154,
+    "last_dxr_pc": 33167,
+    "last_spc_pc": 32916,
+    "trcv": 0,
+    "tdxr": 0,
+    "tspc": 248,
+    "trcv_reads": 0,
+    "tdxr_writes": 27793,
+    "tspc_writes": 2,
+    "last_trcv_pc": 0,
+    "last_tdxr_pc": 33208,
+    "last_tspc_pc": 32908,
+    "line_tx_writes": 633,
+    "line_tx_nonzero": 0,
+    "line_frame_interrupts": 672,
+    "line_tx_last": 0,
+    "line_tx_last_pc": 33167,
+    "imr": 42,
+    "v8_rx_state": 0,
+    "v8_rx_peak": 0,
+    "codec_rx_peak": 0,
+    "negotiation_loop_entries": 0,
+    "negotiation_loop_pc": 0,
+    "negotiation_source": 0,
+    "negotiation_pair": 0,
+    "negotiation_source_value": 0,
+    "negotiation_pair_value": 0,
+    "negotiation_acc": 0,
+    "v8_dispatches": 0,
+    "v8_record": 0,
+    "v8_handler": 0,
+    "v8_countdown": 0,
+    "v8_flags": 0,
+    "negotiation_d76": 0,
+    "negotiation_d77": 0,
+    "negotiation_d78": 0,
+    "negotiation_d79": 0,
+    "negotiation_d26": 0,
+    "negotiation_indx": 0,
+    "negotiation_arp": 0,
+    "negotiation_pm": 0
+  },
+  "hot": [
+    [
+      33064,
+      11174
+    ],
+    [
+      33197,
+      5588
+    ],
+    [
+      33198,
+      5588
+    ],
+    [
+      33199,
+      5588
+    ],
+    [
+      33200,
+      5588
+    ],
+    [
+      33201,
+      5588
+    ],
+    [
+      33202,
+      5588
+    ],
+    [
+      33203,
+      5588
+    ],
+    [
+      33204,
+      5587
+    ],
+    [
+      33205,
+      5587
+    ],
+    [
+      33207,
+      5587
+    ],
+    [
+      33208,
+      5587
+    ],
+    [
+      33209,
+      5587
+    ],
+    [
+      32985,
+      5587
+    ],
+    [
+      32986,
+      5587
+    ],
+    [
+      32987,
+      5587
+    ],
+    [
+      32988,
+      5587
+    ],
+    [
+      32989,
+      5587
+    ],
+    [
+      32990,
+      5587
+    ],
+    [
+      32991,
+      5587
+    ],
+    [
+      32993,
+      5587
+    ],
+    [
+      32995,
+      5587
+    ],
+    [
+      32996,
+      5587
+    ],
+    [
+      32963,
+      5587
+    ],
+    [
+      32964,
+      5587
+    ]
+  ],
+  "changes": [],
+  "unique_pc": 103,
+  "saved_ar7": 3018
+}

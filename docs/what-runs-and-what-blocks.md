@@ -1,5 +1,9 @@
 # What it takes to make a call complete, measured 2026-09-07
 
+**Update, 2026-09-07:** fresh board probes explain and fix the NDX/PA7 interaction.
+See [the board comparison and corrections](dsp-mailbox-board-fix.md). The older
+ARCR/INDX blocker conclusions below are historical and superseded.
+
 After the AC01 work, the codec chain is right end to end. A call still does not
 complete. This records what was measured, so the remaining work is against
 evidence rather than a guess.

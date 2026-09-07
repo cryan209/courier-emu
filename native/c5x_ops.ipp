@@ -111,6 +111,9 @@ void C5xCore::UPDATE_AR(int ar, int step)
 	{
 		m_ar[ar] += step;
 	}
+	// The board mirrors ARAU updates of AR0 with NDX clear, as well as LAR.
+	// Memory-mapped writes (SAMM AR0) do not have this side effect.
+	if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
 }
 
 void C5xCore::UPDATE_ARP(int nar)
@@ -138,6 +141,7 @@ uint16_t C5xCore::GET_ADDRESS()
 			uint16_t left = reverse16(m_ar[arp]);
 			uint16_t right = reverse16(m_indx);
 			m_ar[arp] = reverse16(uint16_t(subtract ? left - right : left + right));
+			if (arp == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
 		};
 
 		switch ((m_op >> 3) & 0xf)
@@ -1038,6 +1042,8 @@ void C5xCore::op_cmpr()
 	CYCLES(1);
 }
 
+// Measured on the Courier C5x: all LAR AR0 encodings copy into ARCR/INDX
+// when NDX is clear. See artifacts/ndx-addressing-02 and dsp-status-03.
 void C5xCore::op_lar_mem()
 {
 	int arx = (m_op >> 8) & 0x7;
@@ -1045,6 +1051,7 @@ void C5xCore::op_lar_mem()
 	uint16_t data = DM_READ16(ea);
 
 	m_ar[arx] = data;
+	if (arx == 0 && !m_pmst.ndx) m_arcr = m_indx = data;
 
 	CYCLES(2);
 }
@@ -1053,6 +1060,7 @@ void C5xCore::op_lar_simm()
 {
 	int arx = (m_op >> 8) & 0x7;
 	m_ar[arx] = m_op & 0xff;
+	if (arx == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
 
 	CYCLES(2);
 }
@@ -1062,6 +1070,7 @@ void C5xCore::op_lar_limm()
 	int arx = m_op & 0x7;
 	uint16_t imm = ROPCODE();
 	m_ar[arx] = imm;
+	if (arx == 0 && !m_pmst.ndx) m_arcr = m_indx = imm;
 
 	CYCLES(2);
 }

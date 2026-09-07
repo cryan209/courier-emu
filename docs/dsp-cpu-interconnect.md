@@ -1,5 +1,9 @@
 # How the DSP and the ASIC/CPU are connected
 
+**Update, 2026-09-07:** fresh board probes explain and fix the NDX/PA7 interaction.
+See [the board comparison and corrections](dsp-mailbox-board-fix.md). The older
+ARCR/INDX blocker conclusions below are historical and superseded.
+
 A synthesis aimed at one question: what is the path by which the 80186
 supervisor and the C5x datapump say anything to each other. It separates what
 is hardware-proven from what is inferred, and it retracts one claim that has

@@ -118,6 +118,11 @@ int courier_c5x_step(void *handle, uint64_t count, char *error, std::size_t erro
     }
 }
 
+uint16_t courier_c5x_get_io_output(void *handle, uint16_t port)
+{
+    return handle ? static_cast<C5xCore *>(handle)->io_output(port) : 0;
+}
+
 void courier_c5x_set_io(void *handle, uint16_t port, uint16_t value)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_io(port, value);

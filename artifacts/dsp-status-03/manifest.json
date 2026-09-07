@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-07",
+  "hardware_tested": true,
+  "device": "/dev/cu.usbserial-1420",
+  "baud": 115200,
+  "board": "ID_SDL 4.03d, supervisor 7.4.16, DSP 3.1.2, 20.16 MHz",
+  "method": "RAM-only 80186 launcher at 0000:3000, C5x probe at 8000, Timer 0 vector 8 and INT enable, watchdog recovery",
+  "verified_upload": true,
+  "samples": {
+    "run_marker": "9203",
+    "pa7.after_None": "0002",
+    "pa7.after_512": "0002",
+    "pa7.after_768": "0002",
+    "pa7.after_0": "0002",
+    "ndx0.other_lar.arcr": "eeee",
+    "ndx0.other_lar.indx": "dddd",
+    "ndx0.other_lar.ar0": "0bd6",
+    "ndx0.ar0_increment.arcr": "1235",
+    "ndx0.ar0_increment.indx": "1235",
+    "ndx0.ar0_increment.ar0": "1235",
+    "ndx0.ar0_decrement.arcr": "1233",
+    "ndx0.ar0_decrement.indx": "1233",
+    "ndx0.ar0_decrement.ar0": "1233",
+    "ndx1.other_lar.arcr": "eeee",
+    "ndx1.other_lar.indx": "dddd",
+    "ndx1.other_lar.ar0": "1233",
+    "ndx1.ar0_increment.arcr": "eeee",
+    "ndx1.ar0_increment.indx": "dddd",
+    "ndx1.ar0_increment.ar0": "1235",
+    "ndx1.ar0_decrement.arcr": "eeee",
+    "ndx1.ar0_decrement.indx": "dddd",
+    "ndx1.ar0_decrement.ar0": "1233"
+  },
+  "files_sha256": {
+    "diagnostic-ram.bin": "e1ddbac2c265683211f723c3186466923538bf8e3afcffa1a41ef28f5d269ec4",
+    "probe-c5x.bin": "fe4bde9c5bcf1bf7d1997ea58d5826b623834c592ee2eb708b669df4455a5d1a",
+    "readback.bin": "e1ddbac2c265683211f723c3186466923538bf8e3afcffa1a41ef28f5d269ec4",
+    "frame.txt": "8d5e6435f007ad774d8de12afb557d0038a26d5cffd4bbaafb8a56fac717b972"
+  },
+  "recovery": "AT answers, vector 8 restored to 8000:108F and T0CON restored to 8021",
+  "limitations": [
+    "Incoming AR0 in the first other_lar case is bootloader state, not initialized by the probe.",
+    "PA7 tests observe an empty download window. They prove these writes do not set bit 9; they do not exercise a populated download window."
+  ]
+}

@@ -101,6 +101,7 @@ void C5xCore::reset()
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
     m_io.fill(0xffff);
+    m_mailbox_output.fill(0);
     m_io_events.clear();
     m_data_events.clear();
     m_data_write_counts.fill(0);
@@ -366,6 +367,11 @@ void C5xCore::set_v8_answering(bool enabled)
     if (enabled) m_dtmf_frame = 960;
 }
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
+uint16_t C5xCore::io_output(uint16_t port) const
+{
+    return m_rom_codec && port >= 0x5e && port <= 0x60
+        ? m_mailbox_output[port - 0x5e] : m_io[port];
+}
 uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
 // These reach the same storage the running program does, so a cell staged
 // from the harness lands where the firmware's own read will find it. Without
@@ -537,8 +543,17 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     if (port == 0xb2e5 && m_synthetic_line
         && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
         value = m_io[port];
-    if (m_rom_codec && port == 0x57 && !(value & ~3u))
-        m_io[port] &= uint16_t(~value); // mailbox acknowledgement, preserve other flags
+    if (m_rom_codec && port == 0x57)
+        // PA7 is an acknowledgement register, not ordinary port storage.
+        // The board leaves 0002 unchanged after writes of 0200, 0300 and 0000
+        // (artifacts/dsp-status-03). Assigning FFFF during resident init used
+        // to invent download-ready bit 9; with NDX working the firmware then
+        // consumed nonexistent download words indefinitely.
+        m_io[port] &= uint16_t(~value);
+    else if (m_rom_codec && port >= 0x5e && port <= 0x60)
+        // The CPU and DSP each own a holding register. A DSP reply must not
+        // overwrite an incoming CPU word, or vice versa.
+        m_mailbox_output[port - 0x5e] = value;
     else m_io[port] = value;
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51

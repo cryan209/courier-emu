@@ -211,6 +211,7 @@ public:
         { return m_line_phase_tx[phase & 3]; }
     uint16_t line_dac_slot() const { return m_line_dac_slot; }
     uint16_t io(uint16_t port) const;
+    uint16_t io_output(uint16_t port) const;
     uint16_t program(uint16_t address) const;
     uint16_t data(uint16_t address) const;
     void set_data(uint16_t address, uint16_t value);
@@ -262,6 +263,7 @@ private:
     std::array<uint16_t, 65536> m_program{};
     std::array<uint16_t, 65536> m_data{};
     std::array<uint16_t, 65536> m_io{};
+    std::array<uint16_t, 3> m_mailbox_output{};
     std::array<uint16_t, 0x1000> m_rom{};
     bool m_rom_present = false;
     // PMST.MPMC is preserved by this firmware's reset code rather than

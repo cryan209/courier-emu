@@ -1,0 +1,32 @@
+{
+  "status": "instruction-probe-captured",
+  "word_count": 23,
+  "words": [
+    37379,
+    2,
+    2,
+    2,
+    2,
+    61166,
+    56797,
+    3030,
+    4661,
+    4661,
+    4661,
+    4659,
+    4659,
+    4659,
+    61166,
+    56797,
+    4659,
+    61166,
+    56797,
+    4661,
+    61166,
+    56797,
+    4659
+  ],
+  "rom_sha256": "eb1d90666fd0ab1e1fda2dbcfe462a0e717db0352bfef24c78bc4dcbc394028d",
+  "distinct_values": 7,
+  "capture_sha256": "f0caf4f9342e3c953e560701891ce70827fa946b4fb406affd15985081b65374"
+}

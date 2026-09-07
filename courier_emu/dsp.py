@@ -188,6 +188,8 @@ class NativeC5x:
         lib.courier_c5x_get_codec_state.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
+        lib.courier_c5x_get_io_output.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_io_output.restype = ctypes.c_uint16
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
         lib.courier_c5x_host_write.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
@@ -388,6 +390,9 @@ class NativeC5x:
 
     def io(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io(self.handle, port))
+
+    def io_output(self, port: int) -> int:
+        return int(self.library.courier_c5x_get_io_output(self.handle, port))
 
     def data(self, address: int) -> int:
         return int(self.library.courier_c5x_get_data(self.handle, address))

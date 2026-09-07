@@ -1087,6 +1087,10 @@ class CourierDspBridge:
     def _read_host_cell(self, cell: int) -> int:
         """Read whichever view the running build has been writing."""
         core = self.core
+        if self.boot_rom_enabled:
+            # PA7 is one ASIC latch. OR-ing in an old software mirror can
+            # resurrect a bit the DSP has already acknowledged.
+            return core.io(cell) & 0xFFFF
         low = core.data(cell) & 0xFFFF
         high = core.data(HOST_MIRROR | cell) & 0xFFFF
         port = core.io(cell) & 0xFFFF if hasattr(core, "io") else 0
@@ -1109,8 +1113,15 @@ class CourierDspBridge:
     def _clear_dsp_status(self, bits: int) -> None:
         self._set_dsp_status(clear_bits=bits)
 
+    def _dsp_completion_status(self) -> int:
+        status = self._dsp_status()
+        # PA7 bits 1/2 mean room to send to the DSP; the CPU sees pending
+        # words with the opposite polarity. Bit 0 is CPU room to send.
+        return status ^ 0x0006 if self.boot_rom_enabled else status
+
     def _dsp_port_half(self, port: int, high: bool) -> int:
-        word = self.core.io(port) & 0xFFFF
+        word = (self.core.io_output(port) if self.boot_rom_enabled
+                else self.core.io(port)) & 0xFFFF
         return (word >> 8) & 0xFF if high else word & 0xFF
 
     def _answer_runtime_request(self, header: int, _data: int) -> None:
@@ -1188,8 +1199,9 @@ class CourierDspBridge:
                     self._observe_asic_command(*words)
                     if pc is not None:
                         self.runtime_message_first_pc.setdefault(message, f"{pc:05x}")
-                    self._deliver_host_message(*words)
-                    self._answer_runtime_request(*words)
+                    if not self.boot_rom_enabled:
+                        self._deliver_host_message(*words)
+                        self._answer_runtime_request(*words)
             return
         if self.asic_transparent and self._runtime_mode and size == 1:
             self._mirror_port(port, value)
@@ -1207,6 +1219,15 @@ class CourierDspBridge:
                 # the window carried before it was configuration, not program.
                 self.bootstrap.clear()
             if self._runtime_mode:
+                if self.boot_rom_enabled:
+                    if value & 1:
+                        self._deliver_host_message(self._runtime_header, self._runtime_data)
+                    if value & 2 and self._dsp_completion_status() & 2:
+                        self.dsp_messages_taken += 1
+                    if value & 4:
+                        self.dsp_stream_acks += 1
+                    self._set_dsp_status(set_bits=value & 6)
+                    return
                 if not (value & 1):
                     self._runtime_ready = False
                     self._runtime_ready_delay = self.batch
@@ -1215,7 +1236,7 @@ class CourierDspBridge:
                     # the bit the resume poll at 0x8462 is waiting on.
                     self._set_dsp_status(DSP_STREAM_RESUME, DSP_STREAM_READY)
                     self.dsp_stream_acks += 1
-                if value & 2 and self._dsp_status() & DSP_SEND_COMPLETE:
+                if value & 2 and self._dsp_completion_status() & DSP_SEND_COMPLETE:
                     self._clear_dsp_status(DSP_SEND_COMPLETE)
                     self.dsp_messages_taken += 1
                 if (
@@ -1365,6 +1386,8 @@ class CourierDspBridge:
             # the C52's next quantum; the two agree on ordering, not polarity.
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
+            if self.boot_rom_enabled:
+                return (~self._dsp_status()) & 7
             status = int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
             # The DSP's own two completions, reported where the CPU looks for
             # them: bit 1 for a message the sender at 0x83d6 has put on its
@@ -1380,11 +1403,20 @@ class CourierDspBridge:
             # acceptance bits between groups. They are synthesized, as the
             # boot ROM that drives them is not available.
             return (1 << (size * 8)) - 1
-        if port in (0x58, 0x5A) and self._dsp_status() & DSP_SEND_COMPLETE:
+        if port in (0x58, 0x5A) and (
+            self.boot_rom_enabled and self._runtime_mode
+            or self._dsp_completion_status() & DSP_SEND_COMPLETE
+        ):
             return self._dsp_port_half(DSP_TAG_PORT, port == 0x5A)
-        if port in (0x5C, 0x5E) and self._dsp_status() & DSP_SEND_COMPLETE:
+        if port in (0x5C, 0x5E) and (
+            self.boot_rom_enabled and self._runtime_mode
+            or self._dsp_completion_status() & DSP_SEND_COMPLETE
+        ):
             return self._dsp_port_half(DSP_WORD_PORT, port == 0x5E)
-        if port in (0x60, 0x62) and self._dsp_status() & DSP_STREAM_READY:
+        if port in (0x60, 0x62) and (
+            self.boot_rom_enabled and self._runtime_mode
+            or self._dsp_completion_status() & DSP_STREAM_READY
+        ):
             return self._dsp_port_half(DSP_STREAM_PORT, port == 0x62)
         if port in (0x5C, 0x5E) and self._runtime_inbound:
             # A queued board-to-supervisor message owns the data lanes while
