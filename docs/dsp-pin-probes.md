@@ -89,3 +89,77 @@ Each of these is falsifiable with a scope or a meter:
 
 Between them, 3 and 4 decide the topology: 3 closes off the second port, and 4
 says whether the ASIC is on the primary one.
+
+
+## `TDR` measured driving high and low (2026-09-07)
+
+A probe on the board reports pin 44 switching constantly. That is worth
+resolving carefully, because it contradicts the firmware in **both** builds.
+
+### The firmware, re-checked on the board's own image
+
+The disassembly work in this repository has mostly used `IDSDL302.ROM`, which
+is **DSP 3.0.2**. The board runs **3.1.2**, so the check was redone against
+`artifacts/courier-board-21210-capture-403/courier-board.rom` - the board's own
+flash - whose DSP payload starts at `0x29140` (anchor at `0x2914a`). The second
+port is configured identically:
+
+| | 3.0.2 | board 3.1.2 |
+|---|---|---|
+| `TSPC` writes | `0x0038` then `0x00f8`, at `0x808a`/`0x808c` | **identical** |
+| `SPC` writes | `0x0008` then `0x40c8` | **identical** |
+| `IMR` | `0x002a` | **identical** |
+| `TRCV` reads via MMR | none | **none** |
+| `TSPC` reads | none | **none** |
+
+`IMR = 0x002a` is INT2, TINT and XINT. Note it does **not** include `RINT`
+either, and the codec's receive plainly works - the ports are synchronous, so
+one interrupt per frame services both halves. So "no interrupt enabled" is not
+on its own proof a port is unused. For the TDM port the case rests on three
+independent things: `TRNT`/`TXNT` never enabled, `RRDY` never polled because
+`TSPC` is never read, and `TRCV` never read.
+
+So this is not a firmware-version difference, and something is driving a pin
+that no instruction in either build looks at.
+
+### Distinguishing `TDR` from `DR` without counting pins
+
+`DR` is **43** and `TDR` is **44** - adjacent. `DR` carries the AC01's ADC
+output and toggles every frame, continuously, exactly like the reported
+measurement. An off-by-one, or a different pin-1 reference, produces precisely
+this result.
+
+The clean discriminator is the clock, not the count:
+
+> Scope the suspect data pin against **`TCLKX` (123)** and **`CLKX` (124)**.
+>
+> * synchronous with **`CLKX` (124)** - an **input** to the DSP - it is `DR`,
+>   and this is the codec.
+> * synchronous with **`TCLKX` (123)** - an **output** the DSP drives, because
+>   `TSPC` `MCM = 1` - it is genuinely `TDR`, and something really is
+>   transmitting into the second port.
+
+Worth checking as well whether `TDR` is simply **strapped to `DR`**. Tying an
+unused serial input to an active neighbouring signal is a common alternative to
+tying it to VDD, and it would make pin 44 switch without anything addressing it.
+
+If it survives the clock test, it is a real and significant finding: a device
+transmitting to the DSP on a port this firmware never reads. That would mean
+either the ASIC broadcasts there and this build ignores it, or the pin sees
+traffic addressed to something else.
+
+## Correction: the board's ring is `0x0bc0`, not `0x0bd0`
+
+Found while checking the above, and it matters for the `ARCR` blocker. The two
+builds differ:
+
+| | 3.0.2 | board 3.1.2 |
+|---|---|---|
+| `CBSR1` (`@1a`) | `0x0bd0` | **`0x0bc0`** |
+| `CBER1` (`@1b`) | `0x0bdf` | `0x0bdf` |
+| ring size | 16 words | **32 words** |
+| `lar ar7` at reset | `#0bd0` | `#0bc0` |
+
+`CBCR` is `0x00ef` in both. Everything in this repository that quotes
+"`0x0bd0`-`0x0bdf`" is describing `IDSDL302.ROM`; **on the user's board the ring
+is `0x0bc0`-`0x0bdf`.**
