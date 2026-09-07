@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import asdict, dataclass
 from hashlib import md5
+import math
 import random
 import re
 import socket
@@ -55,6 +56,112 @@ class RateConverter:
                 result.append(sample)
                 self.phase -= self.input_rate
         return result
+
+
+class PolyphaseResampler:
+    """Band-limited rational resampling between any two integer rates.
+
+    `RateConverter` above is a zero-order hold: it repeats or drops samples.
+    That is adequate for speech at the 6:5 ratio it was written for, but it
+    leaves the images of every tone it passes, and the dial path's 7200 Hz is
+    the rate that makes those images land in band - a 1633 Hz column tone held
+    to 8 kHz images at 6367 Hz, which folds back where a far-end DTMF receiver
+    is looking. This filters instead.
+
+    The design is the textbook polyphase one: upsample by L, low-pass at the
+    lower of the two Nyquists, decimate by M, with only the taps that meet a
+    non-zero sample ever evaluated. Each phase's taps are normalised to sum to
+    one, so the passband gain is exactly unity at DC on every phase and the
+    output carries no ripple from the phase rotation itself.
+    """
+
+    # Taps per phase. Sixteen puts the transition band well inside the guard
+    # below and costs 16 multiplies per output sample.
+    taps_per_phase = 16
+    # Fraction of the lower Nyquist the passband is allowed to reach. The rest
+    # is transition band. 0.92 of 3600 Hz leaves 3312 Hz, above V.34's 3429 Hz
+    # upper edge only marginally, and well clear of DTMF's 1633 Hz.
+    guard = 0.92
+
+    def __init__(self, input_rate: int, output_rate: int) -> None:
+        if input_rate <= 0 or output_rate <= 0:
+            raise ValueError("sample rates must be positive")
+        self.input_rate = input_rate
+        self.output_rate = output_rate
+        common = math.gcd(input_rate, output_rate)
+        self.up = output_rate // common
+        self.down = input_rate // common
+        self._taps = self._design()
+        self._half = (self.taps_per_phase - 1) // 2
+        # Absolute input index of `_buffer[0]`, and the next output index.
+        self._buffer: list[float] = [0.0] * self.taps_per_phase
+        self._origin = -self.taps_per_phase
+        self._output = 0
+
+    def _design(self) -> list[list[float]]:
+        """Return the filter as `up` phases of `taps_per_phase` taps each."""
+        length = self.up * self.taps_per_phase
+        # Cutoff as a fraction of the intermediate rate, which is
+        # input_rate * up == output_rate * down.
+        intermediate = self.input_rate * self.up
+        cutoff = self.guard * min(self.input_rate, self.output_rate) / 2 / intermediate
+        centre = (length - 1) / 2
+        window: list[float] = []
+        for index in range(length):
+            offset = index - centre
+            if offset == 0:
+                value = 2 * cutoff
+            else:
+                value = math.sin(2 * math.pi * cutoff * offset) / (math.pi * offset)
+            # Blackman: -74 dB sidelobes, which is below 16-bit anyway.
+            ratio = index / (length - 1)
+            value *= (
+                0.42
+                - 0.5 * math.cos(2 * math.pi * ratio)
+                + 0.08 * math.cos(4 * math.pi * ratio)
+            )
+            window.append(value)
+        phases = []
+        for phase in range(self.up):
+            taps = window[phase :: self.up]
+            total = sum(taps)
+            # A phase whose taps cancel to nothing cannot be normalised; the
+            # Blackman window makes that impossible in practice, but division
+            # by it would be silent corruption rather than an error.
+            if abs(total) < 1e-9:
+                raise ValueError("degenerate resampler phase")
+            phases.append([tap / total for tap in taps])
+        return phases
+
+    def convert(self, samples) -> list[int]:
+        """Take input samples and return every output sample now determined."""
+        self._buffer.extend(float(sample) for sample in samples)
+        result: list[int] = []
+        newest = self._origin + len(self._buffer) - 1
+        while True:
+            position = self._output * self.down
+            base = position // self.up
+            if base + self._half > newest:
+                break
+            taps = self._taps[position % self.up]
+            total = 0.0
+            for index, tap in enumerate(taps):
+                sample = base + self._half - index - self._origin
+                if 0 <= sample < len(self._buffer):
+                    total += tap * self._buffer[sample]
+            result.append(max(-32_768, min(32_767, int(round(total)))))
+            self._output += 1
+        # Drop everything the next output can no longer reach back to.
+        oldest = (self._output * self.down) // self.up + self._half - self.taps_per_phase + 1
+        drop = oldest - self._origin
+        if drop > 0:
+            del self._buffer[:drop]
+            self._origin += drop
+        return result
+
+    def flush(self) -> list[int]:
+        """Return the tail, by feeding in the filter's own group delay."""
+        return self.convert([0] * (self.taps_per_phase + self.down))
 
 
 def _split_server(value: str) -> tuple[str, int]:
@@ -141,6 +248,8 @@ class SipSession:
         self.error = ""
         self.events: deque[str] = deque(maxlen=64)
         self._invite = b""
+        self._invite_branch = ""
+        self._invite_cseq = 0
         self._invite_sent_at = 0.0
         self._retransmit_after = 0.5
         self._auth_attempted = False
@@ -164,6 +273,10 @@ class SipSession:
     def start_call(self, number: str) -> None:
         if self.state not in ("idle", "closed", "failed"):
             return
+        # Each call is its own dialogue; reusing the identifiers of the last
+        # one makes the second INVITE look like a retransmission of the first.
+        self.call_id = f"{random.getrandbits(64):016x}@{self.local_ip}"
+        self.from_tag = f"{random.getrandbits(32):08x}"
         self.number = number
         self.target_uri = self._target(number)
         if not self.target_uri.lower().startswith("sip:"):
@@ -195,15 +308,21 @@ class SipSession:
         *,
         authorization: tuple[str, str] | None = None,
         body: bytes = b"",
+        branch: str = "",
+        cseq: int | None = None,
     ) -> bytes:
-        self.branch = f"z9hG4bK{random.getrandbits(48):012x}"
+        # CANCEL is the one request that must carry the branch and sequence
+        # number of the INVITE it cancels rather than its own.
+        self.branch = branch or f"z9hG4bK{random.getrandbits(48):012x}"
+        if cseq is None:
+            cseq = self.cseq
         headers = [
             f"Via: SIP/2.0/UDP {self.local_ip}:{self.local_port};branch={self.branch};rport",
             "Max-Forwards: 70",
             f"From: \"{self.config.display_name}\" <sip:{self.config.username}@{self.server_host}>;tag={self.from_tag}",
             f"To: {self.to_header}",
             f"Call-ID: {self.call_id}",
-            f"CSeq: {self.cseq} {method}",
+            f"CSeq: {cseq} {method}",
             f"Contact: <sip:{self.config.username}@{self.local_ip}:{self.local_port}>",
             "User-Agent: courier-emu/0.1",
         ]
@@ -218,6 +337,8 @@ class SipSession:
     def _send_invite(self, authorization: tuple[str, str] | None = None) -> None:
         self.cseq += 1
         self._invite = self._request("INVITE", authorization=authorization, body=self._sdp())
+        self._invite_branch = self.branch
+        self._invite_cseq = self.cseq
         self.socket.send(self._invite)
         self._invite_sent_at = time.monotonic()
         self._retransmit_after = 0.5
@@ -423,6 +544,35 @@ class SipSession:
             events=list(self.events),
         )
         return value
+
+    def hangup(self) -> None:
+        """End the call in progress, keeping the session usable for another.
+
+        `close` is the end of the session and its sockets. This is the end of
+        one call: BYE for an established dialogue, CANCEL for one still being
+        set up. Either way the state returns to idle so the next seizure of
+        the loop can dial again.
+        """
+        if self.closed:
+            return
+        try:
+            if self.state == "connected":
+                self.cseq += 1
+                self.socket.send(self._request("BYE"))
+                self.events.append(f"tx BYE cseq={self.cseq}")
+            elif self.state in ("inviting", "trying", "ringing"):
+                self.socket.send(
+                    self._request(
+                        "CANCEL", branch=self._invite_branch, cseq=self._invite_cseq
+                    )
+                )
+                self.events.append(f"tx CANCEL cseq={self._invite_cseq}")
+        except OSError:
+            pass
+        self.state = "idle"
+        self.remote_rtp = None
+        self._tx_audio.clear()
+        self._rx_audio.clear()
 
     def close(self) -> None:
         if self.closed:

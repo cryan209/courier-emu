@@ -13,7 +13,7 @@ from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
 from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
-from .sip import RateConverter, SipSession
+from .sip import PolyphaseResampler, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
 
 
@@ -415,8 +415,11 @@ class CourierDspBridge:
         self._carrier_best_score = 0.0
         self._rate_trace_enabled = False
         self._sip_tx_index = 0
-        self._sip_tx_rate = RateConverter(LINE_RATE, 8_000)
-        self._sip_rx_rate = RateConverter(8_000, LINE_RATE)
+        # Band-limited rather than a hold: the modem's transmit is tones and
+        # modulation, and the images a hold leaves at 6:5 land inside the
+        # band the far end demodulates in.
+        self._sip_tx_rate = PolyphaseResampler(LINE_RATE, 8_000)
+        self._sip_rx_rate = PolyphaseResampler(8_000, LINE_RATE)
         self._line_to_codec = LineToCodec(LINE_RATE)
         # The other direction: what the datapump clocks out is at the codec's
         # rate, and the exchange, the peer link and SIP all speak the line's.

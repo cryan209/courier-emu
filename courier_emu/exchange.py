@@ -214,6 +214,13 @@ class LineExchange:
     # far end's audio: `peer_audio(count, transmitted) -> samples`. Without one
     # a connected call is silent, which is a bare loop with nobody on it.
     peer_audio: Callable[[int, list[int]], list[int]] | None = None
+    # Where the outcome comes from when the switch is not a lookup table.
+    # Called with the dialed number once collection ends; returning an outcome
+    # routes the call immediately, and returning None means "still setting up"
+    # - the exchange holds in `routing`, silent, until `set_outcome` or
+    # `answer` arrives from whatever is doing the real work. A real switch
+    # behaves the same way when the far end is off-net.
+    router: Callable[[str], str | None] | None = None
 
     state: str = "idle"
     off_hook: bool = False
@@ -434,9 +441,40 @@ class LineExchange:
             self._route()
 
     def _route(self) -> None:
-        self.outcome = self.directory.get(self.dialed, self.default_outcome)
+        if self.router is not None:
+            self.outcome = self.router(self.dialed)
+        else:
+            self.outcome = self.directory.get(self.dialed, self.default_outcome)
         self.rings_delivered = 0
         self._enter("routing")
+
+    def set_outcome(self, outcome: str) -> None:
+        """Supply the outcome of a call the router left pending.
+
+        Ignored unless the call is still being set up, so a late answer from
+        the network cannot resurrect a loop the subscriber has already put
+        back down.
+        """
+        if outcome not in EXCHANGE_OUTCOMES:
+            choices = ", ".join(EXCHANGE_OUTCOMES)
+            raise ValueError(f"invalid exchange outcome {outcome!r}; choose {choices}")
+        if self.state not in ("routing", "ringback"):
+            return
+        self.outcome = outcome
+        if self.state == "ringback" and outcome in ("busy", "reorder"):
+            self._enter(outcome)
+
+    def answer(self) -> None:
+        """The far end picked up, on someone else's authority than a timer.
+
+        `ringback` self-answering after `answer_after_rings` is the model's
+        own far end. When there is a real one - a SIP peer sending 200 OK -
+        this is how it says so, and `answer_after_rings` is left unreachable.
+        """
+        if self.state not in ("routing", "ringback"):
+            return
+        self.calls += 1
+        self._enter("answer-tone" if self.answer_tone_ms else "connected")
 
     def _advance(self) -> None:
         """Run the timers that move the call along without a new event."""
@@ -471,6 +509,11 @@ class LineExchange:
             return
         if self.state == "routing":
             if self._in_state() < self._samples(self.routing_ms):
+                return
+            if self.outcome is None:
+                # A pending router. The loop is silent and the subscriber is
+                # waiting; nothing here times it out, because what would is
+                # the thing that has not answered yet.
                 return
             if self.outcome == "busy":
                 self._enter("busy")
