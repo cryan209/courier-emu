@@ -396,6 +396,11 @@ class CourierDspBridge:
         self._runtime_ready_delay = 0
         self._runtime_header = 0xFFFF
         self._runtime_data = 0xFFFF
+        # The message the supervisor has finished assembling, waiting for its
+        # commit. Delivering the latch instead of this pair handed the DSP a
+        # new tag with the previous message's data whenever a 0x1c bit 0
+        # landed between the tag writes and the data writes.
+        self._runtime_pending: tuple[int, int] | None = None
         self._runtime_inbound: deque[tuple[int, int]] = deque()
         self._runtime_inbound_delivered: Counter[str] = Counter()
         self._runtime_inbound_seen = False
@@ -1235,6 +1240,11 @@ class CourierDspBridge:
                     if not self.boot_rom_enabled:
                         self._deliver_host_message(*words)
                         self._answer_runtime_request(*words)
+                    else:
+                        # The ROM protocol commits with 0x1c bit 0. Hold the
+                        # completed pair for it rather than letting it read
+                        # the half-updated latch.
+                        self._runtime_pending = words
             return
         if self.asic_transparent and self._runtime_mode and size == 1:
             self._mirror_port(port, value)
@@ -1253,8 +1263,11 @@ class CourierDspBridge:
                 self.bootstrap.clear()
             if self._runtime_mode:
                 if self.boot_rom_enabled:
-                    if value & 1:
-                        self._deliver_host_message(self._runtime_header, self._runtime_data)
+                    if value & 1 and self._runtime_pending is not None:
+                        # One delivery per assembled message: a repeated
+                        # acknowledgement must not re-send the last one.
+                        self._deliver_host_message(*self._runtime_pending)
+                        self._runtime_pending = None
                     if value & 2 and self._dsp_completion_status() & 2:
                         self.dsp_messages_taken += 1
                     if value & 4:

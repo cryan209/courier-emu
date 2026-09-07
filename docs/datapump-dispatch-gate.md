@@ -669,6 +669,45 @@ is a bridge change and wants its own measurement afterwards: the assembled and
 delivered counts should agree, `0392` should take `32c8`, and the 403 image
 should put a tone on the line.
 
+### The fix, and what it did not fix
+
+Delivery now holds the completed pair. The `0x5E` write - the message's last
+byte - latches `_runtime_pending`, and the `0x1C` bit 0 commit delivers that
+pair and clears it, so a repeated acknowledgement cannot re-send the last
+message and a commit landing mid-assembly cannot send a half-updated latch.
+
+| | assembled | delivered before | delivered after |
+|---|---|---|---|
+| 403 | 68 | 70 | **68** |
+| 302 | 66 | 68 | **66** |
+
+302 is unaffected in behaviour: still `dialed: "6245"`, still a tone at peak
+22,764, still reaching ringback.
+
+**The tone checks still fail, and the reason is that the premise was wrong.**
+403 is not being handed a corrupted gain. Its supervisor genuinely sends zero:
+
+| tag | 302 sends | 403 sends |
+|---|---|---|
+| `0019` | `020d` x7 | `c802` x6, `0400` x1 |
+| **`001a`** | **`32c8`** x4, `32d6` x2 | **`0000`** x4, `2fd6` x2 |
+| **`001b`** | **`0c08`** x4 | **`0000`** x4 |
+| `001f` | `0000` x6 | `0032` x6 |
+
+The `32c8` attributed to 403 in the previous revision was read off a **302**
+run. The DSP receives exactly what its supervisor sends, `822b` stores exactly
+what it receives, and the gain is zero because 7.4.16 sent zero. Every claim
+here that the delivery path corrupted a value was wrong.
+
+So the question moves up one level again: why does 7.4.16 compute zero for the
+tone's gain where 7.3.14 computes `32c8`. The whole register block differs, and
+the 403 values are suggestive - `c802`, `0032`, `040b` against 302's `020d`,
+`32c8`, `0c08` - which looks like the same bytes read at a one-byte offset.
+Whether that is 7.4.16 reading its own parameter table differently or this
+emulator feeding it a misaligned one is the next question, and it is
+answerable: the supervisor assembles these into the ring at `29e` before the
+drain at `8f521` sends them, so watching the 80186 write that ring says which.
+
 ## What is not established
 
 Which command sets those flags, and what writes them on a real boot. The
