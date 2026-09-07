@@ -203,13 +203,9 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_boot.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
-        lib.courier_c5x_set_dtmf_digits.argtypes = [
-            ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t
-        ]
         lib.courier_c5x_set_v8_calling.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_v8_answering.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_bio_low.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.courier_c5x_set_synthetic_line.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_line_dac_slot.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_line_phase_samples.argtypes = [
             ctypes.c_void_p, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
@@ -365,10 +361,6 @@ class NativeC5x:
         storage = (ctypes.c_uint16 * len(words))(*(word & 0xFFFF for word in words))
         self.library.courier_c5x_queue_codec_boot(self.handle, storage, len(storage))
 
-    def set_dtmf_digits(self, digits: str) -> None:
-        encoded = digits.encode("ascii")
-        self.library.courier_c5x_set_dtmf_digits(self.handle, encoded, len(encoded))
-
     def set_v8_calling(self, enabled: bool) -> None:
         self.library.courier_c5x_set_v8_calling(self.handle, int(enabled))
 
@@ -381,16 +373,6 @@ class NativeC5x:
     def set_line_dac_slot(self, slot: int) -> None:
         """Choose which ASIC slot the datapump's output word is taken from."""
         self.library.courier_c5x_set_line_dac_slot(self.handle, slot)
-
-    def set_synthetic_line(self, enabled: bool) -> None:
-        """Allow or forbid harness-generated audio on the line.
-
-        Off, the core stops substituting its own DTMF and V.8 tones for the
-        datapump's DAC output - and stops discarding that output to make room
-        for them - so the line carries what the C52 program computes or
-        nothing at all.
-        """
-        self.library.courier_c5x_set_synthetic_line(self.handle, int(enabled))
 
     def io(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io(self.handle, port))

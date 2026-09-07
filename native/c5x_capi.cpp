@@ -148,11 +148,6 @@ void courier_c5x_queue_codec_rx(void *handle, const uint16_t *samples, std::size
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_codec_rx(samples, count);
 }
 
-void courier_c5x_set_dtmf_digits(void *handle, const char *digits, std::size_t count)
-{
-    if (handle && digits) static_cast<C5xCore *>(handle)->set_dtmf_digits(digits, count);
-}
-
 void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_data_trace_filter(
@@ -188,11 +183,6 @@ std::size_t courier_c5x_get_line_phase_samples(void *handle, unsigned phase,
 void courier_c5x_set_line_dac_slot(void *handle, uint16_t slot)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_line_dac_slot(slot);
-}
-
-void courier_c5x_set_synthetic_line(void *handle, int enabled)
-{
-    if (handle) static_cast<C5xCore *>(handle)->set_synthetic_line(enabled != 0);
 }
 
 void courier_c5x_set_bio_low(void *handle, int enabled)

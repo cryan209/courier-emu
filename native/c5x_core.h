@@ -193,15 +193,9 @@ public:
     // codec matters. It is not audio and must not be consumed by a frame sync,
     // so the ROM loader's DRR polls drain it ahead of the sample stream.
     void queue_codec_boot(const uint16_t *words, std::size_t count);
-    void set_dtmf_digits(const char *digits, std::size_t count);
     void set_v8_calling(bool enabled);
     void set_v8_answering(bool enabled);
     void set_bio_low(bool enabled) { m_bio_low = enabled; }
-    // Whether the harness may substitute its own generated line audio - DTMF
-    // and the V.8 tones - for the datapump's DAC output. With it off the only
-    // thing that reaches the line is what the downloaded C52 program computes.
-    void set_synthetic_line(bool enabled) { m_synthetic_line = enabled; }
-    bool synthetic_line() const { return m_synthetic_line; }
     void set_line_dac_slot(uint16_t slot) { m_line_dac_slot = slot; }
     // Writes to that slot, kept apart by the TDM phase they were made in. The
     // ASIC bus carries about ten slots per codec sample; if the line channel
@@ -327,7 +321,6 @@ private:
     int64_t m_line_dac_sum = 0;
     unsigned m_line_dac_count = 0;
     bool m_call_tdm_active = false;
-    bool m_synthetic_line = true;
     uint16_t m_line_dac_slot = 0xfffd;
     std::vector<uint16_t> m_line_phase_tx[4];
     int m_line_frame_entry = -1;
@@ -392,8 +385,8 @@ private:
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
     uint16_t m_line_tx_last_pc = 0;
-    std::string m_dtmf_digits;
-    uint64_t m_dtmf_frame = 0;
+    // Which side of the call this is. The role gates the receive-side V.8
+    // indicator qualification below; nothing here generates a tone.
     enum class V8Mode { Off, Calling, Answering };
     V8Mode m_v8_mode = V8Mode::Off;
     struct {
@@ -431,7 +424,6 @@ private:
     bool GET_TP_CONDITION(int tp);
     int32_t PREG_PSCALER(int32_t preg);
     void check_interrupts();
-    uint16_t dtmf_sample();
     void save_interrupt_context();
     void restore_interrupt_context();
     void delay_slot(uint16_t startpc);

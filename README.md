@@ -1120,11 +1120,14 @@ out-of-band, and hung up. Queued replies now own the data lanes.
 
 ### What the C52 puts on the line
 
-With a modeled line attached the core's own DTMF and V.8 generators are
-switched off (`set_synthetic_line(False)`). They are hand-written `sin()` in
-C++ - a 1300 Hz calling indicator and a 2100 Hz ANSam approximation - and while
-they run they *discard* the datapump's own DAC accumulation to make room. With
-them off the line carries what the C52 computes, and only that.
+The core has no tone generator of its own. It once carried hand-written
+`sin()` in C++ - a DTMF pair generator, a 1300 Hz calling indicator and a
+2100 Hz ANSam approximation - which substituted for the datapump's DAC output
+and *discarded* its accumulation to make room. That stand-in is gone, along
+with `set_dtmf_digits` and `set_synthetic_line`. The line now carries what the
+C52 computes through its AC01, and only that: on 3.0.13 that is the firmware's
+own DTMF, which the modeled exchange decodes as the dialed number
+(`artifacts/dtmf-emulator-302-01`).
 
 An answered call reaches the datapump: ring the loop, answer it, and the
 recovered call overlay is entered and executes. What it writes is not audio.

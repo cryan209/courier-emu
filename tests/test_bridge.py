@@ -29,7 +29,6 @@ class _Core:
     def __init__(self) -> None:
         self.queued: list[int] = []
         self.host_writes: list[tuple[int, int]] = []
-        self.dtmf = ""
         self.v8_calling = False
         self.v8_answering = False
         self.pc: int | None = None
@@ -60,9 +59,6 @@ class _Core:
 
     def queue_serial_rx(self, samples: list[int]) -> None:
         self.queued.extend(samples)
-
-    def set_dtmf_digits(self, digits: str) -> None:
-        self.dtmf = digits
 
     def set_v8_calling(self, enabled: bool) -> None:
         self.v8_calling = enabled
@@ -196,7 +192,7 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(status.mailbox_commands, 1)
         self.assertEqual(len(cores), 2)
         self.assertEqual(cores[-1].queued, [0x1234, -2])
-        self.assertEqual(cores[-1].dtmf, "12#")
+        self.assertEqual(bridge.dial_digits, "12#")
 
     def test_daa_qualification_starts_dialing_on_active_core(self) -> None:
         image = _Image()
@@ -209,7 +205,7 @@ class BridgeTests(unittest.TestCase):
             bridge.begin_dialing()
 
         self.assertEqual(daa.operation, "dialing")
-        self.assertEqual(core.dtmf, "1")
+        self.assertEqual(bridge.dial_digits, "1")
 
     def test_second_bootstrap_enters_originate_dialing_phase(self) -> None:
         image = _Image()
@@ -229,7 +225,7 @@ class BridgeTests(unittest.TestCase):
             self._bootstrap(bridge, image.program)
 
         self.assertEqual(daa.operation, "dialing")
-        self.assertEqual(cores[-1].dtmf, "12")
+        self.assertEqual(bridge.dial_digits, "12")
         self.assertEqual(bridge.read(0x1C, 1), 3)
         self.assertEqual(bridge.read(0x58, 1), 0x02)
         self.assertEqual(bridge.read(0x5A, 1), 0x00)
@@ -243,15 +239,16 @@ class BridgeTests(unittest.TestCase):
             cores.append(core)
             return core
 
+        daa = CourierDaa("quiet")
         with patch("courier_emu.bridge.NativeC5x", side_effect=make_core):
-            bridge = CourierDspBridge(  # type: ignore[arg-type]
-                image, daa=CourierDaa("quiet")
-            )
+            bridge = CourierDspBridge(image, daa=daa)  # type: ignore[arg-type]
             bridge.arm_dial_tones(b"DT1")
             self._bootstrap(bridge, image.program)
             self._bootstrap(bridge, image.program)
 
-        self.assertEqual(cores[-1].dtmf, "")
+        # A quiet loop never qualifies dial tone, so the supervisor is never
+        # told to dial and the DSP is never asked for a tone.
+        self.assertNotEqual(daa.operation, "dialing")
 
     def test_runtime_mailbox_records_words_and_reset_floats_bus(self) -> None:
         image = _Image()

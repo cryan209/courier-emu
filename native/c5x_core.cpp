@@ -83,8 +83,6 @@ void C5xCore::reset()
     m_line_tx.clear();
     m_line_rx_consumed = m_line_tx_nonzero = 0;
     m_line_tx_last_pc = 0;
-    m_dtmf_digits.clear();
-    m_dtmf_frame = 0;
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
     m_v8_callback_ready = false;
@@ -352,11 +350,6 @@ void C5xCore::queue_codec_boot(const uint16_t *words, std::size_t count)
     for (std::size_t index = 0; index < count; ++index)
         m_codec_boot.push_back(words[index]);
 }
-void C5xCore::set_dtmf_digits(const char *digits, std::size_t count)
-{
-    m_dtmf_digits.assign(digits, count);
-    m_dtmf_frame = 0;
-}
 void C5xCore::set_v8_calling(bool enabled)
 {
     m_v8_mode = enabled ? V8Mode::Calling : V8Mode::Off;
@@ -364,7 +357,6 @@ void C5xCore::set_v8_calling(bool enabled)
 void C5xCore::set_v8_answering(bool enabled)
 {
     m_v8_mode = enabled ? V8Mode::Answering : V8Mode::Off;
-    if (enabled) m_dtmf_frame = 960;
 }
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::io_output(uint16_t port) const
@@ -542,9 +534,6 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
-    if (port == 0xb2e5 && m_synthetic_line
-        && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
-        value = m_io[port];
     if (m_rom_codec && port == 0x57)
         // PA7 is an acknowledgement register, not ordinary port storage.
         // The board leaves 0002 unchanged after writes of 0200, 0300 and 0000
@@ -597,69 +586,6 @@ static uint16_t detect_v8_tones(const std::deque<int16_t> &samples)
     if ((c1300 * c1300 + s1300 * s1300) > limit) state |= 1; // CI
     if ((c2100 * c2100 + s2100 * s2100) > limit) state |= 2; // ANSam
     return state;
-}
-
-uint16_t C5xCore::dtmf_sample()
-{
-    // The Courier's frame service cadence is 9.6 kHz. A dial sequence starts
-    // with 100 ms of silence, then uses 100 ms tones and 50 ms interdigit gaps.
-    constexpr uint64_t sample_rate = 9600, lead = 960, tone = 960, gap = 480;
-    uint64_t frame = m_dtmf_frame++;
-    if (frame < lead) return 0;
-    frame -= lead;
-    std::size_t index = std::size_t(frame / (tone + gap));
-    uint64_t within = frame % (tone + gap);
-    if (index >= m_dtmf_digits.size()) {
-        if (m_v8_mode == V8Mode::Off) {
-            // The board-side dialer owns only the digit interval. Relinquish
-            // the DAC afterwards so the downloaded datapump, not this assist,
-            // supplies V.8 and all later modulation.
-            m_dtmf_digits.clear();
-            return 0;
-        }
-        uint64_t v8_frame = frame - m_dtmf_digits.size() * (tone + gap);
-        constexpr double v8_pi = 3.14159265358979323846;
-        double phase = double(v8_frame) / double(sample_rate);
-        if (m_v8_mode == V8Mode::Calling) {
-            // V.8 calling indicator: 1300 Hz, 500 ms on / 500 ms off.
-            if (v8_frame % sample_rate >= sample_rate / 2) return 0;
-            return uint16_t(int16_t(std::lround(
-                9000.0 * std::sin(2.0 * v8_pi * 1300.0 * phase))));
-        }
-        // V.8 ANSam approximation: 2100 Hz answer tone, 15 Hz amplitude
-        // modulation, and the standard 450 ms phase reversals.
-        double reversal = ((v8_frame / 4320) & 1) ? -1.0 : 1.0;
-        double envelope = 0.8 + 0.2 * std::sin(2.0 * v8_pi * 15.0 * phase);
-        return uint16_t(int16_t(std::lround(
-            9000.0 * envelope * reversal * std::sin(2.0 * v8_pi * 2100.0 * phase))));
-    }
-    if (within >= tone) return 0;
-
-    int low = 0, high = 0;
-    switch (m_dtmf_digits[index]) {
-    case '1': low = 697; high = 1209; break;
-    case '2': low = 697; high = 1336; break;
-    case '3': low = 697; high = 1477; break;
-    case 'A': low = 697; high = 1633; break;
-    case '4': low = 770; high = 1209; break;
-    case '5': low = 770; high = 1336; break;
-    case '6': low = 770; high = 1477; break;
-    case 'B': low = 770; high = 1633; break;
-    case '7': low = 852; high = 1209; break;
-    case '8': low = 852; high = 1336; break;
-    case '9': low = 852; high = 1477; break;
-    case 'C': low = 852; high = 1633; break;
-    case '*': low = 941; high = 1209; break;
-    case '0': low = 941; high = 1336; break;
-    case '#': low = 941; high = 1477; break;
-    case 'D': low = 941; high = 1633; break;
-    default: return 0;
-    }
-    constexpr double pi = 3.14159265358979323846;
-    double phase = double(within) / double(sample_rate);
-    int sample = int(std::lround(6500.0 * (
-        std::sin(2.0 * pi * low * phase) + std::sin(2.0 * pi * high * phase))));
-    return uint16_t(int16_t(sample));
 }
 
 uint16_t C5xCore::cpuregs_r(uint16_t offset)
@@ -1045,18 +971,10 @@ void C5xCore::step()
                         }
                     }
                 }
-                if (m_synthetic_line && m_v8_mode != V8Mode::Off) {
-                    // The ASIC owns the V.8 line slot for both roles. Calling
-                    // emits CI; answering emits ANSam. Previously only the
-                    // answer branch drove this slot, leaving the caller silent
-                    // once the real call overlay became active.
-                    uint16_t sample = dtmf_sample();
-                    m_line_tx.push_back(sample);
-                    if (sample) ++m_line_tx_nonzero;
-                    m_line_tx_last_pc = 0x0238;
-                    m_line_dac_sum = 0;
-                    m_line_dac_count = 0;
-                } else if (m_line_dac_count) {
+                // The line slot carries the datapump's own DAC accumulation
+                // and nothing else. Whatever V.8 the call needs is the C52
+                // overlay's to emit.
+                if (m_line_dac_count) {
                     int16_t sample = int16_t(
                         m_line_dac_sum / int64_t(m_line_dac_count));
                     m_line_tx.push_back(uint16_t(sample));
@@ -1066,9 +984,6 @@ void C5xCore::step()
                     m_line_dac_count = 0;
                 }
             } else {
-                if (m_synthetic_line
-                    && (!m_dtmf_digits.empty() || m_v8_mode != V8Mode::Off))
-                    m_io[0xb2e5] = dtmf_sample();
                 uint16_t sample = m_io[0xb2e5];
                 m_line_tx.push_back(sample);
                 if (sample) ++m_line_tx_nonzero;

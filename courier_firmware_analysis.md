@@ -3701,6 +3701,13 @@ Two things are settled by this measurement. The V.8 tones a run emits are
 15 Hz AM and 450 ms reversals for answering - not firmware output. And V.21 is
 generated nowhere; the harness only scores 980/1180 Hz symbols it never sees.
 
+> **Superseded 2026-09-08.** `C5xCore::dtmf_sample()`, `set_dtmf_digits` and
+> `set_synthetic_line` have been deleted. There is no harness tone generator
+> left to switch off, so every measurement below that qualifies itself with
+> `set_synthetic_line(False)` is now simply the unconditional behaviour. The
+> DSP is the whole audio path; on 3.0.13 it emits its own DTMF
+> (`artifacts/dtmf-emulator-302-01`).
+
 ### Where the audio path is not: four measurements
 
 Measured 2026-09-05 on an answered call with `set_synthetic_line(False)`, so

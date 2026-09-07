@@ -427,7 +427,6 @@ class CourierDspBridge:
             if sip is not None and exchange is not None
             else None
         )
-        self._configure_synthetic_line()
         self._instructions = 0
         self._exchange_instructions = 0
         self._exchange_codec_mark = 0
@@ -763,18 +762,6 @@ class CourierDspBridge:
         if self.line is not None and self.line.connected:
             self._publish_connected_event()
 
-    def _configure_synthetic_line(self) -> None:
-        """Forbid harness-generated line audio when a modeled line is attached.
-
-        A modeled line carries what the board computes. The core's own DTMF
-        and V.8 generators would otherwise stand in for the datapump - and
-        discard its output to make room. This has to be reapplied to every
-        core, because a line operation reloads the C52 and builds a new one.
-        """
-        if self.exchange is None or not hasattr(self.core, "set_synthetic_line"):
-            return
-        self.core.set_synthetic_line(False)
-
     def _configure_boot_rom(self) -> None:
         if not self.boot_rom_enabled:
             return
@@ -867,12 +854,6 @@ class CourierDspBridge:
                     self._queue_line_audio(samples)
                 else:
                     self.core.queue_serial_rx(samples)
-        if (
-            self.bootstraps >= 2
-            and self.dial_digits
-            and (self.daa is None or self.daa.operation == "dialing")
-        ):
-            self.core.set_dtmf_digits(self.dial_digits)
 
     def set_line_hook(self, off_hook: bool) -> None:
         """Follow the firmware's own hook relay.
@@ -903,8 +884,6 @@ class CourierDspBridge:
     def begin_dialing(self) -> None:
         if self.daa is not None:
             self.daa.begin_dialing()
-        if self.active and self.dial_digits and not self._v8_armed:
-            self.core.set_dtmf_digits(self.dial_digits)
         if self.sip is not None and self.dial_digits and self._sip_line is None:
             # Out-of-band dialing: the number came from the AT command rather
             # than from the line. `SipLine` places the call from the tones.
@@ -1044,7 +1023,6 @@ class CourierDspBridge:
             # The command commit is the real call boundary on main211; it does
             # not perform the second bootstrap older notes expected.
             self._call_resume_pending = True
-            self.core.set_dtmf_digits(self.dial_digits)
         elif (
             not self._v8_armed
             and self.daa is not None
@@ -1336,7 +1314,6 @@ class CourierDspBridge:
             self.core = NativeC5x(self.image)
             self._configure_boot_rom()
             self._configure_frame_interrupt()
-            self._configure_synthetic_line()
             self._call_overlay_active = False
             self._call_resume_pending = self._v8_armed
             self.bootstrap = bytearray(window)
@@ -1405,12 +1382,6 @@ class CourierDspBridge:
                     )
                 ):
                     self.begin_dialing()
-                if (
-                    self.bootstraps >= 2
-                    and self.dial_digits
-                    and (self.daa is None or self.daa.operation == "dialing")
-                ):
-                    self.core.set_dtmf_digits(self.dial_digits)
         else:
             self.mailbox_commands += 1
             self.mailbox_windows[self.window.hex()] += 1

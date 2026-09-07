@@ -90,10 +90,10 @@ if self.exchange is not None:
     return
 ```
 
-so `dial_digits` stays empty by design and the synthetic DTMF generator is not
-armed. That is the right call - the point of `--exchange` is to make the
-firmware do it - but it means this path has no fallback, and the silence is the
-honest result.
+so `dial_digits` stays empty by design. That is the right call - the point of
+`--exchange` is to make the firmware do it - and there is no longer any
+fallback to arm: the harness-side DTMF generator has been removed, so on this
+image the silence is the honest result.
 
 ## Traced: why the mailbox is never polled
 
