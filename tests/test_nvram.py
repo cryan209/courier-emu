@@ -152,13 +152,21 @@ class CourierNvramTest(unittest.TestCase):
             self.assertEqual(decoded["decoded_copies"], [value] * 3)
             self.assertTrue(decoded["all_copies_agree"])
 
-    def test_idsl302_fixture_programs_only_words_94_through_102(self) -> None:
+    def test_idsl302_fixture_programs_the_settings_and_the_extended_block(self) -> None:
         device = CourierNvram.idsl302_fixture()
         encoded = encode_idsl302_settings()
         self.assertEqual(encoded.hex(), "649603080b1a649603ef871def871def871d")
         self.assertEqual(device.data[94 * 2 : 103 * 2], encoded)
         self.assertEqual(device.data[:94 * 2], b"\xff" * (94 * 2))
-        self.assertEqual(device.data[103 * 2 :], b"\xff" * (NVRAM_BYTES - 103 * 2))
+        # The +S block starts on the high byte of word 0xc1 and ends on the low
+        # byte of 0xf4; the bytes either side of it stay erased.
+        self.assertEqual(device.data[103 * 2 : 0xC1 * 2 + 1], b"\xff" * (0xC1 * 2 + 1 - 103 * 2))
+        self.assertEqual(device.data[0xF4 * 2 + 1 :], b"\xff" * (NVRAM_BYTES - 0xF4 * 2 - 1))
+        self.assertEqual(device.word(0xC1) >> 8, 70)        # +S1
+        self.assertEqual(device.word(0xCC), 525)            # +S22
+        self.assertEqual(device.word(0xCD), 13000)          # +S24
+        self.assertEqual(device.word(0xCE), 3080)           # +S26
+        self.assertEqual(device.data[0xF2 * 2 + 1 : 0xF4 * 2 + 1], b"3.02")
         decoded = decode_settings(encoded)
         self.assertEqual([record["value"] for record in decoded], [0, 30, 7, 30, 0, 0])
 

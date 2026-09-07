@@ -42,6 +42,23 @@ IDSDL302_SETTINGS_WORD = 94
 IDSDL302_SETTINGS = (0, 30, 7, 30, 0, 0)
 IDSDL302_RECORD_ORDER = (1, 2, 3, 4, 5, 0)
 
+# ID_SDL's extended (+S) register block. AT+SF loads it from the defaults
+# table at CPU 0xc8891 and AT&W stores it as a byte stream from the high byte
+# of EEPROM word 0xc1 through the low byte of 0xf4 - measured in the emulator
+# by running AT+SF then AT&W on the 302 image, and byte-identical to the ROM
+# table. Words 0xcc..0xce carry +S22 = 525, +S24 = 13000 and +S26 = 3080; the
+# dial path sends those three on mailbox tags 0x19, 0x1a and 0x1b as the
+# DTMF detector sensitivity and the two transmit levels. Left erased, the
+# lanes carry 0xffff and the DSP dials silently, which is the fault the board
+# had (docs/idsdl-extended-registers.md).
+IDSDL302_EXTENDED_BYTE = 0xC1 * 2 + 1
+IDSDL302_EXTENDED = bytes.fromhex(
+    "460000000a2304ff097d4b000d02000040941100400d02c832080c581b18b400"
+    "0400000000000000000000000000000000000000000000000000001404010514"
+    "0800000000000000000000000000000000000000000001000000000000000000"
+    "0000332e3032"
+)
+
 
 def encode_idsl302_record(value: int) -> bytes:
     """Reverse the three byte transformations in IDSDL302's e237 decoder."""
@@ -122,11 +139,13 @@ class CourierNvram:
 
     @classmethod
     def idsl302_fixture(cls) -> CourierNvram:
-        """Return an erased EEPROM seeded only with the recovered boot settings."""
+        """Return an erased EEPROM seeded with the recovered boot settings and
+        the +S register defaults; every other word stays erased."""
         device = cls()
         start = IDSDL302_SETTINGS_WORD * 2
         encoded = encode_idsl302_settings()
         device.data[start : start + len(encoded)] = encoded
+        device.data[IDSDL302_EXTENDED_BYTE : IDSDL302_EXTENDED_BYTE + len(IDSDL302_EXTENDED)] = IDSDL302_EXTENDED
         return device
 
     def _trace(self, event: str) -> None:

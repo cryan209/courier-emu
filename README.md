@@ -854,8 +854,10 @@ unprogrammed part) when the file does not exist and written back after the run:
 ```
 
 For a deterministic `IDSDL302.ROM` boot, the recovered six-record settings
-cache can instead be attached in memory. This leaves every EEPROM word except
-94 through 102 erased, and does not alter the blank `--nvram` behavior:
+cache can instead be attached in memory, together with the `+S` register
+defaults that `AT+SF` loads - without them the DSP dials at zero level, as the
+board did. This leaves every other EEPROM word erased, and does not alter the
+blank `--nvram` behavior:
 
 ```sh
 ./courier run IDSDL302.ROM --instructions 60000000 \

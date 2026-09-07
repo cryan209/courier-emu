@@ -120,3 +120,20 @@ running config, so `AT&F1` first means writing factory defaults over whatever
 was stored. On this board the profile was rebuilt in RAM from an `ATI5` capture
 before writing, and the DTE rate set to match `&B1`, because `&W` stores that
 too.
+
+## Where the block lives in NVRAM, and the emulator fixture
+
+Measured in the emulator on the 302 image with a persistent `--nvram` file:
+`AT&W` alone programs the standard USR profile at EEPROM words `0x00`-`0x22`;
+`AT+SF` followed by `AT&W` additionally programs words `0xc1`-`0xf4`. That
+block is a byte stream starting on the high byte of word `0xc1`, and it is
+byte-identical to the defaults table at CPU `0xc8891` - `+S1` = 70 first, then
+`+S22` = 525, `+S24` = 13000 and `+S26` = 3080 at words `0xcc`-`0xce`, ending
+in the `3.02` version tag.
+
+Those three are what the dial path sends beside each digit on mailbox tags
+`0x19`, `0x1a` and `0x1b`. With the block erased the lanes carry `0xffff` and
+the DSP's own tone generator produces nothing the modeled exchange can decode;
+after `AT+SF` they carry `020d`/`32c8`/`0c08` and the exchange decodes every
+digit. The `--nvram-fixture idsdl302` image now seeds this block alongside the
+settings cache, so a cold boot in the emulator dials audibly.
