@@ -91,9 +91,12 @@ transmits 1440 words, and the result is simply the wrong signal.
   the way that site arms it.
 
   *Closed on the other image, 2026-09-08.* `ATA` on `IDSDL302.ROM` (DSP 3.0.13)
-  emits ANSam in the full emulator, supervisor and all - see
-  [ata-answer-tone-302.md](ata-answer-tone-302.md). That does not locate 3.1.2's
-  path to `9f40`; the two builds share no addresses here.
+  emits ANSam in the full emulator, supervisor and all, from its own analogue of
+  this site at `0x9f62` - and follows it with a 2250 Hz tone armed at `0xd354`.
+  See [ata-answer-tone-302.md](ata-answer-tone-302.md), which also maps 3.0.13's
+  oscillator family onto this one: the code addresses differ throughout, but the
+  data cells - increment `0x3f2`, amplitude `0x3f3`, phase `0x3c0` - are the
+  same in both builds. That does not locate 3.1.2's own path to `9f40`.
 * **ANSam renders too.** *Corrected.* This section used to say the `8712` and
   `8716` variants could not be rendered, and blamed missing delay-line state.
   The real cause was a bug in this repository's C5x core: `MADD` and `MADS`

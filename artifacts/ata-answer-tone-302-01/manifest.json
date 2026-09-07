@@ -21,7 +21,8 @@
     "2131.25": 0.0184
    },
    "identification": "V.8 ANSam: 2100 Hz answer tone with 15.05 Hz amplitude modulation",
-   "basis": "carrier measured 2101.15 Hz here and 2098.90 Hz in the --exchange-hotline run, i.e. within 1.2 Hz of 2100 either way; the AM sidebands pull a finite-window peak search slightly, so treat the carrier as 2100 +/- 1.5 Hz rather than the printed decimals. First-order sidebands at +/-15.05 Hz near 10%, second-order near 1%; matches the 3.1.2 firmware-rendered ANSam in artifacts/answer-tone-01 (0.101/0.100)"
+   "basis": "carrier measured 2101.15 Hz here and 2098.90 Hz in the --exchange-hotline run, i.e. within 1.2 Hz of 2100 either way; the AM sidebands pull a finite-window peak search slightly, so treat the carrier as 2100 +/- 1.5 Hz rather than the printed decimals. First-order sidebands at +/-15.05 Hz near 10%, second-order near 1%; matches the 3.1.2 firmware-rendered ANSam in artifacts/answer-tone-01 (0.101/0.100)",
+   "armed_by": "0x9f62: lacc #4aab (2100.04 Hz at 7200) -> call 86dc; splk @75,#0ca7 (3239 samples, 449.9 ms reversal); splk @1a,#8721/#871d (the ANSam callbacks, whose 8723 adds increment 0x0089 = 15.05 Hz and multiplies the carrier); splk @73,#06cf"
   },
   {
    "start_s": 5.83,
@@ -31,8 +32,9 @@
     "2234.95": 0.0141,
     "2265.05": 0.014
    },
-   "identification": "consistent with V.22/V.22bis unscrambled binary 1 (channel 2 carrier 2400 Hz less 150 Hz)",
-   "basis": "measured 2250.00 Hz with no modulation sidebands. This is a match against the standard, NOT a firmware attribution: the 3.0.13 code that arms it has not been located"
+   "identification": "a pure 2250 Hz tone, armed as a single oscillator. The signal is what V.22/V.22bis unscrambled binary 1 looks like on the line (channel 2 carrier 2400 Hz less 150 Hz, i.e. 90 degrees per symbol at 600 baud), but the firmware generates it directly rather than by running the modulator",
+   "basis": "located statically and confirmed at runtime: mid-burst the emulator shows 0x3f2 = 0x5000, 0x3f3 = 0x0898 and 0x39a = 0x875a",
+   "armed_by": "0x9ffc in the answer state machine calls 0xd354, which is 'lacc #5000; b 86dc' - a tail-call, which is why a search for 'call 86dc' misses it. 0x5000/65536*7200 = 2250.00 Hz exactly. 86dc stores the increment at 0x3f2, installs the plain oscillator 875a in the mixer callback slot 0x39a, sets amplitude 0x3f3 to its own literal 0x0898, and clears the phase 0x3c0"
   }
  ],
  "reproduced": "the same sequence appears with --exchange-hotline in place of --ring, at the same onsets, durations and levels; the 2250 Hz burst is byte-identical between the two runs",
@@ -40,6 +42,16 @@
  "caveats": [
   "The harness tone generator was deleted before these runs (commit 797ed28), so only the C52 program could have produced these samples; the codec, ASIC transport and line remain models.",
   "Neither run is a true exchange-side answer. The CLI's --ring drives the ring detector at port 0x14 but never puts LineExchange into 'ringing' - only the SIP inbound path calls exchange.ring() - so bridge.set_line_hook labels the seizure 'originate'. The supervisor obeyed ATA and armed these tones regardless.",
-  "The 3.0.13 oscillator addresses are unlocated. The 3.1.2 answer-tone family (874f/8739/8712, docs/answer-tone.md) does not transplant: none of those addresses hold the same words in this image."
- ]
+  "The 3.0.13 oscillator family is now located (see oscillator_family) and shares 3.1.2's data cells, though the code addresses differ throughout."
+ ],
+ "oscillator_family": {
+  "comment": "3.0.13 relocates 3.1.2 (docs/answer-tone.md) but keeps the same data cells",
+  "arm_routine": "86dc (3.1.2: 86d1)",
+  "one_oscillator": "875a (874f)",
+  "pair_oscillator": "874e (8743)",
+  "phase_reversals": "8744 (8739)",
+  "ansam": "871d / 8721 / 8723 (8712 / 8716 / 8718)",
+  "silence": "8139",
+  "cells": "increment 0x3f2, amplitude 0x3f3, phase 0x3c0, output 0x3c7, callback slots 0x39a and 0x39b - identical in both builds"
+ }
 }
