@@ -20,7 +20,8 @@ from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
                         BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES,
                         IO_ALIAS_MAGIC, IO_ALIAS_PORT, IO_ALIAS_SAMPLES,
                         PORT_FOLD_TAG_PORT, PORT_FOLD_DATA_PORT,
-                        PORT_FOLD_SAMPLES, inspect_buffer)
+                        PORT_FOLD_SAMPLES, PORT_FOLD_PATTERN, inspect_buffer)
+from .bridge import asic_decodes
 from .rom import CourierRom
 
 REFERENCE_DIGEST = "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5"
@@ -128,7 +129,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      port_fold: bool = False,
                      fold_tag_port: int = PORT_FOLD_TAG_PORT,
                      fold_data_port: int = PORT_FOLD_DATA_PORT,
-                     fold_samples: int = PORT_FOLD_SAMPLES) -> Diagnostic:
+                     fold_samples: int = PORT_FOLD_SAMPLES,
+                     fold_pattern: int = PORT_FOLD_PATTERN) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
     With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
@@ -153,7 +155,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     if port_fold:
         # The A4-fold test. Its frame is indistinguishable from any other
         # capture except by payload, which is why the pattern is recognisable.
-        probe = build_port_fold_probe(fold_tag_port, fold_data_port, fold_samples)
+        probe = build_port_fold_probe(fold_tag_port, fold_data_port, fold_samples,
+                                      fold_pattern)
         count = fold_samples
     elif io_alias:
         probe = build_io_alias_probe(io_alias_magic, io_alias_port)
@@ -495,9 +498,13 @@ class TransportMachine:
                 if not write:
                     continue
                 self._event("dsp-io-write", dsp_pc=pc, port=port, value=value)
-                if port == 0x5E:
+                # Not `port == 0x5E`: the board's decode ignores A4, so 0x4e
+                # is the same register. Measured, not assumed - this harness
+                # predicted silence for the folded run and the board sent the
+                # frame. See artifacts/dsp-port-fold-01.
+                if asic_decodes(port, 0x5E):
                     self.tag_latch = value
-                elif port == 0x5F:
+                elif asic_decodes(port, 0x5F):
                     self.data_latch = value
                 elif port == 0x57 and value == 2:
                     tag = self.tag_latch
@@ -659,6 +666,11 @@ def main() -> int:
                         help="pass 0x5e with --fold-data-port 0x5f for the positive control")
     parser.add_argument("--fold-data-port", type=lambda v: int(v, 0), default=PORT_FOLD_DATA_PORT)
     parser.add_argument("--fold-samples", type=lambda v: int(v, 0), default=PORT_FOLD_SAMPLES)
+    parser.add_argument("--fold-pattern", type=lambda v: int(v, 0), default=PORT_FOLD_PATTERN,
+                        help="payload base word. Give each run on the board its own "
+                             "pattern: the DSP keeps the previous kernel in program "
+                             "RAM, so an identical frame cannot distinguish a "
+                             "successful run from a re-run of the run before it")
     parser.add_argument("--rom-dump", action="store_true",
                         help="carry the full 2048-word on-chip ROM reader instead of "
                              "the 56-word sample probe")
@@ -691,6 +703,7 @@ def main() -> int:
                                       fold_tag_port=args.fold_tag_port,
                                       fold_data_port=args.fold_data_port,
                                       fold_samples=args.fold_samples,
+                                      fold_pattern=args.fold_pattern,
                                      relocated_layout=args.relocate,
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)

@@ -1,0 +1,49 @@
+{
+ "what": "Which address lines the ASIC decodes on the DSP's I/O bus, measured by sending the mailbox to folded port numbers",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "port": "/dev/cu.usbserial-1420 at 57600",
+ "method": "probe_transport --port-fold, delivered to supervisor RAM at 0x3000 with ATGLK2W (2104 word writes per image, all verified byte-exact against diagnostic-ram.bin before arming), started by pointing IVT vector 8 at 0000:3000 and setting T0CON.INT at 0xff36 from 0x8021 to 0xa021. The kernel is the resident's own outbound mailbox sender; only the two port numbers in it change between runs.",
+ "runs": [
+  {
+   "name": "control",
+   "ports": "0x5e/0x5f",
+   "pattern": "0x4e00",
+   "frame": "control-frame.txt",
+   "result": "CDRP1 DONE, 8 words 4E00..4E07, SUM:701C",
+   "means": "the delivery, launch, DSP download and mailbox all work; the negative results below are informative"
+  },
+  {
+   "name": "A4 fold",
+   "ports": "0x4e/0x4f",
+   "pattern": "0xf700",
+   "frame": "f02-frame.txt",
+   "result": "CDRP1 DONE, 8 words F700..F707, SUM:B81C",
+   "means": "A4 is NOT decoded by the ASIC: a mailbox sent to 0x4e/0x4f arrives exactly as one sent to 0x5e/0x5f"
+  },
+  {
+   "name": "A5 control",
+   "ports": "0x6e/0x6f",
+   "pattern": "0xa500",
+   "frame": "a5-frame.txt",
+   "result": "CDRP1 START then CDRP1 ERR TAG - nothing arrived",
+   "means": "A5 IS decoded: the fold is specific to bit 4, not the ASIC ignoring the address bus"
+  }
+ ],
+ "conclusion": "The ASIC decodes A0-A3 and A5 on the DSP's I/O cycles, and does not decode A4. This confirms the board readings of pins 55-58, 59 and 60 by their electrical effect.",
+ "corroborates": "docs/dsp-pin-probes.md, which reported A0-A3 and A5 connected and A4 absent from visual inspection",
+ "emulator": "The harness predicted the opposite for the folded run - it compared `port == 0x5E` and returned CDRP1 ERR TAG. Fixed in bridge.ASIC_DSP_PORT_MASK; all three runs now reproduce the board's frames byte for byte.",
+ "caveats": [
+  "The first fold run reused the control's payload pattern, so its frame was indistinguishable from a re-run of the kernel already in DSP program RAM. It is not counted; the run recorded here uses pattern 0xf700 and its frame carries it, which is what shows the freshly downloaded kernel ran.",
+  "Bits 6 and 7 of the port number were not tested. The decode is known to include A0-A3 and A5 and to exclude A4; whether A6/A7 are decoded is still open, so ASIC_DSP_PORT_MASK models the decode as possibly narrower than the board's.",
+  "emit_ram_writes.py's arm.txt only hooks IVT vector 8. On this board that starts nothing, because T0CON has EN=1 and INT=0 - timer 0 runs but never interrupts. Every run here needed the separate ATGLK2WFF36,A021.",
+  "The monitor restores IVT vector 8 when it completes, so a second run needs the vector written again. The first fold attempt produced no output for this reason.",
+  "The board was left with vector 8 restored to 8000:108F and T0CON back to 0x8021, and answers AT normally. The placed image is still in RAM at 0x3000-0x406f and is inert; a power cycle clears it."
+ ],
+ "frames": {
+  "control": "e43382c5793a42d42a0b2c5c89ec965cc59f4adbba81a7e8b690e025f0b48869",
+  "f02": "d5a691b9b030951c4e05eb3ea02b8b4f765044439ff2aef649b476f624fa470e",
+  "a5": "171931d95f002685eacce96173c93e310e9bb9ca77fc10a14d1f2983d74f354e"
+ },
+ "hardware_tested": true
+}

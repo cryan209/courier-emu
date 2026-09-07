@@ -464,12 +464,48 @@ Reading the result:
 The third row is why the control is not optional. A negative result here is
 silence, and silence has many causes.
 
-**In the emulator both runs behave as the model says they should**: the control
-completes with 8 packets and the payload `4E00..4E07`, and the folded run ends
-in `CDRP1 ERR TAG`, because the harness implements a full address decode and
-nothing answers `0x4e`. That is the emulator stating its own assumption, not
-evidence about the board - if the board's folded run *completes*, the harness is
-the thing that is wrong, and `asic_ports` is where it would be fixed.
+### Run on the board: the fold is real (2026-09-07)
+
+`artifacts/dsp-port-fold-01/`. Three runs on the live unit, each image placed at
+`0x3000` with `ATGLK2W` and verified byte-exact before it was started.
+
+| run | ports | payload | result |
+|---|---|---|---|
+| control | `0x5e`/`0x5f` | `4E00` | `CDRP1 DONE`, 8 words, `SUM:701C` |
+| **A4 fold** | `0x4e`/`0x4f` | `F700` | **`CDRP1 DONE`, 8 words, `SUM:B81C`** |
+| A5 control | `0x6e`/`0x6f` | `A500` | `CDRP1 START`, then `CDRP1 ERR TAG` |
+
+**`A4` is not decoded.** A mailbox frame sent to `0x4e`/`0x4f` arrives exactly as
+one sent to `0x5e`/`0x5f`. **`A5` is decoded**: `0x6e`/`0x6f` delivers nothing,
+which is what rules out the alternative reading that the ASIC ignores the
+address bus and answers any `IS` cycle. So the board's electrical behaviour
+confirms the visual reading of pins 55-58, 59 and 60 by their effect.
+
+**The payload pattern is load-bearing.** The first fold attempt reused the
+control's `4E00`, and its frame was therefore indistinguishable from a re-run of
+the kernel the DSP already held in program RAM - the download could have failed
+silently and produced the same output. It is not counted. The run above carries
+`F700`, which only the freshly downloaded kernel could emit. `--fold-pattern`
+exists for this, and every run on the board should use its own.
+
+**The emulator had it wrong, and now does not.** The harness compared
+`port == 0x5E` and predicted `CDRP1 ERR TAG` for the folded run; the board sent
+the frame. `bridge.ASIC_DSP_PORT_MASK` now models the measured decode, and all
+three runs reproduce the board's frames byte for byte. Note its stated limit:
+bits 6 and 7 were never tested, so the mask is possibly narrower than the
+board's decode and will accept `0x0e` where the board might not.
+
+**Two procedural notes for anyone repeating this**, both cost a run here:
+
+* `emit_ram_writes.py`'s `arm.txt` only hooks IVT vector 8, and on this board
+  that starts nothing. `T0CON` at `0xff36` reads `0x8021` - `EN=1`, `INT=0` -
+  so timer 0 runs and never interrupts. Starting the monitor takes a separate
+  `ATGLK2WFF36,A021`, which is what
+  [ram-probe-delivery.md](ram-probe-delivery.md) means by "enabling timer 0's
+  interrupt".
+* **The monitor restores vector 8 when it finishes.** A second run needs
+  `ATGLK2W0020,3000` / `ATGLK2W0022,0000` written again, or it produces no
+  output at all and looks like a failed probe.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 

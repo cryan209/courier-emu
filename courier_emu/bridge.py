@@ -221,6 +221,21 @@ C52_ROM_FRAME_VECTOR = 0x0C
 DSP_TAG_PORT = 0x5E
 DSP_WORD_PORT = 0x5F
 DSP_STREAM_PORT = 0x60
+# The ASIC does not decode the DSP's whole port number. Measured on the board
+# (artifacts/dsp-port-fold-01): A0-A3 and A5 reach the gate array and A4 does
+# not, so ports differing only in bit 4 are one register to it - a mailbox
+# frame sent to 0x4e/0x4f arrives exactly as one sent to 0x5e/0x5f, and one
+# sent to 0x6e/0x6f does not arrive at all.
+#
+# Bits 6 and 7 were NOT measured. Masking with 0x2f therefore models the decode
+# as narrower than it may be: it will accept 0x0e or 0x8e as the tag port,
+# which the board might well reject. That is the known limit of this constant.
+ASIC_DSP_PORT_MASK = 0x2F
+
+
+def asic_decodes(port: int, canonical: int) -> bool:
+    "Does the ASIC see `port` as `canonical`? See ASIC_DSP_PORT_MASK."
+    return (port & ASIC_DSP_PORT_MASK) == (canonical & ASIC_DSP_PORT_MASK)
 
 # How the supervisor's dialer asks for a tone. `0x6353c` folds a dial-string
 # character down to its keypad index and sends it as this tag; the encoder

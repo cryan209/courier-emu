@@ -444,3 +444,11 @@ separates those two readings is nowhere near the pins that were traced.
 
 The `IS` reading is worth taking before the other two: if it is not connected,
 2 and 3 stop mattering and the alias hypothesis is the live one.
+
+**Confirmed electrically (2026-09-07).** `IS` was metered to the ASIC, and the
+address decode was then measured by its effect rather than by continuity: a
+mailbox frame sent to ports `0x4e`/`0x4f` arrives on the host exactly as one
+sent to `0x5e`/`0x5f`, and one sent to `0x6e`/`0x6f` does not arrive at all. So
+`A4` is not decoded and `A5` is, which is what the pin readings said. See
+`artifacts/dsp-port-fold-01/` and
+[dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
