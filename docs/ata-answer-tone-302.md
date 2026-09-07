@@ -104,6 +104,59 @@ Mid-burst the emulator shows `0x3f2 = 0x5000`, `0x3f3 = 0x0898` and
 `0x39a = 0x875a`: the increment, the arm routine's own amplitude literal, and
 the plain oscillator. Static and dynamic agree.
 
+## How far down the ladder it goes: two rungs, then silence
+
+The firmware carries a descending fallback ladder. Every tone it can arm:
+
+| increment | frequency | |
+|---|---|---|
+| `4aab` | 2100.04 Hz | V.8 ANSam / V.25 answer |
+| `5000` | 2250.00 Hz | V.22bis unscrambled binary 1 |
+| `4f1c` | 2224.95 Hz | Bell 103 answer mark |
+| `3aab` | 1650.04 Hz | V.21 channel 2 mark |
+| `2d28` | 1270.02 Hz | Bell 103 originate mark |
+| `22d8` | 979.98 Hz | V.21 channel 1 mark |
+
+and `a040`-`a0af` is the ladder itself: a chain of stages, each gated on a
+capability bit, loading a duration, arming a modulation, counting down, and
+falling through - with an escape branch (`b0a0`, `d819`, `da5c`) if a detect
+bit in `@2f` says the remote answered.
+
+**A 43-second capture reaches only the first two rungs.** ANSam from 2.48 s for
+3.30 s, 2250 Hz from 5.82 s for 3.02 s, and from 8.84 s onward the DSP writes
+*exact zeros* for the remaining 34 seconds. It does not descend to Bell 103.
+
+### Why: the gates are clear
+
+The stages beyond the answer tone need bits that are never set:
+
+| stage | gate | runtime value |
+|---|---|---|
+| `a061` - 1650 Hz | `@27` bit 12 | clear |
+| `a081` - `dac3` modulation | `@27` bit 10 | clear |
+| `a09b` - 2025 Hz | `@26` bit 7 | clear |
+
+Sampled mid-run the capability words are `@26 = 0x715d` and `@27 = 0x001b`.
+Note these are **not** the values the `splk` pairs at `9e31`/`9e3b` write
+(`4000`/`0008` and `4010`/`0000`) - those are a starting point that something
+else develops - so reading the ladder's gates off the static writes alone gives
+the right answer for the wrong reason. All three gate bits are clear either
+way.
+
+### It is not stalled
+
+Worth separating from the silence: after the tones the DSP is still working.
+The mixer callback cycles `b6e6` -> `b726` -> `b766` -> `b6e6` (each installs
+the next at `@1a`), the stage timer `@2b` keeps counting, and the hot PCs are
+the idle wait at `810a` and the shaping filter at `8a88`-`8ac6`. What makes the
+line silent is that the oscillator's increment `0x3f2` and amplitude `0x3f3`
+are both **zero**, so the generator runs and produces nothing. That is a
+configured quiet state, not a hang.
+
+What this does not establish is whether a real Courier with this NVRAM would
+also stop after two rungs. The gates are clear in the emulator; whether the
+fixture is faithful on this point is untested.
+
 ## It is the ATA handler, not the scenario
 
 The sequence reproduces across two different line models - `--exchange-hotline`
