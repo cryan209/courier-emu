@@ -298,40 +298,46 @@ not what is refusing the overlay.
 The NVRAM driver sits at the same address on 302 and 403, and ID_SDL has a
 read-only memory dump command - `ATGLK2=<segment>:<offset>`, the one
 `flash_dump.py` already uses to capture the 512 KiB flash. That reads the gate
-cells directly off the running board, so the emulator and the hardware can be
-compared cell by cell instead of argued about. `--peek ADDR[=NAME]` reports the
-same cells from a run.
+cells directly off the running board. `--peek ADDR[=NAME]` reports the same
+cells from a run.
 
-Board is idle and on-hook; the emulator column is the end of a dial run.
+Sampled on the board at three points - as found, after `ATZ`, and while an
+inbound call is being offered with `S0=0` so the modem stays in command mode:
 
-| cell | board 4.03d | emulator 302 | what it gates |
-|---|---|---|---|
-| **`[0x685]`** | **`ff`** | **`00`** | bit 0 is the flag `8b84f` tests |
-| **`[0x5cd]`** | **`e0`** | **`00`** | bit `0x40` is the CF gate at `8b863` |
-| **`[0x33e]`** | **`11`** | **`02`** | bit 2 picks `[0x685] |= 1` over `|= 0x40` |
-| `[0x5a5]` | `08` | `00` | bit 0 clear on both |
-| `[0xa96]` | `00` | `00` | bit 1 clear on both |
-| `[0x5fa]`, `[0x600]`, `[0xea7]`, `[0xe3c]` | `00` | `00` | - |
+| sample | `685` | `5cd` | `33e` | `5a5` | `a96` | `e3c` | `5fa` | `600` | `ea7` |
+|---|---|---|---|---|---|---|---|---|---|
+| as found | `ff` | `e0` | `11` | `08` | `00` | `00` | `00` | `00` | `00` |
+| after `ATZ` | `ff` | `e0` | `11` | `08` | `00` | `00` | `00` | `00` | `00` |
+| while ringing | `ff` | `e0` | `11` | `08` | `00` | `00` | `00` | `00` | `00` |
 
-Three cells differ, and one of them is the flag itself. On the hardware
-`[0x685]` has bit 0 set, which is exactly the condition that makes `8b84f`
-return not-equal and lets both the overlay selection and the `0x10` dispatch
-through. The emulator has zero.
+**Identical at all three.** These are not call-progress state: nothing about
+offering the loop a call moves them, and a reset does not either. Whatever sets
+them is done before the DTE is first reachable.
 
-Two honest caveats. `ff` is also what uninitialised RAM reads as, so bit 0
-being set there is not proof it was set deliberately - though `[0x5cd] = e0`
-and `[0x33e] = 11` are structured values rather than erased ones, and the
-emulator reads `00` for all three. And the two columns are not the same moment:
-the board is idle, the run is post-dial. Catching the hardware mid-call needs
-the dump command issued from a second DTE session while a call is up.
+## Two corrections this forced
 
-What this does establish is that the gap is **cells the emulator never
-initialises**, not a message it fails to deliver and not a profile setting -
-`AT&F` and a parameter sector both leave them at zero. Finding what writes
-`[0x685]`, `[0x5cd]` and `[0x33e]` on a real boot is the next step, and the
-`--peek`/`ATGLK2` pair is now the tool for it: sample the same cells on
-hardware at reset, after `ATZ`, and during a call, and compare each against a
-run at the same point.
+**The emulator's RAM is `0xff`-filled, not zeroed.** Running the 403 capture
+reads `685=ff, 5cd=ff, 5a5=ff, 5fa=ff, 600=ff` where the 302 run reads `00`.
+So the `00`s in a 302 run are the 302 image's own data initialisation, not a
+missing write - and not, as the previous revision had it, "cells the emulator
+never initialises". Watching all seven `mov byte [0x685], 0` sites plus both
+`and [0x5a5], 0xfe` sites across a full 302 dial gives **zero hits on every
+one**: nothing clears them at runtime. They start at zero.
+
+**The addresses are 302-derived and the hardware is 403.** `0x685`, `0x5cd`
+and `0x33e` were read out of a disassembly of `IDSDL302.ROM`, supervisor
+7.3.14. The board runs 7.4.16, where the same variables need not live at the
+same addresses. The hardware column above is therefore only comparable to a 302
+run if the data layout is unchanged between the two builds, which is not
+established. The previous revision's hardware-versus-emulator table did not
+state this and overreached.
+
+The 403 capture cannot settle it yet: run in the emulator it does not dial at
+all - `dialed: ""`, `call-loader` zero hits - so its cells are simply
+uninitialised rather than a comparison. Making the 403 image dial is the
+prerequisite for any cell-level comparison against this board, and it is the
+next thing worth doing, both because it is the firmware the hardware actually
+runs and because without it there is no apples-to-apples reading.
 
 ## What is not established
 
