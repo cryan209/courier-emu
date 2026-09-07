@@ -315,17 +315,58 @@ can hook vector 8, do a bounded slice of work on each 5 ms tick, EOI and `iret`,
 and leave the firmware running underneath. The firmware then keeps feeding its
 own watchdog by whatever means it already does, and the run is unbounded.
 
-That also buys the thing the takeover design cannot do at all: **sampling while
-the firmware runs.** Every reading taken this way so far is of a machine whose
-DSP has just been reset and whose supervisor is not executing - which is exactly
-the caveat on `artifacts/dsp-at10-01/`, where `@10` reads zero at idle and the
-interesting value is expected during a call. A cooperative ISR could sample
-`0x0390` on a live connection; the takeover monitor never can.
+That also buys **sampling while the firmware runs**, which the takeover design
+cannot do at all: every reading taken that way is of a machine whose DSP has
+just been reset and whose supervisor is not executing.
+
+> **One correction.** An earlier version of this paragraph said a cooperative
+> ISR "could sample `0x0390` on a live connection". It cannot. `0x0390` is the
+> **DSP's** internal data memory, and the 80186 reaches the DSP only through the
+> mailbox. The resident's 121-entry dispatch table was scanned in
+> `IDSDL302.ROM` for a handler that reads an address and mails it back; there is
+> none. Sampling DSP-side cells during a call needs a DSP-side mechanism that
+> does not exist yet, and the `@10` caveat in `artifacts/dsp-at10-01/` stands
+> unaddressed. What the ISR samples is what the *CPU* can reach - the ASIC's
+> ports and CPU RAM - at bus speed, on a live board.
 
 What it costs: the work per tick has to fit inside 5 ms and leave the firmware's
 own timing intact, the buffer has to live where the firmware will not touch it,
 and the result has to be read out after the fact rather than printed live -
 printing is what consumed the watchdog window in the first place.
+
+### Built, and it holds: `courier_emu.cooperative_probe`
+
+`artifacts/coop-sampler-01/`. A 54-byte ISR hooked on vector 8: save flags and
+registers, bounds-check a ring pointer, `in al, port` / `mov [bx], al` per
+sampled port, EOI exactly as the handler it replaces, `iret`. Placed at `0x3000`
+in 28 write commands - five seconds, with `--assume-zero`.
+
+**Measured on the board, idle and on hook:** armed for 9.3 seconds, `AT`
+answered on all eight probes taken about a second apart, and the sentinel at
+`0x2200` survived - so **no watchdog reset**, which is the whole claim. It
+collected 1902 samples at exactly 200 Hz, timer 0's 5 ms tick, reading
+`0x18=ff 0x1a=ff 0x1c=fd 0x1e=ff` throughout. That matches the idle column of
+[asic-port-map.md](asic-port-map.md) exactly, which is what says the ISR is
+reading the ports it believes it is. One distinct value per port is the right
+answer for an idle modem: this run demonstrates the instrument, it is not a
+finding.
+
+Three things to know before using it:
+
+* **`disarm.txt` is not optional, and there is no safety net.** The takeover
+  probes were tidied up by the watchdog reset. Nothing resets this one, so the
+  hook, the interrupt and the placed image persist until they are removed or the
+  board is power cycled.
+* **The port set is the risk, and the default is deliberately narrow.** Only the
+  status/handshake group `0x18`/`0x1a`/`0x1c`/`0x1e` is sampled, because reading
+  the mailbox data pair or the `0x60`/`0x62` stream may *consume* words the
+  firmware is waiting for and corrupt the very call being observed. Widening it
+  is a deliberate act. Ports `0x10`, `0x12` and `0x14` are refused outright.
+* **Read the ring after disarming, not during.** RAM only clears on reboot, and
+  no reboot happens here, so the buffer keeps until it is read.
+
+The obvious next run is the same one with something happening: arm, place a
+call, disarm, read the ring.
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,

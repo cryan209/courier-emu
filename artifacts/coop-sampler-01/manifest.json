@@ -1,0 +1,27 @@
+{
+ "what": "First run of the cooperative timer-0 sampler: does the firmware survive being sampled?",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2, idle and on hook",
+ "date": "2026-09-07",
+ "method": "courier_emu.cooperative_probe. 54-byte ISR placed at 0x3000 (28 write commands with --assume-zero, 5 s), hooked on IVT vector 8 with T0CON.INT enabled, left running, then disarmed and the ring read back with ATGLK2= page dumps.",
+ "the question": "Every previous probe took the machine over and the ADM707's 1.6 s watchdog reset the board. This one does bounded work per 5 ms tick and irets, leaving the supervisor running to feed its own watchdog. Does that actually hold?",
+ "result": {
+  "held_for": "9.3 s armed, AT answered on every one of 8 probes at ~1 s intervals",
+  "reset": "none - the sentinel written to 0x2200, outside the image, survived the whole run",
+  "samples": 1902,
+  "write_pointer": "0x51b8",
+  "rate": "1902 samples / ~9.5 s = 200 Hz, exactly timer 0's 5 ms tick",
+  "values": "0x18=ff 0x1a=ff 0x1c=fd 0x1e=ff, constant across all 1902 samples"
+ },
+ "means": [
+  "The cooperative design works: the run is not watchdog-bounded, and the firmware is undisturbed.",
+  "The sampled values match the idle column of docs/asic-port-map.md exactly, so the ISR is reading the ports it thinks it is.",
+  "One distinct value per port is the correct result for an idle on-hook modem. This run demonstrates the instrument, not a finding."
+ ],
+ "limits": [
+  "It samples what the 80186 can reach. It cannot read the DSP's internal data memory: 0x0390 and the rest of the resident's state sit behind the mailbox, and the 121-entry dispatch table has no handler that reads an address and mails it back (scanned in IDSDL302.ROM). Sampling DSP-side cells during a call still needs a DSP-side mechanism that does not exist yet.",
+  "The port set is the risk. The default is the status/handshake group only, because reading the mailbox data pair or the 0x60/0x62 stream may consume words the firmware is waiting for and corrupt the call being observed.",
+  "Disarm is mandatory and has no safety net. The takeover probes were cleaned up by the watchdog reset; nothing resets this one, so the hook and the placed image persist until disarmed or power cycled."
+ ],
+ "next": "Arm it, place a call, disarm, and read the ring - the same run with something actually happening.",
+ "hardware_tested": true
+}
