@@ -445,7 +445,7 @@ class SipSession:
         self.state = "failed"
         self.error = lines[0]
 
-    def _handle_request(self, data: bytes, source: tuple[str, int]) -> None:
+    def _handle_request(self, data: bytes, _source: tuple[str, int]) -> None:
         head, _, _body = data.partition(b"\r\n\r\n")
         lines = head.decode("latin-1", "replace").split("\r\n")
         fields = lines[0].split()
@@ -464,7 +464,13 @@ class SipSession:
             f"CSeq: {headers.get('cseq', '')}\r\n"
             "Content-Length: 0\r\n\r\n"
         ).encode("ascii", "replace")
-        self.socket.sendto(response, source)
+        # The signalling socket is connected to the server, so a reply goes
+        # back with send. sendto raises EISCONN on a connected UDP socket,
+        # which left every inbound BYE unanswered.
+        try:
+            self.socket.send(response)
+        except OSError:
+            pass
         self.state = "closed"
         self.events.append("rx BYE")
 

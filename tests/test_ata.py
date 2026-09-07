@@ -4,8 +4,10 @@ import math
 import socket
 import struct
 import unittest
+from unittest.mock import patch
 
 from courier_emu.ata import SipLine
+from courier_emu.bridge import LINE_RATE
 from courier_emu.exchange import DtmfDecoder
 from courier_emu.sip import (
     PCMU_RATE,
@@ -17,6 +19,13 @@ from courier_emu.sip import (
     ulaw_to_linear,
 )
 
+from courier_emu.bridge import CourierDspBridge
+from courier_emu.daa import CourierDaa
+from courier_emu.exchange import LineExchange
+from courier_emu.line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES
+
+import test_bridge
+from test_bridge import _Core, _Image
 from test_sip import _response
 
 
@@ -25,14 +34,15 @@ DIAL_RATE = 7_200
 BLOCK = 144  # 20 ms, short enough for the exchange to resolve its transitions
 
 
-def _dtmf(digit: str, samples: int, rate: int = DIAL_RATE) -> list[int]:
+def _dtmf(digit: str, samples: int, rate: int = DIAL_RATE, start: int = 0) -> list[int]:
+    """One DTMF pair. `start` continues an earlier block's phase."""
     rows, columns = (697, 770, 852, 941), (1209, 1336, 1477, 1633)
     index = "123A456B789C*0#D".index(digit)
     row, column = rows[index // 4], columns[index % 4]
     return [
         round(8_000 * (math.sin(2 * math.pi * row * n / rate)
                        + math.sin(2 * math.pi * column * n / rate)))
-        for n in range(samples)
+        for n in range(start, start + samples)
     ]
 
 
@@ -142,6 +152,21 @@ class MockPbx:
         header = struct.pack("!BBHII", 0x80, 0, self._phase & 0xFFFF, self._phase, 0x1234)
         self.rtp.sendto(header + payload, ("127.0.0.1", port))
 
+    def bye(self, session: SipSession) -> None:
+        """The far end hangs up."""
+        assert self.peer is not None
+        self.socket.sendto(
+            (
+                "BYE sip:courier@127.0.0.1 SIP/2.0\r\n"
+                "Via: SIP/2.0/UDP 127.0.0.1\r\n"
+                "From: <sip:6245@127.0.0.1>;tag=mockpbx\r\n"
+                "To: <sip:courier@127.0.0.1>\r\n"
+                f"Call-ID: {session.call_id}\r\n"
+                "CSeq: 1 BYE\r\nContent-Length: 0\r\n\r\n"
+            ).encode(),
+            self.peer,
+        )
+
     def close(self) -> None:
         self.socket.close()
         self.rtp.close()
@@ -237,3 +262,132 @@ class SipLineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _TonedCore(_Core):
+    """The mock core, plus the one thing it lacked: audio on the line.
+
+    The tone generator is the ASIC's, and its firmware is not in the image -
+    `bridge._play_dial_tone` says so and records the supervisor's request
+    without playing it. This plays exactly that request, so the loop in front
+    of the SIP instrument has something to decode.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.bridge: CourierDspBridge | None = None
+        self.produced: list[int] = []
+        self._clock = 0
+
+    def _advance(self) -> None:
+        """Produce line audio at the line's rate, on the 80186's clock.
+
+        The bridge polls this every batch, which is far more often than a
+        frame; producing a fixed block per poll would run the line sixteen
+        times fast and make every tone on it unreadable.
+        """
+        self._clock += self.bridge.batch if self.bridge else 256
+        want = self._clock * LINE_FRAME_SAMPLES // LINE_FRAME_INSTRUCTIONS
+        count = want - len(self.produced)
+        if count <= 0:
+            return
+        digit = getattr(self.bridge, "_dial_tone_digit", None)
+        start = len(self.produced)
+        if digit is None:
+            self.produced.extend([0] * count)
+        else:
+            self.produced.extend(_dtmf(digit, count, LINE_RATE, start))
+
+    def serial_state(self) -> dict[str, int]:
+        self._advance()
+        return {"line_tx_writes": len(self.produced)}
+
+    def line_tx_samples(self, start: int = 0) -> list[int]:
+        return self.produced[start:]
+
+
+class BridgeDialTests(unittest.TestCase):
+    """`ATDT6245` from the supervisor's own dialer, out to a SIP peer.
+
+    Nothing here hands anyone the number. The supervisor's encoder sends one
+    keypad index per digit, the board plays it, the loop decodes it off the
+    line, and the ATA turns what it decoded into an INVITE.
+    """
+
+    def setUp(self) -> None:
+        self.pbx = MockPbx()
+        self.addCleanup(self.pbx.close)
+        self.daa = CourierDaa("quiet")
+        self.exchange = LineExchange(interdigit_ms=2_000)
+        self.sip = SipSession(SipConfig(server=self.pbx.address, username="courier"))
+        self.addCleanup(self.sip.close)
+        image, core = _Image(), _TonedCore()
+        with patch("courier_emu.bridge.NativeC5x", return_value=core):
+            self.bridge = CourierDspBridge(  # type: ignore[arg-type]
+                image, daa=self.daa, exchange=self.exchange, sip=self.sip
+            )
+            test_bridge.BridgeTests._bootstrap(self.bridge, image.program)
+        core.bridge = self.bridge
+
+    def _frames(self, count: int) -> None:
+        # The PBX is polled per batch rather than per instruction: a syscall
+        # every 80186 cycle is four hundred thousand of them per frame.
+        clock = self.bridge.clock_x86
+        for _ in range(count * LINE_FRAME_INSTRUCTIONS // 256):
+            for _ in range(256):
+                clock()
+            self.pbx.poll()
+
+    def _send(self, header: int, data: int) -> None:
+        self.bridge.write(0x58, 1, header & 0xFF)
+        self.bridge.write(0x5A, 1, (header >> 8) & 0xFF)
+        self.bridge.write(0x5C, 1, data & 0xFF)
+        self.bridge.write(0x5E, 1, (data >> 8) & 0xFF)
+
+    def _dial(self, index: int) -> None:
+        """One digit as the dialer sends it: 0x16, the index, hold, 0x16."""
+        self._send(0x0016, 0x0000)
+        self._send(0x0013, index)
+        self._frames(1)
+        self._send(0x0016, 0x0000)
+        self._frames(1)
+
+    def test_atdt6245_places_a_sip_call_from_the_tones_on_the_line(self) -> None:
+        self.bridge.set_line_hook(True)
+        self._frames(2)
+        self.assertEqual(self.exchange.state, "dial-tone")
+
+        for index in (6, 2, 4, 5):
+            self._dial(index)
+
+        # What the supervisor asked for, and what the line actually heard.
+        self.assertEqual(self.bridge._dial_digits_commanded, "6245")
+        self.assertEqual(self.exchange.dialed, "6245")
+
+        # The interdigit timer routes the call, and the router is the ATA.
+        self._frames(30)
+        self.assertTrue(self.pbx.requests, "no SIP request reached the peer")
+        self.assertTrue(self.pbx.requests[0].startswith("INVITE sip:6245@"))
+        self.assertEqual(self.exchange.state, "ringback")
+
+        # The peer answers; the loop goes through and the board is told.
+        self.pbx.answer()
+        self._frames(5)
+        self.assertEqual(self.sip.state, "connected")
+        self.assertEqual(self.exchange.state, "connected")
+        self.assertTrue(self.bridge.connected_event_queued)
+
+    def test_the_far_end_hanging_up_releases_the_loop(self) -> None:
+        self.bridge.set_line_hook(True)
+        self._frames(2)
+        for index in (6, 2, 4, 5):
+            self._dial(index)
+        self._frames(30)
+        self.pbx.answer()
+        self._frames(5)
+        self.assertEqual(self.exchange.state, "connected")
+
+        self.pbx.bye(self.sip)
+        self._frames(3)
+        self.assertEqual(self.exchange.state, "released")
+        self.assertEqual(self.daa.line_state, "disconnected")

@@ -11,6 +11,7 @@ from typing import Any
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
 from .dsp import NativeC5x
+from .ata import SipLine
 from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .sip import PolyphaseResampler, SipSession
@@ -394,6 +395,16 @@ class CourierDspBridge:
         self.codec = codec
         self.ring = ring
         self.exchange = exchange
+        # With both a modeled loop and a SIP session, the loop goes in front
+        # of the instrument: the number the exchange decodes off the line is
+        # what places the INVITE, and the network's answer is what the loop
+        # then carries. Without the exchange the SIP session keeps its own
+        # path, where the digits come from the parsed AT command instead.
+        self._sip_line = (
+            SipLine(sip=sip, exchange=exchange, line_rate=LINE_RATE)
+            if sip is not None and exchange is not None
+            else None
+        )
         self._configure_synthetic_line()
         self._instructions = 0
         self._exchange_instructions = 0
@@ -872,7 +883,9 @@ class CourierDspBridge:
             self.daa.begin_dialing()
         if self.active and self.dial_digits and not self._v8_armed:
             self.core.set_dtmf_digits(self.dial_digits)
-        if self.sip is not None and self.dial_digits:
+        if self.sip is not None and self.dial_digits and self._sip_line is None:
+            # Out-of-band dialing: the number came from the AT command rather
+            # than from the line. `SipLine` places the call from the tones.
             self.sip.start_call(self.dial_digits)
 
     def float_runtime_bus(self) -> None:
@@ -1508,7 +1521,7 @@ class CourierDspBridge:
         dsp_steps = self._x86_ticks * 5 // 4
         self._x86_ticks = 0
         try:
-            if self.sip is not None:
+            if self.sip is not None and self._sip_line is None:
                 self.sip.poll()
                 if self.daa is not None:
                     self.daa.set_call_progress(self.sip.state)
@@ -1626,7 +1639,10 @@ class CourierDspBridge:
                 # The native scheduler has now crossed the recovered entry
                 # ABI; only this edge publishes the overlay to bridge users.
                 self._call_overlay_active = True
-            if self.sip is not None:
+            if self.sip is not None and self._sip_line is None:
+                # The loop path already carries this audio, at the line's rate
+                # rather than the codec's; taking it again here would send the
+                # far end two copies, one of them unresampled.
                 samples = self.core.line_tx_samples(self._sip_tx_index)
                 self._sip_tx_index += len(samples)
                 if samples:
@@ -1711,7 +1727,10 @@ class CourierDspBridge:
             # and what it clocks out is silence. The exchange has to hear that
             # silence: it is the gap that separates two presses of one key.
             samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
-        incoming = self.exchange.service(off_hook, samples, LINE_FRAME_SAMPLES)
+        if self._sip_line is not None:
+            incoming = self._sip_line.service(off_hook, samples, LINE_FRAME_SAMPLES)
+        else:
+            incoming = self.exchange.service(off_hook, samples, LINE_FRAME_SAMPLES)
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
             if (
@@ -1929,7 +1948,11 @@ class CourierDspBridge:
             ),
             dial_digits=self.dial_digits,
             daa=self.daa.status() if self.daa is not None else None,
-            sip=self.sip.status() if self.sip is not None else None,
+            sip=(
+                self._sip_line.status() if self._sip_line is not None
+                else self.sip.status() if self.sip is not None
+                else None
+            ),
             line=(
                 {**self.line.status(), "rx_peak": self._line_rx_peak,
                  "codec_queue_peak": self._codec_queue_peak}

@@ -82,7 +82,48 @@ PBX. Dialling `6245` in-band at 7200 Hz walks
 than 20 dB above its neighbouring bin while the loop's own audio arrives at the
 PBX as RTP. On-hook sends BYE; a 486 gives the loop busy tone.
 
-The one thing not shown here is the modem itself driving it. That needs the
-board or the bridge in the loop, and the seam it would attach at -
-`bridge.py`'s `exchange` - takes a `LineExchange`, which is exactly what
-`SipLine` owns and configures.
+## In the bridge: ATDT6245 places the call
+
+`CourierDspBridge` builds a `SipLine` whenever it is given both an exchange
+and a SIP session, and the loop then owns the call. Four paths that used to
+run beside the exchange are skipped while it does, because the loop already
+carries them:
+
+* `begin_dialing`'s `start_call`, which took the number from the parsed AT
+  command rather than from the line.
+* `set_call_progress`, which drove the DAA's operation from the SIP state and
+  would move it off `dialing` before the ASIC call engine had started.
+* the SIP-state `_publish_connected_event`; the exchange going through
+  publishes it instead, on the same edge the board sees.
+* the transmit tap, which took `line_tx_samples` at the codec's rate and sent
+  it unresampled. The loop's copy is rate-corrected twice - codec to line, then
+  line to 8 kHz.
+
+So `--exchange` plus `--sip-server` is now a modem dialling a real peer:
+
+```sh
+python -m courier_emu run --exchange --sip-server pbx.example:5060 \
+    --sip-username courier --daa quiet
+```
+
+`tests/test_ata.py::BridgeDialTests` runs it end to end against the mock PBX.
+Nothing there hands anyone the number: the supervisor's encoder sends one
+keypad index per digit as `0x16`/`0x13`/`0x16`, the board plays each tone, the
+exchange decodes `6245` off the line, and the ATA turns that into
+`INVITE sip:6245@...`. `_dial_digits_commanded` (what the supervisor asked
+for) and `exchange.dialed` (what the line heard) are asserted separately, which
+is the measurement. The peer's 200 OK then puts the loop through and the
+board's connected event is published; its BYE releases the loop and the DAA
+reports `disconnected`.
+
+One bug came out of that last step. `SipSession._handle_request` answered an
+inbound BYE with `sendto` on a socket that is `connect`ed to the server, which
+raises EISCONN - so no inbound BYE had ever been answered. It uses `send` now.
+
+## What is still not shown
+
+The board itself. These runs use the bridge's mock core with a tone generator
+attached, because the real one is the ASIC's and its firmware is not in the
+image - which is the same reason `_play_dial_tone` records the supervisor's
+request rather than playing it. Everything above the tone is the firmware's
+own.
