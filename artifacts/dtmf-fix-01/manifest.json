@@ -10,9 +10,14 @@
   "extended registers after &W": "+S1=70, +S22=525, +S24=13000, +S26=3080"
  },
  "still open": [
-  "Whether &W persisted the +S registers across a power cycle is NOT verified - it cannot be from here. On the next cold boot, read AT+S24?: 13000 means it persisted, 00 means AT+SF has to be re-issued and the reason is worth chasing.",
-  "This firmware does not apply the stored profile at reset - ATZ does not either. That is why the rebuild-in-RAM step above was necessary and it remains unexplained.",
+  "Confirm on a true power cycle - ATZ! does not remove power.",
   "DIAL=HUNT is displayed in the running config once S27=048 is set; the stored dial mode is TONE."
  ],
- "hardware_tested": true
+ "hardware_tested": true,
+ "after ATZ! hardware reset": {
+  "caveat": "ATZ! is the firmware's hardware reset, not a true power cycle - power is never removed from the NVRAM, ASIC or DSP. A real power cycle is still worth confirming.",
+  "extended registers": "+S24=13000, +S26=3080, +S1=70, +S22=525 - all PERSISTED",
+  "running config": "&A3 &B1 &G2 &H1 ... - the stored NVRAM profile IS now applied at reset"
+ },
+ "the second fault resolved itself, and that explains the first": "Before AT&W, the modem came up with factory defaults even though ATI5 could display a configured NVRAM profile. After AT&W it comes up with that profile. The likely reading: the NVRAM image was readable but not VALID - a bad or never-initialised checksum - so the firmware displayed it on request while ignoring it at boot and falling back to defaults, with the extended registers left at zero for the same reason. AT&W rewrote NVRAM with a valid checksum. That makes the zeroed +S24/+S26 and the unapplied profile one root cause rather than two, and it is exactly what the manual's post-flash AT&F1 / AT+SF / AT&W sequence exists to prevent."
 }

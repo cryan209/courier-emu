@@ -67,10 +67,43 @@ Several things were suspected and cleared along the way, and they stay cleared:
 * The board's `ATI2` RAM test passes and the S-registers are all at their
   documented defaults.
 
-One separate fault turned up on the way and is *not* explained by this: the
-running configuration after a power cycle is the factory-default set, while
-`ATI5` shows a configured NVRAM profile with `DIAL=TONE`, `X7`, `115200`, and
-`ATZ` does not move the running config toward it. The stored profile is not
-being applied at reset. That is worth chasing separately - and note the manual's
-sequence ends with `AT&W`, which would write the corrected registers back to
-NVRAM.
+## The second fault was the same fault
+
+A separate anomaly turned up on the way: the running configuration after a power
+cycle was the factory-default set, while `ATI5` displayed a configured NVRAM
+profile with `DIAL=TONE`, `X7`, `115200` - and `ATZ` would not move the running
+config toward it. The stored profile was not being applied at reset.
+
+Completing the manual's sequence fixed that too. After `AT&W`, an `ATZ!`
+hardware reset brings the board up with **`&A3 &B1 &G2 &H1`** - the stored
+profile - and the extended registers survive it:
+
+```
+AT+S24? -> 13000
+AT+S26? -> 3080
+AT+S1?  -> 70
+AT+S22? -> 525
+```
+
+The likely reading is that the NVRAM image was **readable but not valid** - a
+bad or never-initialised checksum. The firmware would display it on request
+while ignoring it at boot, falling back to defaults, and leaving the extended
+registers at zero for the same reason. `AT&W` rewrote NVRAM with a valid
+checksum. So the zeroed `+S24`/`+S26` and the unapplied profile are **one root
+cause, not two**, and both are exactly what the post-flash sequence exists to
+prevent.
+
+Two caveats. `ATZ!` is the firmware's hardware reset and does not remove power
+from the NVRAM, ASIC or DSP, so a true power cycle is still worth confirming.
+And `DIAL=HUNT` appears in the running config once `S27=048` is set, where the
+stored dial mode is `TONE` - a display artifact rather than a fault, but not
+chased down.
+
+## Doing this on another unit
+
+`AT&F1`, `AT+SF`, `AT&W`, in that order, as the manual says - **but not blindly
+on a unit whose NVRAM profile you want to keep.** `AT&W` stores the *current*
+running config, so `AT&F1` first means writing factory defaults over whatever
+was stored. On this board the profile was rebuilt in RAM from an `ATI5` capture
+before writing, and the DTE rate set to match `&B1`, because `&W` stores that
+too.
