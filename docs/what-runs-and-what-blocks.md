@@ -221,6 +221,45 @@ runs. Both have to be right.
    already set, which would make it a property of the boot path rather than of
    the resident.
 
+## The mailbox dispatch works. The poll rate is the problem.
+
+Delivering one host message to a booted resident and watching the program
+counter:
+
+| | distinct PCs | furthest PC |
+|---|---|---|
+| no message | 338 | `0x8487` |
+| one message delivered | **397** | **`0x8b8c`** |
+
+The DSP leaves idle, dispatches through the tag table at `0x8480`, runs a
+handler, and comes back - `0x86e9` is reached, next door to `0x86e6`, one of the
+dozen `splk @1a, #8139` sites that put the task pointer back to idle.
+
+So none of the receive path is broken. What is wrong is **how often the DSP
+looks**. Its poll lives in the block at `0x80c8`, which the main loop reaches
+only when `cmpr eq` matches `AR7` against `ARCR`. The ring is now known exactly -
+`0x802e` sets `CBCR = 0x00ef`, selecting `AR7` for circular buffer 1 with
+`CBSR1 = 0x0bd0` and `CBER1 = 0x0bdf` - so an `ARCR` anywhere in that ring makes
+the block run once per pass, a few hundred times a second, which is a sensible
+mailbox poll rate. With `ARCR` at zero it runs **once, during initialisation**.
+
+That is why a full run shows 87 messages delivered and almost nothing consumed:
+they overwrite each other in the two-register window while the DSP is not
+looking.
+
+### ARCR is shared scratch, which is what makes this hard
+
+The resident's only write to it, `samm @19` at `0x9644`, computes
+`(@7e >> 10) + 0xd9fe` - a **program** address for a table walk, not a ring
+pointer - and `0xafdf` reads it back. So `ARCR` is a general-purpose ARAU
+register the firmware reuses, exactly as SPRU056D suggests ("use the ARs for
+temporary storage"), and the main loop's compare consumes whatever the last user
+left in it.
+
+Which leaves a real question rather than a bug: what leaves a ring address in
+`ARCR` on a working board. Nothing found so far does, and the block that would
+receive the message that starts a task is the same block the compare gates.
+
 ## Smaller things still known wrong
 
 These are real but none of them block a call:
