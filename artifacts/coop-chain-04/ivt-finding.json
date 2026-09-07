@@ -1,0 +1,16 @@
+{
+ "what": "AT&T8 rewrites the IVT, and vector 0x0f in particular",
+ "date": "2026-09-07",
+ "method": "Markers 0xBEEF written into unused IVT slots 0x58/0x5c/0x60/0x70, the whole IVT page dumped, AT&T8 run with NOTHING armed so no reset confounds it, then dumped again.",
+ "results": {
+  "unused slots": "all four markers survived - &T8 does not clear or rebuild the IVT wholesale",
+  "vector 0x0f (INT3)": "offset low byte 0x77 -> 0xE0 during &T8, and back to 0x0a77 afterwards",
+  "vector 0x0c": "0x30/0x31 changed too",
+  "other IVT bytes": "58 bytes differed in total, the rest above 0xb8 and outside the vector table proper"
+ },
+ "why the chained sampler dies": "The firmware repoints INT3 during &T8 by writing the OFFSET word, expecting the segment to still be 0x8000. The atomic arming trick changes only the SEGMENT and leaves the offset alone - so when &T8 writes its new offset, the vector becomes 0100:xxE0 rather than 8000:xxE0: a wild pointer into RAM, executed on the next tick. The board resets.",
+ "the irony worth recording": "The segment-only swap was chosen precisely because it is atomic, and that is what makes this fatal. Had the hook rewritten both words, the firmware's own re-vector would simply have replaced it - the sampler would stop sampling, which is a lost hook rather than a crash.",
+ "what this does NOT explain": "The timer-0 builds (coop-sampler-01, coop-loadonly-01) also died under &T8, and vector 0x08 is not among the ones &T8 rewrites. But those handlers were placed at 0x3000, inside the 0x3000-0x8000 range &T8 zeroes, so they were erased under a live vector. That cause was never separated from the others, because the relocation and the chaining were changed at the same time.",
+ "next": "Retest the TIMER-0 hook with the handler in surviving RAM (0x1a77 or thereabouts). Vector 0x08 is not rewritten by &T8 and the timer-0 handler it displaces is a two-instruction stub, so if the only real problem was placement, that combination should hold under load.",
+ "hardware_tested": true
+}

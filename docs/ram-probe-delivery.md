@@ -456,9 +456,39 @@ with its handler erased under a vector still pointing at it.
 The survey section above warns that "zero is not the same as unused". This is
 that warning coming true in the sharper direction: the region is not merely
 *used*, it is actively *cleared*, and a co-resident probe needs to live in
-`0x1600`-`0x2b00` or `0xd000` instead. That relocation is necessary and it was
-not sufficient - the reset under `&T8` outlives it, and what causes it is the
-open question.
+`0x1600`-`0x2b00` or `0xd000` instead.
+
+### And `&T8` repoints INT3, which is what kills the chained hook
+
+Markers `0xBEEF` written into unused IVT slots, `&T8` run with **nothing**
+armed - so no reset to confound it - and the table dumped before and after:
+
+* the four unused slots **survived**, so `&T8` does not rebuild the IVT wholesale;
+* **vector `0x0f`'s offset went `0x0a77` -> `0x..e0` during `&T8`**, and back to
+  `0x0a77` afterwards;
+* vector `0x0c` changed too.
+
+So the firmware **repoints INT3 while `&T8` runs**, by writing the offset word
+and expecting the segment to still be `0x8000`. The atomic arming trick changes
+only the *segment*. When `&T8` writes its new offset, the vector becomes
+`0100:xxe0` instead of `8000:xxe0` - a wild pointer into RAM, executed on the
+next tick, and the board resets.
+
+The irony is worth keeping: the segment-only swap was chosen *because* it is
+atomic, and that is exactly what makes this fatal. Had the hook rewritten both
+words, the firmware's own re-vector would simply have replaced it - a lost hook
+rather than a crash.
+
+**This does not explain the timer-0 builds.** They died under `&T8` too, and
+vector `0x08` is *not* one of the vectors `&T8` rewrites. But those handlers sat
+at `0x3000`, inside the range `&T8` zeroes, so they were erased under a live
+vector - a sufficient cause that was never separated from the others, because
+the relocation and the chaining changed at the same time.
+
+**So the next thing to try is the combination that has not been tried**: the
+timer-0 hook, whose vector `&T8` leaves alone and whose displaced handler is a
+two-instruction stub, with the sampler placed in surviving RAM at `0x1a77`. If
+placement was the only real problem, that should hold under load.
 
 **The layout was wrong for the board and has been moved.** `probe_transport`'s
 default puts the monitor at `0x2000`, and the image is contiguous from there,
