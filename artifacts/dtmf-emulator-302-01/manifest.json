@@ -1,0 +1,82 @@
+{
+ "what": "DSP 3.0.13's own DTMF, generated inside the emulator by the C52 firmware and captured off its line output",
+ "date": "2026-09-07",
+ "image": "IDSDL302.ROM (supervisor + DSP 3.0.13, 20.16 MHz), booted through the captured on-chip ROM",
+ "command": "./courier run IDSDL302.ROM --with-dsp --exchange --exchange-number 5551212=answer --at ATDT5551212 --nvram-fixture idsdl302 --tick-ms 10 --instructions 120000000 --dsp-tx-pcm line-tx.s16le --summary",
+ "files": {
+  "dtmf-5551212.wav": "mono 16-bit, 7200 Hz, the whole capture",
+  "line-tx.s16le": "the raw signed 16-bit little-endian samples --dsp-tx-pcm wrote"
+ },
+ "sample_rate": 7200,
+ "sample_rate_basis": "the DSP's codec rate for the dial path (docs/codec-rate-312.md); the bursts decode as the dialed digits at 7200 Hz and as nothing sensible at 9600 Hz, and the bridge's own 7200->9600 conversion is what the exchange decoded from",
+ "samples": 52008,
+ "seconds": 7.223,
+ "peak": 22748,
+ "sha256_s16le": "ccad9c628b931d0a1267f1bfa57339765ec948b6da560098c975a8b6d9d6107d",
+ "bursts": [
+  {
+   "digit": "5",
+   "row_hz": 770,
+   "column_hz": 1336,
+   "start_s": 2.72,
+   "length_s": 0.14
+  },
+  {
+   "digit": "5",
+   "row_hz": 770,
+   "column_hz": 1336,
+   "start_s": 2.94,
+   "length_s": 0.16
+  },
+  {
+   "digit": "5",
+   "row_hz": 770,
+   "column_hz": 1336,
+   "start_s": 3.18,
+   "length_s": 0.16
+  },
+  {
+   "digit": "1",
+   "row_hz": 697,
+   "column_hz": 1209,
+   "start_s": 3.42,
+   "length_s": 0.16
+  },
+  {
+   "digit": "2",
+   "row_hz": 697,
+   "column_hz": 1336,
+   "start_s": 3.66,
+   "length_s": 0.16
+  },
+  {
+   "digit": "1",
+   "row_hz": 697,
+   "column_hz": 1209,
+   "start_s": 3.9,
+   "length_s": 0.14
+  },
+  {
+   "digit": "2",
+   "row_hz": 697,
+   "column_hz": 1336,
+   "start_s": 4.14,
+   "length_s": 0.14
+  }
+ ],
+ "decoded_here": "5551212",
+ "decoded_by_exchange": "5551212",
+ "tone_lanes": {
+  "0019:020d": 10,
+  "001a:32c8": 7,
+  "001a:32d6": 2,
+  "001b:0c08": 7
+ },
+ "why_it_is_audible": "the idsdl302 NVRAM fixture now carries the +S block, so the dial path sends +S22/+S24/+S26 = 020d/32c8/0c08 on tags 0x19/0x1a/0x1b; with the block erased the lanes carry ffff and the same run produces no decodable tone (docs/idsdl-extended-registers.md)",
+ "hardware_tested": false,
+ "caveats": [
+  "Synthetic line generation is off whenever the exchange is attached, so only the C52 program could have produced these samples; but the codec, ASIC transport and line are models.",
+  "The 7200 Hz rate is the firmware's dial-path rate as inferred from its phase increments, not a measurement of the board's codec clock.",
+  "Tone and gap timing come from the supervisor's own S11 countdown paced by the emulator tick, not from measured hardware timing."
+ ]
+}
