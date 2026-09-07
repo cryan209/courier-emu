@@ -116,6 +116,10 @@ class Diagnostic:
     entry: int = ENTRY
     routines_at: int = ROUTINES
     kernel_at: int = KERNEL
+    # First program word a ROM dump reads. The board takes the ROM in halves,
+    # so the second one starts at 0x0400 and must be checked against that
+    # slice of the fixture, not its start.
+    rom_origin: int = 0
 
 
 def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
@@ -314,7 +318,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     ram[kernel_at - entry:] = probe.payload
     return Diagnostic(reference, probe, bytes(ram), c.labels,
                       count, result_base, sum_at, status_at,
-                      entry, routines_at, kernel_at)
+                      entry, routines_at, kernel_at,
+                      rom_origin if rom_dump else 0)
 
 
 def parse_capture(data: bytes) -> dict:
@@ -616,7 +621,9 @@ class TransportMachine:
                     # mapped as the on-chip ROM.
                     "rom_matches_fixture": decoded is not None
                         and "words" in decoded
-                        and decoded["words"] == list(self.fixture[:decoded["word_count"]]),
+                        and decoded["words"] == list(self.fixture[
+                            self.diagnostic.rom_origin:
+                            self.diagnostic.rom_origin + decoded["word_count"]]),
                     "download_matches_kernel": bytes(self.captured) == self.diagnostic.probe.payload,
                     "download_checksum_matches": self.checksum_ok, "dsp_launched": self.launched,
                     "packets": self.packets, "acks": self.acks, "events": self.events,
