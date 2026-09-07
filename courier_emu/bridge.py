@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass
 import math
+import os
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -406,6 +407,17 @@ class CourierDspBridge:
         # rate, and the exchange, the peer link and SIP all speak the line's.
         self._codec_to_line = Resampler()
         self._exchange_line_buffer: list[int] = []
+        # Wire the supervisor's runtime ports straight onto the DSP's I/O ports
+        # instead of interpreting them. SPRU056D makes data 0x50-0x5f the C5x's
+        # sixteen I/O ports PA0-PA15, so the ASIC is a register file with the
+        # 80186 on one side and the DSP on the other; if the mapping is right,
+        # the two firmwares run the protocol themselves.
+        # Experimental, off by default. See docs/what-runs-and-what-blocks.md:
+        # it measurably advances the DSP but does not complete a call, so it is
+        # not yet the model - only evidence that the register-file reading of
+        # the ASIC is the right one.
+        self.asic_transparent = bool(os.environ.get("COURIER_ASIC_TRANSPARENT"))
+        self._mirror_bytes = {}
         self._sip_rx_samples: deque[int] = deque()
         self._completion_probe = False
 
@@ -1164,6 +1176,8 @@ class CourierDspBridge:
                     self._deliver_host_message(*words)
                     self._answer_runtime_request(*words)
             return
+        if self.asic_transparent and self._runtime_mode and size == 1:
+            self._mirror_port(port, value)
         if port == 0x1C:
             if (
                 self.transfer.checksum_strobe is not None
@@ -1385,6 +1399,27 @@ class CourierDspBridge:
         lane = (port - DSP_WINDOW_FIRST) // DSP_WINDOW_STRIDE
         word = self.core.io(0x50 + lane // 2)
         return (word >> (8 * (lane & 1))) & 0xFF
+
+    # 80186 byte port -> (DSP I/O port, which half). 0x58/0x5a carry the tag
+    # and 0x5c/0x5e the data, which is what the resident reads from PA14/PA15;
+    # 0x1c is the status word the four block routines poll as PA7.
+    MIRROR = {0x58: (0x5E, 0), 0x5A: (0x5E, 1), 0x5C: (0x5F, 0), 0x5E: (0x5F, 1)}
+
+    def _mirror_port(self, port: int, value: int) -> None:
+        if port == 0x1C:
+            # 0x1c is a byte port and PA7 carries bits the DSP sets itself
+            # (send-complete, stream-ready), so the host owns the low byte
+            # only. Writing the whole word clobbers the other side's half.
+            current = self.core.io(0x57) & 0xFF00
+            self.core.set_io(0x57, current | (value & 0xFF))
+            return
+        target = self.MIRROR.get(port)
+        if target is None:
+            return
+        cell, half = target
+        pair = self._mirror_bytes.setdefault(cell, [0, 0])
+        pair[half] = value & 0xFF
+        self.core.set_io(cell, pair[0] | (pair[1] << 8))
 
     def _publish_window(self) -> None:
         if self._call_overlay_active:

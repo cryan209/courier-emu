@@ -178,6 +178,48 @@ This is the part [board-parts.md](board-parts.md) calls unpublished, so it will
 have to be inferred from the resident's own use of it or measured off the board
 the way the boot word was.
 
+## Tried: wiring the ports together instead of interpreting them
+
+SPRU056D makes the ASIC a register file - the 80186 on one side, the DSP's
+sixteen I/O ports on the other - which suggests the harness should *wire* the
+two rather than interpret one into the other. The bridge's `0x1c` handling is
+currently a hand-written state machine that decodes the supervisor's writes and
+synthesises DSP status.
+
+`COURIER_ASIC_TRANSPARENT=1` turns on a mirror instead, using the mapping the
+existing code already implies:
+
+| 80186 | DSP | |
+|---|---|---|
+| `0x1c` | PA7 `0x57`, low byte | status. The host owns the low byte; the upper bits are the DSP's own send-complete and stream-ready flags, so writing the whole word clobbers them |
+| `0x58`, `0x5a` | PA14 `0x5e` | message tag |
+| `0x5c`, `0x5e` | PA15 `0x5f` | message data |
+
+**It measurably advances the DSP**: messages completed goes from 1 to 10, and
+the run reaches 36 distinct runtime message types. **It does not produce audio** -
+`--dsp-tx-pcm` is still 59,589 zeros and no digits decode.
+
+So the register-file reading looks right and is worth pursuing, but it is not
+sufficient on its own, and it is off by default because a partial mapping that
+advances the DSP without completing the path is not yet a model of anything.
+
+What it does not address is the `ARCR` gate above: mirroring status bits does
+not make `cmpr eq` match, so the block containing the mailbox poll still never
+runs. Both have to be right.
+
+### Two things to settle next
+
+1. **Which bits of PA7 the host owns and which the DSP sets.** The low-byte
+   split above is a guess that follows from `0x1c` being a byte port; the
+   bridge's existing `DSP_STREAM_READY` / `DSP_SEND_COMPLETE` constants say the
+   upper bits are the DSP's. Confirming that from the supervisor's own writes
+   is static analysis on an image already here.
+2. **What sets `ARCR`.** `samm @19` at `0x9644` is the only writer and is
+   reached from the block it gates. Either something outside the block sets it -
+   which nothing found so far does - or the DSP arrives at the resident with it
+   already set, which would make it a property of the boot path rather than of
+   the resident.
+
 ## Smaller things still known wrong
 
 These are real but none of them block a call:
