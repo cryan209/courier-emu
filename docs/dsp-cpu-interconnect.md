@@ -25,14 +25,21 @@ in `build_rom_dump_probe` that is literally `out @7c, 0x005e` / `out *+,
 So **the DSP's I/O-space writes reach the 80186 on the real board.** That much
 is measured.
 
-> **Do not cite the `dsp-rom-dump-v*`, `dsp-rom-half*`, `dsp-rom-transport-v*`
-> or `dsp-rom-sample-v1` artifacts for this.** Every one of them carries
-> `hardware_tested: false` - they are emulator dry-runs of the same kernel, and
-> `dsp-rom-dump-v2`'s payload is a synthetic ramp (`0x1234 + 0x193n`). An
-> earlier version of this document cited one of them as the proof, which was
-> wrong: in the harness the bridge is *programmed* to connect those ports, so a
-> round trip there shows nothing. The same self-confirming trap as the codec
-> receive queue.
+The ROM came off the board **in two halves**, because the watchdog resets it
+before a 2048-word frame can finish. The two real captures are
+`artifacts/dsp-onchip-rom-01/half0-frame.txt` and `half1-frame.txt`, and
+`dsp-onchip-rom-01/manifest.json` records how they were joined.
+
+> **Mind which directory you cite.** The top-level `dsp-rom-half0/`,
+> `dsp-rom-half1/`, `dsp-rom-dump-v*`, `dsp-rom-transport-v*` and
+> `dsp-rom-sample-v1` directories are the **emulator dry-runs** of the same
+> kernel: they carry `hardware_tested: false` and their `serial_text` is a
+> synthetic ramp (`0x1234 + 0x193n`). The hardware captures of the two halves
+> live *inside* `dsp-onchip-rom-01/`, and begin `7980 0670 0860 BE20` - real
+> code, not a ramp. Two earlier versions of this document got this wrong in
+> both directions: first citing a dry-run as the proof, then concluding from
+> the same flag that no half-dump was ever taken on hardware. Both were wrong;
+> the dry-runs and the real runs simply share a kernel and a naming scheme.
 >
 > `artifacts/dsp-boot-word-01/` is real hardware but does not prove this
 > either: its kernel is placed and started the same way, and it establishes
@@ -73,6 +80,31 @@ If the ASIC is on that bus at all, it is tapped onto the *same nets* that run
 from the DSP to its SRAMs, qualified by `IS`. That removes one form of the
 objection - nobody should be looking for a second, dedicated 32-wire bus - but
 it does not remove the objection itself.
+
+## What this does and does not block
+
+Worth separating, because it has been costing time. **The physical medium is
+not on the emulator's critical path.**
+
+The harness never simulates traces. It simulates what `out @7c, 0x5e` does on
+one side and what `in al, 0x5c` returns on the other, and that programming
+model is confirmed twice over: SPRU056D section 3.5.11 and the Table 8-8 note
+put the sixteen I/O ports `PA0`-`PA15` at data `0050h`-`005Fh`, reachable by
+data addressing, MMR addressing and `IN`/`OUT` alike; and the on-chip ROM came
+back off the live board through exactly that protocol - poll `PA7` bit 1, tag
+to `PA14`, word to `PA15`, `2` back to `PA7` - which is the protocol
+`bridge.py` already implements.
+
+So whether the ASIC realises those sixteen ports with twenty parallel taps, a
+shift register, or something else entirely, **both processors' instruction
+streams see the same thing, and the emulator is already right about it.**
+Settling the medium is worth doing for the board documentation. It will not
+change a line of code, and it is not what stops a call.
+
+What stops CPU-DSP comms in the harness is the *rate*: the DSP's mailbox poll
+is gated behind the `ARCR` compare, so delivered messages overwrite each other
+unconsumed. That is the blocker, and it is in
+[what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
 
 ## The physical objection, which is unanswered
 
