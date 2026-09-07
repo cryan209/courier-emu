@@ -106,6 +106,83 @@ MEM_WATCH_EVENTS = 96
 TICK_SOURCES = ("dsp",)
 
 
+# Every literal address on_code tests. One set lookup replaces the chain of
+# comparisons that used to run on every emulated instruction.
+_HOT_ADDRESSES = frozenset({
+    0x57FF9,
+    0x5867C,
+    0x5868C,
+    0x59435,
+    0x59BEB,
+    0x59BF2,
+    0x59C2F,
+    0x59C35,
+    0x59CD9,
+    0x59D02,
+    0x59D28,
+    0x5BA29,
+    0x5BA49,
+    0x5C0C4,
+    0x5C0D4,
+    0x5C0E3,
+    0x5C0F3,
+    0x5C772,
+    0x5CE19,
+    0x5CE4E,
+    0x5CE66,
+    0x5CE6A,
+    0x5D5B0,
+    0x5D608,
+    0x5D613,
+    0x5D640,
+    0x5D650,
+    0x5D656,
+    0x5D6E5,
+    0x5D6FB,
+    0x5D70E,
+    0x5D724,
+    0x5D734,
+    0x5D74A,
+    0x5DB9D,
+    0x5DBE7,
+    0x62350,
+    0x6355F,
+    0x654EE,
+    0x65560,
+    0x6593F,
+    0x6594D,
+    0x65958,
+    0x6595B,
+    0x65D42,
+    0x65F03,
+    0x66638,
+    0x666E0,
+    0x66720,
+    0x6675B,
+    0x66788,
+    0x667B0,
+    0x667BA,
+    0x668C2,
+    0x69C61,
+    0x69F16,
+    0x6A035,
+    0x6A062,
+    0x6A08A,
+    0x6A0CF,
+    0x6AD6E,
+    0x6ADF1,
+    0x6ADF8,
+    0x6F8D1,
+    0x6F903,
+    0x70F70,
+    0x70F83,
+    0x70F8D,
+    0x822E0,
+    0x82342,
+    0x8235B,
+    0x828A6,
+})
+
 def attention_body(command: bytes) -> bytes | None:
     """Return the body accepted by the Courier DTE attention detector."""
     if len(command) >= 2 and command[:2] in (b"AT", b"at"):
@@ -838,6 +915,7 @@ class CourierMachine:
             self._trace_serial("collect 1cee|=40")
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            hot = address in _HOT_ADDRESSES
             if self._code_observer is not None:
                 self._code_observer(address)
             if self.pc_watch and address in self.pc_watch:
@@ -882,7 +960,7 @@ class CourierMachine:
                     except Exception:
                         pass
                     self.pc_watch_events.append(record)
-            if (
+            if hot and (
                 address == 0x65560
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
@@ -897,7 +975,7 @@ class CourierMachine:
                     f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x} "
                     f"1cf1={bytes(_uc.mem_read(0x1cf1, 1))[0]:02x}"
                 )
-            if (
+            if hot and (
                 address == 0x667BA
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
@@ -909,7 +987,7 @@ class CourierMachine:
                 # completion edge is present, the caller needs selector 1.
                 _uc.reg_write(UC_X86_REG_AX, 1)
                 self._trace_serial("originate result-selector=1")
-            if (
+            if hot and (
                 address == 0x654EE
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
@@ -921,7 +999,7 @@ class CourierMachine:
                     f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x} "
                     f"1cf1={bytes(_uc.mem_read(0x1cf1, 1))[0]:02x}"
                 )
-            if (
+            if hot and (
                 address == 0x668C2
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
@@ -932,7 +1010,7 @@ class CourierMachine:
                     f"ax={_uc.reg_read(UC_X86_REG_AX):04x} "
                     f"0158={int.from_bytes(_uc.mem_read(0x0158, 2), 'little'):04x}"
                 )
-            if (
+            if hot and (
                 address == 0x668C2
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.daa is not None
@@ -944,7 +1022,7 @@ class CourierMachine:
                 # 3 (NO CARRIER) before the ASIC call-up edge reaches it;
                 # selector 1 is the adjacent CONNECT entry in that table.
                 _uc.reg_write(UC_X86_REG_SI, 1)
-            if self._payload_hooks and address in (
+            if hot and self._payload_hooks and address in (
                 0x6F8D1, 0x6F903, 0x6593F, 0x6594D, 0x65958,
                 0x6595B, 0x70F70, 0x70F83, 0x70F8D,
             ):
@@ -970,7 +1048,7 @@ class CourierMachine:
                         f"ff46={int.from_bytes(_uc.mem_read(0xff46, 2), 'little'):04x} "
                         f"ff56={int.from_bytes(_uc.mem_read(0xff56, 2), 'little'):04x}"
                     )
-            if (
+            if hot and (
                 address == 0x65560
                 and self.dsp_bridge is not None
                 and self.dsp_bridge.connected_event_queued
@@ -1036,7 +1114,7 @@ class CourierMachine:
                 _uc.mem_write(0x02AC, (0xA35F).to_bytes(2, "little"))
                 self._daa_originate_event_posted = True
                 self._trace_serial("daa callback 02ac=a35f")
-            if self._supervisor_23 and address == 0x62350:
+            if hot and (self._supervisor_23 and address == 0x62350):
                 length = bytes(_uc.mem_read(0x1D2C, 1))[0]
                 payload = bytes(_uc.mem_read(0x1D2D, min(length, 0x3C)))
                 body = attention_body(payload)
@@ -1045,7 +1123,7 @@ class CourierMachine:
                     _uc.mem_write(0x1D2C, bytes((len(body),)))
                     if self.dsp_bridge is not None:
                         self.dsp_bridge.arm_dial_tones(body)
-            if (
+            if hot and (
                 address == 0x6AD6E
                 and self.dsp_bridge is not None
             ):
@@ -1056,7 +1134,7 @@ class CourierMachine:
                     self._trace_serial(
                         f"dsp-rx {header:04x}:{data:04x} callback={callback:04x}"
                     )
-            if self._serial_started and address in (0x65F03, 0x65D42):
+            if hot and (self._serial_started and address in (0x65F03, 0x65D42)):
                 # The physical DTE front-end recognizes the attention prefix
                 # before handing a command body to this banked parser. Our
                 # direct UART ISR path bypasses that small state machine, so
@@ -1079,7 +1157,7 @@ class CourierMachine:
             # is only accepted at 0x5ce66, just before the parity transform and
             # the write to the transmit register. Capture there so each byte is
             # recorded exactly once.
-            if self._serial_started and address in (0x5CE66, 0x5CE6A):
+            if hot and (self._serial_started and address in (0x5CE66, 0x5CE6A)):
                 raw = _uc.reg_read(UC_X86_REG_AX) & 0xFF
                 # The transform at 5b5e:1913 recomputes bit 7 as an even-parity
                 # bit whenever [0x26c6] is zero, then applies the [0x0936]
@@ -1089,13 +1167,13 @@ class CourierMachine:
                 terminal_value = raw & 0x7F if parity_framing else raw
                 self._capture_serial(terminal_value)
                 self._trace_serial(f"fifo {terminal_value:02x} pc={current_pc():05x}")
-            if (
+            if hot and (
                 self._payload_hooks
                 and address == 0x5D5B0
                 and len(self.serial_trace) < 64
             ):
                 self.serial_trace.append("entered-uart-isr")
-            if self._serial_in_handler and (
+            if hot and self._serial_in_handler and (
                 address in (0x5D613, 0x5D650, 0x5D656)
                 or (self._supervisor_23 and address in (0x59BF2, 0x59C35))
                 or self._previous_address in (
@@ -1122,7 +1200,7 @@ class CourierMachine:
                 self._serial_in_handler = False
                 self._serial_irq_mode = None
                 self._serial_cooldown = 128 if self.serial_rx else 512
-            if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8):
+            if hot and (self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8)):
                 self._timer_in_handler = False
                 self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
                 if self.tick_source == "dsp":
@@ -1225,13 +1303,13 @@ class CourierMachine:
                 self._serial_empty_probes = 0
                 self._serial_cooldown = 512
             # The fatal-error blinker uses a calibrated self-looping LOOP.
-            if self.fast_delays and address == 0x5C772:
+            if hot and (self.fast_delays and address == 0x5C772):
                 _uc.reg_write(UC_X86_REG_CX, 1)
                 self.accelerated_delays += 1
             # The 80186 peripheral block has just been relocated to ff00. The
             # startup waits for timer/status bit 0x20, which a CPU-only core
             # cannot produce.
-            if self.fast_delays and address in (
+            if hot and self.fast_delays and address in (
                 0x5BA29, 0x5BA49, 0x69F16,
                 0x6A035, 0x6A062, 0x6A08A, 0x6A0CF,
                 0x57FF9,
@@ -1243,7 +1321,7 @@ class CourierMachine:
             # indication: its download loop aborts when the bit is set. The
             # startup wait above needs the bit asserted once, but the
             # subsequent status polls need the peripheral's ready state.
-            if self.fast_delays and self._supervisor_23 and address in (
+            if hot and self.fast_delays and self._supervisor_23 and address in (
                 0x66638, 0x666E0, 0x66720, 0x6675B, 0x66788, 0x667B0,
             ):
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
@@ -1252,23 +1330,23 @@ class CourierMachine:
             # waits here until both status words float to all ones. Dynamic
             # ATD/ATA traces reach this during startup only: calls manipulate
             # ASIC register 0x82 but do not perform a second C52 download.
-            if address == 0x69C61 and self.dsp_bridge is not None:
+            if hot and (address == 0x69C61 and self.dsp_bridge is not None):
                 self.dsp_bridge.float_runtime_bus()
             # Firmware delay helpers either burn CX or wait for the timer ISR
             # to advance the tick at 0000:0152. Advance both without inventing
             # asynchronous interrupts in the CPU-only harness.
-            if self.fast_delays and address in (0x5C0F3, 0x5C0D4, 0x5868C):
+            if hot and (self.fast_delays and address in (0x5C0F3, 0x5C0D4, 0x5868C)):
                 _uc.reg_write(UC_X86_REG_CX, 1)
                 self.accelerated_delays += 1
-            if self.fast_delays and address in (0x5C0E3, 0x5C0C4, 0x5867C):
+            if hot and (self.fast_delays and address in (0x5C0E3, 0x5C0C4, 0x5867C)):
                 ah = (_uc.reg_read(UC_X86_REG_AX) >> 8) & 0xFF
                 _uc.mem_write(0x152, bytes((ah,)))
                 self.accelerated_delays += 1
-            if self.fast_delays and self._supervisor_23 and address in (0x59CD9, 0x59D02, 0x59D28):
+            if hot and (self.fast_delays and self._supervisor_23 and address in (0x59CD9, 0x59D02, 0x59D28)):
                 cx = _uc.reg_read(UC_X86_REG_CX)
                 _uc.mem_write(0x14E, bytes((cx & 0xFF,)))
                 self.accelerated_delays += 1
-            if self.fast_delays and address in (
+            if hot and self.fast_delays and address in (
                 0x5D6E5, 0x5D70E, 0x5D734, 0x5D6FB, 0x5D724, 0x5D74A
             ):
                 cl = _uc.reg_read(UC_X86_REG_CX) & 0xFF
@@ -1280,7 +1358,7 @@ class CourierMachine:
             # running and the bridge answers it, so both the count and the
             # wait it runs inside are the firmware's own. Writing either one
             # here would only hide whether that path works.
-            if (
+            if hot and (
                 self.fast_delays
                 and self.tick_source is None
                 and address in (0x5DB9D, 0x5DBE7)
@@ -1303,7 +1381,7 @@ class CourierMachine:
             # After dial-tone qualification the dialer waits on the S6-style
             # pre-dial countdown at 0000:08d6, normally decremented by the
             # board timer ISR.
-            if self.fast_delays and self.tick_source is None and address == 0x828A6:
+            if hot and (self.fast_delays and self.tick_source is None and address == 0x828A6):
                 _uc.mem_write(0x8D6, b"\x00\x00")
                 self.accelerated_delays += 1
             # Successful completion of the originating dialer returns through
@@ -1313,7 +1391,7 @@ class CourierMachine:
             # for that event, leaving ATD parked in command mode after the
             # digits.  Reproduce the recovered event edge once per seizure.
             # Inter-digit cadence uses the timer word at 0000:0161.
-            if (
+            if hot and (
                 self.fast_delays
                 and self.tick_source is None
                 and address in (0x6355F, 0x822E0, 0x82342, 0x8235B)
@@ -1331,15 +1409,15 @@ class CourierMachine:
             # 0x08 clear and spins on the transmit routine forever. This is a
             # missing device rather than a calibrated delay, so the modeled DTE
             # reports itself ready regardless of --real-delays.
-            if address == 0x5CE4E:
+            if hot and (address == 0x5CE4E):
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 if not value & 0x08:
                     _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
-            if self._supervisor_23 and address == 0x59435:
+            if hot and (self._supervisor_23 and address == 0x59435):
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 if not value & 0x08:
                     _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
-            if self.fast_delays and address == 0x5CE19:
+            if hot and (self.fast_delays and address == 0x5CE19):
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
                 self.accelerated_delays += 1
