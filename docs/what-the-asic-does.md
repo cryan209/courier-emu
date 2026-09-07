@@ -185,12 +185,11 @@ which are outside `0x50`-`0x5f` and so are ordinary I/O addresses that do not
 alias into data space. They are `IS`-qualified cycles like any other, and `IS`
 is now measured as connected to the ASIC
 ([dsp-cpu-interconnect.md](dsp-cpu-interconnect.md)), so the gate array decodes
-those too. Whether its DSP-side register file is genuinely larger than
-`PA0`-`PA15` depends on how much address it has. `A0`-`A3` look connected;
-`A4`/`A5` are unread, and without one of them `0x60` aliases onto `PA0` and
-`0x68`/`0x6a`/`0x6c` onto `PA8`/`PA10`/`PA12` - which would make the row for
-PA0 below and the outbound stream the same register. See
-[dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
+those too, and its DSP-side register file **is** larger than `PA0`-`PA15`.
+The board's address decode is `A0`-`A3` plus `A5`, with `A4` absent, which
+separates the `0x5x` bank from the `0x6x` bank and uniquely identifies every
+port the firmware uses. So `0x60` is a register of its own and not an alias of
+`PA0`. See [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
 
 Known use so far:
 

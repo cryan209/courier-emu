@@ -370,12 +370,9 @@ gate array, and the poll of `PA7` is a parallel read back out of one.
 
 **What it does not settle**, and these are now the open ones:
 
-* **How much address the ASIC has.** `A0`-`A3` (55-58) **look connected** on
-  the board - reported visually, not metered, so weaker than the `IS` reading
-  above. Four lines are the minimum the firmware needs, and they are enough for
-  the whole mailbox: `PA7`, `PA14` and `PA15` differ in the low nibble. What
-  four lines are *not* enough for is everything above `PA15` - see the aliasing
-  note below.
+* **How much address the ASIC has.** Answered: `A0`-`A3` (55-58) **and `A5`**
+  (60), with `A4` (59) absent. See "The decode is five lines" below - this is
+  no longer an open item, and it settles the alias question it was raised for.
 * **Whether the ASIC also answers `DS`.** `artifacts/dsp-boot-word-01/` has the
   ASIC presenting `0x0083` at DSP **data** `0xffff`, which is a `DS` cycle, not
   an `IS` one. With the gate array confirmed on the bus that reading is easier
@@ -390,37 +387,51 @@ board documentation, as the section above said it would. The blocker on
 CPU-DSP comms remains the mailbox poll rate - see
 [what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
 
-### Four address lines are not enough, and that predicts an alias
+### The decode is five lines: `A0`-`A3` and `A5`
 
-If the ASIC decodes `A0`-`A3` and nothing above them, then a DSP I/O cycle is
-identified by the low nibble of the port number alone, and the ports outside
-`PA0`-`PA15` fold onto ports inside it:
+The follow-up reading came back: `A0`-`A3` (55-58) and **`A5`** (60) reach the
+ASIC, and **`A4`** (59) does not. That retires the alias predicted in the
+previous revision of this section - `0x60` is **not** `PA0`, and the stream
+sender at `0x84b7` writes a register of its own.
 
-| the DSP writes | low nibble | aliases onto |
-|---|---|---|
-| `0x60` - the stream sender at `0x84b7` | `0` | `PA0` (`0x50`) |
-| `0x68` | `8` | `PA8` (`0x58`) |
-| `0x6a` | `a` | `PA10` (`0x5a`) |
-| `0x6c` | `c` | `PA12` (`0x5c`) |
+**Every port the DSP actually uses is uniquely decoded by those five lines.**
+The firmware's whole I/O footprint is `0x57`, `0x5e`, `0x5f`, `0x60` and
+`0x68`-`0x6c`. Within `0x50`-`0x5f` the low nibble separates them; `0x60` and
+`0x68`/`0x6a`/`0x6c` carry `A5` high and `A4` low where the `PA` bank carries
+`A5` low and `A4` high, so the two groups cannot collide, and inside the second
+group the low nibble separates again.
 
-The mailbox is untouched by this - `0x57`, `0x5e` and `0x5f` are distinct in
-four bits and stay distinct - so the firmware's command path works either way.
-The interesting collision is the first row. `PA0` is already documented in
-[what-the-asic-does.md](what-the-asic-does.md) as the parallel boot loader's
-word source *and* as taking a scaled sample from the codec ISR at `0x8199`;
-`0x60` is the outbound stream. Under a four-line decode those are one register,
-which is either a real fact about the gate array's outbound path or a sign that
-the decode is wider.
+**Skipping `A4` while taking `A5` is the informative part.** It is not an
+arbitrary saving. `0x5x` and `0x6x` differ in *both* bits 4 and 5, so one line
+distinguishes the banks and the other is redundant - and a gate array wired to
+one of the two is a designer who knew there were exactly two banks to tell
+apart. So this is positive evidence for the two-bank picture rather than merely
+being consistent with it:
 
-**So the next reading is `A4` (59) and `A5` (60).** `0x50` and `0x60` differ in
-bits 4 and 5, so either line alone separates them. Connected: the ASIC
-distinguishes the stream port from `PA0`, the register file is genuinely larger
-than sixteen, and the table above is void. Absent: the alias is real and
-`0x60` *is* `PA0`, which would be worth knowing before anyone reads the
-`0x0bd0` ring or the stream sender again.
+| bank | `A5` | ports | what it is |
+|---|---|---|---|
+| `0x50`-`0x5f` | low | `PA0`-`PA15` | the memory-mapped I/O ports, aliased into data space at `0x0050`-`0x005f` |
+| `0x60`-`0x6f` | high | `0x60`, `0x68`-`0x6c` | pure I/O space, no data-space alias |
 
-This one is cheap and it is the last structural unknown on the DSP side of the
-bus.
+**So the register file is larger than sixteen after all**, and
+[what-the-asic-does.md](what-the-asic-does.md)'s "at most sixteen" is wrong for
+the reason first given. The correction stands; the doubt raised about it in the
+previous revision does not.
+
+**A falsifiable prediction, and a cheap one.** With `A4` unconnected, ports
+that differ *only* in bit 4 are indistinguishable to the ASIC. The firmware
+never touches those, but a probe can:
+
+* an `out` to port `0x40` should land in `PA0` (`0x50`)
+* an `out` to port `0x47` should land in `PA7` (`0x57`) - readable straight
+  back through the status latch at `0xff57`
+* an `out` to port `0x70` should land wherever `0x60` goes
+
+The second is the one to run: it writes a port the firmware never uses and
+reads the result through a path this repository has already exercised on
+hardware. A kernel in the shape of `build_io_alias_probe` would do it - that
+routine is unwired and had lost its original question, but this is a new one
+worth pointing it at.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 
