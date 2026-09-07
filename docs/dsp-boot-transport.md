@@ -1,11 +1,21 @@
 # The DSP's boot ROM has two transports, and the board uses neither
 
-> **Answered by measurement, 2026-09-07.** The board's ASIC presents **`0x0083`**
-> at DSP data `0xffff`. Its low two bits are `3` - a fourth mode that transfers
-> nothing and branches straight to program `0x8000`. So neither loader below
-> runs on this unit, and the ASIC must write the resident into the DSP's
-> external RAM itself. See
+> **Measured, but weaker than first stated.** The board's ASIC presents
+> **`0x0083`** at DSP data `0xffff` *while the modem is running normally*, long
+> after boot. Its low two bits are `3`, a mode that transfers nothing and
+> branches to `0x8000`. See
 > [artifacts/dsp-boot-word-01/result.md](../artifacts/dsp-boot-word-01/result.md).
+>
+> **That is not the same as knowing what the cell holds during reset**, and the
+> corroboration originally offered for it does not survive scrutiny: the claim
+> that it "decodes to exactly the download destination" is weak, because *any*
+> value `0x80`-`0x83` yields entry `0x8000`. Only the low two bits carry content.
+>
+> **A board inspection says the ASIC-to-DSP link is serial and that the program
+> is loaded by serial download.** That points at the serial loader below, which
+> would make the harness's existing `host_write(0xFFFF, 4)` correct and this
+> runtime read a red herring. The reset-time value remains unmeasured, and until
+> it is, the serial download is the better-supported reading.
 >
 > The two loaders and the argument for the parallel one are kept below because
 > the loaders are real and the reasoning is what led to the measurement - but
