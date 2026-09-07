@@ -492,7 +492,9 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     uint16_t value = address < 0x60 ? cpuregs_r(address)
                    : region == Region::Shared ? m_program[address]
                    : m_data[address];
-    if (m_trace_data_writes &&
+    // The read side traces a fixed set of cells. A caller watching one cell
+    // wants only that cell, and these reads otherwise flood the buffer.
+    if (m_trace_data_writes && !m_trace_filtered &&
         (address == 0x006f || address == 0x035c || address == 0x069c ||
          address == 0x0b49 || address == 0x039f || address == 0x03c8 || address == 0x03ca)) {
         if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
@@ -503,7 +505,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
 void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 {
     ++m_data_write_counts[address];
-    if (m_trace_data_writes) {
+    if (m_trace_data_writes && (!m_trace_filtered || address == m_trace_filter)) {
         if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }

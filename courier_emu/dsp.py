@@ -218,6 +218,8 @@ class NativeC5x:
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_set_data_trace_filter.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int]
+        lib.courier_c5x_set_data_trace_filter.restype = None
         lib.courier_c5x_set_pc_trace_range.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint]
         lib.courier_c5x_set_pc_trace_range.restype = None
         lib.courier_c5x_get_pc_trace_count.argtypes = [ctypes.c_void_p]
@@ -524,6 +526,10 @@ class NativeC5x:
                 ("address", "value", "pc", "instruction"), map(int, values), strict=True
             )))
         return result
+
+    def set_data_trace_filter(self, address: int, enabled: bool = True) -> None:
+        """Restrict the write trace to one data cell."""
+        self.library.courier_c5x_set_data_trace_filter(self.handle, address, int(enabled))
 
     def set_pc_trace_range(self, first: int, last: int) -> None:
         """Also trace program addresses in [first, last].

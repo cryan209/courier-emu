@@ -153,6 +153,12 @@ void courier_c5x_set_dtmf_digits(void *handle, const char *digits, std::size_t c
     if (handle && digits) static_cast<C5xCore *>(handle)->set_dtmf_digits(digits, count);
 }
 
+void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_data_trace_filter(
+        static_cast<uint16_t>(address), enabled != 0);
+}
+
 void courier_c5x_set_pc_trace_range(void *handle, unsigned first, unsigned last)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_pc_trace_range(

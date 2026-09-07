@@ -232,6 +232,14 @@ public:
     void step();
     void run(uint64_t instruction_limit);
     void set_data_trace(bool enabled) { m_trace_data_writes = enabled; }
+    // Restrict the write trace to one cell. Unfiltered it records every
+    // write and the 4096-event buffer covers a few milliseconds of a run,
+    // which is no use for watching one cell across a whole dial.
+    void set_data_trace_filter(uint16_t address, bool enabled)
+    {
+        m_trace_filter = address;
+        m_trace_filtered = enabled;
+    }
     void clear_data_events() { m_data_events.clear(); }
     State state() const;
     SerialState serial_state() const;
@@ -292,6 +300,8 @@ private:
     std::deque<uint32_t> m_pc_trace;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_trace_data_writes = false;
+    uint16_t m_trace_filter = 0;
+    bool m_trace_filtered = false;
 
     uint16_t m_pc = 0, m_op = 0;
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;

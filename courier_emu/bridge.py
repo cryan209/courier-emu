@@ -289,6 +289,7 @@ class BridgeStatus:
     codec: dict[str, Any] | None = None
     exchange: dict[str, Any] | None = None
     dsp_cells: dict[str, str] | None = None
+    dsp_writes: list[dict[str, int]] | None = None
 
 
 class CourierDspBridge:
@@ -308,6 +309,7 @@ class CourierDspBridge:
         exchange: LineExchange | None = None,
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
+        dsp_write_watch: int | None = None,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -343,6 +345,13 @@ class CourierDspBridge:
             # ranges do not cover.
             self.core.set_pc_trace_range(*dsp_trace_range)
         self.dsp_peek = dict(dsp_peek or {})
+        self.dsp_write_watch = dsp_write_watch
+        if dsp_write_watch is not None and hasattr(self.core, "set_data_trace_filter"):
+            # Arm the write trace from construction rather than from the call
+            # engine, which on 302/403 never starts.
+            self.core.set_data_trace_filter(dsp_write_watch, True)
+            self.core.trace_data_writes(True)
+            self._rate_trace_enabled = True
         self._call_overlay = self._find_call_overlay()
         self._call_overlay_active = False
         self._call_resume_pending = False
@@ -1948,6 +1957,9 @@ class CourierDspBridge:
                 if hasattr(self.core, "io_events") else []
             ),
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
+            dsp_writes=[
+                event for event in self.core.data_events()
+            ][-64:] if self.dsp_write_watch is not None and hasattr(self.core, "data_events") else [],
             dsp_cells={
                 name: f"{self.core.data(address):04x}"
                 for address, name in self.dsp_peek.items()

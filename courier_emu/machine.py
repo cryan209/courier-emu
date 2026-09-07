@@ -266,6 +266,7 @@ class CourierMachine:
         peek: dict[int, str] | None = None,
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
+        dsp_write_watch: int | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -410,6 +411,7 @@ class CourierMachine:
                 batch=dsp_batch,
                 dsp_trace_range=dsp_trace_range,
                 dsp_peek=dsp_peek,
+                dsp_write_watch=dsp_write_watch,
             )
             if with_dsp
             else None

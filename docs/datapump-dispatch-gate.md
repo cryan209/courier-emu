@@ -401,28 +401,53 @@ and `39a` for the mixer's callback slot. `8743` is precisely the pair
 generator. So the handler is not the fault: it runs, per digit, and arms the
 tone the way the firmware intends.
 
-### Where it now points
+### The generator runs. The silence is after it.
 
-`--dsp-peek` reads C52 data cells at the end of a run. After a 403 dial:
+`--dsp-write-watch ADDR` records every write to one C52 data cell with the
+program address that made it. The core's write trace existed but was
+unfiltered, and its 4096-event buffer covers a few milliseconds of a run; the
+read side also traces a fixed set of cells, which floods the buffer on its own.
+Both now honour the filter.
 
-| cell | value | |
-|---|---|---|
-| `3f2` row increment | `2f81` | loaded |
-| `3f4` column increment | `1b61` | loaded |
-| `3f3` amplitude | `1000` | as the handler set it |
-| `3fb` | `0001` | |
-| **`39a` callback** | **`8128`** | **not the `8743` the handler wrote** |
+Watching `39a`, the mixer's callback slot, across a 403 dial:
 
-The increments survive but the callback slot does not hold the pair generator.
-`8128` is the value `audio312` puts in `39b`, the neighbouring cell.
+```text
+ee2b  8743   @51,371,302      digit 1: the handler arms the pair generator
+86dc  8128   @53,720,889      ...and 86dc restores 8128
+ee2b  8743   @55,664,990      digit 2
+86dc  8128   @58,016,770
+ee2b  8743   @59,959,466      digit 3
+86dc  8128   @62,310,745
+ee2b  8743   @64,253,460      digit 4
+86dc  8128   @66,604,900
+```
 
-Two readings, and this measurement does not separate them: the firmware may
-restore `39a` to a silence generator once the tone's duration expires, in which
-case an end-of-run value proves nothing, or something writes `8128` one cell
-low and clobbers the callback. Settling it needs the cell sampled *while* a
-tone is running rather than after, which is a data-write trace on `39a` - the
-core already has `trace_data_writes`, so it is a matter of surfacing it the way
-`--dsp-peek` surfaces reads.
+Four arm/restore pairs, one per digit, about 2.3M instructions apart - roughly
+the tone's own duration. That is a one-shot callback lifetime, not the clobber
+the end-of-run value suggested; `8128` is simply what the slot holds when no
+tone is playing, and reading it after the run was reading the idle state.
+
+And the generator really runs in between. Watching `3c0`, the first
+oscillator's phase, inside the last window:
+
+```text
+8753  48d5   @66,442,944
+8753  7856   @66,445,517
+8753  a7d7   @66,448,001
+8753  d758   @66,450,565
+```
+
+`+0x2f81` per sample, which is exactly the row increment `tblr` loaded into
+`3f2`. The oscillator is advancing at the right rate, from the right table
+entry, driven by the firmware's own code.
+
+So nothing between the mailbox and the oscillator is at fault. The tone is
+generated and then does not reach the line - `--dsp-tx-pcm` is 66,251 samples
+of zero over the same run. The remaining span is the mixer's output path: the
+product at `80da`-`80dc` is written through the work pointer at `390`, which
+reads `0bd8` in the full-board run while `audio312` - which does produce
+audible output from this same ROM - supplies `0bc0`. That, and the serial ISR
+that drains the buffer to DXR, is the next and now quite narrow place to look.
 
 ## What is not established
 

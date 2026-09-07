@@ -138,6 +138,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--dsp-trace-range", args.dsp_trace_range))
     for entry in args.dsp_peek:
         command.extend(("--dsp-peek", entry))
+    if args.dsp_write_watch:
+        command.extend(("--dsp-write-watch", args.dsp_write_watch))
     if args.real_delays:
         command.append("--real-delays")
     if (
@@ -487,6 +489,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="ADDR[=NAME]",
         help="report this C52 data cell at the end of the run, hex, repeatable",
+    )
+    run.add_argument(
+        "--dsp-write-watch",
+        default="",
+        metavar="ADDR",
+        help="record every write to this C52 data cell, hex, with the program "
+        "address that made it. Unfiltered the trace fills in milliseconds",
     )
     run.add_argument(
         "--libunicorn",
