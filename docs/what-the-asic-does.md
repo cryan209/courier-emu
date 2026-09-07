@@ -162,3 +162,38 @@ reset.
 * **The dynamics are barely sampled.** A tick-rate sampler now exists and sees
   events the serial monitor cannot, but 200 Hz is still slow against a codec
   frame, and the only capture so far is one line seizure.
+
+## The DSP sees the ASIC as its 16 I/O ports (2026-09-07)
+
+SPRU056D settles what the resident is actually reading when it polls `0xff57`.
+Data `0050h`-`005Fh` is not reserved and is not a peripheral block: it is the
+'C5x's **16 memory-mapped I/O ports, PA0 through PA15** (section 3.5.11 and
+Table 8-8's note; `0x50` = PA0, `0x5F` = PA15). They are reachable both through
+ordinary data addressing and through `IN`/`OUT`, and `LAMM`/`SAMM` force the
+address's 9 MSBs to zero, which is why `lamm *` with AR1 = `0xff57` lands on
+`0x57`.
+
+So every DSP-side address this repository has been calling "the ASIC window" -
+`0x50`, `0x51`, `0x52`, `0x54`, `0x57`, `0x5e`, `0x5f` - is one of sixteen I/O
+ports, and **the ASIC is the device on the other side of them**. That is the
+cleanest statement of the interface yet: the ASIC presents at most sixteen
+16-bit registers to the DSP.
+
+Known use so far:
+
+| port | address | use |
+|---|---|---|
+| PA0 | `0x50` | the parallel boot loader's word source; a scaled sample written by the codec ISR at `0x8199` |
+| PA1 | `0x51` | read by the handler at `0x8211` |
+| PA7 | `0x57` | **status word**: bit 0 host message pending, bit 1 gates `0x83d6`, bit 2 gates `0x847a`, bit 9 gates `0x80f8`; the DSP acknowledges by writing 1 |
+| PA14 | `0x5e` | inbound message tag |
+| PA15 | `0x5f` | inbound message data |
+
+The bit meanings are the ASIC's own and appear in no TI document. They are
+reachable from this side, though: the DSP's ports are fed from the 80186's
+parallel window at ports `0x40`-`0x5e`, so what sets them is supervisor code in
+an image this repository already has.
+
+This also retires a suspicion recorded earlier - that the core mapping data
+`0x50`-`0x5f` to I/O space was a conflation of two separate spaces. On the
+'C5x they are the same locations by design.

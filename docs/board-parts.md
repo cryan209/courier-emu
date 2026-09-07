@@ -90,7 +90,8 @@ data memory - agree with `native/c5x_core.h` everywhere except one constant:
 | program `2C00`-`FDFF` | external | external |
 | program `FE00`-`FFFF` | DARAM B0 if `CNF`, else external | same |
 | program `0000`-`07FF`, MP/MC=0 | 2K on-chip ROM | **4K**, `0000`-`0FFF` |
-| data `0000`-`005F` | memory-mapped registers | same |
+| data `0000`-`004F` | memory-mapped registers | same |
+| data `0050`-`005F` | the 16 I/O ports PA0-PA15 | same |
 | data `0060`-`007F` / `0080`-`00FF` | DARAM B2 / reserved | same |
 | data `0100`-`02FF` | DARAM B0, reserved when `CNF` | same |
 | data `0300`-`04FF` / `0500`-`07FF` | DARAM B1 / reserved | same |

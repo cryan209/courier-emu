@@ -125,9 +125,26 @@ the DSP is not completing.
 80f8:  and #0200     -> bit 9
 ```
 
-All four read `0xff57`, which `lamm` masks to MMR `0x57` - the ASIC status
-register. **The harness models one bit of it.** `HOST_MESSAGE_PENDING` is
-`0x0001`, and bits 1, 2 and 9 are never raised by anything.
+All four read `0xff57`. **The TI manual settles what that is.** SPRU056D
+section 3.5.11 and section 8.3.2:
+
+> Address range `0000h-004Fh` contains on-chip memory-mapped registers, and
+> address range `0050h-005Fh` contains the memory-mapped I/O ports.
+
+> The I/O space makes it possible to address 16 locations (`50h-5Fh`) of I/O
+> space via the addressing modes of the local data space [...] The locations can
+> also be addressed with the `IN` and `OUT` instructions.
+
+with `0x50` = PA0 through `0x5F` = PA15, and `0x60`-`0x7F` scratch-pad DARAM B2.
+And Figure 5-10: `LAMM`/`SAMM`/`LMMR`/`SMMR` force the 9 MSBs of the address to
+zero, so `lamm *` with AR1 = `0xff57` genuinely reads `0x57`.
+
+So **`0x57` is PA7, a real external I/O port**, and the four routines are polling
+a status word the ASIC drives. The mechanism is TI's; the **bit meanings are the
+ASIC's**, and no TI document has them.
+
+**The harness models one bit.** `HOST_MESSAGE_PENDING` is `0x0001`, and bits 1,
+2 and 9 are never raised by anything.
 
 That closes the loop on the initialisation problem: `0x83d6` and `0x847a` return
 immediately because their bits are clear, so whatever they would have set up -
@@ -137,10 +154,15 @@ no-op forever.
 
 ## What is needed, in order
 
-1. **Model the rest of I/O `0x57`.** Bit 0 alone is not the protocol. What bits
-   1, 2 and 9 mean, and when the ASIC raises them, is the question - `0x847a`'s
-   path through data `0x039e` and `bacc` is the one that looks like "start this
-   task", so it is the place to start.
+1. **Model the rest of PA7 (`0x57`).** Bit 0 alone is not the protocol. What
+   bits 1, 2 and 9 mean is the question, and `0x847a`'s path through data
+   `0x039e` and `bacc` is the one shaped like "start this task".
+
+   **The supervisor is where to look.** The DSP's PA0-PA7 are fed from the
+   80186's parallel window at ports `0x40`-`0x5e` - that is what
+   `_publish_window` already models - so whatever sets PA7's bits is 80186 code
+   in an image this repository has. That is a static-analysis question against
+   the supervisor, not an unanswerable one about an undocumented part.
 2. **Then `ARCR` and `@1a` should be set by the firmware itself**, not by the
    harness, and the block-level loop starts running on its own.
 3. **Then re-measure the DAC.** `--dsp-tx-pcm` going non-zero is the test, and
@@ -169,7 +191,5 @@ These are real but none of them block a call:
 * **`XRDY` is optimistic on the legacy TDM path**, because that path models no
   framing on the primary serial port.
 * **Codec gain, high-pass and loopback are decoded but not applied** to samples.
-* **C5x I/O space and data MMR `0x50`-`0x5f` are one array** in the core, where
-  a real 'C50 keeps them separate.
 * **The four-bit part identity at supervisor `0x287f9`** is unmodelled, so it
   reads floating bits, and six sites branch on the result.
