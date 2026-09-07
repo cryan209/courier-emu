@@ -84,21 +84,77 @@ armed. That is the right call - the point of `--exchange` is to make the
 firmware do it - but it means this path has no fallback, and the silence is the
 honest result.
 
+## Traced: why the mailbox is never polled
+
+The resident's steady-state loop is `0x80d0 -> 0x80f1 -> 0x80d0`. It reaches the
+block-level work at `0x80c8` only through one branch:
+
+```
+80d0  lar  ar0, @10
+80d1  cmpr eq          ; TC = (AR[ARP] == ARCR), and ARP is 7 here
+80d2  bcnd 80c8, tc
+```
+
+`AR7` is a circular pointer over the mailbox ring at `0x0bd0`-`0x0bde`, stepping
+by two and wrapping - measured. **`ARCR` is never initialised**, so the compare
+never matches and the block never runs. The block is where all four of these
+live:
+
+```
+80c6  call 8223
+80c8  call 839b     ; the host mailbox poll
+80ca  call 83d6
+80cc  call 847a
+80ce  call 80f8
+```
+
+Forcing `ARCR` to a value `AR7` reaches (`0x0bd0` or `0x0bde`) makes the block
+run and lifts the DSP from 103 distinct program addresses to 159. That is a
+diagnostic, not a fix - nothing on the board would write it by hand.
+
+The resident contains exactly **one** instruction that sets `ARCR`, `samm @19`
+at `0x9644`, and it is never reached. So `ARCR` has to be set by initialisation
+the DSP is not completing.
+
+## The four routines all gate on one register, and it is I/O 0x57
+
+```
+839b:  bit 15, @7d   -> bit 0    host message pending
+83d6:  bit 14, @7d   -> bit 1    (also requires @79 != @78)
+847a:  bit 13, @7d   -> bit 2    then dispatches through data 0x039e
+80f8:  and #0200     -> bit 9
+```
+
+All four read `0xff57`, which `lamm` masks to MMR `0x57` - the ASIC status
+register. **The harness models one bit of it.** `HOST_MESSAGE_PENDING` is
+`0x0001`, and bits 1, 2 and 9 are never raised by anything.
+
+That closes the loop on the initialisation problem: `0x83d6` and `0x847a` return
+immediately because their bits are clear, so whatever they would have set up -
+`ARCR` and the `@1a` task pointer among it - never happens. `@1a` stays pointing
+at `0x8139`, which is a bare `ret`, which is why the main loop dispatches to a
+no-op forever.
+
 ## What is needed, in order
 
-1. **Make the host -> DSP mailbox deliver.** The measurement to explain first is
-   87 delivered against 1 consumed. Either the resident's poll of I/O `0x51` is
-   not seeing what the bridge publishes, or the handshake the bridge models is
-   not the one the resident waits on. This is the whole blocker for `--exchange`.
-2. **Then re-measure the DAC.** With a command delivered, the datapump should
-   emit; `--dsp-tx-pcm` going non-zero is the test, and the DTMF frequencies in
-   it - interpreted at the codec's current rate, not 9600 - are the check that
-   the rate chain is right.
-3. **Then the exchange should decode digits**, which is already implemented and
+1. **Model the rest of I/O `0x57`.** Bit 0 alone is not the protocol. What bits
+   1, 2 and 9 mean, and when the ASIC raises them, is the question - `0x847a`'s
+   path through data `0x039e` and `bacc` is the one that looks like "start this
+   task", so it is the place to start.
+2. **Then `ARCR` and `@1a` should be set by the firmware itself**, not by the
+   harness, and the block-level loop starts running on its own.
+3. **Then re-measure the DAC.** `--dsp-tx-pcm` going non-zero is the test, and
+   the DTMF frequencies in it - read at the codec's current rate, not 9600 - are
+   the check that the rate chain is right.
+4. **Then the exchange should decode digits.** That code is implemented and
    already receives frames; it has only ever been handed silence.
 
-Steps 2 and 3 need no new code if step 1 is right. That is worth stating
-plainly: **the remaining work on this path is one problem, not a list.**
+Steps 2 to 4 need no new code if step 1 is right. **The remaining work on this
+path is one problem - the ASIC's status register - not a list.**
+
+This is the part [board-parts.md](board-parts.md) calls unpublished, so it will
+have to be inferred from the resident's own use of it or measured off the board
+the way the boot word was.
 
 ## Smaller things still known wrong
 
