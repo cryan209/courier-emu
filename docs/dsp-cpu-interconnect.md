@@ -190,6 +190,76 @@ The wide window at `0x40`-`0x4e` is on the **CPU** side only. Note also that
 sixteen 16-bit registers to the DSP" is too narrow - those are ordinary I/O
 addresses that happen not to alias into data space.
 
+## If the link is serial, it is the *primary* port, not the second one
+
+The natural guess - the C50 has two serial ports, one is the codec's, so the
+other is the ASIC's - does not survive the firmware. The second port cannot
+carry the interprocessor link **in either direction**.
+
+**It cannot carry CPU to DSP.** That would need the DSP to read `TRCV`, and it
+never does:
+
+* `IMR` is written exactly once, at `0x809e`, with `0x002a`. `TRNT` is bit 6 and
+  `TXNT` bit 7; neither is enabled anywhere in the 27,710-word resident, so an
+  arriving word cannot interrupt.
+* `TSPC` is touched exactly twice through MMR addressing, both at reset
+  (`samm @32` at `0x808a` and `0x808c`), and never read - so `RRDY` is never
+  polled either.
+* `TRCV` is never read through MMR addressing anywhere.
+* The one direct-addressed candidate, `lacl @30` at `0xaa4b`, is scratch on a
+  non-zero data page, and this is now checked rather than asserted: its helper
+  at `0xaa68` **writes** `@30`-`@33` (`sacl @30`, `sach @31`, `sacl @32`,
+  `sach @33`) as a 64-bit rotate. Under `DP = 0` that would be storing to
+  read-only `TRCV` and rewriting `TSPC` inside a shift loop. It is not the TDM
+  block. (The surrounding `0xaa14`-`0xaa21` is a symmetric coefficient table
+  disassembled as code.)
+
+**It does not carry DSP to CPU either.** Both senders use `OUT`, not `TDXR`:
+the mailbox at `0x83eb` writes ports `0x5e`/`0x5f`, and the stream coroutine at
+`0x84b7` writes port `0x60`.
+
+What the second port actually does is stream one way, constantly: the idle task
+at `0x81b7` packs two scaled bytes out of data `0x0302`/`0x0303` and writes
+`TDXR` every pass. Several routines re-point it at the same pair (`0xaa34`,
+`0xab50`, `0xc594`, `0xceff`), so *what* it streams is mode-dependent. That is a
+data sink, not a command channel, and its far end is still unidentified.
+
+Note also that the 'C5x's ports are **synchronous** - `CLKX`/`FSX`, not a
+start/stop UART - so nothing here would be a 16550. The ASIC end would be a
+shift register in the gate array. And on the second port the **DSP** is the
+master (`TSPC = 0x00f8`, `MCM = 1`, `TXM = 1`), so it would be clocked by the
+DSP, not by the ASIC.
+
+### Which leaves the primary port, and one pin decides it
+
+On the primary port the DSP is a **slave**: `SPC = 0x40c8`, `MCM = 0` so `CLKX`
+is an input, `TXM = 0` so `FSX` is an input. Something else drives that bus.
+
+If that something is the AC01 in stand-alone/master mode, the ASIC is not on
+the serial link at all. If the AC01 is instead in **codec/slave** mode, then it
+is not driving the clock either, and the only remaining candidate is the ASIC -
+which would make the primary serial port the CPU-to-DSP path, with the ASIC's
+words arriving at `DRR` and landing in the ring at `0x0bd0` that the main loop
+walks. That reading is consistent with the board being serial, and it would tie
+the interconnect to the `ARCR` ring gate that is the live blocker.
+
+The firmware **cannot** decide between those two, for the reason set out above:
+the role is the `M/S` **pin**, not a register bit, and free-run does not imply
+it. So this is one measurement, on an accessible package pin:
+
+> **Probe `M/S` on the TLC320AC01CFN: pin 18 of the FN (PLCC) package**
+> (datasheet terminal table, whose numbers are for the FN package; `MCLK` is
+> pin 14 and `PWR DWN` pin 2 on the same numbering).
+>
+> * **High** - the AC01 is master. It clocks the primary bus, the ASIC is not
+>   on it, and the interprocessor link is elsewhere.
+> * **Low** - the AC01 is a slave. Neither it nor the DSP drives `SCLK`/`FS`,
+>   so a third device does, and the ASIC is the only candidate on that bus.
+
+That single reading settles the retraction recorded above, decides whether the
+`0x0bd0` ring is a codec buffer or the inbound command stream, and does it
+without tracing anything.
+
 ## The physical objection, which is unanswered
 
 The count still has to work. To capture `out` to `PA14`/`PA15` and answer reads
