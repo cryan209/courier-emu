@@ -197,7 +197,54 @@ scheduler at `875c`, executes `9f3e`, `9f40` and `86d1` and leaves:
 | `0x39a` | `874f` | the oscillator, installed |
 
 So the scheduler does reach the arming, and the arming does load the answer
-tone. What is *not* shown here is the supervisor state that sets bit 0 or bit 1
-of `0x006f`; the trace stops at the four conditional callers of `afeb` and the
-two of `a320`.
+tone.
+
+### What sets the two gate bits
+
+Scanning for writes to `0x006f` needs care in both directions. `SPLK @6f` is
+DP-relative, so most apparent writers are `0x036f` or `0x03ef` at DP 6 or 7 and
+have nothing to do with this word; and the reliable ones reach it through
+`lar ar1, #6f` and an indirect `*`, which a search for `@6f` never sees at all.
+Only writes with an `LDP #000` immediately before them, or an explicit AR load,
+can be attributed here.
+
+Three sites survive that filter, and each was confirmed by executing it:
+
+| site | instruction | effect on `0x006f` |
+|---|---|---|
+| `9090` | `lar ar1, #6f` / `opl *, #0003` | **sets both**, preserving the rest |
+| `a372` | `ldp #000` / `splk @6f, #0043` | **sets both**, and bit 6, as a whole word |
+| `a337` | `ldp #000` / `splk @6f, #0040` | **clears both** |
+
+`9090` is itself a scheduler resume. Two instructions earlier the code yields -
+
+```text
+908c: lacc #0508
+908e: call 8765        ; @6e := 0x508, @6d := the return address
+9090: lar ar1, #6f     ; ...resumed 1288 frames later
+9091: opl  *, #0003
+```
+
+so the gates open on a timer, not on an event. `a372` is reached from `9f98`,
+inside the answer sequence itself, so that write re-asserts the bits rather
+than opening them the first time.
+
+Note that `9091` only works because `ARP` is 1 when it runs: `lar ar1, #6f`
+loads the register but does not select it, and with `ARP` left at 0 the `opl`
+lands on `0x0000` instead. Executing the pair with `ARP` forced to 1 turns
+`4400` into `4403`; with `ARP` at 0 the cell does not change.
+
+Several sites clear both gates by writing the word wholesale - `a338` (`#0040`)
+above, and at DP 0 also `d9cc` (`#0000`), `da31` and `da46` (`#0010`).
+
+**Unresolved.** `c583` (`xpl @6f, #0001`) and `c58f` (`xpl @6f, #0002`) toggle
+bits 0 and 1 of *something*, in a toggle-and-test shape that usually means an
+alternating-sample flag. Their nearest `LDP` is 20 and 32 words back with a
+`ret` in between, so the DP is inherited from whoever calls that routine and
+these cannot be attributed to `0x006f` by reading alone. The surrounding
+`MACD`/`MPY`/`APAC` argues they belong to a filter and not to this word, but
+that is an impression, not a measurement.
+
+What is still not shown is what decides to run `9090`'s yield in the first
+place - the trace upward stops there.
 
