@@ -18,6 +18,21 @@
   "Everything above is RAM, so a power cycle clears all of it. ATZ does not - it reloads the stored profile without re-downloading the DSP."
  ],
  "honest caveat": "This modem was never asked to dial before this session, so there is no baseline. It is not established that dialling ever worked on this unit, and the fault may predate everything here.",
- "next": "Power cycle - a cold boot re-downloads the DSP and clears every RAM change - then retry ATDT before any further probing.",
- "hardware_tested": true
+ "next": "Bypass the dialer and command the DSP to make a tone directly: the dial path is six mailbox messages (0x16 start, 0x19/0x1a/0x1b constants, 0x13 keypad index, 0x16 stop) and courier_emu.dsp_mailbox already sends that shape, confirmed on hardware in artifacts/dsp-mailbox-command-02. That isolates DSP tone generation from the dialer completely. Note docs/driving-the-tones.md is written against DSP 3.0.13 and says explicitly it should not be run as written against the board's 3.1.2.",
+ "hardware_tested": true,
+ "after power cycle (2026-09-07)": {
+  "who": "operator power cycled the unit after the first attempts",
+  "pulse": "ATDP produces audible relay clicks - the operator heard them, though was unsure the count was right",
+  "tone": "ATDT9099 with X4 and T set still produces no DTMF and no result code in 45 s",
+  "conclusion": "The DTMF failure SURVIVES a cold power cycle, so it is not caused by this session's DSP resets, kernel downloads, interrupted &T8 tests or the stray write at 0x1aab. Pulse dialling works, so the DAA, the hook relay and the dialer sequencer are fine. What does not work is tone generation, which is the DSP's job."
+ },
+ "S-registers: not the problem": {
+  "read": "ATI4 on the cold board",
+  "values": "S00=000 S01=000 S02=043 S03=013 S04=010 S05=008 S06=002 S07=060 S08=002 S09=006 S10=014 S11=070 S12=050",
+  "verdict": "All defaults. S11 - the DTMF tone duration - is 070 ms, which is normal; S6 (wait before blind dial) 2 s, S7 (wait for carrier) 60 s matching the observed timeout, S8 (comma pause) 2 s. Nothing here would suppress DTMF.",
+  "two non-S settings worth noting": {
+   "DIAL=PULSE": "the default dial method is pulse, which ATDT should override per call and evidently does not fix",
+   "X1": "extended result codes but no dial tone or busy detection, so the modem blind dials after S6 - this is why no NO DIALTONE is ever reported, and it is expected behaviour rather than a fault"
+  }
+ }
 }
