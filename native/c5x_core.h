@@ -239,6 +239,15 @@ public:
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
     uint64_t data_write_count(uint16_t address) const { return m_data_write_counts[address]; }
     const std::deque<uint32_t> &pc_trace() const { return m_pc_trace; }
+    // The trace windows. Two are compiled in for the call overlay and the
+    // low-page stub; a third is settable so a caller can watch a handler
+    // elsewhere - 3.1.2's mailbox tag 0x13 enters ee20, which neither
+    // built-in window covers.
+    void set_pc_trace_range(uint16_t first, uint16_t last)
+    {
+        m_trace_first = first;
+        m_trace_last = last;
+    }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
 
 private:
@@ -281,6 +290,7 @@ private:
     std::vector<DataEvent> m_data_events;
     std::array<uint64_t, 65536> m_data_write_counts{};
     std::deque<uint32_t> m_pc_trace;
+    uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_trace_data_writes = false;
 
     uint16_t m_pc = 0, m_op = 0;

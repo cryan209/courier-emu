@@ -375,11 +375,54 @@ That is a known divergence between the two DSP builds rather than a surprise:
 `0xd82f` in 3.0.13, while in 3.1.2 `13` enters `0xee20`. 302 carries 3.0.13 and
 the board carries 3.1.2, which is exactly the pair that differs here.
 
-The next probe is the C52's own PC trace, which currently cannot see it: the
-window in `native/c5x_core.cpp` is hardcoded to `0xc700..0xca00` and
-`0x0200..0x0300`. Widening it to cover `0xee20` says immediately whether the
-3.1.2 handler is entered at all, and that splits the remaining question in two -
-the handler never runs, or it runs and leaves the oscillator unarmed.
+### `ee20` runs, and it arms the oscillator correctly
+
+The C52's trace window used to be two hardcoded ranges. `set_pc_trace_range`
+adds a third, settable one - `--dsp-trace-range FIRST:LAST` - and pointed at
+`ee00:ef00` it catches the handler **four times in a dial, once per digit**:
+
+```text
+ee20  ldp   #007
+ee21  lamm  @7a          ; the keypad index the supervisor sent
+ee22  and   #0f          ; low nibble
+ee24  sfl                ; x2, two words per entry
+ee25  add   #ee34        ; the frequency table
+ee27  tblr  @74          ; column increment -> 3f4
+ee29  tblr  @72          ; row increment    -> 3f2
+ee2a  splk  @1a, #8743   ; the DTMF-pair callback, into 39a
+ee2e  splk  @73, #1000   ; amplitude -> 3f3
+ee31  sacl  @40 / @41    ; clear both phases
+ee33  ret
+```
+
+Every cell it touches is one [answer-tone.md](answer-tone.md) already named:
+`3f2`/`3f3`/`3c0` for the first oscillator, `3f4`/`3f5`/`3c1` for the second,
+and `39a` for the mixer's callback slot. `8743` is precisely the pair
+generator. So the handler is not the fault: it runs, per digit, and arms the
+tone the way the firmware intends.
+
+### Where it now points
+
+`--dsp-peek` reads C52 data cells at the end of a run. After a 403 dial:
+
+| cell | value | |
+|---|---|---|
+| `3f2` row increment | `2f81` | loaded |
+| `3f4` column increment | `1b61` | loaded |
+| `3f3` amplitude | `1000` | as the handler set it |
+| `3fb` | `0001` | |
+| **`39a` callback** | **`8128`** | **not the `8743` the handler wrote** |
+
+The increments survive but the callback slot does not hold the pair generator.
+`8128` is the value `audio312` puts in `39b`, the neighbouring cell.
+
+Two readings, and this measurement does not separate them: the firmware may
+restore `39a` to a silence generator once the tone's duration expires, in which
+case an end-of-run value proves nothing, or something writes `8128` one cell
+low and clobbers the callback. Settling it needs the cell sampled *while* a
+tone is running rather than after, which is a data-write trace on `39a` - the
+core already has `trace_data_writes`, so it is a matter of surfacing it the way
+`--dsp-peek` surfaces reads.
 
 ## What is not established
 

@@ -218,6 +218,8 @@ class NativeC5x:
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_set_pc_trace_range.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint]
+        lib.courier_c5x_set_pc_trace_range.restype = None
         lib.courier_c5x_get_pc_trace_count.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_pc_trace_count.restype = ctypes.c_size_t
         lib.courier_c5x_get_pc_trace.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
@@ -522,6 +524,14 @@ class NativeC5x:
                 ("address", "value", "pc", "instruction"), map(int, values), strict=True
             )))
         return result
+
+    def set_pc_trace_range(self, first: int, last: int) -> None:
+        """Also trace program addresses in [first, last].
+
+        Two windows are compiled into the core. This is the third, for a
+        handler neither covers - 3.1.2's tag 0x13 enters ee20.
+        """
+        self.library.courier_c5x_set_pc_trace_range(self.handle, first, last)
 
     def pc_trace(self) -> list[dict[str, int]]:
         count = int(self.library.courier_c5x_get_pc_trace_count(self.handle))

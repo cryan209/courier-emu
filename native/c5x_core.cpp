@@ -942,7 +942,8 @@ void C5xCore::step()
         }
         m_op = ROPCODE();
         if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
-            (previous_pc >= 0x0200 && previous_pc < 0x0300)) {
+            (previous_pc >= 0x0200 && previous_pc < 0x0300) ||
+            (previous_pc >= m_trace_first && previous_pc <= m_trace_last)) {
             if (m_pc_trace.size() >= 512) m_pc_trace.pop_front();
             m_pc_trace.push_back((uint32_t(previous_pc) << 16) | m_op);
         }

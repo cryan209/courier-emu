@@ -134,6 +134,10 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--trace-pc", entry))
     for entry in args.peek:
         command.extend(("--peek", entry))
+    if args.dsp_trace_range:
+        command.extend(("--dsp-trace-range", args.dsp_trace_range))
+    for entry in args.dsp_peek:
+        command.extend(("--dsp-peek", entry))
     if args.real_delays:
         command.append("--real-delays")
     if (
@@ -469,6 +473,20 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ADDR[=NAME]",
         help="report this byte cell's final value, hex, repeatable. The board's "
         "own ATGLK2 reads the same addresses, so the two compare directly",
+    )
+    run.add_argument(
+        "--dsp-trace-range",
+        default="",
+        metavar="FIRST:LAST",
+        help="also trace C52 program addresses in this range, hex. Two windows "
+        "are compiled in; this is a third, for a handler neither covers",
+    )
+    run.add_argument(
+        "--dsp-peek",
+        action="append",
+        default=[],
+        metavar="ADDR[=NAME]",
+        help="report this C52 data cell at the end of the run, hex, repeatable",
     )
     run.add_argument(
         "--libunicorn",

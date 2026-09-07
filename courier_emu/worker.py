@@ -37,6 +37,19 @@ def _pc_watch(entries: list[str]) -> dict[int, str]:
     return watch
 
 
+def _trace_range(value: str) -> tuple[int, int] | None:
+    """Parse --dsp-trace-range FIRST:LAST, hex C52 program addresses."""
+    if not value:
+        return None
+    first, separator, last = value.partition(":")
+    if not separator:
+        raise SystemExit("--dsp-trace-range wants FIRST:LAST")
+    try:
+        return int(first, 16), int(last, 16)
+    except ValueError:
+        raise SystemExit(f"invalid --dsp-trace-range: {value!r}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
@@ -46,6 +59,8 @@ def main() -> int:
     parser.add_argument("--uart-port", action="append", type=_number, default=[])
     parser.add_argument("--trace-pc", action="append", default=[])
     parser.add_argument("--peek", action="append", default=[])
+    parser.add_argument("--dsp-trace-range", default="")
+    parser.add_argument("--dsp-peek", action="append", default=[])
     parser.add_argument("--real-delays", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
@@ -185,6 +200,8 @@ def main() -> int:
         uart_ports=set(args.uart_port),
         pc_watch=_pc_watch(args.trace_pc),
         peek=_pc_watch(args.peek),
+        dsp_trace_range=_trace_range(args.dsp_trace_range),
+        dsp_peek=_pc_watch(args.dsp_peek),
         fast_delays=not args.real_delays,
         with_dsp=args.with_dsp,
         dsp_rx_samples=dsp_rx_samples,

@@ -288,6 +288,7 @@ class BridgeStatus:
     line: dict[str, Any] | None = None
     codec: dict[str, Any] | None = None
     exchange: dict[str, Any] | None = None
+    dsp_cells: dict[str, str] | None = None
 
 
 class CourierDspBridge:
@@ -305,6 +306,8 @@ class CourierDspBridge:
         codec: CodecBringUp | None = None,
         ring: RingSource | None = None,
         exchange: LineExchange | None = None,
+        dsp_trace_range: tuple[int, int] | None = None,
+        dsp_peek: dict[int, str] | None = None,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -335,6 +338,11 @@ class CourierDspBridge:
         self.core = NativeC5x(image)
         self._configure_boot_rom()
         self._configure_frame_interrupt()
+        if dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
+            # A third C52 trace window, for a handler the two compiled-in
+            # ranges do not cover.
+            self.core.set_pc_trace_range(*dsp_trace_range)
+        self.dsp_peek = dict(dsp_peek or {})
         self._call_overlay = self._find_call_overlay()
         self._call_overlay_active = False
         self._call_resume_pending = False
@@ -1940,6 +1948,10 @@ class CourierDspBridge:
                 if hasattr(self.core, "io_events") else []
             ),
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
+            dsp_cells={
+                name: f"{self.core.data(address):04x}"
+                for address, name in self.dsp_peek.items()
+            } if self.dsp_peek and hasattr(self.core, "data") else {},
             dsp_data_events=(
                 [event for event in self.core.data_events()
                  if (event["address"] in (0x006f, 0x0304, 0x0306, 0x0308, 0x030a, 0x030c, 0x039f, 0x03c8, 0x03ca, 0x035c, 0x069c, 0x0b49)

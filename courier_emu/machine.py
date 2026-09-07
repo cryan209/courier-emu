@@ -264,6 +264,8 @@ class CourierMachine:
         dsp_batch: int = 256,
         pc_watch: dict[int, str] | None = None,
         peek: dict[int, str] | None = None,
+        dsp_trace_range: tuple[int, int] | None = None,
+        dsp_peek: dict[int, str] | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -302,6 +304,7 @@ class CourierMachine:
         # reads the same addresses off hardware, so the two can be compared
         # directly instead of inferred from behaviour.
         self.peek = dict(peek or {})
+        self.dsp_trace_range = dsp_trace_range
         self.pc_watch_events: list[dict[str, Any]] = []
         self.pc_watch_counts: Counter[str] = Counter()
         self.max_io_events = max_io_events
@@ -405,6 +408,8 @@ class CourierMachine:
                 ring=ring,
                 exchange=exchange,
                 batch=dsp_batch,
+                dsp_trace_range=dsp_trace_range,
+                dsp_peek=dsp_peek,
             )
             if with_dsp
             else None
