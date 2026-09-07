@@ -1,0 +1,23 @@
+{
+ "what": "Full re-read of the board's flash, compared against the stored capture",
+ "why": "The modem stopped producing DTMF and the fault survived a power cycle, which raised the question of whether this session had written flash.",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "method": "2048 ATGLK2=<seg>:<off> page dumps covering 0x80000-0xfffff, 707 s, parsed and compared byte for byte",
+ "result": {
+  "pages": 2048,
+  "mismatched": 0,
+  "unreadable": 0,
+  "sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "identical_to": "artifacts/courier-board-21210-capture-403/courier-board.rom"
+ },
+ "conclusion": "Flash is byte-identical to the earlier capture. Nothing in this session wrote it.",
+ "why it could not have happened": [
+  "The ATGLK2W primitive is `mov [bx], ax` with DS=0. BX is 16 bits, so it can only address 0x0000-0xffff - low RAM and the peripheral control block at 0xff00. Flash at 0x80000+ is not reachable by that command at all.",
+  "Flash programming needs an unlock/command sequence, which nothing sent here issues.",
+  "The probe kernels only did IN/OUT on named ports and wrote inside their own RAM region; emit_ram_writes.py refuses to emit anything touching ports 0x10/0x12/0x14."
+ ],
+ "NVRAM, the other non-volatile store": "Not directly verified, but settings live in a serial EEPROM bit-banged on P1 with the strobe on port 0x10, and none of those was ever written. ATI4 on the cold board showed every S-register at its documented default, which is what intact NVRAM looks like.",
+ "so the DTMF fault is": "not something this session wrote - it is pre-existing on this unit, or in the DSP tone path the supervisor drives at runtime",
+ "hardware_tested": true
+}
