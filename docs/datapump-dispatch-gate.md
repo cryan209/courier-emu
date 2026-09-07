@@ -748,6 +748,47 @@ address read off the 302 disassembly and applied to a 403 run. `29a` against
 `194`, and before that the cell addresses in the hardware comparison. On this
 pair of images an address is only meaningful with its image named.
 
+### Where the 403 zero comes from
+
+The gain is not computed. It is read straight out of two RAM cells:
+
+```text
+a0ab1   mov bx, word ptr [0x0cd9]   ; mov ax, 001a ; lcall 8f46:01e4
+a0ac4   mov bx, word ptr [0x0cdb]   ; mov ax, 001b ; lcall 8f46:01e4
+```
+
+Traced across a dial, each fires exactly once, with `bx = 0000`, and
+`--peek` reads both cells as zero. The far call goes through the thunk at
+`8f644`, whose `CS` is `8f46` - which is why the caller's return address only
+resolves with that segment, not the `8000` the rest of the supervisor runs in.
+
+**Nothing in the image writes either cell by absolute address.** The only two
+references are those reads. The neighbouring cells in the same block *are*
+populated - `[0xca7]` is `55` and `[0xcf9]` is `32`, and `0x8bfc9` sends that
+`32` as tag `001f` - and they are filled by the byte copy at `a0907`, which
+walks a CS-relative table selected by `[0x0c9e]`:
+
+```text
+a0907  mov di, 0ca7
+       mov bx, [0c9e]          ; 0d40 in this run, with CS 9efe
+       mov al, byte ptr cs:[bx]
+       mov byte ptr [di], al
+```
+
+So the source table is at physical `9fd20`, and the copy runs twice. But
+watching every write into `0cd8..0cdc` across the run shows it never touches
+them: the only writers are `fd229` at boot, `804c6` clearing the region, and
+`80822`/`80828` writing `5555`/`aaaa`, which is a RAM test. `0cd9` and `0cdb`
+sit past the end of what the copy fills, and nothing else fills them.
+
+That is as far as static reading goes. The question it leaves is whether those
+cells are also zero on the hardware - in which case 7.4.16 does something else
+entirely for the transmit level and this whole path is a red herring - or
+whether a real boot puts something there that this emulator does not. The board
+runs this exact image, so `ATGLK2=0000:0cd9` answers it directly. It was
+unplugged when this was written; that read is the next step and needs nothing
+else.
+
 ## What is not established
 
 Which command sets those flags, and what writes them on a real boot. The
