@@ -7,9 +7,11 @@ been steering the debugging in the wrong direction.
 
 **The short version.** A *logical* path is proven: on the live board a kernel
 running on the DSP wrote its I/O ports `0x5e`/`0x5f` and 2048 words arrived at
-the 80186. What is **not** established is the *physical* arrangement that
-carries it, and a board inspection is in tension with the obvious reading. See
-"The physical objection" below, which is currently unanswered.
+the 80186. The *physical* arrangement that carries it is now
+probably the obvious one: a board observation puts the ASIC on the DSP's 16
+data pins, which withdraws the inspection that was in tension with it. What
+remains open is whether the ASIC decodes the I/O cycle or merely watches the
+memory bus, and one pin decides that. See "The physical objection" below.
 
 ## The proven part
 
@@ -260,7 +262,7 @@ That single reading settles the retraction recorded above, decides whether the
 `0x0bd0` ring is a codec buffer or the inbound command stream, and does it
 without tracing anything.
 
-## The physical objection, which is unanswered
+## The physical objection, and the observation that answers it
 
 The count still has to work. To capture `out` to `PA14`/`PA15` and answer reads
 of `PA7`, the ASIC needs the DSP's **16 data lines**, enough address to
@@ -294,6 +296,45 @@ mailbox are not mutually exclusive.
 **The decider is cheap and does not need the emulator:** run the I/O-alias
 probe on the board, or put a meter on the ASIC's pins against the DSP's data
 bus and `IS`.
+
+### The data bus does reach the ASIC (2026-09-07)
+
+A board observation reports the DSP connected to the ASIC across its **16 data
+pins**. That chooses **reading 1** over the serial hypothesis, and it does so
+by removing the premise the serial reading rested on: the earlier inspection
+saw traces going only to the two `CY7C199`s, and that is what "the mailbox
+cannot be parallel" was built from. If the ASIC is on the data bus, nothing in
+this document needs a serial medium any more.
+
+The shape fits. The SRAMs split the bus `D0`-`D7` / `D8`-`D15` - see
+[dsp-map-302.md](dsp-map-302.md) on the 32Kx8 parts - so a device on all
+sixteen is not hanging off one RAM, it is on the DSP's bus proper, which is
+exactly the "between or beside the DSP and its RAMs" arrangement reading 1
+predicts.
+
+**Two things this does not do.**
+
+* **It does not separate reading 1 from reading 2.** Both put the ASIC on the
+  same sixteen wires. In reading 1 the ASIC decodes the I/O cycle; in reading 2
+  it is only watching the memory bus and an `out` lands in RAM it can already
+  read. The data pins are common to both, so they cannot choose between them.
+  The discriminator is unchanged and is a single pin: **`IS`, pin 90** - see
+  [dsp-pin-probes.md](dsp-pin-probes.md). `IS` at the ASIC means it decodes
+  `OUT`, and `PA0`-`PA15` are ASIC registers; `IS` going nowhere near it means
+  the alias reading, and the mailbox needs no I/O-specific wiring at all.
+* **It is not yet anchored to numbered pins.** This repository has no
+  `D0`-`D15` pin numbers from SPRU056D Table A-4; every other pin claim here is
+  anchored, and this one is not. Anchor it before treating it as established -
+  the same caution that the M/S pin numbering needed.
+
+And the method carries the same caveat as the inspection it overturns: seen
+from above, a net that passes near the ASIC and a net that lands on it look
+alike. Continuity to the ASIC's pins is the reading that counts, in both
+directions.
+
+**Follow-up meter readings, cheapest first:** `IS` (90) to the ASIC; then
+enough address lines to separate the ports (~4); then `R/W` (92) and `STRB`
+(93). Neighbours for orientation on that edge: `DS` 89, `PS` 91.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 
