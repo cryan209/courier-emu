@@ -89,6 +89,11 @@ transmits 1440 words, and the result is simply the wrong signal.
 * **Not the supervisor's decision to send it.** `9f40` is reached from a state
   machine this harness does not run; what it renders is the generator, armed
   the way that site arms it.
+
+  *Closed on the other image, 2026-09-08.* `ATA` on `IDSDL302.ROM` (DSP 3.0.13)
+  emits ANSam in the full emulator, supervisor and all - see
+  [ata-answer-tone-302.md](ata-answer-tone-302.md). That does not locate 3.1.2's
+  path to `9f40`; the two builds share no addresses here.
 * **ANSam renders too.** *Corrected.* This section used to say the `8712` and
   `8716` variants could not be rendered, and blamed missing delay-line state.
   The real cause was a bug in this repository's C5x core: `MADD` and `MADS`

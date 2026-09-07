@@ -1,0 +1,45 @@
+{
+ "what": "What DSP 3.0.13 puts on the line for ATA, generated inside the emulator by the C52 firmware",
+ "date": "2026-09-08",
+ "image": "IDSDL302.ROM (supervisor + DSP 3.0.13, 20.16 MHz), booted through the captured on-chip ROM",
+ "command": "./courier run IDSDL302.ROM --with-dsp --exchange --ring --ring-start 500 --at ATA --nvram-fixture idsdl302 --tick-ms 10 --instructions 120000000 --dsp-tx-pcm line-tx.s16le --summary",
+ "sample_rate": 7200,
+ "sample_rate_basis": "the DSP's dial-path codec rate (docs/codec-rate-312.md), the same basis as artifacts/dtmf-emulator-302-01",
+ "samples": 52709,
+ "seconds": 7.321,
+ "peak": 11516,
+ "sha256_s16le": "93d9247be5e8777b22650e36d451033ed47adb3be331b9f6bf0b8c2fbdf49e7c",
+ "bursts": [
+  {
+   "start_s": 2.49,
+   "length_s": 3.29,
+   "carrier_hz": 2101.15,
+   "sideband_ratio": {
+    "2071.05": 0.0115,
+    "2086.10": 0.11,
+    "2116.20": 0.0891,
+    "2131.25": 0.0184
+   },
+   "identification": "V.8 ANSam: 2100 Hz answer tone with 15.05 Hz amplitude modulation",
+   "basis": "carrier measured 2101.15 Hz here and 2098.90 Hz in the --exchange-hotline run, i.e. within 1.2 Hz of 2100 either way; the AM sidebands pull a finite-window peak search slightly, so treat the carrier as 2100 +/- 1.5 Hz rather than the printed decimals. First-order sidebands at +/-15.05 Hz near 10%, second-order near 1%; matches the 3.1.2 firmware-rendered ANSam in artifacts/answer-tone-01 (0.101/0.100)"
+  },
+  {
+   "start_s": 5.83,
+   "length_s": 1.49,
+   "carrier_hz": 2250.0,
+   "sideband_ratio": {
+    "2234.95": 0.0141,
+    "2265.05": 0.014
+   },
+   "identification": "consistent with V.22/V.22bis unscrambled binary 1 (channel 2 carrier 2400 Hz less 150 Hz)",
+   "basis": "measured 2250.00 Hz with no modulation sidebands. This is a match against the standard, NOT a firmware attribution: the 3.0.13 code that arms it has not been located"
+  }
+ ],
+ "reproduced": "the same sequence appears with --exchange-hotline in place of --ring, at the same onsets, durations and levels; the 2250 Hz burst is byte-identical between the two runs",
+ "hardware_tested": false,
+ "caveats": [
+  "The harness tone generator was deleted before these runs (commit 797ed28), so only the C52 program could have produced these samples; the codec, ASIC transport and line remain models.",
+  "Neither run is a true exchange-side answer. The CLI's --ring drives the ring detector at port 0x14 but never puts LineExchange into 'ringing' - only the SIP inbound path calls exchange.ring() - so bridge.set_line_hook labels the seizure 'originate'. The supervisor obeyed ATA and armed these tones regardless.",
+  "The 3.0.13 oscillator addresses are unlocated. The 3.1.2 answer-tone family (874f/8739/8712, docs/answer-tone.md) does not transplant: none of those addresses hold the same words in this image."
+ ]
+}
