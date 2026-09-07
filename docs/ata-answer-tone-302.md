@@ -157,6 +157,59 @@ What this does not establish is whether a real Courier with this NVRAM would
 also stop after two rungs. The gates are clear in the emulator; whether the
 fixture is faithful on this point is untested.
 
+## Where Bell 103 lives, and why it never sounds
+
+The FSK tones are not part of the answer ladder at all. They belong to the
+**datapump modulation chooser**, which is a separate consumer of the same two
+capability words.
+
+`d79c`-`d7ee` is six configuration routines. In these, `@72` and `@73` are an
+FSK **mark/space pair**, not the oscillator's increment and amplitude:
+
+| routine | `@73` | `@72` | pair |
+|---|---|---|---|
+| `d7a7` | 1170 Hz | 980 Hz | V.21 channel 1 |
+| `d7b1` | 1070 Hz | 1270 Hz | Bell 103 originate |
+| `d7cb` | 1850 Hz | 1650 Hz | V.21 channel 2 |
+| `d7d5` | 2025 Hz | 2225 Hz | Bell 103 answer |
+
+That also settles what 2025 Hz is: Bell 103 answer **space**, paired with the
+2225 Hz mark - not the standalone tone an earlier pass guessed at.
+
+`d7ef`-`d829` dispatches to those pairs, and is reached like this:
+
+```text
+9b58: splk @7c, #9b6c      ; table base: originate
+9b5c: splk @7c, #9b75      ; table base: answer
+9b62: call 9b7e            ; the selector
+9b68: add  @7c
+9b69: tblr @7d
+9b6b: bacc                 ; jump to table[base + index]
+```
+
+`9b7e` is a **priority selector**, not a ladder. It tests nine capability bits
+and returns the index of the *first* one set:
+
+| idx | gate | originate (`9b6c`) | answer (`9b75`) |
+|---|---|---|---|
+| 0 | `@27` bit 1 | `9d00` | `9d00` |
+| 7 | `@27` bit 12 | V.21 ch1 | V.21 ch2 |
+| 8 | `@26` bit 6 | Bell 103 orig | Bell 103 answer |
+
+**Bell 103 is not disabled - it is outranked.** At runtime `@26 = 0x715d` and
+`@27 = 0x001b`, so index 8's own gate (`@26` bit 6) is *set*, but index 0's
+gate is set too and the selector returns there first. Index 8 is never reached.
+
+This corrects an earlier reading in this repository's history that treated "the
+gates are clear" as the explanation for the missing Bell tones. Two different
+mechanisms read `@26`/`@27`: the `a040`-`a0af` answer-tone ladder, and this
+modulation chooser. They are not the same gates and not the same question.
+
+It also places the FSK block correctly. Bell 103's tones belong to the
+modulation the modem *commits* to, not to enticement - so they appear only once
+negotiation has failed far enough to clear the higher-priority bits, which no
+run so far reaches.
+
 ## It is the ATA handler, not the scenario
 
 The sequence reproduces across two different line models - `--exchange-hotline`
