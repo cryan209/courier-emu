@@ -90,7 +90,8 @@ transmits 1440 words, and the result is simply the wrong signal.
   machine this harness does not run; what it renders is the generator, armed
   the way that site arms it.
 
-  *Closed on the other image, 2026-09-08.* `ATA` on `IDSDL302.ROM` (DSP 3.0.13)
+  *Closed on this image too, 2026-09-08.* The path is traced in
+  [the section below](#the-path-to-9f40). *Also closed on the other image.* `ATA` on `IDSDL302.ROM` (DSP 3.0.13)
   emits ANSam in the full emulator, supervisor and all, from its own analogue of
   this site at `0x9f62` - and follows it with a 2250 Hz tone armed at `0xd354`.
   See [ata-answer-tone-302.md](ata-answer-tone-302.md), which also maps 3.0.13's
@@ -118,3 +119,85 @@ transmits 1440 words, and the result is simply the wrong signal.
   shows `AT&T8` reaching **548 addresses a bare `AT` never reaches**, in some
   thirty regions of the supervisor. The handler runs. What has not been shown
   is that it reaches the datapump within the window observed.
+
+## The path to `9f40`
+
+`9f40` is never branched to. It is reached by falling into it, from a state the
+scheduler dispatches.
+
+### The scheduler
+
+`875c` is a one-shot state machine driven from the idle path (`9f0d: call
+875c`). Two memory-mapped cells drive it - `0x006e`, a frame countdown, and
+`0x006d`, the address of the state to run when that countdown expires:
+
+```text
+875c: lamm @6e        ; the countdown
+875d: bcnd 8762, eq
+875f: sub  #01
+8760: samm @6e
+8761: retc neq        ; still waiting
+8762: lamm @6d        ; the state vector
+8763: retc eq         ; nothing armed
+8764: bacc            ; branch into the state
+8765: samm @6e        ; (entry point) arm the countdown
+8766: pop
+8767: samm @6d        ; (entry point) arm the state
+```
+
+### What arms the answer-tone state
+
+Two sites write `9f3e` into that vector, and each is gated on a bit of the
+flags word at data `0x006f`:
+
+```text
+afeb  lar ar1, #6f              reached by conditional call from
+      ...                       b0e7, b233, b5a1 and b5ca
+afff  bcnd 9e09, tc             gate: bit 0 of 0x006f
+9e0a  splk @6d, #9f3e           @26 = 4000, @27 = 0008
+
+a320  countdown at 0x031a       called from aaa2 and ab7e
+a327  bit 14, *                 gate: bit 1 of 0x006f
+a32c  call 8140                 sets the codec sample rate first
+a32e  b 9e13
+9e14  splk @6d, #9f3e           @26 = 4010, @27 = 0000
+```
+
+Note `bit 14` is a bit *code*, not a bit number: the C5x tests bit `15 - code`
+(the core evaluates `(~op >> 8) & 0xf`), so `bit 14` reads bit 1 and `bit 15`
+reads bit 0. The disassembler prints the raw code.
+
+That path B calls `8140` on the way is a small corroboration of
+[codec-rate-312.md](codec-rate-312.md): the sample rate is programmed
+immediately before the tone that assumes it.
+
+### Into the tone
+
+```text
+9f3a: lacc @2b ; sub #01 ; sacl @2b ; retc gt    the timer variant
+9f3e: call a092                                  falls through
+9f40: lacc #4aab ; call 86d1                     the arming
+```
+
+`9f3a` is the same state with a countdown in front, entered from `9f12`,
+`9f20`, `9f28` and `9f33`; the stubs at `9f11` and `9f15` that dispatch to them
+are themselves armed at `9e1d` and `9e21`.
+
+### Confirmed by running it
+
+Rather than a full boot - which this image does not currently reach, for
+reasons unrelated to this path - the last two links were confirmed directly.
+Seeding `0x006d` with `9f3e` and `0x006e` with zero, then entering the
+scheduler at `875c`, executes `9f3e`, `9f40` and `86d1` and leaves:
+
+| cell | value | |
+|---|---|---|
+| `0x3f2` | `4aab` | 2100.04 Hz at 7200 |
+| `0x3f3` | `0898` | `86d1`'s own amplitude literal |
+| `0x39a` | `874f` | the oscillator, installed |
+
+So the scheduler does reach the arming, and the arming does load the answer
+tone. What is *not* shown here is the supervisor state that sets bit 0 or bit 1
+of `0x006f`; the trace stops at the four conditional callers of `afeb` and the
+two of `a320`.
+

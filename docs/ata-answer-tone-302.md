@@ -136,7 +136,10 @@ with a paired instance, or an exchange the CLI can ring directly.
 * **Not hardware.** The codec, ASIC transport and line are models. No board was
   measured.
 * **Not a located caller for every path.** The oscillators and their arming
-  sites are located above; what reaches `0x9ffc` and `0x9f62` in the
-  supervisor's answer sequence is followed only as far as the state timer.
+  sites are located above; what reaches `0x9ffc` and `0x9f62` in this image is
+  followed only as far as the state timer. The equivalent walk *has* been done
+  on 3.1.2 - see [the path to `9f40`](answer-tone.md#the-path-to-9f40), which
+  finds the same one-shot scheduler (`@6d` the state vector, `@6e` the
+  countdown) that 3.0.13 runs at `8767`.
 * **Not a completed handshake.** Two tones went out. Nothing here shows a
   far end answering them or a carrier training.
