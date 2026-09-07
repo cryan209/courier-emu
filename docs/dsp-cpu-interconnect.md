@@ -7,11 +7,12 @@ been steering the debugging in the wrong direction.
 
 **The short version.** A *logical* path is proven: on the live board a kernel
 running on the DSP wrote its I/O ports `0x5e`/`0x5f` and 2048 words arrived at
-the 80186. The *physical* arrangement that carries it is now
-probably the obvious one: a board observation puts the ASIC on the DSP's 16
-data pins, which withdraws the inspection that was in tension with it. What
-remains open is whether the ASIC decodes the I/O cycle or merely watches the
-memory bus, and one pin decides that. See "The physical objection" below.
+the 80186. The *physical* arrangement is now settled too, and it
+is the obvious one: the ASIC is on the DSP's 16 data pins, and `IS` - the
+I/O-space strobe, which nothing but an `IN`, an `OUT` or a `PA0`-`PA15` access
+asserts - is connected to it. So the ASIC decodes the DSP's I/O cycles across
+the bus the SRAMs already sit on, and the serial reading is retired. See "The
+physical objection, resolved" below.
 
 ## The proven part
 
@@ -262,7 +263,7 @@ That single reading settles the retraction recorded above, decides whether the
 `0x0bd0` ring is a codec buffer or the inbound command stream, and does it
 without tracing anything.
 
-## The physical objection, and the observation that answers it
+## The physical objection, resolved
 
 The count still has to work. To capture `out` to `PA14`/`PA15` and answer reads
 of `PA7`, the ASIC needs the DSP's **16 data lines**, enough address to
@@ -335,6 +336,57 @@ directions.
 **Follow-up meter readings, cheapest first:** `IS` (90) to the ASIC; then
 enough address lines to separate the ports (~4); then `R/W` (92) and `STRB`
 (93). Neighbours for orientation on that edge: `DS` 89, `PS` 91.
+
+### `IS` is connected to the ASIC (2026-09-07)
+
+A meter on **pin 90** reports continuity to the ASIC. That closes the question
+this document has carried through three revisions.
+
+`IS` has exactly one purpose. SPRU056D Table A-8 gives `DS`, `PS` and `IS` as
+three space-select strobes sharing one address/data bus, each "always high
+unless low level is asserted for communicating to a particular external space",
+and the SRAMs need only `DS` and `PS`. So `IS` goes low for an `IN`, an `OUT`,
+or an access to `PA0`-`PA15`, and nothing else. A device wired to it is wired
+to it in order to decode the DSP's I/O cycles; there is no other reason for
+that net to exist.
+
+**So reading 1 is correct.** The ASIC sits on the nets that run from the DSP to
+its two `CY7C199`s, qualified by `IS`, and `PA0`-`PA15` are real ASIC
+registers. `out @7d, 0x5e` is a parallel write into a hardware register on the
+gate array, and the poll of `PA7` is a parallel read back out of one.
+
+**What that retires:**
+
+* **The serial medium.** Not merely unsupported now - unnecessary. Every
+  statement in this document hedged as "nothing in the firmware contradicts a
+  serial link" can be dropped rather than defended.
+* **Reading 2, the RAM alias.** Its whole appeal was that it needed no
+  I/O-specific wiring. There is I/O-specific wiring. `build_io_alias_probe` in
+  `courier_emu/dsp_probe.py` no longer has a question to answer - it is still
+  unwired and unrun, and can stay that way.
+* **Reading 3, the return path being other than what the kernel's code says.**
+  It was already the least likely, and it was only ever needed to explain how
+  three `out` instructions reached the CPU if the bus did not carry them.
+
+**What it does not settle**, and these are now the open ones:
+
+* **How much address the ASIC has.** `A0`-`A3` (55-58) are the minimum to
+  separate `PA7` from `PA14` from `PA15`. The firmware plainly distinguishes
+  them, so the lines are presumably there, but that is inference from software,
+  not a reading.
+* **Whether the ASIC also answers `DS`.** `artifacts/dsp-boot-word-01/` has the
+  ASIC presenting `0x0083` at DSP **data** `0xffff`, which is a `DS` cycle, not
+  an `IS` one. With the gate array confirmed on the bus that reading is easier
+  to believe than it was - but an SRAM with `/CE` tied low would answer the
+  same cycle, so it is not yet the ASIC's word for certain. See
+  [dsp-map-302.md](dsp-map-302.md) on what drives the RAMs' chip selects.
+
+**No emulator change follows.** The harness never simulated traces; it
+simulates what `out @7c, 0x5e` does on one side and what `in al, 0x5c` returns
+on the other, and that programming model was already right. This settles the
+board documentation, as the section above said it would. The blocker on
+CPU-DSP comms remains the mailbox poll rate - see
+[what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 

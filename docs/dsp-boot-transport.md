@@ -11,11 +11,18 @@
 > that it "decodes to exactly the download destination" is weak, because *any*
 > value `0x80`-`0x83` yields entry `0x8000`. Only the low two bits carry content.
 >
-> **A board inspection says the ASIC-to-DSP link is serial and that the program
-> is loaded by serial download.** That points at the serial loader below, which
-> would make the harness's existing `host_write(0xFFFF, 4)` correct and this
-> runtime read a red herring. The reset-time value remains unmeasured, and until
-> it is, the serial download is the better-supported reading.
+> **The board inspection that argued for a serial download is withdrawn.** It
+> said the ASIC-to-DSP link was serial; the board says otherwise - the ASIC is
+> on the DSP's 16 data pins and `IS` is connected to it, so the link is
+> parallel. See
+> [dsp-cpu-interconnect.md](dsp-cpu-interconnect.md). That removes the support
+> for preferring the serial loader, but it does **not** promote the parallel
+> one: the runtime read above is still a runtime read, and the reset-time value
+> at data `0xffff` remains unmeasured. The harness's `host_write(0xFFFF, 4)` is
+> now an unsupported choice rather than a corroborated one.
+>
+> Note also that a `0xffff` read is a `DS` cycle, so the ASIC answering it is a
+> separate question from the `IS` decode that is now established.
 >
 > The two loaders and the argument for the parallel one are kept below because
 > the loaders are real and the reasoning is what led to the measurement - but

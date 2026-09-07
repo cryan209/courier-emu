@@ -176,8 +176,17 @@ address's 9 MSBs to zero, which is why `lamm *` with AR1 = `0xff57` lands on
 So every DSP-side address this repository has been calling "the ASIC window" -
 `0x50`, `0x51`, `0x52`, `0x54`, `0x57`, `0x5e`, `0x5f` - is one of sixteen I/O
 ports, and **the ASIC is the device on the other side of them**. That is the
-cleanest statement of the interface yet: the ASIC presents at most sixteen
-16-bit registers to the DSP.
+cleanest statement of the interface yet - with one correction below: the ASIC
+presents sixteen 16-bit registers to the DSP at `PA0`-`PA15`.
+
+**"At most sixteen" is too narrow.** The DSP also writes ports `0x60` (the
+stream sender at `0x84b7`) and `0x68`-`0x6c` (at reset and in the ISR region),
+which are outside `0x50`-`0x5f` and so are ordinary I/O addresses that do not
+alias into data space. They are `IS`-qualified cycles like any other, and `IS`
+is now measured as connected to the ASIC
+([dsp-cpu-interconnect.md](dsp-cpu-interconnect.md)), so the gate array decodes
+those too. Its DSP-side register file is larger than `PA0`-`PA15`; how much
+larger depends on how much address it has, which is unmeasured.
 
 Known use so far:
 
