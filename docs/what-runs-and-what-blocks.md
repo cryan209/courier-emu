@@ -209,11 +209,12 @@ runs. Both have to be right.
 
 ### Two things to settle next
 
-1. **Which bits of PA7 the host owns and which the DSP sets.** The low-byte
-   split above is a guess that follows from `0x1c` being a byte port; the
-   bridge's existing `DSP_STREAM_READY` / `DSP_SEND_COMPLETE` constants say the
-   upper bits are the DSP's. Confirming that from the supervisor's own writes
-   is static analysis on an image already here.
+1. **~~Which bits of PA7 the host owns~~ - partly answered.** The ROM dump is a
+   hardware-verified round trip through this mailbox, and it pins the port
+   mapping and the polarity of bit 1. See
+   [mailbox-from-the-rom-dump.md](mailbox-from-the-rom-dump.md). It covers the
+   DSP -> host direction only, so bit 0 - the host -> DSP "message pending" the
+   dispatcher polls - is still inferred.
 2. **What sets `ARCR`.** `samm @19` at `0x9644` is the only writer and is
    reached from the block it gates. Either something outside the block sets it -
    which nothing found so far does - or the DSP arrives at the resident with it

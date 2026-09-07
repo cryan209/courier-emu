@@ -1407,11 +1407,15 @@ class CourierDspBridge:
 
     def _mirror_port(self, port: int, value: int) -> None:
         if port == 0x1C:
-            # 0x1c is a byte port and PA7 carries bits the DSP sets itself
-            # (send-complete, stream-ready), so the host owns the low byte
-            # only. Writing the whole word clobbers the other side's half.
-            current = self.core.io(0x57) & 0xFF00
-            self.core.set_io(0x57, current | (value & 0xFF))
+            # The host's writes to 0x1c are acknowledgements, and an ack
+            # *frees* the window the DSP is waiting on - so they set bits in
+            # PA7 rather than replacing it. The ROM dump proves the direction
+            # on hardware: the DSP spins on PA7 bit 1, deposits tag and data,
+            # then writes 2 to PA7 (which clears bit 1); the 80186 spins on
+            # 0x1c bit 1, reads the pair, and writes 2 to 0x1c. Both wait for
+            # the bit *set*, so it is one flag read with opposite sense from
+            # each side, not a shared word to copy.
+            self.core.set_io(0x57, self.core.io(0x57) | (value & 0xFF))
             return
         target = self.MIRROR.get(port)
         if target is None:
