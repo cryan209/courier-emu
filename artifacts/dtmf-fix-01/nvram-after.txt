@@ -1,0 +1,24 @@
+========== ATI5 (NVRAM) AFTER &W ==========
+ATI5
+USRobotics Courier V.Everything NVRAM Settings...
+
+   BAUD=115200  PARITY=N  WORDLEN=8  DIAL=TONE 
+
+   B0   F1   M1   X7   &A3  &B1  &G2  &H1  &I0  &K1
+   &L0  &M4  &N0  &P1  &R2  &S0  &T5  &U0  &X2  &Y1  %N6
+
+   S00=001  S02=043  S03=013  S04=010  S05=008  S06=002  S07=060  S08=002
+   S09=006  S10=014  S11=070  S12=050  S13=000  S15=000  S19=030  S21=010
+   S22=017  S23=019  S24=150  S25=005  S26=001  S27=048  S28=008  S29=020
+   S31=000  S32=009  S33=000  S34=000  S35=000  S36=000  S37=000  S38=000
+   S39=000  S40=000  S41=000  S42=126  S43=200  S44=015  S51=000  S53=000
+   S54=064  S55=000  S56=000  S57=224  S58=064  S59=000  S60=000  S61=000
+   S69=000
+   STORED PHONE NUMBERS
+0:                                      1:                                      
+2:                                      3:                                      
+4:                                      5:                                      
+   STORED COMMAND = 
+
+OK
+

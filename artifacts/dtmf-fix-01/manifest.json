@@ -1,0 +1,18 @@
+{
+ "what": "Fixing the DTMF fault and persisting it, without losing the operator's stored profile",
+ "board": "20.16 MHz Courier V.Everything, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+ "date": "2026-09-07",
+ "root cause": "ID_SDL v4.03's manual (IDSDL403.TXT line 30) requires AT&F1, AT+SF, AT&W after flashing, or Dialtone/Busy handling will not work. That was never done on this unit, so the extended registers were all zero - including +S24 and +S26, the DTMF transmit levels for the first and second frequencies (documented 13000 and 3080). The modem generated its dial tones at zero amplitude.",
+ "confirmed by the operator": "DTMF was audible on the line after AT+SF. The absent CONNECT is not a fault: 9099 is an Asterisk echo extension, which answers with audio rather than a modem carrier, so NO CARRIER at the S7 timeout is the correct outcome.",
+ "the hazard in AT&W, and how it was handled": "AT&W stores the CURRENT running config. After a power cycle this firmware comes up with factory defaults rather than the stored profile, and the session had additionally set X4, &G0, M2 and S11=95 for testing. Writing at that point would have overwritten the operator's configured NVRAM profile with defaults plus test settings. So the profile was rebuilt in RAM from the ATI5 capture first - 33 commands - and the DTE rate switched to 115200 to match &B1 before writing, since &W stores the current rate.",
+ "verification": {
+  "NVRAM before vs after": "byte-identical - artifacts/dtmf-fix-01/nvram-before.txt and nvram-after.txt",
+  "extended registers after &W": "+S1=70, +S22=525, +S24=13000, +S26=3080"
+ },
+ "still open": [
+  "Whether &W persisted the +S registers across a power cycle is NOT verified - it cannot be from here. On the next cold boot, read AT+S24?: 13000 means it persisted, 00 means AT+SF has to be re-issued and the reason is worth chasing.",
+  "This firmware does not apply the stored profile at reset - ATZ does not either. That is why the rebuild-in-RAM step above was necessary and it remains unexplained.",
+  "DIAL=HUNT is displayed in the running config once S27=048 is set; the stored dial mode is TONE."
+ ],
+ "hardware_tested": true
+}
