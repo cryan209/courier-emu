@@ -248,8 +248,13 @@ the TDM serial port control register) at program `0x008a`.
 > **Partly corrected.** This build drives the AC01 *and* sets up the TDM port, so
 > "instead of" is too strong for the setup. But an earlier version of this note
 > also claimed an overlay reads `TRCV`, and that was wrong - those sites are a
-> data table read as code. Nothing in any image reads `TRCV`, so the TDM port is
-> configured and then unused. See [vpcm-datapump.md](vpcm-datapump.md). `main211` does not,
+> data table read as code. Nothing in any image reads `TRCV`.
+>
+> **Corrected again (2026-09-07): "and then unused" is wrong.** The receive half
+> is unused, but the DSP *transmits* on that port continuously - `sacl @31` at
+> program `0x81c9`, inside the idle task, measured at 21,976 `TDXR` writes in one
+> run. And `TSPC` decodes to the DSP being the **master** there. See
+> [the second serial port](second-serial-port.md). See [vpcm-datapump.md](vpcm-datapump.md). `main211` does not,
 anywhere in program `0000..2000`.
 
 So there is a genuine architectural split between generations, and it is
