@@ -370,10 +370,12 @@ gate array, and the poll of `PA7` is a parallel read back out of one.
 
 **What it does not settle**, and these are now the open ones:
 
-* **How much address the ASIC has.** `A0`-`A3` (55-58) are the minimum to
-  separate `PA7` from `PA14` from `PA15`. The firmware plainly distinguishes
-  them, so the lines are presumably there, but that is inference from software,
-  not a reading.
+* **How much address the ASIC has.** `A0`-`A3` (55-58) **look connected** on
+  the board - reported visually, not metered, so weaker than the `IS` reading
+  above. Four lines are the minimum the firmware needs, and they are enough for
+  the whole mailbox: `PA7`, `PA14` and `PA15` differ in the low nibble. What
+  four lines are *not* enough for is everything above `PA15` - see the aliasing
+  note below.
 * **Whether the ASIC also answers `DS`.** `artifacts/dsp-boot-word-01/` has the
   ASIC presenting `0x0083` at DSP **data** `0xffff`, which is a `DS` cycle, not
   an `IS` one. With the gate array confirmed on the bus that reading is easier
@@ -387,6 +389,38 @@ on the other, and that programming model was already right. This settles the
 board documentation, as the section above said it would. The blocker on
 CPU-DSP comms remains the mailbox poll rate - see
 [what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
+
+### Four address lines are not enough, and that predicts an alias
+
+If the ASIC decodes `A0`-`A3` and nothing above them, then a DSP I/O cycle is
+identified by the low nibble of the port number alone, and the ports outside
+`PA0`-`PA15` fold onto ports inside it:
+
+| the DSP writes | low nibble | aliases onto |
+|---|---|---|
+| `0x60` - the stream sender at `0x84b7` | `0` | `PA0` (`0x50`) |
+| `0x68` | `8` | `PA8` (`0x58`) |
+| `0x6a` | `a` | `PA10` (`0x5a`) |
+| `0x6c` | `c` | `PA12` (`0x5c`) |
+
+The mailbox is untouched by this - `0x57`, `0x5e` and `0x5f` are distinct in
+four bits and stay distinct - so the firmware's command path works either way.
+The interesting collision is the first row. `PA0` is already documented in
+[what-the-asic-does.md](what-the-asic-does.md) as the parallel boot loader's
+word source *and* as taking a scaled sample from the codec ISR at `0x8199`;
+`0x60` is the outbound stream. Under a four-line decode those are one register,
+which is either a real fact about the gate array's outbound path or a sign that
+the decode is wider.
+
+**So the next reading is `A4` (59) and `A5` (60).** `0x50` and `0x60` differ in
+bits 4 and 5, so either line alone separates them. Connected: the ASIC
+distinguishes the stream port from `PA0`, the register file is genuinely larger
+than sixteen, and the table above is void. Absent: the alias is real and
+`0x60` *is* `PA0`, which would be worth knowing before anyone reads the
+`0x0bd0` ring or the stream sender again.
+
+This one is cheap and it is the last structural unknown on the DSP side of the
+bus.
 
 ## The retraction: the ASIC is not shown to master the primary serial bus
 
