@@ -130,6 +130,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--runtime-port", assignment))
     for port in args.uart_port:
         command.extend(("--uart-port", str(port)))
+    for entry in args.trace_pc:
+        command.extend(("--trace-pc", entry))
     if args.real_delays:
         command.append("--real-delays")
     if (
@@ -448,6 +450,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=_number,
         default=[],
         help="capture bytes written to this port as serial output",
+    )
+    run.add_argument(
+        "--trace-pc",
+        action="append",
+        default=[],
+        metavar="ADDR[=NAME]",
+        help="record 80186 registers each time this physical address executes, "
+        "hex, repeatable. hot_addresses is a top-20 profile and cannot say "
+        "whether a given branch ran at all",
     )
     run.add_argument(
         "--libunicorn",

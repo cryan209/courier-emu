@@ -115,27 +115,74 @@ thunk table:
 So the whole chain reduces to one thing: **the datapump dispatch is armed by
 call-progress event `AL = 1`**, and nothing in the run delivers it.
 
+## Measured: the router never runs, and AL is not an event code
+
+`--trace-pc ADDR[=NAME]` records the 80186's registers each time an address
+executes. Running the dial with a watch on every link:
+
+```sh
+./courier run IDSDL302.ROM --with-dsp --exchange --exchange-number 6245=answer \
+    --tick-ms 5 --board-id 7 --nvram-fixture idsdl302 --at 'ATDT6245' \
+    --instructions 150000000 --summary \
+    --trace-pc a6ad7=router-jmp --trace-pc 8b84f=discriminator \
+    --trace-pc 8bee8=dispatch-site --trace-pc 8bef5=send-10 \
+    --trace-pc 8bf05=send-17-site --trace-pc 876c5=set-685-bit0
+```
+
+| watch | hits |
+|---|---|
+| `queue-drain` `8f521` | 45 |
+| `discriminator` `8b84f` | 19 |
+| `dispatch-site` `8bee8` | 1 |
+| `send-17-site` `8bf05` | 1 |
+| **`send-10` `8bef5`** | **0** |
+| **`router-jmp` `a6ad7`** | **0** |
+| `router-entry` `a6a7a`, `entry1` `876b1`, `set-685-bit0` `876c5` | 0 |
+
+The one pass through the dispatch site is the whole story, and it runs exactly
+as read:
+
+```text
+@59,801,686  8bee8  ax=02b2            ; enter, mov ax,5a
+@59,801,696  8b84f  ax=005a flags=0296 ; ZF set -> je 8bf01, nothing sent
+@59,801,899  8bf05  ax=0019            ; the other branch
+@59,801,908  8b84f  ax=0019 flags=0296 ; ZF set -> falls through to mov ax,17
+```
+
+which is the `0017:704d` the run emits. `mov ax, 10` is never executed.
+
+**And the router is never entered at all.** Its real entry is `0xa6a6c`, which
+begins:
+
+```text
+a6a6c  lcall 8000:9cbc     ; AL <- parsed number
+a6a71  jb    a6adc
+a6a73  test  byte [0xea7], 1
+a6a78  je    a6a84          ; [0xea7]=0 here, so AL==1 is *not* rejected
+a6a7a  cmp   al, 1
+```
+
+`0x89cbc` is a decimal ASCII string parser - `lodsb`, `sub al, 0x30`,
+`mov ah, 0xa`, `mul ah`, accumulate. **So `AL` is a number parsed out of a
+command string, not a call-progress event code.** An earlier revision of this
+document called it an event code; that was wrong, and the trace is what
+corrected it. `0xa6a6c` is one of a table of command handlers whose offsets sit
+at `0xa6615`-`0xa6631`.
+
+That changes what the blocker is. `[0x685] |= 1` - the one of the three flags
+with any reachable setter at all - is set on a **command** path, not by the
+board reporting progress. Of the other two: `[0x5a5]` bit 0 has no setter
+anywhere in the image (only `and [0x5a5], 0xfe` at `882db` and `8982e` clear
+it), and there is no `or [0xa96], 2` either.
+
 ## What is not established
 
-Where `AL` comes from. The router's front-end at `0xa6a7a` *rejects* `AL == 1`
-and `AL == 8` outright, and separately rejects `3`, `6`, `7` when `[0x33e] & 1`
-is set - so there is at least one other entry into it that this reading has not
-found, and no far call in the image lands in `0xa6a40..0xa6ab5`.
+Which command reaches `0xa6a6c`. No far call or far pointer in the image
+targets `a4d2:1d4c`, and no `jmp cs:[bx+...]` dispatcher indexes the table at
+`0xa6615`, so it is reached some other way - a `call word ptr` through that
+table, or a handler address assembled at runtime.
 
-The next step is a PC-level trace rather than more static reading: log the
-80186 at `0xa6ad7` with `AL`, and at `0x8b84f`/`0x8bee8`, and see which event
-codes actually arrive during a call. The emulator does not expose an 80186 PC
-trace today; `hot_addresses` is a top-20 profile and cannot answer it - the
-queue drain at `0x8f521` demonstrably ran and is not in it either.
-
-Two candidate readings to settle with that trace, stated before it is run:
-
-1. The router is reached with other codes but never `1`, in which case the
-   question moves to what produces the event - most likely a board-to-supervisor
-   message the bridge does not send.
-2. The router is never reached at all, in which case the missing piece is
-   upstream of it and the `0x17` branch at `0x8bf05` is the supervisor's normal
-   "no call progress yet" path.
-
-Until one of those is measured, replacing the bridge's `0x82` gate would be
-swapping one guess for another.
+The open question is therefore no longer "which board event is missing" but
+"which command configures the datapump, and does the emulator's command path
+ever reach it". The next probe is the same hook pointed at the table's other
+handlers and at `0x89cbc` itself, to catch the command dispatcher in the act.

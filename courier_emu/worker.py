@@ -24,6 +24,19 @@ def _number(value: str) -> int:
     return int(value, 0)
 
 
+def _pc_watch(entries: list[str]) -> dict[int, str]:
+    """Parse --trace-pc ADDRESS[=NAME] into the machine's watch map."""
+    watch: dict[int, str] = {}
+    for entry in entries:
+        address, separator, name = entry.partition("=")
+        try:
+            value = int(address, 16 if not address.lower().startswith("0x") else 0)
+        except ValueError:
+            raise SystemExit(f"invalid --trace-pc address: {address!r}")
+        watch[value] = name.strip() if separator and name.strip() else f"{value:05x}"
+    return watch
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
@@ -31,6 +44,7 @@ def main() -> int:
     parser.add_argument("--port", action="append", default=[])
     parser.add_argument("--runtime-port", action="append", default=[])
     parser.add_argument("--uart-port", action="append", type=_number, default=[])
+    parser.add_argument("--trace-pc", action="append", default=[])
     parser.add_argument("--real-delays", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
@@ -168,6 +182,7 @@ def main() -> int:
         port_values=ports,
         runtime_port_values=runtime_ports,
         uart_ports=set(args.uart_port),
+        pc_watch=_pc_watch(args.trace_pc),
         fast_delays=not args.real_delays,
         with_dsp=args.with_dsp,
         dsp_rx_samples=dsp_rx_samples,

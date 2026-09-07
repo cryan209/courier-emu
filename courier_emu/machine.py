@@ -100,6 +100,8 @@ DTE_TYPING_INSTRUCTIONS = DTE_READY_INSTRUCTIONS + 5_000_000
 # is opt-in because the ratio is a choice within that band rather than a
 # measurement, and because it delivers an edge the interrupt controller has
 # masked - see "Pacing the chain from the DSP interrupt".
+PC_WATCH_SAMPLES = 24
+
 TICK_SOURCES = ("dsp",)
 
 
@@ -144,6 +146,8 @@ class RunResult:
     output_latches: dict[str, int] = field(default_factory=dict)
     mmio_summary: dict[str, int] = field(default_factory=dict)
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
+    pc_watch: list[dict[str, Any]] = field(default_factory=list)
+    pc_watch_counts: dict[str, int] = field(default_factory=dict)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
     data_rx_bytes: int = 0
@@ -170,6 +174,8 @@ class RunResult:
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
         value["hot_addresses"] = [list(item) for item in self.hot_addresses]
+        value["pc_watch"] = list(self.pc_watch)
+        value["pc_watch_counts"] = dict(self.pc_watch_counts)
         return value
 
 
@@ -254,6 +260,7 @@ class CourierMachine:
         console: SerialConsole | None = None,
         force_online: bool = False,
         dsp_batch: int = 256,
+        pc_watch: dict[int, str] | None = None,
     ) -> None:
         self.image = image
         self.nvram = nvram
@@ -283,6 +290,13 @@ class CourierMachine:
         self.runtime_port_values = dict(runtime_port_values or {})
         self.output_latches: dict[int, int] = {}
         self.uart_ports = set(uart_ports or set())
+        # Physical 80186 addresses to record register state at. `hot_addresses`
+        # is a top-20 profile and cannot answer "was this branch taken, and
+        # with what in AX" - the queue drain at 8f521 demonstrably runs and
+        # never appears in it. This does, for addresses named up front.
+        self.pc_watch = dict(pc_watch or {})
+        self.pc_watch_events: list[dict[str, Any]] = []
+        self.pc_watch_counts: Counter[str] = Counter()
         self.max_io_events = max_io_events
         self.fast_delays = fast_delays
         self.io_events: list[IoEvent] = []
@@ -788,6 +802,25 @@ class CourierMachine:
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             if self._code_observer is not None:
                 self._code_observer(address)
+            if self.pc_watch and address in self.pc_watch:
+                name = self.pc_watch[address]
+                self.pc_watch_counts[name] += 1
+                # Every hit is counted; only the first few of each carry the
+                # registers, which is what keeps a hot address from filling
+                # the report with its own repetition.
+                if self.pc_watch_counts[name] <= PC_WATCH_SAMPLES:
+                    ax = _uc.reg_read(UC_X86_REG_AX)
+                    self.pc_watch_events.append({
+                        "name": name,
+                        "pc": f"{address:05x}",
+                        "instructions": self.instructions,
+                        "ax": f"{ax:04x}",
+                        "al": f"{ax & 0xFF:02x}",
+                        "bx": f"{_uc.reg_read(UC_X86_REG_BX):04x}",
+                        "cx": f"{_uc.reg_read(UC_X86_REG_CX):04x}",
+                        "dx": f"{_uc.reg_read(UC_X86_REG_DX):04x}",
+                        "flags": f"{_uc.reg_read(UC_X86_REG_FLAGS):04x}",
+                    })
             if (
                 address == 0x65560
                 and self.dsp_bridge is not None
@@ -2096,6 +2129,8 @@ class CourierMachine:
             },
             mmio_summary=self._summarize(self.mmio_counts),
             hot_addresses=self.executed.most_common(20),
+            pc_watch=self.pc_watch_events,
+            pc_watch_counts=dict(self.pc_watch_counts),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
             data_rx_bytes=self.data_rx_bytes,
