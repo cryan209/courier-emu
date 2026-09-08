@@ -420,6 +420,32 @@ So the dial-tone failure is not a missing detector, a missing flag or a gated
 ISR. The DSP is reset mid-dial and never restarted, and everything downstream
 follows from that.
 
+**And the supervisor is not at fault.** Logging the reset and the bootstrap
+clear across a dial gives one reset and 9,206 clears:
+
+    CLEAR had=16     at  5,071,977     the legitimate one: setup, 8x 0083 words
+    RESET            at 46,308,306     the supervisor re-enters its download
+    CLEAR had=1056   at 46,313,613     <-- wipes a download in progress
+    CLEAR had=2256   at 46,324,871
+    CLEAR had=2224   at 46,336,137
+    ...                                and thereafter had=0, forever
+
+The reset is real and intended - the supervisor does re-enter its DSP download
+routine for a line operation, which is what `bridge.py:1318` recognises. What
+follows is the harness's own doing. `bridge.py:1247` clears the bootstrap
+accumulator on any `ENTRY_REQUEST_COMPLETE` written to `0x1c` while `not
+self.active`, and after a reset `active` is false for the whole re-download.
+So every one of those writes throws away the program bytes collected so far,
+the accumulator never approaches `bootstrap_target_size`, and `active` never
+comes back.
+
+That clear is meant to fire once, before program data starts: its own comment
+says the setup "goes through the same window and strobes as the program does -
+eight `0083` words on the captured board", and the first clear duly reports
+`had=16`. The ones reporting `had=1056` and `had=2256` are mid-stream and are
+the bug. Its guard needs to distinguish setup from program rather than testing
+`active`, which is false for both.
+
 ## Still open
 
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
