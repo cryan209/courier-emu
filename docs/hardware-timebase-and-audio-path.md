@@ -487,3 +487,76 @@ entry an instruction stamp, and `MEM_WATCH_EVENTS` in `machine.py` bounds how
 many are kept - it is 96, which keeps the tail of a run, and this measurement was
 taken by raising it temporarily to 100,000 for one run rather than shipping a
 larger default.
+
+## The 302 digit sequencer, and what finding it settles
+
+### Where it is
+
+The digit commands do **not** go through the 24-word ring. That ring
+(`0x29e`-`0x2ce`, read pointer `[0x29a]`, write pointer `[0x29c]`) is filled one
+word at a time by `0xf65c` and three at a time - `0xff00`, tag, argument - by
+`0xf688`, and across a whole `ATDT6245` it carries **45 messages**, none at digit
+cadence. Traced with `--mem-watch 29e:2ce`, whose writes all come from `0x8f678`,
+the store inside `0xf65c`.
+
+The digits go out through the INT0 handler's own send, at `0x8f465`, and
+`--trace-pc 8f465` catches all nineteen words of a dial:
+
+    013f 013f 013f 013f 1500
+    1600  1306  1600   1600  1302  1600   1600  1304  1600   1600  1305  1600
+    443f 0400
+
+`0x13` carrying the keypad index, bracketed by `0x16:0000` either side - which is
+exactly what [bridge.py:243](../courier_emu/bridge.py:243) documents, and the
+digits are `6 2 4 5`. So the sequencer is the supervisor, one tone command and
+two silences per digit, and its timing is directly readable.
+
+Note in passing that `_note_dial_tone_command`, which decodes precisely this, is
+**dead code** - defined in `bridge.py` and called from nowhere.
+
+### What its timing says: the harness has two clocks, 4.46x apart
+
+The sequencer's own intervals, from the instruction stamps:
+
+| | `S11` = 50 | `S11` = 95 | slope |
+|---|---|---|---|
+| commanded digit period | 395.4 ms | 796.5 ms | 8.913 ms per unit |
+| the audio that results | 87.1 ms | 177.5 ms | 2.009 ms per unit |
+| **the board** | 100.12 ms | 190.09 ms | **1.999 ms per unit** |
+
+The audio is right to 0.5%. The CPU's own command timeline is **4.46x too slow**,
+and the ratio holds at both `S11` values.
+
+**That is the same 4.48 as `2401 / 536`.** There is no missing divider between
+the interrupt and the digit chain. The frame edge really is the 2,401 Hz the
+board reported; the harness's *instruction* clock runs about 4.47x fast against
+its own *audio* clock, and `MODELLED_FRAME_HZ = 536` has been absorbing exactly
+that discrepancy - which is why setting the edge to the measured rate broke the
+dial, and why 391 Hz had looked arbitrary but serviceable.
+
+The same gap shows up without any dialling at all: a 150,000,002 instruction run
+is 34.5 s on `INSTRUCTIONS_PER_SECOND`, and the exchange sees 99,840 samples,
+which is 10.4 s of audio at 9,600 Hz.
+
+### And the gap fault survives the correction
+
+Dividing the sequencer's own numbers by that 4.46:
+
+    tone   1.004 ms per S11 unit, intercept -0.5 ms   -> tone = S11, exactly
+    gap    0.994 ms per S11 unit, intercept -10.8 ms  -> gap  = S11 - 10.8 ms
+
+So the interdigit wait is genuinely short in the supervisor's own timeline, by
+about 11 ms, independently of the clock error - it is not an artifact of it. The
+tone, by the same arithmetic, is exactly `S11`. That matches the board's
+`2 x S11` period only if the board's gap is a full `S11`, which remains the one
+thing this has not measured directly.
+
+Two faults, then, not one, and now separable:
+
+1. **The clock ratio**, ~4.47x between instructions and audio samples. It is the
+   larger of the two, it explains the divider that was not there, and fixing it
+   would let the frame edge run at the rate the board actually reports. It also
+   resets every constant in the harness that is expressed in instructions, which
+   is why it is recorded here rather than attempted in the same change.
+2. **The interdigit wait**, ~11 ms short in the sequencer itself, beside a tone
+   that is exact.
