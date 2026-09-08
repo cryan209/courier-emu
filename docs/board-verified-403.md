@@ -273,10 +273,28 @@ which is what you would expect either from a scheduled step or from detecting a
 tone that is already present when the detector starts - so it does not, on its
 own, say the second pulse is the dial tone.
 
-The test that separates them is the line: with no dial tone to find, `ATD`
-answers `NO DIALTONE` instead of `NO CARRIER`, and if the pulse at 370 is the
-report it disappears from the capture while the one at 148 stays. That needs
-the pair unplugged for one run.
+### Unplugged, twice
+
+    run 1  NO DIAL TONE  n=960  hook=None  0x03 pulses at []
+    run 2  NO DIAL TONE  n=960  hook=None  0x03 pulses at []
+
+Both pulses gone, and more than that: **`[020d]` never changes, so the relay
+never closes.** With an open pair the firmware does not seize the line at all -
+it declines before the hook, and reports `NO DIAL TONE` for a tone it never
+went off hook to listen for. So that byte is the relay actually closing and the
+firmware's decision to close it, not a command echo.
+
+That does not isolate which pulse is the dial tone, and it is worth being
+plain about why: unplugged is not the same test as *plugged in with no dial
+tone*. Without a pair there is no loop current, the firmware stops at the first
+gate, and everything downstream is absent for that reason rather than for want
+of a tone.
+
+What it does establish is that both pulses are line-dependent, and it makes one
+reading much the most natural: `148`, which fires 0.30 s *before* the seizure,
+is the line-presence check that permits it, and `370`, 0.43 s after, is what
+the firmware waits for before dialling. A line drawing loop current but
+carrying no dial tone would separate them outright; nothing else here will.
 
 The other reading is still open. The probe "cannot read the DSP's internal data
 memory", tone detection is the C52's job, and a message the supervisor consumes
