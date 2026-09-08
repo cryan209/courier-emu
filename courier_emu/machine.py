@@ -344,6 +344,7 @@ class CourierMachine:
         uart_ports: set[int] | None = None,
         max_io_events: int = 128,
         fast_delays: bool = True,
+        track_executed: bool = False,
         with_dsp: bool = False,
         dsp_rx_samples: list[int] | None = None,
         dsp_tx_pcm: str | None = None,
@@ -508,6 +509,10 @@ class CourierMachine:
         self._rom_rx_bit = 0
         self._rom_dte_opened = False
         self._previous_address: int | None = None
+        # The per-address execution histogram behind `hot_addresses`. It is
+        # a diagnostic, and counting it costs a dict update on every emulated
+        # instruction, so it is off unless asked for.
+        self.track_executed = track_executed
         self.executed: Counter[int] = Counter()
         self.last_addresses: deque[int] = deque(maxlen=64)
         self.instructions = 0
@@ -1391,7 +1396,8 @@ class CourierMachine:
                     self.stop_requested = True
             if self.stop_requested:
                 _uc.emu_stop()
-            self.executed[address] += 1
+            if self.track_executed:
+                self.executed[address] += 1
             self.last_addresses.append(address)
             if self.dsp_bridge is not None and not self.stop_requested:
                 self.dsp_bridge.clock_x86()

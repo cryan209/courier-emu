@@ -64,6 +64,7 @@ def main() -> int:
     parser.add_argument("--dsp-write-watch", default="")
     parser.add_argument("--mem-watch", default="")
     parser.add_argument("--real-delays", action="store_true")
+    parser.add_argument("--track-executed", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
     parser.add_argument("--dsp-batch", type=_number, default=256)
@@ -207,6 +208,7 @@ def main() -> int:
         dsp_write_watch=(int(args.dsp_write_watch, 16) if args.dsp_write_watch else None),
         mem_watch=_trace_range(args.mem_watch),
         fast_delays=not args.real_delays,
+        track_executed=args.track_executed,
         with_dsp=args.with_dsp,
         dsp_rx_samples=dsp_rx_samples,
         dsp_tx_pcm=args.dsp_tx_pcm,

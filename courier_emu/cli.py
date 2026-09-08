@@ -144,6 +144,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--mem-watch", args.mem_watch))
     if args.real_delays:
         command.append("--real-delays")
+    if args.track_executed:
+        command.append("--track-executed")
     if (
         args.with_dsp
         or args.daa_line
@@ -514,6 +516,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--real-delays",
         action="store_true",
         help="execute the bootstrap's calibrated delay loops without acceleration",
+    )
+    run.add_argument(
+        "--track-executed",
+        action="store_true",
+        help="count how often each address runs, for the hot_addresses report",
     )
     run.add_argument(
         "--summary",

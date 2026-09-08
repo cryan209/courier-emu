@@ -56,7 +56,9 @@ def test_the_firmware_installs_its_own_receive_callback():
     image = ROOT / "main211.xmf"
     if not image.exists():
         pytest.skip("main211.xmf not present")
-    machine = CourierMachine(load_image(image), serial_input=b"ATI\r")
+    machine = CourierMachine(
+        load_image(image), serial_input=b"ATI\r", track_executed=True
+    )
     result = machine.run(4_000_000)
 
     assert machine.executed.get(0x5C870) == 1   # mov [02a8], acdf
