@@ -755,12 +755,19 @@ modelled: an idle line is not ringing, and `--ring` drives it with a cadence.
 ```
 
 The harness has no wall clock, so the cadence is converted from milliseconds
-through the instruction count. The firmware calibrates that conversion itself:
-`0x70fe0` accepts a burst once the tick counter at `[0x1d50]` reaches the country
-minimum at `[0x1f5c]`, which this build loads with 180, and a
-2,000,000-instruction burst is exactly what takes that counter to 180. At a
-North American 2 s ring that puts one firmware tick at 10 ms and the instruction
-clock at 1,111 per millisecond.
+through the instruction count. `0x70fe0` accepts a burst once the tick counter
+at `[0x1d50]` reaches the country minimum at `[0x1f5c]`, which this build loads
+with 180.
+
+That counter was once read as the calibration for the conversion: assume the
+burst reaching 180 is a 2 s North American ring, and one firmware tick is 10 ms
+and the instruction clock 1,111 per millisecond. Both figures are withdrawn.
+The tick is 5 ms, measured from the timer 0 compare each build programs on its
+own crystal, so 180 ticks is a 900 ms minimum qualification rather than a whole
+burst - and the derivation was circular anyway, since `machine.py` synthesizes
+the tick itself at `tick_ms * INSTRUCTIONS_PER_MS`. The instruction clock is
+4,348 per millisecond, from the codec's own sample count. See [Hardware time
+base and audio path](docs/hardware-timebase-and-audio-path.md).
 
 With that cadence the answer machine qualifies bursts (`0x70fe9`), raises the
 ring-indicate line (`0x70ff0`), and posts its ring message (`0x71026`) into the

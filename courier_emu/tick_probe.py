@@ -1,16 +1,24 @@
 """Measure one firmware second on the physical Courier.
 
-The harness carries two clocks that disagree by about four times. The DAA's
-`INSTRUCTIONS_PER_MS` says 1,111 80186 instructions to the millisecond, derived
-from the assumption that one 2 s ring burst is what takes the answer machine's
-tick counter to the country minimum of 180. The C5x model, through its cycle
-counts and the 5:4 scheduling ratio, implies 4,348. Neither is verified, and
-every line-side timing in the harness rests on one of them.
+Every line-side timing in the harness rests on one constant, the DAA's
+`INSTRUCTIONS_PER_MS`. It carried two candidates that disagreed by about four
+times: 1,111, from reading the burst that takes the answer machine's tick
+counter to the country minimum of 180 as a 2 s ring, and 4,348, which the C5x
+model implies through its cycle counts and the 5:4 scheduling ratio.
 
-The board settles it, because the quantity that matters is a ratio, and only
-half of it is a model. The emulator can count instructions per firmware timer;
-hardware can time the same timer in seconds. `instructions per millisecond` is
-one divided by the other.
+1,111 is withdrawn. The firmware's tick is 5 ms rather than 10, so 180 ticks is
+a 900 ms minimum qualification and not a whole burst, and the derivation was
+circular besides - `machine.py` synthesizes the tick from
+`tick_ms * INSTRUCTIONS_PER_MS`, so the burst length was arithmetic on the two
+constants rather than a measurement of either. `INSTRUCTIONS_PER_MS` is 4,348.
+
+The board is what checks that, because the quantity that matters is a ratio and
+only half of it is a model. The emulator can count instructions per firmware
+timer; hardware can time the same timer in seconds. `instructions per
+millisecond` is one divided by the other. Run against the captured board this
+fits 1.000031 seconds per `S18` unit over twelve `&T1` runs, which is what
+docs/hardware-timebase-and-audio-path.md records; re-run it to check the figure
+against another board or another supervisor.
 
 The timer used here is the self-test pair: `S18` sets a duration in seconds and
 `&T1` runs local analogue loopback for exactly that long. It is entirely inside
