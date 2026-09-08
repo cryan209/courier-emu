@@ -167,11 +167,40 @@ call-overlay activation and are call-progress, not tone detection.
 **Not `[0x04dd]`.** It holds a result code, but its only `= 6` writer is inside
 the self test, so the runtime `NO DIAL TONE` is produced elsewhere.
 
-The cheapest way through is the board, the way everything else here was
-settled: dial on the hardware with dial tone actually present and read
-`[0x02f7]`, `[0x04f2]`, `[0x03d7]`, `[0x020d]`, `[0x0ae0..0ae2]` and `[0x0ca5]`
-with `ATGLK2=0000:0200` and `:0400`, `:0a00`, `:0c00`. Whichever differs from
-the value the emulator sits stuck on is the one to feed.
+Those cells have now been read off the board. Idle, every one of them matches
+the emulator exactly. Pulling the relay in by hand - `ATGLK2O0010,DF`, which
+leaves the DTE in command mode - moves exactly one:
+
+    [020d]   on-hook 0x09    off-hook 0x0b
+
+Bit `0x02` of `[0x020d]` mirrors the hook. **The emulator never writes
+`[0x020d]` at all** - a `--mem-watch 200:220` across a whole dial catches 96
+writes in that range and every one is to `[0x0210]`. The predicate at `0x8b449`
+tests bit 0 of this same cell before it reaches its success branch, so the cell
+is on the path.
+
+The level-average cells `[0x0ae0..0ae2]` and `[0x0ca5]` did not move. That is
+uninterpretable without knowing whether a line with real dial tone is attached
+to the board - with none, there is nothing for them to measure.
+
+### Two port read-backs, measured
+
+Reading the ports themselves says why `[0x020d]` may never move:
+
+| port | board | emulator |
+|---|---|---|
+| `0x10` | `0x86` on-hook, `0x87` off-hook | `0xff`, with the NVRAM bits overlaid |
+| `0x00` | `0x00` | `0x33` on the input bits |
+
+Port `0x10` bit `0x01` mirrors the hook on the board, and the emulator answers
+open bus - so any firmware routine that reads the port back to maintain
+`[0x020d]` is being told the line is permanently off hook.
+
+Port `0x00` is worse, because that value is one this project chose. It was set
+to answer `PORT0_INPUTS` high on the reasoning that answering from the latch
+cost `ATI7` its option list. The board answers `0x00`. So the four bits are not
+capability inputs reading high, the guess was wrong, and whatever moved the
+option list has another cause still to find.
 
 Blind-dialling sidesteps all of it: `ATX0` gives `dialed: "6245"`, ringback,
 answer. The stub fixture used to dial only because its erased profile read
