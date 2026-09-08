@@ -358,16 +358,43 @@ ring detect from `0x70fb4`, the XMF answer machine, and the `DIP_SWITCHES`
 descriptions all cite XMF addresses. The ports and bits may well be the same;
 nothing has checked.
 
+### It is the DSP, and the emulated one is not listening
+
+`0x5c` is the ASIC's host/DSP mailbox group, so a value appearing there that
+the supervisor did not write comes from the DSP side. Tone detection is the
+C52's job on this board, which makes the pulse a DSP report and not a flag the
+supervisor sets for itself.
+
+That changes what the emulator is missing, and the counters say so plainly. In
+a 403 dial that ends in `NO DIAL TONE`:
+
+    codec_rx_queued        228480     the exchange's dial tone, delivered
+    codec_rx_consumed           0
+    drr_reads                   0     the C52 never reads a sample
+    line_frame_interrupts       0
+    line_tx_writes              0
+
+228,480 samples of line audio are queued into the codec and the DSP reads none
+of them. Its receive path is not running during the dial-tone wait at all - it
+comes alive later, with the call overlay, which is why the same image happily
+generates DTMF once `ATX0` gets it past the wait.
+
+So the emulated C52 cannot detect dial tone for the simplest possible reason:
+it never hears any. Publishing `[0x649]`, or a pulse on `0x5c`, would paper
+over that - the firmware would be told a tone was found by a DSP that has not
+processed a sample. What the board does is run the resident's audio path from
+the seizure onward and report what it finds.
+
 ## Still open
 
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
   `&C` setting, and those are now measured as two different lamps, CD and SYN.
 - **What port `0x10` bit `0x04` is.** Asserted on every dial, but driving it
   directly does nothing visible or audible, on hook or off.
-- **The ROM's dial-tone detector cell.** The exchange presents dial tone and
-  the DAA qualifies; the ROM firmware is never told, because the `[0x649]`
-  publisher is XMF-only. Until that is found, anything but `X0` answers
-  `NO DIAL TONE`.
+- **Why the emulated C52 never reads the codec during the dial-tone wait.**
+  `codec_rx_queued` climbs to 228,480 while `drr_reads` stays at zero. Until
+  its receive path runs before the call overlay does, no amount of feeding the
+  supervisor a flag makes the detection real.
 - **Which line is the speaker.** Not port `0x00` bit `0x40`, measured. `ATM` is
   settable now, so a dial under each setting is still the probe worth running.
 - **The tail of the board's lamp sequence.** After `SELF TEST COMPLETED` the
