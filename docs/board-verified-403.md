@@ -56,9 +56,25 @@ instructions. Watching the board through it names eight:
 |---|---|---|---|---|---|
 | 0 | `0x12`/`0x10` | HS | 5 | `0x12`/`0x02` | MR |
 | 1 | `0x14`/`0x40` | AA | 6 | `0x14`/`0x02` | CS |
-| 2 | `0x14`/`0x10` | CD | 7 | `0x14`/`0x80` | SYN |
-| 3 | `0x14`/`0x01` | *(silent)* | 8 | `0x14`/`0x20` | ARQ/FAX |
+| 2 | `0x14`/`0x10` | *(silent)* | 7 | `0x14`/`0x80` | **SYN**, and CD |
+| 3 | `0x14`/`0x01` | **CD** | 8 | `0x14`/`0x20` | ARQ/FAX |
 | 4 | `0x10`/`0x01` | OH, and the relay | | | |
+
+Indices 3 and 7 are not read off the sweep at all - they were driven directly
+with `ATGLK2O0014,<value>` while the panel was watched, three blinks for one
+bit and six for the other so they could not be confused:
+
+    bit 0x01 (0x7f <-> 0x7e)   CD blinks
+    bit 0x80 (0xfe <-> 0x7e)   CD *and* SYN blink
+
+So CD is wired to both bits and SYN only to `0x80`. That settles what looked
+like a contradiction: `0x5de57` drives `0x01` and `0x80` together because both
+carry CD, and the same line carrying SYN is not in conflict with that.
+
+Those two fixed points also re-align the sweep. The alignment needs one step of
+the nine to have been invisible, and with CD at index 3 it is index 2 rather
+than index 3 - `0x14`/`0x10`, named `id-strap-drive-c` for its other use, whose
+lamp is still unknown.
 
 Index 4 reads as a lamp *lighting* mid-sweep rather than going out, in both the
 board's sequence and the emulated run. That is what identifies OH and the relay
@@ -84,11 +100,9 @@ is the ticking that stage makes.
 
 ## Still open
 
-- **Which lamp is index 3.** The alignment needs exactly one of the nine steps
-  to have been invisible and puts it there. If the silent step is elsewhere,
-  every row below it shifts.
-- **SYN versus `carrier-detect-b`.** Index 7 puts SYN on `0x14`/`0x80`, but
-  `0x5de57` drives `0x01` and `0x80` together as a pair. Both cannot hold.
+- **Which lamp is index 2**, `0x14`/`0x10`. It is the step nothing was seen at,
+  and driving it directly is the same one-command experiment that settled
+  indices 3 and 7.
 - **What port `0x10` bit `0x04` is.** It is asserted on a dial 43,500
   instructions after bit `0x01` and never during the self test, so the
   `hook-relay` name on it is the older reading and has not been re-derived.
