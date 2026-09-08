@@ -88,19 +88,30 @@ INT1_CALIBRATION_MS = 7
 
 # Timers are advanced on register access and on this stride, which has to be
 # short enough that a max count is never missed: the shortest period either
-# firmware programs is timer 1's 54,166 ticks, about 12,000 instructions.
+# firmware programs is timer 1's 54,166 ticks, about 36,500 instructions.
 TIMER_POLL_INSTRUCTIONS = 1_024
 
-# The timers count the CPU clock divided by four. The Courier's split is a
-# 20 MHz 80186 against a 25 MHz C52, so the timer clock is 5 MHz, and the
-# harness executes 1,111 instructions per millisecond - the rate the answer
-# machine's own ring qualification window pins down in daa.py. Those two give
-# the ratio below, and it is a useful cross-check that it lands where it does:
-# timer 0 is programmed with a compare of 25,200, which works out at one
-# interrupt every 5,600 instructions, against the 4,096 the harness had been
-# using as a hand-tuned constant.
-TIMER_CLOCK_HZ = 5_000_000
-INSTRUCTIONS_PER_SECOND = 1_111_000
+# The timers count CLKOUT/4, and the harness's instruction rate is that same
+# CLKOUT divided by the cycles an instruction takes. Only the ratio of the two
+# is used, and in that ratio the crystal cancels: ticks per instruction is the
+# cycle count over four, whichever board is running. One pair therefore serves
+# the 20.16 MHz 302/403 and the 25.8048 MHz main211 alike.
+#
+# The figures below are main211's - its 25.8048 MHz crystal, and the 4,348
+# instructions per millisecond daa.py derives from the codec's own sample
+# count, which is 5.93 cycles an instruction.
+#
+# They were 5,000,000 against 1,111,000, which is 4.50 ticks per instruction
+# where this is 1.48: the timer block ran three times fast against the line.
+# That pair paired a 20 MHz part with the 1,111 figure daa.py has since
+# retracted as circular, and it survived the correction there.
+#
+# Timer 0 is the cross-check, because both builds program it for 5.000 ms on
+# their own crystal. main211 uses 0x7e00 - 32,256 ticks - and at this ratio
+# that is 21,740 instructions, which is 5.000 ms at daa.py's rate. The old
+# pair put the same compare at 7,167 instructions, or 1.6 ms.
+TIMER_CLOCK_HZ = 6_451_200
+INSTRUCTIONS_PER_SECOND = 4_348_000
 
 
 def ticks_for(instructions: int) -> int:

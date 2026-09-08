@@ -157,8 +157,13 @@ class RomBootTests(unittest.TestCase):
         self.assertTrue(bridge.active)
         self.assertEqual(bridge.bootstraps, 1)
         self.assertIs(bridge.bootstrap_match, True)
-        # 27,710 words in eight-byte groups, and the checksum strobe after.
-        self.assertEqual(bridge.checksum_submits, 1)
+        # 27,710 words in eight-byte groups, and the checksum strobes after.
+        # There are two, from different sites: 8e55f at 5,336,455 instructions
+        # and 8e5ac at 5,668,749. This asked for one until the timer block's
+        # instructions-per-second was corrected - it had the timers running
+        # three times fast, and the ROM never got past the first strobe. The
+        # first one still lands on the same instruction it always did.
+        self.assertEqual(bridge.checksum_submits, 2)
         received = bytes(bridge.bootstrap[:bridge.bootstrap_target_size])
         self.assertEqual(received, rom.data[0x29080:0x368FC])
 

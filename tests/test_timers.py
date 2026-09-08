@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from courier_emu.daa import INSTRUCTIONS_PER_MS
 from courier_emu.timers import (
     CONTROL_CONTINUOUS,
     CONTROL_ENABLE,
@@ -169,8 +170,14 @@ class TimerBlockTests(unittest.TestCase):
         self.assertIsNone(block.pending_interrupt())
 
     def test_the_instruction_clock_converts_to_timer_ticks(self) -> None:
-        # 1,111 instructions per millisecond against a 5 MHz timer clock.
-        self.assertEqual(ticks_for(1_111), 5_000)
+        """Timer 0's own programming is what pins the ratio down.
+
+        Both builds set timer 0 for 5.000 ms on their own crystal, so the
+        compare they write has to come back out as 5 ms of harness time.
+        main211 writes 0x7e00, and 5 ms at daa.py's 4,348 instructions per
+        millisecond is 21,740 of them.
+        """
+        self.assertEqual(ticks_for(5 * INSTRUCTIONS_PER_MS), 0x7E00)
 
 
 if __name__ == "__main__":
