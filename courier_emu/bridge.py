@@ -303,6 +303,13 @@ class BridgeStatus:
     # queue is fed but nothing is consumed" has to be answered, and nothing
     # else reported it.
     core_codec: dict[str, Any] | None = None
+    line_rx_peak: int = 0
+    codec_queue_peak: int = 0
+    codec_in_peak: int = 0
+    codec_handed_ever: int = 0
+    codec_handed_peak: int = 0
+    codec_handed_at: int = 0
+    core_rebuilt_at: int = 0
     # Messages the resident originated, as opposed to the ones the bridge
     # synthesises for it at call-overlay activation.
     dsp_originated_messages: int = 0
@@ -470,6 +477,14 @@ class CourierDspBridge:
         self._line_rx_samples: deque[int] = deque()
         self._line_rx_peak = 0
         self._codec_queue_peak = 0
+        # Peak handed to the *current* core, and when. Compared against
+        # _core_rebuilt_at, these say whether non-zero line audio reached the
+        # C52 that is running now.
+        self._codec_handed_peak = 0
+        self._codec_handed_at = 0
+        self._core_rebuilt_at = 0
+        self._codec_in_peak = 0
+        self._codec_handed_ever = 0
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
         self._carrier_best_score = 0.0
@@ -529,8 +544,25 @@ class CourierDspBridge:
         """Hand line audio to the codec at the codec's rate, not the line's."""
         if not samples:
             return
-        converted = self._line_to_codec.convert(samples, self.codec_sample_rate())
+        self._codec_in_peak = max(
+            self._codec_in_peak, max(abs(sample) for sample in samples))
+        rate = self.codec_sample_rate()
+        converted = self._line_to_codec.convert(samples, rate)
         if converted:
+            # Measured *after* conversion and *after* the last core rebuild,
+            # which is what makes it answerable. The core's own codec_rx_peak
+            # cannot answer "did the DSP get the dial tone": a fresh NativeC5x
+            # is built at the call boundary and takes the counter and the
+            # queued audio with it, so the peak reads zero afterwards whether
+            # or not the tone ever arrived.
+            peak = max(abs(sample) for sample in converted)
+            if peak:
+                self._codec_handed_peak = max(self._codec_handed_peak, peak)
+                self._codec_handed_at = self._instructions
+                # Not cleared by a rebuild, so the two together say whether the
+                # audio went to the core that is still running or to one that
+                # was thrown away.
+                self._codec_handed_ever = self._instructions
             self.core.queue_codec_rx(converted)
 
     def _negotiation_audio_status(self) -> dict[str, int]:
@@ -1365,6 +1397,11 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            # The new core starts with an empty receive queue, so anything
+            # handed to the old one is gone.
+            self._codec_handed_peak = 0
+            self._codec_handed_at = 0
+            self._core_rebuilt_at = self._instructions
             self._configure_boot_rom()
             self._configure_frame_interrupt()
             self._call_overlay_active = False
@@ -2014,6 +2051,17 @@ class CourierDspBridge:
                 "ring_indicate": bool(self.asic_registers.get(0x83, 0) & 1),
             },
             serial_port=self.core.serial_state(),
+            # The two ends of the line-audio path, so "the DSP heard nothing"
+            # can be told apart from "the exchange sent nothing". The first is
+            # the peak the exchange handed back, the second the peak that
+            # survived resampling into the codec's queue.
+            line_rx_peak=self._line_rx_peak,
+            codec_queue_peak=self._codec_queue_peak,
+            codec_in_peak=self._codec_in_peak,
+            codec_handed_ever=self._codec_handed_ever,
+            codec_handed_peak=self._codec_handed_peak,
+            codec_handed_at=self._codec_handed_at,
+            core_rebuilt_at=self._core_rebuilt_at,
             v8_io_events=(
                 [event for event in self.core.io_events()
                  if event["port"] in (0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E)][-64:]

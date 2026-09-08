@@ -610,3 +610,52 @@ The missing `CONNECT` is very likely the same hole seen from the DTE side:
 DSP-originated message on any path yet: the working call is carried by the
 bridge's own overlay logic, not by the mailbox report. Whatever feeds the dial
 tone wait has to be built, not merely re-pointed.
+
+## The dial tone reaches the C52 and is then thrown away with it
+
+Before building a mailbox consume path for a dial-tone report, the premise was
+checked: does the DSP actually receive the tone? **It does not.** The audio path
+now reports its own peaks at each hop, and they locate the break exactly.
+
+    line_rx_peak       7986   what the exchange handed the bridge
+    codec_in_peak      7986   what reached _queue_line_audio
+    codec_handed_peak     0   what reached the C52 that is still running
+    codec_rx_peak         0   what the C52 itself ever saw
+
+    non-zero audio last handed at instruction   47,026,207
+    core rebuilt at instruction                 47,162,901
+    handed since that rebuild                            none, ever
+
+The tone is generated, converted and queued correctly. Then, **136,694
+instructions later - about 31 ms - the bridge builds a fresh `NativeC5x` at the
+call boundary and the queued audio goes with it.** After that no non-zero sample
+is handed to the C52 again for the rest of the run, so the supervisor waits out
+its dial-tone timer against a queue of silence and answers `NO DIAL TONE`
+truthfully.
+
+`bridge.py:1369` is the rebuild. An earlier finding above established that
+rebuilding costs the *program* nothing, because the supervisor re-downloads the
+whole resident either way. That is still true, and it is not the whole account:
+nobody checked the **receive queue**, which is not re-sent by anybody. On the
+board the line does not stop while the DSP resets - the tone is still on the
+wire when it comes back - so discarding samples in flight is not what the
+hardware does.
+
+### Two things this rules out
+
+The C52's own `codec_rx_peak` cannot answer this question and reading it as an
+answer is a trap this document fell into first: the counter lives in the core,
+so a rebuild zeroes it whether or not the tone ever arrived. Only a peak kept
+bridge-side, and compared against the instruction the rebuild happened at, can
+tell "the DSP heard nothing" from "the DSP that heard it no longer exists".
+
+And it rules out the resampler, which was the other suspect: 263 conversions in
+the run, none of them empty, and a standalone 9,600 -> 7,200 conversion of a
+350 + 440 Hz tone returns a 720-sample block at full amplitude.
+
+### So the mailbox consume path is not the next thing to build
+
+It would carry a report the DSP has no way to originate, because the DSP never
+hears the tone. The order is: keep the receive queue across the rebuild, or stop
+rebuilding, then find out whether the resident detects the tone, and only then
+build the path that carries what it found.
