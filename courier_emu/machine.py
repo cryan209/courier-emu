@@ -28,12 +28,23 @@ from .timers import INT0_VECTOR, INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBloc
 from .uart import EbSerial
 from .rom_serial import locate_rom_serial
 
+try:  # only needed to size a basic block; there is a slower path without it
+    import capstone as _capstone
+except ImportError:  # pragma: no cover - exercised by the fallback hook
+    _capstone = None
+
 
 ADDRESS_SPACE_SIZE = 0x100000
 NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
+# How often the board's periodic service runs. Everything it does is an edge
+# the hardware samples rather than something the 80186 produces, so a period
+# models it better than a test after every instruction - a real 80186 does not
+# take an interrupt the moment IF goes high either. 64 instructions is about
+# 15 us at 20.16 MHz, and it divides the periods that hang off it.
+SERVICE_INSTRUCTIONS = 64
 # How long to wait before offering the next typed byte again while the
 # command parser is busy with the line before it.
 COMMAND_BUSY_COOLDOWN = 256
@@ -451,10 +462,6 @@ class CourierMachine:
         self._serial_in_handler = False
         self._serial_irq_mode: str | None = None
         self._serial_tx_pump = False
-        # Set by on_hot_code when it wants the rest of the per-instruction
-        # hook skipped, which a bare return did while the two were one
-        # function.
-        self._skip_instruction = False
         # The transmit callback word at 0x02aa, cached. The pump below
         # tests it on every instruction it is armed for, and reading it
         # through the emulator cost a guest memory read per instruction -
@@ -509,6 +516,13 @@ class CourierMachine:
         self._rom_rx_bit = 0
         self._rom_dte_opened = False
         self._previous_address: int | None = None
+        # The service's own clocks, counted down by the instructions elapsed
+        # rather than tested against a multiple: the instruction count now
+        # advances a basic block at a time and steps over any given multiple.
+        self._next_service = SERVICE_INSTRUCTIONS
+        self._last_service = 0
+        self._console_owed = 0
+        self._timer_poll_owed = TIMER_POLL_INSTRUCTIONS
         # The per-address execution histogram behind `hot_addresses`. It is
         # a diagnostic, and counting it costs a dict update on every emulated
         # instruction, so it is off unless asked for.
@@ -649,6 +663,29 @@ class CourierMachine:
         self._terminal_connected |= bool(self.serial_rx) or self.console is not None
         return self._terminal_connected
 
+    def _needs_code_hook(self) -> bool:
+        """Whether anything in this run reads per-instruction state.
+
+        The hook that maintains it costs a Python call on every emulated
+        instruction, which is most of a run's time, so it is registered only
+        when something will read what it records:
+
+        `executed` and `pc_watch` are diagnostics, off unless asked for.
+        `last_addresses` is the window the keystroke-spin test looks at, and
+        that test is only reached with a byte waiting for the DTE. And
+        `_previous_address` is read by the ISR-exit blocks, which need the
+        instruction that ran immediately before - the serial one while input
+        is being delivered, the timer one only when the DSP paces the tick.
+        """
+        return bool(
+            self.pc_watch
+            or self._code_observer is not None
+            or self.track_executed
+            or self.console is not None
+            or self.serial_rx
+            or self.tick_source == "dsp"
+        )
+
     def request_stop(self) -> None:
         """Ask the run to finish at the next instruction boundary."""
         self.stop_requested = True
@@ -685,6 +722,7 @@ class CourierMachine:
         try:
             from unicorn import (
                 UC_ARCH_X86,
+                UC_HOOK_BLOCK,
                 UC_HOOK_CODE,
                 UC_HOOK_INSN,
                 UC_HOOK_INTR,
@@ -1078,10 +1116,10 @@ class CourierMachine:
                 if (
                     int.from_bytes(_uc.mem_read(0x0158, 2), "little") == 0
                 ):
-                    # This instruction is not to be accounted for: the rest of the
-                    # per-instruction hook is skipped, as it was when both halves
-                    # were one function and this was a bare return.
-                    self._skip_instruction = True
+                    # Nothing further in this hook applies without a result
+                    # word. The harness clock and the board service no longer
+                    # live here, so this leaves only the rest of the hot
+                    # blocks unrun, which is what it always meant to do.
                     return
                 # The originate callback normally leaves the carrier state at
                 # 1 after consuming the ASIC completion word. A connected
@@ -1335,156 +1373,38 @@ class CourierMachine:
                 _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
                 self.accelerated_delays += 1
 
-        def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
-            if self._code_observer is not None:
-                self._code_observer(address)
-            if self.pc_watch and address in self.pc_watch:
-                name = self.pc_watch[address]
-                self.pc_watch_counts[name] += 1
-                # Every hit is counted; only the first few of each carry the
-                # registers, which is what keeps a hot address from filling
-                # the report with its own repetition.
-                if self.pc_watch_counts[name] <= PC_WATCH_SAMPLES:
-                    ax = _uc.reg_read(UC_X86_REG_AX)
-                    si = _uc.reg_read(UC_X86_REG_SI)
-                    ds = _uc.reg_read(UC_X86_REG_DS)
-                    record = {
-                        "name": name,
-                        "pc": f"{address:05x}",
-                        "instructions": self.instructions,
-                        "ax": f"{ax:04x}",
-                        "al": f"{ax & 0xFF:02x}",
-                        "bx": f"{_uc.reg_read(UC_X86_REG_BX):04x}",
-                        "cx": f"{_uc.reg_read(UC_X86_REG_CX):04x}",
-                        "dx": f"{_uc.reg_read(UC_X86_REG_DX):04x}",
-                        "si": f"{si:04x}",
-                        "flags": f"{_uc.reg_read(UC_X86_REG_FLAGS):04x}",
-                        "cs": f"{_uc.reg_read(UC_X86_REG_CS):04x}",
-                    }
-                    # At a routine's entry the top of stack is its return
-                    # address, which is what names the caller. Both a near
-                    # offset and the segment above it are recorded; which of
-                    # the two applies depends on how the routine was called.
-                    try:
-                        stack = (_uc.reg_read(UC_X86_REG_SS) << 4) + _uc.reg_read(UC_X86_REG_SP)
-                        raw = bytes(_uc.mem_read(stack, 4))
-                        record["ret_off"] = f"{int.from_bytes(raw[0:2], 'little'):04x}"
-                        record["ret_seg"] = f"{int.from_bytes(raw[2:4], 'little'):04x}"
-                    except Exception:
-                        pass
-                    # A string the routine is about to parse is the argument
-                    # that decides the dispatch, so capture a little of it.
-                    try:
-                        text = bytes(_uc.mem_read((ds << 4) + si, 12))
-                        record["at_si"] = text.decode("latin-1")
-                    except Exception:
-                        pass
-                    self.pc_watch_events.append(record)
-            if self._skip_instruction:
-                # on_hot_code returned early for this instruction.
-                self._skip_instruction = False
-                return
-            self.instructions += 1
-            if self.console is not None and not self.instructions % self.console.poll_instructions:
-                typed = self.console.poll()
-                if typed:
-                    self.serial_rx.extend(typed)
-                    # Input that lands mid-cooldown would otherwise wait out a
-                    # transmit-side pause of up to 4096 instructions.
-                    self._serial_cooldown = min(self._serial_cooldown, 64)
-                if self.console.closed:
-                    self.stop_requested = True
+        def service_chunk(_uc: Any, elapsed: int) -> None:
+            """The board's periodic service, `elapsed` instructions on.
+
+            Everything here used to run inside the per-instruction code
+            hook. None of it is per-instruction work: the DSP clock is
+            frame-paced, the console poll has its own period, and the
+            interrupt sources are all edges the board samples rather than
+            things the 80186 does. Servicing them every
+            SERVICE_INSTRUCTIONS models the sampling the hardware actually
+            does more honestly than testing them after every instruction,
+            and it is what lets the code hook go away.
+            """
+            if self.console is not None:
+                self._console_owed -= elapsed
+                if self._console_owed <= 0:
+                    self._console_owed += self.console.poll_instructions
+                    typed = self.console.poll()
+                    if typed:
+                        self.serial_rx.extend(typed)
+                        # Input that lands mid-cooldown would otherwise wait
+                        # out a transmit-side pause of up to 4096
+                        # instructions.
+                        self._serial_cooldown = min(self._serial_cooldown, 64)
+                    if self.console.closed:
+                        self.stop_requested = True
             if self.stop_requested:
                 _uc.emu_stop()
-            if self.track_executed:
-                self.executed[address] += 1
-            self.last_addresses.append(address)
             if self.dsp_bridge is not None and not self.stop_requested:
-                self.dsp_bridge.clock_x86()
-            milestone = self._milestone_addresses.get(address)
-            if milestone is not None and milestone not in self.milestones:
-                self.milestones.append(milestone)
-                if milestone == "main-loop":
-                    self.port_values.update(self.runtime_port_values)
-                    if (
-                        self.force_online
-                        and self.dsp_bridge is not None
-                        and not self.online_mode
-                    ):
-                        self.dsp_bridge.force_connected_event()
-                        self.online_mode = True
-                        # The firmware result path is precisely what is being
-                        # bypassed here, so provide the DTE-visible boundary
-                        # explicitly rather than making --force-online silent.
-                        for byte in b"\r\nCONNECT\r\n":
-                            self._capture_serial(byte)
-                        self.serial_trace.append("forced-data-mode")
-            if milestone == "main-loop" and (
-                not self._serial_started or serial_frontend_missing(_uc)
-            ):
-                # The selected UART board normally installs these near-call
-                # vectors. With all unknown board-ID inputs reading high, the
-                # firmware reaches its dispatcher without selecting a UART
-                # variant, leaving null vectors that jump to the fatal entry.
-                # Install the standard command-mode RX, empty-TX, and no-op
-                # acknowledge callbacks only when board discovery left them
-                # unset.
-                #
-                # A reset - ATZ, or a profile reload - rebuilds this table
-                # from the same board-less defaults, so the stand-in has to
-                # go back in every time the firmware returns to its main loop
-                # without it. Installing it once left the DTE deaf for the
-                # rest of the session after the first ATZ.
-                serial_callbacks = (
-                    ((0x2A8, 0xAE9B), (0x2AA, 0x1FB2), (0x2AE, 0xA420))
-                    if self._alternate_supervisor
-                    else (
-                        ((0x2A8, 0xAEED), (0x2AA, 0x18F5), (0x2AE, 0x9138))
-                        if self._supervisor_23
-                        else ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
-                    )
-                )
-                for pointer, fallback in serial_callbacks:
-                    if bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
-                        _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
-                        if pointer == 0x2AA:
-                            self._serial_tx_callback = fallback
-                        self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
-                if self._terminal_attached:
-                    if self._alternate_supervisor:
-                        # 2.2.05 moved the command collector one byte block:
-                        # its RX callback tests [0x1d16].6 and compares the
-                        # terminator against [0x0903].
-                        _uc.mem_write(0x0903, b"\x0d")
-                        collector_state = bytes(_uc.mem_read(0x1D16, 1))[0]
-                        _uc.mem_write(0x1D16, bytes((collector_state | 0x40,)))
-                    if self._supervisor_23:
-                        # 2.3's RX callback compares the received byte with
-                        # this firmware-owned command terminator before it
-                        # dispatches the line parser. The board setup normally
-                        # supplies CR; the XMF lacks that EEPROM/peripheral
-                        # initialization path.
-                        _uc.mem_write(0x0905, b"\x0d")
-                        command_state = bytes(_uc.mem_read(0x1D26, 1))[0]
-                        _uc.mem_write(0x1D26, bytes((command_state | 0x40,)))
-                    command_flags = bytes(_uc.mem_read(0x1CEE, 1))[0] | 0x40
-                    _uc.mem_write(0x1CEE, bytes((command_flags,)))
-                    # The 2.3 image enters its parser through the resident
-                    # command entry at A7A0; older supervisors use A8D9.
-                    ready_callback = (
-                        0xA420 if self._alternate_supervisor
-                        else 0xA7A0 if self._supervisor_23
-                        else 0xA8D9
-                    )
-                    _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
-                    self.serial_trace.append(f"callback 2ac={ready_callback:04x}")
-                self._serial_started = self._payload_hooks
-                self._serial_tx_pump = not self.serial_rx
-                self._serial_empty_probes = 0
-                self._serial_cooldown = 512
+                self.dsp_bridge.clock_x86(elapsed)
             if self._serial_started and not self._serial_in_handler:
                 if self._serial_cooldown:
-                    self._serial_cooldown -= 1
+                    self._serial_cooldown = max(0, self._serial_cooldown - elapsed)
                 elif self.serial_rx:
                     if _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                         executing = command_line_pending(_uc)
@@ -1535,7 +1455,7 @@ class CourierMachine:
                     and self.dsp_bridge.pending_runtime_message() is not None
                 )
                 if self._timer_cooldown and not dsp_interrupt_pending:
-                    self._timer_cooldown -= 1
+                    self._timer_cooldown = max(0, self._timer_cooldown - elapsed)
                 elif _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                     self._timer_irq_requested = True
                     _uc.emu_stop()
@@ -1550,7 +1470,10 @@ class CourierMachine:
                 self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
                 self._int1_pending = INT1_VECTOR
                 _uc.emu_stop()
-            if self.emulate_interrupts and not self.instructions % TIMER_POLL_INSTRUCTIONS:
+            if self.emulate_interrupts:
+                self._timer_poll_owed -= elapsed
+            if self.emulate_interrupts and self._timer_poll_owed <= 0:
+                self._timer_poll_owed += TIMER_POLL_INSTRUCTIONS
                 self.timers.tick(self.instructions)
                 interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
                 if (
@@ -1748,7 +1671,152 @@ class CourierMachine:
                 self._external_interrupt_pending = TICK_VECTOR
                 self.ticks += 1
                 _uc.emu_stop()
+
+        def on_milestone_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            """The four addresses that name a stage of the boot.
+
+            Bounded to those addresses rather than tested on every
+            instruction; `_milestone_addresses` still decides.
+            """
+            milestone = self._milestone_addresses.get(address)
+            if milestone is not None and milestone not in self.milestones:
+                self.milestones.append(milestone)
+                if milestone == "main-loop":
+                    self.port_values.update(self.runtime_port_values)
+                    if (
+                        self.force_online
+                        and self.dsp_bridge is not None
+                        and not self.online_mode
+                    ):
+                        self.dsp_bridge.force_connected_event()
+                        self.online_mode = True
+                        # The firmware result path is precisely what is being
+                        # bypassed here, so provide the DTE-visible boundary
+                        # explicitly rather than making --force-online silent.
+                        for byte in b"\r\nCONNECT\r\n":
+                            self._capture_serial(byte)
+                        self.serial_trace.append("forced-data-mode")
+            if milestone == "main-loop" and (
+                not self._serial_started or serial_frontend_missing(_uc)
+            ):
+                # The selected UART board normally installs these near-call
+                # vectors. With all unknown board-ID inputs reading high, the
+                # firmware reaches its dispatcher without selecting a UART
+                # variant, leaving null vectors that jump to the fatal entry.
+                # Install the standard command-mode RX, empty-TX, and no-op
+                # acknowledge callbacks only when board discovery left them
+                # unset.
+                #
+                # A reset - ATZ, or a profile reload - rebuilds this table
+                # from the same board-less defaults, so the stand-in has to
+                # go back in every time the firmware returns to its main loop
+                # without it. Installing it once left the DTE deaf for the
+                # rest of the session after the first ATZ.
+                serial_callbacks = (
+                    ((0x2A8, 0xAE9B), (0x2AA, 0x1FB2), (0x2AE, 0xA420))
+                    if self._alternate_supervisor
+                    else (
+                        ((0x2A8, 0xAEED), (0x2AA, 0x18F5), (0x2AE, 0x9138))
+                        if self._supervisor_23
+                        else ((0x2A8, 0xACDF), (0x2AA, 0x1FCE), (0x2AE, 0x2088))
+                    )
+                )
+                for pointer, fallback in serial_callbacks:
+                    if bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
+                        _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
+                        if pointer == 0x2AA:
+                            self._serial_tx_callback = fallback
+                        self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
+                if self._terminal_attached:
+                    if self._alternate_supervisor:
+                        # 2.2.05 moved the command collector one byte block:
+                        # its RX callback tests [0x1d16].6 and compares the
+                        # terminator against [0x0903].
+                        _uc.mem_write(0x0903, b"\x0d")
+                        collector_state = bytes(_uc.mem_read(0x1D16, 1))[0]
+                        _uc.mem_write(0x1D16, bytes((collector_state | 0x40,)))
+                    if self._supervisor_23:
+                        # 2.3's RX callback compares the received byte with
+                        # this firmware-owned command terminator before it
+                        # dispatches the line parser. The board setup normally
+                        # supplies CR; the XMF lacks that EEPROM/peripheral
+                        # initialization path.
+                        _uc.mem_write(0x0905, b"\x0d")
+                        command_state = bytes(_uc.mem_read(0x1D26, 1))[0]
+                        _uc.mem_write(0x1D26, bytes((command_state | 0x40,)))
+                    command_flags = bytes(_uc.mem_read(0x1CEE, 1))[0] | 0x40
+                    _uc.mem_write(0x1CEE, bytes((command_flags,)))
+                    # The 2.3 image enters its parser through the resident
+                    # command entry at A7A0; older supervisors use A8D9.
+                    ready_callback = (
+                        0xA420 if self._alternate_supervisor
+                        else 0xA7A0 if self._supervisor_23
+                        else 0xA8D9
+                    )
+                    _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))
+                    self.serial_trace.append(f"callback 2ac={ready_callback:04x}")
+                self._serial_started = self._payload_hooks
+                self._serial_tx_pump = not self.serial_rx
+                self._serial_empty_probes = 0
+                self._serial_cooldown = 512
+
+        def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            """Per-instruction work, registered only when something needs it.
+
+            The diagnostics are opt-in, and the address ring and the
+            previous-address record are only read by paths that a run
+            without serial input or a DSP-paced tick never takes. See
+            `_needs_code_hook`.
+            """
+            if self._code_observer is not None:
+                self._code_observer(address)
+            if self.pc_watch and address in self.pc_watch:
+                name = self.pc_watch[address]
+                self.pc_watch_counts[name] += 1
+                # Every hit is counted; only the first few of each carry the
+                # registers, which is what keeps a hot address from filling
+                # the report with its own repetition.
+                if self.pc_watch_counts[name] <= PC_WATCH_SAMPLES:
+                    ax = _uc.reg_read(UC_X86_REG_AX)
+                    si = _uc.reg_read(UC_X86_REG_SI)
+                    ds = _uc.reg_read(UC_X86_REG_DS)
+                    record = {
+                        "name": name,
+                        "pc": f"{address:05x}",
+                        "instructions": self.instructions,
+                        "ax": f"{ax:04x}",
+                        "al": f"{ax & 0xFF:02x}",
+                        "bx": f"{_uc.reg_read(UC_X86_REG_BX):04x}",
+                        "cx": f"{_uc.reg_read(UC_X86_REG_CX):04x}",
+                        "dx": f"{_uc.reg_read(UC_X86_REG_DX):04x}",
+                        "si": f"{si:04x}",
+                        "flags": f"{_uc.reg_read(UC_X86_REG_FLAGS):04x}",
+                        "cs": f"{_uc.reg_read(UC_X86_REG_CS):04x}",
+                    }
+                    # At a routine's entry the top of stack is its return
+                    # address, which is what names the caller. Both a near
+                    # offset and the segment above it are recorded; which of
+                    # the two applies depends on how the routine was called.
+                    try:
+                        stack = (_uc.reg_read(UC_X86_REG_SS) << 4) + _uc.reg_read(UC_X86_REG_SP)
+                        raw = bytes(_uc.mem_read(stack, 4))
+                        record["ret_off"] = f"{int.from_bytes(raw[0:2], 'little'):04x}"
+                        record["ret_seg"] = f"{int.from_bytes(raw[2:4], 'little'):04x}"
+                    except Exception:
+                        pass
+                    # A string the routine is about to parse is the argument
+                    # that decides the dispatch, so capture a little of it.
+                    try:
+                        text = bytes(_uc.mem_read((ds << 4) + si, 12))
+                        record["at_si"] = text.decode("latin-1")
+                    except Exception:
+                        pass
+                    self.pc_watch_events.append(record)
+            if self.track_executed:
+                self.executed[address] += 1
+            self.last_addresses.append(address)
             self._previous_address = address
+
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
             mask = (1 << (size * 8)) - 1
@@ -2197,9 +2265,60 @@ class CourierMachine:
                 del self.dsp_queue_writes[0]
 
 
+        # The harness clock. Unicorn will say how big a basic block is but not
+        # how many instructions are in it, so each distinct block is
+        # disassembled once and counted; there are a few hundred in a run. The
+        # block hook fires about once per three instructions instead of once
+        # per instruction, and carries the periodic service with it.
+        block_instructions: dict[tuple[int, int], int] = {}
+        disassembler = None
+        if _capstone is not None:
+            disassembler = _capstone.Cs(_capstone.CS_ARCH_X86, _capstone.CS_MODE_16)
+
+        def count_block(address: int, size: int) -> int:
+            try:
+                data = bytes(uc.mem_read(address, size))
+            except Exception:
+                return 1
+            return max(1, sum(1 for _ in disassembler.disasm(data, address)))
+
+        def on_block(_uc: Any, address: int, size: int, _data: Any) -> None:
+            key = (address, size)
+            count = block_instructions.get(key)
+            if count is None:
+                count = count_block(address, size)
+                block_instructions[key] = count
+            self.instructions += count
+            if self.instructions >= self._next_service:
+                elapsed = self.instructions - self._last_service
+                self._last_service = self.instructions
+                self._next_service = self.instructions + SERVICE_INSTRUCTIONS
+                service_chunk(_uc, elapsed)
+
+        def on_code_counting(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            """The clock and the service, one instruction at a time.
+
+            The fallback for a build with no capstone to size a basic block
+            with. Correct, and about four times slower.
+            """
+            self.instructions += 1
+            if self.instructions >= self._next_service:
+                elapsed = self.instructions - self._last_service
+                self._last_service = self.instructions
+                self._next_service = self.instructions + SERVICE_INSTRUCTIONS
+                service_chunk(_uc, elapsed)
+
         for _low, _high in _HOT_HOOK_RANGES:
             uc.hook_add(UC_HOOK_CODE, on_hot_code, None, _low, _high)
-        uc.hook_add(UC_HOOK_CODE, on_code)
+        if self._milestone_addresses:
+            for _address in self._milestone_addresses:
+                uc.hook_add(UC_HOOK_CODE, on_milestone_code, None, _address, _address)
+        if self._needs_code_hook():
+            uc.hook_add(UC_HOOK_CODE, on_code)
+        if disassembler is not None:
+            uc.hook_add(UC_HOOK_BLOCK, on_block)
+        else:
+            uc.hook_add(UC_HOOK_CODE, on_code_counting)
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
         uc.hook_add(UC_HOOK_INTR, on_interrupt)
