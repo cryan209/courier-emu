@@ -484,12 +484,25 @@ It hears the line now. It still puts nothing on it, the DTE still answers
 init - so it never sends the supervisor anything at all, and the supervisor is
 waiting to be told.
 
-Both ends of that are missing. The resident is not reporting, and there is no
-path for it to: `_runtime_inbound` is appended to only by
-`_queue_runtime_message`, which the bridge calls from its own logic at
-call-overlay activation. A write by the DSP to its host-facing tag and word
-cells is never turned into a message. So even a resident that did detect the
-tone would have nothing to carry it.
+One end of that is now built. `_collect_dsp_messages` reads the core's
+mailbox holding pair after each DSP quantum - the core keeps the resident's
+writes to `PA14`/`PA15` separate from what the host writes to the same
+addresses - and turns a rising write count on the word cell into an inbound
+message. It collects real traffic: 389 messages on a 302 dial, 378 on a 403
+dial under `ATX0`, both of which still reach `6245`, ringback and answer
+unchanged.
+
+**The other end is still missing.** On the failing 403 dial the resident sends
+only 28, all of them `0008:0000` about 70 ms apart - a heartbeat rather than a
+report - and `runtime_inbound_delivered` stays empty, so none is consumed. The
+status the CPU reads already carries bit 1 while anything is queued, and the
+pop needs the supervisor to read the tag lanes and then write `0x1c` with bit 1
+clear. It never does. Whether that is because tag `0x08` is not what it is
+waiting for, or because the handshake needs more than the queue, is not settled.
+
+The earlier claim here that "the resident is not reporting" was measured on a
+run where the DSP was executing zero instructions, and did not survive the DSP
+being brought back.
 
 Which is where the board's `0x5c` pulse belongs, and why it was worth finding:
 it is the shape of the message this path has to produce.

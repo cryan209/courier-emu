@@ -292,6 +292,9 @@ class BridgeStatus:
     # queue is fed but nothing is consumed" has to be answered, and nothing
     # else reported it.
     core_codec: dict[str, Any] | None = None
+    # Messages the resident originated, as opposed to the ones the bridge
+    # synthesises for it at call-overlay activation.
+    dsp_originated_messages: int = 0
     dsp_cells: dict[str, str] | None = None
     dsp_writes: list[dict[str, int]] | None = None
 
@@ -410,6 +413,11 @@ class CourierDspBridge:
         self._runtime_inbound: deque[tuple[int, int]] = deque()
         self._runtime_inbound_delivered: Counter[str] = Counter()
         self._runtime_inbound_seen = False
+        # Write count last seen on the DSP's mailbox word cell. The resident
+        # sends by writing the tag then the word, so the word's write is the
+        # completed message - the same edge the host side commits on.
+        self._dsp_mailbox_writes = 0
+        self.dsp_originated_messages = 0
         self._connected_event_queued = False
         self.error: str | None = None
         self._x86_ticks = 0
@@ -920,6 +928,30 @@ class CourierDspBridge:
     def force_connected_event(self) -> None:
         """Publish completion for validating the DTE online contract only."""
         self._publish_connected_event()
+
+    def _collect_dsp_messages(self) -> None:
+        """Turn the resident's own mailbox writes into inbound messages.
+
+        Every inbound message used to be synthesised here - `_runtime_inbound`
+        was appended to only by `_queue_runtime_message`, from the bridge's own
+        logic at call-overlay activation - so a report the DSP originated had
+        nothing to carry it. The C52 sends by writing the tag to PA14 and then
+        the word to PA15, and the core keeps those in a holding pair separate
+        from what the host writes to the same addresses, so the word's write
+        count rising is one completed message.
+        """
+        if not self.boot_rom_enabled or not hasattr(self.core, "io_port_stats"):
+            return
+        stats = self.core.io_port_stats(range(HOST_WORD_CELL, HOST_WORD_CELL + 1))
+        writes = stats.get(f"0x{HOST_WORD_CELL:02x}", {}).get("writes", 0)
+        if writes <= self._dsp_mailbox_writes:
+            self._dsp_mailbox_writes = writes
+            return
+        self._dsp_mailbox_writes = writes
+        header = self.core.io_output(HOST_TAG_CELL) & 0xFFFF
+        data = self.core.io_output(HOST_WORD_CELL) & 0xFFFF
+        self._queue_runtime_message(header, data)
+        self.dsp_originated_messages += 1
 
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
@@ -1653,6 +1685,7 @@ class CourierDspBridge:
             if self._call_resume_pending:
                 self._resume_armed_call()
             self.core.step(dsp_steps)
+            self._collect_dsp_messages()
             if (
                 not self._call_overlay_active
                 and hasattr(self.core, "call_tdm_active")
@@ -1890,6 +1923,7 @@ class CourierDspBridge:
             dsp=self._core_state(),
             dsp_host_ports=self._core_snapshot("io_port_stats"),
             core_codec=self._core_snapshot("codec_state"),
+            dsp_originated_messages=self.dsp_originated_messages,
             dsp_memory_map=self._core_snapshot("memory_map"),
             asic={
                 "registers": {
