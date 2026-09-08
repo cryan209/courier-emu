@@ -40,13 +40,13 @@ MAX_PANEL_EVENTS = 512
 #
 #   idx  port  bit    lamp
 #    0   0x12  0x10   HS
-#    1   0x14  0x40   AA
-#    2   0x14  0x10   - nothing visible changed at this step -
-#    3   0x14  0x01   CD          (driven directly; see below)
+#    1   0x14  0x40   - no lamp: this is the front-panel button line -
+#    2   0x14  0x10   AA          (driven directly)
+#    3   0x14  0x01   CD          (driven directly)
 #    4   0x10  0x01   OH, and the relay clicks with it
 #    5   0x12  0x02   MR
-#    6   0x14  0x02   CS
-#    7   0x14  0x80   SYN         (driven directly; see below)
+#    6   0x14  0x02   CS          (drops when the port is released)
+#    7   0x14  0x80   SYN         (driven directly)
 #    8   0x14  0x20   ARQ/FAX
 #
 # Index 4 reads as a lamp *lighting* mid-sweep rather than going out, because
@@ -70,8 +70,13 @@ MAX_PANEL_EVENTS = 512
 # What 0x5de57 is doing remains open: it drives 0x01 and 0x80 together for the
 # &C setting, and those are now known to be two different lamps.
 #
-# One of the nine steps was invisible, and with CD measured at index 3 that
-# step is index 2. Which lamp sits on 0x14 bit 0x10 is still unknown.
+# All nine now account for themselves. Four are measured by driving the bit and
+# watching (0x01 CD, 0x10 AA, 0x80 SYN, and 0x02 CS by dropping when released);
+# the rest follow from the release order Scott read off the board. The step
+# nothing was ever seen at is index 1, 0x14 bit 0x40 - which is the front-panel
+# button, so there is no lamp on it to see. That the one silent step lands
+# exactly on the one line already known to be an input is the check on the
+# whole alignment.
 #
 # The strap-scan names below describe one use of a line, not the line: the
 # board-ID scan at 0x5bfc6 drives the same latches.

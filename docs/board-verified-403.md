@@ -50,21 +50,29 @@ the button, not a DIP switch, and mapping `carrier-detect-override` onto it
 was booting every `--dip-preset dedicated-line` run into the self test.
 
 The lamp stage walks a nine-entry table at `0x8275f`, one line per ~281,500
-instructions. Watching the board through it names eight:
+instructions. Driving the bits and watching the panel names all nine:
 
 | idx | port/bit | lamp | idx | port/bit | lamp |
 |---|---|---|---|---|---|
 | 0 | `0x12`/`0x10` | HS | 5 | `0x12`/`0x02` | MR |
-| 1 | `0x14`/`0x40` | AA | 6 | `0x14`/`0x02` | CS |
-| 2 | `0x14`/`0x10` | *(silent)* | 7 | `0x14`/`0x80` | **SYN** |
+| 1 | `0x14`/`0x40` | *no lamp - the button* | 6 | `0x14`/`0x02` | **CS** |
+| 2 | `0x14`/`0x10` | **AA** | 7 | `0x14`/`0x80` | **SYN** |
 | 3 | `0x14`/`0x01` | **CD** | 8 | `0x14`/`0x20` | ARQ/FAX |
 | 4 | `0x10`/`0x01` | OH, and the relay | | | |
 
-Indices 3 and 7 are not read off the sweep at all - they were driven directly
-with `ATGLK2O0014,<value>` while the panel was watched, three blinks for one
-bit and six for the other so they could not be confused:
+The bold four are measured, not inferred: driven one at a time with
+`ATGLK2O0014` against a rest state of `0xff`, with a different blink count per
+bit so they could not be confused, while the panel was watched. CS is the odd
+one - it drops whenever the port is released, so it is driven from this latch
+and idles low.
+
+The remaining five come from the release order read off the board, and the
+alignment now checks itself: exactly one of the nine steps was never seen to do
+anything, and it falls on `0x14` bit `0x40` - the front-panel button, which has
+no lamp on it. Nothing had to be assumed about where the silent step was.
 
     bit 0x01 (0xff <-> 0xfe)   CD blinks alone
+    bit 0x10 (0xff <-> 0xef)   AA blinks alone
     bit 0x80 (0xff <-> 0x7f)   SYN blinks alone
 
 Port `0x14` reads its inputs rather than this latch - `0xfe`, `0xff` and `0x7f`
@@ -104,7 +112,6 @@ is the ticking that stage makes.
 
 ## Still open
 
-- **Which lamp is index 2**, `0x14`/`0x10`. The step nothing was seen at.
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
   `&C` setting, and those are now measured as two different lamps, CD and SYN.
 - **What port `0x10` bit `0x04` is.** It is asserted on a dial 43,500
