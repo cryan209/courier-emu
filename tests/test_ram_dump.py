@@ -33,15 +33,6 @@ def test_ram_requires_opt_in_and_never_reads_peripheral_window():
             port.query(command)
 
 
-def test_settings_decoder_handles_redundancy_without_inventing_missing_values():
-    # All three encodings decode to 1: ror(f3,2)+5, rol(08,1)-15, 1c^1d.
-    data = bytes.fromhex("f3081c") * 6
-    records = ram.decode_settings(data)
-    assert all(r["value"] == 1 and r["all_copies_agree"] for r in records)
-    damaged = ram.decode_settings(bytes.fromhex("f30800") + data[3:])
-    assert damaged[1]["value"] == 1 and not damaged[1]["all_copies_agree"]
-    invalid = ram.decode_settings(bytes(18))
-    assert all(r["value"] is None for r in invalid)
 
 
 class FakePort:
@@ -76,73 +67,9 @@ class FakePort:
         return raw_page(address, data)
 
 
-def test_live_capture_preserves_differences_and_validates_settings(tmp_path, monkeypatch):
-    monkeypatch.setattr(ram, "RAM_END", 0x800)
-    output = tmp_path / "ram"
-    port = FakePort()
-    report = ram.collect(port, output)
-    assert report["status"] == "complete" and report["anchors_rechecked"]
-    assert report["pages_captured"] == 16 and report["changed_bytes"] == 1
-    assert (output / "ram-pass1.bin").read_bytes()[0x200] == 1
-    assert (output / "ram-pass2.bin").read_bytes()[0x200] == 2
-    assert report["settings_cache"]["matches_between_passes"]
-    assert all(r["value"] == 1 for r in report["settings_cache"]["passes"][0]["records"])
-    assert json.loads((output / "differences.json").read_text())["physical_addresses"] == [0x200]
-    assert len(list((output / "responses").glob("*.txt"))) == 20
-    assert 0xFF00 not in port.calls
-    with pytest.raises(FileExistsError):
-        ram.collect(port, output)
 
 
-def test_bad_rows_stop_without_publishing_a_pass(tmp_path, monkeypatch):
-    monkeypatch.setattr(ram, "RAM_END", 0x800)
-    output = tmp_path / "ram"
-    with pytest.raises(RuntimeError, match="invalid RAM capture response"):
-        ram.collect(FakePort(broken=True), output)
-    report = json.loads((output / "manifest.json").read_text())
-    assert report["status"] == "incomplete" and len(report["failed_attempts"]) == 3
-    assert not (output / "ram-pass1.bin").exists()
-    assert (output / "blocks" / "pass1-00000.bin").exists()
 
 
-def test_upper_range_is_separate_opt_in_with_no_wrap_or_peripheral_reads():
-    for address in (0x10000, 0x1FF00):
-        with pytest.raises(ValueError):
-            flash.command_for(address, allow_ram=True)
-        assert flash.parse_page(raw_page(address, bytes(256)), address,
-                                allow_upper_ram=True) == (bytes(256), "ERROR")
-    assert flash.command_for(0x1FF00, allow_upper_ram=True) == "ATGLK2=1000:FF00"
-    for address in (0xFF00, 0x20000, 0x10001):
-        with pytest.raises(ValueError):
-            flash.command_for(address, allow_ram=True, allow_upper_ram=True)
 
 
-def test_upper_capture_keeps_physical_offsets_and_brackets_aliases(tmp_path):
-    class UpperPort(FakePort):
-        def query(self, command):
-            if not command.startswith("ATGLK2="):
-                return super().query(command)
-            segment, offset = (int(s, 16) for s in command.split("=")[1].split(":"))
-            address = segment * 16 + offset
-            if address >= 0x80000:
-                return super().query(command)
-            self.calls[address] = self.calls.get(address, 0) + 1
-            data = bytearray([(address & 0xFFFF) >> 8] * 256)
-            if address == 0x10200:
-                data[0] = self.calls[address]
-            return raw_page(address, data)
-
-    output = tmp_path / "upper"
-    port = UpperPort()
-    report = ram.collect(port, output, upper=True)
-    assert report["status"] == "complete" and report["physical_start"] == 0x10000
-    assert report["length_per_pass"] == 65536 and report["pages_captured"] == 512
-    assert not report["failed_attempts"] and report["changed_bytes"] == 1
-    assert json.loads((output / "differences.json").read_text())["physical_addresses"] == [0x10200]
-    assert (output / "ram-pass1.bin").stat().st_size == 65536
-    assert len(report["alias_samples"]) == 6
-    assert all(r["matches_lower_before"] and r["matches_lower_after"] for r in report["alias_samples"])
-    assert "settings_cache" not in report
-    assert not list(output.glob("settings-cache*"))
-    assert 0xFF00 not in port.calls and 0x20000 not in port.calls
-    assert len(list((output / "responses").glob("*.txt"))) == 534

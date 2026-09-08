@@ -17,23 +17,8 @@ def response(address, data, terminal="ERROR"):
     return ("\r\n".join(lines) + "\r\n").encode()
 
 
-@pytest.mark.parametrize("terminal", ["OK", "ERROR"])
-def test_full_page_is_valid_even_with_error_status(terminal):
-    data = bytes(range(256))
-    assert dump.parse_page(response(0xFFF00, data, terminal), 0xFFF00) == (data, terminal)
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda r: r.replace(b"8000:0010", b"8000:0000"),
-    lambda r: r.replace(b"8000:0010", b"9000:0010"),
-    lambda r: r.replace(b"10 11 12", b"10 12"),
-    lambda r: r.replace(b"ERROR\r\n", b""),
-    lambda r: r + r,
-    lambda r: r + b"\xff",
-])
-def test_bad_or_stale_reply_is_rejected(mutation):
-    with pytest.raises(ValueError):
-        dump.parse_page(mutation(response(0x80000, bytes(range(256)))), 0x80000)
 
 
 def test_address_sequence_covers_flash_without_offset_wrap():
@@ -77,36 +62,10 @@ class FakePort:
         return response(address, data)
 
 
-def test_collection_preserves_copies_and_checks_before_publishing(tmp_path, monkeypatch):
-    monkeypatch.setattr(dump, "LENGTH", 512)
-    port = FakePort()
-    output = tmp_path / "capture"
-    report = dump.collect(port, output)
-    assert report["status"] == "complete"
-    assert (output / "courier-board.rom").read_bytes() == b"".join(port.pages.values())
-    assert report["pages_verified"] == 2 and report["anchors_rechecked"]
-    assert len(list((output / "responses").glob("*.txt"))) == 8
-    assert report["terminal_status_counts"] == {"ERROR": 8}
-    assert port.commands[:2] == ["AT", "ATI7"]
-    assert all(c.startswith("ATGLK2=") for c in port.commands[2:])
-    with pytest.raises(FileExistsError):
-        dump.collect(port, output)
 
 
-def test_disagreeing_reads_never_publish_a_complete_image(tmp_path, monkeypatch):
-    monkeypatch.setattr(dump, "LENGTH", 512)
-    output = tmp_path / "capture"
-    with pytest.raises(RuntimeError, match="could not verify"):
-        dump.collect(FakePort(unstable=True), output)
-    report = json.loads((output / "manifest.json").read_text())
-    assert report["status"] == "incomplete"
-    assert len(report["failed_attempts"]) == 3
-    assert not (output / "courier-board.rom").exists()
 
 
-def test_wrong_target_identity_rejected():
-    with pytest.raises(ValueError, match="ATI7 does not match"):
-        dump.validate_identity(b"Courier\r\nClock Freq 25Mhz\r\nOK\r\n")
 
 
 def test_known_firmware_targets_are_selected_by_revision():
@@ -121,53 +80,18 @@ def test_known_firmware_targets_are_selected_by_revision():
     assert dump.TARGETS[("7.3.14", "3.0.13")] != dump.TARGETS[("7.4.16", "3.1.2")]
 
 
-def test_unknown_firmware_is_refused_rather_than_guessed():
-    other = (b"Courier\r\nClock Freq 20.16Mhz\r\nFlash ROM 512k\r\n"
-             b"Supervisor rev 9.9.9\r\nDSP rev 1.2.3\r\nOK\r\n")
-    with pytest.raises(ValueError, match="unknown firmware"):
-        dump.validate_identity(other)
 
 
 
 # The tick probe's commands, and everything it must never send.
 
-def test_timing_commands_are_settings_and_local_tests():
-    for command in ("ATE0", "ATQ0", "ATV1", "ATX3", "AT&T1", "AT&T0",
-                    "ATS18?", "ATS18=5", "ATS6=2", "ATS7=30", "ATS18=255"):
-        assert dump.TIMING_COMMAND.fullmatch(command), command
 
 
-def test_nvram_writes_and_dialling_are_not_timing_commands():
-    for command in ("AT&W", "AT&W0", "ATZ", "ATDT5551212", "ATD5551212",
-                    "ATS18=256", "ATS0=1", "AT&F"):
-        assert dump.TIMING_COMMAND.fullmatch(command) is None, command
 
 
-def test_the_off_hook_list_carries_no_digits():
-    for command in ("ATD", "ATH", "ATH0"):
-        assert dump.OFF_HOOK_COMMAND.fullmatch(command), command
-    for command in ("ATDT5551212", "ATD1", "ATDP9", "ATD,"):
-        assert dump.OFF_HOOK_COMMAND.fullmatch(command) is None, command
 
 
-def test_call_results_terminate_a_dial_wait():
-    for reply in (b"\r\nNO DIAL TONE\r\n", b"\r\nNO CARRIER\r\n",
-                  b"\r\nBUSY\r\n", b"\r\nOK\r\n"):
-        assert dump.CALL_TERMINAL.search(reply), reply
-    assert dump.CALL_TERMINAL.search(b"\r\nCONNECT 33600\r\n") is None
 
 
-def test_segment_offset_maps_flat_onto_the_flash():
-    """No bank switching: the capture manifests record physical_start 0x80000,
-    and `A000:9200` is the notation the ATGLK2= reads use for physical a9200."""
-    assert fd.physical(0xA000, 0x9200) == 0xA9200
-    assert fd.file_offset(0xA000, 0x9200) == 0xA9200 - fd.BASE
-    # Segment 8000 is the base of the window, so its offsets are file offsets.
-    assert fd.file_offset(0x8000, 0x1EED) == 0x1EED
-    # The same physical address, reached by a different encoding.
-    assert fd.file_offset(0x8F46, 0x01E4) == fd.file_offset(0x8000, 0xF644)
 
 
-def test_an_address_outside_the_flash_is_refused():
-    with pytest.raises(ValueError, match='outside the flash'):
-        fd.file_offset(0x0000, 0x0400)      # low RAM

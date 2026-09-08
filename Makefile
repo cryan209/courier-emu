@@ -7,8 +7,10 @@ PYTHON = $(VENV)/bin/python
 setup:
 	@./courier --help >/dev/null
 
+# pytest, not unittest discover: several of the kept tests are module-level
+# functions parametrised over both board images, which discover does not see.
 test: setup
-	$(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) -m pytest tests -q
 
 clean-venv:
 	rm -rf $(VENV)

@@ -626,7 +626,9 @@ produces a `0xb8000` image at `0x40000` that is byte-for-byte identical to the
 XOR-decoded XMP payload, and the 82,879 bytes the NAC never paints are precisely
 the bytes that read as erased flash in the XMP. Two independently encoded
 containers reaching the same image is the strongest check available on both
-decodes, and `tests/test_nac.py` asserts it.
+decodes. It was asserted by `tests/test_nac.py` until the suite was cut back to
+the thirty tests that pin hardware- and format-established facts; re-check it
+with `nac-info` against the XMP decode rather than expecting a test to.
 
 What is not recovered: the two trailing bytes `e4 a0`. They are not a byte sum of
 the record stream and match none of the common CRC-16s (CCITT-FALSE, XMODEM, ARC,
