@@ -196,11 +196,40 @@ running and the cells stay idle; and after a real `ATD` completes they are back
 to idle before the DTE can be read again, because the DTE is unavailable for
 the whole of the attempt.
 
-So catching it needs sampling that does not use the DTE - which is exactly what
-`cooperative_probe.py` is: a timer-0 sampler that runs alongside the firmware
-and reads RAM while a call is up. Pointing it at `[0x020d]`, `[0x03d7]`,
-`[0x04f2]`, `[0x0ae0..0ae2]` and `[0x0ca5]` across a real dial is the
-experiment that names the cell.
+### The co-resident sampler, run across three dials
+
+`cooperative_probe.py` now takes `--cell` as well as `--ports`, so it can watch
+segment-0 RAM while a call is up. Placed at `0x1a00`, chained onto INT3, armed,
+`ATD`, disarmed: the board survives it, answers `NO CARRIER` as usual, and the
+INT3 vector reads back `8000:0a77` afterwards every time.
+
+It works, and it says the detector is not where any of this looked:
+
+| sampled | result |
+|---|---|
+| `[020d]` | `0x09` -> `0x0b` at **sample 239, 0.79 s** - the hook closing |
+| `[03d7]` `[04f2]` `[0ae0..0ae2]` `[0ca5]` | flat `0x00` for the whole capture |
+| `[0149]` `[0d60]` `[02e8]` `[0d11]` `[0d74]` `[0225]` | flat `0x00` |
+| ports `0x18` `0x1a` `0x1e` | flat `0xff` |
+| port `0x1c` | one-tick blip `0xfd`->`0xff`->`0xfd` at 0.45 s, before the seizure |
+
+`[020d]` moves at the same sample in every run, which is the check that the
+instrument is real.
+
+**The candidate selection was circular and that is why it found nothing.**
+All thirteen cells came from the addresses the *emulator* spins on during its
+failed wait - `0x8b3e7`, `0x8b42d`, `0x8b495`, `0x89309`. The emulator spins
+there because it is stuck; that is where it waits, not where the board decides.
+`0x8b42d` cannot even succeed, since it short-circuits on `[04f2]` being zero.
+
+What that leaves is the reading the probe's own docstring already warns about:
+it "cannot read the DSP's internal data memory", and tone detection on this
+board is the C52's job. If the supervisor learns about dial tone from a mailbox
+message it consumes on arrival without latching, then neither end of that is
+visible to an 80186-side sampler, and no choice of cells will find it. Testing
+that means watching the mailbox data pair `0x5c`/`0x5e` - which the probe
+excludes by default because reading them may consume what the firmware was
+about to read - or a DSP-side mechanism that does not exist yet.
 
 ### Two port read-backs, measured
 
