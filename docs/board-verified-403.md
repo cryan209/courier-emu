@@ -548,21 +548,39 @@ The "403 plain does not dial" thread, carried through several commits above,
 rested on a comparison that was not controlled. 302 dialled and 403 did not, and
 the difference was taken to be the build. It is not.
 
-Run each at the other's `X` level, everything else identical:
+Run each at the other's `X` level, everything else identical. `X` sets two
+things at once - whether the dial waits for dial tone, and how much the result
+code set can say - so the sweep below separates them: `X0` and `X1` both dial
+blind and differ only in verbosity, `X2` and `X4` both wait.
 
-| | dialled | state | DTE |
+| | dialled | exchange | DTE transcript |
 |---|---|---|---|
-| 302, its fixture's default | `6245` | connected | `OK` |
-| **302 + `ATX4`** | `""` | idle | **`NO DIAL TONE`** |
-| 403, its fixture's default | `""` | idle | `NO DIAL TONE` |
-| **403 + `ATX0`** | **`6245`** | **connected** | **`OK`** |
+| 302, its fixture's default | `6245` | connected, answered | - |
+| **302 + `ATX4`** | `""` | idle | `NO DIAL TONE` |
+| 403 + `ATX0` | `6245` | connected, answered | `OK` |
+| 403 + `ATX1` | `6245` | connected, answered | `OK` |
+| 403 + `ATX2` | `""` | idle | `OK`, then `NO DIAL TONE` |
+| 403, its fixture's default (`X4`) | `""` | idle | `NO DIAL TONE` |
 
-The two builds behave identically for a given `X`. What differed was the
+The waiting axis is the whole of it: both blind levels dial and connect, both
+waiting levels report `NO DIAL TONE`. The two builds behave identically for a
+given `X`.
+
+**And the `OK` in those rows is not the call's.** It is the `ATXn` command's own
+acknowledgement - `X2`'s transcript shows both, `OK` for the setting and
+`NO DIAL TONE` for the dial. Under `X1`, where extended codes are enabled and a
+completed call must answer `CONNECT`, **the dial produces no result code at
+all**. So on the connecting path the dial never terminates as far as the DTE is
+concerned, and the only evidence the call happened is the exchange's: digits
+decoded off the line and a far end that answered. An earlier version of this
+section read that `OK` as success, which it is not; under `X0` it is close to the
+only thing the modem can say. What differed was the
 **fixture**: `idsdl403` is the board's own captured settings part, which carries
 the unit's stored `X4`, and `idsdl302` is a mostly-erased part seeded with
 recovered records, which lands on a level that dials blind. So 403 was obeying
 `X4` correctly and reporting truthfully; the harness simply never gives it dial
-tone to hear.
+tone to hear. Nothing here makes 403 dial that was not already true of 302 - it
+routes around the dial-tone check rather than fixing it.
 
 That collapses three commits' worth of "the third fault" into one fault, which
 is not 403's and was already recorded under its own name:
@@ -586,8 +604,9 @@ line that would say it had. Those are `main211` addresses, and they should be
 read as a record of how the 211 path was modelled rather than as anything the
 302/403 supervisor does.
 
-Note also that `runtime_inbound_delivered` is empty even on the **successful**
-`ATX0` calls, which reach `connected` and answer. So the supervisor consumes no
+The missing `CONNECT` is very likely the same hole seen from the DTE side:
+`runtime_inbound_delivered` is empty even on the `ATX1` calls that reach
+`connected` and answer. So the supervisor consumes no
 DSP-originated message on any path yet: the working call is carried by the
 bridge's own overlay logic, not by the mailbox report. Whatever feeds the dial
 tone wait has to be built, not merely re-pointed.
