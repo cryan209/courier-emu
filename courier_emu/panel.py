@@ -30,8 +30,31 @@ MAX_PANEL_EVENTS = 512
 # Bit names are only claimed where the firmware itself shows what the line does.
 # Everything else is reported by its driver-wrapper address so the caller can see
 # an unidentified indicator changing rather than a silently discarded write.
+# The power-on self test's LED stage walks a nine-entry table at 0x8275f and
+# drives each line in turn, one every ~281,500 instructions, then releases them
+# in the same order. Nine is the front panel's lamp count, so this is the lamp
+# list in the order the board lights them - watching a real self test names
+# them. In table order:
+#
+#   0  port 0x12 bit 0x10        5  port 0x12 bit 0x02
+#   1  port 0x14 bit 0x40        6  port 0x14 bit 0x02
+#   2  port 0x14 bit 0x10        7  port 0x14 bit 0x80
+#   3  port 0x14 bit 0x01        8  port 0x14 bit 0x20
+#   4  port 0x10 bit 0x01
+#
+# Several are named below for the board-ID strap scan, which drives the same
+# latch lines at 0x5bfc6. Those names describe one use of the line, not the
+# line, and the lamp they light is not established for any of them.
 OUTPUT_BITS: dict[int, dict[int, str]] = {
     0x10: {
+        # 0x01 and 0x04 are both asserted when the modem goes off hook, 0x01
+        # first and 0x04 about 43,500 instructions later (c8fbe then c8fe1 on
+        # a 403 dial). The self test separates them: its nine-LED sweep at
+        # 82715 drives 0x01 and never touches 0x04 - and Scott reports the
+        # relay clicking and the OH lamp lighting during exactly that stage.
+        # So 0x01 is the line the relay and the OH lamp follow, and the lamp
+        # is not driven independently of it. What 0x04 is remains open; the
+        # name below is the older reading and has not been re-derived.
         0x01: "off-hook-aux",
         0x02: "board-02",
         0x04: "hook-relay",
