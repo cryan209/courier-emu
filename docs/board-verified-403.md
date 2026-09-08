@@ -126,12 +126,30 @@ individual clicks, on hook and off - produces no sound, and neither does bit
 `0x04` of the same port. Only the relay is audible. Either these writes do not
 reach the latch, or the ticking has another source.
 
-**A 403 dial now needs `ATX0`, and that is correct.** With the board's real
-profile the modem is `X7` and waits for dial tone; the modelled exchange never
-presents one (`dial_tone_qualified: false`), so the digits are never decoded.
-Blind-dialling gives `dialed: "6245"`, ringback, answer. The stub fixture used
-to dial only because its erased profile read `X15`. The gap is the exchange,
-not the dial path.
+**A 403 dial needs `ATX0`, and the reason is not the exchange.** With the
+board's real profile the modem is `X7` and waits for dial tone, and the DTE
+answers `NO DIAL TONE`. An earlier revision here blamed the exchange for not
+presenting one. It does present one, and the DAA qualifies on it - instrumented,
+the seizure takes the DAA to `dial-tone` with `op=originate` and
+`detector_present` true, and 4,800 samples later `dial_tone_qualified` goes
+true, exactly the five 100 ms frames the debounce wants.
+
+What never happens is the firmware being *told*. The detector byte is published
+by [machine.py](../courier_emu/machine.py) writing `[0x649]`, and that block is
+gated on `address in (0x5DB9D, 0x5DBE7)` - both below `0x80000`, so both are
+XMF-only and neither executes on a ROM image. The ROM waits on its own cell at
+its own address and nothing writes it.
+
+So the work is to find the ROM's detector cell and the wait that reads it, the
+way `0x5DBE7` and `[0x649]` were found for the XMF builds. The originate path's
+spin is at `0x8b42d`-`0x8b49a`, polling `[0x02f7]`, `[0x04f2]`, `[0x03d7]` and
+`[0x020d]`, which is a state poll rather than the counter itself. `[0x04dd]`
+holds a result code but its only `= 6` writer is in the self test, so the
+runtime `NO DIAL TONE` comes from somewhere else again.
+
+Blind-dialling sidesteps all of it: `ATX0` gives `dialed: "6245"`, ringback,
+answer. The stub fixture used to dial only because its erased profile read
+`X15`.
 
 ## Still open
 
@@ -139,8 +157,10 @@ not the dial path.
   `&C` setting, and those are now measured as two different lamps, CD and SYN.
 - **What port `0x10` bit `0x04` is.** Asserted on every dial, but driving it
   directly does nothing visible or audible, on hook or off.
-- **Dial tone.** The exchange does not present one, so anything but `X0` will
-  not dial.
+- **The ROM's dial-tone detector cell.** The exchange presents dial tone and
+  the DAA qualifies; the ROM firmware is never told, because the `[0x649]`
+  publisher is XMF-only. Until that is found, anything but `X0` answers
+  `NO DIAL TONE`.
 - **Which line is the speaker.** Not port `0x00` bit `0x40`, measured. `ATM` is
   settable now, so a dial under each setting is still the probe worth running.
 - **The tail of the board's lamp sequence.** After `SELF TEST COMPLETED` the
