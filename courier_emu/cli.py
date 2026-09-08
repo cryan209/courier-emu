@@ -305,6 +305,12 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--tick-source", args.tick_source))
     if args.dsp_batch != 256:
         command.extend(("--dsp-batch", str(args.dsp_batch)))
+    if args.nvram_fixture:
+        # 403 reads its transmit levels out of the settings EEPROM; without
+        # the fixture both sides dial into silence.
+        command.extend(("--nvram-fixture", args.nvram_fixture))
+    if args.with_dsp:
+        command.append("--with-dsp")
     if listen:
         command.append("--line-listen")
     if args.summary:
@@ -324,7 +330,9 @@ def _run_linked_pair(args: argparse.Namespace) -> int:
         )
     if socket_path.exists():
         socket_path.unlink()
-    XmfImage.load(args.image)
+    # load_image, not XmfImage.load: the pair is worth running on the ROM
+    # images most of all, and XmfImage.load refuses them.
+    load_image(args.image)
 
     # Either side may reach the socket first; the connecting side retries
     # until the listening side has bound and listened.
@@ -795,6 +803,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     link.add_argument("image")
     link.add_argument("--instructions", type=_number, default=40_000_000)
+    link.add_argument(
+        "--nvram-fixture",
+        choices=("idsdl302", "idsdl403"),
+        metavar="NAME",
+        help="settings EEPROM fixture for both sides; idsdl403 carries the "
+        "transmit levels 7.4.16 reads",
+    )
+    link.add_argument(
+        "--with-dsp",
+        action="store_true",
+        help="run the C52 on both sides",
+    )
     link.add_argument("--dsp-batch", type=_number, default=256, metavar="N")
     link.add_argument(
         "--socket",
