@@ -36,15 +36,33 @@ MAX_PANEL_EVENTS = 512
 # list in the order the board lights them - watching a real self test names
 # them. In table order:
 #
-#   0  port 0x12 bit 0x10        5  port 0x12 bit 0x02
-#   1  port 0x14 bit 0x40        6  port 0x14 bit 0x02
-#   2  port 0x14 bit 0x10        7  port 0x14 bit 0x80
-#   3  port 0x14 bit 0x01        8  port 0x14 bit 0x20
-#   4  port 0x10 bit 0x01
+# Scott read the release sweep off the board and it names eight of the nine:
 #
-# Several are named below for the board-ID strap scan, which drives the same
-# latch lines at 0x5bfc6. Those names describe one use of the line, not the
-# line, and the lamp they light is not established for any of them.
+#   idx  port  bit    lamp
+#    0   0x12  0x10   HS
+#    1   0x14  0x40   AA
+#    2   0x14  0x10   CD
+#    3   0x14  0x01   - nothing visible changed at this step -
+#    4   0x10  0x01   OH, and the relay clicks with it
+#    5   0x12  0x02   MR
+#    6   0x14  0x02   CS
+#    7   0x14  0x80   SYN
+#    8   0x14  0x20   ARQ/FAX
+#
+# Index 4 reads as a lamp *lighting* mid-sweep rather than going out, because
+# OH is not in the group the drive loop lights - which is what the emulated
+# run shows too, asserting 0x10 bit 0x01 where every neighbour releases.
+#
+# Two cautions. The alignment assumes exactly one step of the nine produced no
+# visible change, and index 3 is where it falls; if instead some other step is
+# the silent one, every row below it shifts. And index 3 landing on
+# `carrier-detect-a` is consistent - a DTE output pin has no lamp to light -
+# but index 7 then puts SYN on `carrier-detect-b`, and 0x5de57 drives 0x01 and
+# 0x80 together as a pair. Both cannot be right, so the carrier-detect pairing
+# below and the SYN row here are in conflict and one of them wants redoing.
+#
+# The strap-scan names below describe one use of a line, not the line: the
+# board-ID scan at 0x5bfc6 drives the same latches.
 OUTPUT_BITS: dict[int, dict[int, str]] = {
     0x10: {
         # 0x01 and 0x04 are both asserted when the modem goes off hook, 0x01
