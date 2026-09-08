@@ -465,9 +465,34 @@ Where the fresh core is still wrong is *data* memory, which a real reset
 preserves and this discards. Whether the resident depends on that is not
 measured.
 
-And the clear is necessary but **not sufficient**. With it suppressed the DSP
-comes back - active, matching, two bootstraps - and the dial still ends
-`dialed: ""`, state `idle`. So it was one fault of at least two.
+And the clear is necessary but **not sufficient**. Guarded so it fires only
+while the accumulator still holds setup, the DSP comes back and comes alive:
+
+    instructions      0 -> 129,099,202
+    codec_rx_consumed 0 ->      50,818
+    drr_reads         0 ->      66,657
+    line_frame_ints   0 ->      38,333
+    line_tx_nonzero   0             0
+
+It hears the line now. It still puts nothing on it, the DTE still answers
+`NO DIAL TONE`, and the exchange stays `idle`.
+
+### The third fault: nothing reports
+
+`runtime_inbound_delivered` is empty. The resident polls the host status cell
+`0x57` **115,014 times** and writes its host-facing cells exactly once, at
+init - so it never sends the supervisor anything at all, and the supervisor is
+waiting to be told.
+
+Both ends of that are missing. The resident is not reporting, and there is no
+path for it to: `_runtime_inbound` is appended to only by
+`_queue_runtime_message`, which the bridge calls from its own logic at
+call-overlay activation. A write by the DSP to its host-facing tag and word
+cells is never turned into a message. So even a resident that did detect the
+tone would have nothing to carry it.
+
+Which is where the board's `0x5c` pulse belongs, and why it was worth finding:
+it is the shape of the message this path has to produce.
 
 Two reset semantics for one event, neither keyed to the event. What follows is
 the harness's own doing. `bridge.py:1247` clears the bootstrap
