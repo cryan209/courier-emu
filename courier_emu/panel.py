@@ -64,6 +64,27 @@ MAX_PANEL_EVENTS = 512
 # The strap-scan names below describe one use of a line, not the line: the
 # board-ID scan at 0x5bfc6 drives the same latches.
 OUTPUT_BITS: dict[int, dict[int, str]] = {
+    # Port 0x00 is a control latch the ROM builds read-modify-write, and it
+    # carries the speaker. 0x81703 is the whole driver:
+    #
+    #   pushf ; cli ; in al,0 ; and al,33 ; or al,40 ; out 0,al
+    #                          ; and al,33 ; out 0,al ; popf ; ret
+    #
+    # - bit 0x40 pulsed high then straight back low, which is one click. The
+    # self test calls it once per lamp as it releases them, which is the
+    # ticking heard during that stage, and 0xa7a1b is a second call site.
+    # The mask keeps 0x01, 0x02, 0x10 and 0x20 and drops 0x04, 0x08 and 0x80,
+    # so those three are separately owned: 0x81d8c and 0x81d9a drive 0x04 and
+    # 0x08, and 0x8e398 pulses 0x80 the same way inside the C52 transfer code.
+    #
+    # Nothing here is driven by the harness yet: `on_in` answers port 0 as an
+    # XMF-era serial status byte and writes only land in output_latches, so a
+    # run cannot currently show the speaker at all. Modelling it is what would
+    # let the M and L settings be checked - Scott notes the speaker is not on
+    # whenever the line is, so something gates it and that gate is unfound.
+    0x00: {
+        0x40: "speaker",
+    },
     0x10: {
         # 0x01 and 0x04 are both asserted when the modem goes off hook, 0x01
         # first and 0x04 about 43,500 instructions later (c8fbe then c8fe1 on
