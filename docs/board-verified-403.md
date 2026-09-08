@@ -385,16 +385,42 @@ over that - the firmware would be told a tone was found by a DSP that has not
 processed a sample. What the board does is run the resident's audio path from
 the seizure onward and report what it finds.
 
+**The gate is `m_call_tdm_active`, at `native/c5x_core.cpp:923.`** The whole
+codec-receive delivery sits inside it:
+
+```cpp
+if (m_line_sample_due) {
+    m_line_sample_phase -= 25000000u;
+    if (m_call_tdm_active) {
+        ...
+        if (!m_codec_rx.empty()) {
+            DM_WRITE16(0xfff9, m_data[0xfff8]);   // the polyphase ADC pair
+            DM_WRITE16(0xfff8, m_codec_rx.front());
+            m_tdm.trcv = m_codec_rx.front();      // and TRCV
+```
+
+The flag is false from reset and set true in exactly two places, both of them
+the call overlay coming up: `c5x_core.cpp:838` when the native scheduler
+crosses the overlay entry, and `bridge.py:640` on the non-scheduler path. So
+until the overlay activates, `m_codec_rx` accumulates and not one sample
+reaches `0xfff8`, `0xfff9` or `TRCV` - which is `codec_rx_queued` at 228,480
+against `codec_rx_consumed` at zero, exactly.
+
+The board cannot work this way: it reports dial tone 0.43 s after the seizure,
+long before any overlay. Feeding the resident whenever the codec's frame sync
+is running, rather than only once the overlay owns the TDM, is the change - and
+it is a real one to make carefully, because the overlay path that currently
+depends on this gate is the one that dials correctly today.
+
 ## Still open
 
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
   `&C` setting, and those are now measured as two different lamps, CD and SYN.
 - **What port `0x10` bit `0x04` is.** Asserted on every dial, but driving it
   directly does nothing visible or audible, on hook or off.
-- **Why the emulated C52 never reads the codec during the dial-tone wait.**
-  `codec_rx_queued` climbs to 228,480 while `drr_reads` stays at zero. Until
-  its receive path runs before the call overlay does, no amount of feeding the
-  supervisor a flag makes the detection real.
+- **Feeding the resident before the overlay.** The gate is `m_call_tdm_active`
+  at `native/c5x_core.cpp:923`, set only when the call overlay comes up. The
+  board detects dial tone 0.43 s after the seizure, with no overlay in sight.
 - **Which line is the speaker.** Not port `0x00` bit `0x40`, measured. `ATM` is
   settable now, so a dial under each setting is still the probe worth running.
 - **The tail of the board's lamp sequence.** After `SELF TEST COMPLETED` the
