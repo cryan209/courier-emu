@@ -657,3 +657,108 @@ the polarity - the prose at section 3.5 says the side effect happens when NDX is
 not a reliable arbiter here, and the part's actual behaviour is the open
 question. The cheap decider is a hardware probe: a kernel that clears `NDX`,
 does `lar ar0, #1234`, and mails back `ARCR` and `INDX`.
+
+## The channel is interrupt-driven, and the harness invents the interrupt
+
+Everything above is about the *ports*. This is about the line that says *when*,
+and it is the part the harness does not model.
+
+On the 403 board, IVT vector `0x0c` - INT0, an external pin - reads
+`8f46:0000`, and that address is the entire DSP-to-CPU path:
+
+```
+8f46:0000  fb        sti
+           fc        cld
+           60        pushaw
+           06        push es
+           e41e      in   al, 0x1e
+           8ae0      mov  ah, al
+           e41c      in   al, 0x1c
+           250300    and  ax, 3          ; two bits, and nothing else
+           a37f01    mov  [0x17f], ax
+      test 1 -> out 0x58, 0x5a, 0x5c, 0x5e        ; host -> DSP send
+      test 2 -> in al,0x5a / in al,0x58 / call [0x192]   ; DSP -> CPU receive
+           a17f01    mov  ax, [0x17f]
+           e61c      out  0x1c, al       ; ack: the status written back *set*
+           86c4      xchg ah, al
+           e61c      out  0x1c, al
+```
+
+**Nothing in the image calls or jumps to that address.** A search of all 512 KiB
+for a near call, a near jump, a far call and for the bare word `0000` paired
+with segment `8f46` finds no reference at all: the handler is only ever entered
+through the vector. So every message either processor ever receives is one entry
+to this interrupt, and the "supervisor never pops" symptom is a statement about
+an interrupt line, not about a polling loop.
+
+A second, near-identical copy sits at `8f46:0939` (file `0xfd99`) and masks to
+`7` rather than `3`, adding a bit-2 branch that `lcall 8000:067b`. It is
+likewise unreferenced. Which of the two a given firmware state vectors is not
+established here; the run measured below enters the one at offset zero.
+
+### What the harness does instead
+
+[machine.py:1565](../courier_emu/machine.py:1565) raises vector `0x0c` whenever
+`FRAME_INSTRUCTIONS` have elapsed since the last one, and
+[machine.py:523](../courier_emu/machine.py:523) says why in as many words:
+"Nothing on the CPU side produces that edge, so a ROM run has to stand in for it
+the way it already stands in for the tick." On the board the ASIC drives that
+pin from mailbox state. In the harness it free-runs.
+
+Measured on the failing 403 plain dial, with `--trace-pc` on each branch of the
+handler:
+
+```sh
+./courier run artifacts/courier-board-21210-capture-403/courier-board.rom \
+    --with-dsp --exchange --exchange-number 6245=answer --tick-ms 5 \
+    --board-id 7 --nvram-fixture idsdl403 --at 'ATDT6245' \
+    --instructions 150000000 --summary \
+    --trace-pc 8f460=int0_entry --trace-pc 8f4bc=recv_branch \
+    --trace-pc 8f4c9=recv_call --trace-pc 8f4d0=ack_1c --trace-pc 8f495=send_branch
+```
+
+| | count |
+|---|---|
+| INT0 entries | 12,809 |
+| receive branch taken (bit 1) | 61 |
+| send branch taken (bit 0) | 6 |
+| `dsp_originated_messages` | 28 |
+| reads of `0x5c`/`0x5e` | 28 each |
+
+12,809 interrupts to carry 34 events. Every one of the other 12,775 re-reads a
+status the ASIC never asserted and re-acks it by writing it back to `0x1c`.
+
+The tag the handler reads says the same thing more sharply. Across the 57 calls
+to `[0x192]`, the word taken from `0x5a`/`0x58` is:
+
+    0008   28 times    the resident's messages, all of them
+    0000   29 times    an empty lane
+
+So the 28 real messages do arrive, and the free-running edge manufactures 29
+more receive cycles on top of them, each one reading a mailbox with nothing in
+it and dispatching on a tag of zero. The channel is not silent in the harness;
+it is being driven at random against a request line nobody is asserting.
+
+This does not by itself prove the free-running edge is what breaks the 403 dial.
+It does mean the harness has never had a faithful version of the one event the
+whole channel is built on.
+
+### The measurement
+
+`courier_emu.cooperative_probe --hook int0` chains this vector the way the INT3
+mode chains the tick, and the trick is cheaper here: the original offset is
+**zero**, so the segment `0x01a0` puts the stub at `0x1a00` - the bottom of the
+`0x1600`-`0x2b00` region that survives `AT&T8`, with the whole gap to the live
+firmware data at `0x1aab` free for its 42 bytes. One word arms it, the same word
+disarms it, and there is no intermediate state.
+
+It records `0x1e` and `0x1c` - in the handler's own order, so the columns compare
+directly against the `and ax,3` it performs on them - and then `jmp far
+8f46:0000`, so the firmware services the interrupt exactly as if it had been
+entered directly. That yields the real edge *rate* and the real status *at* each
+edge, which are the two numbers the harness is currently inventing.
+
+The mailbox lanes `0x58`-`0x62` are refused in this mode. Elsewhere sampling them
+only might race the firmware; inside INT0 it certainly does, because the handler
+this stub runs in front of is about to read exactly those, and a byte taken here
+is a byte it does not get.
