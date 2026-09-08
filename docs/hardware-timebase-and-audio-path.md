@@ -266,3 +266,86 @@ reaches NVRAM.
 
 The `&T8` port sweep is recorded in `artifacts/io-port-loopback-01/`. It sends
 only reads plus `AT&T8` and `AT&T0`.
+
+## The DTMF digit is counted in INT0 periods, and the count is the fault
+
+[The mailbox interrupt](dsp-cpu-interconnect.md#measured-the-edge-free-runs-at-24-khz-and-the-reply-cadence-is-20-ms)
+was measured on the board at 2,401 Hz, and setting the harness to that rate
+stops a 302 dial from being decoded. This is what the tone actually does,
+measured off `--dsp-tx-pcm` at 9,600 Hz with a 0.83 ms envelope window.
+
+### It is one-for-one with the interrupt
+
+Four rates, one command apart (`--frame-hz`), everything else identical -
+`IDSDL302.ROM`, `ATDT6245`, the `idsdl302` fixture:
+
+| `--frame-hz` | tone | gap | digits decoded |
+|---|---|---|---|
+| 391 (default) | 96.5 ms | 77.2 ms | `6245` |
+| 782 | 52.9 ms | 43.6 ms | `6245` |
+| 1200 | 35.4 ms | 30.0 ms | `6245` |
+| 2401 (measured) | 18.1 ms | 16.7 ms | **none** |
+
+Fitting the two extremes gives `tone = 36,586 / f + 2.9 ms` - **36.6 interrupt
+periods plus a fixed 2.9 ms** - and that model predicts the two middle rates to
+within 2.5 ms, which is the envelope's own resolution. The digit is counted in
+INT0 periods, one for one, with no divider anywhere in the harness.
+
+So the failure at the measured rate is not a mailbox fault at all. It is a
+digit too short to decode, and the threshold sits between 35 ms, which still
+dials, and 18 ms, which does not.
+
+### The count comes from S11, and implies an interrupt rate of ~540 Hz
+
+`S11` moves it, linearly, at a fixed rate:
+
+| `S11` | tone | implied count at 391 Hz |
+|---|---|---|
+| 50 | 68.8 ms | 26.9 |
+| 70 (default) | 96.5 ms | 37.7 |
+| 95 | 130.6 ms | 51.1 |
+
+1.373 ms of tone per `S11` unit, with an intercept of 0.1 ms - so the firmware
+loads **0.523 interrupt periods per `S11` unit**, and the default 70 becomes the
+36.6 the sweep found independently.
+
+That is the whole problem in one number. `S11` is a duration in milliseconds, so
+a default digit should be about 70 ms of tone. It is 70 ms when
+
+    36.6 counts / f + 2.9 ms = 70 ms   ->   f = 545 Hz
+
+**The firmware's own DTMF constants imply an INT0 rate near 540 Hz.** The board
+runs the interrupt at 2,401. Neither number is wrong: they differ by a factor of
+about 4.4, and that factor is a divider the harness does not have.
+
+### What that means, and what it does not
+
+The harness collapsed two clocks into one. There is the interrupt, which the
+board says is 2,401 Hz, and there is whatever the firmware's timing chain
+advances on, which its own constants say is near 540 Hz. `FRAME_INSTRUCTIONS`
+has been standing in for the *second* of those - which is why 391 Hz produces
+digits in the right decade and 2,401 Hz produces 18 ms - and the correction is
+not to change the rate but to model both: raise the edge to 2,401 and put the
+divider in front of the countdown chain.
+
+Where the divider lives is not settled here. On the 403 image the INT0 tail runs
+`lcall 8000:0676` with `al = 1`, and that is a thunk - `call [0x212]; retf` -
+whose target is installed at run time; the 302 build vectors INT0 at `8f43:0000`
+instead and leaves `[0x212]` reading zero at the end of a dial. Resolving it
+needs the chain traced at run time, not disassembled.
+
+Two things this does **not** show:
+
+* **That 4.4 is the divider.** It is the ratio between a measured interrupt rate
+  and a rate inferred from `S11` on the assumption that `S11` is milliseconds of
+  tone. If that assumption is off, so is the factor. A real digit timed on the
+  board would settle it and has not been done.
+* **That the digit length is 302's only problem at 2,401 Hz.** The dial was
+  read through this harness's own DTMF decoder. Its threshold between 35 ms and
+  18 ms is a property of that decoder, not of an exchange.
+
+`[0x134]`, the counter the INT0 tail decrements unconditionally, is **not** this
+timer: `--mem-watch 134:135` records 96 writes across a whole dial, one
+countdown from `0x60` to zero at exactly one decrement per interrupt. It is a
+one-shot of about a second, and it is the only thing in the tail that could be
+mistaken for the digit clock.
