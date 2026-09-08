@@ -1611,7 +1611,25 @@ class CourierMachine:
                     and self.instructions - self._last_frame >= self.frame_instructions
                     and self._int0_vector_installed(_uc)
                 ):
-                    self._last_frame = self.instructions
+                    # Advance the phase by exactly one period, the way the
+                    # bridge's own counters do, instead of restarting it here.
+                    # Resetting it to `now` absorbed every polling delay
+                    # permanently: the check only runs at the service loop's
+                    # granularity, so each edge landed a little late and the
+                    # next was measured from the late one. It cost 4.8% - 510.5
+                    # Hz delivered against 536 nominal - and it cost it
+                    # unevenly, because the granularity depends on what the CPU
+                    # is running, which is how a constant offset appeared
+                    # between two countdowns that should have matched.
+                    #
+                    # A debt of more than one period is dropped rather than
+                    # burst, which is what the hardware does: the controller
+                    # latches one pending edge, and `_int0_pending` is that one
+                    # slot. Interrupts being off for a while loses edges on the
+                    # board too; it does not bank them.
+                    self._last_frame += self.frame_instructions
+                    if self.instructions - self._last_frame >= self.frame_instructions:
+                        self._last_frame = self.instructions - self.frame_instructions
                     self._int0_pending = INT0_VECTOR
                 if interrupts_on and (
                     self._int0_pending is not None

@@ -414,3 +414,76 @@ than being reconciled into one. What is not in doubt: the interrupt is far
 faster than the chain it feeds, the chain's rate is 536 Hz to within the
 precision of a tone measurement, and the harness had been modelling only one of
 the two.
+
+### Chasing the gap: the interrupt clock was drifting, and it was not the cause
+
+Two things came out of going after the 13 ms.
+
+**The frame edge was losing 4.8%, and it is fixed.** The injection at
+[machine.py:1565](../courier_emu/machine.py:1565) set `_last_frame =
+self.instructions` on each delivery - restarting the phase rather than advancing
+it. The check only runs at the service loop's granularity, so every edge landed
+a little late and the next was measured from the late one, and the lateness
+accumulated. Measured by watching the handler's own status cell, which the 302
+build caches at `[0x285]` and the 403 build at `[0x17f]`, so every entry carries
+an instruction stamp:
+
+    before   510.5 Hz delivered against 536 nominal
+    after    535.8 Hz mean period, 531.0 Hz median
+             2 periods of 17,790 longer than 1.5x nominal
+
+`_last_frame` now advances by exactly one period, the way the bridge's own
+counters already did, and a debt of more than one period is dropped rather than
+burst - which is what the controller does, since it latches one pending edge and
+`_int0_pending` is that slot.
+
+**It is not what makes the gap short.** With the clock uniform the digit is
+unchanged: tone 69.6 ms, gap 56.4 ms, period 126.0 ms. So the deficit is not
+drift, and it is not delivery.
+
+### What the gap fault is, precisely
+
+At 536 Hz, against the board's `2.000 x S11 + 0.1 ms`:
+
+| `S11` | tone | gap | period | board period | deficit |
+|---|---|---|---|---|---|
+| 50 | 50.4 | 36.7 | 87.1 | 100.12 | 13.04 |
+| 70 | 70.2 | 56.9 | 127.2 | 140.05 | 12.90 |
+| 95 | 95.8 | 81.7 | 177.5 | 190.09 | 12.59 |
+
+`2.009 ms per S11 unit` against the board's `1.999` - the rate is right to 0.5% -
+through an intercept of **-13.4 ms** where the board's is +0.1. So:
+
+* **The tone is exact at every `S11`**: 50.4, 70.2, 95.8 against 50, 70, 95.
+* **The deficit is constant in `S11`**, not proportional - so it is not a rate.
+* **It is a count, not a latency**: 7.04 interrupt periods at 391 Hz and 7.18 at
+  536 Hz, scaling as 1/f across a 1.37x change in rate.
+* The period is measured tone-start to tone-start, so the envelope threshold
+  cancels out of it and the 13 ms is real time, not a boundary artifact.
+
+The harness's interdigit gap is therefore `S11 - 13.2 ms`, about **seven
+interrupt periods short**, while the tone it alternates with is right.
+
+### Where it is not, and the one hypothesis left
+
+Ruled out by the above: the frame rate, the delivery drift, a proportional error,
+and the measurement's own thresholds. Also ruled out earlier: `[0x134]`, and any
+explanation that redistributes time between tone and gap, since the *sum* is
+short.
+
+What is left is what the firmware waits on between digits, and there is a
+candidate with a number attached. The board's DSP reports on a **20 ms cadence**
+while the loop is off hook
+([the mailbox measurement](dsp-cpu-interconnect.md#measured-the-edge-free-runs-at-24-khz-and-the-reply-cadence-is-20-ms)),
+and the harness answers instantly. If the digit sequencer waits for a report
+boundary before starting the next tone, the board pays a wait the harness does
+not, and 13.2 ms sits inside one 20 ms period. That is a hypothesis with the
+right shape and the right magnitude; it is **not** established, and confirming it
+means finding the 302 sequencer rather than reasoning from the size of the
+number.
+
+The instrument for that now exists: `--mem-watch` on `[0x285]` gives every INT0
+entry an instruction stamp, and `MEM_WATCH_EVENTS` in `machine.py` bounds how
+many are kept - it is 96, which keeps the tail of a run, and this measurement was
+taken by raising it temporarily to 100,000 for one run rather than shipping a
+larger default.
