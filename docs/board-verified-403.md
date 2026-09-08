@@ -151,6 +151,41 @@ Blind-dialling sidesteps all of it: `ATX0` gives `dialed: "6245"`, ringback,
 answer. The stub fixture used to dial only because its erased profile read
 `X15`.
 
+## XMF-only logic, swept
+
+The XMF payloads load at `0x40000` and the board ROMs at `0x80000`, so any
+address literal the harness holds in `[0x40000, 0x80000)` can only ever be
+reached by an XMF run. `tools/xmf_only_sweep.py` lists them: 110 lines in
+`machine.py`, plus a handful in `panel.py` and `daa.py`.
+
+Most are correct. The XMF supervisor has its own boot, delay-loop, serial and
+callback quirks that a ROM does not share, and the harness gates the bulk of
+them behind `_payload_hooks` deliberately - milestones are `{}` for a ROM with
+a comment saying why, and `_serial_started` follows the same flag, so the whole
+serial-capture and ISR-exit group is XMF-only by design rather than by
+accident. The ROMs reach their DTE through the 80C186EB serial unit at `ff60`
+instead, which `uart.py` models.
+
+What the sweep is for is the other kind: a block providing a service *both*
+families need, where only the XMF address was ever found. Three have turned up,
+each after a long chase:
+
+| block | consequence on a ROM run | state |
+|---|---|---|
+| the serial ISR-exit blocks, behind a hot-address set they could not reach | XMF DTE went deaf | fixed |
+| `carrier-detect-override` mapped to `0x14`/`0x40` | every dedicated-line run booted into the self test | fixed |
+| the DAA detector byte `[0x649]`, published at `0x5DB9D`/`0x5DBE7` only | `NO DIAL TONE` with a qualified detector unread | **open** |
+
+The last is the only functional gap the sweep leaves. Everything else in the
+list is either payload-gated on purpose or a comment citing where a fact was
+recovered from, which is fine - `0x6355F` at `machine.py` line 1327 shows the
+shape to copy, an XMF address named alongside its three ROM counterparts.
+
+Two justifications are ROM-unverified rather than wrong: `panel.py` derives
+ring detect from `0x70fb4`, the XMF answer machine, and the `DIP_SWITCHES`
+descriptions all cite XMF addresses. The ports and bits may well be the same;
+nothing has checked.
+
 ## Still open
 
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
