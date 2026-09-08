@@ -349,3 +349,68 @@ timer: `--mem-watch 134:135` records 96 writes across a whole dial, one
 countdown from `0x60` to zero at exactly one decrement per interrupt. It is a
 one-shot of about a second, and it is the only thing in the tail that could be
 mistaken for the digit clock.
+
+### Measured on the board: a digit period is exactly twice S11
+
+The 4.4 factor above rested on `S11` being milliseconds of tone. That assumption
+is now replaced by a measurement, `artifacts/dial-timing-01`, taken on the
+20.16 MHz board at 7.4.16 / 3.1.2.
+
+**No probe and no hook.** `courier_emu.dial_timing` blind-dials (`ATX0`) strings
+of 4 to 40 digits and times each from the command to the result code. That
+interval is `setup + n*(tone + gap) + S7 + reporting`, and everything but the
+middle term is constant in `n`, so the per-digit time is the slope of a line
+through several digit counts and all the fixed overhead falls into the
+intercept. Eight dials per setting, three settings:
+
+| `S11` | ms per digit | intercept |
+|---|---|---|
+| 50 | 100.12 | 4024.3 ms |
+| 70 | 140.05 | 4023.7 ms |
+| 95 | 190.09 | 4024.7 ms |
+
+**1.999 ms per `S11` unit**, through an intercept of 0.1 ms, and the fixed term
+is the same 4,024 ms in all three - which is the check that the method is
+sound, since it is the one number that must not move.
+
+So a digit period is exactly `2 x S11` milliseconds: the tone and the gap after
+it are **each** `S11` ms. That is `S11`'s documented job - duration *and*
+spacing - and it is now measured rather than assumed.
+
+### What that fixes, and what it leaves
+
+The harness at 391 Hz took 2.739 ms per `S11` unit against the board's 1.999,
+so it was **1.370x too slow**, and the rate that matches is 391 x 1.370 = 536 Hz.
+`MODELLED_FRAME_HZ` is now that, and at it:
+
+| | harness, 536 Hz | board |
+|---|---|---|
+| tone, `S11` = 70 | 70.2 ms | 70.0 ms |
+| gap | 56.9 ms | 70.0 ms |
+| digit period | 127.2 ms | 140.1 ms |
+
+**The tone is right to 0.3%.** The gap is not, and it is now isolated as its own
+fault: the harness loads 28.4 interrupt periods for the gap against 36.6 for the
+tone, where the board makes the two equal. That is a ratio of 0.78 where it
+should be 1.00, and it is not a rate error - no choice of `--frame-hz` fixes it,
+because it is the same clock counting a different number.
+
+302 still dials `6245` to ringback and answer at the new default, with 117 DTMF
+blocks against 136; 403 plain is unchanged.
+
+### The divider is near 9/2, and that is not a satisfying number
+
+2,401 Hz measured at the interrupt, 536 Hz needed at the digit chain: a divider
+of **4.48**. Whole numbers either side are ruled out by this data - a divider of
+4 would need 2.006 ms per unit and 5 would need 2.230, against the 1.999
+measured, and only 4.5 lands inside the error - but 9/2 is a strange thing for a
+gate array to do, and the honest reading is that one of the two rates is not yet
+measured as exactly as it looks. The 2,401 comes from 15,868 interrupts over a
+6.61 s wall-clock window that includes the host's own write and abort, so a
+percent or two of it is host timing, not board timing.
+
+Both constants therefore stay in `machine.py` as separate named figures rather
+than being reconciled into one. What is not in doubt: the interrupt is far
+faster than the chain it feeds, the chain's rate is 536 Hz to within the
+precision of a tone measurement, and the harness had been modelling only one of
+the two.

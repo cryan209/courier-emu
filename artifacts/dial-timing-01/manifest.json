@@ -1,0 +1,220 @@
+{
+ "status": "complete",
+ "device": "/dev/cu.usbserial-11420",
+ "baud": 115200,
+ "started_utc": "2026-09-08T21:08:57.565992+00:00",
+ "method": "blind-dial ATX0, time to result code, regress on digit count",
+ "digit_counts": [
+  4,
+  12,
+  24,
+  40
+ ],
+ "s11_values": [
+  50,
+  70,
+  95
+ ],
+ "repeats": 2,
+ "dials": [
+  {
+   "s11": 50,
+   "digits": 4,
+   "attempt": 1,
+   "seconds": 4.4259,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 4,
+   "attempt": 2,
+   "seconds": 4.4245,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 12,
+   "attempt": 1,
+   "seconds": 5.2278,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 12,
+   "attempt": 2,
+   "seconds": 5.2228,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 24,
+   "attempt": 1,
+   "seconds": 6.426,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 24,
+   "attempt": 2,
+   "seconds": 6.4278,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 40,
+   "attempt": 1,
+   "seconds": 8.0258,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 50,
+   "digits": 40,
+   "attempt": 2,
+   "seconds": 8.0329,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 4,
+   "attempt": 1,
+   "seconds": 4.586,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 4,
+   "attempt": 2,
+   "seconds": 4.5857,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 12,
+   "attempt": 1,
+   "seconds": 5.7031,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 12,
+   "attempt": 2,
+   "seconds": 5.7025,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 24,
+   "attempt": 1,
+   "seconds": 7.3846,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 24,
+   "attempt": 2,
+   "seconds": 7.3815,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 40,
+   "attempt": 1,
+   "seconds": 9.6269,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 70,
+   "digits": 40,
+   "attempt": 2,
+   "seconds": 9.6275,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 4,
+   "attempt": 1,
+   "seconds": 4.786,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 4,
+   "attempt": 2,
+   "seconds": 4.7857,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 12,
+   "attempt": 1,
+   "seconds": 6.3048,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 12,
+   "attempt": 2,
+   "seconds": 6.3079,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 24,
+   "attempt": 1,
+   "seconds": 8.5831,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 24,
+   "attempt": 2,
+   "seconds": 8.585,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 40,
+   "attempt": 1,
+   "seconds": 11.6342,
+   "result": "NO CARRIER"
+  },
+  {
+   "s11": 95,
+   "digits": 40,
+   "attempt": 2,
+   "seconds": 11.6253,
+   "result": "NO CARRIER"
+  }
+ ],
+ "assumptions": [
+  "Every term but n*(tone+gap) is constant in n, so the slope is the per-digit time and the intercept absorbs setup, S7 and reporting.",
+  "The host clock times the serial result code, so the figure includes the modem's own reporting latency in the intercept, not the slope.",
+  "S11 changes only the tone, not the interdigit gap, is NOT assumed: the slope is tone plus gap and the sweep measures their sum."
+ ],
+ "identity": {
+  "supervisor": "7.4.16",
+  "dsp": "3.1.2"
+ },
+ "fits": [
+  {
+   "s11": 50,
+   "points": 8,
+   "ms_per_digit": 100.12,
+   "fixed_ms": 4024.3
+  },
+  {
+   "s11": 70,
+   "points": 8,
+   "ms_per_digit": 140.05,
+   "fixed_ms": 4023.7
+  },
+  {
+   "s11": 95,
+   "points": 8,
+   "ms_per_digit": 190.09,
+   "fixed_ms": 4024.7
+  }
+ ],
+ "restored": true,
+ "ms_per_s11_unit": 1.999
+}

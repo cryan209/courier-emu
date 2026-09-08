@@ -111,12 +111,25 @@ MEASURED_FRAME_HZ = 2_401
 # against 136 - and the exchange decodes no digits at all from them.
 #
 # Both cannot be right, and the board is not the thing that is wrong: the same
-# firmware dials on it at 2,401 Hz. So the harness has a second error that 391 Hz
-# was compensating for, somewhere between this interrupt's countdown chain and
-# the codec-sample clock the exchange measures digits in. Until that is found,
-# the default stays at the rate the rest of the harness is consistent with, and
-# `--frame-hz` makes the comparison one flag rather than an edit.
-MODELLED_FRAME_HZ = 391
+# firmware dials on it at 2,401 Hz. There is a divider between this interrupt and
+# the chain that times a digit, and the harness does not have it.
+#
+# So the rate below is what that *prescaled* chain runs at, and it is measured
+# rather than guessed. `artifacts/dial-timing-01` timed real digits on the board
+# by differencing blind dials of 4 to 40 digits: 100.12, 140.05 and 190.09 ms a
+# digit at S11 50, 70 and 95, which is 1.999 ms per S11 unit through an intercept
+# of 0.1 ms. A digit period is exactly twice S11 - the tone and the gap that
+# follows it are each S11 milliseconds. The harness at 391 Hz took 2.739 ms per
+# unit, 1.370x too slow, and 391 x 1.370 is this:
+MODELLED_FRAME_HZ = 536
+# At it, a default S11 = 70 digit's tone is 70.2 ms against the board's 70.0.
+# The interdigit gap is not fixed by it and is a separate fault: 56.9 ms where
+# the board is 70.0, because the harness loads 28.4 periods for the gap against
+# 36.6 for the tone where the board makes them equal.
+#
+# 2,401 / 536 is 4.48, so the missing divider is near 9/2. That it is not a whole
+# number is the reason to keep both constants here rather than reconcile them:
+# one of the two rates is probably not yet measured as exactly as it looks.
 FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // MODELLED_FRAME_HZ
 # How long a character sits on the wire before the receiver takes it. Long
 # enough that the frame service sees the line low at least once.

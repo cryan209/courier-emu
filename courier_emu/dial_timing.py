@@ -84,6 +84,23 @@ class DialPort(SerialPort):
         response = self._read_until(CALL_TERMINAL, timeout)
         return response, time.monotonic() - started
 
+    def reopen(self) -> None:
+        """Close and reopen the device, then restore the volatile settings.
+
+        Only the settings this module set: echo off, verbose result codes, X0
+        and the short carrier wait. `S11` is not restored here - the caller owns
+        it, and re-sending it would hide a reopen that happened mid-sweep.
+        """
+        try:
+            self.__exit__(None, None, None)
+        except OSError:
+            self.fd = None
+        time.sleep(1.0)
+        self.__enter__()
+        self.drain()
+        for command in ("ATE0", "ATV1", "ATQ0", "ATX0", "ATS7=1"):
+            self.send(command, timeout=10.0)
+
     def _write(self, data: bytes) -> int:
         if not select.select([], [self.fd], [], 4.0)[1]:
             raise TimeoutError("serial write timed out")
@@ -126,13 +143,36 @@ def measure(port: DialPort, s11: int, counts: tuple[int, ...],
     for digits in counts:
         for attempt in range(repeats):
             command = "ATDT" + "".join(str((i % 9) + 1) for i in range(digits))
-            answer, elapsed = port.send(command)
+            try:
+                answer, elapsed = port.send(command)
+            except OSError as exc:
+                # The USB serial device drops mid-run on this bench - one dial
+                # in on the first attempt, with the node still present and the
+                # modem answering AT immediately afterwards. Reopening and
+                # retrying costs one dial; the alternative is losing the run.
+                # A dial that fails twice is recorded and skipped rather than
+                # ending the sweep, because the fit only needs a spread of
+                # digit counts, not every one of them.
+                log.append({"s11": s11, "digits": digits, "attempt": attempt + 1,
+                            "error": repr(exc), "recovered": False})
+                try:
+                    port.reopen()
+                    log[-1]["recovered"] = True
+                    answer, elapsed = port.send(command)
+                except OSError:
+                    continue
             text = answer.decode("ascii", "replace").strip().splitlines()[-1]
             log.append({"s11": s11, "digits": digits, "attempt": attempt + 1,
                         "seconds": round(elapsed, 4), "result": text})
             points.append((digits, elapsed))
-            port.send("ATH", timeout=10.0)
+            try:
+                port.send("ATH", timeout=10.0)
+            except OSError:
+                port.reopen()
             time.sleep(0.3)
+    if len({x for x, _ in points}) < 2:
+        return {"s11": s11, "points": len(points),
+                "error": "fewer than two digit counts survived; no slope"}
     slope, intercept = fit(points)
     return {"s11": s11, "points": len(points),
             "ms_per_digit": round(slope * 1000, 2),
