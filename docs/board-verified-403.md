@@ -430,9 +430,27 @@ clear across a dial gives one reset and 9,206 clears:
     CLEAR had=2224   at 46,336,137
     ...                                and thereafter had=0, forever
 
-The reset is real and intended - the supervisor does re-enter its DSP download
-routine for a line operation, which is what `bridge.py:1318` recognises. What
-follows is the harness's own doing. `bridge.py:1247` clears the bootstrap
+The reset is real and intended, but `bridge.py:1318` is not what recognises it.
+The supervisor pulses the **actual C52 reset line** - `ff56` bit 1, the one
+`8b1f972` established this morning - twice, immediately before the download:
+
+    ASSERT  46,307,057
+    release 46,307,573
+    ASSERT  46,307,716
+    release 46,308,232
+            46,308,306   <-- and only here does the harness recreate the core
+
+So the answer to "does the supervisor want the DSP reset" is yes, demonstrably,
+on a wire the harness can already see. It asserts that line four times across a
+dial - at 5.07M, 5.63M, 37.71M and 46.30M - and the harness recreates the core
+for exactly one of them, 74 instructions after the last release, because eight
+data bytes happened to match `expected_bootstrap[:8]`. The byte match is a
+stand-in for a signal that is present, observable and already routed:
+`machine.py` takes that same edge into `float_runtime_bus()`, which floats the
+bus and does not touch the core.
+
+Two reset semantics for one event, neither keyed to the event. What follows is
+the harness's own doing. `bridge.py:1247` clears the bootstrap
 accumulator on any `ENTRY_REQUEST_COMPLETE` written to `0x1c` while `not
 self.active`, and after a reset `active` is false for the whole re-download.
 So every one of those writes throws away the program bytes collected so far,
