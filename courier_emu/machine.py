@@ -39,6 +39,11 @@ NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
+# The C52's reset line, in the relocated peripheral control block. Driving it
+# low holds the coprocessor in reset; the ROM pulses it at 8e3c1/8e406 and the
+# payload at 69c08/69c4d, and `probe_transport` recovered the same bit.
+DSP_RESET_PORT = 0xFF56
+DSP_RESET_BIT = 0x0002
 # How often the board's periodic service runs. Everything it does is an edge
 # the hardware samples rather than something the 80186 produces, so a period
 # models it better than a test after every instruction - a real 80186 does not
@@ -174,7 +179,6 @@ _HOT_ADDRESSES = frozenset({
     0x667B0,
     0x667BA,
     0x668C2,
-    0x69C61,
     0x69F16,
     0x6A035,
     0x6A062,
@@ -516,6 +520,8 @@ class CourierMachine:
         self._rom_rx_bit = 0
         self._rom_dte_opened = False
         self._previous_address: int | None = None
+        # The C52 comes out of board reset held, the same as the part does.
+        self._dsp_in_reset = True
         # The service's own clocks, counted down by the instructions elapsed
         # rather than tested against a multiple: the instruction count now
         # advances a basic block at a time and steps over any given multiple.
@@ -1277,12 +1283,6 @@ class CourierMachine:
             ):
                 value = int.from_bytes(_uc.mem_read(0xFF46, 2), "little")
                 _uc.mem_write(0xFF46, (value & ~0x20).to_bytes(2, "little"))
-            # The coprocessor bootstrap resets its transfer interface and
-            # waits here until both status words float to all ones. Dynamic
-            # ATD/ATA traces reach this during startup only: calls manipulate
-            # ASIC register 0x82 but do not perform a second C52 download.
-            if hot and (address == 0x69C61 and self.dsp_bridge is not None):
-                self.dsp_bridge.float_runtime_bus()
             # Firmware delay helpers either burn CX or wait for the timer ISR
             # to advance the tick at 0000:0152. Advance both without inventing
             # asynchronous interrupts in the CPU-only harness.
@@ -2170,6 +2170,18 @@ class CourierMachine:
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
             self.mmio_counts[("write", address, size)] += 1
             self.timers.write(address, size, value, self.instructions)
+            if address == DSP_RESET_PORT and self.dsp_bridge is not None:
+                # The board holds the C52 in reset through this bit, and a part
+                # in reset drives nothing: its transfer interface reads back as
+                # all ones. Both firmwares reset the coprocessor by pulsing the
+                # bit low and then wait for that all-ones state - the ROM at
+                # 8e3aa, the payload at 69c61 - so the bus floats on the edge
+                # the board actually produces rather than at either of those
+                # addresses. probe_transport models the same edge.
+                asserted = not value & DSP_RESET_BIT
+                if asserted and not self._dsp_in_reset:
+                    self.dsp_bridge.float_runtime_bus()
+                self._dsp_in_reset = asserted
             if self.uart is not None:
                 sent = self.uart.write(address, size, value)
                 if sent is not None:
