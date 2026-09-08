@@ -314,6 +314,7 @@ class BridgeStatus:
     # Messages the resident originated, as opposed to the ones the bridge
     # synthesises for it at call-overlay activation.
     dsp_originated_messages: int = 0
+    dsp_originated_tags: dict[str, int] | None = None
     dsp_cells: dict[str, str] | None = None
     dsp_writes: list[dict[str, int]] | None = None
 
@@ -437,6 +438,7 @@ class CourierDspBridge:
         # completed message - the same edge the host side commits on.
         self._dsp_mailbox_writes = 0
         self.dsp_originated_messages = 0
+        self.dsp_originated_tags: Counter[str] = Counter()
         self._connected_event_queued = False
         self.error: str | None = None
         self._x86_ticks = 0
@@ -1017,6 +1019,10 @@ class CourierDspBridge:
         data = self.core.io_output(HOST_WORD_CELL) & 0xFFFF
         self._queue_runtime_message(header, data)
         self.dsp_originated_messages += 1
+        # What the resident said, not just how often. A count cannot answer
+        # "did it report the tone"; a histogram of tag:word can, by diffing a
+        # run that heard a tone against one that heard silence.
+        self.dsp_originated_tags[f"{header:04x}:{data:04x}"] += 1
 
     def _queue_runtime_message(self, header: int, data: int) -> None:
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
@@ -2018,6 +2024,7 @@ class CourierDspBridge:
             dsp_host_ports=self._core_snapshot("io_port_stats"),
             core_codec=self._core_snapshot("codec_state"),
             dsp_originated_messages=self.dsp_originated_messages,
+            dsp_originated_tags=dict(self.dsp_originated_tags),
             dsp_memory_map=self._core_snapshot("memory_map"),
             asic={
                 "registers": {

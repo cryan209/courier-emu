@@ -703,3 +703,47 @@ So the resident hears the tone and does not report it. That is no longer an
 audio-path question, and the next one is narrow: does the 3.1.2 resident have a
 dial-tone detector on this path at all, and does it run in this state? The
 harness can now put a known tone in front of it and ask.
+
+### A known tone in front of the resident: it does not react at all
+
+With the codec's words now surviving the rebuild, the resident can be given a
+known tone and asked. The control is exact: the *same* run twice, the same
+11,305 replayed words at the same instruction, carrying dial tone in one and
+zeros in the other. Nothing else differs.
+
+| | tone | silence |
+|---|---|---|
+| `codec_rx_peak` | **7,878** | **0** |
+| `codec_rx_consumed` | 141,989 | 141,989 |
+| `drr_reads` | 209,162 | 209,162 |
+| DSP-originated messages | 134 | 134 |
+| `0008:0000` | 71 | 71 |
+| `0008:0002` | 62 | 62 |
+| `0008:0003` | 1 | 1 |
+
+`codec_rx_peak` confirms the two runs really did carry different audio. **Every
+other number is identical, including the tag histogram.** The resident reads
+`DRR` 209,162 times, consumes every sample, and says exactly the same three
+things - a heartbeat on tag `0x0008` - whether it is hearing dial tone or
+silence.
+
+So the resident, in this state, reports nothing about what it hears. That is a
+statement about its **output**, and it is worth keeping the two apart:
+
+* It does **not** show that 3.1.2 has no call-progress detector. A detector
+  could be setting an internal cell that the supervisor reads with a command it
+  never sends, or could live in an overlay that is never published on this path.
+* It does show that **nothing the supervisor could poll over the mailbox changes
+  when a tone arrives**, so no consume path built on the mailbox can carry a
+  dial-tone report as things stand.
+
+The supervisor's side points the same way: across the whole failing dial it puts
+only six words through the INT0 send path. It never asks the resident for
+anything before giving up, so if there is a detector that has to be armed, it is
+never armed.
+
+That is the next question, and it is a firmware one rather than a harness one:
+what does a 3.1.2 resident have to be told before it will listen, and does the
+supervisor's originate path ever tell it? The board can be asked the same way
+the mailbox cadence was - the resident's own traffic during a real dial, sampled
+through the INT0 hook.
