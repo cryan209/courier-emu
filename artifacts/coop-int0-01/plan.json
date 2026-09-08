@@ -1,0 +1,20 @@
+{
+ "hook": "chained INT0, the mailbox interrupt",
+ "vector": 12,
+ "original_vector": "8f46:0000",
+ "entry": 6656,
+ "place_base": 6656,
+ "state": 6912,
+ "buffer": 7168,
+ "buffer_end": 11008,
+ "ports": [
+  "0x1e",
+  "0x1c"
+ ],
+ "cells": [],
+ "bytes_per_entry": 2,
+ "capacity_samples": 1920,
+ "code_bytes": 42,
+ "seconds_at_303hz": 6.3,
+ "state_write": "ATGLK2W1B00,1C00"
+}

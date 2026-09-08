@@ -46,7 +46,7 @@ import sys
 import time
 
 from .cooperative_probe import (
-    FIRMWARE_DATA, HOOKS, Hook, build_image, decode,
+    FIRMWARE_DATA, HOOKS, WRAPS_OFFSET, Hook, build_image, decode,
 )
 from .flash_dump import (
     CALL_TERMINAL, PAGE, TERMINAL, SerialPort, command_for, parse_page,
@@ -152,6 +152,7 @@ def writable_addresses(hook: Hook, image: bytes) -> frozenset[int]:
     """
     allowed = set(range(hook.entry, hook.entry + len(image) + len(image) % 2))
     allowed.update((hook.state, hook.state + 1))
+    allowed.update((hook.state + WRAPS_OFFSET, hook.state + WRAPS_OFFSET + 1))
     if hook.chain:
         slot = hook.vector * 4
         allowed.update((slot + 2, slot + 3))
@@ -210,7 +211,7 @@ def seize_the_loop(port: SerialPort, seconds: float) -> dict:
     record["result"] = port.abort_dial().decode("ascii", "replace").strip()
     record["hung_up"] = port.query("ATH", timeout=8.0).decode(
         "ascii", "replace").strip()
-    record["elapsed_seconds"] = round(time.monotonic() - started, 2)
+    record["waited_seconds"] = round(time.monotonic() - started, 2)
     return record
 
 
@@ -234,7 +235,8 @@ def wait_for_operator(seconds: float | None) -> dict:
 
 def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
         ports: tuple[int, ...], cells: tuple[int, ...],
-        output: Path, seconds: float | None, dial: float | None = None) -> dict:
+        output: Path, seconds: float | None, dial: float | None = None,
+        wrap: bool = False) -> dict:
     started = time.monotonic()
     responses = output / "responses"
     responses.mkdir(parents=True, exist_ok=True)
@@ -266,8 +268,16 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
 
     # 1. Identity. The hooks are addresses off one specific firmware pair.
     port.drain()
-    raw = port.query("ATI7")
+    # 8 s, not the 4 s default: ATI7 prints twenty lines and the other probes
+    # on this board already allow 6. A short read used to reach
+    # validate_identity as a truncated response and be reported as the wrong
+    # board, which is a bad way to learn that a timeout is too tight.
+    raw = port.query("ATI7", timeout=8.0)
     (responses / "ati7.txt").write_bytes(raw)
+    if not TERMINAL.search(raw):
+        raise TimeoutError(
+            "ATI7 did not finish; the board answered "
+            f"{len(raw)} bytes with no terminal status")
     _, target = validate_identity(raw)
     report["identity"] = {"supervisor": target[0], "dsp": target[1]}
     if target != SUPPORTED:
@@ -297,6 +307,8 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
         if (before.get(address), before.get(address + 1)) != (word & 0xFF, word >> 8):
             port.write_word(address, word)
     port.write_word(hook.state, hook.buffer)
+    if wrap:
+        port.write_word(hook.state + WRAPS_OFFSET, 0)
     checkpoint()
 
     placed = read_pages(port, hook.entry, hook.state + 2, responses)
@@ -339,16 +351,20 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
 
     # 5. Read the ring out, with the hook already gone.
     pages = read_pages(port, hook.state, hook.buffer_end, responses)
-    ring = decode(pages, ports, cells, hook=hook)
+    ring = decode(pages, ports, cells, hook=hook, wrap=wrap)
     (output / "ring.json").write_text(json.dumps(ring, indent=1) + "\n")
     report["ring"] = {k: v for k, v in ring.items() if k != "columns"}
     if ring.get("samples"):
         report["ring"]["first_16"] = {
             name: [f"{v:02x}" for v in column[:16]]
             for name, column in ring["columns"].items()}
-        elapsed = report["wait"]["waited_seconds"]
+        elapsed = report["wait"].get("waited_seconds")
         if elapsed:
-            report["ring"]["entries_per_second"] = round(ring["samples"] / elapsed, 1)
+            # The interrupt rate, which is the point of the wrapping mode: a
+            # ring that stopped when full only says "at least capacity".
+            seen = ring.get("interrupts_total", ring["samples"])
+            report["ring"]["interrupts_per_second"] = round(seen / elapsed, 1)
+            report["ring"]["complete"] = not ring["filled_ring"]
     report["firmware_data_after"] = bytes(
         pages[a] for a in range(*FIRMWARE_DATA) if a in pages).hex() or None
     report["status"] = "complete"
@@ -376,6 +392,14 @@ def main() -> int:
                              "the ring holds), then aborted and ATH. It dials no "
                              "digits and cannot place a call, but it does take "
                              "the loop off hook")
+    parser.add_argument("--wrap", action="store_true", default=True,
+                        help="keep the newest entries and count the wraps "
+                             "(default): a stimulus follows the arming, so a "
+                             "ring that stops when full captures the wrong end "
+                             "of the window")
+    parser.add_argument("--no-wrap", dest="wrap", action="store_false",
+                        help="stop when the ring is full, keeping the oldest "
+                             "entries")
     parser.add_argument("--cell", action="append", default=[], metavar="ADDR",
                         help="segment-0 RAM byte to sample each entry, hex")
     parser.add_argument("--ports", default=None,
@@ -394,7 +418,7 @@ def main() -> int:
                      "through T0CON, which this runner does not write")
     ports = hook.default_ports if args.ports is None else args.ports
     cells = tuple(int(c, 16) for c in args.cell)
-    image, plan = build_image(ports, cells, hook=hook)
+    image, plan = build_image(ports, cells, hook=hook, wrap=args.wrap)
     try:
         args.output.mkdir(parents=True, exist_ok=False)
     except FileExistsError:
@@ -413,7 +437,7 @@ def main() -> int:
                       writable=writable_addresses(hook, image)) as port:
         try:
             report = run(port, hook, image, plan, ports, cells,
-                         args.output, args.seconds, args.dial)
+                         args.output, args.seconds, args.dial, args.wrap)
         except BaseException as exc:          # noqa: BLE001 - reported, then raised
             print(f"  failed: {exc!r}", file=sys.stderr)
             raise

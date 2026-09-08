@@ -93,6 +93,12 @@ CHAIN_PLACE_BASE = 0x1A00
 # placement that spanned it. Nothing this module emits may touch it.
 FIRMWARE_DATA = (0x1AAB, 0x1AD6)
 CHAIN_STATE = 0x1B00
+# The wrap counter, one word above the pointer. Without it a filled ring says
+# only "at least capacity", which on INT0's first hardware run was the whole
+# result: 1920 entries, all idle, and no way to tell whether they covered the
+# dial or ran out before it. wraps * capacity + (pointer - buffer) is the exact
+# number of interrupts the run took, and the ring itself holds the newest ones.
+WRAPS_OFFSET = 2
 CHAIN_BUFFER = 0x1C00
 CHAIN_BUFFER_END = 0x2B00      # 0x2c00 is written by &T8; stop short of it
 I3CON = 0xFF1E
@@ -181,9 +187,9 @@ FORBIDDEN_PORTS = (0x10, 0x12, 0x14)
 FORBIDDEN_ON_INT0 = (0x58, 0x5A, 0x5C, 0x5E, 0x60, 0x62)
 
 
-def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
+def build_sampler(ports: tuple[int, ...] | None = None,
                   cells: tuple[int, ...] = (),
-                  hook: Hook = TIMER0) -> bytes:
+                  hook: Hook = TIMER0, wrap: bool = False) -> bytes:
     """The ISR image. One byte per port per entry, until the ring is full.
 
     On a chained hook the handler restores everything and jumps to the
@@ -191,6 +197,7 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
     untouched interrupt frame, so the original runs exactly as if it had been
     entered directly, and it owns the EOI and the `iret`.
     """
+    ports = hook.default_ports if ports is None else ports
     entry, state = hook.entry, hook.state
     buffer, buffer_end = hook.buffer, hook.buffer_end
     for port in ports:
@@ -236,7 +243,16 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
     c.emit("8ed8")          # mov ds, ax          - the write primitive's DS
     c.emit("8b1e"); c.word(state)          # mov bx, [state]
     c.emit("81fb"); c.word(buffer_end)     # cmp bx, buffer_end
-    c.branch(0x73, "full")                 # jae full
+    if wrap:
+        # Wrap to the start and count it, so the ring holds the newest entries
+        # rather than the oldest. A stimulus that follows the arming is at the
+        # end of the window, and stopping when full captures the wrong end of it.
+        c.branch(0x72, "store")            # jb store
+        c.emit("bb"); c.word(buffer)       # mov bx, buffer
+        c.emit("ff06"); c.word(state + WRAPS_OFFSET)   # inc word [wraps]
+        c.label("store")
+    else:
+        c.branch(0x73, "full")             # jae full
     for port in ports:
         c.emit(f"e4{port:02x}")            # in al, port
         c.emit("8807")                     # mov [bx], al
@@ -272,9 +288,10 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
     return c.finish()
 
 
-def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
+def build_image(ports: tuple[int, ...] | None = None,
                 cells: tuple[int, ...] = (),
-                hook: Hook = TIMER0) -> tuple[bytes, dict]:
+                hook: Hook = TIMER0,
+                wrap: bool = False) -> tuple[bytes, dict]:
     """The placement image and the numbers a caller needs to read it back.
 
     The image is the **code only**. An earlier version returned one block
@@ -285,7 +302,8 @@ def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
     word and gets its own command instead, so no placement can reach that data
     whether or not the caller remembers the flag.
     """
-    code = build_sampler(ports, cells, hook=hook)
+    ports = hook.default_ports if ports is None else ports
+    code = build_sampler(ports, cells, hook=hook, wrap=wrap)
     if hook.entry + len(code) > hook.state:
         raise ValueError("sampler outgrew the gap before its state word")
     if hook.entry < FIRMWARE_DATA[0] < hook.entry + len(code):
@@ -310,6 +328,8 @@ def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
         # exists to measure, so no figure is offered for it.
         "seconds_at_303hz": round(capacity / 303, 1),
         "state_write": f"ATGLK2W{hook.state:04X},{hook.buffer:04X}",
+        "wraps_write": f"ATGLK2W{hook.state + WRAPS_OFFSET:04X},0000" if wrap else None,
+        "wrap": wrap,
     }
     return code, plan
 
@@ -353,23 +373,44 @@ def readout_commands(hook: Hook = TIMER0) -> list[str]:
     return [f"ATGLK2={page:04X}" for page in range(lo & ~0xFF, hi, 0x100)]
 
 
-def decode(pages: dict[int, int], ports: tuple[int, ...] = DEFAULT_PORTS,
-           cells: tuple[int, ...] = (), hook: Hook = TIMER0) -> dict:
-    """Turn read-back bytes into per-port sample columns."""
+def decode(pages: dict[int, int], ports: tuple[int, ...] | None = None,
+           cells: tuple[int, ...] = (), hook: Hook = TIMER0,
+           wrap: bool = False) -> dict:
+    """Turn read-back bytes into per-port sample columns.
+
+    On a wrapping capture the pointer is the *oldest* entry, not the newest, so
+    the ring is rotated back into time order before it is split into columns.
+    """
+    ports = hook.default_ports if ports is None else ports
     written = pages.get(hook.state, 0) | (pages.get(hook.state + 1, 0) << 8)
+    wraps = (pages.get(hook.state + WRAPS_OFFSET, 0)
+             | (pages.get(hook.state + WRAPS_OFFSET + 1, 0) << 8)) if wrap else 0
     if not hook.buffer <= written <= hook.buffer_end:
         return {"error": f"write pointer {written:#06x} is outside the ring",
                 "write_pointer": written}
-    raw = [pages[a] for a in range(hook.buffer, written) if a in pages]
     names = [f"{p:#04x}" for p in ports] + [f"[{c:04x}]" for c in cells]
     width = len(names) or 1
+    if wraps:
+        # Oldest first: everything from the pointer to the end, then the start
+        # up to the pointer. The split has to land on an entry boundary or the
+        # columns interleave, and it does because the pointer only ever advances
+        # by one full entry.
+        raw = ([pages[a] for a in range(written, hook.buffer_end) if a in pages]
+               + [pages[a] for a in range(hook.buffer, written) if a in pages])
+    else:
+        raw = [pages[a] for a in range(hook.buffer, written) if a in pages]
     complete = len(raw) - len(raw) % width
     columns = {name: raw[i:complete:width] for i, name in enumerate(names)}
+    capacity = (hook.buffer_end - hook.buffer) // width
     return {
         "write_pointer": written,
+        "wraps": wraps,
+        # What the ring holds, and what the run actually saw. They are the same
+        # number only when nothing was lost.
         "samples": complete // width,
+        "interrupts_total": wraps * capacity + (written - hook.buffer) // width,
         "bytes_recovered": len(raw),
-        "filled_ring": written >= hook.buffer_end,
+        "filled_ring": bool(wraps) or written >= hook.buffer_end,
         "columns": columns,
         "distinct": {k: len(set(v)) for k, v in columns.items()},
     }
@@ -399,6 +440,11 @@ def main() -> int:
                              "handshake group - or 0x1e,0x1c on int0). Widening "
                              "this can consume data the firmware is waiting "
                              "for; see the module docstring")
+    parser.add_argument("--wrap", action="store_true",
+                        help="keep the newest entries instead of stopping when "
+                             "the ring is full, and count the wraps, so a "
+                             "stimulus that follows the arming is captured and "
+                             "the true interrupt rate is known")
     args = parser.parse_args()
 
     if args.hook and args.chain:
@@ -407,7 +453,7 @@ def main() -> int:
     ports = hook.default_ports if args.ports is None else args.ports
     cells = tuple(int(c, 16) for c in args.cell)
 
-    image, plan = build_image(ports, cells, hook=hook)
+    image, plan = build_image(ports, cells, hook=hook, wrap=args.wrap)
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "sampler-ram.bin").write_bytes(image)
     (args.output / "arm.txt").write_text("\n".join(arm_commands(hook)) + "\n")
@@ -418,6 +464,8 @@ def main() -> int:
     print(f"  image {len(image)} bytes at {hook.entry:#06x}; place it with "
           f"tools/emit_ram_writes.py --base {hook.entry:#06x} --assume-zero")
     print(f"  then set the write pointer:  {plan['state_write']}")
+    if plan["wraps_write"]:
+        print(f"  and zero the wrap counter:   {plan['wraps_write']}")
     print("  arm.txt starts it; disarm.txt is NOT optional - nothing resets this board")
     if hook.chain:
         print(f"  arm.txt reads the IVT page first: vector {hook.vector:#04x} must "

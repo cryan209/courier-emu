@@ -743,7 +743,53 @@ This does not by itself prove the free-running edge is what breaks the 403 dial.
 It does mean the harness has never had a faithful version of the one event the
 whole channel is built on.
 
-### The measurement
+### Measured: the edge free-runs at 2.4 kHz, and the reply cadence is 20 ms
+
+**Run on hardware, 2026-09-09**, `artifacts/coop-int0-01` and `-02`: the board
+at `/dev/cu.usbserial-11420`, ID_SDL 4.03d, supervisor 7.4.16, DSP 3.1.2, a line
+in the jack, stimulus a bare `ATD` held 6 s and then aborted (`NO CARRIER`).
+
+    interrupts            15,868 in 6.61 s   =  2,401 / s
+    0x1c = fd             1,895 of the last 1,920 entries
+    0x1c = ff                25 of them
+    0x1e = ff             1,920 of 1,920
+
+**The first claim above is wrong and is withdrawn.** The ASIC does *not* assert
+this pin from mailbox state. It free-runs, at 2,401 Hz, and the handler polls
+`0x1c` on every one of them - which is why `0x1c` reads `fd` for 98.7% of the
+entries: bit 0 standing, bit 1 clear, nothing to do. The harness standing in for
+the edge with a periodic one is therefore right *in kind*, and the paragraph
+saying the board would settle whether it is event-driven has been answered
+against the hypothesis that prompted it.
+
+What the harness has wrong is the rate, and it is wrong the opposite way to what
+"12,809 interrupts to carry 34 events" suggested. That run covers 6,858 ticks of
+5 ms - 34.3 s of emulated time - so it raises **373 INT0 per second** against the
+board's 2,401. The harness's mailbox is not being hammered; it is being serviced
+**six times too slowly**.
+
+And the part that is genuinely a signal is bit 1:
+
+    entries between consecutive 0x1c = ff, in order:
+    48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 58 81
+
+Twenty-two consecutive intervals of exactly 48 interrupts. At 2,401 Hz that is
+**20.0 ms**, a 50 Hz report from the DSP held to the sample, with the last two
+intervals stretching as the dial is aborted and the loop released. The earlier
+capture, whose ring stopped when full and so holds the *first* 0.8 s after
+arming - before the hook closes - shows `0x1c` flat at `fd` with no bit 1 at
+all. So the cadence is not free-running with the interrupt: it starts with the
+seizure.
+
+That is the shape the harness has to produce, and it is a much more specific
+target than "the resident should report something": a message every 20 ms for as
+long as the loop is off hook, against 28 heartbeats 70 ms apart that nothing
+consumes.
+
+`0x1e` never moved, in either capture. Whatever the handler's `mov ah, al` is
+carrying, it is not carrying it here.
+
+### How it was measured
 
 `courier_emu.cooperative_probe --hook int0` chains this vector the way the INT3
 mode chains the tick, and the trick is cheaper here: the original offset is
@@ -762,3 +808,17 @@ The mailbox lanes `0x58`-`0x62` are refused in this mode. Elsewhere sampling the
 only might race the firmware; inside INT0 it certainly does, because the handler
 this stub runs in front of is about to read exactly those, and a byte taken here
 is a byte it does not get.
+
+`courier_emu.cooperative_run` drives the whole sequence on the board - identity,
+vector check, place, verify, arm, stimulus, disarm, read out - with the disarm in
+a `finally`. Two things the first hardware run taught it:
+
+* **The ring must wrap.** Stopping when full keeps the *oldest* entries, and at
+  2,401 Hz a 1,920-entry ring is 0.8 s: `coop-int0-01` filled before the hook
+  even closed and recorded 1,920 samples of an idle mailbox. Wrapping keeps the
+  newest, and a wrap counter beside the pointer turns "at least capacity" into
+  the exact interrupt count, which is what makes the 2,401 Hz figure available
+  at all.
+* **A filled ring is a lower bound on nothing else.** 15,868 interrupts were
+  taken and 1,920 kept. The 20 ms cadence is measured across the kept window and
+  is not evidence about the 15.6 s of interrupts that fell out of it.
