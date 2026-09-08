@@ -238,16 +238,23 @@ So the mailbox low byte idles at `0x82`, drops to `0x02` around the seizure,
 and pulses bit 0 twice: once just before the hook closes and once **0.43 s
 after** it. The high byte never moves.
 
-The second pulse is where a dial-tone report would sit. That is a correlation
-and not yet a fact - what would settle it is the same capture with no dial, and
-the attempt at that control is contaminated: the line went off hook on its own
-at 2.75 s into the idle window, `[020d]` and `0x5c` moving together, which on a
-live pair is most likely an inbound ring being auto-answered. What the control
-does show is that the `0x03` pulses are absent from it, and that `82 -> 02`
-accompanies the hook either way.
+The control - the same capture with no dial, `ATS0=0` so nothing can answer -
+is flat. `0x5c` stays `0x82`, `[020d]` stays `0x09`, `0x1c` stays `0xfd`,
+nothing moves for its whole 833 samples. So every transition above belongs to
+the dial.
+
+A first attempt at that control appeared to show the line going off hook by
+itself, and that was an artifact of the read-back, not the board. **The sampler
+stops when the ring is full, and the write pointer says where it stopped.** The
+idle run wrote 833 samples and stopped at `0x2904`; the read-back sliced the
+whole `0x1c00`-`0x2b00` ring anyway, so everything past sample 833 was the
+previous dial's leftovers, and the "event" at sample 834 was simply the first
+stale byte. Read to the pointer, never to the end of the ring.
 
 Reading the pair did not disturb the call: it still answered `NO CARRIER`, and
-the board was on hook with its INT3 vector restored afterwards.
+the board was on hook with its INT3 vector restored afterwards. The dial
+capture filled its ring - pointer `0x2b00`, 960 samples - so all of it is
+fresh.
 
 The other reading is still open. The probe "cannot read the DSP's internal data
 memory", tone detection is the C52's job, and a message the supervisor consumes
