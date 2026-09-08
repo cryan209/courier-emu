@@ -211,8 +211,23 @@ ROM_DIP_SWITCHES = {
     "quiet-answer": (0x12, 0x10),
     "quiet-answer-alt": (0x12, 0x80),
     "dtr-override": (0x12, 0x20),
-    "carrier-detect-override": (0x14, 0x40),
+    # NOT carrier-detect-override, which is what this used to be mapped to.
+    # Port 0x14 bit 0x40 is the front-panel momentary button: 0x877cd runs the
+    # power-on self test when it reads low, and 0x87e34 then spins *while* it
+    # reads low, waiting for release - which is a push-button, not a switch a
+    # profile could be built from. Mapping a DIP name onto it made
+    # `--dip carrier-detect-override` boot the ROM images into the self test,
+    # and Scott confirms the board only runs it with the button held down.
+    #
+    # Where carrier-detect-override actually lives on these builds is not
+    # established. Port 0x14 bit 0x20 (read at 0x88360) is the candidate - it
+    # is the only other 0x14 line in the switch group - but nothing has been
+    # shown to connect it to [0x09e9]/&C yet, so it is left unnamed rather
+    # than guessed at a second time.
 }
+
+# Port 0x14 bit 0x40, held low. Not a DIP switch: see above.
+FRONT_PANEL_BUTTON = (0x14, 0x40)
 
 # A directly attached DTE wants the modem to report result codes, which is the
 # closed position of that switch. Everything else idles open, matching an input
@@ -290,13 +305,32 @@ class CourierPanel:
             raise ValueError(f"unknown option switch {sorted(unknown)}; known switches are {known}")
 
     def dip_input(self, port: int, *, rom: bool = False) -> int:
-        """Return the mask of bits this port's closed option switches pull low."""
+        """Return the mask of bits this port's closed option switches pull low.
+
+        A switch whose wiring on the ROM builds is not established is left out
+        rather than driven at a guessed bit - `unwired_switches` reports it, so
+        a run that asked for one can see it did nothing. Guessing here is what
+        put `carrier-detect-override` on the front-panel button and booted
+        every dedicated-line run into the self test.
+        """
         low = 0
         for name in self.dip_closed:
-            switch_port, mask = ROM_DIP_SWITCHES[name] if rom else DIP_SWITCHES[name][:2]
+            if rom:
+                wiring = ROM_DIP_SWITCHES.get(name)
+                if wiring is None:
+                    continue
+                switch_port, mask = wiring
+            else:
+                switch_port, mask = DIP_SWITCHES[name][:2]
             if switch_port == port:
                 low |= mask
         return low
+
+    def unwired_switches(self, *, rom: bool = False) -> list[str]:
+        """Closed switches this build has no established wiring for."""
+        if not rom:
+            return []
+        return sorted(set(self.dip_closed) - set(ROM_DIP_SWITCHES))
 
     def dip_state(self) -> dict[str, str]:
         return {
