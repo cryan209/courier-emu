@@ -256,6 +256,28 @@ the board was on hook with its INT3 vector restored afterwards. The dial
 capture filled its ring - pointer `0x2b00`, 960 samples - so all of it is
 fresh.
 
+**Four dials, sample-identical.** Repeated with `S0=0`, `X4`, `S7=8`, reading
+only as far as the write pointer:
+
+    run 1  NO CARRIER  n=960  hook=239  0x03 pulses at 148, 370
+    run 2  NO CARRIER  n=960  hook=239  0x03 pulses at 148, 370
+    run 3  NO CARRIER  n=960  hook=239  0x03 pulses at 148, 370
+    run 4  NO CARRIER  n=960  hook=239  0x03 pulses at 148, 370
+
+Not approximately - the same sample index in all four. One pulse 91 samples
+(0.30 s) *before* the hook closes, one 131 samples (0.43 s) after it.
+
+That reproducibility cuts both ways. It says the capture is solid and the
+events are real. It also means the timing is fully determined by the firmware,
+which is what you would expect either from a scheduled step or from detecting a
+tone that is already present when the detector starts - so it does not, on its
+own, say the second pulse is the dial tone.
+
+The test that separates them is the line: with no dial tone to find, `ATD`
+answers `NO DIALTONE` instead of `NO CARRIER`, and if the pulse at 370 is the
+report it disappears from the capture while the one at 148 stays. That needs
+the pair unplugged for one run.
+
 The other reading is still open. The probe "cannot read the DSP's internal data
 memory", tone detection is the C52's job, and a message the supervisor consumes
 on arrival is invisible from this side however it is sampled.
