@@ -222,14 +222,36 @@ failed wait - `0x8b3e7`, `0x8b42d`, `0x8b495`, `0x89309`. The emulator spins
 there because it is stuck; that is where it waits, not where the board decides.
 `0x8b42d` cannot even succeed, since it short-circuits on `[04f2]` being zero.
 
-What that leaves is the reading the probe's own docstring already warns about:
-it "cannot read the DSP's internal data memory", and tone detection on this
-board is the C52's job. If the supervisor learns about dial tone from a mailbox
-message it consumes on arrival without latching, then neither end of that is
-visible to an 80186-side sampler, and no choice of cells will find it. Testing
-that means watching the mailbox data pair `0x5c`/`0x5e` - which the probe
-excludes by default because reading them may consume what the firmware was
-about to read - or a DSP-side mechanism that does not exist yet.
+### The mailbox data pair does move
+
+Sampling `0x5c`/`0x5e` - excluded from the probe's defaults because reading
+them may consume what the firmware was about to read - is the first thing that
+shows structure. Across a dial, at 303 Hz:
+
+    0.45s   port 1c    fd -> ff -> fd        one tick
+    0.49s   port 5c    82 -> 03 -> 02        two ticks in 03
+    0.79s   [020d]     09 -> 0b              the hook closes
+    1.22s   port 5c    02 -> 03 -> 02        two ticks in 03
+    -       port 5e    flat 00 throughout
+
+So the mailbox low byte idles at `0x82`, drops to `0x02` around the seizure,
+and pulses bit 0 twice: once just before the hook closes and once **0.43 s
+after** it. The high byte never moves.
+
+The second pulse is where a dial-tone report would sit. That is a correlation
+and not yet a fact - what would settle it is the same capture with no dial, and
+the attempt at that control is contaminated: the line went off hook on its own
+at 2.75 s into the idle window, `[020d]` and `0x5c` moving together, which on a
+live pair is most likely an inbound ring being auto-answered. What the control
+does show is that the `0x03` pulses are absent from it, and that `82 -> 02`
+accompanies the hook either way.
+
+Reading the pair did not disturb the call: it still answered `NO CARRIER`, and
+the board was on hook with its INT3 vector restored afterwards.
+
+The other reading is still open. The probe "cannot read the DSP's internal data
+memory", tone detection is the C52's job, and a message the supervisor consumes
+on arrival is invisible from this side however it is sampled.
 
 ### Two port read-backs, measured
 
