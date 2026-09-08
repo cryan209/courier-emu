@@ -132,8 +132,8 @@ class NativeC5x:
     def __init__(self, image: XmfImage, *, rebuild: bool = False) -> None:
         self.library = ctypes.CDLL(str(build_library(force=rebuild)))
         self._configure_api()
-        self.handle = self.library.courier_c5x_create()
-        if not self.handle:
+        self._handle = self.library.courier_c5x_create()
+        if not self._handle:
             raise RuntimeError("failed to create C5x core")
         try:
             origins = [origin for origin, _ in image.dsp_program_segments()]
@@ -261,10 +261,34 @@ class NativeC5x:
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
 
+    @property
+    def handle(self) -> int:
+        """The native core pointer, or a loud failure once it is gone.
+
+        The C entry points all guard against a null handle and return zero, so
+        a read taken after `close()` used to answer `0 instructions`, an empty
+        pc trace and `line_tx_writes 0` - indistinguishable from a core that
+        ran and did nothing. `CourierMachine.run` closes the bridge before it
+        returns, so *every* end-of-run diagnostic read hit that path and came
+        back plausibly empty. Raising here turns a silent wrong answer into an
+        error at the call site.
+        """
+        handle = self._handle
+        if not handle:
+            raise RuntimeError(
+                "the C5x core is closed; sample diagnostics during the run, "
+                "not after CourierMachine.run() returns"
+            )
+        return handle
+
+    @property
+    def closed(self) -> bool:
+        return not self._handle
+
     def close(self) -> None:
-        if getattr(self, "handle", None):
-            self.library.courier_c5x_destroy(self.handle)
-            self.handle = None
+        if getattr(self, "_handle", None):
+            self.library.courier_c5x_destroy(self._handle)
+            self._handle = None
 
     def step(self, count: int) -> None:
         error = ctypes.create_string_buffer(512)

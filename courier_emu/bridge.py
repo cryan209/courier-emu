@@ -369,6 +369,8 @@ class CourierDspBridge:
         self.entry_word = image.dsp_program_segments()[0][0]
         self.launched = False
         self._last_state: dict[str, int | bool] | None = None
+        self._last_status: Any = None
+        self._last_snapshots: dict[str, Any] = {}
         self.bootstrap = bytearray()
         self.active = False
         self.bootstrap_match: bool | None = None
@@ -1854,7 +1856,13 @@ class CourierDspBridge:
                     )
 
     def status(self) -> BridgeStatus:
-        return BridgeStatus(
+        # Once the core is closed its native reads answer zero (the handle now
+        # raises instead), so a status built after `close()` would report a
+        # datapump that ran for millions of instructions as never started.
+        # Hand back the last one built while it was live.
+        if getattr(self.core, "closed", False) and self._last_status is not None:
+            return self._last_status
+        status = BridgeStatus(
             active=self.active,
             boot_rom_enabled=self.boot_rom_enabled,
             bootstrap_bytes=len(self.bootstrap),
@@ -1875,14 +1883,8 @@ class CourierDspBridge:
             dsp_stream_acks=self.dsp_stream_acks,
             error=self.error,
             dsp=self._core_state(),
-            dsp_host_ports=(
-                self.core.io_port_stats()
-                if hasattr(self.core, "io_port_stats")
-                else {}
-            ),
-            dsp_memory_map=(
-                self.core.memory_map() if hasattr(self.core, "memory_map") else {}
-            ),
+            dsp_host_ports=self._core_snapshot("io_port_stats"),
+            dsp_memory_map=self._core_snapshot("memory_map"),
             asic={
                 "registers": {
                     f"{register:02x}": value
@@ -1975,6 +1977,8 @@ class CourierDspBridge:
             codec=self.codec.status() if self.codec is not None else None,
             exchange=self.exchange.status() if self.exchange is not None else None,
         )
+        self._last_status = status
+        return status
 
     def save_tx_pcm(self, path: str) -> int:
         samples = self.core.line_tx_samples()
@@ -1991,10 +1995,26 @@ class CourierDspBridge:
         the processor's final state said a datapump that had just executed
         millions of instructions had never started.
         """
-        if getattr(self.core, "handle", None) is None and self._last_state is not None:
+        if getattr(self.core, "closed", False) and self._last_state is not None:
             return self._last_state
         self._last_state = self.core.state()
         return self._last_state
+
+    def _core_snapshot(self, name: str) -> Any:
+        """The last value `name` reported, kept across the core's destruction.
+
+        Same hazard as `_core_state`: these read through the native handle, and
+        once it is gone the C entry points answered zero rather than failing.
+        The handle now raises instead, so the last live value is cached here and
+        reported after `close()` rather than a zeroed one.
+        """
+        if not hasattr(self.core, name):
+            return {}
+        if getattr(self.core, "closed", False):
+            return self._last_snapshots.get(name, {})
+        value = getattr(self.core, name)()
+        self._last_snapshots[name] = value
+        return value
 
     def close(self) -> None:
         if self.sip is not None:
@@ -2002,6 +2022,14 @@ class CourierDspBridge:
         if self.line is not None:
             self.line.close()
         # Sample before the handle goes, so a summary built afterwards still
-        # reports where the C52 actually got to.
+        # reports where the C52 actually got to. The whole status is taken for
+        # the same reason: every core-derived field in it reads through the
+        # native handle, and a status built after the destroy used to report a
+        # datapump that ran for millions of instructions as never started.
         self._last_state = self.core.state()
+        try:
+            self._last_status = self.status()
+        except Exception:
+            # A status that cannot be built is not worth failing the close for.
+            pass
         self.core.close()
