@@ -756,11 +756,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     nvram_source.add_argument(
         "--nvram-fixture",
-        choices=("idsdl302",),
+        choices=("idsdl302", "idsdl403"),
         metavar="NAME",
         help="attach a deterministic, in-memory settings EEPROM fixture; "
         "idsdl302 seeds words 94 through 102 from the recovered six records "
-        "and the +S register block AT+SF loads, leaving the rest erased",
+        "and the +S register block AT+SF loads, leaving the rest erased. "
+        "idsdl403 seeds the board's own +S block at the offset 7.4.16 reads "
+        "it from, and nothing else",
     )
     run.add_argument(
         "--dsp-rx-pcm",

@@ -1,0 +1,225 @@
+{
+  "status": "complete",
+  "device": "/dev/cu.usbserial-11420",
+  "baud": 115200,
+  "started_utc": "2026-09-08T05:45:52.789161+00:00",
+  "physical_start": 0,
+  "length_per_pass": 65280,
+  "passes_required": 2,
+  "pages_captured": 510,
+  "failed_attempts": [],
+  "passes": [
+    {
+      "image": "ram-pass1.bin",
+      "sha256": "69743eaf2d71d733e181c6253a0b5e792792f5918e929935e2eb82b28ad51153",
+      "seconds": 68.0
+    },
+    {
+      "image": "ram-pass2.bin",
+      "sha256": "4572149c20aef595a3771d1c0bd1ca4ee4f6c82beafb8e97d6ebba07bf0a954b",
+      "seconds": 68.0
+    }
+  ],
+  "firmware_upload": false,
+  "memory_write_commands": false,
+  "excluded_ranges": [
+    {
+      "start": 65280,
+      "end_exclusive": 65536,
+      "reason": "relocated peripheral control block, not ordinary RAM"
+    }
+  ],
+  "assumptions": [
+    "ATI7's 64 KiB RAM is visible in the lowest 64 KiB CPU window.",
+    "Each pass is a live sequential capture, not an atomic machine snapshot.",
+    "The AT command itself changes command buffers, stack and other working RAM.",
+    "A cached EEPROM subset is not a complete EEPROM image."
+  ],
+  "elapsed_seconds": 137.66,
+  "terminal_status_counts": {
+    "OK": 514
+  },
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "firmware": {
+    "supervisor": "7.4.16",
+    "dsp": "3.1.2"
+  },
+  "settings_cache": {
+    "start": 1874,
+    "end_exclusive": 1892,
+    "matches_between_passes": true,
+    "passes": [
+      {
+        "pass": 1,
+        "sha256": "f772c09897a576bdb84dc09fce2c596eac6a6ba2bc28707ad02384c099d71fe1",
+        "records": [
+          {
+            "setting": 1,
+            "ram_address": 1889,
+            "raw_hex": "0a0700",
+            "decoded_copies": [
+              135,
+              255,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 2,
+            "ram_address": 1874,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 3,
+            "ram_address": 1877,
+            "raw_hex": "0a1e04",
+            "decoded_copies": [
+              135,
+              45,
+              25
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 4,
+            "ram_address": 1880,
+            "raw_hex": "050f00",
+            "decoded_copies": [
+              70,
+              15,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 5,
+            "ram_address": 1883,
+            "raw_hex": "0a0006",
+            "decoded_copies": [
+              135,
+              241,
+              27
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 6,
+            "ram_address": 1886,
+            "raw_hex": "104064",
+            "decoded_copies": [
+              9,
+              113,
+              121
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          }
+        ]
+      },
+      {
+        "pass": 2,
+        "sha256": "f772c09897a576bdb84dc09fce2c596eac6a6ba2bc28707ad02384c099d71fe1",
+        "records": [
+          {
+            "setting": 1,
+            "ram_address": 1889,
+            "raw_hex": "0a0700",
+            "decoded_copies": [
+              135,
+              255,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 2,
+            "ram_address": 1874,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 3,
+            "ram_address": 1877,
+            "raw_hex": "0a1e04",
+            "decoded_copies": [
+              135,
+              45,
+              25
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 4,
+            "ram_address": 1880,
+            "raw_hex": "050f00",
+            "decoded_copies": [
+              70,
+              15,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 5,
+            "ram_address": 1883,
+            "raw_hex": "0a0006",
+            "decoded_copies": [
+              135,
+              241,
+              27
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 6,
+            "ram_address": 1886,
+            "raw_hex": "104064",
+            "decoded_copies": [
+              9,
+              113,
+              121
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          }
+        ]
+      }
+    ]
+  },
+  "changed_bytes": 57,
+  "anchors_rechecked": true,
+  "finished_utc": "2026-09-08T05:48:10.451715+00:00"
+}

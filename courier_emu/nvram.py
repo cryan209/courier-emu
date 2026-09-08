@@ -60,6 +60,29 @@ IDSDL302_EXTENDED = bytes.fromhex(
 )
 
 
+# 7.4.16 keeps the same 102-byte block five words further into the EEPROM: the
+# high byte of word 0xc6 rather than 0xc1. Measured, not guessed - an emulated
+# 403 run with the 302 fixture lands block offset 10 at RAM 0x071b where the
+# board lands offset 0, and ten bytes is exactly five words.
+#
+# The content is the board's own provisioning, read out of the read-only RAM
+# capture in artifacts/courier-board-21210-ram-403/ at 0x071b, identical across
+# both passes. Its last word is the giveaway that the alignment is right: 302
+# ends the block with the ASCII "3.02" and this ends with 0x0193 - 403.
+#
+# It carries the transmit levels the 403 datapump needs. Words at block offset
+# 23 and 25 are 0x32c8 and 0x0c08, which the dial path sends on mailbox tags
+# 0x1a and 0x1b; with the 302 fixture those lanes read zero and the DSP dials
+# silently (docs/datapump-dispatch-gate.md).
+IDSDL403_EXTENDED_BYTE = 0xC6 * 2 + 1
+IDSDL403_EXTENDED = bytes.fromhex(
+    "460000000a2304ff097d4b000d02000606020101000d02c832080c681018b400"
+    "040000030a0a0a000000000000000000000000000000000000000a1e04050f00"
+    "0a00061040640a07000f06000000000000000000000000000000000000000000"
+    "000000009301"
+)
+
+
 def encode_idsl302_record(value: int) -> bytes:
     """Reverse the three byte transformations in IDSDL302's e237 decoder."""
     if not 0 <= value <= 0xFF:
@@ -136,6 +159,21 @@ class CourierNvram:
     def set_word(self, address: int, value: int) -> None:
         index = (address % NVRAM_WORDS) * 2
         self.data[index : index + 2] = (value & 0xFFFF).to_bytes(2, "little")
+
+    @classmethod
+    def idsl403_fixture(cls) -> CourierNvram:
+        """Return an erased EEPROM carrying the board's own +S register block.
+
+        Only the extended block is seeded. 7.4.16's boot settings are not the
+        six obfuscated records 7.3.14 keeps at words 94..102 - decoding the
+        board's cache with that routine gives no majority on any of the six -
+        so nothing is written there rather than writing 302's shape and
+        calling it a 403.
+        """
+        device = cls()
+        start = IDSDL403_EXTENDED_BYTE
+        device.data[start : start + len(IDSDL403_EXTENDED)] = IDSDL403_EXTENDED
+        return device
 
     @classmethod
     def idsl302_fixture(cls) -> CourierNvram:

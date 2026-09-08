@@ -738,9 +738,16 @@ Watching **403's own ring** shows its enqueue at `8f668` writing this:
 
 **The supervisor enqueues zero.** The ring is correct, the drain is correct,
 the delivery is correct, the dispatcher is correct, the handler is correct and
-the oscillator is correct. 7.4.16 computes zero for the tone's gain and second
-amplitude where 7.3.14 computes `32c8` and `0c08`, and every stage after that
-faithfully carries the zero to `mpy @12`.
+the oscillator is correct. The supervisor enqueues zero for the tone's gain and
+second amplitude where 7.3.14 enqueues `32c8` and `0c08`, and every stage after
+that faithfully carries the zero to `mpy @12`.
+
+(An earlier revision read this as "7.4.16 *computes* zero", making it a
+firmware difference. It is not: the values are read from provisioned storage
+the emulator was not supplying, and the board has them. See
+[Answered on the board](#answered-on-the-board-they-are-not-zero-and-the-emulator-was-starving-them)
+below - which is also where this document stops being about a 403-versus-302
+difference at all.)
 
 Nothing in the emulator corrupts these values, and the several revisions of
 this document that said otherwise were each wrong for the same reason: an
@@ -784,10 +791,99 @@ sit past the end of what the copy fills, and nothing else fills them.
 That is as far as static reading goes. The question it leaves is whether those
 cells are also zero on the hardware - in which case 7.4.16 does something else
 entirely for the transmit level and this whole path is a red herring - or
-whether a real boot puts something there that this emulator does not. The board
-runs this exact image, so `ATGLK2=0000:0cd9` answers it directly. It was
-unplugged when this was written; that read is the next step and needs nothing
-else.
+whether a real boot puts something there that this emulator does not.
+
+### Answered on the board: they are not zero, and the emulator was starving them
+
+Read off the running 4.03d board with `ATGLK2=0000:0C00`, in command mode, and
+confirmed identical in both passes of the read-only RAM capture in
+`artifacts/courier-board-21210-ram-403/`:
+
+| cell | board | emulator, 302 fixture |
+|---|---|---|
+| `[0cd9]` | **`32c8`** | `0000` |
+| `[0cdb]` | **`0c08`** | `0000` |
+
+They are the same two values 302 sends. **So the conclusion this document
+reached above - "7.4.16 computes zero for the tone's gain where 7.3.14
+computes `32c8`" - is wrong.** 7.4.16 does not compute the gain at all and
+does not differ from 7.3.14 about it. It reads provisioned storage, the board
+has that storage populated, and the emulator was handing it an EEPROM that did
+not carry it. The whole 403-versus-302 framing of this section was an
+emulator gap wearing a firmware difference's clothes.
+
+**Where the value comes from.** Not the `a0907` copy. The writer is the scatter
+at `0xc9a91`, which walks a CS-relative offset table and stores bytes from RAM
+`0x071b` upward:
+
+```text
+c9a91  xor  bx, bx
+c9a93  mov  al, cs:[bx+0e77]     ; the destination offset
+c9a9a  jz   c9aa8                ; zero offset ends the entry
+c9a9e  add  ax, dx               ; ...plus the block base
+c9aa2  mov  al, [bx+071b]        ; the source: the +S block in RAM
+c9aa6  mov  [di], al
+```
+
+`0x071b` is the +S extended register block - the same 102-byte block
+`courier_emu/nvram.py` already models as `IDSDL302_EXTENDED`, whose words at
+block offset 23 and 25 are `0x32c8` and `0x0c08`. So the chain is EEPROM ->
+RAM `0x071b` -> scattered by `c9aa6` -> `0cd9`/`0cdb` -> mailbox tags `1a`/`1b`.
+
+**The gap was an EEPROM offset.** 7.3.14 stores the block from the high byte of
+EEPROM word `0xc1`; 7.4.16 stores it five words later, from the high byte of
+word `0xc6`. Running 403 against the 302 fixture therefore landed block offset
+10 at RAM `0x071b` where the board lands offset 0 - ten bytes, exactly five
+words:
+
+```text
+board  071b: 46 00 00 00 0a 23 04 ff 09 7d 4b 00 0d 02 00 06 ...
+emu    071b: 4b 00 0d 02 00 00 40 94 11 00 40 0d 02 c8 32 08 ...   (= ref[10:])
+```
+
+The block's own trailer confirms the alignment: 302's last two bytes are the
+ASCII `"02"` closing a `"3.02"` version string, and the board's are `93 01` -
+`0x0193`, 403.
+
+`CourierNvram.idsl403_fixture()` seeds the board's own block at that offset,
+and `--nvram-fixture idsdl403` selects it. With it, an emulated 403 run
+reproduces the board's `0x071b` block byte for byte and carries `32c8`/`0c08`
+into the gain cells.
+
+### Measured with the fixture in: 403 dials
+
+```sh
+./courier run artifacts/courier-board-21210-capture-403/courier-board.rom \
+    --with-dsp --exchange --exchange-number 6245=answer --tick-ms 5 \
+    --board-id 7 --nvram-fixture idsdl403 --at 'ATDT6245' \
+    --instructions 150000000 --summary --dsp-tx-pcm /tmp/tx403.pcm
+```
+
+| observation | 403 before | 403 with the fixture |
+|---|---|---|
+| datapump transmit peak | **0** | **22,764** |
+| nonzero transmit samples | 0 | 3,669 of 66,078 |
+| digits decoded off the line | `""` | **`6245`** |
+| DTMF blocks | 0 | 137 |
+| exchange outcome | - | `answer`, state `ringback` |
+| tag `0019` | `c802` x6, `0400` | `020d` x7 |
+| tag `001a` | `0000` x4 | **`32c8` x4** |
+| tag `001b` | `0000` x4 | **`0c08` x4** |
+| tag `001f` | `0032` x6 | `0000` x6 |
+
+All four register lanes now carry what 302 carries, which is what the earlier
+"same bytes read at a one-byte offset" reading was groping at - the offset was
+real, and it was five words in the EEPROM rather than one byte in a table.
+
+The board firmware puts a tone on the line and the modelled exchange decodes
+the dialled number. The datapump dispatch beyond ringback is not addressed by
+this and remains where the rest of this document leaves it.
+
+**One thing this does not license.** The six obfuscated settings records that
+7.3.14 keeps at EEPROM words 94..102 are not 7.4.16's shape: decoding the
+board's cached window with the `e237` routine gives no majority on any of the
+six records. The 403 fixture therefore seeds the extended block and nothing
+else, rather than writing 302's settings layout and calling it a 403.
 
 ## What is not established
 

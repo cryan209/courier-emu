@@ -79,7 +79,7 @@ def main() -> int:
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
     parser.add_argument("--nvram")
-    parser.add_argument("--nvram-fixture", choices=("idsdl302",))
+    parser.add_argument("--nvram-fixture", choices=("idsdl302", "idsdl403"))
     parser.add_argument("--board-id", default="")
     parser.add_argument("--dip", action="append", default=[])
     parser.add_argument("--parameter-sector")
@@ -193,6 +193,8 @@ def main() -> int:
         if args.nvram
         else CourierNvram.idsl302_fixture()
         if args.nvram_fixture == "idsdl302"
+        else CourierNvram.idsl403_fixture()
+        if args.nvram_fixture == "idsdl403"
         else None
     )
 

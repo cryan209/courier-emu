@@ -6,6 +6,9 @@ from pathlib import Path
 
 from courier_emu.nvram import (
     BIT_CHIP_SELECT,
+    IDSDL302_EXTENDED,
+    IDSDL403_EXTENDED,
+    IDSDL403_EXTENDED_BYTE,
     BIT_CLOCK,
     BIT_DATA,
     BIT_READY,
@@ -169,6 +172,26 @@ class CourierNvramTest(unittest.TestCase):
         self.assertEqual(device.data[0xF2 * 2 + 1 : 0xF4 * 2 + 1], b"3.02")
         decoded = decode_settings(encoded)
         self.assertEqual([record["value"] for record in decoded], [0, 30, 7, 30, 0, 0])
+
+    def test_idsl403_fixture_places_the_block_where_7_4_16_reads_it(self) -> None:
+        device = CourierNvram.idsl403_fixture()
+        # Five words later than 7.3.14: the high byte of 0xc6, not 0xc1.
+        self.assertEqual(IDSDL403_EXTENDED_BYTE, 0xC6 * 2 + 1)
+        self.assertEqual(len(IDSDL403_EXTENDED), len(IDSDL302_EXTENDED))
+        start, end = IDSDL403_EXTENDED_BYTE, IDSDL403_EXTENDED_BYTE + len(IDSDL403_EXTENDED)
+        self.assertEqual(device.data[start:end], IDSDL403_EXTENDED)
+        # Nothing else is seeded: 7.4.16's boot settings are not 7.3.14's six
+        # obfuscated records, so words 94..102 stay erased rather than carrying
+        # a 302 shape.
+        self.assertEqual(device.data[:start], b"\xff" * start)
+        self.assertEqual(device.data[end:], b"\xff" * (NVRAM_BYTES - end))
+        # The transmit levels the 403 datapump reads through 0cd9 and 0cdb.
+        self.assertEqual(device.word(0xD1), 525)            # +S22
+        self.assertEqual(device.word(0xD2), 13000)          # +S24, 0x32c8
+        self.assertEqual(device.word(0xD3), 3080)           # +S26, 0x0c08
+        # The block's own trailer names its firmware: 0x0193 is 403, where the
+        # 302 block ends with the ASCII "3.02".
+        self.assertEqual(IDSDL403_EXTENDED[-2:], bytes((0x93, 0x01)))
 
     def test_default_device_remains_blank(self) -> None:
         self.assertEqual(CourierNvram().data, b"\xff" * NVRAM_BYTES)
