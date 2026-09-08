@@ -81,15 +81,22 @@ MAX_PANEL_EVENTS = 512
 # The strap-scan names below describe one use of a line, not the line: the
 # board-ID scan at 0x5bfc6 drives the same latches.
 OUTPUT_BITS: dict[int, dict[int, str]] = {
-    # Port 0x00 is a control latch the ROM builds read-modify-write, and it
-    # carries the speaker. 0x81703 is the whole driver:
+    # Port 0x00 is a control latch the ROM builds read-modify-write. 0x81703
+    # is a driver over bit 0x40 of it:
     #
     #   pushf ; cli ; in al,0 ; and al,33 ; or al,40 ; out 0,al
     #                          ; and al,33 ; out 0,al ; popf ; ret
     #
-    # - bit 0x40 pulsed high then straight back low, which is one click. The
-    # self test calls it once per lamp as it releases them, which is the
-    # ticking heard during that stage, and 0xa7a1b is a second call site.
+    # - bit 0x40 pulsed high then straight back low. The self test calls it
+    # once per lamp as it releases them, and 0xa7a1b is a second call site.
+    #
+    # It was recorded here as the speaker on the strength of that pairing with
+    # the ticking heard during the lamp stage. **That is retracted**: driving
+    # bit 0x40 directly on the board - 120 toggles over 40 seconds, slow enough
+    # to hear individually - produced no sound at all. Either the write does
+    # not reach this latch (port 0x14 has exactly that read/write asymmetry) or
+    # the ticking comes from something else in that loop. The speaker line is
+    # unidentified.
     # The mask keeps 0x01, 0x02, 0x10 and 0x20 and drops 0x04, 0x08 and 0x80,
     # so those three are separately owned: 0x81d8c and 0x81d9a drive 0x04 and
     # 0x08, and 0x8e398 pulses 0x80 the same way inside the C52 transfer code.
@@ -100,7 +107,7 @@ OUTPUT_BITS: dict[int, dict[int, str]] = {
     # let the M and L settings be checked - Scott notes the speaker is not on
     # whenever the line is, so something gates it and that gate is unfound.
     0x00: {
-        0x40: "speaker",
+        0x40: "port0-40",
     },
     0x10: {
         # 0x01 and 0x04 are both asserted when the modem goes off hook, 0x01
@@ -111,9 +118,14 @@ OUTPUT_BITS: dict[int, dict[int, str]] = {
         # So 0x01 is the line the relay and the OH lamp follow, and the lamp
         # is not driven independently of it. What 0x04 is remains open; the
         # name below is the older reading and has not been re-derived.
-        0x01: "off-hook-aux",
+        # The relay and the OH lamp, measured: 0xdf pulls in and lights OH,
+        # 0xde releases, with chip-select held low throughout.
+        0x01: "hook-relay",
         0x02: "board-02",
-        0x04: "hook-relay",
+        # Not the hook relay, whatever the earlier name said: blinked on the
+        # board with everything else held it produces no lamp and no click.
+        # It is asserted on a dial, 43,500 instructions after 0x01.
+        0x04: "line-04",
         0x08: "nvram-strobe",
         0x10: "nvram-data-in",
         0x20: "nvram-chip-select",
@@ -166,10 +178,24 @@ ACTIVE_LOW: frozenset[tuple[int, int]] = frozenset(
 )
 
 # The hook relay, named out of the table above so `off_hook` can read the bit
-# straight from its latch. It is active low: 0x5de57's pair drives it clear to
-# pull the relay in.
+# straight from its latch.
+#
+# Measured on the board: driving port 0x10 bit 0x01 high pulls the relay in and
+# lights OH, and releasing it drops both - 0xdf against 0xde, with chip-select
+# held low throughout. So it is active *high*, and it is bit 0x01. Bit 0x04,
+# blinked the same way with everything else held, does nothing observable at
+# all: no lamp, no relay.
+#
+# Measured on the board: driving port 0x10 bit 0x01 high pulls the relay in and
+# lights OH, releasing it drops both - 0xdf against 0xde with chip-select held
+# low. Active high, and bit 0x01. Bit 0x04, blinked the same way with
+# everything else held, does nothing at all: no lamp, no relay, on or off hook.
+#
+# This was bit 0x04 active-low until then. Both bits are asserted on a dial -
+# 0x01 at c8fbe, 0x04 about 43,500 instructions later at c8fe1 - so the wrong
+# reading still produced an off-hook, just late and from the wrong line.
 HOOK_RELAY_PORT = 0x10
-HOOK_RELAY_BIT = 0x04
+HOOK_RELAY_BIT = 0x01
 
 # OUTPUT_BITS with each port's bits ordered once, at import, rather than on
 # every call to `signals` - the panel status is built for each ASIC probe pass.
@@ -477,7 +503,7 @@ class CourierPanel:
         value = self.latches.get(HOOK_RELAY_PORT)
         if value is None:
             return False
-        return not value & HOOK_RELAY_BIT
+        return bool(value & HOOK_RELAY_BIT)
 
     def status(self) -> dict[str, Any]:
         return {

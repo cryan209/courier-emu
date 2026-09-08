@@ -110,17 +110,39 @@ The speaker is port `0x00` bit `0x40`, pulsed high then straight back low by
 `0x81703` - one click, called once per lamp as the sweep releases them, which
 is the ticking that stage makes.
 
+## The hook, the speaker, and what X7 exposed
+
+Port `0x10` bit `0x01` drives the relay and the OH lamp together, active high -
+`0xdf` pulls in, `0xde` releases, chip-select held low throughout. Bit `0x04`
+does nothing observable on or off hook. The model had the hook on bit `0x04`
+active-low; both bits are asserted on a dial, `0x01` at `c8fbe` and `0x04`
+about 43,500 instructions later at `c8fe1`, so the wrong bit still yielded an
+off-hook, just late.
+
+**The speaker is not identified.** `0x81703` pulses port `0x00` bit `0x40` once
+per lamp as the sweep releases them, which looked conclusive next to the
+ticking that stage makes. Driving that bit directly - slowly enough to hear
+individual clicks, on hook and off - produces no sound, and neither does bit
+`0x04` of the same port. Only the relay is audible. Either these writes do not
+reach the latch, or the ticking has another source.
+
+**A 403 dial now needs `ATX0`, and that is correct.** With the board's real
+profile the modem is `X7` and waits for dial tone; the modelled exchange never
+presents one (`dial_tone_qualified: false`), so the digits are never decoded.
+Blind-dialling gives `dialed: "6245"`, ringback, answer. The stub fixture used
+to dial only because its erased profile read `X15`. The gap is the exchange,
+not the dial path.
+
 ## Still open
 
 - **What `0x5de57` is doing.** It drives `0x01` and `0x80` together for the
   `&C` setting, and those are now measured as two different lamps, CD and SYN.
-- **What port `0x10` bit `0x04` is.** It is asserted on a dial 43,500
-  instructions after bit `0x01` and never during the self test, so the
-  `hook-relay` name on it is the older reading and has not been re-derived.
-- **What gates the monitor speaker.** `0x81703` is unconditional and all three
-  of its callers are boot or self test, so the audio heard during a call is a
-  different, analogue path. `ATM` is settable now - `ATI4` reports `M0` after
-  `ATM0` - so a dial under each setting is the next probe.
+- **What port `0x10` bit `0x04` is.** Asserted on every dial, but driving it
+  directly does nothing visible or audible, on hook or off.
+- **Dial tone.** The exchange does not present one, so anything but `X0` will
+  not dial.
+- **Which line is the speaker.** Not port `0x00` bit `0x40`, measured. `ATM` is
+  settable now, so a dial under each setting is still the probe worth running.
 - **The tail of the board's lamp sequence.** After `SELF TEST COMPLETED` the
   board shows CS, RD and AA moving in a pattern the emulated run does not
   reproduce; it makes 38 panel writes in 600M instructions and none fall there.
