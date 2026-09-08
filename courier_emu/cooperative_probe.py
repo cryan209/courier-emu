@@ -103,6 +103,7 @@ FORBIDDEN_PORTS = (0x10, 0x12, 0x14)
 
 
 def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
+                  cells: tuple[int, ...] = (),
                   entry: int = ENTRY,
                   state: int = STATE,
                   buffer: int = BUFFER,
@@ -120,6 +121,14 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
             raise ValueError(f"port {port:#04x} carries a board latch and is never sampled")
         if not 0 <= port <= 0xFF:
             raise ValueError(f"port {port:#04x} is outside the 8-bit I/O space")
+    # RAM cells are read with `mov al, [imm16]`, which takes its segment from
+    # DS - already zero here for the write primitive - so these are segment-0
+    # addresses and nothing else. A read cannot disturb a latch the way an
+    # `in` can, so there is no forbidden list for them; the bound is only that
+    # the operand is a word.
+    for cell in cells:
+        if not 0 <= cell <= 0xFFFF:
+            raise ValueError(f"cell {cell:#06x} is outside segment 0")
     # An empty port set is the load-only control: the ISR still fires, saves,
     # bounds-checks and returns, but touches no ASIC port. It separates "the
     # interrupt load broke the firmware" from "reading those ports broke it".
@@ -150,7 +159,11 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
         c.emit(f"e4{port:02x}")            # in al, port
         c.emit("8807")                     # mov [bx], al
         c.emit("43")                       # inc bx
-    if not ports:
+    for cell in cells:
+        c.emit("a0"); c.word(cell)         # mov al, [cell]
+        c.emit("8807")                     # mov [bx], al
+        c.emit("43")                       # inc bx
+    if not ports and not cells:
         c.emit("43")                       # inc bx - count ticks, sample nothing
     c.emit("891e"); c.word(state)          # mov [state], bx
     c.label("full")
@@ -174,12 +187,13 @@ def build_sampler(ports: tuple[int, ...] = DEFAULT_PORTS,
 
 
 def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
+                cells: tuple[int, ...] = (),
                 chain: bool = False) -> tuple[bytes, dict]:
     """The placement image and the numbers a caller needs to read it back."""
     entry, state, buffer, base, end = (
         (CHAIN_ENTRY, CHAIN_STATE, CHAIN_BUFFER, CHAIN_PLACE_BASE, CHAIN_BUFFER_END)
         if chain else (ENTRY, STATE, BUFFER, ENTRY, BUFFER_END))
-    code = build_sampler(ports, entry=entry, state=state,
+    code = build_sampler(ports, cells, entry=entry, state=state,
                          buffer=buffer, buffer_end=end, chain=chain)
     if entry + len(code) > state:
         raise ValueError("sampler outgrew the gap before its state word")
@@ -189,11 +203,12 @@ def build_image(ports: tuple[int, ...] = DEFAULT_PORTS,
     image = bytearray(state - base + 2)
     image[entry - base:entry - base + len(code)] = code
     struct.pack_into("<H", image, state - base, buffer)    # the write pointer
-    width = len(ports) or 1
+    width = (len(ports) + len(cells)) or 1
     plan = {
         "entry": entry, "place_base": base, "state": state,
         "buffer": buffer, "buffer_end": end,
         "ports": [f"{p:#04x}" for p in ports],
+        "cells": [f"{c:#06x}" for c in cells],
         "bytes_per_tick": width,
         "capacity_samples": (end - buffer) // width,
         "seconds_at_303hz": round((end - buffer) / width / 303, 1),
@@ -242,7 +257,7 @@ def readout_commands(chain: bool = False) -> list[str]:
 
 
 def decode(pages: dict[int, int], ports: tuple[int, ...] = DEFAULT_PORTS,
-           chain: bool = False) -> dict:
+           cells: tuple[int, ...] = (), chain: bool = False) -> dict:
     """Turn read-back bytes into per-port sample columns."""
     STATE_, BUFFER_, END_ = ((CHAIN_STATE, CHAIN_BUFFER, CHAIN_BUFFER_END) if chain
                              else (STATE, BUFFER, BUFFER_END))
@@ -251,11 +266,13 @@ def decode(pages: dict[int, int], ports: tuple[int, ...] = DEFAULT_PORTS,
         return {"error": f"write pointer {written:#06x} is outside the ring",
                 "write_pointer": written}
     raw = [pages[a] for a in range(BUFFER_, written) if a in pages]
-    complete = len(raw) - len(raw) % len(ports)
-    columns = {f"{p:#04x}": raw[i:complete:len(ports)] for i, p in enumerate(ports)}
+    names = [f"{p:#04x}" for p in ports] + [f"[{c:04x}]" for c in cells]
+    width = len(names) or 1
+    complete = len(raw) - len(raw) % width
+    columns = {name: raw[i:complete:width] for i, name in enumerate(names)}
     return {
         "write_pointer": written,
-        "samples": complete // len(ports),
+        "samples": complete // width,
         "bytes_recovered": len(raw),
         "filled_ring": written >= END_,
         "columns": columns,
@@ -271,6 +288,10 @@ def main() -> int:
                         help="hook INT3, the tick the firmware already services, and "
                              "chain to its handler instead of injecting a timer-0 "
                              "interrupt and issuing an EOI of our own")
+    parser.add_argument("--cell", action="append", default=[], metavar="ADDR",
+                        help="segment-0 RAM byte to sample each tick, hex, "
+                             "repeatable; read with `mov al,[imm16]`, which "
+                             "cannot disturb a latch the way an `in` can")
     parser.add_argument("--ports",
                         type=lambda v: () if v in ("", "none") else tuple(int(p, 0) for p in v.split(",")),
                         default=DEFAULT_PORTS,
