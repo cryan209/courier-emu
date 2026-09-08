@@ -74,6 +74,37 @@ IDSDL302_EXTENDED = bytes.fromhex(
 # 23 and 25 are 0x32c8 and 0x0c08, which the dial path sends on mailbox tags
 # 0x1a and 0x1b; with the 302 fixture those lanes read zero and the DSP dials
 # silently (docs/datapump-dispatch-gate.md).
+# The board's whole settings part, lifted from the read-only RAM capture in
+# artifacts/courier-board-21210-ram-403/. The boot block copies the 512-byte
+# part to RAM 0x058e..0x078d before checksumming it there, so that window is
+# the part's contents; it is identical across both passes of the capture, its
+# stored checksum byte validates against `settings_checksum`, and it carries
+# IDSDL403_EXTENDED at exactly IDSDL403_EXTENDED_BYTE - three independent
+# checks that this is the store and that the offsets above are right.
+#
+# This is a real provisioned part rather than a synthesised one, which matters:
+# a fixture that is merely checksum-valid over erased bytes is worse than no
+# fixture, because the firmware then trusts the erased profile and configures
+# its DTE from it.
+IDSDL403_NVRAM = bytes.fromhex(
+    "715088ca210402110100060000000000000000012b0d0a08023c02060e463200"
+    "00001e0a111396050130081400060000000000000000007ec80f0000400000e0"
+    "4000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "00000000000030332f31332f3938000954303034268322111affffff68170208"
+    "0b1a649603ef871def871def871d0000000000000000000000000000000000ff"
+    "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "0000000000000000000000000000000000000000000000000000000000000000"
+    "00000000000000000000000000460000000a2304ff097d4b000d020006060201"
+    "01000d02c832080c681018b400040000030a0a0a000000000000000000000000"
+    "000000000000000a1e04050f000a00061040640a07000f060000000000000000"
+    "00000000000000000000000000000000009301ffff000000000000ffffffffbd"
+)
+
 IDSDL403_EXTENDED_BYTE = 0xC6 * 2 + 1
 IDSDL403_EXTENDED = bytes.fromhex(
     "460000000a2304ff097d4b000d02000606020101000d02c832080c681018b400"
@@ -81,6 +112,27 @@ IDSDL403_EXTENDED = bytes.fromhex(
     "0a00061040640a07000f06000000000000000000000000000000000000000000"
     "000000009301"
 )
+
+
+# The boot block copies the whole 512-byte part into RAM 0x058e..0x078d and
+# checks it at 0x81412:
+#
+#   mov si,058e ; mov cx,078d ; sub cx,si   ; 511 bytes, 0x058e..0x078c
+#   xor dl,dl ; lodsb ; add dl,al ; loop
+#   sub dl,al                               ; back out the last one
+#   cmp dl,[078d]                           ; the stored byte
+#
+# so the sum runs over EEPROM bytes 0..509, byte 510 is loaded and subtracted
+# back out again, and byte 511 holds the result. A part that fails this is what
+# makes the power-on self test print NVRAM CHECKSUM FAILURE, and it is why a
+# fixture without it renders every setting at its erased value.
+CHECKSUM_BYTE = NVRAM_BYTES - 1
+CHECKSUM_SPAN = NVRAM_BYTES - 2
+
+
+def settings_checksum(data: bytes | bytearray) -> int:
+    """The byte the boot block's check at 0x81412 expects at byte 511."""
+    return sum(data[:CHECKSUM_SPAN]) & 0xFF
 
 
 def encode_idsl302_record(value: int) -> bytes:
@@ -162,18 +214,13 @@ class CourierNvram:
 
     @classmethod
     def idsl403_fixture(cls) -> CourierNvram:
-        """Return an erased EEPROM carrying the board's own +S register block.
+        """Return the board's own settings part, as captured from it.
 
-        Only the extended block is seeded. 7.4.16's boot settings are not the
-        six obfuscated records 7.3.14 keeps at words 94..102 - decoding the
-        board's cache with that routine gives no majority on any of the six -
-        so nothing is written there rather than writing 302's shape and
-        calling it a 403.
+        Nothing here is synthesised. Earlier revisions seeded only the +S
+        block into an otherwise erased part, which failed the boot block's
+        checksum and left every setting reading at its erased value.
         """
-        device = cls()
-        start = IDSDL403_EXTENDED_BYTE
-        device.data[start : start + len(IDSDL403_EXTENDED)] = IDSDL403_EXTENDED
-        return device
+        return cls(data=bytearray(IDSDL403_NVRAM))
 
     @classmethod
     def idsl302_fixture(cls) -> CourierNvram:
@@ -184,6 +231,7 @@ class CourierNvram:
         encoded = encode_idsl302_settings()
         device.data[start : start + len(encoded)] = encoded
         device.data[IDSDL302_EXTENDED_BYTE : IDSDL302_EXTENDED_BYTE + len(IDSDL302_EXTENDED)] = IDSDL302_EXTENDED
+        device.data[CHECKSUM_BYTE] = settings_checksum(device.data)
         return device
 
     def _trace(self, event: str) -> None:

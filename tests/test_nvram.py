@@ -9,6 +9,9 @@ from courier_emu.nvram import (
     IDSDL302_EXTENDED,
     IDSDL403_EXTENDED,
     IDSDL403_EXTENDED_BYTE,
+    IDSDL403_NVRAM,
+    CHECKSUM_BYTE,
+    settings_checksum,
     BIT_CLOCK,
     BIT_DATA,
     BIT_READY,
@@ -122,7 +125,13 @@ class CourierNvramTest(unittest.TestCase):
         # The +S block starts on the high byte of word 0xc1 and ends on the low
         # byte of 0xf4; the bytes either side of it stay erased.
         self.assertEqual(device.data[103 * 2 : 0xC1 * 2 + 1], b"\xff" * (0xC1 * 2 + 1 - 103 * 2))
-        self.assertEqual(device.data[0xF4 * 2 + 1 :], b"\xff" * (NVRAM_BYTES - 0xF4 * 2 - 1))
+        # ...and erased from the block's end to the checksum byte, which the
+        # boot block's check at 0x81412 requires and which is now filled in.
+        self.assertEqual(
+            device.data[0xF4 * 2 + 1 : CHECKSUM_BYTE],
+            b"\xff" * (CHECKSUM_BYTE - 0xF4 * 2 - 1),
+        )
+        self.assertEqual(device.data[CHECKSUM_BYTE], settings_checksum(device.data))
         self.assertEqual(device.word(0xC1) >> 8, 70)        # +S1
         self.assertEqual(device.word(0xCC), 525)            # +S22
         self.assertEqual(device.word(0xCD), 13000)          # +S24
@@ -137,12 +146,13 @@ class CourierNvramTest(unittest.TestCase):
         self.assertEqual(IDSDL403_EXTENDED_BYTE, 0xC6 * 2 + 1)
         self.assertEqual(len(IDSDL403_EXTENDED), len(IDSDL302_EXTENDED))
         start, end = IDSDL403_EXTENDED_BYTE, IDSDL403_EXTENDED_BYTE + len(IDSDL403_EXTENDED)
+        # The fixture is the board's own part, captured whole, so the +S block
+        # sits inside it at the offset derived independently of the capture.
         self.assertEqual(device.data[start:end], IDSDL403_EXTENDED)
-        # Nothing else is seeded: 7.4.16's boot settings are not 7.3.14's six
-        # obfuscated records, so words 94..102 stay erased rather than carrying
-        # a 302 shape.
-        self.assertEqual(device.data[:start], b"\xff" * start)
-        self.assertEqual(device.data[end:], b"\xff" * (NVRAM_BYTES - end))
+        self.assertEqual(bytes(device.data), IDSDL403_NVRAM)
+        # And it satisfies the boot block's own check, which is what makes the
+        # firmware load the profile instead of rendering every setting erased.
+        self.assertEqual(device.data[CHECKSUM_BYTE], settings_checksum(device.data))
         # The transmit levels the 403 datapump reads through 0cd9 and 0cdb.
         self.assertEqual(device.word(0xD1), 525)            # +S22
         self.assertEqual(device.word(0xD2), 13000)          # +S24, 0x32c8
