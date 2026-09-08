@@ -310,6 +310,7 @@ class BridgeStatus:
     codec_handed_peak: int = 0
     codec_handed_at: int = 0
     core_rebuilt_at: int = 0
+    codec_replayed: int = 0
     # Messages the resident originated, as opposed to the ones the bridge
     # synthesises for it at call-overlay activation.
     dsp_originated_messages: int = 0
@@ -483,8 +484,11 @@ class CourierDspBridge:
         self._codec_handed_peak = 0
         self._codec_handed_at = 0
         self._core_rebuilt_at = 0
+        self._codec_replayed = 0
         self._codec_in_peak = 0
         self._codec_handed_ever = 0
+        # Words the codec has clocked out that the C52 has not taken yet.
+        self._codec_in_flight: deque[int] = deque()
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
         self._carrier_best_score = 0.0
@@ -564,6 +568,21 @@ class CourierDspBridge:
                 # was thrown away.
                 self._codec_handed_ever = self._instructions
             self.core.queue_codec_rx(converted)
+            # Keep a copy of what the codec has clocked out but the C52 has not
+            # yet taken, so a rebuild does not swallow it. The AC01 is on the
+            # C52's primary serial port and is not part of the C52: it keeps
+            # converting the line and shifting words at CLKX whether or not the
+            # DSP is in reset, and the tone is still on the wire when the DSP
+            # comes back. `codec_rx_queued - codec_rx_consumed` is the core's
+            # own count of words still in flight, so trimming to it leaves
+            # exactly those.
+            self._codec_in_flight.extend(converted)
+            serial = self.core.serial_state()
+            pending = serial.get("codec_rx_queued", 0) - serial.get(
+                "codec_rx_consumed", 0
+            )
+            while len(self._codec_in_flight) > max(0, pending):
+                self._codec_in_flight.popleft()
 
     def _negotiation_audio_status(self) -> dict[str, int]:
         """Summarize the latest codec frame at the V.8 signaling frequencies."""
@@ -1397,11 +1416,18 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
-            # The new core starts with an empty receive queue, so anything
-            # handed to the old one is gone.
             self._codec_handed_peak = 0
             self._codec_handed_at = 0
             self._core_rebuilt_at = self._instructions
+            # The line does not stop while the DSP resets. Re-present what the
+            # codec had already clocked out to the core that is gone, because
+            # on the board those words were never the DSP's to lose - they were
+            # in the AC01 and on its serial link, outside the part being reset.
+            # Without this the dial tone the supervisor is waiting for is
+            # discarded 31 ms after it arrives, and every later frame with it.
+            if self._codec_in_flight and hasattr(self.core, "queue_codec_rx"):
+                self._codec_replayed = len(self._codec_in_flight)
+                self.core.queue_codec_rx(list(self._codec_in_flight))
             self._configure_boot_rom()
             self._configure_frame_interrupt()
             self._call_overlay_active = False
@@ -2062,6 +2088,7 @@ class CourierDspBridge:
             codec_handed_peak=self._codec_handed_peak,
             codec_handed_at=self._codec_handed_at,
             core_rebuilt_at=self._core_rebuilt_at,
+            codec_replayed=self._codec_replayed,
             v8_io_events=(
                 [event for event in self.core.io_events()
                  if event["port"] in (0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E)][-64:]

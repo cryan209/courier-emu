@@ -659,3 +659,47 @@ It would carry a report the DSP has no way to originate, because the DSP never
 hears the tone. The order is: keep the receive queue across the rebuild, or stop
 rebuilding, then find out whether the resident detects the tone, and only then
 build the path that carries what it found.
+
+### Corrected: the codec is not part of the DSP, and the fix follows from that
+
+The framing above - "the queued audio goes with the rebuilt core" - describes the
+symptom in the harness's own terms. The board's terms are better and give the
+fix directly. **The AC01 sits on the C52's primary serial port**, and on that
+port the DSP is a slave: `SPC = 0x40c8`, `MCM = 0` so `CLKX` is an input, `TXM =
+0` so `FSX` is an input
+([the interconnect](dsp-cpu-interconnect.md#which-leaves-the-primary-port-and-one-pin-decides-it)).
+The codec converts the line and shifts a word into `DRR` every frame, clocked by
+something that is not the C52 and does not stop when the C52 is reset. There is
+no FIFO on the board; the words in flight are in the AC01 and on its serial
+link, **outside the part being reset**, and the dial tone is still on the wire
+when the DSP comes back.
+
+`native/c5x_core.cpp:codec_frame` already models the receiving end correctly -
+one word per primary frame into `DRR`, a delivered zero when there is nothing,
+never a stale repeat. What was wrong was ownership: the bridge's queue stood for
+the codec's serial stream but was destroyed with the core.
+
+So the bridge now keeps what the codec has clocked out and the C52 has not taken
+- trimmed each time to the core's own `codec_rx_queued - codec_rx_consumed`, so
+it holds exactly the words in flight - and re-presents them to the new core.
+
+    replayed across the rebuild        11,305 words
+    DSP-side codec_rx_peak    0  ->  7,878
+    codec_rx_consumed   130,684  -> 141,989
+
+**The C52 now hears the dial tone**: over a second and a half of it, where
+before it heard silence. 302 and `403 + ATX1` are unchanged - both still dial
+`6245` and connect, and neither replays anything, because neither rebuilds while
+audio is in flight.
+
+### And it is still not enough, which is now a clean statement
+
+`403 + ATX2` still answers `NO DIAL TONE`, and **every other number in the run is
+identical** to the run before the fix - same DAA, same seizure, same exchange
+timing, same 134 DSP-originated messages. Only `codec_rx_consumed` moved, by
+exactly the 11,305 replayed.
+
+So the resident hears the tone and does not report it. That is no longer an
+audio-path question, and the next one is narrow: does the 3.1.2 resident have a
+dial-tone detector on this path at all, and does it run in this state? The
+harness can now put a known tone in front of it and ask.
