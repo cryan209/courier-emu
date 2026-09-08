@@ -49,7 +49,8 @@ from .cooperative_probe import (
     FIRMWARE_DATA, HOOKS, Hook, build_image, decode,
 )
 from .flash_dump import (
-    PAGE, TERMINAL, SerialPort, command_for, parse_page, validate_identity,
+    CALL_TERMINAL, PAGE, TERMINAL, SerialPort, command_for, parse_page,
+    validate_identity,
 )
 
 # The board this module's hooks were read off. Every vector, every original
@@ -80,6 +81,36 @@ class WritablePort(SerialPort):
         command = f"ATGLK2W{address:04X},{value & 0xFFFF:04X}"
         self.writes.append(command)
         return self._send(command, timeout)
+
+    def write_raw(self, data: bytes) -> None:
+        """Bytes that are not a command: the dial, and the CR that aborts it.
+
+        Only ever reached with `allow_off_hook`, which is the flag the caller
+        had to pass to take the loop off hook in the first place.
+        """
+        if not self.allow_off_hook:
+            raise ValueError("raw writes are part of the off-hook path")
+        while data:
+            if not select.select([], [self.fd], [], 4.0)[1]:
+                raise TimeoutError("serial write timed out")
+            data = data[os.write(self.fd, data):]
+
+    def abort_dial(self, timeout: float = 8.0) -> bytes:
+        """End a dial early. Any character does it; a bare CR is the tidiest."""
+        self.write_raw(b"\r")
+        deadline = time.monotonic() + timeout
+        response = bytearray()
+        while time.monotonic() < deadline:
+            left = max(0, deadline - time.monotonic())
+            if not select.select([self.fd], [], [], min(0.2, left))[0]:
+                continue
+            chunk = os.read(self.fd, 4096)
+            if not chunk:
+                continue
+            response.extend(chunk)
+            if CALL_TERMINAL.search(response):
+                break
+        return bytes(response)
 
     def _send(self, command: str, timeout: float) -> bytes:
         if not WRITE.fullmatch(command):
@@ -157,6 +188,32 @@ def vector_words(pages: dict[int, int], vector: int) -> tuple[int, int]:
     return segment, offset
 
 
+def seize_the_loop(port: SerialPort, seconds: float) -> dict:
+    """A bare `ATD`: off hook, wait for dial tone, dial nothing.
+
+    This is the stimulus the measurement wants. The harness's failing case is
+    `ATDT6245` answering `NO DIAL TONE`, and what fails in it is the dial-tone
+    wait, not the digits - so a bare `ATD` reproduces the part in question and
+    cannot place a call, whatever is plugged into the jack. `flash_dump` already
+    gates it behind `allow_off_hook` for exactly this reason.
+
+    It still takes the loop off hook. The dial is aborted after `seconds` with a
+    bare CR - the standard any-character abort - rather than left to run out
+    `S7`, because the ring holds only so many entries and every one after it
+    fills is lost. `ATH` follows regardless, so the loop is released even if the
+    abort was not what ended the dial.
+    """
+    started = time.monotonic()
+    record: dict = {"command": "ATD", "held_seconds": seconds}
+    port.write_raw(b"ATD\r")
+    time.sleep(seconds)
+    record["result"] = port.abort_dial().decode("ascii", "replace").strip()
+    record["hung_up"] = port.query("ATH", timeout=8.0).decode(
+        "ascii", "replace").strip()
+    record["elapsed_seconds"] = round(time.monotonic() - started, 2)
+    return record
+
+
 def wait_for_operator(seconds: float | None) -> dict:
     """Hold the hook armed while the board is driven from somewhere else."""
     started = time.monotonic()
@@ -177,7 +234,7 @@ def wait_for_operator(seconds: float | None) -> dict:
 
 def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
         ports: tuple[int, ...], cells: tuple[int, ...],
-        output: Path, seconds: float | None) -> dict:
+        output: Path, seconds: float | None, dial: float | None = None) -> dict:
     started = time.monotonic()
     responses = output / "responses"
     responses.mkdir(parents=True, exist_ok=True)
@@ -195,6 +252,9 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
             "ring filling is that.",
             "Sampling is one entry per interrupt, so a rate is a lower bound on "
             "board activity, never an upper one.",
+            "A bare ATD seizes the loop and waits for dial tone. What that "
+            "produces depends on what is plugged into the jack, which this "
+            "module cannot see and does not record.",
         ],
     }
 
@@ -255,7 +315,8 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
         port.write_word(hook.vector * 4 + 2, hook.segment if hook.chain else 0)
         report["armed"] = True
         checkpoint()
-        report["wait"] = wait_for_operator(seconds)
+        report["wait"] = (seize_the_loop(port, dial) if dial
+                          else wait_for_operator(seconds))
     finally:
         # The one step that is not optional. It runs on the exception path, on
         # Ctrl-C, and after a wait that ended any other way.
@@ -308,6 +369,13 @@ def main() -> int:
     parser.add_argument("--seconds", type=float, default=None,
                         help="disarm automatically after this long instead of "
                              "waiting for Enter")
+    parser.add_argument("--dial", type=float, nargs="?", const=6.0, default=None,
+                        metavar="SECONDS",
+                        help="drive the stimulus from here instead of waiting: "
+                             "a bare ATD, held this long (default 6, about what "
+                             "the ring holds), then aborted and ATH. It dials no "
+                             "digits and cannot place a call, but it does take "
+                             "the loop off hook")
     parser.add_argument("--cell", action="append", default=[], metavar="ADDR",
                         help="segment-0 RAM byte to sample each entry, hex")
     parser.add_argument("--ports", default=None,
@@ -337,17 +405,21 @@ def main() -> int:
 
     print(f"  {plan['hook']}: {len(image)} bytes at {hook.entry:#06x}, "
           f"ring {hook.buffer:#06x}..{hook.buffer_end:#06x}")
+    if args.dial and args.seconds:
+        parser.error("--dial drives the stimulus itself; --seconds is the "
+                     "unattended form of waiting for someone else to")
     with WritablePort(args.device, args.baud, allow_ram=True,
+                      allow_off_hook=args.dial is not None,
                       writable=writable_addresses(hook, image)) as port:
         try:
             report = run(port, hook, image, plan, ports, cells,
-                         args.output, args.seconds)
+                         args.output, args.seconds, args.dial)
         except BaseException as exc:          # noqa: BLE001 - reported, then raised
             print(f"  failed: {exc!r}", file=sys.stderr)
             raise
     print(json.dumps({k: v for k, v in report.items()
                       if k in ("status", "armed", "disarmed", "vector_after",
-                               "placement_verified", "ring")}, indent=1))
+                               "placement_verified", "wait", "ring")}, indent=1))
     return 0 if report["status"] == "complete" else 1
 
 
