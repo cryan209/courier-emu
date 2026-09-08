@@ -179,9 +179,17 @@ writes in that range and every one is to `[0x0210]`. The predicate at `0x8b449`
 tests bit 0 of this same cell before it reaches its success branch, so the cell
 is on the path.
 
-The level-average cells `[0x0ae0..0ae2]` and `[0x0ca5]` did not move. That is
-uninterpretable without knowing whether a line with real dial tone is attached
-to the board - with none, there is nothing for them to measure.
+The level-average cells `[0x0ae0..0ae2]` and `[0x0ca5]` did not move, and that
+says nothing: **there is no line attached to the board.** Off hook into an open
+pair there is no dial tone to measure, so a detector reading zero is the
+correct answer rather than a missing one.
+
+Which bounds the whole question. The ROM's dial-tone detector cannot be
+identified from this bench as it stands - every experiment that would name it
+needs the board to hear a dial tone it has no way to hear. A line, a line
+simulator, or anything else that presents one would settle it in a single read,
+and until then the two port read-backs below are the part that can be worked
+on, because neither of them needs a line.
 
 ### Two port read-backs, measured
 
