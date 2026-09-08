@@ -288,6 +288,10 @@ class BridgeStatus:
     line: dict[str, Any] | None = None
     codec: dict[str, Any] | None = None
     exchange: dict[str, Any] | None = None
+    # The native core's own codec and frame-driver state. This is where "the
+    # queue is fed but nothing is consumed" has to be answered, and nothing
+    # else reported it.
+    core_codec: dict[str, Any] | None = None
     dsp_cells: dict[str, str] | None = None
     dsp_writes: list[dict[str, int]] | None = None
 
@@ -1884,6 +1888,7 @@ class CourierDspBridge:
             error=self.error,
             dsp=self._core_state(),
             dsp_host_ports=self._core_snapshot("io_port_stats"),
+            core_codec=self._core_snapshot("codec_state"),
             dsp_memory_map=self._core_snapshot("memory_map"),
             asic={
                 "registers": {

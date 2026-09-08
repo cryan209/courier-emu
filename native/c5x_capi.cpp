@@ -380,7 +380,7 @@ extern "C" void courier_c5x_set_codec_mclk(void *handle, uint32_t hz)
 
 extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 31) return;
+    if (!handle || !values || count < 35) return;
     auto codec = static_cast<C5xCore *>(handle)->codec_state();
     uint64_t result[] = {
         codec.registers[0], codec.registers[1], codec.registers[2],
@@ -394,6 +394,8 @@ extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std:
         codec.free_run, codec.high_pass_enabled, codec.loopback,
         codec.sixteen_bit, codec.input_gain, codec.output_gain,
         codec.monitor_gain, codec.input_select,
+        codec.codec_rx_size, codec.line_frame_next_cycle, codec.cycles,
+        uint64_t(int64_t(codec.line_frame_irq)),
     };
     std::copy(std::begin(result), std::end(result), values);
 }

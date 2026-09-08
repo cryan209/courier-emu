@@ -483,6 +483,7 @@ class NativeC5x:
         "rate_programmed", "secondary_pending", "force_secondary",
         "free_run", "high_pass_enabled", "loopback", "sixteen_bit",
         "input_gain", "output_gain", "monitor_gain", "input_select",
+        "codec_rx_size", "line_frame_next_cycle", "cycles", "line_frame_irq",
     )
     _CODEC_FLAGS = frozenset({
         "rate_programmed", "secondary_pending", "force_secondary",
@@ -493,7 +494,7 @@ class NativeC5x:
     OUTPUT_GAIN_DB = (None, 0, -6, -12)
 
     def codec_state(self) -> dict[str, Any]:
-        values = (ctypes.c_uint64 * 31)()
+        values = (ctypes.c_uint64 * 35)()
         self.library.courier_c5x_get_codec_state(self.handle, values, len(values))
         state: dict[str, Any] = {"registers": [int(values[i]) for i in range(9)]}
         for offset, name in enumerate(self._CODEC_FIELDS, start=9):

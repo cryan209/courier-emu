@@ -385,32 +385,40 @@ over that - the firmware would be told a tone was found by a DSP that has not
 processed a sample. What the board does is run the resident's audio path from
 the seizure onward and report what it finds.
 
-**Not the TDM gate.** An earlier revision put this on `m_call_tdm_active` at
-`native/c5x_core.cpp:923`, which does gate the polyphase ADC pair and `TRCV`
-behind the call overlay. But 302 and 403 do not use the TDM path at all: with
-`m_rom_codec` set - and `boot_rom_enabled` is true for both - the frame driver
-takes the `codec_frame()` branch at `c5x_core.cpp:907` instead, which pops
-`m_codec_rx` into `DRR` with **no overlay gate on it whatsoever**. The TDM
-branch below it is main211's.
+**Not the TDM gate, and not a gate at all.** An earlier revision put this on
+`m_call_tdm_active`, which is main211's branch: with `m_rom_codec` set, and it
+is set for both board images, the frame driver takes `codec_frame()` instead
+and that pops `m_codec_rx` into DRR with no overlay condition on it.
 
-So the gate is somewhere else and is not yet found. What is established:
+Instrumenting the core - `codec_rx_size`, `line_frame_irq`, `frame_period`,
+`line_frame_next_cycle` and `cycles` added to `codec_state()` and surfaced as
+`core_codec` - answers it in one run:
 
-* the bridge does feed the queue - the exchange path at `bridge.py:1747`
-  includes `or self.boot_rom_enabled` in its guard, which is why
-  `codec_rx_queued` reaches 228,480;
-* the frame interrupt is configured at construction, not at overlay
-  (`_configure_frame_interrupt` at `bridge.py:342`), so `m_line_frame_irq`
-  should be non-negative from reset;
-* `codec_frame()` pops only `if (!m_codec_rx.empty())`, and nothing is popped:
-  `rx_consumed` and `codec_rx_consumed` are both zero;
-* `line_frame_interrupts` is zero too, but that counter is incremented after
-  the pop and only when the interrupt is unmasked, so it does not explain the
-  missing consumption.
+    line_frame_irq          5          configured
+    frame_period         3472
+    line_frame_next_cycle 3472          the first edge
+    cycles                  0          <-- never advances
+    codec_rx_size      228480          the queue, entirely undrained
+    frames_clocked          0
+    pc / instructions       0 / 0
+    active              False
+    bootstraps              1
 
-Which leaves the native queue empty despite the bridge queueing into it, or
-the frame driver not reaching its `m_cycles >= m_line_frame_next_cycle` edge.
-Distinguishing those wants one instrumented run reporting `m_codec_rx.size()`
-and `m_line_frame_next_cycle` against `m_cycles`, which is the next step.
+`m_cycles` is zero because **the C52 never executes a single instruction.**
+The frame driver's `m_cycles >= m_line_frame_next_cycle` cannot become true,
+`codec_frame()` never runs, and the queue simply fills.
+
+Why it never executes is `bridge.py:1327`. A DSP reset closes the core, builds
+a fresh `NativeC5x`, and sets `active = False`; the bridge only sets it true
+again once a re-download reaches `bootstrap_target_size`. In this run that
+second download never arrives - `bootstraps` stays at 1 - so the part is held
+dead for the rest of the dial. Under `ATX0` the supervisor skips the wait,
+goes on to load the call overlay, and the DSP comes back, which is why the same
+image dials perfectly well that way.
+
+So the dial-tone failure is not a missing detector, a missing flag or a gated
+ISR. The DSP is reset mid-dial and never restarted, and everything downstream
+follows from that.
 
 ## Still open
 

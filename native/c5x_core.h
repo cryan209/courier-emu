@@ -139,6 +139,11 @@ public:
     // because the firmware puts it in free-run mode.
     struct CodecState {
         uint16_t registers[9];
+        // Diagnostics for "the queue is fed but nothing is consumed": what the
+        // native codec queue actually holds, and where the frame driver's next
+        // edge sits against the cycle counter it is compared against.
+        uint64_t codec_rx_size, line_frame_next_cycle, cycles;
+        int32_t line_frame_irq;
         uint32_t mclk_hz;
         uint64_t sample_rate_millihz;
         unsigned frame_period;

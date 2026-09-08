@@ -298,6 +298,10 @@ C5xCore::CodecState C5xCore::codec_state() const
     CodecState out{};
     for (unsigned index = 0; index < 9; ++index)
         out.registers[index] = m_codec.registers[index];
+    out.codec_rx_size = m_codec_rx.size();
+    out.line_frame_next_cycle = m_line_frame_next_cycle;
+    out.cycles = m_cycles;
+    out.line_frame_irq = m_line_frame_irq;
     out.mclk_hz = m_codec.mclk_hz;
     out.sample_rate_millihz = m_codec.sample_rate_millihz;
     out.frame_period = m_line_frame_period;
