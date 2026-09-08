@@ -141,11 +141,37 @@ XMF-only and neither executes on a ROM image. The ROM waits on its own cell at
 its own address and nothing writes it.
 
 So the work is to find the ROM's detector cell and the wait that reads it, the
-way `0x5DBE7` and `[0x649]` were found for the XMF builds. The originate path's
-spin is at `0x8b42d`-`0x8b49a`, polling `[0x02f7]`, `[0x04f2]`, `[0x03d7]` and
-`[0x020d]`, which is a state poll rather than the counter itself. `[0x04dd]`
-holds a result code but its only `= 6` writer is in the self test, so the
-runtime `NO DIAL TONE` comes from somewhere else again.
+way `0x5DBE7` and `[0x649]` were found for the XMF builds. That search has been
+run and has not found it. What it ruled out, so the next attempt does not
+repeat it:
+
+**The XMF shape is not in the ROM.** The XMF wait is a countdown loop -
+`mov word [0289],2580`, then `cmp word [0289],0 / je` for the timeout and
+`cmp byte [0649],5 / jb` back for the detector - and `0x5DBE7` is the timeout
+test, which is where the harness hooks. Searching the ROM for that exact
+sequence gives **zero** matches, and the looser form (any `cmp byte [x],5 / jb`
+with a word-zero test within 14 bytes) gives zero as well.
+
+**The wait is a service poll, not a counter loop.** Diffing executed addresses
+between the failing dial and the same dial under `ATX0` isolates it: `0x892c4`
+calls `0x89309`, `0x8b3e7`, `0x8b42d`, `0x8b495` and `0x8b4b5` in turn, and its
+caller spins 2.8M extra times. `0x8b42d` tests `[0x02f7]`, `[0x04f2]`,
+`[0x03d7]` and `[0x020d]`; `0x8b495` divides `[0x0ae1]` by `[0x0ae0]` into
+`[0x0ae2]` behind `[0x0ca5]` bit `0x20`, which looks like a level average.
+
+**Not a mailbox report either.** The DSP tells the host nothing during the
+wait: `runtime_inbound_delivered` is empty, and the bridge's only inbound
+messages - `0009`, `0044`, `004d`, `001d`, `0002`, `0003` - are published at
+call-overlay activation and are call-progress, not tone detection.
+
+**Not `[0x04dd]`.** It holds a result code, but its only `= 6` writer is inside
+the self test, so the runtime `NO DIAL TONE` is produced elsewhere.
+
+The cheapest way through is the board, the way everything else here was
+settled: dial on the hardware with dial tone actually present and read
+`[0x02f7]`, `[0x04f2]`, `[0x03d7]`, `[0x020d]`, `[0x0ae0..0ae2]` and `[0x0ca5]`
+with `ATGLK2=0000:0200` and `:0400`, `:0a00`, `:0c00`. Whichever differs from
+the value the emulator sits stuck on is the one to feed.
 
 Blind-dialling sidesteps all of it: `ATX0` gives `dialed: "6245"`, ringback,
 answer. The stub fixture used to dial only because its erased profile read
