@@ -46,22 +46,32 @@ MAX_PANEL_EVENTS = 512
 #    4   0x10  0x01   OH, and the relay clicks with it
 #    5   0x12  0x02   MR
 #    6   0x14  0x02   CS
-#    7   0x14  0x80   SYN, and CD too (driven directly; see below)
+#    7   0x14  0x80   SYN         (driven directly; see below)
 #    8   0x14  0x20   ARQ/FAX
 #
 # Index 4 reads as a lamp *lighting* mid-sweep rather than going out, because
 # OH is not in the group the drive loop lights - which is what the emulated
 # run shows too, asserting 0x10 bit 0x01 where every neighbour releases.
 #
-# Indices 3 and 7 are not inferred from the sweep. Both were driven directly on
-# the board with ATGLK2O0014, three blinks on 0x01 and six on 0x80: 0x01 blinks
-# CD alone, 0x80 blinks CD *and* SYN. So CD hangs off both bits and SYN off
-# 0x80 only, which is why 0x5de57 drives the two together - the carrier-detect
-# pairing and the SYN row are both right, and were never in conflict.
+# Indices 3 and 7 are measured, not inferred from the sweep: driven on the
+# board with ATGLK2O0014 against a rest state of 0xff, three blinks on bit 0x01
+# and six on bit 0x80. 0x01 blinks CD alone; 0x80 blinks SYN alone.
 #
-# Those fixed points re-align the rest. One of the nine steps must have been
-# invisible, and with CD at index 3 that step is index 2, not index 3. Which
-# lamp sits on 0x14 bit 0x10 is still unknown.
+# Port 0x14 reads its *inputs*, not this latch - 0xfe, 0xff and 0x7f all read
+# back as 0x7e - so there is no reading the rest state, and 0xff is it: 0x82803
+# writes 0xff to release and 0x8282f writes 0xbf to drive bit 0x40 low. An
+# earlier attempt used the 0x7e read as its baseline, which held 0x01 and 0x80
+# driven throughout, and reported CD and SYN moving together off bit 0x80. That
+# was the baseline, not the board.
+#
+# Releasing the port also drops CS, so CS is driven from here and idles low,
+# which corroborates index 6.
+#
+# What 0x5de57 is doing remains open: it drives 0x01 and 0x80 together for the
+# &C setting, and those are now known to be two different lamps.
+#
+# One of the nine steps was invisible, and with CD measured at index 3 that
+# step is index 2. Which lamp sits on 0x14 bit 0x10 is still unknown.
 #
 # The strap-scan names below describe one use of a line, not the line: the
 # board-ID scan at 0x5bfc6 drives the same latches.
