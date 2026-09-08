@@ -86,6 +86,22 @@ ACTIVE_LOW: frozenset[tuple[int, int]] = frozenset(
     {(0x10, 0x04), (0x14, 0x01), (0x14, 0x80)}
 )
 
+# The hook relay, named out of the table above so `off_hook` can read the bit
+# straight from its latch. It is active low: 0x5de57's pair drives it clear to
+# pull the relay in.
+HOOK_RELAY_PORT = 0x10
+HOOK_RELAY_BIT = 0x04
+
+# OUTPUT_BITS with each port's bits ordered once, at import, rather than on
+# every call to `signals` - the panel status is built for each ASIC probe pass.
+_SORTED_OUTPUT_BITS: dict[int, tuple[tuple[int, str, bool], ...]] = {
+    port: tuple(
+        (mask, name, (port, mask) in ACTIVE_LOW)
+        for mask, name in sorted(bits.items())
+    )
+    for port, bits in OUTPUT_BITS.items()
+}
+
 INPUT_BITS: dict[int, dict[int, str]] = {
     0x10: {
         0x08: "nvram-ready",  # polled at 0x5cde1 before every NVRAM transfer
@@ -329,18 +345,26 @@ class CourierPanel:
     def signals(self) -> dict[str, bool]:
         """Return the asserted state of every named output line."""
         state: dict[str, bool] = {}
-        for port, bits in OUTPUT_BITS.items():
+        for port, bits in _SORTED_OUTPUT_BITS.items():
             value = self.latches.get(port)
             if value is None:
                 continue
-            for mask, name in sorted(bits.items()):
+            for mask, name, active_low in bits:
                 level = bool(value & mask)
-                state[name] = not level if (port, mask) in ACTIVE_LOW else level
+                state[name] = not level if active_low else level
         return state
 
     @property
     def off_hook(self) -> bool:
-        return self.signals().get("hook-relay", False)
+        """Whether the hook relay is pulled in.
+
+        This is read on every panel-port OUT, so it reads the one latch bit
+        that carries it rather than naming every output line to look one up.
+        """
+        value = self.latches.get(HOOK_RELAY_PORT)
+        if value is None:
+            return False
+        return not value & HOOK_RELAY_BIT
 
     def status(self) -> dict[str, Any]:
         return {

@@ -426,6 +426,12 @@ class CourierMachine:
         self._serial_in_handler = False
         self._serial_irq_mode: str | None = None
         self._serial_tx_pump = False
+        # The transmit callback word at 0x02aa, cached. The pump below
+        # tests it on every instruction it is armed for, and reading it
+        # through the emulator cost a guest memory read per instruction -
+        # around a quarter of all of them on a payload run. None means
+        # unknown; a guest write to the word puts it back.
+        self._serial_tx_callback: int | None = None
         self._serial_empty_probes = 0
         self._serial_cooldown = 0
         self._timer_irq_requested = False
@@ -1269,6 +1275,8 @@ class CourierMachine:
                 for pointer, fallback in serial_callbacks:
                     if bytes(_uc.mem_read(pointer, 2)) == b"\x00\x00":
                         _uc.mem_write(pointer, fallback.to_bytes(2, "little"))
+                        if pointer == 0x2AA:
+                            self._serial_tx_callback = fallback
                         self.serial_trace.append(f"callback {pointer:03x}={fallback:04x}")
                 if self._terminal_attached:
                     if self._alternate_supervisor:
@@ -1452,7 +1460,12 @@ class CourierMachine:
                             self._serial_irq_requested = True
                             _uc.emu_stop()
                 elif self._serial_tx_pump:
-                    tx_callback = int.from_bytes(_uc.mem_read(0x2AA, 2), "little")
+                    tx_callback = self._serial_tx_callback
+                    if tx_callback is None:
+                        tx_callback = int.from_bytes(
+                            _uc.mem_read(0x2AA, 2), "little"
+                        )
+                        self._serial_tx_callback = tx_callback
                     if tx_callback not in (0, 0x1FCE):
                         if _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                             self._serial_irq_requested = True
@@ -2073,6 +2086,14 @@ class CourierMachine:
                 "instructions": self.instructions,
             })
 
+        def on_serial_tx_callback_write(
+            _uc: Any, _access: int, _address: int, _size: int, _value: int, _data: Any
+        ) -> None:
+            # The firmware has rewritten the transmit callback - a board
+            # discovery, a reset, or the front end taking it down. Drop the
+            # cached word so the pump reads the new one.
+            self._serial_tx_callback = None
+
         def on_dsp_queue_write(
             _uc: Any, _access: int, address: int, size: int, value: int, _data: Any
         ) -> None:
@@ -2130,6 +2151,9 @@ class CourierMachine:
         uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, 0xFF00, 0xFFFF)
         uc.hook_add(UC_HOOK_MEM_WRITE, on_dsp_queue_write, None, 0x02CA, 0x030F)
+        uc.hook_add(
+            UC_HOOK_MEM_WRITE, on_serial_tx_callback_write, None, 0x02AA, 0x02AB
+        )
         if self.mem_watch is not None:
             uc.hook_add(
                 UC_HOOK_MEM_WRITE, on_mem_watch, None, self.mem_watch[0], self.mem_watch[1]

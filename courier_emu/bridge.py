@@ -1498,16 +1498,24 @@ class CourierDspBridge:
 
     def clock_x86(self) -> None:
         self._instructions += 1
+        # Both services below are frame-paced, and this runs once per 80186
+        # instruction, so their frame counters are advanced here and the calls
+        # made only on the frame boundary. Called unconditionally they were two
+        # Python calls per emulated instruction that did nothing but increment.
         if self.exchange is not None:
             # The loop and the exchange behind it exist from board reset, the
             # same as the codec and before any DSP program is downloaded. A
             # line that only rings once the C52 is up is not a line.
-            self._service_exchange()
+            self._exchange_instructions += 1
+            if self._exchange_instructions >= self.batch:
+                self._service_exchange()
         if self.codec is not None:
             # The codec is on the ASIC's own serial bus, not the DSP's, so its
             # bring-up runs from board reset rather than from the download that
             # starts the C52.
-            self._service_codec()
+            self._codec_instructions += 1
+            if self._codec_instructions >= LINE_FRAME_INSTRUCTIONS:
+                self._service_codec()
         if not self.active or self.error or (self.boot_rom_enabled and not self.launched):
             return
         if self._runtime_mode and not self._runtime_ready:
@@ -1657,9 +1665,6 @@ class CourierDspBridge:
         The frame is the same 100 ms the line link and the DAA already count,
         so the codec's settling and the line's audio share a time base.
         """
-        self._codec_instructions += 1
-        if self._codec_instructions < LINE_FRAME_INSTRUCTIONS:
-            return
         self._codec_instructions = 0
         part = self.codec.codec
         if self.daa is not None:
@@ -1694,9 +1699,6 @@ class CourierDspBridge:
         # codec receive queue five times faster than the DSP drained it: the
         # datapump was hearing the line about forty seconds late, which is to
         # say it was hearing whatever was on it before the call came up.
-        self._exchange_instructions += 1
-        if self._exchange_instructions < self.batch:
-            return
         self._exchange_instructions = 0
         produced = self.core.serial_state().get("line_tx_writes", 0)
         if produced == self._exchange_codec_last:
