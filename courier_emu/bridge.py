@@ -1244,7 +1244,8 @@ class CourierDspBridge:
                 # window and strobes as the program does - eight 0083 words on
                 # the captured board. The entry request ends here, so whatever
                 # the window carried before it was configuration, not program.
-                self.bootstrap.clear()
+                if len(self.bootstrap) <= 64:
+                    self.bootstrap.clear()
             if self._runtime_mode:
                 if self.boot_rom_enabled:
                     if value & 1 and self._runtime_pending is not None:
