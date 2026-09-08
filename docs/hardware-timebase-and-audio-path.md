@@ -67,9 +67,10 @@ Worse, the derivation is circular: `machine.py` synthesizes the tick itself at
 `tick_ms * INSTRUCTIONS_PER_MS`, so "2,000,000 instructions reaches 180 ticks"
 is arithmetic on the two constants, not a measurement of either.
 
-That leaves the codec-implied figure as the only one still standing. 4,348
-instructions per millisecond at 20.16 MHz is 4.64 cycles per instruction, an
-ordinary 80186 mix. 1,111 would be 18.1 cycles per instruction, which is not.
+That leaves the codec-implied figure as the only one still standing. It was
+measured on a `main211` run, so it pairs with main211's crystal, not this
+board's: 4,348 instructions per millisecond at 25.8048 MHz is 5.9 cycles per
+instruction, an ordinary 80186 mix. 1,111 would be 23, which is not.
 
 ### The change, and what it did to the answered-call runs
 
