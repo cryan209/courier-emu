@@ -541,3 +541,53 @@ the bug. Its guard needs to distinguish setup from program rather than testing
   power-on is. Reproducing it means modelling the panel as following the serial
   signals, which nothing here does: `uart.py` tracks CTS and DTR, but no lamp
   is wired to them.
+
+## There is no 403 fault: it is the `X` level, and both builds share it
+
+The "403 plain does not dial" thread, carried through several commits above,
+rested on a comparison that was not controlled. 302 dialled and 403 did not, and
+the difference was taken to be the build. It is not.
+
+Run each at the other's `X` level, everything else identical:
+
+| | dialled | state | DTE |
+|---|---|---|---|
+| 302, its fixture's default | `6245` | connected | `OK` |
+| **302 + `ATX4`** | `""` | idle | **`NO DIAL TONE`** |
+| 403, its fixture's default | `""` | idle | `NO DIAL TONE` |
+| **403 + `ATX0`** | **`6245`** | **connected** | **`OK`** |
+
+The two builds behave identically for a given `X`. What differed was the
+**fixture**: `idsdl403` is the board's own captured settings part, which carries
+the unit's stored `X4`, and `idsdl302` is a mostly-erased part seeded with
+recovered records, which lands on a level that dials blind. So 403 was obeying
+`X4` correctly and reporting truthfully; the harness simply never gives it dial
+tone to hear.
+
+That collapses three commits' worth of "the third fault" into one fault, which
+is not 403's and was already recorded under its own name:
+[the exchange presents dial tone and the ROM is never told](../docs/dsp-cpu-interconnect.md).
+Every `X4` dial fails on both builds, and every blind dial succeeds on both.
+
+### What is now known about that one fault
+
+With the DSP/CPU instruction ratio corrected the C52 does hear the line - 613 M
+DSP instructions and a live codec queue on the failing run - and the exchange
+does present dial tone: it counts the seizure (`calls: 1`), enters its
+`dial-tone` state and reports `tone_present: true`, and the DAA mirrors that
+state. The audio is there and the DSP is running in it. What is missing is still
+the report: nothing turns "the C52 heard 350 + 440 Hz" into the thing the
+supervisor's originate path waits on.
+
+`machine.py`'s existing model of that wait - the five-hit counter at `[0x649]`,
+poked at physical `0x5DB9D` / `0x5DBE7` - is **dead on both builds**. Neither run
+reaches those addresses, and neither emits the `daa ...-qualified 0649=05` trace
+line that would say it had. Those are `main211` addresses, and they should be
+read as a record of how the 211 path was modelled rather than as anything the
+302/403 supervisor does.
+
+Note also that `runtime_inbound_delivered` is empty even on the **successful**
+`ATX0` calls, which reach `connected` and answer. So the supervisor consumes no
+DSP-originated message on any path yet: the working call is carried by the
+bridge's own overlay logic, not by the mailbox report. Whatever feeds the dial
+tone wait has to be built, not merely re-pointed.
