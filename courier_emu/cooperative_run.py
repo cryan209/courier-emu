@@ -359,12 +359,20 @@ def run(port: WritablePort, hook: Hook, image: bytes, plan: dict,
             name: [f"{v:02x}" for v in column[:16]]
             for name, column in ring["columns"].items()}
         elapsed = report["wait"].get("waited_seconds")
-        if elapsed:
-            # The interrupt rate, which is the point of the wrapping mode: a
-            # ring that stopped when full only says "at least capacity".
-            seen = ring.get("interrupts_total", ring["samples"])
+        seen = ring.get("interrupts_total", ring["samples"])
+        report["ring"]["complete"] = not ring["filled_ring"]
+        if elapsed and (not ring["filled_ring"] or ring.get("wraps")):
+            # A rate only where the count is real. A non-wrapping ring that
+            # filled stopped counting when it filled, so seen/elapsed there is
+            # capacity divided by the whole run - a number that looks like a
+            # rate and is not one. It reported 531.9 Hz for a board measured at
+            # 2,401.
             report["ring"]["interrupts_per_second"] = round(seen / elapsed, 1)
-            report["ring"]["complete"] = not ring["filled_ring"]
+        elif elapsed:
+            report["ring"]["interrupts_per_second"] = None
+            report["ring"]["rate_note"] = (
+                "ring filled and did not wrap: the capture covers the first "
+                f"{seen} interrupts of a longer run, so no rate is available")
     report["firmware_data_after"] = bytes(
         pages[a] for a in range(*FIRMWARE_DATA) if a in pages).hex() or None
     report["status"] = "complete"

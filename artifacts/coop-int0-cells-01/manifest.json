@@ -1,0 +1,131 @@
+{
+ "status": "complete",
+ "device": "/dev/cu.usbserial-11420",
+ "baud": 115200,
+ "started_utc": "2026-09-08T23:41:17.916495+00:00",
+ "plan": {
+  "hook": "chained INT0, the mailbox interrupt",
+  "vector": 12,
+  "original_vector": "8f46:0000",
+  "entry": 6656,
+  "place_base": 6656,
+  "state": 6912,
+  "buffer": 7168,
+  "buffer_end": 11008,
+  "ports": [],
+  "cells": [
+   "0x0183",
+   "0x0184"
+  ],
+  "bytes_per_entry": 2,
+  "capacity_samples": 1920,
+  "code_bytes": 44,
+  "seconds_at_303hz": 6.3,
+  "state_write": "ATGLK2W1B00,1C00",
+  "wraps_write": null,
+  "wrap": false
+ },
+ "armed": true,
+ "disarmed": true,
+ "writes": [
+  "ATGLK2W1A00,5350",
+  "ATGLK2W1A02,311E",
+  "ATGLK2W1A04,8EC0",
+  "ATGLK2W1A06,8BD8",
+  "ATGLK2W1A08,001E",
+  "ATGLK2W1A0A,811B",
+  "ATGLK2W1A0C,00FB",
+  "ATGLK2W1A0E,722B",
+  "ATGLK2W1A10,E903",
+  "ATGLK2W1A12,0010",
+  "ATGLK2W1A14,83A0",
+  "ATGLK2W1A16,8801",
+  "ATGLK2W1A18,4307",
+  "ATGLK2W1A1A,84A0",
+  "ATGLK2W1A1C,8801",
+  "ATGLK2W1A1E,4307",
+  "ATGLK2W1A20,1E89",
+  "ATGLK2W1A22,1B00",
+  "ATGLK2W1A24,5B1F",
+  "ATGLK2W1A26,EA58",
+  "ATGLK2W1A2A,8F46",
+  "ATGLK2W1B00,1C00",
+  "ATGLK2W0032,01A0",
+  "ATGLK2W0032,8F46"
+ ],
+ "assumptions": [
+  "The IVT slot read before arming is the one the firmware will use for the whole run; nothing here detects it being rewritten under us.",
+  "A verified placement is not proof the stub is reached - only the ring filling is that.",
+  "Sampling is one entry per interrupt, so a rate is a lower bound on board activity, never an upper one.",
+  "A bare ATD seizes the loop and waits for dial tone. What that produces depends on what is plugged into the jack, which this module cannot see and does not record."
+ ],
+ "identity": {
+  "supervisor": "7.4.16",
+  "dsp": "3.1.2"
+ },
+ "vector_before": "8f46:0000",
+ "firmware_data_before": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+ "placement_verified": true,
+ "wait": {
+  "command": "ATD",
+  "held_seconds": 3.0,
+  "result": "ATD\r\r\nNO CARRIER",
+  "hung_up": "ATH\r\r\nOK",
+  "waited_seconds": 3.61
+ },
+ "vector_after": "8f46:0000",
+ "ring": {
+  "write_pointer": 11008,
+  "wraps": 0,
+  "samples": 1920,
+  "interrupts_total": 1920,
+  "bytes_recovered": 3840,
+  "filled_ring": true,
+  "distinct": {
+   "[0183]": 1,
+   "[0184]": 2
+  },
+  "first_16": {
+   "[0183]": [
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f",
+    "3f"
+   ],
+   "[0184]": [
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f",
+    "7f"
+   ]
+  },
+  "interrupts_per_second": 531.9,
+  "complete": false
+ },
+ "firmware_data_after": null,
+ "elapsed_seconds": 13.94
+}

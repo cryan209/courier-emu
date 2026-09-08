@@ -873,3 +873,54 @@ a `finally`. Two things the first hardware run taught it:
 * **A filled ring is a lower bound on nothing else.** 15,868 interrupts were
   taken and 1,920 kept. The 20 ms cadence is measured across the kept window and
   is not evidence about the 15.6 s of interrupts that fell out of it.
+
+## What the hardware does during a dial-tone wait: almost nothing
+
+`artifacts/coop-int0-cells-01` and `-02`, on the live 403 board, 2026-09-09. The
+INT0 hook again, but sampling **RAM cells** rather than ports: the 403 handler
+caches the word it is about to hand the DSP at `[0x183]`/`[0x184]` before it
+writes `0x58`-`0x5e`, and a co-resident `mov al,[imm16]` cannot disturb a cached
+word the way an `in` disturbs a mailbox lane. Stimulus was a bare `ATD` on a
+connected line, which found dial tone and ran on to `NO CARRIER`.
+
+| | window | `7f3f` | `013f` |
+|---|---|---|---|
+| `-01`, non-wrapping | first 0.80 s: the seizure | 1,917 | **3** |
+| `-02`, wrapping | last 0.80 s: after dial tone, into the carrier wait | 1,918 | **2** |
+
+`0x7f3f` is the handler's own idle sentinel - `mov ax, 0x7f3f ; xchg [0x183], ax`
+- so it means "nothing to send". Everything else the supervisor put on the
+mailbox across an entire dial is **`0x013f`, five words, in single-interrupt
+blips**. No burst at the seizure, none when dial tone was found, none entering
+the carrier wait.
+
+`-02` also reconfirms the interrupt rate independently: 8,680 interrupts over
+3.62 s is **2,397.8 Hz**, against the 2,401 measured in `coop-int0-02`, which is
+0.1%.
+
+### Which settles where the dial-tone report comes from
+
+**The supervisor does not arm anything.** The hypothesis that a detector has to
+be told to listen, and that the harness's supervisor gives up before telling it,
+is wrong in both halves: there is no arming command on the board, and the
+harness already sends the same traffic. On the failing `ATX2` dial the emulated
+supervisor puts **six** words through this path - five `013f` and one `1500` -
+which is the board's own behaviour, slightly more of it.
+
+So the CPU-to-DSP direction is faithful, and it is not where the dial tone is
+lost. Whatever tells the supervisor that dial tone was found travels **DSP to
+CPU**, which is the direction whose 20 ms reply cadence was measured earlier and
+which nothing in the harness consumes.
+
+### And that leaves one gap, in the resident rather than the plumbing
+
+The real 3.1.2 hears dial tone and its board proceeds. The emulated 3.1.2, given
+a known tone through the codec's serial port with everything else held identical,
+[says exactly what it says to silence](board-verified-403.md#a-known-tone-in-front-of-the-resident-it-does-not-react-at-all)
+- 134 messages, the same three tags, the same `drr_reads`.
+
+Both ends of the supervisor's side are now accounted for: it sends what the
+board sends, and it waits for a report the board's DSP evidently produces. The
+remaining difference is what the emulated resident *does* with audio it
+demonstrably receives, which is a question about the C52 core and the resident's
+own detector, not about the mailbox.
