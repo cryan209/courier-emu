@@ -101,36 +101,20 @@ SUGGESTED_TICK_MS = 5
 # Derived from INSTRUCTIONS_PER_SECOND rather than written out, so the two stay
 # consistent if the calibration moves - and note that ratio is crystal-free, so
 # one figure serves both boards even though only the 20.16 MHz one was measured.
-MEASURED_FRAME_HZ = 2_401
+# The rate is the board's own, measured: `artifacts/coop-int0-02` counted 15,868
+# INT0 in 6.61 s on the live 403 unit by chaining the firmware's own mailbox
+# handler and counting the ring's wraps.
 #
-# **And the harness cannot yet run at it.** The firmware's handler falls through
-# to `dec [0x134]` and `lcall 8000:0676` on every entry, unconditionally, so this
-# interrupt is its fine timebase: everything paced by it runs six times faster
-# at the measured rate than at the rate below. A 302 dial that reaches `6245`,
-# ringback and answer at 391 Hz emits 5.7x the DTMF blocks at 2,401 Hz - 770
-# against 136 - and the exchange decodes no digits at all from them.
-#
-# Both cannot be right, and the board is not the thing that is wrong: the same
-# firmware dials on it at 2,401 Hz. There is a divider between this interrupt and
-# the chain that times a digit, and the harness does not have it.
-#
-# So the rate below is what that *prescaled* chain runs at, and it is measured
-# rather than guessed. `artifacts/dial-timing-01` timed real digits on the board
-# by differencing blind dials of 4 to 40 digits: 100.12, 140.05 and 190.09 ms a
-# digit at S11 50, 70 and 95, which is 1.999 ms per S11 unit through an intercept
-# of 0.1 ms. A digit period is exactly twice S11 - the tone and the gap that
-# follows it are each S11 milliseconds. The harness at 391 Hz took 2.739 ms per
-# unit, 1.370x too slow, and 391 x 1.370 is this:
-MODELLED_FRAME_HZ = 536
-# At it, a default S11 = 70 digit's tone is 70.2 ms against the board's 70.0.
-# The interdigit gap is not fixed by it and is a separate fault: 56.9 ms where
-# the board is 70.0, because the harness loads 28.4 periods for the gap against
-# 36.6 for the tone where the board makes them equal.
-#
-# 2,401 / 536 is 4.48, so the missing divider is near 9/2. That it is not a whole
-# number is the reason to keep both constants here rather than reconcile them:
-# one of the two rates is probably not yet measured as exactly as it looks.
-FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // MODELLED_FRAME_HZ
+# The harness could not run at it until the DSP/CPU instruction ratio was fixed
+# (bridge.DSP_STEPS_PER_X86). While that ratio was six times too small the C52
+# could not fill the intervals the supervisor was timing, so the supervisor's
+# dial ran 4.46x slower than the audio it produced, and this constant had to
+# absorb the difference - it stood at 391, then 536, both of them that one error
+# wearing a rate's clothing. With the ratio right, the measured rate produces a
+# digit period of 146.3 ms against the board's 140.05, and a tone and gap that
+# match each other as the board's do.
+FRAME_HZ = 2_401
+FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // FRAME_HZ
 # How long a character sits on the wire before the receiver takes it. Long
 # enough that the frame service sees the line low at least once.
 START_BIT_INSTRUCTIONS = 32_768
@@ -451,8 +435,8 @@ class CourierMachine:
         self.parameter_flash = parameter_flash
         self._service_resume = False
         self.tick_ms = tick_ms
-        # The INT0 period, in instructions. MEASURED_FRAME_HZ is what the board
-        # does; the default is what the rest of the harness is consistent with.
+        # The INT0 period, in instructions. The default is the board's measured
+        # rate; `--frame-hz` is for comparing against it, not for tuning.
         self.frame_instructions = (INSTRUCTIONS_PER_SECOND // frame_hz
                                    if frame_hz else FRAME_INSTRUCTIONS)
         if tick_source is not None and tick_source not in TICK_SOURCES:

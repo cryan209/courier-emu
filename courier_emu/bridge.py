@@ -14,6 +14,7 @@ from .dsp import NativeC5x
 from .ata import SipLine
 from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
+from .timers import CYCLES_PER_INSTRUCTION
 from .sip import PolyphaseResampler, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
 
@@ -30,6 +31,16 @@ DSP_WINDOW_STRIDE = 2
 # so this is a representation, not a measurement - which is exactly why it must
 # not leak into the DSP. See docs/ac01-codec-protocol.md.
 LINE_RATE = 9_600
+# C52 instructions per 80186 instruction: the clock ratio times the 80186's
+# cycles per instruction, because the C52 is single-cycle and the 186 is not.
+#
+# The clock ratio is **one**. The old comment here said "20 MHz 80186 / 25 MHz
+# C52", but 25.8048 MHz is `main211`'s crystal, not this board's: the 302/403
+# unit is 20.16 MHz throughout - its boot ROM, its DAA notes and its timer
+# programming all say so - and both processors run from it. What was left was
+# the 5:4 applied to an instruction count, which is wrong twice over.
+DSP_CLOCK_RATIO = 1
+DSP_STEPS_PER_X86 = DSP_CLOCK_RATIO * CYCLES_PER_INSTRUCTION
 
 
 class Resampler:
@@ -451,6 +462,9 @@ class CourierDspBridge:
         self._dial_tone_digit: str | None = None
         self._dial_digits_commanded = ""
         self._codec_instructions = 0
+        # Fractional DSP steps carried between batches, so the average ratio
+        # stays exact rather than truncating once per batch.
+        self._dsp_step_debt = 0.0
         self._line_instructions = 0
         self._line_tx_index = 0
         self._line_rx_samples: deque[int] = deque()
@@ -1571,8 +1585,25 @@ class CourierDspBridge:
         self._x86_ticks += count
         if self._x86_ticks < self.batch:
             return
-        # The Courier identifies its split as 20 MHz 80186 / 25 MHz C52.
-        dsp_steps = self._x86_ticks * 5 // 4
+        # The Courier identifies its split as 20 MHz 80186 / 25 MHz C52, and
+        # scaling by that alone - `* 5 // 4` - was wrong by nearly six, because
+        # it compares a *clock* ratio against an *instruction* count. An 80186
+        # instruction is 5.93 cycles; a C52 instruction is one. So per 80186
+        # instruction the C52 executes 5.93 x the clock ratio, not the clock
+        # ratio.
+        #
+        # Measured, the harness needed 4.46x more DSP steps than `5 // 4` gave:
+        # the supervisor's own dial timeline ran 4.46x slower than the audio it
+        # produced, because the C52 was not being given the steps to fill it
+        # (docs/hardware-timebase-and-audio-path.md). 5.93 is that correction,
+        # from the cycle model rather than from the residual, and it lands
+        # within 6% of it - the rest being the DSP's own idling.
+        #
+        # The remainder is carried rather than truncated, so the average ratio
+        # stays exact instead of losing a fraction of a step per batch.
+        self._dsp_step_debt += self._x86_ticks * DSP_STEPS_PER_X86
+        dsp_steps = int(self._dsp_step_debt)
+        self._dsp_step_debt -= dsp_steps
         self._x86_ticks = 0
         try:
             if self.sip is not None and self._sip_line is None:

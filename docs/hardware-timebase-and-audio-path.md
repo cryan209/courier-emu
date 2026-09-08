@@ -560,3 +560,69 @@ Two faults, then, not one, and now separable:
    is why it is recorded here rather than attempted in the same change.
 2. **The interdigit wait**, ~11 ms short in the sequencer itself, beside a tone
    that is exact.
+
+## The clock ratio, found and fixed: a clock ratio applied to instructions
+
+`bridge.py` scheduled the C52 as
+
+```python
+# The Courier identifies its split as 20 MHz 80186 / 25 MHz C52.
+dsp_steps = self._x86_ticks * 5 // 4
+```
+
+which is wrong twice over.
+
+**It compares a clock ratio against an instruction count.** An 80186 instruction
+is 5.93 cycles, the figure `timers.py` already derives and uses; a C52
+instruction is one. So per 80186 instruction the C52 executes the clock ratio
+*times 5.93*, not the clock ratio.
+
+**And the clock ratio is one, not 5/4.** 25.8048 MHz is `main211`'s crystal.
+This board is 20.16 MHz throughout - its boot ROM, its DAA and its timer
+programming all say so - and both processors run from it.
+
+So the C52 was being given **5.93 times too few steps**, and could not fill the
+intervals the supervisor was timing. That is the whole of the two-clock split:
+the supervisor's dial timeline ran 4.46x slower than the audio it produced, and
+`FRAME_INSTRUCTIONS` had been absorbing the difference, standing at 391 and then
+536 where the board says 2,401. Both were one error wearing a rate's clothing.
+
+### What it fixes
+
+With `DSP_STEPS_PER_X86 = 5.93` and the edge at the **measured** 2,401 Hz:
+
+| | before | after | board |
+|---|---|---|---|
+| tone, `S11` = 70 | 70.2 ms | 73.5 ms | 70.0 ms |
+| gap | 56.9 ms | **72.8 ms** | 70.0 ms |
+| period | 127.2 ms | 146.3 ms | 140.05 ms |
+| period, `S11` = 50 | 87.1 ms | 104.7 ms | 100.12 ms |
+| ms per `S11` unit | 2.009 | 2.080 | 1.999 |
+| intercept | **-13.4 ms** | **+0.7 ms** | +0.1 ms |
+| 302 outcome | ringback, answer | **connected** | - |
+
+**The gap fault is gone.** Tone and gap now match each other, as the board's do,
+and the -13.4 ms intercept that was the whole of that fault is +0.7. It was never
+an interdigit wait: the C52 could not render the silence it was given, so the
+supervisor's next tone arrived before the gap had been filled with samples.
+
+`FRAME_INSTRUCTIONS` is therefore the board's rate now, and `MODELLED_FRAME_HZ`
+is gone. `--frame-hz` remains, for comparing against the measured rate rather
+than for tuning.
+
+### The residual, and what it probably is
+
+Everything is 4.1% long: the slope is 2.080 ms per `S11` unit against 1.999, at
+both `S11` values, with a near-zero intercept. A uniform rate error of that size
+is what an approximate cycles-per-instruction figure looks like - matching the
+board exactly would need 5.70 rather than 5.93, and 5.93 is itself derived from
+a sample count rather than measured against a bus. It is left as it is, because
+5.70 would be fitting the residual and 5.93 is derived.
+
+The DSP now runs 5.93 steps per 80186 instruction rather than 1.25, so a 150 M
+instruction dial takes about 3 minutes rather than 110 seconds.
+
+### What it does not fix
+
+403 plain still dials nothing and stays `idle`, though its DSP-originated
+messages rise from 28 to 133. Whatever holds that path is not this.

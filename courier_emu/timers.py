@@ -112,6 +112,14 @@ TIMER_POLL_INSTRUCTIONS = 1_024
 # pair put the same compare at 7,167 instructions, or 1.6 ms.
 TIMER_CLOCK_HZ = 6_451_200
 INSTRUCTIONS_PER_SECOND = 4_348_000
+# The same figure the paragraph above names, as a constant, because more than
+# the timers need it. An 80186 instruction is not a clock cycle, and anything
+# that converts between the CPU's instruction count and another part's *clock*
+# has to divide by this or it is out by nearly six. The C52 is single-cycle, so
+# the two processors' instruction rates differ by this factor even when they
+# share a crystal - which is what `bridge.dsp_steps` gets wrong when it scales
+# by the clock ratio alone. See docs/hardware-timebase-and-audio-path.md.
+CYCLES_PER_INSTRUCTION = 5.93
 
 
 def ticks_for(instructions: int) -> int:
