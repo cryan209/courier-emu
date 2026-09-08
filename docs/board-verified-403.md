@@ -385,32 +385,32 @@ over that - the firmware would be told a tone was found by a DSP that has not
 processed a sample. What the board does is run the resident's audio path from
 the seizure onward and report what it finds.
 
-**The gate is `m_call_tdm_active`, at `native/c5x_core.cpp:923.`** The whole
-codec-receive delivery sits inside it:
+**Not the TDM gate.** An earlier revision put this on `m_call_tdm_active` at
+`native/c5x_core.cpp:923`, which does gate the polyphase ADC pair and `TRCV`
+behind the call overlay. But 302 and 403 do not use the TDM path at all: with
+`m_rom_codec` set - and `boot_rom_enabled` is true for both - the frame driver
+takes the `codec_frame()` branch at `c5x_core.cpp:907` instead, which pops
+`m_codec_rx` into `DRR` with **no overlay gate on it whatsoever**. The TDM
+branch below it is main211's.
 
-```cpp
-if (m_line_sample_due) {
-    m_line_sample_phase -= 25000000u;
-    if (m_call_tdm_active) {
-        ...
-        if (!m_codec_rx.empty()) {
-            DM_WRITE16(0xfff9, m_data[0xfff8]);   // the polyphase ADC pair
-            DM_WRITE16(0xfff8, m_codec_rx.front());
-            m_tdm.trcv = m_codec_rx.front();      // and TRCV
-```
+So the gate is somewhere else and is not yet found. What is established:
 
-The flag is false from reset and set true in exactly two places, both of them
-the call overlay coming up: `c5x_core.cpp:838` when the native scheduler
-crosses the overlay entry, and `bridge.py:640` on the non-scheduler path. So
-until the overlay activates, `m_codec_rx` accumulates and not one sample
-reaches `0xfff8`, `0xfff9` or `TRCV` - which is `codec_rx_queued` at 228,480
-against `codec_rx_consumed` at zero, exactly.
+* the bridge does feed the queue - the exchange path at `bridge.py:1747`
+  includes `or self.boot_rom_enabled` in its guard, which is why
+  `codec_rx_queued` reaches 228,480;
+* the frame interrupt is configured at construction, not at overlay
+  (`_configure_frame_interrupt` at `bridge.py:342`), so `m_line_frame_irq`
+  should be non-negative from reset;
+* `codec_frame()` pops only `if (!m_codec_rx.empty())`, and nothing is popped:
+  `rx_consumed` and `codec_rx_consumed` are both zero;
+* `line_frame_interrupts` is zero too, but that counter is incremented after
+  the pop and only when the interrupt is unmasked, so it does not explain the
+  missing consumption.
 
-The board cannot work this way: it reports dial tone 0.43 s after the seizure,
-long before any overlay. Feeding the resident whenever the codec's frame sync
-is running, rather than only once the overlay owns the TDM, is the change - and
-it is a real one to make carefully, because the overlay path that currently
-depends on this gate is the one that dials correctly today.
+Which leaves the native queue empty despite the bridge queueing into it, or
+the frame driver not reaching its `m_cycles >= m_line_frame_next_cycle` edge.
+Distinguishing those wants one instrumented run reporting `m_codec_rx.size()`
+and `m_line_frame_next_cycle` against `m_cycles`, which is the next step.
 
 ## Still open
 
