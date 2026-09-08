@@ -121,6 +121,18 @@ MEM_WATCH_EVENTS = 96
 
 TICK_SOURCES = ("dsp",)
 
+# The ROM builds' port 0 control latch. 0x40 is the speaker (pulsed by
+# 0x81703); 0x08 is the second serial port's receive-pending input, tested at
+# 0x81d45 with the byte itself read from port 0x0a.
+PORT0_SPEAKER = 0x40
+PORT0_RX_PENDING = 0x08
+# The four bits 0x81703 carries across its read-modify-write are inputs, not
+# latch storage: answering them from the latch instead of their strapped level
+# costs ATI7 its Terbo, VFC and V34+ options, so the firmware reads capability
+# from them. They stay at the undriven high level the open bus used to give.
+PORT0_INPUTS = 0x33
+PORT0_OUTPUTS = 0xC4
+
 
 # Every literal address `on_hot_code` tests, and nothing else. One set lookup
 # replaces the chain of comparisons that used to run on every instruction, and
@@ -256,6 +268,8 @@ class RunResult:
     mmio_event_count: int = 0
     io_summary: dict[str, int] = field(default_factory=dict)
     output_latches: dict[str, int] = field(default_factory=dict)
+    # Rising edges of port 0 bit 0x40 on the ROM builds: one per speaker click.
+    speaker_pulses: int = 0
     mmio_summary: dict[str, int] = field(default_factory=dict)
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     pc_watch: list[dict[str, Any]] = field(default_factory=list)
@@ -411,6 +425,10 @@ class CourierMachine:
         self.port_values = dict(port_values or {})
         self.runtime_port_values = dict(runtime_port_values or {})
         self.output_latches: dict[int, int] = {}
+        # The ROM builds' port 0 control latch, and the speaker hanging off
+        # bit 0x40 of it. Powers up clear; the firmware read-modify-writes it.
+        self.port0_latch = 0
+        self.speaker_pulses = 0
         self.uart_ports = set(uart_ports or set())
         # Physical 80186 addresses to record register state at. `hot_addresses`
         # is a top-20 profile and cannot answer "was this branch taken, and
@@ -1891,6 +1909,23 @@ class CourierMachine:
                 echo_command_byte(_uc, terminal_value)
                 if not self.serial_rx:
                     self._serial_tx_pump = True
+            elif self.uart is not None and port == 0 and size == 1:
+                # Port 0 is a read/write control latch on the ROM builds, and
+                # the firmware treats it as one: 0x81703 does `in al,0 / and
+                # al,33 / or al,40 / out 0,al`, keeping four bits of what it
+                # read. Answering the open-bus 0xff forced 0x01, 0x02, 0x10
+                # and 0x20 set on every such cycle, and left bit 0x08 - the
+                # second serial port's receive-pending flag, tested at
+                # 0x81d45 - reading as "a byte is waiting" forever.
+                #
+                # So: the output bits read back from the latch, the four
+                # capability inputs keep the undriven high level, and 0x08
+                # stays clear while nothing is attached to that port - the
+                # byte it guards is read with `in al,0x0a` at 0x81d4f.
+                value = (
+                    PORT0_INPUTS
+                    | (self.port0_latch & PORT0_OUTPUTS)
+                ) & ~PORT0_RX_PENDING
             else:
                 bridged = self.dsp_bridge.read(port, size) if self.dsp_bridge is not None else None
                 value = self.port_values.get(port, bridged if bridged is not None else mask)
@@ -1970,6 +2005,13 @@ class CourierMachine:
             mask = (1 << (size * 8)) - 1
             value &= mask
             self.output_latches[port] = value
+            if self.uart is not None and port == 0 and size == 1:
+                # Bit 0x40 is the speaker: 0x81703 raises it and drops it again
+                # in the next instruction pair, which is one click. Count the
+                # rising edges so a run can show what the board would sound.
+                if value & PORT0_SPEAKER and not self.port0_latch & PORT0_SPEAKER:
+                    self.speaker_pulses += 1
+                self.port0_latch = value
             pc = current_pc()
             self._record_io("out", port, size, value, pc)
             if size == 1:
@@ -2493,6 +2535,7 @@ class CourierMachine:
             io_event_count=sum(self.io_counts.values()),
             mmio_event_count=sum(self.mmio_counts.values()),
             io_summary=self._summarize(self.io_counts),
+            speaker_pulses=self.speaker_pulses,
             output_latches={
                 f"{port:#06x}": value for port, value in sorted(self.output_latches.items())
             },
