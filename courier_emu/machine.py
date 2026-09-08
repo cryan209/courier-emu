@@ -122,17 +122,19 @@ MEM_WATCH_EVENTS = 96
 TICK_SOURCES = ("dsp",)
 
 
-# Every literal address on_code tests. One set lookup replaces the chain of
-# comparisons that used to run on every emulated instruction.
+# Every literal address `on_hot_code` tests, and nothing else. One set lookup
+# replaces the chain of comparisons that used to run on every instruction, and
+# `_HOT_HOOK_RANGES` narrows the hook to them.
+#
+# The set has to stay exactly the addresses that block tests. A block keyed on
+# anything else - the *previous* instruction, say - cannot live behind it and
+# belongs in `on_code`; putting one here silently disables it, which is what
+# happened to the serial ISR-exit block between 8a6067e and its repair.
 _HOT_ADDRESSES = frozenset({
     0x57FF9,
     0x5867C,
     0x5868C,
     0x59435,
-    0x59BEB,
-    0x59BF2,
-    0x59C2F,
-    0x59C35,
     0x59CD9,
     0x59D02,
     0x59D28,
@@ -148,11 +150,6 @@ _HOT_ADDRESSES = frozenset({
     0x5CE66,
     0x5CE6A,
     0x5D5B0,
-    0x5D608,
-    0x5D613,
-    0x5D640,
-    0x5D650,
-    0x5D656,
     0x5D6E5,
     0x5D6FB,
     0x5D70E,
@@ -185,8 +182,6 @@ _HOT_ADDRESSES = frozenset({
     0x6A08A,
     0x6A0CF,
     0x6AD6E,
-    0x6ADF1,
-    0x6ADF8,
     0x6F8D1,
     0x6F903,
     0x70F70,
@@ -1225,40 +1220,6 @@ class CourierMachine:
                 and len(self.serial_trace) < 64
             ):
                 self.serial_trace.append("entered-uart-isr")
-            if hot and self._serial_in_handler and (
-                address in (0x5D613, 0x5D650, 0x5D656)
-                or (self._supervisor_23 and address in (0x59BF2, 0x59C35))
-                or self._previous_address in (
-                    0x5D608, 0x5D613, 0x5D640, 0x5D650, 0x5D656,
-                )
-                or (
-                    self._supervisor_23
-                    and self._previous_address in (0x59BEB, 0x59BF2, 0x59C2F, 0x59C35)
-                )
-            ):
-                self.serial_trace.append(f"iret {self._previous_address:05x}")
-                callbacks = bytes(_uc.mem_read(self._serial_callbacks, 6))
-                rx_callback = int.from_bytes(callbacks[:2], "little")
-                tx_callback = int.from_bytes(callbacks[2:4], "little")
-                command_callback = int.from_bytes(callbacks[4:6], "little")
-                command_state = bytes(_uc.mem_read(0x1CEE, 7))
-                self.serial_trace.append(
-                    f"state rxcb={rx_callback:04x} txcb={tx_callback:04x} "
-                    f"cmdcb={command_callback:04x} "
-                    f"flags={command_state[0]:02x} len={command_state[6]:02x}"
-                )
-                if command_callback == 0xA910:
-                    discard_line_without_attention(_uc)
-                self._serial_in_handler = False
-                self._serial_irq_mode = None
-                self._serial_cooldown = 128 if self.serial_rx else 512
-            if hot and (self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8)):
-                self._timer_in_handler = False
-                self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
-                if self.tick_source == "dsp":
-                    # One tick per DSP frame, taken after that handler's own
-                    # iret so the two never nest.
-                    self._tick_owed = True
             # The fatal-error blinker uses a calibrated self-looping LOOP.
             if hot and (self.fast_delays and address == 0x5C772):
                 _uc.reg_write(UC_X86_REG_CX, 1)
@@ -1768,6 +1729,48 @@ class CourierMachine:
             without serial input or a DSP-paced tick never takes. See
             `_needs_code_hook`.
             """
+            # These two are keyed on the instruction that ran *before* this
+            # one, so they have to see every instruction. An ISR's iret lands
+            # on its return target, which is an ordinary address nowhere near
+            # _HOT_ADDRESSES - so they cannot live in on_hot_code, whose
+            # ranged registration and `if not hot: return` only ever let a hot
+            # address through. They did live there between 8a6067e and this
+            # commit, which left the DTE deaf: the serial ISR never finished,
+            # so no command was ever parsed.
+            if self._serial_in_handler and (
+                address in (0x5D613, 0x5D650, 0x5D656)
+                or (self._supervisor_23 and address in (0x59BF2, 0x59C35))
+                or self._previous_address in (
+                    0x5D608, 0x5D613, 0x5D640, 0x5D650, 0x5D656,
+                )
+                or (
+                    self._supervisor_23
+                    and self._previous_address in (0x59BEB, 0x59BF2, 0x59C2F, 0x59C35)
+                )
+            ):
+                self.serial_trace.append(f"iret {self._previous_address:05x}")
+                callbacks = bytes(_uc.mem_read(self._serial_callbacks, 6))
+                rx_callback = int.from_bytes(callbacks[:2], "little")
+                tx_callback = int.from_bytes(callbacks[2:4], "little")
+                command_callback = int.from_bytes(callbacks[4:6], "little")
+                command_state = bytes(_uc.mem_read(0x1CEE, 7))
+                self.serial_trace.append(
+                    f"state rxcb={rx_callback:04x} txcb={tx_callback:04x} "
+                    f"cmdcb={command_callback:04x} "
+                    f"flags={command_state[0]:02x} len={command_state[6]:02x}"
+                )
+                if command_callback == 0xA910:
+                    discard_line_without_attention(_uc)
+                self._serial_in_handler = False
+                self._serial_irq_mode = None
+                self._serial_cooldown = 128 if self.serial_rx else 512
+            if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8):
+                self._timer_in_handler = False
+                self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
+                if self.tick_source == "dsp":
+                    # One tick per DSP frame, taken after that handler's own
+                    # iret so the two never nest.
+                    self._tick_owed = True
             if self._code_observer is not None:
                 self._code_observer(address)
             if self.pc_watch and address in self.pc_watch:
