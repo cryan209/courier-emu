@@ -85,6 +85,7 @@ def main() -> int:
     parser.add_argument("--parameter-sector")
     parser.add_argument("--parameter-flash")
     parser.add_argument("--tick-ms", type=_number, default=None)
+    parser.add_argument("--frame-hz", type=_number, default=None)
     parser.add_argument("--tick-source", default=None)
     parser.add_argument("--int1-after", type=_number)
     parser.add_argument("--exchange", action="store_true")
@@ -227,6 +228,7 @@ def main() -> int:
         if args.parameter_flash
         else None,
         tick_ms=args.tick_ms,
+        frame_hz=args.frame_hz,
         tick_source=args.tick_source,
         sip=sip,
         line=line,

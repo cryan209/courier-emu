@@ -786,6 +786,57 @@ target than "the resident should report something": a message every 20 ms for as
 long as the loop is off hook, against 28 heartbeats 70 ms apart that nothing
 consumes.
 
+### And the harness cannot yet run at that rate
+
+Setting the edge to the measured 2,401 Hz **breaks the one path that worked**:
+
+| | 391 Hz (default) | 2,401 Hz (measured) |
+|---|---|---|
+| 302 plain | `6245`, ringback, answer | `""`, dial-tone |
+| DTMF blocks | 136 | **770** |
+| DSP-originated messages | 389 | 389 |
+| 403 plain | `""`, idle | `""`, idle |
+
+The reason is in the handler's own tail. It does not end at the acknowledgement:
+
+```
+00f4d8  e8155b        call 0x14ff0
+00f4db  b001          mov  al, 1
+00f4dd  9a76060080    lcall 8000:0676
+00f4e2  833e340100    cmp  word ptr [0x134], 0
+00f4e7  7404          je   0xf4ed
+00f4e9  ff0e3401      dec  word ptr [0x134]
+```
+
+Unconditionally, on every entry. **This interrupt is the firmware's fine
+timebase**, so raising it six-fold makes every countdown it drives elapse six
+times faster in emulated time, and the dial emits 5.7x the tone blocks while the
+exchange decodes no digits from any of them.
+
+Both numbers cannot be right, and the board is not the thing that is wrong - the
+same firmware dials on it, at 2,401 Hz, with the same `dec [0x134]` running. So
+the harness holds a *second* error that 391 Hz was quietly compensating for,
+somewhere between this countdown chain and the codec-sample clock the exchange
+measures digit lengths in. Finding it is the next piece of work, and it is now a
+bounded question rather than a guess: something in the harness is six times out
+against a rate that is no longer in doubt.
+
+Until then the default stays at `MODELLED_FRAME_HZ = 391`, which is the rate the
+rest of the harness is consistent with, and `--frame-hz` reproduces the
+comparison in one flag:
+
+```sh
+./courier run IDSDL302.ROM --with-dsp --exchange \
+    --exchange-number 6245=answer --tick-ms 5 --board-id 7 \
+    --nvram-fixture idsdl302 --at 'ATDT6245' --instructions 150000000 \
+    --summary --frame-hz 2401
+```
+
+Keeping the wrong rate as the default is a deliberate choice and worth naming as
+one: the alternative is a harness that is faithful about this interrupt and
+cannot complete a call, which would trade a known-wrong number for a broken
+bench.
+
 `0x1e` never moved, in either capture. Whatever the handler's `mov ah, al` is
 carrying, it is not carrying it here.
 

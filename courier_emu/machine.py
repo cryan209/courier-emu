@@ -24,7 +24,10 @@ from .panel import (
 )
 from .parameters import SECTOR_BASE, SECTOR_SIZE
 from .sip import SipSession
-from .timers import INT0_VECTOR, INT1_VECTOR, TIMER_POLL_INSTRUCTIONS, TimerBlock
+from .timers import (
+    INSTRUCTIONS_PER_SECOND, INT0_VECTOR, INT1_VECTOR,
+    TIMER_POLL_INSTRUCTIONS, TimerBlock,
+)
 from .uart import EbSerial
 from .rom_serial import locate_rom_serial
 
@@ -87,11 +90,34 @@ TICK_VECTOR = 0x0F
 # pair answers OK where an undriven run reports NO CARRIER, so which of
 # those is faithful is still open.
 SUGGESTED_TICK_MS = 5
-# The board's frame edge is the coprocessor's, far faster than the tick. The
-# true rate is the codec's and is not recovered, so this stands in at the
-# interrupt poll's own granularity - fast enough for the firmware's line
-# handshakes to resolve, and honest about not being the measured rate.
-FRAME_INSTRUCTIONS = 11_110
+# The board's frame edge is the coprocessor's, far faster than the tick, and it
+# is now measured rather than stood in for. `artifacts/coop-int0-02` counted
+# 15,868 INT0 in 6.61 s on the live 403 board - 2,401 Hz - by chaining the
+# firmware's own mailbox handler and counting the ring's wraps. The edge does
+# free-run there, as the harness always assumed; what the harness had wrong was
+# the rate, and by more than a factor of six the *slow* way: 11,110 instructions
+# is 391 Hz at this time base.
+#
+# Derived from INSTRUCTIONS_PER_SECOND rather than written out, so the two stay
+# consistent if the calibration moves - and note that ratio is crystal-free, so
+# one figure serves both boards even though only the 20.16 MHz one was measured.
+MEASURED_FRAME_HZ = 2_401
+#
+# **And the harness cannot yet run at it.** The firmware's handler falls through
+# to `dec [0x134]` and `lcall 8000:0676` on every entry, unconditionally, so this
+# interrupt is its fine timebase: everything paced by it runs six times faster
+# at the measured rate than at the rate below. A 302 dial that reaches `6245`,
+# ringback and answer at 391 Hz emits 5.7x the DTMF blocks at 2,401 Hz - 770
+# against 136 - and the exchange decodes no digits at all from them.
+#
+# Both cannot be right, and the board is not the thing that is wrong: the same
+# firmware dials on it at 2,401 Hz. So the harness has a second error that 391 Hz
+# was compensating for, somewhere between this interrupt's countdown chain and
+# the codec-sample clock the exchange measures digits in. Until that is found,
+# the default stays at the rate the rest of the harness is consistent with, and
+# `--frame-hz` makes the comparison one flag rather than an edit.
+MODELLED_FRAME_HZ = 391
+FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // MODELLED_FRAME_HZ
 # How long a character sits on the wire before the receiver takes it. Long
 # enough that the frame service sees the line low at least once.
 START_BIT_INSTRUCTIONS = 32_768
@@ -387,6 +413,7 @@ class CourierMachine:
         parameter_sector: bytes | None = None,
         parameter_flash: ParameterFlash | None = None,
         tick_ms: int | None = None,
+        frame_hz: int | None = None,
         tick_source: str | None = None,
         console: SerialConsole | None = None,
         force_online: bool = False,
@@ -411,6 +438,10 @@ class CourierMachine:
         self.parameter_flash = parameter_flash
         self._service_resume = False
         self.tick_ms = tick_ms
+        # The INT0 period, in instructions. MEASURED_FRAME_HZ is what the board
+        # does; the default is what the rest of the harness is consistent with.
+        self.frame_instructions = (INSTRUCTIONS_PER_SECOND // frame_hz
+                                   if frame_hz else FRAME_INSTRUCTIONS)
         if tick_source is not None and tick_source not in TICK_SOURCES:
             choices = ", ".join(TICK_SOURCES)
             raise ValueError(f"invalid tick source {tick_source!r}; choose {choices}")
@@ -1564,7 +1595,7 @@ class CourierMachine:
                 if (
                     self._int0_pending is None
                     and interrupts_on
-                    and self.instructions - self._last_frame >= FRAME_INSTRUCTIONS
+                    and self.instructions - self._last_frame >= self.frame_instructions
                     and self._int0_vector_installed(_uc)
                 ):
                     self._last_frame = self.instructions

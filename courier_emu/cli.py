@@ -214,6 +214,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--parameter-flash", str(Path(args.parameter_flash).resolve())))
     if args.tick_ms is not None:
         command.extend(("--tick-ms", str(args.tick_ms)))
+    if args.frame_hz is not None:
+        command.extend(("--frame-hz", str(args.frame_hz)))
     if args.tick_source:
         command.extend(("--tick-source", args.tick_source))
     command.extend(("--board-id", args.board_id))
@@ -515,6 +517,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FIRST:LAST",
         help="record 80186 memory writes in this physical range, hex, with the "
         "program address that made each",
+    )
+    run.add_argument(
+        "--frame-hz",
+        type=_number,
+        default=None,
+        metavar="HZ",
+        help="rate to raise the board's INT0 frame edge at. The board was "
+        "measured at 2401 (artifacts/coop-int0-02); the default is the 391 the "
+        "rest of the harness is consistent with, and the difference between "
+        "them is an open fault, not a preference",
     )
     run.add_argument(
         "--libunicorn",
