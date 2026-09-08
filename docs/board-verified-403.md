@@ -449,6 +449,26 @@ stand-in for a signal that is present, observable and already routed:
 `machine.py` takes that same edge into `float_runtime_bus()`, which floats the
 bus and does not touch the core.
 
+**Does the reset clear the DSP's RAM?** On the part, no: asserting RS resets
+the CPU - PC, registers, status - and leaves memory alone, so external program
+RAM keeps what was downloaded into it. The harness builds a fresh
+`NativeC5x`, which wipes all of it.
+
+That costs the program nothing, because the supervisor re-downloads the whole
+resident regardless. Suppressing the spurious clears and letting the transfer
+finish gives `bootstraps: 2`, `bootstrap_bytes: 56656`, `bootstrap_match:
+true`, `active: true` - the full 55 KB image, byte-identical, not a partial
+overlay. So the guess that persistent RAM would mean a short download is wrong;
+it sends everything either way.
+
+Where the fresh core is still wrong is *data* memory, which a real reset
+preserves and this discards. Whether the resident depends on that is not
+measured.
+
+And the clear is necessary but **not sufficient**. With it suppressed the DSP
+comes back - active, matching, two bootstraps - and the dial still ends
+`dialed: ""`, state `idle`. So it was one fault of at least two.
+
 Two reset semantics for one event, neither keyed to the event. What follows is
 the harness's own doing. `bridge.py:1247` clears the bootstrap
 accumulator on any `ENTRY_REQUEST_COMPLETE` written to `0x1c` while `not
