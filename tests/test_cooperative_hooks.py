@@ -14,6 +14,7 @@ from courier_emu.cooperative_probe import (
     disarm_commands,
 )
 from courier_emu.cooperative_run import writable_addresses
+from courier_emu.dial_timing import DIAL, SETUP, fit
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -90,6 +91,27 @@ def test_decode_reads_the_ring_back_in_the_handlers_own_order():
 def test_a_pointer_outside_the_ring_is_an_error_not_a_capture():
     assert "error" in decode({INT0.state: 0x00, INT0.state + 1: 0x99},
                              INT0.default_ports, hook=INT0)
+
+
+def test_the_dial_timer_sends_digits_and_nothing_else():
+    """ATDT is the only command here that can reach the outside world."""
+    for command in ("ATDT1234", "ATDT" + "1" * 64, "ATX0", "ATS11=70",
+                    "ATS7=1", "ATH", "ATH0", "ATZ", "ATE0"):
+        assert DIAL.fullmatch(command) or SETUP.fullmatch(command), command
+    # No dial modifiers, no pulse dialling, no second command smuggled onto the
+    # end, and nothing that writes stored settings.
+    for command in ("ATDT", "ATDT1,2", "ATDT12W3", "ATDT123;", "ATDP123",
+                    "ATD@5", "AT&W", "ATS11=1234", "ATDT1234&W"):
+        assert not (DIAL.fullmatch(command) or SETUP.fullmatch(command)), command
+
+
+def test_the_fit_recovers_a_known_slope():
+    """Seconds against digit count: the slope is the per-digit time."""
+    slope, intercept = fit([(4, 1.3), (12, 2.1), (24, 3.3), (40, 4.9)])
+    assert round(slope, 4) == 0.1          # 100 ms a digit
+    assert round(intercept, 4) == 0.9      # everything constant in n
+    with pytest.raises(ValueError, match="no slope"):
+        fit([(8, 1.0), (8, 1.2)])
 
 
 def test_every_hook_names_a_vector_and_an_original():
