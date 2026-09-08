@@ -64,6 +64,20 @@ Index 4 reads as a lamp *lighting* mid-sweep rather than going out, in both the
 board's sequence and the emulated run. That is what identifies OH and the relay
 as one line: the sweep drives `0x10` bit `0x01` and never touches bit `0x04`.
 
+**This table says which latch bit lights which lamp during the test. It does
+not say the supervisor drives that lamp in service, and mostly it does not.**
+RD, SD, TR, RS and CS are RS-232 signals before they are lamps, and in normal
+operation they follow the wire rather than a latch. The runs say so plainly:
+across a whole 150M-instruction dial the panel sees 23 writes, `carrier-detect-a`
+and `carrier-detect-b` are never driven at all, and everything that does move
+is the board-ID strap scan at boot plus the hook relay. The same two lines are
+driven twice each in the self test, and only inside the lamp sweep.
+
+So the lamp stage is a lamp *test* - the firmware takes over lines it otherwise
+leaves to the hardware, precisely so that every lamp can be seen. That is what
+makes the sweep usable for naming them, and it is also why the naming cannot be
+turned around into "the supervisor controls this lamp".
+
 The speaker is port `0x00` bit `0x40`, pulsed high then straight back low by
 `0x81703` - one click, called once per lamp as the sweep releases them, which
 is the ticking that stage makes.
@@ -83,6 +97,10 @@ is the ticking that stage makes.
   different, analogue path. `ATM` is settable now - `ATI4` reports `M0` after
   `ATM0` - so a dial under each setting is the next probe.
 - **The tail of the board's lamp sequence.** After `SELF TEST COMPLETED` the
-  board drives CS, RD and AA in a pattern the emulated run does not reproduce
-  at all; it makes 38 panel writes in 600M instructions and none of them fall
-  there.
+  board shows CS, RD and AA moving in a pattern the emulated run does not
+  reproduce; it makes 38 panel writes in 600M instructions and none fall there.
+  Given the above this is probably not a missing *write* at all - those lamps
+  follow DTE handshake and data lines, which is also what the `TR RS CS` lit at
+  power-on is. Reproducing it means modelling the panel as following the serial
+  signals, which nothing here does: `uart.py` tracks CTS and DTR, but no lamp
+  is wired to them.
