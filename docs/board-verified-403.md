@@ -179,17 +179,28 @@ writes in that range and every one is to `[0x0210]`. The predicate at `0x8b449`
 tests bit 0 of this same cell before it reaches its success branch, so the cell
 is on the path.
 
-The level-average cells `[0x0ae0..0ae2]` and `[0x0ca5]` did not move, and that
-says nothing: **there is no line attached to the board.** Off hook into an open
-pair there is no dial tone to measure, so a detector reading zero is the
-correct answer rather than a missing one.
+The level-average cells `[0x0ae0..0ae2]` and `[0x0ca5]` did not move, but not
+for want of a line. There is one, and it carries dial tone:
 
-Which bounds the whole question. The ROM's dial-tone detector cannot be
-identified from this bench as it stands - every experiment that would name it
-needs the board to hear a dial tone it has no way to hear. A line, a line
-simulator, or anything else that presents one would settle it in a single read,
-and until then the two port read-backs below are the part that can be worked
-on, because neither of them needs a line.
+    ATX4      OK          full result codes, so NO DIALTONE would be reported
+    ATS7=8    OK
+    ATD       NO CARRIER
+
+`NO CARRIER` and not `NO DIALTONE` means the firmware heard dial tone, passed
+its wait, dialled nothing and timed out on S7. The board's detector works, and
+the question is answerable on this bench.
+
+What the hand-pulled relay could not do is catch it. Closing the relay behind
+the firmware's back does not put it in a dial, so its detector routine is not
+running and the cells stay idle; and after a real `ATD` completes they are back
+to idle before the DTE can be read again, because the DTE is unavailable for
+the whole of the attempt.
+
+So catching it needs sampling that does not use the DTE - which is exactly what
+`cooperative_probe.py` is: a timer-0 sampler that runs alongside the firmware
+and reads RAM while a call is up. Pointing it at `[0x020d]`, `[0x03d7]`,
+`[0x04f2]`, `[0x0ae0..0ae2]` and `[0x0ca5]` across a real dial is the
+experiment that names the cell.
 
 ### Two port read-backs, measured
 
