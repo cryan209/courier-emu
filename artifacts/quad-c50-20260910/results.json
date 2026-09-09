@@ -1,0 +1,23 @@
+{
+ "status": "instruction-limit",
+ "instructions": 4000016,
+ "link": {
+  "transfers": 40944,
+  "words": 163776,
+  "strobes": {
+   "1": 20472,
+   "2": 20472,
+   "4": 5,
+   "255": 12
+  },
+  "resets": 12,
+  "status_writes": 36
+ },
+ "stream_bytes": 327552,
+ "source_bytes": 62544,
+ "stream_is_prefix_of_source": false,
+ "first_pass_matches_source": false,
+ "source_nonzero": 57031,
+ "stream_head": "83 00 83 00 83 00 83 00 83 00 83 00 83 00 83 00 00 bc 57 ae ff ff 89 8b 07 bc 1a ae 49 82 1b ae",
+ "source_head": "00 bc 57 ae ff ff 89 8b 07 bc 1a ae 49 82 1b ae 4d 82 41 be 00 bc 2a ae 10 00 28 ae 00 00 29 ae"
+}
