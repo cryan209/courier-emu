@@ -650,3 +650,40 @@ So the next test is whether a prefix reaches it — `AT$L1` and friends — and
 that is a command form this project has not sent to hardware before. It should
 be approached the way the tone was: one command, cells read either side,
 nothing assumed about what an unrecognised form does.
+
+## `AT$` is HELP, and the letter mapping is retracted
+
+`$` is not a prefix. `AT$` prints the firmware's own command quick reference,
+captured in full at [help-dollar.txt](../artifacts/dollar-prefix-403/help-dollar.txt).
+The parser's `cmp al, 0x24` is that help command, and the related forms it
+lists — `&$`, `%$`, `D$`, `S$` — are per-family help, not prefixes either. The
+board answers `AT` normally afterwards.
+
+The listing is worth having on its own account. The complete command set is:
+
+```text
+A/ A> AT A Bn Cn Dn DL DSn D$ En Fn Hn In Kn Mn On P Qn
+Sr=n Sr? S$ T Vn Xn Z Z! +++ $ &$ %$
+```
+
+**There is no `L` and no `N`.** So `ATL` is not a command on this firmware at
+all, which is the simple reason `ATL0`–`ATL3` moved nothing — not a branch
+inside a handler, and not a dispatch subtlety. `T` is listed as Tone Dial, a
+dial modifier, which is likewise why `ATT` did nothing.
+
+And the listing refutes the mapping itself. `E`, `O`, `Q` and `V` are all real
+commands here, yet under the base `a6685` they land on entries 4, 14, 16 and
+21 — every one of them the `0x1960` reject stub. A table that rejects four
+commands the firmware documents is not the main AT letter table.
+
+**So the previous section's identification of entries 11, 13 and 19 as `L`,
+`N` and `T` is withdrawn**, and with it the prediction that `ATL1` would open
+the CF gate. What stands is narrower and still useful: the dispatch at `a4f63`
+exists, it indexes `a6685` by *some* letter-like index, entry 19 is the
+router, and entries 11 and 13 do write the two CF gate cells. What that index
+actually is remains open — either the base is not `a6685`, or this table
+belongs to an interpreter the ordinary AT path does not enter.
+
+Establishing the base empirically is the way out, and the help listing is the
+instrument: pick a command in the listing whose handler is identifiable in the
+image, find which entry it occupies, and the offset falls out.

@@ -1,0 +1,36 @@
+AT$
+HELP,  Command Quick Reference (CTRL-S to Stop, CTRL-C to Cancel)
+
+&$    HELP, Ampersand Commands       Kn    n=0  Call Duration Mode        
+%$    HELP, Percent Commands               n=1  Real Time Clock Mode      
+A/    Repeat Last Command            Mn    n=0  Speaker Off               
+A>    Continuously Repeat Command          n=1  Speaker On Until CD       
+AT    Command Mode Prefix                  n=2  Speaker Always On         
+A     Answer Call                          n=3  Speaker Off During Dial   
+Bn    n=0  V.32 originate mode       On    n=0  Return Online              
+      n=1  HST originate mode              n=1  Return Online & Retrain    
+Cn    n=0  Transmitter Off                 n=2  Return Online & Speed Shift
+      n=1  Transmitter On            P     Pulse Dial                     
+Dn    Dial a Telephone Number        Qn    n=0  Result Codes Sent         
+      n=0..9#*TPR,;"W@!()-                 n=1  Quiet (No Result Codes)   
+DL    Dial Last Phone Number               n=2  Verbose/Quiet On Answer   
+DSn   Dial Stored Phone Number       Sr=n  Sets Register "r" to "n"       
+D$    HELP, Dial Commands            Sr?   Query Register "r"             
+En    n=0  No Command Echo           S$    HELP, S Registers              
+      n=1  Echo Command Chars        T     Tone Dial                      
+Fn    n=0  Online Echo               Vn    n=0  Numeric Responses         
+      n=1  No Online Echo                  n=1  Verbal Responses          
+Strike a key when ready . . . Hn    n=0  On Hook (Hang Up)         Xn    n=0  Basic Result Codes        
+      n=1  Off Hook                        n=1  Extended Result Codes     
+In    n=0  Product Code                    n=2-7  Advanced Result Codes   
+      n=1  Checksum                  Z     Software Reset                 
+      n=2  RAM Test                  Z!    Hardware Reset                 
+      n=3  Banner/Clock set          +++   Escape Code                    
+      n=4  Current Settings          $     HELP,  Command Summary         
+      n=5  NVRAM Settings            
+      n=6  Link Diagnostics          
+      n=7  Product Configuration     
+      n=10 Dial Security Status    
+      n=11 Extended Link Screen      
+
+OK
