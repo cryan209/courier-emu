@@ -879,11 +879,36 @@ The board firmware puts a tone on the line and the modelled exchange decodes
 the dialled number. The datapump dispatch beyond ringback is not addressed by
 this and remains where the rest of this document leaves it.
 
-**One thing this does not license.** The six obfuscated settings records that
-7.3.14 keeps at EEPROM words 94..102 are not 7.4.16's shape: decoding the
-board's cached window with the `e237` routine gives no majority on any of the
-six records. The 403 fixture therefore seeds the extended block and nothing
-else, rather than writing 302's settings layout and calling it a 403.
+**Correction (2026-09-10): the settings records are 7.4.16's shape after all.**
+This section previously claimed that the six obfuscated settings records
+7.3.14 keeps at EEPROM words 94..102 are not 7.4.16's shape, on the grounds
+that decoding the board's cached window with the `e237` routine gives no
+majority on any of the six records. That decode was taken at the wrong RAM
+address, and the conclusion drawn from it was wrong.
+
+The two firmwares cache the same EEPROM words at different RAM addresses.
+7.3.14 copies just words 94..102 to `0x0752`. 7.4.16 copies the whole
+512-byte part to `0x058e..0x078d`, so the same words land at
+`0x058e + 188 = 0x064a`. Decoding the 403 part at `0x0752` reproduces the
+"no majority on any of the six" result exactly; decoding it at `0x064a`
+gives six unanimous 3-of-3 records:
+
+| setting | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| 403 (`IDSDL403_NVRAM`) | `0x00` | `0x1f` | `0x07` | `0x1e` | `0x00` | `0x00` |
+| 302 (`IDSDL302_SETTINGS`) | `0x00` | `0x1e` | `0x07` | `0x1e` | `0x00` | `0x00` |
+
+The parts differ in one bit of setting 2 and are otherwise identical, which
+is what the shared 20.16 MHz hardware predicts. The five-word shift is real
+for the extended `+S` block and does **not** extend to the settings records:
+those stay at word 94 in both.
+
+Reproduce with `courier_emu.ram_dump.decode_settings` over
+`IDSDL403_NVRAM[0x064a - 0x058e:][:18]`.
+
+This does not by itself say the 403 fixture *should* seed the settings block
+as well as the extended one; it only removes the reason given here for not
+doing so.
 
 ## What is not established
 
