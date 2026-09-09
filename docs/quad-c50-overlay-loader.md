@@ -124,6 +124,62 @@ are planted in program memory and executed. The mechanism works.
 That is a demonstration, not a real overlay — a constant `ret` is not the
 firmware's code. But it establishes the transport end to end.
 
+## The supervisor's load table
+
+There is a five-record table at `0x93ba6..0x93bcd` in `QF060003`. Records are
+four words:
+
+```
+length in bytes | destination program address | third | 0x0000
+```
+
+It is identifiable because its **last record is the downloader call's own
+arguments**: length `0xf450`, destination `0x8000` — literally the `mov cx,
+0xf450` / `mov ax, 0x8000` at `0x93804`. That is the resident.
+
+| Record | Length | Destination | Third |
+| --- | --- | --- | --- |
+| `0x93ba6` | `0x0cb6` (3,254 B / 1,627 w) | `0xc300` | `0x3784` |
+| `0x93bae` | `0x15d6` (5,590 B / 2,795 w) | `0xc300` | `0x35c6` |
+| `0x93bb6` | `0x0f18` (3,864 B / 1,932 w) | `0xd900` | `0x38e2` |
+| `0x93bbe` | `0x08f2` (2,290 B / 1,145 w) | `0xc800` | `0x2000` |
+| `0x93bc6` | `0xf450` (62,544 B / 31,272 w) | `0x8000` | `0x2f45` |
+
+Every overlay destination — `0xc300`, `0xd900`, `0xc800` — lies **inside** the
+resident's own span of `0x8000..0xfa28`. These are overlays in the strict
+sense: they replace regions of the already-loaded resident. Two records share
+destination `0xc300`, so those two are alternates for one slot, which is what a
+modulation-per-overlay arrangement looks like.
+
+This is the answer to the original question. Overlay selection is a table of
+(length, destination) records on the supervisor side, and delivery is the
+DSP-side `BLDP` pull described above — which is why searching for a
+Courier-style overlay table reachable from a second downloader call found
+nothing. There is no second downloader call, and the table is not adjacent to
+the one that exists.
+
+### What the table does not yet say
+
+- **The third field is unidentified.** `0x3784`, `0x35c6`, `0x38e2`, `0x2000`,
+  `0x2f45`. It is not a byte sum, word sum, word XOR, or CRC-16/X.25 (either
+  parameterisation) of the corresponding region under the assumption that the
+  four overlays follow the resident consecutively in the payload. So either it
+  is not a checksum, or that layout assumption is wrong. Its values are all
+  plausible low DSP program addresses, which makes an entry point the next
+  hypothesis to test.
+- **Each overlay's source offset is unknown.** The records carry no source
+  field, and the consecutive-layout guess is unconfirmed.
+- **The lengths do not account for the store.** The four overlays total
+  `0x3a96` (14,998 bytes) against an overlay store of `0xbb10` (47,888 bytes).
+  Roughly two thirds of the tail is something else — coefficient data, further
+  tables, or records this one table does not cover.
+- **The walker was not found.** No 16-bit immediate in the code region points
+  at the table's address, so it is reached through a far pointer or a computed
+  address. The table was located by its data signature, not by a cross
+  reference.
+- `QR060103` has the same downloader shape but its table was not located; an
+  automated search for the same record signature returned a false positive.
+
 ## What remains
 
 - The supervisor's side of the same conversation: which of its structures
