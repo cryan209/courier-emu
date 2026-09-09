@@ -825,3 +825,49 @@ The exchange has a mode built for exactly this — `--exchange-hotline`, which
 answers on seizure with no dial tone and no digits. Pairing it with `&L1` is
 the run that should carry a leased-line handshake, and it is the obvious next
 measurement.
+
+## The hotline run: the datapump starts
+
+`--exchange-hotline` answers on seizure with no dial tone and no digits, which
+is the shape leased-line mode expects. Paired with `AT&L1`, 403, native DSP,
+150M instructions:
+
+| | plain dial | `&L1` + dial | **`&L1` + hotline** |
+|---|---|---|---|
+| exchange | ringback | `reorder` | **`answer`, `connected`** |
+| `cf-gate` hits | 3 | 2 | 2 |
+| `set-ovl-6` `0x8bc06` | 0 | 1 | 1 |
+| `overlay-loader` `0x8e60a` | 0 | 1 | 1 |
+| **`xfer-start` `0x8e631`** | 0 | - | **2** |
+| transmit samples | 66,078 | - | **350,273** |
+| **nonzero** | **3,669** (DTMF bursts) | - | **291,175** |
+| peak | 22,764 | - | 15,424 |
+
+**The datapump runs.** `0x8e631` is `out 0x1e, 4`, the instruction that starts
+an overlay transfer, and it fires twice. The line output stops being isolated
+DTMF bursts and becomes continuous: 83% of samples nonzero across the whole
+capture, against 5.5% for a dial.
+
+A Goertzel sweep of three windows puts the energy at **1800 Hz**, with
+sidebands at 1600 and 2000 — a modulated data carrier, not a tone. (That reads
+the capture at the 7200 Hz codec rate this project infers elsewhere; at a
+different rate the figure scales, but the signal is in the data-carrier band
+either way, and nowhere near DTMF.) The first window is silent, so the carrier
+starts partway in, as a handshake does.
+
+This is the symptom [what-runs-and-what-blocks.md](what-runs-and-what-blocks.md)
+opens with — "the datapump never puts anything on the line" — resolved. It
+never started because nothing in a dial opens the gate, and `&L1` opens it.
+
+### The remaining gap is now a bridge one, and it is specific
+
+`bootstraps` stays 1 with `bootstrap_bytes` 56,656 — the resident bank alone —
+and `call_overlay_active` stays false, while the final `[0x0d28]` peek reads
+`00`. So the firmware starts the transfer twice and the bridge never completes
+one or marks an overlay active.
+
+That is a much better problem than the one this document started with. The
+firmware side is understood end to end: `&L1` -> `[0x04f2]=1` -> CF gate at
+`0x8b8a1` -> `0x8bc06` writes the overlay id -> loader at `0x8e60a` -> `out
+0x1e, 4`. What happens after that `out` is the bridge's model of the download
+window, which is code this project owns and can instrument directly.
