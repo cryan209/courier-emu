@@ -1000,15 +1000,13 @@ class CourierDspBridge:
         self._publish_connected_event()
 
     def _collect_dsp_messages(self) -> None:
-        """Turn the resident's own mailbox writes into inbound messages.
+        """Observe resident mailbox writes without duplicating the hardware latch.
 
-        Every inbound message used to be synthesised here - `_runtime_inbound`
-        was appended to only by `_queue_runtime_message`, from the bridge's own
-        logic at call-overlay activation - so a report the DSP originated had
-        nothing to carry it. The C52 sends by writing the tag to PA14 and then
-        the word to PA15, and the core keeps those in a holding pair separate
-        from what the host writes to the same addresses, so the word's write
-        count rising is one completed message.
+        The ROM profile reads replies directly from the core's output holding
+        registers and acknowledges them through PA7. Its legacy inbound queue
+        is not consumed by that path; copying replies there leaks stale words.
+        These counters record writes, while runtime_inbound_delivered records
+        the actual CPU acknowledgement below.
         """
         if not self.boot_rom_enabled or not hasattr(self.core, "io_port_stats"):
             return
@@ -1020,7 +1018,6 @@ class CourierDspBridge:
         self._dsp_mailbox_writes = writes
         header = self.core.io_output(HOST_TAG_CELL) & 0xFFFF
         data = self.core.io_output(HOST_WORD_CELL) & 0xFFFF
-        self._queue_runtime_message(header, data)
         self.dsp_originated_messages += 1
         # What the resident said, not just how often. A count cannot answer
         # "did it report the tone"; a histogram of tag:word can, by diffing a
@@ -1361,6 +1358,9 @@ class CourierDspBridge:
                         self._runtime_pending = None
                     if value & 2 and self._dsp_completion_status() & 2:
                         self.dsp_messages_taken += 1
+                        header = self.core.io_output(DSP_TAG_PORT) & 0xFFFF
+                        data = self.core.io_output(DSP_WORD_PORT) & 0xFFFF
+                        self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
                     if value & 4:
                         self.dsp_stream_acks += 1
                     self._set_dsp_status(set_bits=value & 6)

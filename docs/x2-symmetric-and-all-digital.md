@@ -446,3 +446,80 @@ samples.
 
 So the conversion this board does need is in hardware on the PCM highway, and
 the constellation table is what to look for in image 11 - not a G.711 codec.
+
+## Found it: G.711 is computed, not tabulated, and only the I-modem has it
+
+Two corrections and one answer.
+
+**The answer.** The I-modem resident carries a complete G.711 codec in both
+directions and both laws, at `81b8`-`8215`, immediately before its sample
+paths.  The expander first:
+
+```
+81b8: bit   4, *              ; which law?
+81b9: bcnd  81d4, ntc         ;   ntc -> the µ-law copy below
+81bb: bit   8, *              ; sign bit -> TC
+81bc: lacc  *, 12
+81bd: xor   #00055000         ; A-LAW: the 0x55 toggle
+81bf: and   #0007f000         ; magnitude
+81c1: sach  @7d               ; exponent (segment)
+   …
+81cb: add   #00010800         ; hidden bit
+81cd: sach  @7e, 5            ; mantissa
+81ce: lt    @7d
+81cf: lact  @7e               ; mantissa << exponent
+81d0: xc    1, ntc / neg      ; apply sign
+
+81d4: bit   8, *
+81d5: lacc  *, 12
+81d6: cmpl                    ; µ-LAW: the inversion
+81d7: and   #0007f000
+81d9: sach  @7d               ; exponent
+81db: add   #00010800         ; hidden bit
+81dd: sach  @7e, 5            ; mantissa
+81de: lt    @7d / lact @7e
+81e0: sub   #21               ; µ-law's bias - 0x84 at this scale
+81e1: xc    1, ntc / neg
+```
+
+`xor #55`/`cmpl` is exactly the pair that separates the two laws, and only
+µ-law carries the bias subtraction - textbook G.711, expressed as
+exponent-and-mantissa rather than as a lookup.  The compressor follows it, the
+same two ways round, using `norm` to find the exponent:
+
+```
+81ec: clrc ovm ; lar ar1,#07 ; rpt #06 ; norm *-    ; exponent search
+   …  sar ar1, @7d ; add16 @7d ; retd
+81fb: xor  #00055000                                ; A-law
+8203: clrc ovm ; lar ar1,#07 ; rpt #06 ; norm *-
+   …  sar ar1, @7d ; retd ; add16 @7d
+820f: cmpl                                          ; µ-law
+```
+
+And the law is a runtime choice - `bit 4, *` at the top - which is S58 bit 4,
+"Force x2 A-law mode", carried down to the DSP.
+
+**It is I-modem only.**  The A-law toggle `xor #00055000` appears twice in the
+I-modem resident (`81bd` in the expander, `81fb` in the compressor) and **zero
+times** in the analog Courier residents, 2.1.1 and 2.3.31 alike.  Those two
+sit behind a TLC320AC01 that hands them linear samples: their ISRs at `81ad`,
+`81e8`, `8203` are `lamm @20 ; sacl *` and nothing more.  The I-modem needs the
+codec because its analog datapumps - V.34, V.FC, fax - run over a B channel
+that carries companded octets, exactly as expected.
+
+**Correction.** The routine at `8374`, described in the section above as "a
+shift by a stored exponent … the segment-and-mantissa method", is not
+companding.  Its shift counts come from `@76`/`@77`, and `83a3`-`83a5` sets
+both to a constant `0x18`:
+
+```
+839f: lacc #03cf ; samm @74 ; samm @75     ; two buffer pointers
+83a3: lacl #18   ; samm @76 ; samm @77     ; two shift counts, both 24
+```
+
+So `sath ; satl` there is a fixed 24-bit right shift - the top byte of a
+32-bit accumulator - and `and #00ff ; add @7c, 8` packs two of those into one
+16-bit word.  That is the *linear* two-samples-per-word path, not a codec.  The
+codec is the separate routine at `81b8`, and the earlier claim that no
+companding existed anywhere in the DSP was wrong: no *table* exists, which is
+a different thing.

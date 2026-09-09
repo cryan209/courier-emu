@@ -83,6 +83,8 @@ def test_booted_firmware_roundtrip_and_independent_holding_registers():
             assert bridge.core.io(0x57) & 1
             assert not bridge.read(0x1C, 1) & 1
             bridge.core.step(100_000)
+            bridge._collect_dsp_messages()
+            assert not bridge._runtime_inbound
             assert not bridge.core.io(0x57) & 1  # real DSP dispatcher ack
             assert bool(bridge.read(0x1C, 1) & 2) == (tag == 7)
             # Stage another CPU word before reading the standing DSP reply.
@@ -95,5 +97,10 @@ def test_booted_firmware_roundtrip_and_independent_holding_registers():
             assert not bridge.read(0x1C, 1) & 2
             assert bridge.core.io(0x57) & 2
             assert bridge.read(0x58, 1) == 0x31
+        assert bridge._runtime_inbound_delivered['0031:0000'] == 2
+        # A repeated CPU acknowledgement with no new DSP reply is not a
+        # second delivery, even though the output register still holds 0031.
+        bridge.write(0x1C, 1, 2)
+        assert bridge._runtime_inbound_delivered['0031:0000'] == 2
     finally:
         bridge.core.close()
