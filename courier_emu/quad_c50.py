@@ -283,18 +283,27 @@ class QuadC50Endpoint:
             raise ValueError("recovered DSP boot ROM checksum mismatch")
         words = self.program[:RESIDENT_WORDS]
         core = NativeC5x.from_program(RESIDENT_ORIGIN, bytes(RESIDENT_WORDS * 2))
-        core.configure_rom_codec()
         core.load_rom(rom)
         core.set_mpmc_pin(0)
-        core.host_write(0xFFFF, 4)  # 16-bit serial boot strap, as on the 302/403.
-        # Hardware vectoring through PMST.IPTR and the ROM, the same call the
-        # 302/403 path makes whenever it boots through the mask ROM. Without it
-        # the loader is never clocked and the part produces no host-link
-        # traffic at all.
-        core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
+        # The boot strap the ROM reads to pick its mode. Not codec-specific -
+        # without it the ROM takes another path and runs into an invalid opcode
+        # at program 0x3f.
+        core.host_write(0xFFFF, 4)
         core.set_pc(0)
-        # One trailing word clocks the loader's final comparison.
-        core.queue_codec_boot([RESIDENT_ORIGIN, len(words), *words, 0])
+        # Deliberately *not* configure_rom_codec(). That mode is the Courier
+        # ASIC's, and it redefines two things the Quad needs as they are:
+        #
+        #   * port 0x57 becomes an acknowledgement register whose writes clear
+        #     bits (c5x_core.cpp IO_WRITE16), so the resident's 0x0300 would
+        #     clear bits 8 and 9 instead of setting them - which is exactly why
+        #     0x57 read back 0x0000 here and the host link looked dead;
+        #   * XRDY is gated on a codec frame clock this board does not drive,
+        #     so the loader's reset handshake would spin for ever.
+        #
+        # The boot words do not need that mode. The loader takes them from DRR
+        # gated by RRDY, and the ordinary path serves both from the codec
+        # receive queue, with XRDY answered optimistically off XRST.
+        core.queue_codec_rx([RESIDENT_ORIGIN, len(words), *words, 0])
         self.core = core
         self.started = True
         self.program = []

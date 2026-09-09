@@ -227,23 +227,39 @@ The 55 stale `C52` references in `bridge.py` are a misnomer, and that misnomer
 is a live source of error: it invites treating the Quad's DSP as a different
 device needing a new boot model, when the working one already applies.
 
-Reusing that path - recovered mask ROM, `configure_rom_codec`, MP/MC low, a
-zeroed program space, `host_write(0xFFFF, 4)`, `set_pc(0)`, then
-`queue_codec_boot([origin, len(words), *words, 0])` - was tried and produces
-**no host-link traffic at all**: 0 pulls, 0 acks, `0x57` stuck at `0x0` where a
-plainly loaded resident writes `0xfffc` within 1,500 instructions. Adding
-`configure_line_frame_interrupt(5, 0xffff)`, which the 302/403 path also makes
-when booting through the ROM, changed nothing - the run was byte-identical.
+Reusing that path directly does **not** work, and the reason is specific:
+`configure_rom_codec` is the Courier ASIC's mode, and it redefines two things
+the Quad needs left alone. In `c5x_core.cpp`, `IO_WRITE16` makes port `0x57` an
+acknowledgement register whose writes *clear* bits (`m_io[port] &= ~value`), so
+the resident's `0x0300` clears bits 8 and 9 instead of setting them - which is
+exactly why `0x57` read back `0x0000` and the host link looked dead. It also
+gates `XRDY` on a codec frame clock this board does not drive, so the loader's
+reset handshake spins.
 
-The reason is that on the 302/403 the mask-ROM loader is fed by
-`queue_codec_boot` and those words only reach it because the **codec path is
-being clocked**; the ROM boot rides the same serial machinery that carries line
-samples. The Quad model has no codec and no sample delivery, so the queued boot
-words are never shifted in.
+**The boot words never needed that mode.** The loader takes them from `DRR`
+gated by `RRDY`, and the ordinary path serves both from the codec receive
+queue, with `XRDY` answered optimistically off `XRST`. So the sequence is the
+recovered mask ROM, MP/MC low, `host_write(0xFFFF, 4)` for the boot strap -
+that one is the ROM's mode selector, not a codec detail, and without it the ROM
+runs into an invalid opcode at program `0x3f` - `set_pc(0)`, and the words
+handed over with `queue_codec_rx([origin, len, *words, 0])`.
 
-**So the next step is not more handshake work.** It is giving the Quad's C50
-whatever clocks its serial boot, after which the fetch loop decoded above is
-serving overlay requests, which is what it is for.
+**Measured working.** From a *zeroed* program space with only the ROM loaded,
+512 PCs execute inside the resident's span `0x8000..0xfa28` and `0x57` reads
+`0xfffc`, the value the resident writes at its own `0x8033`. Code can only be
+in that span because the boot loader put it there. In the full endpoint the
+host link then runs: 3,979 pulls and 413 acknowledgements.
+
+An earlier revision of this section said the gap was that "the Quad model has
+no codec" to clock the loader. That was wrong. The clocking was never missing;
+the ASIC mode was overwriting the Quad's status register.
+
+**What remains is the handshake, not the boot.** With the resident booting
+properly the load still fails the same way it always did - 1 success against
+177 failures and 59 give-ups, the identical profile seen under every handshake
+model tried. That number not moving across the boot fix as well is further
+evidence the remaining fault is in how a burst is acknowledged, and that it is
+independent of everything else corrected here.
 
 ### Reproduce
 
