@@ -145,11 +145,12 @@ at `0015` under silence, under dial tone and under an armed tone alike. It
 cannot observe the audio path in command mode at all, and no experiment built
 on it will say anything about the transmitter.
 
-Two explanations remain open and this measurement does not separate them: the
-handler may be clamped or reading a buffer nothing fills in this state, or the
-resident may not be in a state where tag `13` arms anything outside a call.
-Distinguishing them needs a transmit-side reading, which no tag in this image
-is yet known to provide.
+**Superseded by the ear.** The operator heard a DTMF tone held on the line for
+roughly ten seconds during this run — the length of the armed window, ending
+when tag `16` was sent. So the two explanations offered here are both wrong:
+the oscillator ran, the tone reached the line, and the resident arms tag `13`
+perfectly well outside a call. See [the audible result](#the-tone-was-audible)
+below.
 
 ### A consequence for the existing replay comparison
 
@@ -165,3 +166,81 @@ an idle result, it is an unconditional one.
 
 [Capture](../artifacts/atg-tone-offhook-403/tone.json),
 [script](../artifacts/atg-tone-offhook-403/offhook-tone.py).
+
+## The tone was audible
+
+During the off-hook run the operator heard a DTMF tone held on the line for
+about ten seconds, stopping when tag `16` was sent. That is the length of the
+armed window — four energy reads with their serial round trips and `0.2 s`
+sleeps between them — and nothing else in the sequence would produce a tone.
+
+**So the hand-armed tone works end to end on the board.** Three eight-digit
+`ATG` commands, in command mode, with no call and no dial sequencer, put the
+firmware's own DTMF on a live line:
+
+```text
+ATG001A32C8    gain      -> DSP data 0392
+ATG001B0C08    amplitude -> DSP data 03f1
+ATG00130006    digit 6   -> arms the oscillator through ee20
+ATG00160000    restores the idle callback 8128, stopping the tone
+```
+
+This is the first time this project has driven the audio path on hardware
+directly rather than through a dial, and it confirms the chain
+[datapump-dispatch-gate.md](datapump-dispatch-gate.md) traced statically —
+gain cell, amplitude cell, selector, oscillator, mixer, serial ISR — as a
+working whole on the board, not only in the emulator.
+
+Two corrections to the sections above, which were written before this was
+known. The off-hook run is **not** a null result about the tone; it is a null
+result about query 62 only. And the tone is not the one-shot the dial's
+arm/restore pairs suggest: nothing times it out, so an armed tone stays on the
+line until tag `16` is sent. Anyone repeating this should send the stop tag in
+a `finally`, as the script does.
+
+The query-62 finding is correspondingly stronger. A real DTMF tone was
+physically on the pair, and query 62 still read `0069:0015` on all four armed
+reads. It is not merely insensitive to dial tone; it does not see the
+firmware's own transmitted tone either.
+
+## No tag returns transmit-side state
+
+Sweeping all 128 entries of the 3.1.2 dispatcher table at program `0x83e9`
+for a handler that could serve as a transmit-side observable. The reply
+convention had to be established first, and it is not the one assumed above:
+
+* Handlers do **not** call the sender at `0x83bf`. They enqueue a reply by
+  calling or delayed-branching to `0x83b1`, the tail of the routine at
+  `0x83a6`, with the value in ACC — so on a delayed branch the value is
+  loaded in the delay slots after the branch instruction.
+* That routine pushes into a ring masked by `ar0 = ff60`, with head and tail
+  at data `0x78`/`0x79`.
+* The sender at `0x83bf` drains that ring, masks `0x7fff`, and writes the
+  words out to ports `0x5e` and `0x5f`, which the CPU reads as the byte pairs
+  `58/5a` and `5c/5e`.
+
+Twenty-one tags reply: `07 14 23 24 28 29 2e 2f 32 33 34 3b 3d 4b 55 59 5a 5f
+62 7f`. Every one returns either a constant tag word paired with a status
+cell, or a value computed from receive-side analysis — `62` sums squares of
+`0900..098f`, as already recorded. **None replies with a value read from the
+transmit block** (`0390` work pointer, `0392` gain, `039a` callback, `03c0`/
+`03c1` phases, `03c7` mixer accumulator, `03f1..03f5`, the transmit slots of
+the buffer at `0bc0..0bde`, or DXR).
+
+Handlers that *touch* transmit cells are common — `13`, `1a`, `1b`, `16` and
+the overlay-resident tags at `20..25`, `2e`, `2f`, `32..34` all write them —
+but they are setters, not readers, and none of them replies.
+
+So the transmit-side read this project wanted does not exist as a tag in this
+image, and no experiment can be built on one. That closes the question rather
+than answering it: with the tone now confirmed audible, the observable it was
+meant to provide is no longer needed for this measurement.
+
+An earlier pass of this sweep reported tag `01` and then tags `55`/`59`/`5a`
+as candidates. Both were artefacts: the first followed a jump into the main
+loop and inherited its references, and the second misread `bit 1, @1f` — a
+status word at `039f` with twenty-five writers — as the replied value, when
+those handlers reply with the constants `#06` and `#04`.
+
+[Sweep](../artifacts/dispatcher-tag-sweep-312/sweep.py),
+[table](../artifacts/dispatcher-tag-sweep-312/replying-tags.json).

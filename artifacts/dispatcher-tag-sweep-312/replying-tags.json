@@ -1,0 +1,562 @@
+{
+  "rom_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "table": "83e9",
+  "reply_entry": [
+    "83a6",
+    "83b1"
+  ],
+  "sender": "83bf",
+  "replying_tags": {
+    "07": {
+      "handler": "84b2",
+      "reply_sources": [
+        {
+          "text": "lacc    #00008031",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bd      83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "ldp     #010",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacc    @18",
+          "cell": "0818",
+          "transmit": null
+        }
+      ]
+    },
+    "14": {
+      "handler": "9e21",
+      "reply_sources": [
+        {
+          "text": "pop",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     @2f, #2000",
+          "cell": "002f",
+          "transmit": null
+        },
+        {
+          "text": "lacl    #00",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "23": {
+      "handler": "dce7",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "24": {
+      "handler": "dcbf",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "28": {
+      "handler": "d2a5",
+      "reply_sources": [
+        {
+          "text": "ldp     #007",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "cpl     @52, #0002",
+          "cell": "03d2",
+          "transmit": null
+        },
+        {
+          "text": "lacc    #0000cdbf",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       cc81, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "29": {
+      "handler": "d2b2",
+      "reply_sources": [
+        {
+          "text": "lacc    #0000cdbf",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       cc81, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "2e": {
+      "handler": "da3c",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "2f": {
+      "handler": "d9c3",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "32": {
+      "handler": "c7ed",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "33": {
+      "handler": "c51f",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "34": {
+      "handler": "c506",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "3b": {
+      "handler": "c7e9",
+      "reply_sources": [
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     *, #0008",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lar     ar1, #6f",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     14, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "3d": {
+      "handler": "b001",
+      "reply_sources": [
+        {
+          "text": "ldp     #006",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "dmov    @3a",
+          "cell": "033a",
+          "transmit": null
+        }
+      ]
+    },
+    "4b": {
+      "handler": "b4d7",
+      "reply_sources": [
+        {
+          "text": "lacc    #0000b527",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "samm    @6d",
+          "cell": "006d",
+          "transmit": null
+        },
+        {
+          "text": "lacc    @7c",
+          "cell": "007c",
+          "transmit": null
+        },
+        {
+          "text": "b       83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    bef8, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacc    #0000802d",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacl    #01",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "cpl     @54, #fffe",
+          "cell": "0054",
+          "transmit": null
+        },
+        {
+          "text": "lacc    #00008043",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacc    @54",
+          "cell": "0054",
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacc    @54",
+          "cell": "0054",
+          "transmit": null
+        },
+        {
+          "text": "add     #0000b627",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    b633, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "add     #0000b627",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "55": {
+      "handler": "8d9a",
+      "reply_sources": [
+        {
+          "text": "ldp     #006",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacc    @37",
+          "cell": "0337",
+          "transmit": null
+        },
+        {
+          "text": "lacl    #06",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       8e5c, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     9, @1f",
+          "cell": "039f",
+          "transmit": null
+        }
+      ]
+    },
+    "59": {
+      "handler": "8df3",
+      "reply_sources": [
+        {
+          "text": "lacl    #06",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       8e5c, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     9, @1f",
+          "cell": "039f",
+          "transmit": null
+        }
+      ]
+    },
+    "5a": {
+      "handler": "8dd7",
+      "reply_sources": [
+        {
+          "text": "lacl    #06",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "b       8e5c, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "bit     9, @1f",
+          "cell": "039f",
+          "transmit": null
+        }
+      ]
+    },
+    "5f": {
+      "handler": "9e1d",
+      "reply_sources": [
+        {
+          "text": "pop",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "opl     @2f, #2000",
+          "cell": "002f",
+          "transmit": null
+        },
+        {
+          "text": "lacl    #00",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "62": {
+      "handler": "c490",
+      "reply_sources": [
+        {
+          "text": "lacl    @65",
+          "cell": "0265",
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "ldp     #007",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "ret",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    },
+    "7f": {
+      "handler": "907d",
+      "reply_sources": [
+        {
+          "text": "lacl    @5b",
+          "cell": "005b",
+          "transmit": null
+        },
+        {
+          "text": "call    83b1, *",
+          "cell": null,
+          "transmit": null
+        },
+        {
+          "text": "lacl    @5b",
+          "cell": "005b",
+          "transmit": null
+        },
+        {
+          "text": "call    8140, *",
+          "cell": null,
+          "transmit": null
+        }
+      ]
+    }
+  },
+  "transmit_reply_tags": []
+}
