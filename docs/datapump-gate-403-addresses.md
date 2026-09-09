@@ -69,3 +69,55 @@ no line seizure, no write and no flash access — the same primitive
 carries these set, which is what decides between a provisioning gap — as the
 `0cd9`/`0cdb` gain cells turned out to be — and a genuinely unreached code
 path.
+
+## Measured on the board: all seven cells are zero at idle
+
+Read 2026-09-09 from the attached Courier on `/dev/cu.usbserial-11420`,
+ID_SDL 4.03d, supervisor 7.4.16 / DSP 3.1.2, in command mode, read-only.
+Two passes with identical page hashes:
+
+| `098a` | `049e` | `057c` | `04c6` | `04f2` | `04f8` | `0d28` |
+|---|---|---|---|---|---|---|
+| `00` | `00` | `00` | `00` | `00` | `00` | `00` |
+
+The pages are live rather than a failed read: `0400`, `0900`, `0c00` and
+`0d00` carry 51, 54, 60 and 15 nonzero bytes, and the control cells `0cd9`
+and `0cdb` read `32c8` and `0c08` — the same values the earlier RAM capture
+recorded, and the ones that turned out to be the tone-gain provisioning gap.
+
+**This kills the provisioning hypothesis for this gate.** The gain cells were
+populated at idle on a board that had them and blank in an emulator that did
+not. These are blank on the working board too, so they are not stored settings
+the emulator is failing to supply. Either they are set during call setup —
+which this idle sample cannot see — or the discriminator's equal path is the
+normal path and the datapump is armed by something this chain does not
+describe. Reading the same seven cells during a live call is what separates
+those two, and it is the next measurement.
+
+[Capture](../artifacts/datapump-gate-403-cells/cells.json),
+[script](../artifacts/datapump-gate-403-cells/read-cells.py).
+
+## Arming the tone by hand: clean run, unusable observable
+
+The dial block's own three tags were sent through the eight-digit form on-hook
+— `ATG001A32C8`, `ATG001B0C08`, `ATG00130006` — then the sample-energy query
+`62` was read four times across the window, then tag `16` restored the idle
+callback. All commands returned `OK` and `AT` answered afterwards.
+
+Query `62` returns `0069:0015` at baseline and `0069:0015` throughout the
+armed window. Interleaving query `07` proves each reply is fresh rather than a
+held register: the mark flips `0031:0000` → `0069:0015` on every read.
+
+So the value genuinely does not move, and `0015` is one of the handler's own
+clamp values. **This is a null result about the observable, not about the
+tone.** Query `62` sums squares of DSP data `0900..098f`, which is receive-side
+analysis; on-hook there is no path from the transmitter back into it, and the
+handler is sitting at a clamp in any case. Nothing here shows whether the
+oscillator ran.
+
+Settling it needs either a transmit-side reading — no tag in this image is yet
+known to return one — or the same sequence off-hook on a connected line, where
+the hybrid leaks transmit into receive. Neither was done.
+
+[Capture](../artifacts/atg-tone-arm-403/tone-interleaved.json),
+[script](../artifacts/atg-tone-arm-403/arm-tone-interleaved.py).

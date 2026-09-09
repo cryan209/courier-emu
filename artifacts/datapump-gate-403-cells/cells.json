@@ -1,0 +1,45 @@
+{
+  "started_utc": "2026-09-09T04:04:37.521819+00:00",
+  "hardware_tested": true,
+  "device": "/dev/cu.usbserial-11420",
+  "samples": [
+    {
+      "label": "as found",
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      },
+      "page_sha": {
+        "0400": "1694c45aadb7652aef34166cdd949e84dabf0c031e3aff503e835c48e0c3785a",
+        "0500": "4aed4fb8999928a0985b5a3fc84f02ecb25da6583295ab087cdbac748e7701ff",
+        "0900": "248b954ecff1700e00e8e4cc8ba97f1533a989d466fd7549b824e44b7c8d7d96",
+        "0d00": "41100cd538457d18bc1731fe14ce97e4ff3b85b4cce250785dfdd93407a8e467"
+      }
+    },
+    {
+      "label": "repeat",
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      },
+      "page_sha": {
+        "0400": "1694c45aadb7652aef34166cdd949e84dabf0c031e3aff503e835c48e0c3785a",
+        "0500": "4aed4fb8999928a0985b5a3fc84f02ecb25da6583295ab087cdbac748e7701ff",
+        "0900": "248b954ecff1700e00e8e4cc8ba97f1533a989d466fd7549b824e44b7c8d7d96",
+        "0d00": "41100cd538457d18bc1731fe14ce97e4ff3b85b4cce250785dfdd93407a8e467"
+      }
+    }
+  ],
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "responds_after": true
+}

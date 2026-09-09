@@ -1,0 +1,50 @@
+{
+  "started_utc": "2026-09-09T04:05:41.707451+00:00",
+  "hardware_tested": true,
+  "off_hook": false,
+  "device": "/dev/cu.usbserial-11420",
+  "steps": [
+    {
+      "label": "baseline",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "baseline repeat",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "sent ATG001A32C8",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "sent ATG001B0C08",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "sent ATG00130006",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "armed 0",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "armed 1",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "armed 2",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "armed 3",
+      "reply": "0069:0015"
+    },
+    {
+      "label": "after stop",
+      "reply": "0069:0015"
+    }
+  ],
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "responds_after": true
+}
