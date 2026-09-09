@@ -28,6 +28,7 @@ hashes and assumptions; treat that file as the authority for what a capture is.
 | `host-ram-rate-01/` | Timed re-reads of the host RAM pages that move on an idle unit, with a rate fitted to every 16-bit cell. One counter, `0x012a` at 200.00 Hz - the 5 ms tick. Nothing runs at an audio rate |
 | `io-latch-bit2-01/` | Port `0x14` bit 2 probe |
 | `dsp-rom-probe-v1/`, `dsp-rom-transport-v*/` | Offline probe and transport builds; no hardware involved |
+| `sdl-image-extraction-01/` | Firmware recovered from the vendor SDL packages in `docs/usrdl/`: the loaders' 16-byte download-record format and the XMD's XOR 0x55, plus the string comparison showing the Sportster Vi DSVD to be a cut-down Courier. The images are not flash-accurate - record addresses are 16-bit and wrap - and are not tracked; no hardware involved |
 
 ## What is not tracked
 

@@ -1,0 +1,375 @@
+[
+ {
+  "source": "docs/usrdl/dsvd-sdl.exe!SDL.EXE",
+  "image_bytes": 211088,
+  "image_sha256": "7a596e81b07dbf489ebb6d92df2acd709ec48476675b14464abd8fe3e5317b2b",
+  "carrier": "sdl-loader",
+  "records": 13193,
+  "segment_breaks": [
+   {
+    "image_offset": 45664,
+    "from": 45648,
+    "to": 45680
+   },
+   {
+    "image_offset": 64624,
+    "from": 64624,
+    "to": 0
+   },
+   {
+    "image_offset": 91360,
+    "from": 26720,
+    "to": 26752
+   },
+   {
+    "image_offset": 95664,
+    "from": 31040,
+    "to": 0
+   },
+   {
+    "image_offset": 137056,
+    "from": 41376,
+    "to": 41408
+   },
+   {
+    "image_offset": 146784,
+    "from": 51120,
+    "to": 0
+   },
+   {
+    "image_offset": 166016,
+    "from": 19216,
+    "to": 0
+   },
+   {
+    "image_offset": 180864,
+    "from": 14832,
+    "to": 0
+   },
+   {
+    "image_offset": 182704,
+    "from": 1824,
+    "to": 1856
+   },
+   {
+    "image_offset": 201664,
+    "from": 20800,
+    "to": 0
+   },
+   {
+    "image_offset": 201680,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 201696,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 206400,
+    "from": 4688,
+    "to": 0
+   },
+   {
+    "image_offset": 206416,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 211040,
+    "from": 4608,
+    "to": 0
+   },
+   {
+    "image_offset": 211056,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 211072,
+    "from": 0,
+    "to": 0
+   }
+  ],
+  "written": "/private/tmp/claude-501/-Users-scottcryan-courier-emu/79b325e5-24aa-42f4-bf82-3efbae990327/scratchpad/usrdl/out/SDL.img"
+ },
+ {
+  "source": "docs/usrdl/sdl_61.exe!SDL_7666.EXE",
+  "image_bytes": 246336,
+  "image_sha256": "59ca8b02ed756f634c0ea8c17d7c3bd0d99af0b9e9bf25417784a0271fed4195",
+  "carrier": "sdl-loader",
+  "records": 15396,
+  "segment_breaks": [
+   {
+    "image_offset": 45664,
+    "from": 45648,
+    "to": 45680
+   },
+   {
+    "image_offset": 64608,
+    "from": 64608,
+    "to": 0
+   },
+   {
+    "image_offset": 91344,
+    "from": 26720,
+    "to": 26752
+   },
+   {
+    "image_offset": 95872,
+    "from": 31264,
+    "to": 0
+   },
+   {
+    "image_offset": 115360,
+    "from": 19472,
+    "to": 0
+   },
+   {
+    "image_offset": 123056,
+    "from": 7680,
+    "to": 0
+   },
+   {
+    "image_offset": 125248,
+    "from": 2176,
+    "to": 0
+   },
+   {
+    "image_offset": 131840,
+    "from": 6576,
+    "to": 0
+   },
+   {
+    "image_offset": 136976,
+    "from": 5120,
+    "to": 5152
+   },
+   {
+    "image_offset": 137120,
+    "from": 5280,
+    "to": 0
+   },
+   {
+    "image_offset": 148224,
+    "from": 11088,
+    "to": 0
+   },
+   {
+    "image_offset": 152416,
+    "from": 4176,
+    "to": 0
+   },
+   {
+    "image_offset": 182640,
+    "from": 30208,
+    "to": 30240
+   },
+   {
+    "image_offset": 203632,
+    "from": 51216,
+    "to": 0
+   },
+   {
+    "image_offset": 222976,
+    "from": 19328,
+    "to": 0
+   },
+   {
+    "image_offset": 237920,
+    "from": 14928,
+    "to": 0
+   },
+   {
+    "image_offset": 237936,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 237952,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 242080,
+    "from": 4112,
+    "to": 0
+   },
+   {
+    "image_offset": 242096,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 246288,
+    "from": 4176,
+    "to": 0
+   },
+   {
+    "image_offset": 246304,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 246320,
+    "from": 0,
+    "to": 0
+   }
+  ],
+  "written": "/private/tmp/claude-501/-Users-scottcryan-courier-emu/79b325e5-24aa-42f4-bf82-3efbae990327/scratchpad/usrdl/out/SDL_7666.img"
+ },
+ {
+  "source": "docs/usrdl/usrsdl.exe!SDL20.EXE",
+  "image_bytes": 289440,
+  "image_sha256": "008facca53a8fd5672e4a3aab52404b578bada57d38394af0c64fe5a7e9d4f2d",
+  "carrier": "sdl-loader",
+  "records": 18090,
+  "segment_breaks": [
+   {
+    "image_offset": 45664,
+    "from": 45648,
+    "to": 45680
+   },
+   {
+    "image_offset": 62480,
+    "from": 62480,
+    "to": 0
+   },
+   {
+    "image_offset": 91360,
+    "from": 28864,
+    "to": 28896
+   },
+   {
+    "image_offset": 94576,
+    "from": 32096,
+    "to": 0
+   },
+   {
+    "image_offset": 117648,
+    "from": 23056,
+    "to": 0
+   },
+   {
+    "image_offset": 125424,
+    "from": 7760,
+    "to": 0
+   },
+   {
+    "image_offset": 127632,
+    "from": 2192,
+    "to": 0
+   },
+   {
+    "image_offset": 134208,
+    "from": 6560,
+    "to": 0
+   },
+   {
+    "image_offset": 136992,
+    "from": 2768,
+    "to": 2800
+   },
+   {
+    "image_offset": 139504,
+    "from": 5296,
+    "to": 0
+   },
+   {
+    "image_offset": 150688,
+    "from": 11168,
+    "to": 0
+   },
+   {
+    "image_offset": 161200,
+    "from": 10496,
+    "to": 0
+   },
+   {
+    "image_offset": 167904,
+    "from": 6688,
+    "to": 0
+   },
+   {
+    "image_offset": 182640,
+    "from": 14720,
+    "to": 14752
+   },
+   {
+    "image_offset": 223296,
+    "from": 55392,
+    "to": 0
+   },
+   {
+    "image_offset": 228320,
+    "from": 5008,
+    "to": 5040
+   },
+   {
+    "image_offset": 246288,
+    "from": 22992,
+    "to": 0
+   },
+   {
+    "image_offset": 261280,
+    "from": 14976,
+    "to": 0
+   },
+   {
+    "image_offset": 274000,
+    "from": 12704,
+    "to": 12736
+   },
+   {
+    "image_offset": 275952,
+    "from": 14672,
+    "to": 0
+   },
+   {
+    "image_offset": 275968,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 275984,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 282736,
+    "from": 6736,
+    "to": 0
+   },
+   {
+    "image_offset": 282752,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 289392,
+    "from": 6624,
+    "to": 0
+   },
+   {
+    "image_offset": 289408,
+    "from": 0,
+    "to": 0
+   },
+   {
+    "image_offset": 289424,
+    "from": 0,
+    "to": 0
+   }
+  ],
+  "written": "/private/tmp/claude-501/-Users-scottcryan-courier-emu/79b325e5-24aa-42f4-bf82-3efbae990327/scratchpad/usrdl/out/SDL20.img"
+ },
+ {
+  "source": "docs/usrdl/usrsdl.exe!SV20.XMD",
+  "image_bytes": 524352,
+  "image_sha256": "669af9e6c53e0da476708b4770c9370ad95388e7254e4f7276639100c9dbcbd4",
+  "carrier": "xmd",
+  "header_hex": "b7f0b2fdd8edbcbd4b1f7439ca4a4a4a",
+  "written": "/private/tmp/claude-501/-Users-scottcryan-courier-emu/79b325e5-24aa-42f4-bf82-3efbae990327/scratchpad/usrdl/out/SV20.img"
+ }
+]

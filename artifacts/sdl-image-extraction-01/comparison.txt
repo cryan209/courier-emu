@@ -1,0 +1,67 @@
+SDL.img: 1184 strings
+SDL_7666.img: 1327 strings
+shared: 919  (77.6% of SDL.img, 69.3% of SDL_7666.img)
+
+only in SDL.img (265 total, 157 word-like):
+    Call Indicate
+    Disabled
+    Template Y0
+    Template Y1
+    limits
+    "yCDWxxt~t
+    &iVQVP
+    ,DSVD
+    -SMUTE=n
+    -SMUX=n
+    0  Disable
+    2  NVRAM Template Y1 on Reset
+    3  &F0 Template on Reset
+    4  &F1 Template on Reset
+    4(Strike a key when ready . . .
+    5  &F2 Template on Reset
+    :
+    <TVUFDy
+    <TVUyC
+    <TyCD
+    <yCDgvvv
+    AUDIO date
+    AUDIO rev
+    AjtaA
+    Algorithm Selection
+    Amplitude Error =
+    Audio Sampling Rate
+    Blocking Factor
+    Broken System
+    Carrier Offset  =
+
+only in SDL_7666.img (408 total, 203 word-like):
+    Doug Blatt, Art Johnson, Pete Jankus, Bill Pierce, Ken Starkey
+    Shuba Iyer, David Wang
+    By Cyrus Irani, Paul Landrey, Paul Meyers, Richard Haats, Craig Watson
+    Written by Jeff Herman, Gary Sommer, David Wang, Joe Melfi
+    Written by John Wiersema, Glenn Bushey, Kevin Lacey, Brinn Gilbert,
+    Written by Mike Flockenhaus, Bob Lee, Andy Norrell, Chris Hansen
+    16S-4D trellis code
+    2Serial Number
+    32S-2D trellis code
+    64S-4D trellis code
+    8S-2D trellis code
+    Autopass Fallback
+    CURRENT DIPSWITCH SETTINGS
+    Dial Security
+    Dial Security Session
+    Dual Standard
+    Granted
+    Local Access Psw
+    Naks
+    Remote Access Session
+    Requested
+    Reversals
+    SREJ
+    Terbo
+    V.8 Call Indicate
+    V.8 Mode
+    #SQRWVU
+    $(no password)
+    %An=PW,ACCT E,DIAL B,NEW#,PH#
+    %L=PWn Security Local Access Psw

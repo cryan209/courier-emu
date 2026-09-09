@@ -1,0 +1,24 @@
+{
+ "what": "Flat firmware images recovered from the vendor SDL upgrade packages in docs/usrdl/, and the comparison showing the Sportster Vi DSVD firmware to be a cut-down Courier",
+ "date": "2026-09-09",
+ "hardware_tested": false,
+ "sources": "docs/usrdl/dsvd-sdl.exe, sdl_61.exe, usrsdl.exe - vendor archives, tracked in this repository",
+ "carriers": {
+  "sdl-loader": "DOS SDL*.EXE embed the image as 16-byte binary download records: [len=0x10][addr hi][addr lo][type=00][16 data][checksum], record summing to zero mod 256",
+  "xmd": "64-byte header, then the image under a flat XOR 0x55"
+ },
+ "format_evidence": "The checksum identifies the record format rather than a pattern coincidence: 13193 consecutive records validate in SDL.EXE, 15396 in SDL_7666.EXE, 18090 in SDL20.EXE",
+ "result": {
+  "shared_strings": "919 of the Sportster image's 1184, 77.6%",
+  "identical_structures": "ATI7 field layout, the product-name table carrying both Courier and Sportster, the result-code table in the same order",
+  "removed_from_sportster": "HST result codes, Dial Security, Remote Access, dipswitch display, serial number, ASL statistics, developer credits",
+  "added_in_sportster": "DSVD voice path - AUDIO date/rev, Audio Sampling Rate, Algorithm Selection, Blocking Factor, -SMUTE, -SMUX",
+  "dating": "Sportster copyright ends 1993, Courier 7666 ends 1995, Sportster package dated 12/95 - a 1993 fork maintained separately"
+ },
+ "limits": [
+  "The recovered images are NOT flash-accurate. Record addresses are 16 bits and wrap, so they order records within a segment but do not place them in a 512 KiB flash. Segment breaks are reported, not resolved: 17 in the Sportster loader, 23 in SDL_7666, 27 in SDL20. Nothing here should be handed to the emulator as a flash image.",
+  "The 64-byte XMD header is not decoded. It varies per build around an NHCFG marker; a checksum and a model gate are plausible and untested.",
+  "The comparison is string-level only. No code was disassembled and no entry points were matched, so 'cut-down Courier' rests on shared data tables and layout, not on identical instruction sequences.",
+  "INT80188 in SDL_7666.EXE versus INT80186 in SDL20.EXE is a string read out of the images, not a part checked against a board."
+ ]
+}
