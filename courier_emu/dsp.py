@@ -156,6 +156,26 @@ class NativeC5x:
             self.close()
             raise
 
+    @classmethod
+    def from_program(cls, origin: int, program: bytes, *, rebuild: bool = False) -> "NativeC5x":
+        """A core holding one raw program image, with no XMF container.
+
+        The Quad streams its datapump code word by word over the CPU link, so
+        what the emulator has is a program image and an origin, not a file.
+        """
+        self = cls.__new__(cls)
+        self.library = ctypes.CDLL(str(build_library(force=rebuild)))
+        self._configure_api()
+        self._handle = self.library.courier_c5x_create()
+        if not self._handle:
+            raise RuntimeError("failed to create C5x core")
+        try:
+            self.load_program(program, origin)
+        except Exception:
+            self.close()
+            raise
+        return self
+
     def _configure_api(self) -> None:
         lib = self.library
         lib.courier_c5x_create.restype = ctypes.c_void_p

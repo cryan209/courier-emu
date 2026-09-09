@@ -126,3 +126,169 @@ class QuadC50Link:
     def image(self) -> bytes:
         """The streamed words, little-endian, in the order the CPU sent them."""
         return b"".join(word.to_bytes(2, "little") for word in self.words)
+
+
+# The DSP-side host link. `docs/quad-c50-overlay-loader.md` identifies MMR 0x57
+# as the status/request register the resident's fetch stub polls and 0x58 as the
+# word-fetch port it pulls program words through.
+DSP_STATUS_MMR = 0x57
+DSP_FETCH_MMR = 0x58
+
+# The resident's origin, from the load table: source paragraph 0x2000, length
+# 0xf450, destination 0x8000. The captured stream spans 0x8000..0xfa28.
+RESIDENT_ORIGIN = 0x8000
+RESIDENT_WORDS = 0xF450 // 2
+
+# Both processors run from the board's 20.16 MHz clock, so the C5x advances at
+# the 80186's cycles-per-instruction, exactly as bridge.py derives it for the
+# 302/403. Reused rather than restated so the two cannot drift apart.
+from .bridge import DSP_STEPS_PER_X86  # noqa: E402
+
+
+@dataclass
+class QuadC50Endpoint:
+    """An active link: the CPU's lanes feed a C5x core that answers on 0x98.
+
+    The CPU strobes four-word bursts and spins until the strobed bit reads back
+    on `0x98` (`0xced9e`). Here that bit is raised only once the DSP has pulled
+    the queued words through its fetch port, so the CPU waits on the DSP rather
+    than on a floating bus.
+
+    The core is stepped on an instruction budget alongside the CPU, carrying the
+    fractional remainder between batches the way `bridge.py` does, so the average
+    ratio stays exact instead of truncating once per service call.
+    """
+
+    core: object | None = None
+    lanes: dict[int, int] = field(default_factory=dict)
+    pending: list[int] = field(default_factory=list)
+    program: list[int] = field(default_factory=list)
+    steps: int = 0
+    pulls: int = 0
+    bursts: int = 0
+    resets: int = 0
+    started: bool = False
+    _debt: float = 0.0
+    _in_reset: bool = True
+    _completion: bool = False
+    _event_cursor: int = 0
+
+    # -- CPU side ---------------------------------------------------------
+    def read(self, port: int, size: int) -> int | None:
+        if port == STATUS_PORT:
+            if self._in_reset:
+                # 0xcec72 writes 0xffff to 0x98/0x9a and 0x9c/0x9e and polls
+                # both pairs back; the all-ones signature is the presence check.
+                return 0xFF
+            return self._ready_bits()
+        if port in STATUS_PORTS and self._in_reset:
+            return 0xFF
+        return None
+
+    def write(self, port: int, size: int, value: int) -> bool:
+        if port in LANE_PORTS:
+            self.lanes[port] = (self.lanes.get(port, 0) & 0xFF00) | (value & 0xFF)
+            return False
+        if port - 2 in LANE_PORTS:
+            base = port - 2
+            self.lanes[base] = (self.lanes.get(base, 0) & 0x00FF) | ((value & 0xFF) << 8)
+            return False
+        if port == STATUS_PORT:
+            self._strobe(value & 0xFF)
+            return False
+        return False
+
+    def _strobe(self, value: int) -> None:
+        if value == 0xFF:
+            self.resets += 1
+            self._in_reset = True
+            self.lanes.clear()
+            self.pending.clear()
+            return
+        self._in_reset = False
+        if self.core is None:
+            # Phase one: the C50's own boot loader pulls the resident in before
+            # any of its code is running. That boot path is not modelled, so the
+            # stream is taken at wire speed and the burst acked immediately. The
+            # image still comes from the CPU - nothing here supplies it.
+            self._collect(value)
+            return
+        if value == 4:
+            self._completion = True
+            self.pending.append(self.lanes.get(LANE_BASE, 0))
+            return
+        group = LANE_BASE if value & 1 else (LANE_BASE + 0x10 if value & 2 else None)
+        if group is None:
+            return
+        self.bursts += 1
+        for index in range(4):
+            port = group + LANE_STRIDE * index
+            self.pending.append(self.lanes.pop(port, 0))
+
+    def _collect(self, value: int) -> None:
+        group = LANE_BASE if value & 1 else (LANE_BASE + 0x10 if value & 2 else None)
+        if group is None:
+            return
+        self.bursts += 1
+        for index in range(4):
+            self.program.append(self.lanes.pop(group + LANE_STRIDE * index, 0))
+        if len(self.program) >= RESIDENT_WORDS and not self.started:
+            self._start_core()
+
+    def _start_core(self) -> None:
+        from .dsp import NativeC5x
+        words = self.program[-RESIDENT_WORDS:]
+        image = b"".join(word.to_bytes(2, "little") for word in words)
+        self.core = NativeC5x.from_program(RESIDENT_ORIGIN, image)
+        self.core.set_pc(RESIDENT_ORIGIN)
+        self.started = True
+        self.program = []
+
+    def _ready_bits(self) -> int:
+        if self.core is None:
+            return 0x01 | 0x02
+
+        # The strobed group's bit is raised only when the DSP has taken every
+        # word the CPU queued for it. Bit 2 answers the completion strobe.
+        if self.pending:
+            return 0
+        return 0x01 | 0x02 | (0x04 if self._completion else 0)
+
+    # -- DSP side ---------------------------------------------------------
+    def service(self, cpu_instructions: int) -> None:
+        """Advance the C5x by its share of `cpu_instructions`."""
+        if self.core is None:
+            return
+        self._debt += cpu_instructions * DSP_STEPS_PER_X86
+        budget = int(self._debt)
+        if budget <= 0:
+            return
+        self._debt -= budget
+        while budget > 0:
+            slice_size = 1 if self.pending else min(budget, 256)
+            self.core.set_io(DSP_FETCH_MMR, self.pending[0] if self.pending else 0xFFFF)
+            self.core.step(slice_size)
+            self.steps += slice_size
+            budget -= slice_size
+            self._drain_pulls()
+
+    def _drain_pulls(self) -> None:
+        library = self.core.library
+        handle = self.core.handle
+        count = int(library.courier_c5x_get_io_event_count(handle))
+        import ctypes as _ctypes
+        while self._event_cursor < count:
+            values = (_ctypes.c_uint64 * 5)()
+            library.courier_c5x_get_io_event(handle, self._event_cursor, values, 5)
+            self._event_cursor += 1
+            write, port = int(values[0]), int(values[1])
+            if not write and port == DSP_FETCH_MMR and self.pending:
+                self.program.append(self.pending.pop(0))
+                self.pulls += 1
+
+    def status(self) -> dict[str, object]:
+        return {
+            "steps": self.steps, "pulls": self.pulls, "bursts": self.bursts,
+            "resets": self.resets, "pending": len(self.pending),
+            "program_words": len(self.program), "completion": self._completion,
+        }
