@@ -15,6 +15,10 @@ from .exchange import LineExchange
 from .line import LineLink
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .quad_usart import QuadUsart
+from .quad_board import QuadBoard
+from .quad_c50 import QuadC50Endpoint
+from .quad_terminal import QuadTerminal
+from .timers import EbInterruptController
 from .panel import (
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
@@ -390,6 +394,9 @@ class CourierMachine:
         port_values: dict[int, int] | None = None,
         runtime_port_values: dict[int, int] | None = None,
         quad_usart: QuadUsart | None = None,
+        quad_board: QuadBoard | None = None,
+        quad_c50: QuadC50Endpoint | None = None,
+        quad_terminal: bool = False,
         uart_ports: set[int] | None = None,
         max_io_events: int = 128,
         fast_delays: bool = True,
@@ -425,6 +432,9 @@ class CourierMachine:
         mem_watch: tuple[int, int] | None = None,
     ) -> None:
         self.image = image
+        self.quad_terminal = QuadTerminal() if quad_terminal else None
+        if self.quad_terminal is not None:
+            self.quad_terminal.validate(image)
         self.nvram = nvram
         self.ring = ring
         self.int1_after_ms = int1_after_ms
@@ -456,7 +466,12 @@ class CourierMachine:
         self.runtime_port_values = dict(runtime_port_values or {})
         # The Quad NAC's chassis link. Absent for every other image, so an
         # unset value leaves those ports exactly as they were.
-        self.quad_usart = quad_usart
+        if quad_board is not None and quad_usart is not None and quad_board.usart is not quad_usart:
+            raise ValueError("quad_board and quad_usart must share the same device")
+        self.quad_board = quad_board
+        self.quad_c50 = quad_c50
+        self.quad_usart = quad_board.usart if quad_board is not None else quad_usart
+        self._quad_profile = self.quad_usart is not None or getattr(image, "quad_profile", False)
         self.output_latches: dict[int, int] = {}
         # The ROM builds' port 0 control latch, and the speaker hanging off
         # bit 0x40 of it. Powers up clear; the firmware read-modify-writes it.
@@ -539,12 +554,18 @@ class CourierMachine:
         # Supplying the edge is opt-in through --tick-ms, for the same reason the
         # payload stand-in is - it stands in for a board source that is not
         # recovered, so a default run is left exactly as it was.
-        self._rom_tick = supervisor_offset is None and self.emulate_interrupts
+        self._quad_modem_tick = getattr(image, "quad_role", None) == "modem"
+        self._rom_tick = (supervisor_offset is None and self.emulate_interrupts
+                          and not self._quad_profile)
         # The ROM reaches the settings EEPROM over port pins rather than
         # through board latch 0, so it needs its own front end onto the same
         # 93C66 model. This holds the data pin the driver at 0x1401 last drove.
         self._eeprom_data_in = False
         self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
+        if self._quad_profile:
+            self.timers.controller = EbInterruptController()
+        self._quad_irq_in_service = False
+        self._quad_interrupt_stack: list[int] = []
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
         # A ROM reaches its DTE through the integrated serial unit in the
@@ -813,6 +834,10 @@ class CourierMachine:
         self.uc = uc
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
         uc.mem_write(self.image.load_base, self.image.data)
+        for address, payload in getattr(self.image, "initial_memory", ()):
+            uc.mem_write(address, payload)
+        if self.quad_board is not None:
+            self.quad_board.attach(uc)
         if self.parameter_sector is not None:
             # The parameter flash is a separate device from the XMF payload;
             # 0x7e07c searches four sectors from 0xf8000 upward.
@@ -1397,6 +1422,11 @@ class CourierMachine:
             does more honestly than testing them after every instruction,
             and it is what lets the code hook go away.
             """
+            if self.quad_c50 is not None:
+                self.quad_c50.service(elapsed)
+            if self.quad_terminal is not None:
+                self.quad_terminal.service(
+                    self, bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200))
             if self.console is not None:
                 self._console_owed -= elapsed
                 if self._console_owed <= 0:
@@ -1517,6 +1547,7 @@ class CourierMachine:
                 if (
                     self.uart is not None
                     and not self.uart.pending
+                    and self.quad_terminal is None
                     # The ROM deliberately disables the integrated receiver
                     # while its timer/INT1 autobaud front end watches the raw
                     # pin. A physical DTE can still put a character on that
@@ -1594,8 +1625,19 @@ class CourierMachine:
                         )
                         self.uart.deliver(byte)
                         _uc.emu_stop()
+                if self.quad_usart is not None:
+                    # The DUART drives Quad INT0 (type 0x0c). Its ISR starts
+                    # with STI, so IF alone cannot prevent recursive entry:
+                    # retain in-service until the firmware's PCB EOI write.
+                    self.quad_usart.advance()
+                    if (interrupts_on and self.quad_usart.irq_pending
+                            and self.timers.controller.enabled("int0")
+                            and not self._quad_irq_in_service
+                            and self._int0_pending is None):
+                        self._int0_pending = INT0_VECTOR
                 if (
-                    self._int0_pending is None
+                    not self._quad_profile
+                    and self._int0_pending is None
                     and interrupts_on
                     and self.instructions - self._last_frame >= self.frame_instructions
                     and self._int0_vector_installed(_uc)
@@ -1661,8 +1703,9 @@ class CourierMachine:
                 self.ticks += 1
                 _uc.emu_stop()
             if (
-                self._rom_tick
+                (self._rom_tick or self._quad_modem_tick)
                 and self.tick_ms
+                and (not self._quad_modem_tick or self.timers.controller.enabled("int3"))
                 and not self._serial_in_handler
                 and not self._timer_in_handler
                 and self._external_interrupt_pending is None
@@ -1678,7 +1721,8 @@ class CourierMachine:
                 self._last_tick = self.instructions
                 self._external_interrupt_pending = TICK_VECTOR
                 if (
-                    self._int1_pending is None
+                    self._rom_tick
+                    and self._int1_pending is None
                     and self.timers.controller.enabled("int1")
                 ):
                     self._int1_pending = INT1_VECTOR
@@ -1891,6 +1935,18 @@ class CourierMachine:
 
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
+            if self.quad_c50 is not None:
+                answered = self.quad_c50.read(port, size)
+                if answered is not None:
+                    self._record_io("in", port, size, answered, current_pc())
+                    return answered
+            if self.quad_board is not None:
+                answered = self.port_values.get(port)
+                if answered is None:
+                    answered = self.quad_board.read(port, size)
+                if answered is not None:
+                    self._record_io("in", port, size, answered, current_pc())
+                    return answered
             if self.quad_usart is not None:
                 answered = self.quad_usart.read(port, size)
                 if answered is not None:
@@ -2058,6 +2114,11 @@ class CourierMachine:
             return value
 
         def on_out(_uc: Any, port: int, size: int, value: int, _data: Any) -> None:
+            if self.quad_c50 is not None:
+                self.quad_c50.write(port, size, value)
+            if self.quad_board is not None and self.quad_board.write(port, size, value):
+                self._record_io("out", port, size, value, current_pc())
+                return
             if self.quad_usart is not None and self.quad_usart.write(port, size, value):
                 self._record_io("out", port, size, value, current_pc())
                 return
@@ -2188,6 +2249,8 @@ class CourierMachine:
             offset = int.from_bytes(vector[:2], "little")
             segment = int.from_bytes(vector[2:], "little")
             if not software:
+                if self._quad_profile:
+                    self._quad_interrupt_stack.append(number)
                 uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0200)
             uc.reg_write(UC_X86_REG_CS, segment)
             uc.reg_write(UC_X86_REG_IP, offset)
@@ -2273,7 +2336,18 @@ class CourierMachine:
 
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
             self.mmio_counts[("write", address, size)] += 1
+            if self.quad_board is not None:
+                self.quad_board.write_register(address, size, value)
             self.timers.write(address, size, value, self.instructions)
+            if address == 0xFF02 and self._quad_interrupt_stack:
+                if value & 0x8000:
+                    completed = self._quad_interrupt_stack.pop()
+                else:
+                    completed = value & 0x1f
+                    if completed in self._quad_interrupt_stack:
+                        self._quad_interrupt_stack.remove(completed)
+                if completed == INT0_VECTOR:
+                    self._quad_irq_in_service = False
             if address == DSP_RESET_PORT and self.dsp_bridge is not None:
                 # The board holds the C52 in reset through this bit, and a part
                 # in reset drives nothing: its transfer interface reads back as
@@ -2459,6 +2533,25 @@ class CourierMachine:
                 # MiB as Unicorn's optional stop PC terminates the run at that
                 # boundary before Unicorn can apply real-mode wrapping.
                 uc.emu_start(begin, 0, count=instruction_limit - self.instructions)
+                # Unicorn returns after HLT. The Quad modem's scheduler uses
+                # STI/HLT between events; clocks and peripherals continue while
+                # its CPU sleeps. Advance the same bounded simulation clock,
+                # then deliver the interrupt at the instruction after HLT.
+                if (self._quad_profile
+                        and bytes(uc.mem_read((current_pc() - 1) & 0xfffff, 1)) == b"\xf4"
+                        and uc.reg_read(UC_X86_REG_FLAGS) & 0x0200):
+                    while self.instructions < instruction_limit and not self.stop_requested:
+                        if (self._external_interrupt_pending is not None
+                                or self._int0_pending is not None
+                                or self._int1_pending is not None
+                                or self._timer_interrupt_pending is not None
+                                or self.uart is not None and self.uart.pending):
+                            break
+                        elapsed = min(SERVICE_INSTRUCTIONS, instruction_limit - self.instructions)
+                        self.instructions += elapsed
+                        service_chunk(uc, elapsed)
+                        self._last_service = self.instructions
+                        self._next_service = self.instructions + SERVICE_INSTRUCTIONS
                 if self._service_resume:
                     # A flash service was answered in place of the boot
                     # block; resume at the instruction after its call.
@@ -2476,6 +2569,8 @@ class CourierMachine:
                     self._external_interrupt_pending = None
                     continue
                 if self._int0_pending is not None:
+                    if self.quad_usart is not None:
+                        self._quad_irq_in_service = True
                     begin = dispatch_interrupt(self._int0_pending, software=False)
                     self._int0_pending = None
                     continue
