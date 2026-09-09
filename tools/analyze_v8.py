@@ -12,9 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from c5x_disasm import decode, disassemble  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from courier_emu.bridge import (  # noqa: E402
-    C52_CALL_OVERLAY_DESTINATION as OVERLAY_DEST,
-    C52_CALL_OVERLAY_SOURCE as OVERLAY_SOURCE,
-    C52_CALL_OVERLAY_SIGNATURE,
+    C50_CALL_OVERLAY_DESTINATION as OVERLAY_DEST,
+    C50_CALL_OVERLAY_SOURCE as OVERLAY_SOURCE,
+    C50_CALL_OVERLAY_SIGNATURE,
 )
 from courier_emu.xmf import XmfImage  # noqa: E402
 from unpack_sdl import packet_runs  # noqa: E402
@@ -39,7 +39,7 @@ def xmf_memory(path: Path) -> tuple[list[int], int | None]:
         memory[origin:origin + len(segment_words)] = segment_words
         first = 0
         while True:
-            first = segment.find(C52_CALL_OVERLAY_SIGNATURE, first)
+            first = segment.find(C50_CALL_OVERLAY_SIGNATURE, first)
             if first < 0:
                 break
             if not first & 1:

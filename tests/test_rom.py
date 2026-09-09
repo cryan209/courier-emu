@@ -44,7 +44,7 @@ class CourierRomTests(unittest.TestCase):
 class RomBootTests(unittest.TestCase):
 
 
-    def test_a_rom_yields_the_c52_payload_its_supervisor_downloads(self) -> None:
+    def test_a_rom_yields_the_c50_payload_its_supervisor_downloads(self) -> None:
         """A ROM does carry a separable payload; it just is not laid out.
 
         This replaces a test that asserted the bridge is refused for a ROM.

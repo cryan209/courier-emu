@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+# The DSP on this board is a **TMS320C50 or LC50**, not the 'C52 this code was
+# named after for a long time: docs/board-parts.md infers it from the firmware's
+# memory use against the C5x guide's tables, and docs/firmware-lineage.md lists
+# the Quad as 80186 + TMS320C50. The identification is inference from memory
+# use, not from the part marking, which is a custom USR number.
+#
+# The old name is kept in exactly two places, both quotations of superseded
+# claims that would be falsified by editing them: the "20 MHz 80186 / 25 MHz
+# C52" comment quoted below, and the attributed split at _advance_dsp.
+#
+# The misnomer had a cost worth recording. It invites treating the Quad's DSP as
+# a different device needing its own boot model, when it is the same part and
+# the boot path here already applies (docs/quad-bringup-blockers.md).
+
 from collections import Counter, deque
 from dataclasses import dataclass
 import math
@@ -23,7 +37,7 @@ DSP_COMMAND_PORT = 0x1E
 DSP_WINDOW_FIRST = 0x40
 DSP_WINDOW_LAST = 0x4E
 DSP_WINDOW_STRIDE = 2
-# The downloaded low bank contains the C52 TDM transmit ISR at 0x0228. Its
+# The downloaded low bank contains the C50 TDM transmit ISR at 0x0228. Its
 # branch vector itself is in unavailable customer mask ROM; match the ISR's
 # opening words before supplying that one recovered vector.
 # The rate at which this harness carries the analog line: the DAA, the
@@ -31,11 +45,12 @@ DSP_WINDOW_STRIDE = 2
 # so this is a representation, not a measurement - which is exactly why it must
 # not leak into the DSP. See docs/ac01-codec-protocol.md.
 LINE_RATE = DAA_SAMPLE_RATE
-# C52 instructions per 80186 instruction: the clock ratio times the 80186's
-# cycles per instruction, because the C52 is single-cycle and the 186 is not.
+# C50 instructions per 80186 instruction: the clock ratio times the 80186's
+# cycles per instruction, because the C50 is single-cycle and the 186 is not.
 #
 # The clock ratio is **one**. The old comment here said "20 MHz 80186 / 25 MHz
-# C52", but 25.8048 MHz is `main211`'s crystal, not this board's: the 302/403
+# C52" - quoted verbatim, so it keeps the old part name; see the note at the
+# top of this module - but 25.8048 MHz is `main211`'s crystal, not this board's: the 302/403
 # unit is 20.16 MHz throughout - its boot ROM, its DAA notes and its timer
 # programming all say so - and both processors run from it. What was left was
 # the 5:4 applied to an instruction count, which is wrong twice over.
@@ -104,21 +119,21 @@ class LineToCodec(Resampler):
         return super().convert(samples, self.fixed_input, output_rate)
 
 
-C52_TDM_IRQ = 7
-C52_TDM_ISR = 0x0228
-C52_TDM_ISR_SIGNATURE = bytes.fromhex("ffbd5208b0bf030090bf")
+C50_TDM_IRQ = 7
+C50_TDM_ISR = 0x0228
+C50_TDM_ISR_SIGNATURE = bytes.fromhex("ffbd5208b0bf030090bf")
 # Call overlay 7 is stored at b9c0 with branches already linked for c418. The
 # ASIC publishes that bank over c418..ce6f when it starts the datapump.
-C52_CALL_OVERLAY_SOURCE = 0xB9C0
-C52_CALL_OVERLAY_DESTINATION = 0xC418
-C52_CALL_OVERLAY_WORDS = C52_CALL_OVERLAY_DESTINATION - C52_CALL_OVERLAY_SOURCE
+C50_CALL_OVERLAY_SOURCE = 0xB9C0
+C50_CALL_OVERLAY_DESTINATION = 0xC418
+C50_CALL_OVERLAY_WORDS = C50_CALL_OVERLAY_DESTINATION - C50_CALL_OVERLAY_SOURCE
 # The overlay is linked independently in each supervisor build.  Its first
 # instruction pair is stable, while the following branch displacement changes
 # between firmware revisions.
-C52_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e3")
+C50_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e3")
 DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
 
-# A supervisor sends the C52 program through one of two transfer protocols,
+# A supervisor sends the C50 program through one of two transfer protocols,
 # and they are not compatible enough to merge. An update payload's supervisor
 # strobes eight bytes at a time from one window on port 0x1e. A flash ROM's
 # downloader at e47b alternates two windows, strobing 0x40..0x4e with 1 and
@@ -228,8 +243,8 @@ DSP_STREAM_RESUME = 0x0004
 # the IRQ armed for an update payload and with the ISR that zeroes @6b, the
 # cell the idle wait at 0x813b spins on. The slot is (irq + 1) * 2 from the
 # vector base, so 0x0c above the bank's entry word.
-C52_ROM_FRAME_IRQ = 5
-C52_ROM_FRAME_VECTOR = 0x0C
+C50_ROM_FRAME_IRQ = 5
+C50_ROM_FRAME_VECTOR = 0x0C
 DSP_TAG_PORT = 0x5E
 DSP_WORD_PORT = 0x5F
 DSP_STREAM_PORT = 0x60
@@ -324,7 +339,7 @@ class BridgeStatus:
 
 
 class CourierDspBridge:
-    """Courier host-port window plus a batched 80186/C52 clock scheduler."""
+    """Courier host-port window plus a batched 80186/C50 clock scheduler."""
 
     def __init__(
         self,
@@ -372,7 +387,7 @@ class CourierDspBridge:
         self._configure_boot_rom()
         self._configure_frame_interrupt()
         if dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
-            # A third C52 trace window, for a handler the two compiled-in
+            # A third C50 trace window, for a handler the two compiled-in
             # ranges do not cover.
             self.core.set_pc_trace_range(*dsp_trace_range)
         self.dsp_peek = dict(dsp_peek or {})
@@ -396,7 +411,7 @@ class CourierDspBridge:
         # the status report both read it.
         self.window = self._windows[self.transfer.first_strobe]
         self.checksum_submits = 0
-        # The C52 program word the supervisor asks the boot ROM to enter.
+        # The C50 program word the supervisor asks the boot ROM to enter.
         self.entry_word = image.dsp_program_segments()[0][0]
         self.launched = False
         self._last_state: dict[str, int | bool] | None = None
@@ -501,14 +516,14 @@ class CourierDspBridge:
         self._codec_queue_peak = 0
         # Peak handed to the *current* core, and when. Compared against
         # _core_rebuilt_at, these say whether non-zero line audio reached the
-        # C52 that is running now.
+        # C50 that is running now.
         self._codec_handed_peak = 0
         self._codec_handed_at = 0
         self._core_rebuilt_at = 0
         self._codec_replayed = 0
         self._codec_in_peak = 0
         self._codec_handed_ever = 0
-        # Words the codec has clocked out that the C52 has not taken yet.
+        # Words the codec has clocked out that the C50 has not taken yet.
         self._codec_in_flight: deque[int] = deque()
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
@@ -592,9 +607,9 @@ class CourierDspBridge:
                 # was thrown away.
                 self._codec_handed_ever = self._instructions
             self.core.queue_codec_rx(converted)
-            # Keep a copy of what the codec has clocked out but the C52 has not
+            # Keep a copy of what the codec has clocked out but the C50 has not
             # yet taken, so a rebuild does not swallow it. The AC01 is on the
-            # C52's primary serial port and is not part of the C52: it keeps
+            # C50's primary serial port and is not part of the C50: it keeps
             # converting the line and shifting words at CLKX whether or not the
             # DSP is in reset, and the tone is still on the wire when the DSP
             # comes back. `codec_rx_queued - codec_rx_consumed` is the core's
@@ -659,7 +674,7 @@ class CourierDspBridge:
     def _observe_carrier_audio(self) -> None:
         """Detect the answer carrier in the real peer waveform.
 
-        The resident C52 overlay supplies the line datapump, but the native
+        The resident C50 overlay supplies the line datapump, but the native
         core does not yet implement its carrier detector.  The recovered
         answer waveform is centred near 1.875 kHz at the 9.6 kHz codec rate;
         accept that component (and the nominal 2.1 kHz ANSam component) only
@@ -710,16 +725,16 @@ class CourierDspBridge:
             # than assuming main211's source address.
             first = 0
             while True:
-                first = segment.find(C52_CALL_OVERLAY_SIGNATURE, first)
+                first = segment.find(C50_CALL_OVERLAY_SIGNATURE, first)
                 if first < 0:
                     break
                 if first % 2:
                     first += 2
                     continue
                 source = origin + first // 2
-                size = (C52_CALL_OVERLAY_DESTINATION - source) * 2
+                size = (C50_CALL_OVERLAY_DESTINATION - source) * 2
                 if size > 0 and first + size <= len(segment):
-                    matches.append((abs(source - C52_CALL_OVERLAY_SOURCE), segment[first : first + size]))
+                    matches.append((abs(source - C50_CALL_OVERLAY_SOURCE), segment[first : first + size]))
                 first += 2
         if matches:
             return min(matches, key=lambda item: item[0])[1]
@@ -732,11 +747,11 @@ class CourierDspBridge:
             return
         if hasattr(self.core, "schedule_call_overlay"):
             self.core.schedule_call_overlay(
-                self._call_overlay, C52_CALL_OVERLAY_DESTINATION,
+                self._call_overlay, C50_CALL_OVERLAY_DESTINATION,
                 self._call_register_values(), selector,
             )
         else:
-            self.core.load_program(self._call_overlay, C52_CALL_OVERLAY_DESTINATION)
+            self.core.load_program(self._call_overlay, C50_CALL_OVERLAY_DESTINATION)
             # The download window and running TDM latches share these pins.
             for port in range(0x50, 0x60):
                 self.core.set_io(port, 0)
@@ -755,7 +770,7 @@ class CourierDspBridge:
             self._rx_samples_codec_queued = True
 
     @staticmethod
-    def _c52_word(value: int) -> int:
+    def _c50_word(value: int) -> int:
         return ((value & 0xFF) << 8) | ((value >> 8) & 0xFF)
 
     def _call_register_values(self) -> list[int]:
@@ -769,7 +784,7 @@ class CourierDspBridge:
             0x1F: 0x0080,
         }
         return [
-            self._c52_word(self.asic_registers[register])
+            self._c50_word(self.asic_registers[register])
             if register in self.asic_registers
             else default
             for register, default in defaults.items()
@@ -785,7 +800,7 @@ class CourierDspBridge:
             # index into a 121-entry jump table, not as a destination address,
             # and discards anything above 7f. Hardware confirms it: see
             # docs/dsp-rom-probe.md, "A repeatable host write". This call is
-            # therefore a convenience for seeding the modelled C52's call
+            # therefore a convenience for seeding the modelled C50's call
             # registers, not a model of the board's write path.
             self.core.host_write(register, value)
 
@@ -889,7 +904,7 @@ class CourierDspBridge:
     def _configure_frame_interrupt(self) -> None:
         if self.boot_rom_enabled:
             # 0xffff selects hardware vectoring through PMST.IPTR and the ROM.
-            self.core.configure_line_frame_interrupt(C52_ROM_FRAME_IRQ, 0xFFFF)
+            self.core.configure_line_frame_interrupt(C50_ROM_FRAME_IRQ, 0xFFFF)
             return
         if getattr(self.image, "supervisor_offset", 0) == 0x17BB0:
             if hasattr(self.core, "configure_line_frame_interrupt"):
@@ -898,10 +913,10 @@ class CourierDspBridge:
         if (
             hasattr(self.core, "configure_line_frame_interrupt")
             and self.expected_bootstrap[
-                C52_TDM_ISR * 2 : C52_TDM_ISR * 2 + len(C52_TDM_ISR_SIGNATURE)
-            ] == C52_TDM_ISR_SIGNATURE
+                C50_TDM_ISR * 2 : C50_TDM_ISR * 2 + len(C50_TDM_ISR_SIGNATURE)
+            ] == C50_TDM_ISR_SIGNATURE
         ):
-            self.core.configure_line_frame_interrupt(C52_TDM_IRQ, C52_TDM_ISR)
+            self.core.configure_line_frame_interrupt(C50_TDM_IRQ, C50_TDM_ISR)
             return
         origin = self.image.dsp_program_segments()[0][0]
         if hasattr(self.core, "configure_line_frame_interrupt") and origin:
@@ -913,7 +928,7 @@ class CourierDspBridge:
             # part runs away instead of servicing anything. Point it at the
             # same slot inside the bank the supervisor actually downloaded.
             self.core.configure_line_frame_interrupt(
-                C52_ROM_FRAME_IRQ, origin + C52_ROM_FRAME_VECTOR
+                C50_ROM_FRAME_IRQ, origin + C50_ROM_FRAME_VECTOR
             )
 
     def arm_dial_tones(self, command: bytes) -> None:
@@ -956,7 +971,7 @@ class CourierDspBridge:
             if self.dial_digits and self.daa.dial_tone_present:
                 # The physical DAA continues sampling while the supervisor
                 # parses ATD.  Make the five-frame detector window available
-                # to the C52 before its short command-mode timeout expires.
+                # to the C50 before its short command-mode timeout expires.
                 samples = self.daa.render(DAA_FRAME_SAMPLES * 5)
                 if self._call_overlay_active and hasattr(self.core, "queue_codec_rx"):
                     self._queue_line_audio(samples)
@@ -1128,7 +1143,7 @@ class CourierDspBridge:
             return
         if header == 0x82 and data & 0x40 and not self._asic_call_engine_started:
             # The ASIC acknowledges the 0x82 start strobe before the
-            # supervisor publishes the C52 register block.  The firmware
+            # supervisor publishes the C50 register block.  The firmware
             # waits for these two ready latches between that strobe and the
             # 0x13..0x1f/BMAR transaction; delaying them until BMAR commit
             # deadlocks the real call sequence.
@@ -1149,7 +1164,7 @@ class CourierDspBridge:
         ):
             return
         self._asic_commit_edges += 1
-        # These are C52 register lanes, but publishing them asynchronously
+        # These are C50 register lanes, but publishing them asynchronously
         # corrupts a running datapump. The deferred overlay commit snapshots
         # the complete block at the recovered ASIC service slot below.
         self._asic_dsp_register_commits += 1
@@ -1187,7 +1202,7 @@ class CourierDspBridge:
 
         Nothing here plays it. The tone generator is the ASIC's, and this only
         records what the supervisor asked for, so a run can be compared
-        against what the C52 actually put on the line.
+        against what the C50 actually put on the line.
         """
         if self.exchange is None or self.daa is None:
             return
@@ -1295,7 +1310,7 @@ class CourierDspBridge:
 
         Which overlay this is comes from matching the opening bytes against the
         ROM's overlay table, not from any state the bridge invents: the table
-        supplies both the payload and the C52 address it loads at.
+        supplies both the payload and the C50 address it loads at.
         """
         self.transfer_commands += 1
         self._overlay_buffer.extend(half)
@@ -1360,7 +1375,7 @@ class CourierDspBridge:
         # datapump-up event; make that edge visible before queuing the reply.
         self._runtime_mode = True
         self._runtime_ready = True
-        # At the same completion boundary the working C52 exposes 5e=22 and
+        # At the same completion boundary the working C50 exposes 5e=22 and
         # 5c=9e.  Publish that ASIC status latch for the answer-side firmware.
         # leaving it at reset zero makes the valid connected event fail.
         if hasattr(self.core, "set_io"):
@@ -1600,7 +1615,7 @@ class CourierDspBridge:
                 self._publish_window()
                 # A line operation can request the datapump before the
                 # supervisor performs its call-time redownload. Let the new
-                # C52 execute its startup before reapplying that call.
+                # C50 execute its startup before reapplying that call.
                 self._call_resume_pending = self._v8_armed
                 # Feed a supplied ASIC line recording only after the
                 # supervisor's second bootstrap, the dial/answer boundary.
@@ -1640,7 +1655,7 @@ class CourierDspBridge:
             # is the bit written back *set*, and an idle unit reads 1c as fd
             # forever because the request stands unanswered.  This model
             # commits on the 0x5e write instead and uses the bit only to pace
-            # the C52's next quantum; the two agree on ordering, not polarity.
+            # the C50's next quantum; the two agree on ordering, not polarity.
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
             if self.boot_rom_enabled:
@@ -1687,13 +1702,13 @@ class CourierDspBridge:
         if port in (0x5C, 0x5E) and self._runtime_inbound:
             # A queued board-to-supervisor message owns the data lanes while
             # it stands. The receive handler at 0x6ad6e reads the tag from
-            # 0x58/0x5a and then the word from 0x5e/0x5c, so serving the C52
+            # 0x58/0x5a and then the word from 0x5e/0x5c, so serving the C50
             # status latch here instead handed the detector consumer 0xffff
             # for a reply the bridge had already queued.
             _, data = self._runtime_inbound[0]
             return (data >> (8 if port == 0x5E else 0)) & 0xFF
         if port in (0x5C, 0x5E) and self.active and hasattr(self.core, "io"):
-            # The ASIC exposes the C52's 16-bit status latch as high byte at
+            # The ASIC exposes the C50's 16-bit status latch as high byte at
             # 5E and low byte at 5C. These are the ports read by the
             # supervisor's rate/status routine; they are not download-window
             # lanes once the call datapump owns the bus.
@@ -1758,7 +1773,7 @@ class CourierDspBridge:
         if self.exchange is not None:
             # The loop and the exchange behind it exist from board reset, the
             # same as the codec and before any DSP program is downloaded. A
-            # line that only rings once the C52 is up is not a line.
+            # line that only rings once the C50 is up is not a line.
             self._exchange_instructions += count
             while self._exchange_instructions >= self.batch:
                 self._exchange_instructions -= self.batch
@@ -1766,7 +1781,7 @@ class CourierDspBridge:
         if self.codec is not None:
             # The codec is on the ASIC's own serial bus, not the DSP's, so its
             # bring-up runs from board reset rather than from the download that
-            # starts the C52.
+            # starts the C50.
             self._codec_instructions += count
             while self._codec_instructions >= LINE_FRAME_INSTRUCTIONS:
                 self._codec_instructions -= LINE_FRAME_INSTRUCTIONS
@@ -1784,13 +1799,13 @@ class CourierDspBridge:
         # The Courier identifies its split as 20 MHz 80186 / 25 MHz C52, and
         # scaling by that alone - `* 5 // 4` - was wrong by nearly six, because
         # it compares a *clock* ratio against an *instruction* count. An 80186
-        # instruction is 5.93 cycles; a C52 instruction is one. So per 80186
-        # instruction the C52 executes 5.93 x the clock ratio, not the clock
+        # instruction is 5.93 cycles; a C50 instruction is one. So per 80186
+        # instruction the C50 executes 5.93 x the clock ratio, not the clock
         # ratio.
         #
         # Measured, the harness needed 4.46x more DSP steps than `5 // 4` gave:
         # the supervisor's own dial timeline ran 4.46x slower than the audio it
-        # produced, because the C52 was not being given the steps to fill it
+        # produced, because the C50 was not being given the steps to fill it
         # (docs/hardware-timebase-and-audio-path.md). 5.93 is that correction,
         # from the cycle model rather than from the residual, and it lands
         # within 6% of it - the rest being the DSP's own idling.
@@ -2257,7 +2272,7 @@ class CourierDspBridge:
                     0xA0: "engine-held-enabled",
                 }.get(self.asic_registers.get(0x82, 0) & 0xE0, "unknown"),
                 # Names describe the sequencing recovered from the firmware.
-                # C52 reset is controlled by a separate 0xff56/download path;
+                # C50 reset is controlled by a separate 0xff56/download path;
                 # this hold belongs to the ASIC's line/call engine.
                 "line_enable": bool(self.asic_registers.get(0x82, 0) & 0x20),
                 "start_strobe": bool(self.asic_registers.get(0x82, 0) & 0x40),
@@ -2316,7 +2331,7 @@ class CourierDspBridge:
         return status
 
     def save_tx_pcm(self, path: str) -> int:
-        """Write what the C52 put on the **line**, at the line's rate.
+        """Write what the C50 put on the **line**, at the line's rate.
 
         `line_tx_samples` is at the codec's rate, whatever the firmware has
         programmed - 7,200 Hz on a dial - and writing it raw made the file's
@@ -2335,7 +2350,7 @@ class CourierDspBridge:
         return len(samples)
 
     def _core_state(self) -> dict[str, int | bool]:
-        """The C52's registers, from the last sample if the core is gone.
+        """The C50's registers, from the last sample if the core is gone.
 
         A run's summary is built after the machine has closed the bridge, and
         a destroyed handle reports every register as zero. Reporting that as
@@ -2369,7 +2384,7 @@ class CourierDspBridge:
         if self.line is not None:
             self.line.close()
         # Sample before the handle goes, so a summary built afterwards still
-        # reports where the C52 actually got to. The whole status is taken for
+        # reports where the C50 actually got to. The whole status is taken for
         # the same reason: every core-derived field in it reads through the
         # native handle, and a status built after the destroy used to report a
         # datapump that ran for millions of instructions as never started.
