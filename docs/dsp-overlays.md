@@ -94,3 +94,58 @@ Against the payload as `dsp_download` extracts it now, none of that holds. The
 holds instructions, not zeros; and the payload contains no zero run longer than
 32 words anywhere. So the premise behind that either/or needs re-checking. The
 table above is the measured replacement for its resident/overlay boundary.
+
+## The bridge now services a mid-call overlay transfer
+
+Until 2026-09-09 the bridge dropped every overlay download on the floor, which
+is why no run in this project ever produced a second `bootstrap`. Three
+separate faults, each found by measuring what arrived rather than by reading:
+
+**1. The wrong handshake port.** The strobe path only ever inspected
+`self.transfer.command_port`, which for a board ROM is `ROM_COMMAND_PORT`
+(`0x18`). The overlay loader acknowledges on `0x1e`, as the table at the top
+of this document records. Writes to `0x1e` returned early, so the payload
+windows were never committed and the firmware strobed correctly into a port
+nothing was listening on. Fixing this alone took the answering side from 6
+window strobes to 3,750.
+
+**2. The wrong block size.** The first window arrived as
+`06bc807a` + `83008300`, against overlay 7's `06bc807a9fad807a`: four bytes
+right, four bytes stale. Each acknowledgement commits a **half-block of four
+bytes**, not a full eight-byte window.
+
+**3. The wrong window for the second half.** The resident downloader's strobe
+`2` selects the `0x50` window. The overlay loader's does not: both halves land
+in the **same** `0x40` window, `1` filling lanes 0-3 and `2` lanes 4-7. The
+successive window snapshots show it directly - lanes 0-3 carrying payload
+bytes 0..3, then 8..11, then 16..19, while lanes 4-7 carry 4..7 and 12..15.
+
+### What it does now
+
+`_accumulate_overlay` takes half-blocks, identifies the overlay by matching
+its opening eight bytes against **this ROM's own overlay table**, verifies the
+completed image against the ROM's copy, and publishes it with
+`core.load_program(image, entry_word)` only on a match. Nothing about the
+payload, its length or its load address is chosen by the bridge; an
+unrecognised transfer is dropped rather than published.
+
+Measured on a two-instance link, A originating and B answering:
+
+| | side A | side B |
+|---|---|---|
+| `overlay_downloads` | 0 | **1** |
+| `overlay_id` | - | **7** |
+| `overlay_match` | - | **true** |
+| `call_overlay_active` | false | **true** |
+
+Overlay 7, 14,996 bytes, matching the ROM byte for byte, loaded at `b000` -
+the address this document's table names. The answering side is where the
+DSP requests it; see
+[datapump-gate-403-addresses.md](datapump-gate-403-addresses.md) for the
+chain from the request to `out 0x1e, 4`.
+
+`tests/test_asic_ports.py`, `test_mailbox_protocol.py`,
+`test_dsp_board_ndx.py` and `test_g_dsp_capture.py` pass unchanged.
+
+This does not yet claim a completed call. It claims that the datapump image
+now reaches the C52, which no run before it did.

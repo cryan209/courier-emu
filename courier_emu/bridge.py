@@ -271,6 +271,10 @@ class BridgeStatus:
     bootstrap_bytes: int
     bootstrap_match: bool | None
     bootstraps: int
+    overlay_downloads: int
+    overlay_id: int | None
+    overlay_match: bool | None
+    overlay_heads: list[str]
     transfer_commands: int
     mailbox_commands: int
     mailbox_windows: dict[str, int]
@@ -402,6 +406,17 @@ class CourierDspBridge:
         self.active = False
         self.bootstrap_match: bool | None = None
         self.bootstraps = 0
+        # A mid-call overlay transfer, which is a second download into a core
+        # that is already running. Identified by content against the ROM's own
+        # overlay table rather than by any value the bridge chooses.
+        self._overlay_target = None
+        self._overlay_buffer = bytearray()
+        self.overlay_downloads = 0
+        # `out 0x1e, 4` at 0x8e631 starts an overlay transfer.
+        self.transfer_start_command = 4
+        self.overlay_id: int | None = None
+        self.overlay_heads: list[str] = []
+        self.overlay_match: bool | None = None
         self.transfer_commands = 0
         self.mailbox_commands = 0
         self.mailbox_windows: Counter[str] = Counter()
@@ -1266,6 +1281,53 @@ class CourierDspBridge:
                 else self.core.io(port)) & 0xFFFF
         return (word >> 8) & 0xFF if high else word & 0xFF
 
+    def _overlay_rows(self):
+        """The ROM's own overlay table, or nothing for images without one."""
+        rows = getattr(self.image, "dsp_overlays", ())
+        return rows if isinstance(rows, tuple) else ()
+
+    def _overlay_payload(self, overlay) -> bytes:
+        data = getattr(self.image, "data", b"")
+        return bytes(data[overlay.offset:overlay.end])
+
+    def _accumulate_overlay(self, half: bytes) -> None:
+        """Collect a mid-call overlay transfer and publish it when complete.
+
+        Which overlay this is comes from matching the opening bytes against the
+        ROM's overlay table, not from any state the bridge invents: the table
+        supplies both the payload and the C52 address it loads at.
+        """
+        self.transfer_commands += 1
+        self._overlay_buffer.extend(half)
+        if self._overlay_target is None:
+            if len(self._overlay_buffer) < 8:
+                return
+            head = bytes(self._overlay_buffer[:8])
+            if len(self.overlay_heads) < 6:
+                self.overlay_heads.append(head.hex())
+            for overlay in self._overlay_rows():
+                if (overlay.entry_word
+                        and self._overlay_payload(overlay)[:8] == head):
+                    self._overlay_target = overlay
+                    break
+            else:
+                # Not a payload this ROM's table knows. Drop it rather than
+                # publish something unidentified into program space.
+                self._overlay_buffer = bytearray()
+                return
+        target = self._overlay_target
+        if len(self._overlay_buffer) < target.length:
+            return
+        image = bytes(self._overlay_buffer[:target.length])
+        self.overlay_match = image == self._overlay_payload(target)
+        self.overlay_id = target.index
+        if self.overlay_match and hasattr(self.core, "load_program"):
+            self.core.load_program(image, target.entry_word)
+            self.overlay_downloads += 1
+            self._call_overlay_active = True
+        self._overlay_buffer = bytearray()
+        self._overlay_target = None
+
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
 
@@ -1408,6 +1470,32 @@ class CourierDspBridge:
         if placement is not None:
             strobe, lane = placement
             self._windows[strobe][lane] = value & 0xFF
+            return
+        if (
+            port == DSP_COMMAND_PORT
+            and size == 1
+            and self.transfer.command_port != DSP_COMMAND_PORT
+        ):
+            # Two transfer routines share the eight data ports but not the
+            # handshake: the resident downloader acknowledges one block on
+            # 0x18, the overlay loader one half-block on 0x1e, `1` then `2`
+            # (docs/dsp-overlays.md). Only the first was recognised here, so a
+            # mid-call overlay pushed its payload through the same windows and
+            # nothing ever committed them.
+            strobe = value & 0xFF
+            if strobe == self.transfer_start_command:
+                self._overlay_target = None
+                self._overlay_buffer = bytearray()
+            elif self.active and strobe in self._windows:
+                # Measured framing: each acknowledgement commits four bytes -
+                # a half-block - into alternating halves of the first window,
+                # `1` taking lanes 0-3 and `2` lanes 4-7. Both halves live in
+                # the same window; the second strobe does not select 0x50 here
+                # the way the resident downloader's does.
+                window = self._windows[self.transfer.first_strobe]
+                half = bytes(window[0:4] if strobe == self.transfer.first_strobe
+                             else window[4:8])
+                self._accumulate_overlay(half)
             return
         if port != self.transfer.command_port or size != 1:
             return
@@ -2082,6 +2170,10 @@ class CourierDspBridge:
             bootstrap_bytes=len(self.bootstrap),
             bootstrap_match=self.bootstrap_match,
             bootstraps=self.bootstraps,
+            overlay_downloads=self.overlay_downloads,
+            overlay_id=self.overlay_id,
+            overlay_match=self.overlay_match,
+            overlay_heads=list(self.overlay_heads),
             transfer_commands=self.transfer_commands,
             mailbox_commands=self.mailbox_commands,
             mailbox_windows=dict(self.mailbox_windows.most_common()),
