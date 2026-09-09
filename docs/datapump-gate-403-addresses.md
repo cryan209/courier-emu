@@ -1130,3 +1130,45 @@ needs none of those is `0x94d87`, which reads the overlay id out of `in al,
 
 That remains a hypothesis. It is the only candidate left standing, and it
 fits, but no measurement in this document shows the board taking it.
+
+## `0x94d87` is a real handler in a real table — but the dispatcher is again indirect
+
+Before making the bridge publish anything on `0x5c`, the question is what the
+DSP would really publish there. Tracing the consumer's identity:
+
+* `0x94d83` is a four-instruction routine — `in al, 0x5c`, `or al, 0x80`,
+  `mov [0xd28], al`, `ret` — with a `stc; ret` above it, so a genuine entry.
+* It has no direct callers, and its offset does not appear anywhere as a
+  segment-`0x9000` word. **The module's segment is `8f46`**, established from
+  the ten far calls that target this address range, making the routine
+  `8f46:5923`.
+* `0x5923` appears once, at `0x94b70` — inside a dense table of in-module
+  handler offsets running at least `0x94b5c`..`0x94b8a`. The neighbouring
+  entry `0x94b72` is `0x573c` -> `0x94b9c`, the `or byte [0xd92], 4` routine.
+
+So both of the mystery routines this document has chased are **entries in one
+handler table** in the supervisor's DSP-facing module. That is real support
+for the reading that they are dispatched by DSP message rather than by
+command.
+
+It is not enough to model from. No indexed `jmp`/`call` in the image points at
+that table, by any addressing form, with or without a `cs:` override — the
+same indirect dispatch that defeated every static search in this document. So
+**which message selects `0x94d83` is not established**, and without that the
+bridge cannot be made to publish the right thing for the right reason.
+
+### Why not just write the value
+
+Publishing a chosen value on `0x5c` until the supervisor loads an overlay
+would make a dial appear to arm the datapump. It would also be a stand-in for
+hardware behaviour nobody has observed: the overlay id would be whatever was
+needed to move the firmware on, and the run would prove only that the firmware
+responds to being handed one. That is the failure mode this project has
+already corrected twice in these documents — PA7 manufacturing download-ready
+status, and the harness-side DTMF generator that was removed.
+
+The dispatcher is findable by execution rather than by reading. The table's
+other entries include `0x94dc8`, the routine that polls `0x5e`/`0x5c` and
+feeds the counter; tracing which of these entries actually run during a dial,
+and with what, would expose the dispatch that static analysis cannot reach.
+That is the next step, and it costs one instrumented run.
