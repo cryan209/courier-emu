@@ -585,3 +585,68 @@ looked so far.
 
 [Capture](../artifacts/state-trajectory-403/trajectory.json),
 [script](../artifacts/state-trajectory-403/trajectory.py).
+
+## The dispatcher, found: the table starts at `a6685`
+
+Every displacement search in this document failed for one reason: **the table
+does not start at `0xa669b`.** That was where the router's neighbours happened
+to be legible. The real base is `0xa6685`, `0x16` bytes earlier, and with the
+right base the dispatch is immediate — enumerating every `cs:`-overridden
+indexed jump and call inside segment `a4e2`:
+
+```text
+a4f53  cmp  al, 0x41            ; 'A'
+a4f55  jb   reject
+a4f57  cmp  al, 0x5a            ; 'Z'
+a4f59  ja   reject
+a4f5c  mov  bx, ax
+a4f5e  sub  bl, 0x41            ; index = letter - 'A'
+a4f61  shl  bl, 1
+a4f63  call word ptr cs:[bx + 0x1865]    ; table at a6685
+```
+
+**The table is indexed by command letter.** Twenty-six entries, `0x1960`
+(`a6780`) as the reject stub. And the three handlers this document has been
+chasing fall out immediately:
+
+| entry | letter | handler | what it writes |
+|---|---|---|---|
+| 11 | `L` | `a695e` | `[0x04f2]` — the CF gate cell that must be `1` |
+| 13 | `N` | `a6a11` | `[0x04f8]` — the CF gate cell that must be `0` or `>3` |
+| 19 | `T` | `a6afe` | the **router**, whose `AL=1` sets flag C |
+
+The idle state handler `a4f30` — the one `[0x0192]` actually holds on the
+board, measured in the trajectory above — contains this dispatch, along with a
+second one at `a4f33` into the `a701f` table. So this is live code in the
+state the modem sits in.
+
+### Tested on the board: the ordinary letters do not reach it
+
+If `ATL1` reached entry 11, it would store `1` in `[0x04f2]` and open the CF
+gate, since the board already has `[0x04c6]` bit 6 clear and `[0x04f8]` zero.
+The handler's one branch does not divert it either: it writes `[0x0568]`
+instead only when `[0x058c] & 4` **and** `[0x016c] & 4` are both set, and the
+board reads `[0x016c] = 0000`, so the branch falls to the `[0x04f2]` store.
+
+Issued on the board, reading before and after each:
+
+```text
+ATL0 ATL1 ATL2 ATL3 ATN0 ATN4 ATN5 ATT
+```
+
+`[0x04f2]`, `[0x04f8]`, `[0x0568]`, `[0x056e]` and all seven gate cells stay
+`00` throughout. **So the ordinary AT letters are not what indexes this
+table.**
+
+That is a constraint, not a dead end. The parser around the dispatch handles
+`0x24` (`$`) as a special case immediately before the A–Z range, and has a
+second table at `a5072` for punctuation `0x21..0x7e`. That shape suggests a
+prefixed sub-interpreter rather than the main AT parser — the resident's
+ordinary command table lives at file `0x250cc`, a different mechanism
+entirely, as [the ATN analysis](undocumented-atn-commands.md) already
+established for `N`.
+
+So the next test is whether a prefix reaches it — `AT$L1` and friends — and
+that is a command form this project has not sent to hardware before. It should
+be approached the way the tone was: one command, cells read either side,
+nothing assumed about what an unrecognised form does.
