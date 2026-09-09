@@ -152,3 +152,86 @@ duplicated across two independently built images.
 Settling the rest wants the DSP executed rather than read: `courier-emu
 dsp-run` against the Quad resident, with the TDM registers watched, would show
 the ISR and the timeslot writes directly.
+
+## Trying to make it produce samples
+
+Not achieved. What follows is how far it gets and what each remaining blocker
+is, so the next attempt starts from here rather than from the beginning.
+
+### Frame timing is the first blocker, and it is real
+
+Given a frame clock — `NativeC5x.configure_rom_codec(True)` — the Quad
+resident stops thrashing its serial port:
+
+| | `SPC` writes | `TSPC` writes | final `pc` |
+| --- | --- | --- | --- |
+| no frame clock | 118 | 118 | `0x265b` (out of program space) |
+| frame clock | **2** | **2** | `0x82eb` |
+
+That confirms the `TXM = 0` / `MCM = 0` reading: the port waits on external
+timing, and once something clocks it the firmware programs it once and
+proceeds. It also confirms the earlier run's 118 rewrites were a stalled
+retry loop, not normal behaviour.
+
+**This is a diagnostic, not a model.** The codec being enabled is the AC01,
+which exchanges 16-bit words; the Quad runs `FO = 1`, 8-bit bytes. It is the
+wrong peer, used only to establish that *some* frame source unblocks init.
+A Quad board model needs its own timing source, not this one.
+
+### Where it then waits
+
+The firmware reaches a structured host-command wait at program `0x82d9`:
+
+```
+82d9  setc  intm
+82da  calld 23f0, *
+82dc  lar   ar1, #ff57      ; delay slot
+82de  clrc  intm
+82df  and   #0200           ; test bit 9 of what came back
+82e1  bcnd  82ec, neq       ; set -> go do work
+...
+82ea  idle                  ; else wait for an interrupt
+```
+
+Two things follow. First, the address in `ar1` is `0xff57`, and nearby code
+uses `0xff58` and `ldp #1fe` / `@63` (`0xff63`). Those are **global data
+memory**, not I/O ports. So the Quad's CPU-to-DSP link is shared memory, unlike
+the analog Courier's ASIC mailbox on DSP I/O ports `0x5e`/`0x5f`
+([dsp-cpu-interconnect.md](dsp-cpu-interconnect.md)). It is the DSP-side view of
+the supervisor's queue at `0x02ca..0x030e`.
+
+Identifying `0xff57` as *the* host flag cell is inference from the delay-slot
+`lar`; the routine at `0x23f0` has not been read.
+
+Second, writing `0x0200` into `0xff57`, `0xff58` and `0xff63` does **not**
+advance it. The cells read back changed, so the write lands, but the branch
+outcome does not — either the flag is fetched some other way, or the wait is on
+the interrupt rather than the flag.
+
+### Interrupts do wake it
+
+Delivering any of IRQ 0-7 moves it off `idle` into a loop at program `0x8109` /
+`0x810c`, where it then runs steadily. But across 300,000 further instructions
+there are still **no `DXR` or `TDXR` writes** and the codec clocks no frames.
+It is running, and idle in the sense of having nothing commanded.
+
+### What a tone would need
+
+On the analog Courier a tone is a short mailbox conversation — tags `0x16`,
+`0x19`, `0x1a`, `0x1b`, then `0x13:<digit index>`
+([driving-the-tones.md](driving-the-tones.md), and `audio-312-path.md` for the
+oscillator it drives). The Quad's equivalent command set is **unknown**: its
+link is shared memory rather than that mailbox, so neither the tags nor the
+cells transfer.
+
+The remaining work, in order:
+
+1. Read the routine at `0x23f0` to learn how the host word is actually
+   fetched, and which cell carries the ready flag.
+2. Decode the supervisor's side of the same queue — the 35 writes at
+   `0x02ca..0x030e` are its initialisation, so the command encoding is
+   reachable from the 80186 code that fills it.
+3. Supply a frame source appropriate to `FO = 1` byte transfers rather than
+   borrowing the AC01.
+
+Only then is asking for a tone meaningful.
