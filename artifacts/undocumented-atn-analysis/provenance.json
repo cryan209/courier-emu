@@ -1,0 +1,6 @@
+{
+  "rom": "artifacts/courier-board-21210-capture-403/courier-board.rom",
+  "sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "hardware_tested": false,
+  "method": "Static captured-ROM disassembly and bounded isolated ATN handler execution. Full serial harness hit instruction limit before completing AT; not evidence of command acceptance or rejection."
+}

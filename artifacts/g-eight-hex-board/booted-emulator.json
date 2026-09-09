@@ -1,0 +1,80 @@
+{
+  "rom_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "scope": "Real DSP boot, resident initialization and bridge mailbox; supervisor parser, UART, live audio and interrupt timing excluded",
+  "steps": [
+    {
+      "command": "ATG00620000",
+      "hardware": [
+        105,
+        21
+      ],
+      "emulated": [
+        105,
+        21
+      ],
+      "matches": true,
+      "new_reply": true,
+      "request_consumed": true
+    },
+    {
+      "command": "ATG00070000",
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "matches": true,
+      "new_reply": true,
+      "request_consumed": true
+    },
+    {
+      "command": "ATG002D0000",
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "matches": true,
+      "new_reply": false,
+      "request_consumed": true
+    },
+    {
+      "command": "ATG00620000",
+      "hardware": [
+        105,
+        21
+      ],
+      "emulated": [
+        105,
+        21
+      ],
+      "matches": true,
+      "new_reply": true,
+      "request_consumed": true
+    },
+    {
+      "command": "ATG0007A55A",
+      "hardware": [
+        49,
+        0
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "matches": true,
+      "new_reply": true,
+      "request_consumed": true
+    }
+  ],
+  "isolated_uninitialized_query_62": [
+    105,
+    18
+  ]
+}

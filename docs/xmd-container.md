@@ -1,6 +1,6 @@
 # The XMD container: sixteen whole flash images, decoded
 
-`docs/New Folder With Items` holds sixteen `.XMD` files of 524,416 bytes each.
+`firmware/legacy-usrobotics` holds sixteen `.XMD` files of 524,416 bytes each.
 They are not update payloads like the XMF and XMP: `0x80` of header plus a
 **complete 512 KiB flash**, boot block and 80186 reset stub included.  Until
 now none of them could be read.

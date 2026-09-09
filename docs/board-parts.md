@@ -290,7 +290,7 @@ shared anchor is absent from it and from `ID20_403.XMD`, and since flashing
 `ID20_403.XMD` produced a capture that *does* contain the anchor, the `.XMD`
 container is record-framed rather than flat. Testing the 1998-2000 V.90 build
 means de-framing that container first. The 2000+ V.92 image is also out of
-reach here: `docs/New Folder With Items/USR03232004/` is a compressed
+reach here: `firmware/legacy-usrobotics/USR03232004/` is a compressed
 InstallShield package and no extractor is installed.
 
 ### Which board has which part is still not recorded

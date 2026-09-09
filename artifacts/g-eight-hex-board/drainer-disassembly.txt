@@ -1,0 +1,29 @@
+0f511 push si
+0f512 push ax
+0f513 mov byte ptr [0x183], 0x3f
+0f518 mov byte ptr [0x184], 0x7f
+0f51d mov si, word ptr [0x194]
+0f521 lodsw ax, word ptr [si]
+0f522 out 0x58, al
+0f524 xchg ah, al
+0f526 out 0x5a, al
+0f528 xchg ah, al
+0f52a cmp si, 0x1c8
+0f52e jae 0xf546
+0f530 lodsw ax, word ptr [si]
+0f531 out 0x5c, al
+0f533 xchg ah, al
+0f535 out 0x5e, al
+0f537 xchg ah, al
+0f539 cmp si, 0x1c8
+0f53d jae 0xf54b
+0f53f mov word ptr [0x194], si
+0f543 pop ax
+0f544 pop si
+0f545 ret 
+0f546 mov si, 0x198
+0f549 jmp 0xf530
+0f54b mov word ptr [0x194], 0x198
+0f551 pop ax
+0f552 pop si
+0f553 ret 

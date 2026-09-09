@@ -1,5 +1,5 @@
 {
-  "image": "docs/New Folder With Items/ID20D403/ID20_403.XMD",
+  "image": "firmware/legacy-usrobotics/ID20D403/ID20_403.XMD",
   "image_sha256": "18d2f4fb057c6fc7550685e24265cb67419459a63ccf4737e7b8f342b817b6e8",
   "image_bytes": 524416,
   "device": "/dev/cu.usbserial-21210",

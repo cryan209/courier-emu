@@ -1,0 +1,44 @@
+[
+  {
+    "command": "ATN0",
+    "stop": "supervisor-state-dispatch",
+    "AX": "007c",
+    "manual_flag": 1
+  },
+  {
+    "command": "ATN1",
+    "stop": "supervisor-state-dispatch",
+    "AX": "017b",
+    "manual_flag": 1
+  },
+  {
+    "command": "ATN7",
+    "stop": "supervisor-state-dispatch",
+    "AX": "077b",
+    "manual_flag": 1
+  },
+  {
+    "command": "ATN255",
+    "stop": "supervisor-state-dispatch",
+    "AX": "ff7b",
+    "manual_flag": 1
+  },
+  {
+    "command": "ATN256",
+    "stop": "return-without-dispatch",
+    "AX": "0000",
+    "manual_flag": 0
+  },
+  {
+    "command": "ATNX",
+    "stop": "restart-entry",
+    "AX": "0000",
+    "manual_flag": 0
+  },
+  {
+    "command": "ATNL",
+    "stop": "fixed-transfer-entry",
+    "AX": "0000",
+    "manual_flag": 0
+  }
+]

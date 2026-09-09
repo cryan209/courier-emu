@@ -1,6 +1,6 @@
 # ID_SDL's `AT+S` registers, and the post-flash step this board never had
 
-Source: `docs/New Folder With Items/ID20C403/IDSDL403.TXT`, the ID_SDL v4.03
+Source: `firmware/legacy-usrobotics/ID20C403/IDSDL403.TXT`, the ID_SDL v4.03
 manual, 62 KB of CP866 Russian dated 24/01/00 - the same date as the banner
 `ATI7` prints. It documents a command set that appears in **no help screen on
 the modem**: `AT$`, `AT&$`, `AT%$` and `ATD$` all print the stock USRobotics

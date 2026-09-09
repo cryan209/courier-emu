@@ -19,6 +19,9 @@ from courier_emu.dsp_mailbox import MailboxPort, Session, _transact
 from courier_emu.flash_dump import validate_identity
 
 OUT = Path(sys.argv[1]); MODE = sys.argv[2]; NUMBER = sys.argv[3]; DEV = sys.argv[4]
+# ATX1 drops busy and dial-tone detection, so a busy-tone number no longer
+# ends the call in seconds and the modem handshakes for the whole S7 window.
+NO_BUSY = len(sys.argv) > 5 and sys.argv[5] == '--no-busy'
 OUT.mkdir(parents=True, exist_ok=True)
 assert MODE in ('voice', 'data', 'attempt')
 assert not (OUT / 'cells.json').exists(), "refusing to overwrite an existing capture"
@@ -38,7 +41,8 @@ class _Done(Exception):
 
 class CallPort(MailboxPort):
     def query(self, c, t=4.0):
-        return _transact(self, c, t) if c in {DIAL, 'ATH0', 'ATO'} else super().query(c, t)
+        allowed = {DIAL, 'ATH0', 'ATO', 'ATX1', 'ATX7', 'ATI5'}
+        return _transact(self, c, t) if c in allowed else super().query(c, t)
 
 report = {'started_utc': datetime.now(timezone.utc).isoformat(), 'hardware_tested': True,
           'mode': MODE, 'line_seized': True, 'device': DEV, 'samples': [], 'events': []}
@@ -92,6 +96,9 @@ with CallPort(DEV, 115200, allow_ram=True) as port:
         assert target == ('7.4.16', '3.1.2'), target
         report['identity'] = identity.decode('ascii')
         sample('idle, on-hook')
+        if NO_BUSY:
+            report['switches_before'] = s.command('ATI5').decode('ascii', 'replace')
+            s.command('ATX1'); report['x1_set'] = True
 
         started = time.monotonic(); dialled = True
         if MODE == 'voice':
@@ -159,6 +166,12 @@ with CallPort(DEV, 115200, allow_ram=True) as port:
                 report['released'] = f'FAILED: {exc!r}'
                 print('WARNING: ATH0 failed:', exc, flush=True)
             report['off_hook_seconds'] = round(time.monotonic() - started, 1)
+        if NO_BUSY:
+            try:
+                s.command('ATX7'); report['x_restored'] = True   # the board's own setting
+            except Exception as exc:
+                report['x_restored'] = f'FAILED: {exc!r}'
+                print('WARNING: could not restore X7:', exc, flush=True)
         try:
             s.command('AT'); report['responds_after'] = True
         except Exception:

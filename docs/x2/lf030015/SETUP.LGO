@@ -1,0 +1,18 @@
+#background=192,192,192
+#text=0,0,255
+<Helv,16>
+
+<Arial,20>NETServer Card Operational Code Install
+
+<Helv,14>Version 3.0.15
+<Arial,14>----------------------------------------
+<Arial,14> This installation program copies the NETServer Card Operational
+<Arial,14> Code files to a directory on your hard disk. Later, they can be
+<Arial,14> downloaded to the card via TCM or the NETServer Manager Program.
+
+<Arial,20> Initializing Setup, please wait...
+
+<Arial,14> Copyright 1995. U.S. Robotics Inc.
+<Arial,14> All Rights Reserved.
+
+

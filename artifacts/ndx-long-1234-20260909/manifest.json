@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-09",
+  "hardware_tested": true,
+  "device": "/dev/cu.usbserial-11420",
+  "baud": 115200,
+  "board": "ID_SDL 4.03d, supervisor 7.4.16, DSP 3.1.2, 20.16 MHz",
+  "method": "RAM-only verified 80186 launcher at 0000:3000, DSP probe at 8000; existing tagged mailbox and checksummed CDRP1 frame",
+  "verified_upload": true,
+  "samples": {
+    "run_marker": "9209",
+    "ndx0.pmst": "00b0",
+    "ndx0.arcr": "1234",
+    "ndx0.indx": "1234",
+    "ndx0.ar0": "1234",
+    "ndx1.pmst": "00b4",
+    "ndx1.arcr": "eeee",
+    "ndx1.indx": "dddd",
+    "ndx1.ar0": "1234"
+  },
+  "recovery": "AT answers; vector 8 restored to 8000:108F; T0CON read back as 8021",
+  "core_change": "None: exact #1234 result confirms the existing NDX-clear LAR AR0 side effect.",
+  "files_sha256": {
+    "build.py": "a028d352bff058cedc06cc8001828defbfe0b10b816b880e88de68dd88b425b1",
+    "diagnostic-ram.bin": "b487cb9e29b38a1b51bac885f653b45f52afd05f042fc4e8cbb3806dd60b7331",
+    "emulator.json": "108a2d624556e1ae98cde7680fd86cba916b4cc472dcb33dbb268b0a55eb7920",
+    "frame.txt": "5f02f10f9f278a0a41913d03629937a010a30eed4db7c1bab9610b6a204b5dae",
+    "hardware.json": "b27b8acf5dfe0ec0c2bda32cc8ba8a9a0b84239df03490a3ef4754013fe9f203",
+    "identity.txt": "e9a7baf36cbda2206c5aeb60c440936c5444ad86d230ab5541f26eb5e1234d96",
+    "labels.json": "272193f90cf7dff85b1d72ddbf71911d82ac0436d3b63bda6f14a476e5e7119f",
+    "pcb-after.txt": "13971fb2b8150f077279b4da6898661ce9c3866bedad95244771a774afb97660",
+    "pcb-before.txt": "86c26f2f45d89027b3de7418b86fb6b8cb796cbf6be819d3b62ae1ad71d58516",
+    "probe-c5x.bin": "44a846d3aaa7f4c6f02bf2dd1a65ef3cb66993a4683493b075cce64b9663c717",
+    "readback.bin": "b487cb9e29b38a1b51bac885f653b45f52afd05f042fc4e8cbb3806dd60b7331",
+    "run-board.py": "ed9a0745594032122fba9c017811b8a2ca870e43f73fdfcdfbf38e7e22b7ad23",
+    "serial-transcript.txt": "83bc314cc5462e5d31816e90ae7bd0c4da122cafda250ea22f7494a883ec926e"
+  },
+  "limitations": [
+    "Standalone RAM probe temporarily replaces the DSP resident; no flash or stored settings written.",
+    "PMST AVIS differs from native reset state and is masked in replay; NDX is checked unmasked.",
+    "Legacy parser calls the sample-byte digest rom_sha256; these nine words are instruction results, not a ROM dump."
+  ]
+}

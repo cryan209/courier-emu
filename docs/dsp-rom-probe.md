@@ -5,7 +5,7 @@ The physical target reports US/Canada external, 20.16 MHz, 512 KiB flash,
 strings match the reference `IDSDL302.ROM`, but are not proof of identical
 firmware or a particular DSP part.
 
-There is a provenance correction: `docs/New Folder With Items/IDSDL302.ENG`
+There is a provenance correction: `firmware/legacy-usrobotics/IDSDL302.ENG`
 describes a modified 20.16 MHz release based on the stock 03/13/98 SDL. It adds
 configuration and memory-editing commands. Do not treat the reference ROM as
 an unmodified stock replacement for the user's modem.

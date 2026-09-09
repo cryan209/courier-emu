@@ -1,0 +1,11 @@
+{
+  "command": "ATG00541234",
+  "hardware_tested": false,
+  "queue_words": [
+    "ff00",
+    "0054",
+    "1234"
+  ],
+  "head": 414,
+  "limitation": "Empty synthetic queue; stopped before return and actual transmission. Arbitrary values chosen to verify order, not as a board command recommendation."
+}

@@ -137,7 +137,7 @@ def main() -> int:
             entries.append(f"`{loop:04x}` (`{base:04x}`)" if base is not None else f"`{loop:04x}`")
         report.append(f"| `{name}` | `{source:04x}` | {' · '.join(entries)} |")
 
-    sdl = root / "docs/New Folder With Items/SDL_49.EXE"
+    sdl = root / "firmware/legacy-usrobotics/SDL_49.EXE"
     old_memory = c51_memory(sdl)
     old_loops = loops(old_memory)
     report += ["", "## Older C51 control", ""]

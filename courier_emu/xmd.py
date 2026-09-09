@@ -2,7 +2,7 @@
 
 An XMD is `0x80` bytes of header followed by a complete flash image - not an
 update payload like the XMF and XMP, but the whole part, boot block and 80186
-reset stub included.  Sixteen of them sit in `docs/New Folder With Items`, and
+reset stub included.  Sixteen of them sit in `firmware/legacy-usrobotics`, and
 until the obfuscation was recovered none of them could be read.
 
 The obfuscation is a **chained XOR over 128-byte blocks**: every byte of a

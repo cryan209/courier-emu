@@ -1,0 +1,74 @@
+[
+  {
+    "command": "ATG?",
+    "stop": "G-fallback-call",
+    "AX": "0000",
+    "BP": 0,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 0,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ0",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ1",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ2",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ3",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ4",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ5",
+    "stop": "restart",
+    "AX": "0000",
+    "BP": 2,
+    "suffix_remaining": 1,
+    "byte_049b": 0
+  },
+  {
+    "command": "ATZ!",
+    "stop": "Z!-return",
+    "AX": "0000",
+    "BP": 0,
+    "suffix_remaining": 0,
+    "byte_049b": 128
+  }
+]

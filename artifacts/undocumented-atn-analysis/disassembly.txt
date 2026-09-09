@@ -1,0 +1,208 @@
+
+File offset 0x83a2
+083a2  call     0x83a6
+083a5  retf     
+083a6  cmp      byte ptr [si], 0x58
+083a9  jne      0x83b7
+083ab  or       byte ptr [0x791], 1
+083b0  mov      bp, 0
+083b3  cli      
+083b4  jmp      0x480
+083b7  cmp      byte ptr [si], 0x4c
+083ba  je       0x83bf
+083bc  jmp      0x8458
+083bf  pushf    
+083c0  cli      
+083c1  cld      
+083c2  mov      word ptr [0xffa4], 0xe000
+083c8  push     word ptr [0xff18]
+083cc  push     ds
+083cd  mov      word ptr [0xff18], 0x10
+083d3  in       al, 0xc2
+083d5  mov      ah, al
+083d7  in       al, 0xc0
+083d9  test     word ptr [0xff0e], 0x10
+083df  je       0x83d9
+083e1  mov      ax, 0xf3f
+083e4  out      0xc4, al
+083e6  mov      al, ah
+083e8  out      0xc6, al
+083ea  in       al, 0xc2
+083ec  mov      ah, al
+083ee  in       al, 0xc0
+083f0  mov      cx, 0x1554
+083f3  mov      si, 0
+083f6  mov      ax, 0xe000
+083f9  mov      ds, ax
+083fb  lodsw    ax, word ptr [si]
+083fc  xchg     ah, al
+083fe  ror      ax, 4
+08401  mov      bx, ax
+08403  shl      ax, 2
+08406  shr      al, 2
+08409  and      ax, 0x3f3f
+0840c  test     word ptr es:[0xff0e], 0x10
+08413  je       0x840c
+08415  out      0xc4, al
+08417  mov      al, ah
+08419  out      0xc6, al
+0841b  in       al, 0xc2
+0841d  mov      ah, al
+0841f  in       al, 0xc0
+08421  mov      bl, byte ptr [si]
+08423  ror      bh, 4
+08426  shl      bx, 2
+08429  shr      bl, 2
+0842c  and      bx, 0x3f3f
+08430  mov      ax, bx
+08432  test     word ptr es:[0xff0e], 0x10
+08439  je       0x8432
+0843b  out      0xc4, al
+0843d  mov      al, ah
+0843f  out      0xc6, al
+08441  in       al, 0xc2
+08443  mov      ah, al
+08445  in       al, 0xc0
+08447  inc      si
+08448  loop     0x83fb
+0844a  pop      ds
+0844b  pop      word ptr [0xff18]
+0844f  call     0x6fd
+08452  popf     
+08453  mov      cx, 0
+08456  clc      
+08457  ret      
+08458  call     0x9ceb
+0845b  jb       0x8471
+0845d  xchg     ah, al
+0845f  mov      al, 0x7c
+08461  or       ah, ah
+08463  je       0x8467
+08465  mov      al, 0x7b
+08467  mov      byte ptr [0xa16], 1
+0846c  lcall    0x8f46, 0x32fb
+08471  clc      
+08472  ret      
+
+File offset 0x9ceb
+09ceb  push     dx
+09cec  xor      dx, dx
+09cee  jcxz     0x9d18
+09cf0  lodsb    al, byte ptr [si]
+09cf1  dec      cx
+09cf2  call     0x9d60
+09cf5  jb       0x9d16
+09cf7  sub      al, 0x30
+09cf9  cwde     
+09cfa  xchg     dx, ax
+09cfb  mov      ah, 0xa
+09cfd  mul      ah
+09cff  add      ax, dx
+09d01  xchg     dx, ax
+09d02  or       dh, dh
+09d04  je       0x9cee
+09d06  jcxz     0x9d11
+09d08  lodsb    al, byte ptr [si]
+09d09  dec      cx
+09d0a  call     0x9d60
+09d0d  jae      0x9d06
+09d0f  dec      si
+09d10  inc      cx
+09d11  xor      ax, ax
+09d13  pop      dx
+09d14  stc      
+09d15  ret      
+09d16  dec      si
+09d17  inc      cx
+09d18  xchg     dx, ax
+09d19  pop      dx
+09d1a  clc      
+
+File offset 0x1275b
+1275b  cli      
+1275c  clc      
+1275d  lcall    0x8f46, 0xf4
+12762  sti      
+12763  retf     
+
+File offset 0xf554
+0f554  call     word ptr [0x192]
+0f558  retf     
+
+File offset 0x14414
+14414  push     cx
+14415  xor      ch, ch
+14417  test     byte ptr [0xa16], 1
+1441c  jne      0x14424
+1441e  mov      cl, byte ptr [0xa17]
+14422  jmp      0x14444
+14424  mov      cl, byte ptr [0x2b4]
+14428  sub      cl, 1
+1442b  jmp      0x14444
+1442d  push     cx
+1442e  xor      ch, ch
+14430  test     byte ptr [0xa16], 1
+14435  jne      0x1443d
+14437  mov      cl, byte ptr [0xa17]
+1443b  jmp      0x14444
+1443d  mov      cl, byte ptr [0x2b4]
+14441  add      cl, 1
+14444  mov      byte ptr [0xa16], 0
+14449  test     byte ptr [0x238], 8
+1444e  jne      0x14465
+14450  mov      ax, 0x8000
+14453  rol      ax, cl
+14455  test     word ptr [0xa21], ax
+14459  je       0x14462
+1445b  mov      word ptr [0xa25], cx
+1445f  pop      cx
+14460  clc      
+14461  ret      
+14462  pop      cx
+14463  stc      
+14464  ret      
+14465  cmp      cl, 0x11
+14468  jae      0x14477
+1446a  mov      ax, 0x8000
+1446d  rol      ax, cl
+1446f  test     word ptr [0xa08], ax
+14473  je       0x14462
+14475  jmp      0x1445b
+14477  push     cx
+14478  sub      cl, 0x10
+1447b  mov      ax, 0x8000
+1447e  rol      ax, cl
+14480  pop      cx
+14481  test     word ptr [0xa0a], ax
+14485  je       0x14462
+
+File offset 0x480
+00480  mov      byte ptr [0x4c0], 0x19
+00485  cld      
+00486  xor      ax, ax
+00488  mov      ds, ax
+0048a  mov      es, ax
+0048c  mov      ss, ax
+0048e  mov      sp, 0x124
+00491  call     0x1703
+00494  mov      byte ptr [0x125], 0x14
+00499  or       bp, bp
+0049b  je       0x4b2
+0049d  call     0xffffe3a0
+004a0  mov      ax, 0x8000
+004a3  call     0xffffe3da
+004a6  mov      ax, 0
+004a9  mov      cx, 0xdd4e
+004ac  call     0xffffe4ab
+004af  call     0x6a8
+004b2  xor      ax, ax
+004b4  mov      cx, 0x3f00
+004b7  mov      di, 0x8000
+004ba  rep stosw word ptr es:[di], ax
+004bc  mov      di, 0x58
+004bf  mov      cx, 0x3fc8
+004c2  or       bp, bp
+004c4  jne      0x4cf
+004c6  rep stosw word ptr es:[di], ax
+004c8  mov      byte ptr [0xc20], 0xdd
+004cd  jmp      0x4df

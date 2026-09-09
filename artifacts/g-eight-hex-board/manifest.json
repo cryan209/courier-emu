@@ -1,0 +1,10 @@
+{
+  "hardware_tested": true,
+  "verified": "All five replies, exact queue frames and six-byte head/tail advances; AT responds after.",
+  "files_sha256": {
+    "hardware.json": "d3a9218ed5d05dd8c302a8eba47c1f62eaa46d3bd5b12ad40d0c4eec743afba3",
+    "drainer-disassembly.txt": "dae5e3602c437bb9cf359713bb332e892e1546590df4801a3a7ef13cc3530cdb",
+    "capture.py": "92e707e5b832e0f720215b5dcca0c1c77c99ec222d469ef9e7007e19e4e5e966",
+    "transcript.json": "067d0b6cc0bad784d8cca4e37550c24c98a98d88f949a0bf7f4064ebca5740eb"
+  }
+}

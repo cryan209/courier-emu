@@ -1,0 +1,97 @@
+{
+  "started_utc": "2026-09-09T03:47:12.034072+00:00",
+  "hardware_tested": true,
+  "device": "/dev/cu.usbserial-11420",
+  "steps": [
+    {
+      "command": "ATG00620000",
+      "response": "ATG00620000\r\r\nOK\r\n",
+      "queue_tail": 422,
+      "queue_head": 422,
+      "queue_hex": "00ff0f0000003f0100ff6200000000000000000000000000000000000000000000000000000000000000000000000000",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "69",
+        "5A": "00",
+        "5C": "15",
+        "5E": "00"
+      }
+    },
+    {
+      "command": "ATG00070000",
+      "response": "ATG00070000\r\r\nOK\r\n",
+      "queue_tail": 428,
+      "queue_head": 428,
+      "queue_hex": "00ff0f0000003f0100ff6200000000ff0700000000000000000000000000000000000000000000000000000000000000",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "command": "ATG002D0000",
+      "response": "ATG002D0000\r\r\nOK\r\n",
+      "queue_tail": 434,
+      "queue_head": 434,
+      "queue_hex": "00ff0f0000003f0100ff6200000000ff0700000000ff2d00000000000000000000000000000000000000000000000000",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "command": "ATG00620000",
+      "response": "ATG00620000\r\r\nOK\r\n",
+      "queue_tail": 440,
+      "queue_head": 440,
+      "queue_hex": "00ff0f0000003f0100ff6200000000ff0700000000ff2d00000000ff6200000000000000000000000000000000000000",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "69",
+        "5A": "00",
+        "5C": "15",
+        "5E": "00"
+      }
+    },
+    {
+      "command": "ATG0007A55A",
+      "response": "ATG0007A55A\r\r\nOK\r\n",
+      "queue_tail": 446,
+      "queue_head": 446,
+      "queue_hex": "00ff0f0000003f0100ff6200000000ff0700000000ff2d00000000ff6200000000ff07005aa500000000000000000000",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    }
+  ],
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "before": {
+    "queue_tail": 416,
+    "queue_head": 416,
+    "queue_hex": "00ff0f0000003f0100000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "ports": {
+      "1C": "FD",
+      "1E": "FF",
+      "58": "08",
+      "5A": "52",
+      "5C": "34",
+      "5E": "12"
+    }
+  },
+  "responds_after": true
+}
