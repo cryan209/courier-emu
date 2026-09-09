@@ -382,3 +382,38 @@ connection".  So the I-modem's symmetric mode is not doing something V.91 does
 not cover; it is doing the thing V.91 would later describe, two years before
 V.91 was approved (May 1999) and with no recommendation to cite in the
 meantime.  Which is why it shipped as an S58 bit with a vendor name.
+
+## The ISDN modes are not in the DSP
+
+Worth checking rather than assuming, because the seven images are the whole
+story: sorted by file offset they tile `90d60`-`aab0c` end to end, with gaps of
+0, 2, 6, 6, 6 and 8 bytes - paragraph alignment, nothing more.
+
+```
+idx  6  090d60-097a0a      idx 10  09ceb0-0a0990   (gap 2)
+idx  7  097a10-09a27a  (6) idx 11  0a0990-0a868a   (gap 0)
+idx  8  09a280-09b588  (6) idx  5  0a8690-0aab0c   (gap 6)
+idx  9  09b590-09ceae  (8)
+```
+
+52,936 words, no room left over, and the loader's segment table at `cs:d6ca`
+covers exactly indices 5 to 11.  So there is no eighth image hiding anywhere,
+and every one of the seven is requested from analog-modem code: the
+V.34/V.FC chooser at `ae2cb`/`ae2e5`, the Class 2 fax handlers, and the routine
+that loads the PCM pair.  No `mov [e738], n` sits in the V.110/V.120/X.75
+paths.
+
+The content agrees.  V.110 is bit-stuffing into 80-bit frames and V.120/X.75
+are HDLC - framing and rate adaption, not modulation - and none of the seven
+images carries an HDLC CRC table: the CCITT polynomial `1021` appears once in
+image 6 and once in image 8, `8408` twice in 6 and twice in 11, which is noise
+at these sizes, and `7e7e` never.  On a 386 board with an ISDN front end and
+two 16550s ([isdn.py](../courier_emu/isdn.py)), a B-channel carrying V.120 or
+X.75 needs a serial controller, not a datapump.
+
+So the division is clean: the DSP does the **analog** work - V.34, V.FC, fax -
+plus the one digital-side datapump that genuinely needs a datapump, the PCM
+image that sends x2 into the B channel.  The `/DIGITAL` result codes
+(`300/DIGITAL` through `64000/DIGITAL`, and `112000`/`128000` for bonded
+channels) are the rate-adapted and clear-channel ISDN calls, and those never
+reach the DSP at all.
