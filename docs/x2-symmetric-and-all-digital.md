@@ -161,14 +161,37 @@ symmetric**."  So symmetric is a third role both ends run, not a client or a
 server variant - which is why it needs its own bit and its own
 `x2symmetric` modulation code in the RADIUS dictionary.
 
-One correction to the section above.  The HiPer DSP text for
-`excessiveHFAttenuation` reads: "Some portion of the channeling is analog for
-x2 symmetric and V.90 all-digital modes."  So symmetric/all-digital do not
-require an end-to-end digital path with no analog anywhere; high-frequency
-attenuation on the remaining analog portion is still what fails them.  The
-claim to keep is the narrower one: 64000 is the digital-side rate, and the
-analog **client** Courier cannot reach it because its own DAA and codec are an
-analog conversion.
+One correction to the section above, and a correction to that correction.
+The HiPer DSP text for `excessiveHFAttenuation` reads: "Some portion of the
+channeling is analog for x2 symmetric and V.90 all-digital modes."  That is
+not saying the data path is partly analog.  It is the **negotiation** that is
+analog-domain: V.8 call indicate and menu exchange, then the INFO0/INFO1A
+sequences, are audio-band signals carried through the channel before either
+end switches to PCM.  Symmetric and all-digital modes still run that dance, so
+high-frequency attenuation on the path can still kill the connection even when
+both ends are digitally attached - which is exactly what that diagnostic is
+for.
+
+The image agrees.  The 403 carries a whole analog-negotiation report block at
+`49f39`, distinct from anything in the analog builds:
+
+```
+49f39  Remote X2/V90 INFO0 is:
+49f6b  Remote VFC/V34 INFO0 is :
+49f9a  Main V34/X2/V90 INFO0 is:
+49fc8  INFO0 is absent
+49fde  V.8 octets Main  :
+4a00a  V.8 octets Remote:
+```
+
+Both sides' V.8 octets, and INFO0 split by scheme - and
+`courier_emu.datapumps.v90_info1a_writer` finds the routine that builds INFO1A.
+So the digital end of an x2 call is running the same audio-band V.8/INFO
+opening as the analog end; it is the data phase that differs.
+
+The claim to keep from the section above is the narrower one: 64000 is the
+digital-side rate, and the analog **client** Courier cannot reach it because
+its own DAA and codec are an analog conversion.
 
 ### What that means for the ISDN image here
 
