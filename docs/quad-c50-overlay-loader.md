@@ -407,3 +407,42 @@ recognise, or largely generated.
 **The fastest way to settle `0xc800`** is the same search that excluded V.91:
 given the USR DIL's actual values, or its offset and extent within id 8, it can
 be searched for across the Quad images directly and either found or ruled out.
+
+### Searching for the packed Ja: inconclusive
+
+The USR DIL and the V.91 default are both available as packed Ja blobs (258 and
+164 bytes). Searched across all eight Quad images, the whole `QR060103`
+payload, 302 id 8, and the whole `IDSDL302.ROM`, as-is, word-swapped, and
+bit-shifted by 1-7 in both directions:
+
+Best match anywhere is **10 bytes**, and every hit lands at pattern offset
+`0x24` (USR) or `0x13` (V.91) — which is the run of zero bytes in each blob.
+Those are artifacts, not matches. There is no real match in any image.
+
+Critically that includes **302 id 8 itself**, where the USR DIL is known to
+live. So the negative is a property of the method, not of the Quad: the Ja
+carries a CRC, not all of its bits are covered by that CRC, and USR builds the
+CRC as it transmits. The blob is therefore the *wire* form, assembled at
+transmit time, and need not exist as those bytes anywhere in flash. A literal
+byte search cannot find it.
+
+Decoding the Ja instead did not work either:
+
+- No fixed-width 7- or 8-bit unpacking of the V.91 blob reproduces the known
+  Table 5 training sequence — tried both bit orders, both value orders, and
+  every start offset up to 320 bits.
+- `SP = 0x0FC0` and `TP = 0x0FFF` never appear as adjacent 12-bit fields in any
+  of the four bit/value orderings. `SP` alone appears at bits 50, 52, 221 and
+  227 depending on ordering, with nothing consistent following.
+
+So the packing is not a simple field array, and USR's training symbols cannot
+be recovered from its blob here to search for separately.
+
+**Status:** V.91 stays excluded, on the Table 5 constants and the 1998 build
+stamp. The USR DIL test is inconclusive — it neither confirms nor rules out
+`0xc800`, because it cannot be run in this form.
+
+What would settle it: the USR DIL's *unpacked* parameters, the equivalent of
+Table 5/V.91; or the offset and extent of the DIL code and data inside 302
+id 8, so that region can be compared directly against the Quad images instead
+of searching for wire bytes that were never stored.
