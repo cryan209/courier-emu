@@ -529,3 +529,59 @@ real call enters, and whether `1cde` ever appears in the slot.
 That is worth doing for its own sake, independently of this gate: it gives the
 first direct comparison between the board's supervisor state sequence and the
 emulator's.
+
+## The state trajectory, measured
+
+Sampled `[0x0192]`, `[0x03ff]`, `[0x0403]` and the seven gate cells
+continuously across an `ATDT9099;` dial — command mode, line seized, no
+handshake. Fifteen samples over 29 seconds, line released, board responsive.
+
+| phase | `[0x0192]` | `[0x03ff]` | gate cells |
+|---|---|---|---|
+| idle, x2 | `0110` | `0000` | all zero |
+| off-hook, x13 over 20 s | `5742` | `0000` | all zero |
+| after release | `0110` | `0000` | all zero |
+
+**The state pointer moves.** This is the first direct observation of the
+board's supervisor state machine, and it gives a baseline the emulator can be
+compared against: a 403 dial should reach `5742` and return to `0110`.
+
+`[0x03ff]` stays `0000` throughout, so the router is never installed on this
+path — consistent with the gate cells never moving, and the same limitation as
+every other measurement here. A semicolon dial reaches exactly one extra state.
+
+### One correction to how these values were printed
+
+The run labelled each pointer with a linear address computed as `a4e2:value`,
+on the strength of the installers writing `a4e2` offsets. That holds for the
+idle state — `a4e20 + 0110 = a4f30` disassembles as real code — but **not** for
+`5742`, whose implied `aa562` is garbage. So `[0x0192]` does not always carry
+an `a4e2` offset, the segment varies with the state, and the linear column in
+the capture should be read as a hypothesis per row rather than a fact. The
+observed values and their transitions are unaffected.
+
+### A link the trajectory turned up
+
+The idle handler at `a4f30` begins:
+
+```text
+a4f30  popaw
+a4f31  shl  bx, 1
+a4f33  call word ptr cs:[bx + 0x21ff]     ; table at a701f
+```
+
+That table has 24 entries, and its filler — repeated at entries 3, 6-10, 12,
+14, 16, 20, 22-23 — is `0x1960`, `a6780`. **`0x1960` is the same filler that
+occupies entries 3, 5 and 10 of the handler table at `0xa669b`**, the table
+holding the router. Two tables sharing a reject stub belong to one command
+system.
+
+So the `a669b` family is part of the live command dispatch after all, which is
+the first positive evidence for it rather than an absence of negative evidence.
+The router's own offset `0x1cde` is not among these 24 entries, so this is not
+yet the dispatcher that reaches it — but it is the right neighbourhood, and
+`a701f` is a better place to search from than anywhere this document has
+looked so far.
+
+[Capture](../artifacts/state-trajectory-403/trajectory.json),
+[script](../artifacts/state-trajectory-403/trajectory.py).
