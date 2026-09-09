@@ -370,79 +370,69 @@ What the measurements support is only the shape: 1,145 words, multiply density
 block), and a branch into the shared core. That is a small decision-and-mapping
 layer. Which mapping it implements needs the code read, not measured.
 
-### The V.90A DIL does not appear in the Quad
+### The V.PCM datapump is absent from the Quad
 
-The analog Courier's V.90A overlay (302 id 8) carries the USR DIL as code and
-data. Tested against every Quad image by longest-common-byte-run (minimum 8
-bytes):
+[vpcm-datapump.md](vpcm-datapump.md) already identifies 302 overlay 8 as **the
+V.PCM datapump — x2 first, with V.90 layered onto it** — and locates its DIL
+descriptor by the fixed SP and TP training patterns, packed LSB-first, 66 bits
+each. Verified here against `IDSDL302.ROM`, the block sits at file offsets:
 
-| Quad dest | shared runs | total | longest run |
-| --- | ---: | ---: | ---: |
-| `0xa180` | 54 | 599 B | 59 B |
-| `0x8000` resident | 41 | 376 B | 14 B |
-| `0xb400` | 20 | 211 B | 28 B |
-| `0xc300`/2795 | 10 | 117 B | 25 B |
-| `0xd900` | 7 | 62 B | 14 B |
-| `0xc800` | **3** | **26 B** | **10 B** |
-| `0x9440` | 2 | 18 B | 10 B |
-| `0xc300`/1627 | 1 | 10 B | 10 B |
+| Field | Offset | Bytes |
+| --- | --- | --- |
+| SP pattern | `0x410c2` | `55 4b 2d b5 b4 d2 4a 2b 01` |
+| TP pattern | `0x410cc` | `00 21 84 10 22 84 10 42 00` |
+| H1-H8 | `0x410d6` | `0a` x 8 |
+| assembler `splk *+,#00c5` / `#4141` | `0x410ec` | N = 197, LSP = LTP = 66 |
 
-Nothing DIL-sized anywhere. The largest total is with `0xa180`, which is the
-image that matches the *PCM core*, so those fragments are shared datapump code
-rather than DIL. Against `0xc800` there are three runs totalling 26 bytes, the
-longest 10 — noise.
+All four are consecutive and all four fall inside overlay 8's flash range
+(`0x3fdd0..0x435bc`), as that document says.
 
-So the Quad carries no byte-level trace of the analog side's DIL handling. That
-is consistent with the V90A/V90D split — impairment *learning* is the client's
-job — but it is not a confirmation, because the server still has to transmit a
-DIL sequence, and no candidate for one has been found on the Quad side either.
+**None of them appears in `QF060003` or `QR060103`** — searched as-is, word
+swapped, and bit-shifted by 1-7 in both directions. Not the SP pattern, not the
+TP pattern, not the H block, not the assembler's `N`/`L` signature.
 
-I could not independently locate the DIL within id 8. Scanning it for a
-permutation-like table (values below 160, at least 85% distinct across a
-48-entry window) finds **no region at all**, in either byte or word units, and
-its unanchored regions are mostly code the anchoring heuristic missed rather
-than data. So the DIL there is either encoded in a form this scan does not
-recognise, or largely generated.
+That converges with the block-hash result above, which found 302 id 8 matching
+0.0-0.2% of every Quad image and a longest common run of 10 bytes. Two
+independent methods, same answer: **the Quad does not carry the analog
+Courier's V.PCM datapump at all.**
 
-**The fastest way to settle `0xc800`** is the same search that excluded V.91:
-given the USR DIL's actual values, or its offset and extent within id 8, it can
-be searched for across the Quad images directly and either found or ruled out.
+Because [vpcm-datapump.md](vpcm-datapump.md) is careful that nothing in these
+images separates an x2 descriptor from a V.90 one, the correct statement is the
+broader one: what is missing from the Quad is the whole V.PCM page, covering
+both. That is consistent with the Quad being the *server* end of both schemes
+while the Courier is the client end, and it does not depend on attributing
+overlay 8 specifically to V.90.
 
-### Searching for the packed Ja: inconclusive
+It also explains an earlier failure here. Scanning id 8 for a permutation-like
+training table found nothing, which looked like a limitation of the scan; that
+document records the reason — **the training UCode sequence is not stored in
+any image, in bytes or either word order. It is generated rather than
+tabulated.** The null result was correct.
 
-The USR DIL and the V.91 default are both available as packed Ja blobs (258 and
-164 bytes). Searched across all eight Quad images, the whole `QR060103`
-payload, 302 id 8, and the whole `IDSDL302.ROM`, as-is, word-swapped, and
-bit-shifted by 1-7 in both directions:
+### The packed Ja blobs: why searching for them could not work
 
-Best match anywhere is **10 bytes**, and every hit lands at pattern offset
-`0x24` (USR) or `0x13` (V.91) — which is the run of zero bytes in each blob.
-Those are artifacts, not matches. There is no real match in any image.
+The USR DIL and the V.91 default are also available as packed Ja blobs (258 and
+164 bytes). Searched across all eight Quad images, the whole `QR060103` payload,
+302 id 8 and the whole `IDSDL302.ROM`, as-is, word-swapped and bit-shifted 1-7
+each way, the best match anywhere is **10 bytes**, and every hit lands on the run
+of zero bytes at pattern offset `0x24` (USR) or `0x13` (V.91). Artifacts.
 
-Critically that includes **302 id 8 itself**, where the USR DIL is known to
-live. So the negative is a property of the method, not of the Quad: the Ja
-carries a CRC, not all of its bits are covered by that CRC, and USR builds the
-CRC as it transmits. The blob is therefore the *wire* form, assembled at
-transmit time, and need not exist as those bytes anywhere in flash. A literal
-byte search cannot find it.
+That includes 302 id 8, where the descriptor demonstrably *is*. The blobs are
+the wire form: the Ja carries a CRC, not all of its bits are covered by it, and
+USR builds the CRC as it transmits, so those exact bytes need never be stored.
+The stored form is the SP/TP/H/REF field block above, which is what to search
+for — and which does find it.
 
-Decoding the Ja instead did not work either:
+Nor could the blobs be decoded here: no fixed-width 7- or 8-bit unpacking of the
+V.91 blob reproduces its Table 5 training sequence in either bit order, either
+value order, at any start offset to 320 bits, and `SP`/`TP` never appear as
+adjacent 12-bit fields.
 
-- No fixed-width 7- or 8-bit unpacking of the V.91 blob reproduces the known
-  Table 5 training sequence — tried both bit orders, both value orders, and
-  every start offset up to 320 bits.
-- `SP = 0x0FC0` and `TP = 0x0FFF` never appear as adjacent 12-bit fields in any
-  of the four bit/value orderings. `SP` alone appears at bits 50, 52, 221 and
-  227 depending on ordering, with nothing consistent following.
+### Status of `0xc800`
 
-So the packing is not a simple field array, and USR's training symbols cannot
-be recovered from its blob here to search for separately.
-
-**Status:** V.91 stays excluded, on the Table 5 constants and the 1998 build
-stamp. The USR DIL test is inconclusive — it neither confirms nor rules out
-`0xc800`, because it cannot be run in this form.
-
-What would settle it: the USR DIL's *unpacked* parameters, the equivalent of
-Table 5/V.91; or the offset and extent of the DIL code and data inside 302
-id 8, so that region can be compared directly against the Quad images instead
-of searching for wire bytes that were never stored.
+Still unidentified, but better bounded. It is one of three alternatives for a
+single mode slot; it shares 0.0% with every other Quad image and with 302
+overlay 8; and the Quad carries no V.PCM datapump for it to be a revision of.
+So it is Quad-original code rather than a descendant of anything in this tree,
+which is what a server-side downstream mapping would be. Naming it still needs
+the code read.
