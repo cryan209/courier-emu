@@ -193,31 +193,54 @@ The claim to keep from the section above is the narrower one: 64000 is the
 digital-side rate, and the analog **client** Courier cannot reach it because
 its own DAA and codec are an analog conversion.
 
-### What that means for the ISDN image here
+### The I-modem image says it in its own help text
 
-It reframes [isdn-vs-analog-dsp.md](isdn-vs-analog-dsp.md)'s last finding.
-The ISDN Courier's overlay 8 shares only ~22% of its bytes with the analog
-overlay 8 - the same 22% against every analog build from 2.1.1 to 2.3.33 -
-and is 7,350 words (302) or 7,498 words (403) against the analog's 6,197.
-That is not a fork that drifted: the two images are doing different jobs, the
-analog one receiving PCM and the ISDN one sending it.
+`Ie030002.nac` - the one image in this tree that identifies itself as
+`I-Modem` - replaces S58 outright.  Its help block reads:
 
-Two things still do not follow from the static image, and should not be
-asserted until traced:
+```
+S58 x2 Mode and Remote Server Xmit
+   1   x2
+   2   server mode
+   4   Force x2 A-law mode
+   8   symmetric mode
+  16   -6dbm constellation
+  32   V.90
+```
 
-* **The role is not selected in the supervisor.** The x2 setup path is the
-  same code in every image - one capability builder matching the same 26-byte
-  pattern at `8f43` (403), `8eb3` (302), `25112` (2.1.1), `252c3` (2.2.05),
-  `218db` (2.3.31), each followed by a single `mov ax, 70`.  The two
-  undocumented S58 bits it reads (bit 4 -> capability `0x0200`, bit 16 ->
-  clears `0x0400`) are present in all of them, and S76 does not exist on this
-  product - the Courier has no help entry for it, and its S58 help blanks the
-  text for bits 4, 8, 16, 64 and 128.  If those bits carry the role, the
-  difference is in their *value*, not in the code.
-* **The 403 still carries client-side diagnostics** - `Remote modem is an x2
-  server`, `Remote modem supports x2`, `V.90 Server/client pair established`
-  at `4a098` - beside the failure enum at `1c246` that only the ISDN images
-  have (`Remote modem is not a Server`, `Multiple CODECs in channel`,
-  `Incompatible versions`).  The 302 carries only the failure enum.  Whether
-  the 403 can actually train as a client, or merely inherited the strings,
-  is open.
+against the analog Courier's S58, which is `1 x2`, `2 BLER monitor`,
+`32 V.90`, with bits 4, 8, 16, 64 and 128 present but with their text blanked.
+So on the I-modem the same register carries **server mode** and **symmetric
+mode** as named bits - and there is no client-mode bit at all, matching the
+Quad Modem manual's "does not support client mode" for the server-role
+products.  Bit 4 "Force x2 A-law mode" and bit 16 "-6dbm constellation" are
+the server-side controls the analog build leaves unnamed; the latter is the
+Total Control MIB's `hdmScHighPowerConst` (S76.7) under another name.
+
+Its result codes follow: alongside the usual `.../x2` and `.../V90` ladders it
+carries a `/DIGITAL` set - `56000/DIGITAL`, `56000/ARQ/DIGITAL`,
+`64000/DIGITAL`, `64000/ARQ/DIGITAL`, and `300/DIGITAL` upward - plus
+`TURBO PPP`, `112000` and `128000` for bonded B channels.
+
+What is still open on the I-modem image: whether V.90's symmetric
+(all-digital, DDPCM) role is present as well.  S58 bit 8 is named "symmetric
+mode" under a heading that says x2, and the I-modem's S81/S82 are X.75 layer 2
+and layer 3, not the Total Control V.90 register.  Its DSP overlay set has
+not been extracted either - the overlay-table segment compares this tree's
+reader looks for are absent from that loader, so the comparison in
+[isdn-vs-analog-dsp.md](isdn-vs-analog-dsp.md) has not yet been run against
+the real ISDN image.
+
+### What the analog ID_SDL ROMs show
+
+The images this tree calls 302 and 403 are **analog** Courier V.Everything
+ROMs with the ID_SDL extended-help build (supervisor dates 03/13/98 and
+04/30/98), not ISDN.  What they add over the stock `MAIN_*.XMF` payloads is
+diagnostics: the failure enum at `1c246` (`Remote modem is not a Server`,
+`Multiple CODECs in channel`, `Incompatible versions`, `Channel is x2-capable
+but feature not installed`) and, in the 403 only, the negotiation report block
+at `49f39`.  Those are a client's view of a failed x2 call, which is what a
+V.Everything is.  The x2 setup path itself is identical in all of them - one
+capability builder matching the same 26-byte pattern at `8f43` (403), `8eb3`
+(302), `25112` (2.1.1), `252c3` (2.2.05), `218db` (2.3.31), each followed by a
+single `mov ax, 70`.
