@@ -4,8 +4,15 @@ from dataclasses import asdict, dataclass
 import math
 
 
-DAA_SAMPLE_RATE = 9_600
-DAA_FRAME_SAMPLES = 960
+# The line's own rate. 8 kHz is the PSTN's, the rate the exchange, the SIP leg
+# and G.711 all already speak, and it is the one rate in this harness that is
+# not a property of any part on the board: the loop is analogue, and the only
+# sampling that physically happens is the AC01's, at whatever the firmware has
+# programmed it to (7,200 Hz on a dial). Carrying the line at 9,600 meant
+# converting 8,000 -> 9,600 -> 7,200 for audio that started and ended somewhere
+# else, and every conversion is a filter the tone detectors see through.
+DAA_SAMPLE_RATE = 8_000
+DAA_FRAME_SAMPLES = 800          # still one 100 ms frame
 DAA_LINE_STATES = ("disconnected", "quiet", "dial-tone", "ringing")
 
 # The harness has no wall clock; its only time base is the 80186 instruction

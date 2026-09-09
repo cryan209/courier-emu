@@ -89,3 +89,42 @@ Nothing in the client image implements either mode:
 
 The emulator should therefore keep 64000 as a reportable code and out of the
 negotiable rate mask, which is what the firmware itself does.
+
+## The server is not the same machine
+
+Nothing on the server side shares the Courier's silicon. Measured over the
+archives in `docs/x2/`, counting the C5x `call`/`b` encodings (`80 7a`,
+`80 79`) that saturate the Courier's DSP images:
+
+| image | `call` /KB | `b` /KB | what it is |
+|---|---:|---:|---|
+| `MAIN_2.3.31.XMF` (Courier) | 1.82 | 0.62 | 80C186EB supervisor + TI C5x DSP |
+| `Ie030002.nac` (ISDN Courier) | 1.64 | 0.57 | same pair |
+| `LE030303.NAC` (NETServer) | 0.01 | 0.02 | i386 + Ready Systems VRTX |
+| `DP030105.NAC` (Dual T1/PRI) | 0.07 | 0.05 | i386 (`RTSCOPE I386`) + VRTX |
+| `hd030512.dmf` (HiPer DSP) | 0.02 | 0.02 | PPC403, payload compressed |
+
+The NETServer and T1/PRI NACs are Livingston-lineage i386 boards - they still
+carry `Copyright 1989…1992 Livingston Enterprises` beside the USR notice - and
+carry no datapump at all.  The HiPer DSP card is a PowerPC: its `.dmf` opens
+with a PPC prologue (`9421 fff0 / 7c08 02a6 / 93e1 000c`), and its own release
+notes print `!!-----> SDL2 for the PPC403 <-------!!` at the download prompt
+and list the four images as "Boot Block, Board Manager, ACP, and DSP".  Only
+the first of those is readable here; the rest of the `.dmf` is compressed at
+7.94 bits/byte, so the modem DSP's instruction set is not determined by these
+archives.
+
+What *is* shared is the supervisor lineage above the DSP.  The HDM MIB's speed
+enum is the Courier's result-code table in the same order:
+
+```
+18 bps33333 … 32 bps57333, 33 bps64000,          <- the x2 block, 15 rates + 64000
+34 bps28000 35 bps29333 36 bps30666 37 bps32000
+38 bps34666 39 bps36000 40 bps38666 41 bps40000
+42 bps58666 43 bps60000 44 bps61333 45 bps62666  <- exactly the V.90-only additions
+```
+
+That is the same partition the Courier's flash uses - x2 codes first, the
+V.90-only rates appended in that order - and the same 15 analog x2 rates the
+mask at `8fc9` covers.  The rate tables and the S-register/AT surface are
+common; the processor and the datapump underneath them are not.

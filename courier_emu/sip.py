@@ -135,6 +135,13 @@ class PolyphaseResampler:
 
     def convert(self, samples) -> list[int]:
         """Take input samples and return every output sample now determined."""
+        if self.up == self.down == 1:
+            # Equal rates: the filter would be a 16-tap low-pass at 0.92 of
+            # Nyquist and a group delay, applied to audio that is already at
+            # the rate asked for. Now that the line and the SIP leg are both
+            # 8 kHz this is the common case, and a conversion nobody asked for
+            # is a filter the tone detectors see through.
+            return [int(sample) for sample in samples]
         self._buffer.extend(float(sample) for sample in samples)
         result: list[int] = []
         newest = self._origin + len(self._buffer) - 1

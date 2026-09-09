@@ -6,13 +6,13 @@ import struct
 import time
 from typing import Any
 
-from .daa import DAA_FRAME_SAMPLES, INSTRUCTIONS_PER_MS
+from .daa import DAA_FRAME_SAMPLES, DAA_SAMPLE_RATE, INSTRUCTIONS_PER_MS
 
 
 # One exchange carries one 100 ms ASIC frame, which is the same unit the DAA
 # renders into the C52 receive queue.
 LINE_FRAME_SAMPLES = DAA_FRAME_SAMPLES
-LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // 9_600
+LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // DAA_SAMPLE_RATE
 LINE_FRAME_INSTRUCTIONS = LINE_FRAME_MS * INSTRUCTIONS_PER_MS
 
 # Each side blocks until the far end delivers its frame, which is what keeps

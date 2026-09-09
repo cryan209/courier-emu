@@ -29,6 +29,8 @@ across several runs are the ones worth believing.
 """
 from __future__ import annotations
 
+from .daa import DAA_SAMPLE_RATE
+
 from collections import deque
 from dataclasses import dataclass, field
 import json
@@ -44,8 +46,8 @@ MAILBOX_PORTS = (*TAG_PORTS, *VALUE_PORTS)
 # The DSP dispatcher's own bound: `sub #7f ; retc gt`.
 MAX_TAG = 0x7F
 
-# The codec rate the resident service slot runs at.
-LINE_RATE = 9_600
+# The line rate, which is the DAA's - see daa.DAA_SAMPLE_RATE.
+LINE_RATE = DAA_SAMPLE_RATE
 
 # Enough samples to resolve a DTMF pair; a real digit is far longer.
 DEFAULT_WINDOW = 512

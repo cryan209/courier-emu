@@ -51,7 +51,7 @@ DTMF_KEYS = "123A456B789C*0#D"
 # 10 ms of the 9.6 kHz codec stream. Three agreeing blocks accept a digit,
 # which is 30 ms - inside the 40 ms minimum duration a receiver must accept
 # and well under the 70 ms the Courier's own S11 default emits.
-DTMF_BLOCK_SAMPLES = 96
+DTMF_BLOCK_SAMPLES = 80          # 10 ms at DAA_SAMPLE_RATE
 # The exchange's own timer granularity, in samples. A caller may hand over any
 # block length; internally it is walked in steps this size so a long block
 # still crosses the states inside it in order.
@@ -592,8 +592,21 @@ class LineExchange:
             if period and index % period >= on_samples:
                 result.append(0)
                 continue
+            # TONE_LEVEL is the level of the *tone*, not of each component, so
+            # the components are scaled to hold total power constant. Applying
+            # it per component made a two-frequency dial tone 6 dB louder at the
+            # peak than a one-frequency one, which confounded every comparison
+            # between them: the 350+440 runs read peak 7,878 against 400 Hz's
+            # 3,909 for tones a real loop would present at the same loudness.
+            #
+            # Constant power rather than constant peak, because a tone's level
+            # is specified as power. Real per-component levels are country
+            # specific - US precise is about -13 dBm a component - and that is
+            # not modelled here; this only stops the component count from
+            # setting the loudness.
+            scale = TONE_LEVEL / math.sqrt(len(frequencies))
             value = sum(
-                TONE_LEVEL * math.sin(2 * math.pi * frequency * index / self.sample_rate)
+                scale * math.sin(2 * math.pi * frequency * index / self.sample_rate)
                 for frequency in frequencies
             )
             result.append(max(-32_768, min(32_767, round(value))))

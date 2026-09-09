@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .codec import CodecBringUp
-from .daa import CourierDaa, DAA_FRAME_SAMPLES, RingSource
+from .daa import CourierDaa, DAA_FRAME_SAMPLES, DAA_SAMPLE_RATE, RingSource
 from .dsp import NativeC5x
 from .ata import SipLine
 from .exchange import LineExchange
@@ -30,7 +30,7 @@ DSP_WINDOW_STRIDE = 2
 # exchange and the peer link all speak it. The line itself has no sample rate,
 # so this is a representation, not a measurement - which is exactly why it must
 # not leak into the DSP. See docs/ac01-codec-protocol.md.
-LINE_RATE = 9_600
+LINE_RATE = DAA_SAMPLE_RATE
 # C52 instructions per 80186 instruction: the clock ratio times the 80186's
 # cycles per instruction, because the C52 is single-cycle and the 186 is not.
 #
@@ -499,6 +499,9 @@ class CourierDspBridge:
         # Band-limited rather than a hold: the modem's transmit is tones and
         # modulation, and the images a hold leaves at 6:5 land inside the
         # band the far end demodulates in.
+        # Both are 8 kHz now, and PolyphaseResampler passes equal rates
+        # through untouched, so the SIP leg costs no conversion at all. It used
+        # to cost two, out and back, for audio that was 8 kHz at both ends.
         self._sip_tx_rate = PolyphaseResampler(LINE_RATE, 8_000)
         self._sip_rx_rate = PolyphaseResampler(8_000, LINE_RATE)
         self._line_to_codec = LineToCodec(LINE_RATE)
@@ -598,11 +601,11 @@ class CourierDspBridge:
         }
         for frequency in (980, 1180, 1300, 1875, 2100):
             cosine = sum(
-                sample * math.cos(2 * math.pi * frequency * index / 9600)
+                sample * math.cos(2 * math.pi * frequency * index / LINE_RATE)
                 for index, sample in enumerate(samples)
             )
             sine = sum(
-                sample * math.sin(2 * math.pi * frequency * index / 9600)
+                sample * math.sin(2 * math.pi * frequency * index / LINE_RATE)
                 for index, sample in enumerate(samples)
             )
             status[f"hz_{frequency}"] = round(math.hypot(cosine, sine) / len(samples))
@@ -616,11 +619,11 @@ class CourierDspBridge:
             scores = {}
             for frequency in fsk_symbols:
                 cosine = sum(
-                    sample * math.cos(2 * math.pi * frequency * index / 9600)
+                    sample * math.cos(2 * math.pi * frequency * index / LINE_RATE)
                     for index, sample in enumerate(symbol)
                 )
                 sine = sum(
-                    sample * math.sin(2 * math.pi * frequency * index / 9600)
+                    sample * math.sin(2 * math.pi * frequency * index / LINE_RATE)
                     for index, sample in enumerate(symbol)
                 )
                 scores[frequency] = 2 * math.hypot(cosine, sine) / len(symbol)
@@ -659,11 +662,11 @@ class CourierDspBridge:
             scores: list[float] = []
             for frequency in (1300, 1875, 2100):
                 cosine = sum(
-                    sample * math.cos(2 * math.pi * frequency * index / 9600)
+                    sample * math.cos(2 * math.pi * frequency * index / LINE_RATE)
                     for index, sample in enumerate(samples)
                 )
                 sine = sum(
-                    sample * math.sin(2 * math.pi * frequency * index / 9600)
+                    sample * math.sin(2 * math.pi * frequency * index / LINE_RATE)
                     for index, sample in enumerate(samples)
                 )
                 scores.append(math.hypot(cosine, sine) / len(samples))
@@ -2134,7 +2137,19 @@ class CourierDspBridge:
         return status
 
     def save_tx_pcm(self, path: str) -> int:
+        """Write what the C52 put on the **line**, at the line's rate.
+
+        `line_tx_samples` is at the codec's rate, whatever the firmware has
+        programmed - 7,200 Hz on a dial - and writing it raw made the file's
+        own name a lie: anything measuring it as line audio read every duration
+        short by the ratio. A digit measured at 9,600 against a 7,200 Hz file
+        reads 75% of its true length, which is how a 195 ms digit period was
+        reported as 146 ms and called a 4.5% match.
+        """
         samples = self.core.line_tx_samples()
+        rate = self.codec_sample_rate()
+        if rate and samples:
+            samples = PolyphaseResampler(round(rate), LINE_RATE).convert(list(samples))
         with open(path, "wb") as output:
             for sample in samples:
                 output.write(int(sample).to_bytes(2, "little", signed=True))

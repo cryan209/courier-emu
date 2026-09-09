@@ -50,6 +50,28 @@ def _trace_range(value: str) -> tuple[int, int] | None:
         raise SystemExit(f"invalid --dsp-trace-range: {value!r}")
 
 
+def _dial_tone_for(args) -> str:
+    """Which dial tone the loop carries, defaulting to the image's own tuning.
+
+    The detector lives in the DSP, and the ID_SDL builds shipped a retuned one:
+    stock 7.3.14 / DSP 3.0.13 answers North American 350+440 and never answers
+    425, while ID_SDL 4.03d / DSP 3.1.2 does the opposite, three reports for the
+    matching tone and none for the mismatch either way round
+    (docs/board-verified-403.md). So `auto` presents each image the tone its own
+    detector was tuned for, and an explicit choice still overrides.
+
+    The marker is the `ID_SDL` string, which both ID_SDL images carry and the
+    stock capture does not.
+    """
+    if args.exchange_dial_tone != "auto":
+        return args.exchange_dial_tone
+    try:
+        image = Path(args.image).read_bytes()
+    except OSError:
+        return "us"
+    return "eu" if b"ID_SDL" in image else "us"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
@@ -169,7 +191,7 @@ def main() -> int:
             answer_after_rings=args.exchange_answer_after,
             answer_tone_ms=args.exchange_answer_tone,
             hotline=args.exchange_hotline,
-            dial_tone=DIAL_TONES[args.exchange_dial_tone],
+            dial_tone=DIAL_TONES[_dial_tone_for(args)],
         )
 
     ring = None

@@ -724,11 +724,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--exchange-dial-tone",
-        choices=("us", "nz", "uk", "eu"),
-        default="us",
+        choices=("auto", "us", "nz", "uk", "eu"),
+        default="auto",
         help="what the loop carries as dial tone: us 350+440 (North American "
         "precise), nz 400, uk 350+450, eu 425. A detector tuned for one does "
-        "not answer another, and this board reports Product type Russia",
+        "not answer another, and the ID_SDL builds retuned theirs - auto, the "
+        "default, gives each image the tone its own DSP answers",
     )
     run.add_argument(
         "--exchange-hotline",
