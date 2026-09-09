@@ -157,16 +157,56 @@ and printing each value separated by commas. So `ATY14` reports settings
 **6,5,4,3,2,1** in that order, and the bare `,,,,,` is six failed reads rather
 than six empty values.
 
-## A second writer
+## A second writer: parameter `0x1f2`
 
 `0xf88fc` sets the same derived bits from a byte it reads with `lodsb`, not from
-the EEPROM: bit 7 → `[0x8839] |= 1`, bit 6 and bit 5 → `[0x8838] |= 0x20`,
+the EEPROM: bit 7 → `[0x8839] |= 1`, bits 6 and 5 → `[0x8838] |= 0x20`,
 bit 1 → `[0x862d] |= 0x60`. It uses the cached raw settings `[0x81d2]` and
-`[0x81d3]` as the baseline to fall back to when clearing those same bits.
+`[0x81d3]` as the baseline to fall back to when clearing those same bits, and
+tracks in `[0x882e]` which bits it rather than the EEPROM last set.
 
-So the EEPROM is the provisioning baseline, and something at runtime can raise
-or lower x2/V90, PIAFS and cellular on top of it. What feeds that byte is not
-established here.
+It is one handler in a **message-driven parameter interpreter** occupying
+`0xf3b20..0xfffff` (one segment, base `0xf3b20`, whose first instruction is
+`mov byte [0x9bab], 0`). This is not the AT parser: across a full `ATI7` run
+none of `0xf3d24`, `0xf3e08`, `0xf3bb0`, `0xf784e`, `0xf88a3` or `0xf88db`
+executes even once. AT commands go through the `0xc97a9` dispatcher instead.
+
+| | |
+|---|---|
+| parse cursor | `[0x9c2c]`, shared by the whole interpreter |
+| remaining length | `[0x9c72]` |
+| selected handler | `[0x9c2e]`; `0x0bee` means unsupported |
+| message buffers | `0x9bac` (filled at `0xf4975`, flagged `[0x9bab] = 1`), `0x8d45` |
+| header | eight bytes — `0xf3bad` does `add bx,8` before seeding the cursor |
+| id dispatch | 200-entry table at `cs:0x12e4` = `0xf4e04`, plus explicit ranges |
+
+The identifier arrives in `AX` with `0x8000`/`0x4000` as flags. Most ids index
+the table at `0xf4e04` (152 of its 200 entries are the unsupported stub). The
+feature handler is **not** in that table — it is selected explicitly:
+
+```
+f4889  cmp ax, 0x1f2
+f488c  jne ...
+f488e  mov ax, 0x4dbb          ; 0xf3b20 + 0x4dbb = 0xf88db
+f4891  mov [0x9c2e], ax
+```
+
+So **parameter id `0x1f2` is what raises or lowers x2/V90, PIAFS and cellular**
+at runtime. Its value field is 1..4 bytes: `0xf88e3` reads the length, then a
+ladder of `lodsb` skips forward so that only the **last** byte of the field
+reaches the bit tests. A one-byte field and a four-byte field with the same
+final byte behave identically.
+
+So the EEPROM is the provisioning floor and parameter `0x1f2` is the override on
+top of it — which is why a card can be shipped with setting 2 bit 5 clear and
+still be turned up in the field without rewriting the part.
+
+**The transport underneath is not established.** The interpreter core is
+jump-threaded — no near call and no far pointer targets it — so the binding
+between it and a wire was not recovered. The eight-byte header it skips does
+match the backplane framing in [nmc-sdl-protocol.md](nmc-sdl-protocol.md)
+(`attention`, eight-byte header, body, CRC), which points at the chassis NMC as
+the sender, but that is a structural match and not a measurement.
 
 ## What is not established
 
@@ -177,4 +217,6 @@ established here.
   boot block does.** The 403 part is accepted without complaint, but
   `CHECKSUM_BYTE`/`CHECKSUM_SPAN` being the Quad's layout too is assumed, not
   measured.
-- **What drives `0xf88fc`**, and what consumes settings 5 and 6.
+- **The transport that delivers parameter `0x1f2`.** The handler and its
+  identifier are recovered; what carries the message to the interpreter is not.
+- **What consumes settings 5 and 6.**
