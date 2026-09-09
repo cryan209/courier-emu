@@ -191,3 +191,68 @@ the one that exists.
   there is more handshake than one bit.
 - Which overlay is chosen when, which is the original question and needs the
   supervisor side above.
+
+## Matching the Quad's DSP code against the documented 302 overlays
+
+[dsp-overlays.md](dsp-overlays.md) maps the analog Courier's four C5x images.
+Read out of `IDSDL302.ROM` by `CourierRom.dsp_overlays`:
+
+| id | flash offset | bytes | loads at |
+| ---: | --- | ---: | --- |
+| 5 | `0x29080` | 55,420 | `0x8000` (resident) |
+| 6 | `0x369c0` | 23,020 | `0x9d00` |
+| 7 | `0x3c2f0` | 14,998 | `0xb000` |
+| 8 | `0x3fdd0` | 14,700 | `0xdc00` |
+
+Comparing each against the whole `QF060003` DSP payload by 32-byte block
+hashing, and localising where in the Quad payload the matches land:
+
+| 302 image | shared blocks | % of that image | lands in |
+| --- | ---: | ---: | --- |
+| 5 resident | 13,003 | 23.7% | Quad **resident** (11,624) |
+| 6 | 11,160 | **49.2%** | Quad **overlay store** (11,232) |
+| 7 | 5,797 | **39.5%** | Quad **overlay store** (5,799) |
+| 8 | 28 | **0.2%** | — |
+
+Three things follow.
+
+**The partitioning corresponds.** The 302's resident matches the Quad's
+resident; the 302's overlays match the Quad's overlay store. Resident code sits
+with resident code and overlay code with overlay code, so the two products
+divide their DSP firmware along the same line. That is a stronger statement than
+the string-level lineage in [quad-x2-modem-nac.md](quad-x2-modem-nac.md),
+because it is C5x algorithm code rather than shared text tables.
+
+**Overlay 8 is absent from the Quad.** 28 blocks out of 14,536 is noise.
+[dsp-overlays.md](dsp-overlays.md) identifies overlay 8 as **the V.90 layer**
+and overlay 6 as **the PCM core it runs beside** (citing
+[codec-sample-rates.md](codec-sample-rates.md)). So the Quad carries the analog
+Courier's PCM core and *not* its V.90 layer — even though the Quad's supervisor
+string tables are full of V.90 result codes (`48000/ARQ/V90` and the rest). The
+Quad does V.90; it does not do it with this DSP code.
+
+**The equal-size coincidence is a coincidence.** 302 overlay 7 is 14,998 bytes
+and the Quad's four table records total `0x3a96` = 14,998 bytes. Byte for byte
+against the region immediately after the Quad resident they agree on 2.4%, so
+the two numbers are unrelated.
+
+### This says the load table is incomplete
+
+The 302 overlay 6 matches span `0xd4166..0xdd767` in the Quad payload and the
+overlay 7 matches reach `0xdf88b` — between them nearly the whole
+`0xd3e00..0xdf910` overlay store, spread across it rather than confined to
+`0x3a96` bytes of it. So the store holds substantially more overlay code than
+the five-record table above describes, which is the same shortfall noted there,
+now with positive evidence rather than arithmetic.
+
+Either the table has rows my backward walk did not recognise, or there is more
+than one table — plausibly one per line mode, given `%D0`/`%D1`/`%D2`.
+
+### Limits
+
+These are 32-byte block-hash overlaps, i.e. substantial shared code, **not**
+identical images: at 39–49% the Quad's copies are a revision of the same
+sources, not the same binary. Percentages are of the 302 side. And the
+correspondence is between the 302's *named* overlays and the Quad's *store as a
+whole* — it does not yet say which Quad record is the counterpart of 302
+overlay 6, because the Quad records carry no source offsets.
