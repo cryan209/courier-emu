@@ -14,6 +14,7 @@ from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
 from .exchange import LineExchange
 from .line import LineLink
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
+from .quad_usart import QuadUsart
 from .panel import (
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
@@ -388,6 +389,7 @@ class CourierMachine:
         *,
         port_values: dict[int, int] | None = None,
         runtime_port_values: dict[int, int] | None = None,
+        quad_usart: QuadUsart | None = None,
         uart_ports: set[int] | None = None,
         max_io_events: int = 128,
         fast_delays: bool = True,
@@ -452,6 +454,9 @@ class CourierMachine:
         )
         self.port_values = dict(port_values or {})
         self.runtime_port_values = dict(runtime_port_values or {})
+        # The Quad NAC's chassis link. Absent for every other image, so an
+        # unset value leaves those ports exactly as they were.
+        self.quad_usart = quad_usart
         self.output_latches: dict[int, int] = {}
         # The ROM builds' port 0 control latch, and the speaker hanging off
         # bit 0x40 of it. Powers up clear; the firmware read-modify-writes it.
@@ -1886,6 +1891,11 @@ class CourierMachine:
 
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
+            if self.quad_usart is not None:
+                answered = self.quad_usart.read(port, size)
+                if answered is not None:
+                    self._record_io("in", port, size, answered, current_pc())
+                    return answered
             mask = (1 << (size * 8)) - 1
             if self._serial_started and port == 0 and size == 1:
                 value = self.output_latches.get(0, 0) & ~0x08
@@ -2048,6 +2058,9 @@ class CourierMachine:
             return value
 
         def on_out(_uc: Any, port: int, size: int, value: int, _data: Any) -> None:
+            if self.quad_usart is not None and self.quad_usart.write(port, size, value):
+                self._record_io("out", port, size, value, current_pc())
+                return
             mask = (1 << (size * 8)) - 1
             value &= mask
             self.output_latches[port] = value
