@@ -1080,3 +1080,53 @@ tags — the line detector `0x7C` and `0x54` — and the detector answered zero
 times. Whether the supervisor never asked, or asked and was not matched, is
 not established here, but a modelled reply path that never fires during a
 successful call is worth explaining on its own account.
+
+## The state trajectories agree, and we are blind at the same point on both sides
+
+`--mem-watch 0192:0193` across a 403 dial, against the board's trajectory
+sample:
+
+| | board | emulator |
+|---|---|---|
+| idle | `0110` | `0110` @5,920,771 from `8f569` |
+| off hook | `5742` | `5742` @37,867,737 and @45,790,274 from `8bf95` |
+| anything after | not observable | none |
+
+**The emulator reaches the same off-hook state the board does**, so the
+supervisor's state machine is not diverging at seizure, and the datapump
+question is not downstream of some larger breakage. Everything before the
+handshake agrees.
+
+It also shows how little either side tells us past that point. The emulator
+writes `5742` twice and never writes `[0x0192]` again; the board's sample sat
+at `5742` for the whole window too — but the board's was a `;` dial, which
+attempts no handshake, and a handshake is exactly when the DTE stops accepting
+`ATGLK2=`. **So neither side has been observed past the off-hook state**, on
+the board because it cannot be read there, in the emulator because nothing
+arms and the run has nothing further to do.
+
+(Two writers put `5742` in that cell: `0x94dc1`, found statically in the
+call-progress module, and `0x8bf95`, which is the one that actually fires
+here. The static find was not the live path.)
+
+### So what is missing
+
+Stated honestly, from what is measured rather than what would be tidy:
+
+* **Not the mailbox** — 973 replies out, 972 taken.
+* **Not the supervisor state machine** — same two states, same order.
+* **Not the tone or codec chain** — the board's DTMF is decoded by a real
+  exchange, and the emulator matches after the EEPROM-offset fix.
+* **Not the gate cells at rest** — identical on both, all zero.
+* **Not `&L1`** — identical on both.
+
+What is left is inside the handshake window, and the specific shape of the
+gap is that **nothing tells the emulator's supervisor to load a datapump**.
+The three routes that could are each shut for a reason now understood: the
+discriminator flags have no reachable setter, the CF gate needs `&L1`, and the
+`[0x0b9e]` counter's feeders are switched off by default. The one route that
+needs none of those is `0x94d87`, which reads the overlay id out of `in al,
+0x5c` — the DSP publishing its own selection.
+
+That remains a hypothesis. It is the only candidate left standing, and it
+fits, but no measurement in this document shows the board taking it.
