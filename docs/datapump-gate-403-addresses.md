@@ -488,3 +488,44 @@ a more hopeful one, than code that cannot be reached.
 The overlay-id survey stands on its own: `0x8b7db`, `0x8bc06` and `0x94d87`
 are real alternative writers regardless of how this resolves, and `0x94d87`
 taking the id from ASIC port `0x5c` remains the most interesting of them.
+
+## The installer's caller is not found statically — but the slot is readable
+
+Nothing branches to `0x910c6`. Building a target-to-caller map of every direct
+`call`/`jmp`/`jcc` in the image and probing each installer's entry shows why
+that is not the anomaly it looks like: **only 19 of the 87 installer sites have
+any direct branch to them at all.** Sixty-eight, ours included, are reached
+some other way. Indirect dispatch is the family's norm, so failing to find a
+direct caller for one of them establishes nothing either way — the same
+mistake, in a smaller form, as the reachability searches this document already
+withdrew.
+
+What the family does say is consistent. Each installer writes both `[0x0192]`
+— the supervisor state handler, invoked by `call word ptr [0x0192]` from
+`8f46:00f4`, the path [the ATN analysis](undocumented-atn-commands.md) already
+traced — and `[0x03ff]`. Both hold offsets into segment `a4e2`, the segment the
+handler table at `0xa669b` lives in. So these are state transitions, and the
+question "what calls the installer" is really "what transition enters this
+state".
+
+### Read off the board, idle
+
+| cell | value | meaning |
+|---|---|---|
+| `[0x0192]` state handler | `0110` -> `a4f30` | some idle state |
+| `[0x03ff]` router slot | `0000` | **no router installed** |
+| `[0x0403]` | `00` | |
+
+The slot is empty at idle, which is what the whole picture predicts: the
+router is installed on entering a particular state, and the modem is not in it.
+
+This turns an intractable static question into a cheap measurement. `[0x0192]`
+and `[0x03ff]` are two RAM words, readable with the same `ATGLK2=` dump used
+throughout, and the `;` dial form already lets us read while a call is up. So
+the state machine's actual trajectory on the board can simply be watched —
+sampling both words through seizure, dialling and ringing shows which states a
+real call enters, and whether `1cde` ever appears in the slot.
+
+That is worth doing for its own sake, independently of this gate: it gives the
+first direct comparison between the board's supervisor state sequence and the
+emulator's.
