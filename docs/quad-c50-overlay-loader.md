@@ -235,15 +235,68 @@ artifact and is withdrawn.
 
 ## What remains
 
-- The request and acknowledge protocol on ports `0x57`/`0x58`: bit 9 of `0x57`
-  is tested as a ready flag, but seeding it alone does not advance the loop, so
-  there is more handshake than one bit.
+- ~~The request and acknowledge protocol on ports `0x57`/`0x58`~~ — **recovered
+  2026-09-10 by running the resident**, see "The host link is a five-word
+  window" below.
 - The supervisor code that walks this table and streams a row on request. No
   16-bit immediate in the code region points at the table's address, so it is
   reached through a far pointer or a computed address.
 - Which overlay is selected when — the table says what the eight images are and
   where they go, not which one a given call needs.
 - `QR060103` has the same downloader shape; its table has not been located.
+
+## The host link is a five-word window
+
+Running the captured resident on `NativeC5x` with no CPU attached settles the
+handshake. Over 200,000 steps it produces 10,637 I/O events, and the steady
+state is one cycle repeated 1,768 times:
+
+```
+WRITE 0x57 = 0x0300    pc 0x8313
+read  0x57             pc 0x23f1
+read  0x58             pc 0x23f1
+read  0x59             pc 0x23f1
+read  0x5a             pc 0x23f1
+read  0x5b             pc 0x23f1
+```
+
+**Every read is at the same address.** `0x23f1` is the fetch stub's `lamm *`
+with `ar1` auto-incrementing, so this is not five instructions polling five
+registers - it is one instruction walking a **five-word window from `0x57`**: a
+status word followed by **four** data words at `0x58`..`0x5b`. The stub always
+reads all five, which is why seeding `0x57` alone never advanced the loop.
+There was not more handshake than one bit so much as more *window* than one
+port.
+
+Four data words per request is exactly the CPU's burst size. The supervisor
+writes four words into lanes `0xc0`, `0xc4`, `0xc8`, `0xcc` (or the `0xd0`
+group), strobes `0x98` and waits; the DSP takes four words from `0x58`..`0x5b`
+and writes `0x0300` back to `0x57`. So the lanes correspond one for one:
+
+| CPU lane | DSP MMR |
+|---|---|
+| `0xc0`/`0xc2` | `0x58` |
+| `0xc4`/`0xc6` | `0x59` |
+| `0xc8`/`0xca` | `0x5a` |
+| `0xcc`/`0xce` | `0x5b` |
+
+Only one window appears, at `0x58`..`0x5b`; `0x5c`..`0x5f` are never touched.
+The CPU's second lane group at `0xd0` therefore addresses a second device with
+its own I/O space rather than a second window in this one.
+
+Start-up, before the cycle begins, is `0x57 = 0xffff` at `0x8002`, then
+`0x56 = 0xffff` and `0x57 = 0xfffc` at `0x8031`/`0x8033`, then five peripheral
+writes at `0x8058`..`0x8066`: `0x68 = 0x000f`, `0x69 = 0x0002`, `0x6a = 0x0000`,
+`0x6b = 0x0078`, `0x6c = 0x0901`. Six reads of `0x55` occur at `0xbc0`/`0xbf4`.
+
+Reproduce with `PYTHONPATH=. .venv/bin/python tools/probe_quad_c50_resident.py`;
+results in `artifacts/quad-c50-resident-20260910/results.json`.
+
+**What this does not yet settle** is which bit of the status word the CPU side
+drives to mean "the window holds a fresh burst". Standalone, `0x57` reads back
+whatever the DSP last wrote, so this run cannot separate the CPU's direction
+from the DSP's own. An endpoint that presents four words and treats the
+`0x0300` write as the acknowledge is the next thing to test.
 
 ## Why 302 id 8 has no counterpart: V90A against V90D
 
