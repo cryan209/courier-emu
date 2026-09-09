@@ -69,3 +69,43 @@ that needs two loads to fit.
 * Which device raises the system tick.  The harness drives IRQ10 from 8254
   counter 0 because that is the line the tick-delay routine at `a45df` needs;
   the physical wiring is not recovered.
+
+## The payload is the firmware, at its final addresses
+
+The `0xb8000` payload splits at `0x80000`, the flash window's base:
+
+| region | size | erased | what |
+|---|---:|---:|---|
+| `40000`-`80000` | 256 KiB | 3.8% | the updater; holds the entry `4030:0000` |
+| `80000`-`f8000` | 480 KiB | 18.5% | the runtime firmware |
+
+And the upper half is not merely *present*, it is **already at its final
+addresses**.  Payload offset X sits at `0x40000+X`; flash offset X-`0x40000`
+sits at `0x80000+X-0x40000` - the same address.  Everything that executes in a
+run (`a45ef`, `a543b`, `b1269`) and every DSP image (`d0d60`-`eab0c`) is above
+`0x80000`.  So the image is the whole firmware, correctly placed; what a board
+has and this does not is the top **32 KiB**, `f8000`-`fffff`, the boot block
+with the reset vector.  The updater never supplies it - it erases at `f8100`
+and programs nothing above, because it does not replace the block it boots
+from.
+
+`courier_emu/imodem_rom.py` fills that gap synthetically.  The boot block it
+writes contains a reset vector and a far jump and **nothing else**: the 386EX
+bring-up is left to the payload's own initialiser, which is observed doing it
+in full - chip selects, both 8259s, the 8254, both SIOs, the port config -
+rather than being invented here.  Two things are manufactured and should be
+read as such: the real block's contents are unknown, and **the application's
+own entry point is not recovered**, so the jump goes to the updater's
+initialiser.  The result boots like a board and then runs the updater.
+
+It does run.  Entered at `f000:fff0` with the assembled 512 KiB part:
+
+```
+entry f000:fff0     autoselects 5   erases 3   programs 4096
+DSC registers written 28            DSP bytes downloaded 49,736
+```
+
+Programming is new - every earlier run reported `programs 0` and never got past
+identification.  It then stops where it stopped before, spinning in the ring
+wait at `a543b` for `[c9ae] == [c9b0]`, which only the serial ISR at `b7dcc`
+advances.  Interrupts from the SIOs are the next piece.
