@@ -380,27 +380,49 @@ on `0x260` bits 4-5, and the four instances differ.
 The 8-word preamble the supervisor sends to destination `0xfff8` before the DSP
 download remains unexplained.
 
-### Does it print or respond? Not yet, and the control is silent too
+### Does it print or respond? No — and now the control does
 
-No. Across every configuration tried — interrupts enabled, `tick_ms` of 1, 5
-and 10, an `int1_after_ms` edge, `AT\r` on the serial input, all four positions,
-8 M instructions each — the Quad writes `S0TBUF` zero times and
-`serial_interrupts` stays 0. Nothing is transmitted and nothing is answered.
+**The analog 302 answers; the Quad does not.**
 
-That is **not yet a fact about the Quad**. Running `IDSDL302.ROM` through the
-same harness with `--tick-ms 5` produces no serial text either, at 8 M
-instructions or at 60 M. Without a control that does print, the Quad's silence
-cannot be attributed to the Quad.
+The control had to be got working first. `IDSDL302.ROM` prints nothing at 8 M or
+even 60 M instructions, which made an earlier version of this section
+uninformative. The threshold is in `machine.py`: `DTE_READY_INSTRUCTIONS =
+30_000_000`, so no run shorter than that opens the DTE at all. At 40 M with
+`--tick-ms 5 --at ATI6` the 302 replies:
 
-Two things were established on the way.
+```
+US\xd2o\xe2otic\xf3\xa0\xc3o\xf5rier\xa0V.\xc5\xf6er\xf9t\xe8i\xee\xe7 ... Link Diagnostics...
+```
 
-**The Quad's timers work under emulation.** Earlier runs here reported
-`ticks = 0` and `timer_interrupts = 0`, which was an artifact: the image shim
-lacked `emulates_interrupts`, so `CourierMachine` never enabled interrupt
-emulation. With it set, the Quad reaches 239 timer interrupts and 888 ticks at
-`tick_ms = 1`. The timer configuration decoded from the EB map is functional.
+— the Link Diagnostics banner, with bit 7 set on some characters, which is the
+parity bit arriving with the data rather than corruption.
 
-**Position 1 forks hard.** With `tick_ms = 5` over 8 M instructions:
+Against that control, the Quad stays silent:
+
+| Image | Instructions | ticks | serial ints | input left | output |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `IDSDL302.ROM` | 40 M | 1,806 | 0 | **0** | the ATI6 banner |
+| `QF060003` | 40 M | 1,654 | 0 | 5 | none |
+| `QF060003` | 80 M | 3,488 | 0 | 5 | none |
+| `QR060103` | 80 M | 3,633 | 0 | 5 | none |
+
+The Quad never consumes a byte — all five of `ATI6\r` are still queued at 80 M —
+and never writes `S0TBUF`. It is not slow to answer; it is not listening.
+
+That is consistent with everything else here: the engine parks in the SDL poll
+on the chassis interface, and on a NAC the command path is the backplane, not a
+local DTE. The `S0` traffic counted in the supervisor (38 `S0CON` sites, 39
+`S0TBUF`) is inherited Courier code on a path that never opens in isolation.
+
+The `--at` mechanism is not the difference: `cli.py:255` shows `--at` simply
+appends `\r` and hands the bytes to the same `serial_input` this used.
+
+Two results stand from the attempts. Earlier `ticks = 0` readings here were an
+artifact — the image shim lacked `emulates_interrupts`, so interrupt emulation
+was never enabled; with it set the Quad reaches 239 timer interrupts and 888
+ticks at `tick_ms = 1`, so its EB timer configuration is functional.
+
+And **position 1 forks hard**. With `tick_ms = 5` over 8 M instructions:
 
 | Position (`0x260` bits 4-5) | ticks | timer ints | I/O events | hot addresses |
 | ---: | ---: | ---: | ---: | --- |
@@ -410,10 +432,6 @@ emulation. With it set, the Quad reaches 239 timer interrupts and 888 ticks at
 | 3 | 187 | 239 | 205,614 | same as 0 |
 
 Positions 0, 2 and 3 are indistinguishable; position 1 never reaches the timer
-path at all and spends its time in the block-copy region around
-`0x8082f..0x80842` instead. That is the `cmp byte [0x213], 1` branch at
-`0x801e2` playing out, and it is a much larger divergence than the 20-event
-difference noted earlier from a run without interrupts.
-
-What that means for a board model is that the position input is not cosmetic:
-one of the four engines runs a materially different startup.
+path and sits in the block-copy region instead. That is the
+`cmp byte [0x213], 1` branch at `0x801e2`. For a board model the position input
+is not cosmetic — one of the four engines runs a materially different startup.
