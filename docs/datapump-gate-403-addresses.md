@@ -1279,3 +1279,54 @@ still absent, or it is present here and something downstream discards it.
 This is a better-posed question than the one this document opened with, and
 the instrument for it now exists: two instances, rich traffic, and both ends
 fully inspectable.
+
+## The DSP-requested route fires — on the answering side
+
+`link` cannot carry probes, but the two-process form can. Two `courier run`
+instances over one line socket, A originating (`ATX0`, `ATDT5551234`) and B
+answering (`ATA`), both with the native DSP and twelve `--trace-pc` probes on
+every arming route this document has found.
+
+| probe | side A | side B |
+|---|---|---|
+| `cf-gate` `0x8b8a1` | 3 | 2 |
+| `discriminator` `0x8b88d` | 22 | 15 |
+| `poll5e` `0x94dc8` | **536** | 0 |
+| `counter` `0x94fdc` | 0 | 0 |
+| **`ovl-from-5c` `0x94d83`** | 0 | **1** |
+| **`pre-ovl5` `0x8b6c4`** | 0 | **1** |
+| **`loader` `0x8e60a`** | 0 | **1** |
+| `bootstraps` | 1 | 1 |
+| `call_overlay_active` | false | false |
+
+**The DSP-requested overlay route runs.** `0x94d83` — `in al, 0x5c`, force bit
+7, store as the overlay id — executes at instruction 53,010,564 on the
+answering side, and the loader at `0x8e60a` runs after it. This is the first
+time any run in this project has reached that route, and it took a real peer
+to produce it: with the modelled exchange it never fired on either side.
+
+Its trace record carries `ret_seg 0000`, `ret_off 006d` — not a plausible
+return address, which is consistent with the indirect dispatch that defeated
+every static search for its caller. It is dispatched, not called.
+
+The counter route stays dead as predicted: side A polls `0x5e`/`0x5c` 536
+times at `0x94dc8` but never calls `0x94fdc`, because both call sites are
+gated on `[0x0d93]`/`[0x0d92]` bit 0 and neither is set.
+
+### Two independent routes now stall in the same place
+
+`bootstraps` is still 1 and `call_overlay_active` still false. So the loader
+was entered and no second download completed — **exactly the outcome the
+`&L1` hotline run produced**, by a completely different route.
+
+That convergence is worth more than either observation alone. Arming is no
+longer the open question: two independent mechanisms — the CF gate under
+leased-line mode, and the DSP's own request on an answered call — both reach
+`0x8e60a`, and both then fail to produce a second bootstrap. The remaining
+gap is downstream of arming, in the bridge's model of the overlay download
+window, which is code this project owns.
+
+What the trace does not yet give is the overlay id itself. The probe fires
+before `in al, 0x5c` executes, so the recorded `al = 47` is the stale value,
+not the id. A probe at `0x8e60f`, after the loader's `and al, 0x7f`, would
+read it directly.
