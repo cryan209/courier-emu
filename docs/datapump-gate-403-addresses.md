@@ -1222,3 +1222,60 @@ indirect table the previous section could not resolve statically. But the
 question has narrowed a long way: not "what arms the datapump" but "why does
 the supervisor ignore `0008:0885`", and that is one message, 114 occurrences,
 in a run we can instrument freely.
+
+## With a real peer: the messages change, the datapump still does not arm
+
+The modelled exchange has no far end. `_current_tone()` returns silence for
+its `connected` state, and the source says so: "The answering modem, not the
+exchange, owns anything past this." So every dial in this document let the DSP
+hear dial tone, its own DTMF, ringback, 2100 Hz for three seconds, and then
+nothing. A resident with nothing to handshake against has no reason to ask for
+a datapump, which would explain the whole investigation at a stroke.
+
+`courier link` tests it: two 4.03d instances over PCM, A originating, B
+answering, both with the native DSP.
+
+```sh
+./courier link artifacts/courier-board-21210-capture-403/courier-board.rom \
+  --with-dsp --line-audio-only --socket /tmp/courier-link.sock \
+  --nvram-fixture idsdl403 --board-id 7 --dip-preset default --tick-ms 5 \
+  --a-at ATX0 --a-at ATDT5551234 --b-at ATA --instructions 150000000 --summary
+```
+
+**They hear each other.** `line_rx_peak` is 28,384 on A and 22,584 on B — real
+signal in both directions, not the silence the exchange produced.
+
+**The message traffic changes substantially**, which is the part of this the
+exchange runs could never show:
+
+| | with the exchange | with a peer |
+|---|---|---|
+| A, distinct DSP-originated tags | 13 | **23** |
+| A, dominant | `0008:0080` x440 | **`0008:0881` x225** |
+| A, new in this run | - | `0805`, `08c1`, `0880`, `0889`, `0801`, `0001` |
+| B, tags | - | a different family: `0016:0000` x1224, `000a:0000` x68, `0016:0408`, `0016:8000` |
+
+So the answering side speaks tags `0x16` and `0x0a` that no run in this
+project had seen, and the originating side's mix shifts from `0080` to `0881`.
+The DSPs are plainly responding to each other.
+
+**And neither loads an overlay.** `bootstraps` is 1 on both sides,
+`bootstrap_bytes` 56,656 — the resident bank alone — `call_overlay_active`
+false on both, and `carrier_probe_frames`, `call_engine_started` and
+`commit_edges` are all zero on both.
+
+### What that eliminates
+
+The missing far end was the best environmental explanation available, and it
+is now tested and insufficient. Two real 4.03d firmwares, hearing each other
+at full level, exchanging handshake-shaped traffic, still do not arm a
+datapump. So the gap is not simply "nothing to talk to".
+
+It also partly bears out the reading that the arming message is one we never
+generate: the peer run produces seven message forms the exchange runs never
+did. None of them results in an overlay load, so either the arming message is
+still absent, or it is present here and something downstream discards it.
+
+This is a better-posed question than the one this document opened with, and
+the instrument for it now exists: two instances, rich traffic, and both ends
+fully inspectable.
