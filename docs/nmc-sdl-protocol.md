@@ -136,3 +136,85 @@ The board latch bank is already recovered: the accessor at `QF+0x808db`
 indexes a four-entry port table at `cs:0x931` — `0x0000`, `0x0200`, `0x0260`,
 `0x0280` — with an output shadow at `[0x216..0x21d]`. Those are exactly the
 ports the execution run touches.
+
+## The card side of the handshake, recovered
+
+This is the protocol the Quad engine is waiting on, read out of `QF060003`.
+
+### Transport
+
+The external USART block, byte-wide on even addresses:
+
+| Port | Role |
+| --- | --- |
+| `0x220` | mode — written twice at init (`0x93`, `0x17`) |
+| `0x222` | status — bit 0 RxRdy, bit 2 TxRdy |
+| `0x224` | command — `0x10,0x20,0x30,0x40,0x50` reset walk, then `0x80`, `0x01` |
+| `0x226` | data |
+
+### The receive entry
+
+`0x819e6` reads one byte and dispatches through a state vector:
+
+```
+push dx
+mov  dx, 0x226
+in   al, dx
+pop  dx
+mov  byte [0x467], 0x64     ; a countdown, reloaded on every byte
+call word [0x45c]           ; the current state
+retf
+```
+
+### The state machine
+
+`[0x45c]` holds the next state as a near offset. Walking it:
+
+| State | Expects | On match | On mismatch |
+| --- | --- | --- | --- |
+| `0x19f6` | `0x32` `'2'` | → `0x1a01` | stay |
+| `0x1a01` | `0x32` `'2'` | → `0x1a19` | → `0x19f6`, clear `[0x467]` |
+| `0x1a19` | `0x02` `STX` | → `0x1a44`, and initialise the frame | → `0x19f6` |
+| `0x1a44` | any | collect the byte | — |
+
+So the attention sequence is **`'2' '2' STX`**, and any wrong byte resets to the
+start. On `STX` the frame state is set up: buffer pointer `[0x44c] = 0x44e`,
+byte count `[0x448] = 0`, and CRC accumulator `[0x1533] = 0xffff`.
+
+### The frame CRC
+
+The collector at `0x1a44` stores each byte and folds it into the accumulator:
+
+```
+mov  di, [0x44c] ; stosb ; mov [0x44c], di     ; append
+mov  dx, [0x1533]                              ; running CRC
+xor  ah, ah ; xor al, dl ; shl ax, 1           ; index = (byte ^ crc_low) * 2
+mov  bx, ax ; mov ax, cs:[bx + 0x1cae]         ; table lookup
+mov  dl, dh ; xor dh, dh                       ; crc >>= 8
+xor  dx, ax ; mov [0x1533], dx                 ; crc = (crc >> 8) ^ entry
+```
+
+That is the standard table-driven byte CRC with init `0xffff`, and the table at
+`cs:0x1cae` is the **same CRC-16/X.25 table** that seals the flash image at
+`0xfbfee` ([quad-x2-modem-nac.md](quad-x2-modem-nac.md)) and that the NMC's
+`msg_head.crc1`/`crc2` uses. One CRC across the card image, the chassis framing,
+and this link.
+
+### Verification status
+
+Partial. At runtime `[0x45c]` reads `0x19f6`, so the initial state is installed
+where this says it is, which corroborates the walk above.
+
+But it does not advance. Holding `0x222 = 0x01` (RxRdy) with `0x226` set to
+`0x32`, to `0x02`, or `0x222 = 0xff`, produces a run identical to the
+unseeded one — same tick count to the tick — so the receive entry at `0x819e6`
+is **never reached**. It is not polled from the idle loop; the idle loop at
+`0x81976` is a *transmit* scheduler, walking `bx` over 0, 2, 4, 6 and testing
+`word [bx + 0x4a1] & 1` for a pending slot.
+
+So the entry is interrupt-driven off the USART, and this harness has no model of
+that block as an interrupt source. Exercising the handshake needs one: a device
+at `0x220`-`0x22a` that raises the engine's receive interrupt, presents RxRdy in
+`0x222`, and hands the queued byte through `0x226`. With that, the sequence to
+feed is `'2' '2' STX` followed by a frame — and the CRC to compute over it is
+the one above.
