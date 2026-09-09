@@ -369,3 +369,41 @@ What the measurements support is only the shape: 1,145 words, multiply density
 55-67, no large lookup table (entropy is a flat ~6.0-6.7 across every 128-word
 block), and a branch into the shared core. That is a small decision-and-mapping
 layer. Which mapping it implements needs the code read, not measured.
+
+### The V.90A DIL does not appear in the Quad
+
+The analog Courier's V.90A overlay (302 id 8) carries the USR DIL as code and
+data. Tested against every Quad image by longest-common-byte-run (minimum 8
+bytes):
+
+| Quad dest | shared runs | total | longest run |
+| --- | ---: | ---: | ---: |
+| `0xa180` | 54 | 599 B | 59 B |
+| `0x8000` resident | 41 | 376 B | 14 B |
+| `0xb400` | 20 | 211 B | 28 B |
+| `0xc300`/2795 | 10 | 117 B | 25 B |
+| `0xd900` | 7 | 62 B | 14 B |
+| `0xc800` | **3** | **26 B** | **10 B** |
+| `0x9440` | 2 | 18 B | 10 B |
+| `0xc300`/1627 | 1 | 10 B | 10 B |
+
+Nothing DIL-sized anywhere. The largest total is with `0xa180`, which is the
+image that matches the *PCM core*, so those fragments are shared datapump code
+rather than DIL. Against `0xc800` there are three runs totalling 26 bytes, the
+longest 10 — noise.
+
+So the Quad carries no byte-level trace of the analog side's DIL handling. That
+is consistent with the V90A/V90D split — impairment *learning* is the client's
+job — but it is not a confirmation, because the server still has to transmit a
+DIL sequence, and no candidate for one has been found on the Quad side either.
+
+I could not independently locate the DIL within id 8. Scanning it for a
+permutation-like table (values below 160, at least 85% distinct across a
+48-entry window) finds **no region at all**, in either byte or word units, and
+its unanchored regions are mostly code the anchoring heuristic missed rather
+than data. So the DIL there is either encoded in a form this scan does not
+recognise, or largely generated.
+
+**The fastest way to settle `0xc800`** is the same search that excluded V.91:
+given the USR DIL's actual values, or its offset and extent within id 8, it can
+be searched for across the Quad images directly and either found or ruled out.
