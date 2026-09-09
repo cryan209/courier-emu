@@ -26,7 +26,13 @@ from dataclasses import dataclass, field
 
 FLASH_BASE = 0x80000
 FLASH_SIZE = 0x80000
-BLOCK_SIZE = 0x10000
+# The erase the update image performs is at offset 0x78100 - physical 0xf8100,
+# which is the first address past the end of the NAC payload (0x40000+0xb8000).
+# A 64 KiB block there would take the boot block with it; an 8 KiB one erases
+# only the region past the payload, which is what a top-boot part gives you and
+# what an updater that does not replace its own boot block would want. Still a
+# parameter: the part is not identified beyond its Intel manufacturer word.
+BLOCK_SIZE = 0x2000
 
 INTEL = 0x0089
 AMD = 0x0001
@@ -63,7 +69,15 @@ class FlashDevice:
     patches: list[tuple[int, bytes]] = field(default_factory=list)
 
     def load(self, contents: bytes) -> None:
-        self.contents = bytearray(contents)
+        """Take the array, padded to the part's size with erased bytes.
+
+        The update payload stops at 0xf8000, short of the window's top, so the
+        rest of the part is not in the image - erased is the honest value for
+        it rather than absent.
+        """
+        self.contents = bytearray(contents[: self.size])
+        if len(self.contents) < self.size:
+            self.contents.extend(b"\xff" * (self.size - len(self.contents)))
 
     def contains(self, address: int) -> bool:
         return self.base <= address < self.base + self.size
