@@ -871,3 +871,49 @@ firmware side is understood end to end: `&L1` -> `[0x04f2]=1` -> CF gate at
 `0x8b8a1` -> `0x8bc06` writes the overlay id -> loader at `0x8e60a` -> `out
 0x1e, 4`. What happens after that `out` is the bridge's model of the download
 window, which is code this project owns and can instrument directly.
+
+## A normal dial does not arm it — measured, not inferred
+
+`--mem-watch` records every 80186 write in a range with the PC that made it.
+Run across a full 403 dial that reaches `state: connected`, `dialed: 6245`,
+972 DSP messages taken, watching both the overlay id and the `[0x0d92]` cell
+that gates the overlay-5 route:
+
+| `[0x0d92]` write | PC | what it is |
+|---|---|---|
+| `c7e0` @1,988 | `fd229` | boot initialisation |
+| `0000` @5,417,339 | `804c6` | region clear |
+| `5555`, `aaaa`, `0000` @5,637,083 | `80822`, `80828`, `8082a` | the RAM test |
+
+**`[0x0d28]` receives no write at all**, and the three `--trace-pc` probes —
+`0x8b6c4` the overlay-5 probe, `0x8b7db` the overlay-5 store, `0x94d87` the
+id-from-port-`0x5c` store — all report **zero hits**.
+
+So every write to `[0x0d92]` in an entire dial happens before 5.7M
+instructions and is boot housekeeping. Nothing on the dial path touches
+either cell. This is the same conclusion the static reading gave, now measured
+directly, and it means the question cannot be answered from an emulated dial:
+**the emulator's normal dial does not arm the datapump by any route**, so
+there is no arming event in it to trace.
+
+### Where the divergence must be
+
+`0x8b6c4`, the probe whose result selects overlay 5, has exactly two direct
+callers — `0x8b799` and `0x8b7d0` — and neither runs. That is the tightest
+handle available: whatever should reach `0x8b799`/`0x8b7d0` on a real call is
+the divergence, and it is two addresses rather than a region.
+
+The board is the other half of this. It connects on an ordinary dial, so on
+hardware something must set `[0x0d28]`. The bench cannot read during a
+handshake — `+++` aborts it, as recorded above — but `&L1` is now known to
+put the board into a state that arms the datapump *without* a handshake, and
+`[0x0d28]` was never sampled repeatedly while leased-line mode was active.
+That is a read-only measurement this document has not made, and it would show
+whether the board's overlay id behaves as the emulator's does under `&L1`.
+
+Two honest limits on the section above this one. The `[0x0d92]` and `[0x0d28]`
+writer tables were produced by raw byte-pattern search with no alignment
+check, so an entry could be a pattern lying inside data rather than an
+instruction. `0x94b9b` was verified by hand — `3e 80 0e 92 0d 04 c3` is a `ds:`
+override, `or`, `ret`, followed by a clean routine at `0x94ba2` — and stands.
+The others have not been checked that way.
