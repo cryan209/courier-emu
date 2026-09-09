@@ -417,3 +417,32 @@ image that sends x2 into the B channel.  The `/DIGITAL` result codes
 (`300/DIGITAL` through `64000/DIGITAL`, and `112000`/`128000` for bonded
 channels) are the rate-adapted and clear-channel ISDN calls, and those never
 reach the DSP at all.
+
+## No G.711 tables, in either family
+
+Tested, because a digital-side datapump looks like it ought to carry one.  The
+whole I-modem DSP payload (`90d60`-`aab0c`) was searched for the G.711 decode
+table in codeword order - µ-law and A-law, as signed words and as magnitudes,
+at shifts 0 through 4.  The first table entry occurs at most twice anywhere in
+the payload, and no site continues into the table: best in-order agreement is
+**zero** of the first 32 entries.  The same search over the analog payloads'
+DSP regions (2.1.1 and 2.3.31) finds the same nothing.  No arithmetic ladder
+either: sweeping for constant-step runs with the G.711 step sizes
+(8, 16 … 2048) turns up eight runs in the whole payload, all in image 6, none
+with the doubling-per-segment structure a companding table has.  The usual
+companding constants are not concentrated anywhere either - `0055`, `0084`,
+`00d5` appear 0-2 times per image, the same as in the analog images.
+
+Which is consistent rather than surprising, once stated the right way round: a
+PCM datapump does not convert between companded and linear, it **works in
+codeword space**.  The transmitter picks which octet to send from a
+constellation of allowed codewords; the receiver decides which codeword it
+was.  What that needs is a table of *which* codewords, not a converter - and
+S58 bit 4, "Force x2 A-law mode", then selects a different allowed set rather
+than a different conversion.  The analog side's own sample path agrees: the
+routine `courier_emu.datapumps` calls `PCM_SAMPLE_PATH` (`819d`) "assembles a
+sample from two 8-bit codewords", so the DSP is handed octet pairs, not linear
+samples.
+
+So the conversion this board does need is in hardware on the PCM highway, and
+the constellation table is what to look for in image 11 - not a G.711 codec.
