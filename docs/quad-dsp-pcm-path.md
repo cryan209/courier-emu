@@ -288,3 +288,58 @@ meaningful:
 2. Then supply framing suited to `FO = 1` byte transfers, at which point an
    idle codeword stream becomes the correct thing to feed.
 3. Then decode the shared-memory command queue to ask for a tone.
+
+## What else the DSP code shows
+
+Comparisons are against the SDL 3.02 payload from `IDSDL302.ROM`.
+
+### Full six-rate V.34, byte-identical
+
+The V.34 symbol-rate table is present and identical in all three images:
+
+```
+2400  2743  2800  3000  3200  3429      (0x0960 0x0ab7 0x0af0 0x0bb8 0x0c80 0x0d65)
+```
+
+at file `0x29ca2` in `IDSDL302.ROM`, `0x462fc` in `QF060003` (DSP program
+`0x8ca6`), and `0x43b92` in `QR060103`. Immediately before it, the V.34 carrier
+table is likewise byte-identical in all three:
+
+```
+1800  1829  1867  1875  1920  1959      (0x0708 0x0725 0x074b 0x0753 0x0780 0x07a7)
+```
+
+So the Quad runs the full V.34 rate and carrier set, and runs it from the same
+tables as the analog Courier. That is consistent with the block-hash lineage —
+V.34 is what both ends of a V.PCM connection need, and it is what carried over.
+
+### One extra word where the 302 has none
+
+In both Quad builds a single word follows the symbol-rate table before the code
+resumes, and the 302 has nothing there:
+
+| | after the table |
+| --- | --- |
+| `IDSDL302.ROM` | `ae80 8684 ...` — straight into code |
+| `QF060003` (prog `0x8cac`) | **`0x1f40` = 8000**, then `ae80 8cf1 ...` |
+| `QR060103` | **`0x1f40` = 8000**, then `ae80 8cfc ...` |
+
+8000 is the DS0 sample rate, and a fixed sample rate is what a card clocked off
+a TDM highway has, where the analog Courier switches its AC01 between 7200,
+7578.95 and 8000 Hz by rate index
+([codec-sample-rates.md](codec-sample-rates.md)). That reading is **not
+established**: the word has not been traced to a use, and counting `7200` and
+`8000` across the payloads does not corroborate it — both also occur as bit
+rates, and the Quad in fact holds more of each than the 302 does. What is solid
+is only the structural difference: one extra constant, in both Quad builds, at
+the end of the rate-table block.
+
+### Channel count: inference, not measurement
+
+The Quad resident is 31,272 words against the single-channel 302's 27,710 — 13%
+larger. Four channels multiplexed into one DSP would need roughly four times
+the per-channel state and a different structure, and the supervisor issues
+exactly one download. The natural reading is one C50 per channel running the
+same image, with the download bus reaching all of them. **Not measured** — no
+channel-select port has been identified on either side, and the 8-word preamble
+the supervisor sends to destination `0xfff8` before the download is unexplained.
