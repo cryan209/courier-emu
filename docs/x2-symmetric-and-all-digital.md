@@ -322,3 +322,63 @@ existing asymmetric arrangement rather than a symmetric 64k mode.  So USR's
 gap the ITU addressed only for 4-wire circuits, and they kept their own
 S-register bits and their own RADIUS modulation codes because there was no
 recommendation to name.
+
+## What the other six images are
+
+Each one is named by where the supervisor requests it and by what it matches.
+The request variable is the byte at `e738`; every writer of it, and the
+loader's own pairing rule, gives the structure:
+
+```
+ae2cb  mov [e738], 6     ; taken when the first predicate passes
+ae2e5  mov [e738], 7     ; taken when the second does
+b1503  cmp al, 7 / jne / call / mov [e738], 8    ; requesting 7 also loads 8
+b1655  mov [e730],1 ; mov [e738],0a ; call load ; mov [e738],0b ; call load
+c84d8 …cb1ed  mov [e738], 9   - seven sites, all inside the `+F…` code
+```
+
+and coverage against the 2.1.1 payload's own four segments (byte-exact runs of
+≥12; the figure is coverage, the number after it the longest single run):
+
+| image | words | @ | vs resident | vs ov6 V.34 | vs ov7 V.FC | vs ov8 PCM | what it is |
+|---:|---:|---|---:|---:|---:|---:|---|
+| 5 | 4,670 | `8000` | 19.3%/193 | 6.2%/193 | 0.5%/16 | 0.1%/12 | **resident** |
+| 6 | 13,909 | `a000` | 2.6%/52 | **24.8%/186** | 9.7%/104 | 0.3%/14 | **V.34** |
+| 7 | 5,173 | `b800` | 6.2%/64 | 13.0%/84 | **68.0%/1039** | 0.2%/12 | **V.FC** |
+| 8 | 2,436 | `9260` | 19.1%/640 | 13.7%/104 | 43.4%/110 | 0.0%/0 | **V.FC companion** |
+| 9 | 3,215 | `b000` | 54.2%/376 | 1.0%/36 | 0.9%/36 | 0.0%/0 | **fax** |
+| 10 | 7,536 | `d100` | 27.7%/202 | 0.5%/64 | 0.4%/64 | 0.0%/0 | **PCM, part 1** |
+| 11 | 15,997 | `9260` | 47.6%/770 | 1.4%/64 | 2.6%/65 | 0.0%/13 | **PCM, part 2** |
+
+* **7 is V.FC beyond argument** - 68% of it is byte-identical to the analog
+  2.1.1 overlay 7, including one run of 1,039 bytes.  **6 is V.34** by its best
+  match, by size, and by the chooser at `ae2cb`/`ae2e5` being the same
+  two-predicate shape the analog uses to pick V.34 or V.FC.
+* **8 is V.FC's second half**, not an independent modulation: the loader pairs
+  it to 7 the way the analog pairs 8 to 6.
+* **9 is fax.**  It is requested from seven sites and every one of them sits in
+  the Class 2 code - `+FHT:`, `+FHR:`, `+FCI:`, `+FIS:`, `+FTI:`, `+FCS:`,
+  `+FPS:`, `+FET:` are all within a few hundred bytes of the requests.  Its 54%
+  against the resident is shared helper bodies, not shared modulation.
+* **10 and 11 are one program in two loads**, requested back to back by the
+  routine at `b1655` with a flag at `e730` held across both.  They tile:
+  11 covers `9260`-`d0dd` and 10 covers `d100`-`ef91`, 23,533 words together.
+
+That last point is the structural difference from the analog Courier.  There,
+PCM is overlay 8, 6,197 words, *chained onto* the V.34 core - the loader sees a
+request for 6 and adds 8, and the PCM layer rides on V.34's receiver.  Here the
+PCM image is 23,533 words in its own right, occupying the same program space
+V.34 would use (`a000`-`d6a9`), so it is an alternative to V.34 rather than an
+addition to it: a complete datapump, nearly four times the size of the client's
+PCM overlay, sharing nothing with it.
+
+## ISDN is 4-wire
+
+Worth stating, because it closes the V.91 question rather than leaving it as an
+aside.  A BRI B-channel is a 4-wire class circuit - separate paths per
+direction, full duplex, no hybrid and no echo to cancel - and it is circuit
+switched.  That is precisely V.91's scope: "a 4-wire circuit switched
+connection".  So the I-modem's symmetric mode is not doing something V.91 does
+not cover; it is doing the thing V.91 would later describe, two years before
+V.91 was approved (May 1999) and with no recommendation to cite in the
+meantime.  Which is why it shipped as an S58 bit with a vendor name.
