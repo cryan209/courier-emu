@@ -53,13 +53,67 @@ DEFAULT_ENTRY = (0xA400, 0x0008)
 UPDATER_ENTRY = (0x4030, 0x0000)
 
 
+# The board's own bring-up, carried in the image as two tables: three-byte
+# records (port word, byte value) ending in a zero, then four-byte records
+# (port word, word value).  The 8254's three mode writes anchor the first.
+INIT_ANCHOR = bytes.fromhex("43f03443f07443f0b4")
+PORT_LOW, PORT_HIGH = 0xF000, 0xF8FF
+
+
+def init_records(payload: bytes) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """The byte and word port-writes the firmware's own init table performs."""
+    start = payload.find(INIT_ANCHOR)
+    if start < 0:
+        raise ValueError("the 386EX init table is not in this payload")
+    byte_records: list[tuple[int, int]] = []
+    offset = start
+    while True:
+        port = int.from_bytes(payload[offset : offset + 2], "little")
+        if not PORT_LOW <= port <= PORT_HIGH:
+            break
+        byte_records.append((port, payload[offset + 2]))
+        offset += 3
+    offset += 1                                   # the zero between the sections
+    word_records: list[tuple[int, int]] = []
+    while True:
+        port = int.from_bytes(payload[offset : offset + 2], "little")
+        if not PORT_LOW <= port <= PORT_HIGH:
+            break
+        word_records.append((port, int.from_bytes(payload[offset + 2 : offset + 4], "little")))
+        offset += 4
+    return byte_records, word_records
+
+
+def bring_up_code(payload: bytes) -> bytes:
+    """Straight-line `mov dx / mov al|ax / out` for every record, in order."""
+    byte_records, word_records = init_records(payload)
+    out = bytearray(b"\xfa")                      # cli
+    for port, value in byte_records:
+        out += b"\xba" + port.to_bytes(2, "little")
+        out += bytes((0xB0, value)) + b"\xee"
+    for port, value in word_records:
+        out += b"\xba" + port.to_bytes(2, "little")
+        out += b"\xb8" + value.to_bytes(2, "little") + b"\xef"
+    return bytes(out)
+
+
 def far_jump(segment: int, offset: int) -> bytes:
     """`jmp far segment:offset` - the whole of the synthetic boot block."""
     return bytes((0xEA, offset & 0xFF, offset >> 8, segment & 0xFF, segment >> 8))
 
 
-def build(payload: bytes, base: int = 0x40000, entry: tuple[int, int] = DEFAULT_ENTRY) -> bytes:
-    """A 512 KiB flash: the payload's runtime half, plus a synthetic boot block."""
+def build(
+    payload: bytes,
+    base: int = 0x40000,
+    entry: tuple[int, int] = DEFAULT_ENTRY,
+    bring_up: bool = True,
+) -> bytes:
+    """A 512 KiB flash: the payload's runtime half, plus a synthetic boot block.
+
+    With `bring_up`, the block replays the firmware's own initialisation table
+    before jumping - the same ports and values, in the same order, read out of
+    the image rather than composed here.
+    """
     start = FLASH_BASE - base
     if start < 0 or start > len(payload):
         raise ValueError(f"payload at {base:#x} does not reach the flash window")
@@ -68,8 +122,11 @@ def build(payload: bytes, base: int = 0x40000, entry: tuple[int, int] = DEFAULT_
     rom[: len(body)] = body
     for index in range(BOOT_BLOCK_OFFSET, FLASH_SIZE):
         rom[index] = ERASED
-    stub = far_jump(*entry)
-    rom[RESET_VECTOR_OFFSET : RESET_VECTOR_OFFSET + len(stub)] = stub
+    block = bring_up_code(payload) if bring_up else b""
+    block += far_jump(*entry)
+    rom[BOOT_BLOCK_OFFSET : BOOT_BLOCK_OFFSET + len(block)] = block
+    reset = far_jump(0xF800, 0x0000) if bring_up else far_jump(*entry)
+    rom[RESET_VECTOR_OFFSET : RESET_VECTOR_OFFSET + len(reset)] = reset
     return bytes(rom)
 
 

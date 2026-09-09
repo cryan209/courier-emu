@@ -262,3 +262,43 @@ f4fb 80 / f4f9 00 / f4f8 02 / f4fb 03 / f4f9 0b   SIO1
 
 Replaying those from the boot block, and copying the RAM half into place, is
 the next step - both are transcription rather than discovery.
+
+### The bring-up, replayed - and where that ends
+
+`imodem_rom.bring_up_code()` now reads the firmware's own initialisation table
+out of the image and emits it as straight-line `mov dx / mov al|ax / out`, in
+order, before the jump.  The table is found by its 8254 anchor
+(`43 f0 34 / 43 f0 74 / 43 f0 b4`) and parsed in two sections - **35 three-byte
+records** (port word, byte value) ending in a zero, then **24 four-byte
+records** (port word, word value) for the chip-select unit.  379 bytes of boot
+block, none of it composed here.
+
+It works as far as it goes.  The 8254 is programmed and counting - the run
+reports **12,935 timer ticks** where it reported none - and SIO0 emits its
+first byte.  What does not happen is an interrupt: `hardware_interrupts` stays
+**0**, and the cold start still sits in
+
+```
+a45d8  push ax
+a45d9  mov ah, [c8cb]      ; the tick counter
+a45dd  add ah, al          ; al = how many ticks to wait
+a45df  cmp ah, [c8cb]
+a45e3  jne a45df           ; spin until the ISR gets there
+```
+
+which is a delay routine waiting on a counter only a timer ISR advances.  It
+cannot advance here because **IF is clear** on this path.  Unmasking the
+cascade and IRQ10 by hand and setting IF in the boot block changes nothing -
+still `irq 0` - because the flag is cleared again by the code that got us here.
+
+That is the useful negative result: it is not a masked line or a missing
+vector.  A real cold start would not call a tick delay with interrupts off, so
+**the path being taken is not the real one** - which is what should be expected
+from the far call at `a4031` landing in the update program rather than in
+whatever the boot block puts at segment `7561`.  Following the cold start
+faithfully needs that RAM image, and the image does not carry it.
+
+The floor this leaves is still worth having: reset vector, board bring-up from
+the board's own table, the DSP loaded with 47,096 bytes, flash command set,
+DSC register file.  What it cannot do is start the application the way a board
+does.
