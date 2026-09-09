@@ -213,3 +213,52 @@ of wall as before: nothing yet answers on the DSP or the interrupt lines.
 
 `imodem_rom.DEFAULT_ENTRY` is now `a400:0008`, with `UPDATER_ENTRY` kept for
 booting the update program instead.
+
+### What it stops on, exactly
+
+Two different things, and neither is a device.
+
+**Booting the ROM alone, it does not stall - it derails.**  Traced from the
+reset vector, the cold start runs:
+
+```
+a4008  cld ; mov ax,2600 ; mov ds,ax ; mov es,ax
+a4010  call b1243          ; DSP download
+a4016  call b127d          ; and again
+a401c  mov cx,247c         ; the resident image's length
+a401f  call b1503          ; the download proper
+a4022  xor bp,bp ; pushf ; push ds ; push es ; push ax
+a4028  push 0ce0 ; pop ax ; mov es,ax ; mov ds,ax ; pop ax
+a4031  call far 7561:443e  -> 0x79a4e
+```
+
+`0x79a4e` is **below the flash window**.  In a ROM-only boot nothing is mapped
+there, so it executes a field of zeros - `add [bx+si],al` - and walks until it
+wraps.  What that call says is that the application expects RAM already
+populated when it starts: code at segment `7561` and data at `0ce0`, the latter
+being exactly where the update image's own initialiser puts the `41c0` bytes it
+moves from `98d50`.  Populating RAM is part of the boot block's job, and the
+boot block is the part we do not have.
+
+**Booting with the payload's lower half mapped, so that RAM content exists, the
+cold start completes.**  It sends **47,096 bytes** to the DSP - against 24 in
+the ROM-only boot - and then settles into a two-instruction loop at
+`a45df`/`a45e3`.  That is the tick-delay routine `courier_emu/isdn.py` already
+names, and `hardware_interrupts` is **0**: the synthetic boot block never
+programs the 8259s or the 8254, and the application does not do it for itself.
+
+So both endings are the same missing piece.  A real boot block brings the 386EX
+up and fills RAM; ours only jumps.  The bring-up half is not guesswork away -
+the board's own table is in the image at `40434`, three-byte records, in order:
+
+```
+f043 34 / f043 74 / f043 b4                       the 8254
+f020 11 / f021 20 / f021 04 / f021 11 / f021 ff   master ICW1..ICW4
+f020 c2 / f020 48                                 OCW
+f0a0 11 / f0a1 28 / f0a1 02 / f0a1 01 / f0a1 ff   slave
+f8fb 80 / f8f9 00 / f8f8 02 / f8fb 03 / f8f9 0b   SIO0
+f4fb 80 / f4f9 00 / f4f8 02 / f4fb 03 / f4f9 0b   SIO1
+```
+
+Replaying those from the boot block, and copying the RAM half into place, is
+the next step - both are transcription rather than discovery.
