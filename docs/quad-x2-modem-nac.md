@@ -1,5 +1,11 @@
 # The Quad x2 Modem NAC images
 
+> Bring-up update (2026-09-10): see [Quad blockers](quad-bringup-blockers.md).
+> Local RS-232 AT operation is documented; an NMC handshake is not a proven
+> prerequisite. Fresh probes expose spurious receive interrupts and missing
+> channel-selected memory. Historical execution conclusions below are superseded
+> where they conflict with that report.
+
 `QF060003.NAC` (6.0.3) and `QR060103.NAC` (6.1.3), both dated 1998-09-22, ship
 in `docs/x2/Qf060003.zip` and `docs/x2/Qr060103.zip`. This document records
 what is directly measured from them, separately from the platform
@@ -70,6 +76,13 @@ PRI/gateway NAC, and the Quad card runs a Courier modem engine per delivered
 DS0, or drives a real DAA when the card is the analog variant.
 
 ## Execution
+
+Current results: [interrupt-driven chassis reception](nmc-sdl-protocol.md) and
+[QF CPU byte-terminal AT/OK execution](quad-at-terminal.md) are now measured.
+The historical flat-image probe below predates the selected modem memory and
+terminal adapter; its conclusion that a chassis handshake is required is not
+established.
+
 
 Neither NAC contains a reset vector. Their start record is a null `0000:0000`
 and their top painted span is two bytes at `0xfbfee`, not `0xffff0`; like the

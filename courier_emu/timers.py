@@ -415,3 +415,33 @@ class TimerBlock:
             "controller": self.controller.status(),
             "timers": [timer.status() for timer in self.timers],
         }
+
+
+@dataclass
+class EbInterruptController(InterruptController):
+    """80C186EB masks (Intel 270830-003, figures 8-4 and 8-8).
+
+    The legacy controller above uses the DMA-equipped 80186 IMASK positions.
+    Keep that behavior for existing board profiles; the Quad selects this map.
+    """
+
+    masked: dict[str, bool] = field(default_factory=lambda: {
+        name: True for name in ('timer', 'serial', 'int4', 'int0', 'int1', 'int2', 'int3')
+    })
+    mask_bits = {'timer': 0, 'serial': 2, 'int4': 3, 'int0': 4,
+                 'int1': 5, 'int2': 6, 'int3': 7}
+    control_sources = {0xff12: 'timer', 0xff14: 'serial', 0xff16: 'int4',
+                       0xff18: 'int0', 0xff1a: 'int1', 0xff1c: 'int2', 0xff1e: 'int3'}
+
+    def write(self, address: int, value: int) -> bool:
+        if address == IMASK:
+            self.writes += 1
+            for name, bit in self.mask_bits.items():
+                self.masked[name] = bool(value & (1 << bit))
+            return True
+        name = self.control_sources.get(address)
+        if name is None:
+            return False
+        self.writes += 1
+        self.masked[name] = bool(value & CONTROL_MASK_BIT)
+        return True

@@ -1397,3 +1397,11 @@ board latches, front-panel signal lines, and the Microwire settings EEPROM are
 modeled. What remains on the settings side is a recovered parameter-flash sector
 for `0xf8000` and front-panel legends for the unnamed indicator bits; there is no
 boot-time NVRAM profile load in this firmware to model.
+
+### Quad CPU AT terminal
+
+The QF060003 modem now executes `AT` → `OK` with an explicit byte-terminal
+adapter. Run `PYTHONPATH=. .venv/bin/python tools/probe_quad_at.py` to boot the
+controller, load a modem, and verify `OK`, `ERROR`, then `OK` through its real
+firmware parser. See [the measured transcript and adapter limits](docs/quad-at-terminal.md).
+Raw-pin autobaud and Quad DSP execution remain incomplete.

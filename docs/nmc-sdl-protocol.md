@@ -1,5 +1,11 @@
 # The chassis side: SDL in `NM040103.NAC`
 
+> Bring-up update (2026-09-10): see [Quad blockers](quad-bringup-blockers.md).
+> Local RS-232 AT operation is documented; an NMC handshake is not a proven
+> prerequisite. The original probe exposed spurious receive interrupts and missing
+> channel-selected memory. The verification section below records the subsequent
+> corrected interrupt-driven receive and CRC test.
+
 `docs/x2/NM040103.NAC` is the Total Control Network Management Card image. It
 is the *other end* of the download handshake the Quad x2 Modem NAC waits on, so
 it is the place to recover that protocol from rather than guessing at it from
@@ -200,21 +206,64 @@ That is the standard table-driven byte CRC with init `0xffff`, and the table at
 `msg_head.crc1`/`crc2` uses. One CRC across the card image, the chassis framing,
 and this link.
 
-### Verification status
+### Verification status — measured 2026-09-10
 
-Partial. At runtime `[0x45c]` reads `0x19f6`, so the initial state is installed
-where this says it is, which corroborates the walk above.
+The unmodified **QF060003** controller now enters and completes this receive
+path through the modelled DUART interrupt. Reproduce from the repository root:
 
-But it does not advance. Holding `0x222 = 0x01` (RxRdy) with `0x226` set to
-`0x32`, to `0x02`, or `0x222 = 0xff`, produces a run identical to the
-unseeded one — same tick count to the tick — so the receive entry at `0x819e6`
-is **never reached**. It is not polled from the idle loop; the idle loop at
-`0x81976` is a *transmit* scheduler, walking `bx` over 0, 2, 4, 6 and testing
-`word [bx + 0x4a1] & 1` for a pending slot.
+```sh
+PYTHONPATH=. .venv/bin/python tools/probe_quad_receive.py
+.venv/bin/python -m pytest -q tests/test_quad.py tests/test_quad_receive.py tests/test_timers.py
+```
 
-So the entry is interrupt-driven off the USART, and this harness has no model of
-that block as an interrupt source. Exercising the handshake needs one: a device
-at `0x220`-`0x22a` that raises the engine's receive interrupt, presents RxRdy in
-`0x222`, and hands the queued byte through `0x226`. With that, the sequence to
-feed is `'2' '2' STX` followed by a frame — and the CRC to compute over it is
-the one above.
+The probe boots `docs/x2/Qf060003.zip` at `8000:0000` with `QuadBoard(identity=0)`
+and runs eight million instructions. It does not patch code, seed parser RAM,
+call the handler directly, or supply a periodic Courier interrupt. Results are
+saved in `artifacts/quad-receive-20260910/results.json`.
+
+The DUART drives **INT0/type 0x0c**, whose firmware vector is `8000:19ac`.
+The Quad uses the 80C186EB interrupt mask layout: INT0 is IMASK bit 4,
+so the startup value `0x00cc` enables it. Delivery requires CPU IF, the
+controller mask, and an enabled DUART event selected by IMR. The ISR starts
+with `STI`; the emulator therefore holds INT0 in service until the firmware
+writes EOI (`0x8000` to `0xff02`). This prevents recursive receive interrupts.
+Courier periodic INT0 events are disabled for this board profile.
+
+The complete valid wire input was:
+
+```text
+32 32 02  00 00 00 00 04 00 00 00  41 42  7c 4d
+attention  eight-byte header        body   CRC (low byte first)
+```
+
+Header bytes 4–5 specify **four trailing bytes, including the two CRC bytes**.
+Byte 7 has bit 7 clear, selecting the short control-frame path. The CRC covers
+the eight-byte header and `41 42`, excluding attention; init `ffff`, reflected
+polynomial `8408`, final complement yields `4d7c`. Folding the appended CRC
+produces the firmware's expected residue **`f0b8`**. This is a framing test;
+it does not assign a higher-level command meaning to the synthetic body.
+
+| Measurement | Valid frame | Final CRC byte changed from `4d` to `4c` |
+| --- | ---: | ---: |
+| Receive entry `0x819e6` | 15 | 15 |
+| Header collector `0x81a44` | 8 | 8 |
+| Body/CRC collector `0x81afc` | 4 | 4 |
+| CRC-success branch `0x81b2c` | 1 | 0 |
+| Control-completion branch `0x81b7e` | 1 | 0 |
+| Final CRC accumulator | `f0b8` | `e131` |
+| Empty data reads | 0 | 0 |
+
+Both runs write the parser vector sequence
+`19f6 → 1a01 → 1a19 → 1a44 → 1afc → 19f6`, consume exactly the queued 15 bytes,
+and finish with an empty FIFO, empty sender queue and no pending DUART IRQ.
+The valid frame reaches the instruction setting the control-complete flag;
+the bad CRC returns to attention without reaching that instruction. Firmware
+reads ISR `0x22a` once per received byte and never needs to poll SR `0x222`.
+
+This supersedes the old claim that the receive entry was never reached and
+the later spurious-zero result in the original blocker probe. It establishes
+interrupt-driven framing and CRC acceptance in QF060003, **not** an NMC SDL
+session, QR firmware validation, local AT readiness, or physical serial timing.
+The sender is paced one byte per emulator service step into a three-byte FIFO;
+serial baud timing, overrun, channel B, and full interrupt priority arbitration
+remain outside this model.

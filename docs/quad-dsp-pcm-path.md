@@ -1,5 +1,11 @@
 # Where the PCM goes on the Quad x2 Modem NAC
 
+> Bring-up update (2026-09-10): see [Quad blockers](quad-bringup-blockers.md).
+> Local RS-232 AT operation is documented; an NMC handshake is not a proven
+> prerequisite. Fresh probes expose spurious receive interrupts and missing
+> channel-selected memory. Historical execution conclusions below are superseded
+> where they conflict with that report.
+
 The question: does the G.711 codeword stream reach the C50 DSP directly, or
 does the 80186 supervisor carry it? The answer for the supervisor is settled —
 it is not in the sample path. The DSP-side detail is only partly recovered, and
