@@ -47,37 +47,90 @@ Written first as `0x38`, then as `0xf8` — the same value with the top two bits
 set, the ordinary configure-then-release shape for this register. Both sites
 are anchored, in the entry path, and identical across two independent builds.
 
+## Proven by execution: the Quad's serial port is byte-formatted
+
+The DSP residents run under this repository's own C5x core
+(`courier_emu.dsp.NativeC5x`, program loaded at origin `0x8000`, entry
+`0x8000`). Against the SDL 3.02 analog reference from `IDSDL302.ROM`
+(`rom-info` gives its DSP payload as flash `0x29080..0x368fc`, entry word
+`0x8000`):
+
+| Image | `SPC` | `SPC` writes | `TSPC` | `TSPC` writes | final `pc` |
+| --- | --- | --- | --- | --- | --- |
+| `QF060003` Quad | `0x40cc` | 118 | `0xf8` | 118 | `0x265b` |
+| `QR060103` Quad | `0x40cc` | 28 | `0xf8` | 28 | `0x82e0` |
+| SDL 3.02 analog | `0x40c8` | 2 | `0xf8` | 2 | `0x814d` |
+
+`TSPC` is `0xf8` on **both** products, so the TDM port is not what separates
+them. The whole difference is one bit in `SPC`, the standard serial port
+control register: `0x40c8` against `0x40cc`.
+
+Per the C5x user's guide in this tree (`spru056d`, Table 9-13), bit 2 is **FO,
+Format**:
+
+> FO = 0 — The data is transmitted and/or received as 16-bit words.
+> FO = 1 — The data is transferred as 8-bit bytes. The data is transferred with the MSB first.
+
+So the analog Courier moves **16-bit words** and the Quad moves **8-bit bytes,
+MSB first**. That is the G.711 codeword, and it is the concrete register-level
+form of the analog/digital split. It agrees with
+[ac01-codec-protocol.md](ac01-codec-protocol.md), where the TLC320AC01
+"exchanges one 16-bit word each way per frame" — a 14-bit linear sample plus
+two control bits, which is exactly what FO = 0 carries.
+
+The rest of both values decode the same way: `Soft` set, `RRST` and `XRST` set
+(both halves out of reset), `FSM` set, and — the part that matters for a
+chassis card — **`TXM = 0` and `MCM = 0`**: frame sync is an input and the
+transmit clock comes from the `CLKX` pin. The DSP is a slave on somebody
+else's PCM timing, which is what sitting on a shared highway requires.
+
+### Why the Quad rewrites the registers
+
+The 302 payload programs `SPC`/`TSPC` twice and moves on, because this
+repository models its AC01 codec and therefore its frame clock. The Quad
+payload rewrites them 118 (QF) and 28 (QR) times, because nothing supplies the
+external clock and frame sync its `TXM = 0` / `MCM = 0` configuration waits
+for, so it keeps resetting the port and retrying. That is the expected shape of
+a missing peer, not a fault in the image.
+
+Caveat on the runs: QF's final `pc` of `0x265b` is below the `0x8000` program
+origin, so that instance has run out of loaded program space by the end of two
+million instructions. QR stays inside it at `0x82e0`. The register counts above
+are still meaningful — they accumulate during the init phase — but QF's late
+execution should not be read as firmware behaviour.
+
 ## Not established, and a correction
 
-An earlier version of this document claimed that `main211`'s C52 payload
-contains no TDM-register writes, and drew a contrast between the analog
-Courier's plain serial port and the Quad's TDM port. **That claim is
-withdrawn.** It rested on counting `lamm`/`samm` opcode words, which misses the
-normal idiom entirely: on the C5x, memory-mapped registers `0x00..0x5f` are
-data page 0, so a tight ISR reaches `TRCV`/`TDXR` with `ldp #0` and ordinary
-direct addressing (`lacc @30`, `sacl @31`), not with `lamm`/`samm`.
+An earlier version of this document contrasted the analog Courier's "plain
+serial port" with the Quad's "TDM port", on the strength of a scan finding no
+TDM-register writes in a `main211` payload. **That claim is withdrawn**, for
+three reasons, and the execution results above supersede it: `TSPC` is `0xf8`
+on the analog SDL 3.02 image too.
 
-It also contradicts this repository's own hardware-derived model:
-`native/c5x_core.cpp` implements the full TDM register file (`0x30`–`0x35`) and
-its comments describe "the legacy TDM path" and "the C52's low-bank TDM ISR",
-with the ASIC as TDM clock master converting a 25 MHz/258-cycle slot stream to
-the 9.6 kHz line rate. Those comments come from live board probes and outrank a
-static word scan.
+1. **Wrong reference image.** `main211` is not a behavioural reference for this
+   tree; 302 and 403 are. Every comparison here now uses the SDL 3.02 payload
+   out of `IDSDL302.ROM`.
+2. **Wrong method.** Counting `lamm`/`samm` opcode words misses the normal
+   idiom: on the C5x, memory-mapped registers `0x00..0x5f` are data page 0, so
+   code reaches them with `ldp #0` and direct addressing (`lacc @30`), or
+   indirectly — the Quad's own `SPC` writes are `lar ar1, #22` followed by
+   `splk *, #000c` / `splk *, #40cc`, invisible to every static scan tried.
+3. **It contradicted this repository's own model.** `native/c5x_core.cpp`
+   implements the full TDM register file (`0x30`–`0x35`), and its comments
+   describe the legacy TDM path with the ASIC as TDM clock master. Those come
+   from live board probes and outrank a static word scan.
 
-So the following are **open**:
+Still **open**:
 
-- Whether the Quad's use of the TDM port is a *difference* from the analog
-  Courier, or the same arrangement on a different chip. Not settled.
 - `TCSR` (`0x33`) and `TRTA` (`0x34`) — channel select and timeslot address —
-  have no confirmed access site in either Quad payload. Every candidate found
-  by scanning is a linear-disassembly artifact: the `lamm @30` clusters near
-  `0xdd02c`, `0xdd0d6`, `0xdd294`, `0xdd348` are tables of monotone small
-  values decoding as runs of `lar ar0, @xx`, and the `0x89b0`/`0x09b0` hits sit
-  among `mpy #imm` coefficient data in the overlay region. Absence of evidence
-  here is not evidence of absence — a direct-addressed write on page 0 would
-  not appear in any of these scans.
-- Which companding law is in force, and how the four channels map onto
-  timeslots. This was the interesting question and it remains unanswered.
+  have no confirmed access in either Quad payload, statically or in two million
+  executed instructions. Given `TXM = 0` / `MCM = 0`, the card is a timing
+  slave, so timeslot selection may be done by board logic outside the DSP
+  rather than by these registers at all. Not settled either way.
+- Which companding law is in force. FO = 1 establishes 8-bit MSB-first
+  transfers; it does not distinguish A-law from mu-law.
+- How the four channels are separated. One serial port carries byte-formatted
+  PCM, but nothing found so far says how four calls share it.
 - The per-sample receive/transmit ISR has not been located in either payload.
 
 ## Method note
