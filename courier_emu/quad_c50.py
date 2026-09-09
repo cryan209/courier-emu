@@ -133,11 +133,21 @@ class QuadC50Link:
 # word-fetch port it pulls program words through.
 DSP_STATUS_MMR = 0x57
 DSP_FETCH_MMR = 0x58
+# The stub at 0x23f1 is one `lamm *` with ar1 auto-incrementing, so it walks a
+# five-word window from 0x57: the status word and four data words. Four is the
+# CPU's burst size, and the lanes correspond one for one - 0xc0 to 0x58, 0xc4 to
+# 0x59, 0xc8 to 0x5a, 0xcc to 0x5b.
+DSP_WINDOW = (0x58, 0x59, 0x5A, 0x5B)
 
 # The resident's origin, from the load table: source paragraph 0x2000, length
 # 0xf450, destination 0x8000. The captured stream spans 0x8000..0xfa28.
 RESIDENT_ORIGIN = 0x8000
 RESIDENT_WORDS = 0xF450 // 2
+
+# 0xcec3f writes 0x0083 into all eight lanes and strobes both groups, so every
+# load begins with eight of these before the image itself.
+LANE_INIT_WORDS = 8
+LANE_INIT_VALUE = 0x0083
 
 # Both processors run from the board's 20.16 MHz clock, so the C5x advances at
 # the 80186's cycles-per-instruction, exactly as bridge.py derives it for the
@@ -161,7 +171,9 @@ class QuadC50Endpoint:
 
     core: object | None = None
     lanes: dict[int, int] = field(default_factory=dict)
-    pending: list[int] = field(default_factory=list)
+    window: tuple[int, ...] | None = None
+    window_group: int | None = None
+    acks: int = 0
     program: list[int] = field(default_factory=list)
     steps: int = 0
     pulls: int = 0
@@ -172,6 +184,7 @@ class QuadC50Endpoint:
     _in_reset: bool = True
     _completion: bool = False
     _event_cursor: int = 0
+    resets_seen: int = 0
 
     # -- CPU side ---------------------------------------------------------
     def read(self, port: int, size: int) -> int | None:
@@ -203,9 +216,18 @@ class QuadC50Endpoint:
             self.resets += 1
             self._in_reset = True
             self.lanes.clear()
-            self.pending.clear()
+            self.window = None
+            self.window_group = None
+            if self.core is None:
+                self.program = []
             return
         self._in_reset = False
+        if value == 4:
+            # The completion strobe is answered on bit 2 at 0xcee12 in both
+            # phases; letting it fall through to the collector, which only
+            # knows the two group strobes, times every load out.
+            self._completion = True
+            return
         if self.core is None:
             # Phase one: the C50's own boot loader pulls the resident in before
             # any of its code is running. That boot path is not modelled, so the
@@ -213,17 +235,12 @@ class QuadC50Endpoint:
             # image still comes from the CPU - nothing here supplies it.
             self._collect(value)
             return
-        if value == 4:
-            self._completion = True
-            self.pending.append(self.lanes.get(LANE_BASE, 0))
-            return
         group = LANE_BASE if value & 1 else (LANE_BASE + 0x10 if value & 2 else None)
         if group is None:
             return
         self.bursts += 1
-        for index in range(4):
-            port = group + LANE_STRIDE * index
-            self.pending.append(self.lanes.pop(port, 0))
+        self.window = tuple(self.lanes.pop(group + LANE_STRIDE * i, 0) for i in range(4))
+        self.window_group = group
 
     def _collect(self, value: int) -> None:
         group = LANE_BASE if value & 1 else (LANE_BASE + 0x10 if value & 2 else None)
@@ -232,12 +249,18 @@ class QuadC50Endpoint:
         self.bursts += 1
         for index in range(4):
             self.program.append(self.lanes.pop(group + LANE_STRIDE * index, 0))
+        # 0xcec3f primes all eight lanes with 0x0083, but 0xcec12's second call
+        # to the reset routine lands between that and the stream, so what
+        # accumulates after the last reset is the image alone. Counting the init
+        # words in shifts the image and the DSP executes from the wrong place.
         if len(self.program) >= RESIDENT_WORDS and not self.started:
             self._start_core()
 
     def _start_core(self) -> None:
         from .dsp import NativeC5x
-        words = self.program[-RESIDENT_WORDS:]
+        words = self.program[:RESIDENT_WORDS]
+        if words[0] == LANE_INIT_VALUE and words[:LANE_INIT_WORDS] == [LANE_INIT_VALUE] * LANE_INIT_WORDS:
+            raise ValueError("image still carries the lane-init prefix; alignment is wrong")
         image = b"".join(word.to_bytes(2, "little") for word in words)
         self.core = NativeC5x.from_program(RESIDENT_ORIGIN, image)
         self.core.set_pc(RESIDENT_ORIGIN)
@@ -246,11 +269,13 @@ class QuadC50Endpoint:
 
     def _ready_bits(self) -> int:
         if self.core is None:
-            return 0x01 | 0x02
-
-        # The strobed group's bit is raised only when the DSP has taken every
-        # word the CPU queued for it. Bit 2 answers the completion strobe.
-        if self.pending:
+            # Phase one still has to answer the completion strobe on bit 2, or
+            # the wait at 0xcee34 times out and the load is retried for ever.
+            return 0x01 | 0x02 | (0x04 if self._completion else 0)
+        # The strobed group's bit is raised only once the DSP has acknowledged
+        # the window by writing 0x57, which is what it does at 0x8313 after
+        # reading all five words.
+        if self.window is not None:
             return 0
         return 0x01 | 0x02 | (0x04 if self._completion else 0)
 
@@ -265,8 +290,13 @@ class QuadC50Endpoint:
             return
         self._debt -= budget
         while budget > 0:
-            slice_size = 1 if self.pending else min(budget, 256)
-            self.core.set_io(DSP_FETCH_MMR, self.pending[0] if self.pending else 0xFFFF)
+            # All four words are present at once, so the stub's consecutive
+            # reads see a coherent window and the core need not be single
+            # stepped for it.
+            if self.window is not None:
+                for port, word in zip(DSP_WINDOW, self.window, strict=True):
+                    self.core.set_io(port, word)
+            slice_size = min(budget, 64)
             self.core.step(slice_size)
             self.steps += slice_size
             budget -= slice_size
@@ -276,19 +306,32 @@ class QuadC50Endpoint:
         library = self.core.library
         handle = self.core.handle
         count = int(library.courier_c5x_get_io_event_count(handle))
+        if count < self._event_cursor:
+            # C5xCore::reset() clears the event log. Without this the cursor
+            # stays past the end and the drain silently stops for good, which
+            # is what made an earlier run report acknowledgements with no reads.
+            self._event_cursor = 0
+            self.resets_seen += 1
         import ctypes as _ctypes
         while self._event_cursor < count:
             values = (_ctypes.c_uint64 * 5)()
             library.courier_c5x_get_io_event(handle, self._event_cursor, values, 5)
             self._event_cursor += 1
             write, port = int(values[0]), int(values[1])
-            if not write and port == DSP_FETCH_MMR and self.pending:
-                self.program.append(self.pending.pop(0))
+            if not write and port == DSP_FETCH_MMR:
                 self.pulls += 1
+            elif write and port == DSP_STATUS_MMR and self.window is not None:
+                # 0x8313's write is the acknowledge: the window has been taken.
+                self.program.extend(self.window)
+                self.window = None
+                self.window_group = None
+                self.acks += 1
 
     def status(self) -> dict[str, object]:
         return {
             "steps": self.steps, "pulls": self.pulls, "bursts": self.bursts,
-            "resets": self.resets, "pending": len(self.pending),
+            "resets": self.resets, "acks": self.acks,
+            "core_log_resets": self.resets_seen,
+            "window_open": self.window is not None,
             "program_words": len(self.program), "completion": self._completion,
         }
