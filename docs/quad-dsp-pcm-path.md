@@ -379,3 +379,41 @@ on `0x260` bits 4-5, and the four instances differ.
 
 The 8-word preamble the supervisor sends to destination `0xfff8` before the DSP
 download remains unexplained.
+
+### Does it print or respond? Not yet, and the control is silent too
+
+No. Across every configuration tried — interrupts enabled, `tick_ms` of 1, 5
+and 10, an `int1_after_ms` edge, `AT\r` on the serial input, all four positions,
+8 M instructions each — the Quad writes `S0TBUF` zero times and
+`serial_interrupts` stays 0. Nothing is transmitted and nothing is answered.
+
+That is **not yet a fact about the Quad**. Running `IDSDL302.ROM` through the
+same harness with `--tick-ms 5` produces no serial text either, at 8 M
+instructions or at 60 M. Without a control that does print, the Quad's silence
+cannot be attributed to the Quad.
+
+Two things were established on the way.
+
+**The Quad's timers work under emulation.** Earlier runs here reported
+`ticks = 0` and `timer_interrupts = 0`, which was an artifact: the image shim
+lacked `emulates_interrupts`, so `CourierMachine` never enabled interrupt
+emulation. With it set, the Quad reaches 239 timer interrupts and 888 ticks at
+`tick_ms = 1`. The timer configuration decoded from the EB map is functional.
+
+**Position 1 forks hard.** With `tick_ms = 5` over 8 M instructions:
+
+| Position (`0x260` bits 4-5) | ticks | timer ints | I/O events | hot addresses |
+| ---: | ---: | ---: | ---: | --- |
+| 0 | 187 | 239 | 205,614 | `0x81976`, `0x81979`, `0x8197c`, `0x81980` |
+| **1** | **2** | **0** | **385,236** | `0x80842`, `0x8082f`, `0x80751`, `0x8017f` |
+| 2 | 187 | 239 | 205,614 | same as 0 |
+| 3 | 187 | 239 | 205,614 | same as 0 |
+
+Positions 0, 2 and 3 are indistinguishable; position 1 never reaches the timer
+path at all and spends its time in the block-copy region around
+`0x8082f..0x80842` instead. That is the `cmp byte [0x213], 1` branch at
+`0x801e2` playing out, and it is a much larger divergence than the 20-event
+difference noted earlier from a run without interrupts.
+
+What that means for a board model is that the position input is not cosmetic:
+one of the four engines runs a materially different startup.
