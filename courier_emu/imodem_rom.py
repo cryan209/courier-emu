@@ -24,11 +24,11 @@ because this is manufactured rather than recovered:
   vector and a far jump, nothing more; the 386EX bring-up is left to the
   payload's own initialiser, which is observed to do it in full (chip selects,
   both 8259s, the 8254, both SIOs, the port config) rather than guessed at.
-* **The application's own entry point is not recovered.**  A real boot block
-  jumps somewhere inside `0x80000`-`0xf8000`; this one jumps to the update
-  initialiser at `4030:0000`, which only exists when the updater half is mapped
-  too.  So the result boots from the reset vector like a board, and then runs
-  the updater, not the application.
+* The block jumps straight to the application's cold start.  A real one would
+  do the 386EX bring-up first; this one does not, so anything the application
+  expects the boot block to have configured is not configured.  Pass
+  `UPDATER_ENTRY` to boot the update program instead, which brings the chip up
+  itself.
 """
 from __future__ import annotations
 
@@ -41,8 +41,16 @@ BOOT_BLOCK_OFFSET = 0x78000          # physical 0xf8000
 RESET_VECTOR_OFFSET = 0x7FFF0        # physical 0xffff0
 ERASED = 0xFF
 
-# The updater's initialiser, and the harness's entry.
-DEFAULT_ENTRY = (0x4030, 0x0000)
+# The application's cold start, recovered rather than assumed - see
+# docs/imodem-emulation.md. `a400` is the firmware's code segment (the DSP
+# overlay loader runs there, and every flash-half vector the updater installs
+# names it), and offset 8 is where it begins: `cld ; mov ax,2600 ; mov ds,ax ;
+# mov es,ax ; … ; mov cx,247c ; call <dsp download>` - 0x247c being the resident
+# DSP image's length to the byte.
+DEFAULT_ENTRY = (0xA400, 0x0008)
+
+# The update program's initialiser, for booting the updater instead.
+UPDATER_ENTRY = (0x4030, 0x0000)
 
 
 def far_jump(segment: int, offset: int) -> bytes:

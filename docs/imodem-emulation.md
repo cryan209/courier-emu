@@ -162,3 +162,54 @@ What would settle it is 32 KiB off a board - `f8000`-`fffff`.  Short of that,
 the next thing to try is a scan of the flash half for a routine that installs
 the interrupt table wholesale, on the assumption that the application re-points
 the vectors the updater currently owns.
+
+### Found: `a400:0008`
+
+The previous section said the cold entry was not in the payload.  That was
+right about the *bring-up* and wrong about the entry, which is recoverable
+after all - from the code that installs interrupt vectors.
+
+Three sites in the flash half write vectors, and two of them name the segment:
+
+```
+c7d85  mov ax,0 ; mov es,ax ; mov bx,008c        ; vector 23
+       mov word es:[bx], d86e
+       mov word es:[bx+2], a400                  ; <- the segment
+c5479  mov ax,0 ; mov es,ax ; mov di,0080        ; vectors 20..2f
+       mov cx,0010 ; mov ax,00bd
+       stosw ; add ax,0006 ; mov word es:[di],3497 ; add di,2 ; loop
+```
+
+So the firmware's code segment is **`a400`** - which independently matches the
+DSP overlay loader, whose table at `cs:d682` resolves only with `cs = a400` -
+and the hardware vectors `20`-`2f` are pointed at a sixteen-entry stub table in
+**RAM at `34970`**, six bytes apart, which is exactly the RAM block observed
+executing the flash identification.
+
+Segment `a400` is physical `a4000`, and it opens:
+
+```
+a4000  bd 0b 00        mov bp, 000b        ; the same signature the analog
+a4003  e9 05 0c        jmp  a4c0b          ; flash carries at its own base
+a4006  eb fe           jmp $
+a4008  fc              cld                 ; <- the cold start
+a4009  b8 00 26        mov ax, 2600
+a400c  8e d8 8e c0     mov ds, ax ; mov es, ax
+a4010  e8 30 d2        call …
+a4013  b8 00 80        mov ax, 8000
+a4016  e8 64 d2        call …
+a4019  b8 00 00        mov ax, 0000
+a401c  b9 7c 24        mov cx, 247c        ; the resident DSP image, to the byte
+a401f  e8 3c d3        call …              ; the download
+```
+
+`0x247c` is image 5's length exactly, so this is the sequence that loads the
+DSP resident - a cold start, not a service routine.  Booting the assembled ROM
+at `a400:0000` runs two instructions and traps on the `int3` at `a4c0b`;
+booting at **`a400:0008`** runs 30,000,000 instructions without faulting,
+relocates code into RAM, and begins the DSP download.  It then stalls at
+`7f98c`, in the relocated block, having sent 24 bytes - which is the same class
+of wall as before: nothing yet answers on the DSP or the interrupt lines.
+
+`imodem_rom.DEFAULT_ENTRY` is now `a400:0008`, with `UPDATER_ENTRY` kept for
+booting the update program instead.
