@@ -1322,9 +1322,13 @@ class CourierDspBridge:
         self.overlay_match = image == self._overlay_payload(target)
         self.overlay_id = target.index
         if self.overlay_match and hasattr(self.core, "load_program"):
+            # Publish it, but do not touch _call_overlay_active: that flag
+            # belongs to main211's in-resident call overlay, a different
+            # mechanism found by signature in _find_call_overlay. This is a
+            # flash overlay the supervisor downloads, and it reports itself
+            # through overlay_downloads / overlay_id / overlay_match.
             self.core.load_program(image, target.entry_word)
             self.overlay_downloads += 1
-            self._call_overlay_active = True
         self._overlay_buffer = bytearray()
         self._overlay_target = None
 
@@ -1652,9 +1656,18 @@ class CourierDspBridge:
                 status |= 4
             return status
         if port == self.transfer.command_port:
-            # The downloader polls this port for the boot ROM's ready and
-            # acceptance bits between groups. They are synthesized, as the
-            # boot ROM that drives them is not available.
+            # The downloader polls this port for ready and acceptance bits
+            # between groups, and the overlay loader at 0x8e6c2 polls the same
+            # port for bits 1 and 2 before each half-block. All-ones answers
+            # both, so a transfer never waits.
+            #
+            # These are the ASIC's handshake lines, not the DSP boot ROM's:
+            # that ROM is recovered and loaded (_configure_boot_rom, read off
+            # the board in docs/dsp-onchip-rom.md), and the resident bootstrap
+            # really does run through it via queue_codec_boot. An earlier
+            # comment here said the boot ROM was unavailable, which is stale.
+            # What is still synthesized is the ASIC's readiness, and with it
+            # any back-pressure the DSP would apply to a download.
             return (1 << (size * 8)) - 1
         if port in (0x58, 0x5A) and (
             self.boot_rom_enabled and self._runtime_mode

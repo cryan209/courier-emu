@@ -178,3 +178,38 @@ chain from the request to `out 0x1e, 4`.
 
 This does not yet claim a completed call. It claims that the datapump image
 now reaches the C52, which no run before it did.
+
+### What the bridge still stands in for
+
+Two honest limits on the section above, both surfaced by asking where the
+boot ROM is in this.
+
+**The boot ROM is not missing.** `artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin`
+was read off the board and `_configure_boot_rom` loads it, and the resident
+bootstrap genuinely runs through it: the bridge hands the payload to
+`queue_codec_boot`, so the recovered ROM's own loader installs the resident
+and the entry is its work rather than the bridge's. A comment on the `0x1e`
+read claiming the boot ROM was unavailable was stale and has been corrected.
+
+**The overlay does not get the same treatment.** The bridge publishes it with
+`core.load_program(image, entry_word)`, writing program space directly. That
+places the right bytes at the right address, verified against the ROM, but it
+bypasses whatever code on the C52 receives an overlay while the resident is
+already running - which is not the boot ROM's loader, since that ran at
+bootstrap and jumped to `0x8000`. What receives it is not identified here.
+
+**And the handshake is synthesized.** Reads of `0x1e` return all-ones, so the
+loader's polls at `0x8e6c2` and `0x8e6f1` for bits 1 and 2 always pass and a
+transfer never waits. Nothing models the back-pressure a real ASIC would
+apply between half-blocks.
+
+Neither of these invalidates the measurement - the image arrives complete and
+matches - but they mark the transport as modelled at the port level rather
+than as the DSP's own participation in it. If the C52 turns out not to run the
+overlay correctly, these are the two places to look before anything else.
+
+One defect this also caught: the first version of the publish set
+`_call_overlay_active`, which belongs to main211's in-resident call overlay -
+a different mechanism located by signature in `_find_call_overlay`. A flash
+overlay is not that, and it now reports itself through `overlay_downloads`,
+`overlay_id` and `overlay_match` alone.
