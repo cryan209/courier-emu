@@ -126,133 +126,121 @@ firmware's code. But it establishes the transport end to end.
 
 ## The supervisor's load table
 
-There is a five-record table at `0x93ba6..0x93bcd` in `QF060003`. Records are
-four words:
+An eight-row table at `0x93ba2..0x93be1` in `QF060003`. Each row is four words:
 
 ```
-length in bytes | destination program address | third | 0x0000
+source paragraph (32-bit, low word then 0x0000) | length in bytes | destination program address
 ```
 
-It is identifiable because its **last record is the downloader call's own
-arguments**: length `0xf450`, destination `0x8000` — literally the `mov cx,
-0xf450` / `mov ax, 0x8000` at `0x93804`. That is the resident.
+It is identifiable because one row is the downloader call's own arguments —
+length `0xf450`, destination `0x8000`, the `mov cx, 0xf450` / `mov ax, 0x8000`
+at `0x93804`. That row is the resident.
 
-| Record | Length | Destination | Third |
-| --- | --- | --- | --- |
-| `0x93ba6` | `0x0cb6` (3,254 B / 1,627 w) | `0xc300` | `0x3784` |
-| `0x93bae` | `0x15d6` (5,590 B / 2,795 w) | `0xc300` | `0x35c6` |
-| `0x93bb6` | `0x0f18` (3,864 B / 1,932 w) | `0xd900` | `0x38e2` |
-| `0x93bbe` | `0x08f2` (2,290 B / 1,145 w) | `0xc800` | `0x2000` |
-| `0x93bc6` | `0xf450` (62,544 B / 31,272 w) | `0x8000` | `0x2f45` |
+In flash order:
 
-Every overlay destination — `0xc300`, `0xd900`, `0xc800` — lies **inside** the
-resident's own span of `0x8000..0xfa28`. These are overlays in the strict
-sense: they replace regions of the already-loaded resident. Two records share
-destination `0xc300`, so those two are alternates for one slot, which is what a
-modulation-per-overlay arrangement looks like.
+| Source para | Byte | Length | Words | Destination | Flat address |
+| --- | --- | --- | ---: | --- | --- |
+| `0x2000` | `0x20000` | `0xf450` | 31,272 | `0x8000` (resident) | `0xc49b0` |
+| `0x2f45` | `0x2f450` | `0x42e0` | 8,560 | `0xa180` | `0xd3e00` |
+| `0x3373` | `0x33730` | `0x252c` | 4,758 | `0xb400` | `0xd80e0` |
+| `0x35c6` | `0x35c60` | `0x0f18` | 1,932 | `0xd900` | `0xda610` |
+| `0x36b8` | `0x36b80` | `0x0cb6` | 1,627 | `0xc300` | `0xdb530` |
+| `0x3784` | `0x37840` | `0x15d6` | 2,795 | `0xc300` | `0xdc1f0` |
+| `0x38e2` | `0x38e20` | `0x08f2` | 1,145 | `0xc800` | `0xdd7d0` |
+| `0x3972` | `0x39720` | `0x1808` | 3,076 | `0x9440` | `0xde0d0` |
 
-This is the answer to the original question. Overlay selection is a table of
-(length, destination) records on the supervisor side, and delivery is the
-DSP-side `BLDP` pull described above — which is why searching for a
-Courier-style overlay table reachable from a second downloader call found
-nothing. There is no second downloader call, and the table is not adjacent to
-the one that exists.
+**The chain closes exactly.** Every row's source paragraph times 16, plus its
+length, rounds up to the next row's source paragraph, with no gaps:
+`0x20000 + 0xf450 = 0x2f450`, `0x2f450 + 0x42e0 = 0x33730`, and so on to
+`0x3af28`. The eight images are contiguous in flash. Paragraph `0x2000` maps to
+flat `0xc49b0`, the start of the DSP payload; paragraph `0x2f45` maps to
+`0xd3e00`, the start of the overlay store, exactly.
 
-### What the table does not yet say
+Lengths total `0x1aefa` (110,330 bytes) against a DSP payload of `0x1af60`
+(110,432). The chain ends at flat `0xdf8d8`; the 48-byte span the NAC paints
+separately at `0xdf8e0..0xdf910` is the remainder. The table is followed
+immediately by the `6.0.3` version and `09/22/98` date strings, which is where
+it ends.
 
-- **The third field is unidentified.** `0x3784`, `0x35c6`, `0x38e2`, `0x2000`,
-  `0x2f45`. It is not a byte sum, word sum, word XOR, or CRC-16/X.25 (either
-  parameterisation) of the corresponding region under the assumption that the
-  four overlays follow the resident consecutively in the payload. So either it
-  is not a checksum, or that layout assumption is wrong. Its values are all
-  plausible low DSP program addresses, which makes an entry point the next
-  hypothesis to test.
-- **Each overlay's source offset is unknown.** The records carry no source
-  field, and the consecutive-layout guess is unconfirmed.
-- **The lengths do not account for the store.** The four overlays total
-  `0x3a96` (14,998 bytes) against an overlay store of `0xbb10` (47,888 bytes).
-  Roughly two thirds of the tail is something else — coefficient data, further
-  tables, or records this one table does not cover.
-- **The walker was not found.** No 16-bit immediate in the code region points
-  at the table's address, so it is reached through a far pointer or a computed
-  address. The table was located by its data signature, not by a cross
-  reference.
-- `QR060103` has the same downloader shape but its table was not located; an
-  automated search for the same record signature returned a false positive.
+Every overlay destination lies **inside** the resident's own span of
+`0x8000..0xfa28`, so these are overlays in the strict sense: they replace
+regions of the already-loaded resident. Two rows share `0xc300`, so those are
+alternates for one slot.
 
-## What remains
+That answers the original question. Selection is a table of
+(source, length, destination) rows on the supervisor side; delivery is the
+DSP-side `BLDP` pull described above. Searching for a Courier-style table
+reachable from a second downloader call found nothing because there is no
+second call, and this table is not adjacent to the one that exists.
 
-- The supervisor's side of the same conversation: which of its structures
-  supplies the destination for `0xff63` and streams the bytes from
-  `0xd3e00..0xdf910`. The downloader at `0x93904` is not involved, so this is
-  separate code reachable from the `0x0042`/`0x0200` handshake group.
-- The request and acknowledge protocol on ports `0x57`/`0x58`: bit 9 of `0x57`
-  is tested as a ready flag, but seeding it alone does not advance the loop, so
-  there is more handshake than one bit.
-- Which overlay is chosen when, which is the original question and needs the
-  supervisor side above.
-
-## Matching the Quad's DSP code against the documented 302 overlays
+## Matching the Quad's images against the documented 302 overlays
 
 [dsp-overlays.md](dsp-overlays.md) maps the analog Courier's four C5x images.
-Read out of `IDSDL302.ROM` by `CourierRom.dsp_overlays`:
+Read out of `IDSDL302.ROM` by `CourierRom.dsp_overlays`: id 5 resident at
+`0x8000` (55,420 B), id 6 at `0x9d00` (23,020 B), id 7 at `0xb000` (14,998 B),
+id 8 at `0xdc00` (14,700 B). That document identifies **id 8 as the V.90 layer
+and id 6 as the PCM core it runs beside** (citing
+[codec-sample-rates.md](codec-sample-rates.md)).
 
-| id | flash offset | bytes | loads at |
-| ---: | --- | ---: | --- |
-| 5 | `0x29080` | 55,420 | `0x8000` (resident) |
-| 6 | `0x369c0` | 23,020 | `0x9d00` |
-| 7 | `0x3c2f0` | 14,998 | `0xb000` |
-| 8 | `0x3fdd0` | 14,700 | `0xdc00` |
+With the Quad's sources known, each of its eight images compares individually,
+by 32-byte block hashing. Figures are the percentage of the *Quad* image's
+blocks found in that 302 image:
 
-Comparing each against the whole `QF060003` DSP payload by 32-byte block
-hashing, and localising where in the Quad payload the matches land:
+| Quad dest | Words | 302 id5 | 302 id6 | 302 id7 | 302 id8 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `0x8000` resident | 31,272 | **18.7%** | 0.1% | 0.1% | 0.0% |
+| `0xa180` | 8,560 | 0.2% | **50.8%** | 4.5% | 0.2% |
+| `0xb400` | 4,758 | 7.1% | 4.1% | **35.2%** | 0.0% |
+| `0x9440` | 3,076 | 0.7% | 11.2% | **41.9%** | 0.0% |
+| `0xc300` | 2,795 | 0.1% | **36.4%** | 0.1% | 0.0% |
+| `0xd900` | 1,932 | **26.9%** | 0.2% | 0.2% | 0.0% |
+| `0xc300` | 1,627 | 0.0% | **17.2%** | 9.3% | 0.0% |
+| `0xc800` | 1,145 | 0.0% | 0.0% | 0.0% | 0.0% |
 
-| 302 image | shared blocks | % of that image | lands in |
-| --- | ---: | ---: | --- |
-| 5 resident | 13,003 | 23.7% | Quad **resident** (11,624) |
-| 6 | 11,160 | **49.2%** | Quad **overlay store** (11,232) |
-| 7 | 5,797 | **39.5%** | Quad **overlay store** (5,799) |
-| 8 | 28 | **0.2%** | — |
+**Resident matches resident.** The Quad's `0x8000` image matches only the 302
+resident. The only other strong match to that resident is the Quad's `0xd900`
+overlay, so code that is resident on the analog Courier is partly an overlay on
+the Quad — reasonable for a resident that already has four channels to host.
 
-Three things follow.
+**The PCM core carries over.** The Quad's largest overlay, `0xa180`, is a 50.8%
+match to 302 id 6, the PCM core; the `0xc300` pair lands there too.
 
-**The partitioning corresponds.** The 302's resident matches the Quad's
-resident; the 302's overlays match the Quad's overlay store. Resident code sits
-with resident code and overlay code with overlay code, so the two products
-divide their DSP firmware along the same line. That is a stronger statement than
-the string-level lineage in [quad-x2-modem-nac.md](quad-x2-modem-nac.md),
-because it is C5x algorithm code rather than shared text tables.
+**302 id 7 is split in two.** The Quad's `0xb400` and `0x9440` match id 7 at
+35.2% and 41.9% and match little else, so one 302 overlay corresponds to two
+Quad overlays.
 
-**Overlay 8 is absent from the Quad.** 28 blocks out of 14,536 is noise.
-[dsp-overlays.md](dsp-overlays.md) identifies overlay 8 as **the V.90 layer**
-and overlay 6 as **the PCM core it runs beside** (citing
-[codec-sample-rates.md](codec-sample-rates.md)). So the Quad carries the analog
-Courier's PCM core and *not* its V.90 layer — even though the Quad's supervisor
-string tables are full of V.90 result codes (`48000/ARQ/V90` and the rest). The
-Quad does V.90; it does not do it with this DSP code.
-
-**The equal-size coincidence is a coincidence.** 302 overlay 7 is 14,998 bytes
-and the Quad's four table records total `0x3a96` = 14,998 bytes. Byte for byte
-against the region immediately after the Quad resident they agree on 2.4%, so
-the two numbers are unrelated.
-
-### This says the load table is incomplete
-
-The 302 overlay 6 matches span `0xd4166..0xdd767` in the Quad payload and the
-overlay 7 matches reach `0xdf88b` — between them nearly the whole
-`0xd3e00..0xdf910` overlay store, spread across it rather than confined to
-`0x3a96` bytes of it. So the store holds substantially more overlay code than
-the five-record table above describes, which is the same shortfall noted there,
-now with positive evidence rather than arithmetic.
-
-Either the table has rows my backward walk did not recognise, or there is more
-than one table — plausibly one per line mode, given `%D0`/`%D1`/`%D2`.
+**Nothing matches 302 id 8, the V.90 layer.** That column is 0.0-0.2% across
+all eight Quad images. The Quad does V.90 — its supervisor string tables are
+full of `48000/ARQ/V90` and the rest — but not with this DSP code. And the
+Quad's `0xc800` image (1,145 words) matches *nothing* in the 302, which makes
+it the first candidate for where the Quad's own V.90 or DS0-side work lives.
 
 ### Limits
 
-These are 32-byte block-hash overlaps, i.e. substantial shared code, **not**
-identical images: at 39–49% the Quad's copies are a revision of the same
-sources, not the same binary. Percentages are of the 302 side. And the
-correspondence is between the 302's *named* overlays and the Quad's *store as a
-whole* — it does not yet say which Quad record is the counterpart of 302
-overlay 6, because the Quad records carry no source offsets.
+These are 32-byte block-hash overlaps: at 35-51% these are revisions of common
+sources, not identical images. Percentages are of the Quad side, so a low figure
+against a much larger 302 image is not on its own evidence of absence — but the
+id 8 column is 0.0% across all eight Quad images, which is.
+
+### Corrections
+
+An earlier version of this document read the rows as
+`(length, destination, third, 0x0000)` with an unidentified third field, and
+found only five. The row boundary was two words off. The third field is the
+source paragraph address, the table has eight rows, and the earlier note that
+the lengths covered only a third of the overlay store was an artifact of the
+same misalignment — they cover all of it. The equal-size coincidence noted
+there between 302 id 7 and those five rows (both 14,998 bytes) was likewise an
+artifact and is withdrawn.
+
+## What remains
+
+- The request and acknowledge protocol on ports `0x57`/`0x58`: bit 9 of `0x57`
+  is tested as a ready flag, but seeding it alone does not advance the loop, so
+  there is more handshake than one bit.
+- The supervisor code that walks this table and streams a row on request. No
+  16-bit immediate in the code region points at the table's address, so it is
+  reached through a far pointer or a computed address.
+- Which overlay is selected when — the table says what the eight images are and
+  where they go, not which one a given call needs.
+- `QR060103` has the same downloader shape; its table has not been located.
