@@ -75,8 +75,9 @@ Neither NAC contains a reset vector. Their start record is a null `0000:0000`
 and their top painted span is two bytes at `0xfbfee`, not `0xffff0`; like the
 I-modem NAC these are operational code without the card's boot block. The
 first painted word at the `0x80000` load base is `e9 30 01`, a near jump to
-`0x80133`, followed by the 80186 PCB initialisation table (`0xffa0` UMCS,
-`0xffa2` LMCS, `0xffa4` PACS, `0xffa6` MMCS). The card's boot block enters the
+`0x80133`, followed by the PCB initialisation table (`0xffa0`/`0xffa2` =
+`LCSST`/`LCSSP` and `0xffa4`/`0xffa6` = `UCSST`/`UCSSP` on the 80C186EB — see
+the peripheral-map note below). The card's boot block enters the
 operational image there, so that is the entry to model.
 
 Entered at `0x80000` under `CourierMachine`, both images execute 8,000,000
@@ -128,26 +129,34 @@ loop
 It has `0x24` (36) entries. The Quad application header at `0x80003` — reached
 by the `e9 30 01` near jump at the `0x80000` load base — is a table in the
 *same* encoding with the *same* 36 entries, and writes the same
-`0xffa4 PACS = 0x8000` that the Courier reset stub at `0xffff0` writes itself.
+`0xffa4 = 0x8000` that the Courier reset stub at `0xffff0` writes itself —
+though the two chips do not agree on what `0xffa4` is, see below.
 The Quad operational image carries the Courier boot block's own initialisation
 convention.
 
 ### The values describe a different board
 
 Nineteen ports appear in both tables. Only six hold identical values
-(`0xff80`, `0xff84`, `0xff88`, `0xff94`, `0xffa0` UMCS, `0xffa4` PACS).
+(`0xff80`, `0xff84`, `0xff88`, `0xff94`, `0xffa0`, `0xffa4`).
 
-| Register | Courier 3.02 | Quad | Consequence |
-| --- | --- | --- | --- |
-| `0xffa2` LMCS | `0x200a` | `0x400a` | 128 KiB RAM vs 256 KiB |
-| `0xffa6` MMCS | `0xffce` | `0xffcf` | different mid-range chip select |
-| `0xff32` INT0 | `0x6270` | `0x04ec` | reassigned; the Quad writes `0x6270` to `0xff42` instead |
-| `0xff36` INT2 | `0xc001` | `0xc000` | |
-| `0xff3a` INT4, `0xff3c`, `0xff3e`, `0xff40`, `0xff42`, `0xff46`, `0xff70`, `0xff72`, `0xff74`, `0xff8c`, `0xff8e`, `0xff9c`, `0xff9e` | not programmed | programmed | four channels need more interrupt inputs and selects |
-| `0xff50` T0CNT, `0xff56` T0CON, `0xff58` T1CNT, `0xff5e` T1CON, `0xff60` T2CNT, `0xff62` T2CMPA | programmed | not programmed | the Quad sets its timebase elsewhere |
+**The two use different peripheral maps, so the tables are not comparable
+register-for-register.** [board-parts.md](board-parts.md) records the analog
+Courier's part as `S80C186`, whose PCB puts chip selects at `0xffa0`-`0xffa8`
+(`UMCS`/`LMCS`/`PACS`/`MMCS`/`MPCS`) and timers at `0xff50`-`0xff66`; its boot
+table writes `0xffa8 = 0x10ff`, an `MPCS` value, which is classic-186 shaped.
 
-The Courier boot block would hand the Quad application a card with half its RAM
-mapped and the wrong interrupt wiring.
+The Quad writes a different set entirely: all sixteen registers `0xff80`-`0xff9e`,
+`0xff70`/`0xff72`/`0xff74`, and `0xff16`-`0xff1e`. On the **80C186EB** — whose
+manual is [in this tree](270830-003%2080C186EB,80C188EB%20Microprocessor%20Users%20Manual-Feb95.pdf),
+Table 4-1 — those are `GCS0ST`..`GCS7SP` (eight general chip selects),
+`B1CMP`/`B1CNT`/`S1CON` (baud and control for on-chip serial channel 1), and
+`I4CON`/`IOCON`/`I1CON`/`I2CON`/`I3CON`. It writes no `0xffa8`, which on the EB
+is `RELREG`. That is the EB layout, not the classic one.
+
+So the two boot tables program different silicon, and the Courier boot block
+would be writing classic-186 chip-select and timer registers into an EB's
+peripheral block. That is a stronger reason for incompatibility than the
+value-by-value comparison this section used to make, and it supersedes it.
 
 ### Grafting it on
 
@@ -197,3 +206,43 @@ Note also that on the Courier, `0xf8000..0xfbfff` is the parameter sector area
 (`courier rom-info` lists sectors from `0xf8000`), not application space. The
 Quad does not paint there either, so the two agree on the shape of the reserved
 top of flash while disagreeing on what fills it.
+
+
+## A note on the peripheral map
+
+`0xff56` is written by the Quad's DSP-interface routine at `0x93864`, which sets
+its bit 1, then later clears bit 1 and pulses bit 3. Table 4-1 of the
+80C186EB manual in this tree names `0xff56` **`P1LTCH`**, the Port 1 output
+latch — so those are GPIO strobes around the DSP access, not a chip-select
+change.
+
+That identification is what exposed the map mismatch. Under the EB layout the
+Quad's own initialisation table reads:
+
+| Offset | EB name | Quad value |
+| --- | --- | --- |
+| `0xff16`, `0xff18`, `0xff1a`, `0xff1c`, `0xff1e` | `I4CON`, `IOCON`, `I1CON`, `I2CON`, `I3CON` | interrupt control |
+| `0xff32`, `0xff36` | `T0CMPA`, `T0CON` | `0x04ec`, `0xc000` |
+| `0xff3a`, `0xff3c`, `0xff3e` | `T1CMPA`, `T1CMPB`, `T1CON` | `0x0001`, `0x0001`, `0xc003` |
+| `0xff40`, `0xff42`, `0xff46` | `T2CNT`, `T2CMPA`, `T2CON` | `0x0000`, `0x6270`, `0xe001` |
+| `0xff70`, `0xff72`, `0xff74` | `B1CMP`, `B1CNT`, `S1CON` | on-chip serial channel 1 |
+| `0xff80`-`0xff9e` | `GCS0ST`..`GCS7SP` | eight general chip selects |
+| `0xffa0`, `0xffa2` | `LCSST`, `LCSSP` | `0x0000`, `0x400a` |
+| `0xffa4`, `0xffa6` | `UCSST`, `UCSSP` | `0x8000`, `0xffcf` |
+
+Two corrections follow. **The Quad does program its timers** — `T0CON`,
+`T1CON` and `T2CON` are all in the table, at EB offsets. An earlier version of
+this document said it left the Courier's timer setup alone; that came from
+reading `0xff50`-`0xff66` as the timer block, which is the classic map.
+
+And the Quad also programs an **on-chip serial channel** at `0xff70`-`0xff74`,
+separate from the external `0x220` block identified in
+[nmc-sdl-protocol.md](nmc-sdl-protocol.md). Which of the two carries the SDL
+link has not been re-checked in light of this.
+
+The analog Courier is a different part. [board-parts.md](board-parts.md) records
+`S80C186` from the board, and its boot table writes `0xffa8 = 0x10ff`, an `MPCS`
+value — `0xffa8` is `RELREG` on the EB, and writing that mid-table would
+relocate the peripheral block. So the Courier is the classic map and the Quad is
+the EB map, and any register-by-register comparison between the two boot tables
+is comparing different silicon.
