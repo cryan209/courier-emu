@@ -848,3 +848,70 @@ The board itself is the tiebreak and needs no probe: it sits on a New Zealand
 loop carrying a solid 400 Hz, and it finds dial tone on it. Whatever record it
 runs accepts 400 Hz, so a harness that models this unit should not be presenting
 North American 350+440 by default.
+
+## Where the retune actually is: the DSP, not the country record
+
+Scott's suspicion - that the 403's US/Canada region is not the stock one, and
+that a US/CAN board running Russian firmware is being tuned for Russian tones -
+is right in substance and wrong in location. The evidence is a diff of the two
+captures of **this same board**, before and after the flash:
+`courier-board-21210-capture-01` is stock 7.3.14 / DSP 3.0.13, product type
+`US/Canada External`, and `-403` is ID_SDL 4.03d, 7.4.16 / DSP 3.1.2.
+
+**The country table was rewritten, and US/Canada was the one record left alone.**
+The stride grows 110 -> 121 bytes and the entry count 20 -> 24 (Spain, Portugal,
+South Korea and Taiwan are added; `Czechoslovakia` becomes `Czech/Slovakia` and
+gains code 42; Austria's code changes 52 -> 43). Every record changes at `+20`,
+`+21`, `+53` and `+54`, which is the format change, and gains a common 11-byte
+tail. Beyond that:
+
+    US/Canada        0 further bytes changed
+    Ireland          1
+    New Zealand      2
+    South Africa     8
+    Australia       10
+    Germany         12
+    ...
+    Italy           41
+    Netherlands     45
+    Austria         57
+
+US/Canada is the **only** record with no country-specific edit at all.
+
+### So the detector was retuned in the DSP
+
+The DSP revision changed too, 3.0.13 -> 3.1.2, and that is where the tone
+detector lives. Running each firmware in the harness against the same exchange,
+counting the resident's `0x40` reports:
+
+| firmware | DSP | `us` 350+440 | `nz` 400 | `eu` 425 |
+|---|---|---|---|---|
+| stock 7.3.14 | 3.0.13 | **3** | - | - |
+| ID_SDL 4.03d | 3.1.2 | **0** | 1 | **3** |
+
+Three reports for the matching tone in each, none for the mismatched one. **The
+stock DSP answers North American dial tone and the ID_SDL DSP does not**; the
+ID_SDL DSP answers a single continuous tone near 400-425 Hz instead. The country
+record did not have to change because the retune is in the resident.
+
+Which also explains the board on the bench: it is a US/Canada unit whose detector
+now expects a Russian-style continuous tone, sitting on a New Zealand loop
+carrying a solid 400 Hz - close enough that it finds dial tone, which it would
+not have done on 350+440 after the flash.
+
+### What the harness should do with that
+
+The faithful default depends on which image is being run, not on one global
+choice:
+
+* `IDSDL302.ROM` and the 4.03d capture want a continuous tone; `eu` 425 produces
+  the most reports and is the ITU-T E.180 tone the Russian build is presumably
+  tuned to.
+* The stock 7.3.14 capture wants `us` 350+440.
+
+Neither is currently the default for its own image, and `--exchange-dial-tone`
+still defaults to `us` for everything. Tying the default to the image's DSP
+revision is the obvious fix and is not made here, because the level model is
+still wrong - the exchange applies its level per component, so a one-tone and a
+two-tone dial tone differ in amplitude by 6 dB, and any sweep to confirm the
+detector's centre frequency is confounded until that is fixed.
