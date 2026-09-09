@@ -1330,3 +1330,58 @@ What the trace does not yet give is the overlay id itself. The probe fires
 before `in al, 0x5c` executes, so the recorded `al = 47` is the stale value,
 not the id. A probe at `0x8e60f`, after the loader's `and al, 0x7f`, would
 read it directly.
+
+## Figured out: the DSP asks for overlay 7, and the transfer starts
+
+Re-running the answering side with probes past the store, rather than before
+it:
+
+```text
+94d83  ovl-from-5c   @53,010,564
+8e60f  id-after-mask @53,010,610   al = 07
+8e631  xfer-start    @53,010,623   ax = b000, bx = b000
+```
+
+`0x8e60f` is the instruction after the loader's `and al, 0x7f`, so **`al = 07`
+is the overlay id itself**. `0x8e631` is `out 0x1e, 4`, the transfer start,
+and it carries `b000`.
+
+[dsp-overlays.md](dsp-overlays.md) has the flash map:
+
+| overlay | flash range | bytes | C52 load address |
+|---|---|---|---|
+| 6 | `36e90..3d0f4` | 12,594 | `9d00` |
+| **7** | `3d100..40b94` | 7,498 | **`b000`** |
+| 8 | `40ba0..44634` | 7,498 | `dc00` |
+
+**`b000` is overlay 7's documented load address.** So the whole firmware chain
+is correct and self-consistent, end to end:
+
+```text
+peer answers -> DSP requests a page -> 94d83 reads it off port 0x5c, forces
+bit 7 -> [0x0d28] -> loader 8e60a masks to 7 -> indexes cs:0xe741 -> resolves
+b000 -> out 0x1e, 4 starts the transfer
+```
+
+Fifty-nine instructions from the DSP's request to the transfer command. None
+of it needs a command, a profile setting, an NVRAM fixture, leased-line mode
+or any of the flags this document spent its length chasing. **On an answered
+call the DSP asks for its datapump and the supervisor goes to fetch it.**
+
+### And the bridge does not deliver it
+
+`bootstraps` is 1, `bootstrap_bytes` 56,656 — the resident bank — and the
+final `[0x0d28]` peek reads `00`. The transfer is commanded and no second
+download completes.
+
+That is the answer to the question this document has been circling. Not a
+gate, not a missing command, not a firmware difference between 302 and 403,
+and not the absent far end: **the arming works, and the overlay download
+window after `out 0x1e, 4` does not.** The `&L1` route reaches the same
+instruction and stalls identically, so two independent paths agree on it.
+
+The bridge already models this transport once — it is how the resident bank
+gets downloaded at bootstrap, `bootstrap_match: true`, 56,656 bytes. What it
+does not do is service a *second* transfer requested mid-call. That is the
+next thing to fix, it is in `bridge.py`, and both routes provide a
+reproducible trigger for testing it.
