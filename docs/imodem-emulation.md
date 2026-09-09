@@ -351,3 +351,49 @@ routine the updater calls, not a boot entry.  `imodem_rom.DEFAULT_ENTRY` is
 What would let the I-modem boot for real is its low-RAM image.  It is not in
 the payload: the code at `79a4e` that the cold path calls appears **nowhere**
 in the flash half, so the boot block is its only home.
+
+### Can the missing piece be inferred?  Not the code - but there is less missing than it looked
+
+Two separate answers, because two different things were being called "missing".
+
+**The routine at `7561:443e` is not missing at all.**  It is update-program
+code, and version-specific: the region at `75610` is only **1.4%-1.9%**
+byte-identical between `Ie030002` and the four other releases at the same
+address, and the reference block appears nowhere in any of them.  Its own first
+bytes settle it -
+
+```
+75610  popa ; pop ds ; pop es ; mov ax,0011 ; int 30 ; iret
+```
+
+`int 30` is the updater's own service gate.  So `a400:0008` is a flash-half
+routine **linked against the update program** - the updater calls it, it loads
+the DSP resident, and it calls back through `int 30`-era code.  Nothing about
+that is a boot path, which is the last confirmation that it is not the
+application's cold start.
+
+**The boot block's low-RAM image is missing, and it cannot be inferred.**  Four
+places it is not:
+
+* not in the flash half - the code at `79a4e` that the path calls appears
+  nowhere in `80000`-`f8000`;
+* not compressed there either - across the whole 480 KiB there are **zero**
+  4 KiB windows above 7.2 bits of entropy, and the region as a whole sits at
+  6.7;
+* not in the sibling releases - the same address differs almost completely
+  across all nine;
+* not written by the updater - it erases the block at `f8100` but issues **no
+  program setup** anywhere at or above `78000` in any path run so far.
+
+43 KiB of compiled code cannot be reconstructed from its call sites.  What can
+be had from them is the interface and nothing more: entered by a far call with
+`ds = es = 0ce0`, and the body is compiled C (`push bp ; mov bp,sp ; sub sp,18`)
+touching data at `ds:a63f`.
+
+**What is inferable, and is now recovered**, is everything around it: the boot
+block's structure from the analog's (segments and stack, the word and byte
+port tables, `rep movsw` of a low-RAM image into `0000:0`, dispatch by `int`),
+the I-modem's own equivalents of those tables at `40434` and `4049e`, and the
+convention that the application is entered through a vector rather than an
+address.  That is enough to build a boot block that is right in shape.  It is
+not enough to make one that is right in content.
