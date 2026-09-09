@@ -449,6 +449,7 @@ class CourierDspBridge:
         self.daa = daa
         self.sip = sip
         self.line = line
+        self._audio_only = bool(line is not None and line.audio_only)
         self.codec = codec
         self.ring = ring
         self.exchange = exchange
@@ -477,6 +478,9 @@ class CourierDspBridge:
         self._dsp_step_debt = 0.0
         self._line_instructions = 0
         self._line_tx_index = 0
+        self._audio_line_trace: deque[dict[str, Any]] = deque(maxlen=512)
+        self._audio_codec_frames = 0
+        self._audio_line_samples_due = 0.0
         self._line_rx_samples: deque[int] = deque()
         self._line_rx_peak = 0
         self._codec_queue_peak = 0
@@ -646,6 +650,9 @@ class CourierDspBridge:
         accept that component (and the nominal 2.1 kHz ANSam component) only
         after a full 100 ms frame and only on an originating call.
         """
+        if self._audio_only:
+            self._carrier_probe.clear()
+            return
         if (
             self._connected_event_queued
             or self._call_overlay_active is False
@@ -823,6 +830,8 @@ class CourierDspBridge:
         overlay is entered on the next frame boundary. This deliberately
         does not report a result code or carrier; those remain firmware-owned.
         """
+        if self._audio_only:
+            return
         if (
             self._v8_armed
             or self._call_resume_pending
@@ -893,7 +902,7 @@ class CourierDspBridge:
             )
 
     def arm_dial_tones(self, command: bytes) -> None:
-        if self.exchange is not None:
+        if self._audio_only or self.exchange is not None:
             # With a modeled line the command is the firmware's alone. It
             # parses the dial string, seizes the loop through its own hook
             # relay, qualifies dial tone from its own detector count and
@@ -1025,10 +1034,14 @@ class CourierDspBridge:
         self.dsp_originated_tags[f"{header:04x}:{data:04x}"] += 1
 
     def _queue_runtime_message(self, header: int, data: int) -> None:
+        if self._audio_only:
+            return
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
 
     def _maybe_start_asic_call_engine(self) -> None:
         """Acknowledge a held call start once the line detector is ready."""
+        if self._audio_only:
+            return
         if (
             self.asic_registers.get(0x82) != 0x00A0
             or self._call_overlay is None
@@ -1088,6 +1101,10 @@ class CourierDspBridge:
         self.asic_registers[header] = data
         self.asic_writes[header] += 1
         self._observe_dial_tone(header, data)
+        if self._audio_only:
+            # Observe host commands, but let the DSP execute their handlers.
+            # No host-side register publication or forced overlay entry.
+            return
         if (
             header == 0x82
             and data == 0x00A0
@@ -1268,6 +1285,8 @@ class CourierDspBridge:
             self._queue_runtime_message(0x0054, 0x0000)
 
     def _publish_connected_event(self) -> None:
+        if self._audio_only:
+            return
         if self._connected_event_queued:
             return
         # The supervisor floats the runtime window during the call-time DSP
@@ -1425,6 +1444,10 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            # Output cursors index this core's arrays, which restart at zero.
+            self._exchange_tx_index = 0
+            self._line_tx_index = 0
+            self._audio_codec_frames = 0
             self._codec_handed_peak = 0
             self._codec_handed_at = 0
             self._core_rebuilt_at = self._instructions
@@ -1918,6 +1941,39 @@ class CourierDspBridge:
             # dial_digits and dial_digits_commanded is the measurement.
             self.dial_digits = self.exchange.dialed
 
+    def _service_audio_line(self) -> None:
+        """Exchange PCM at the common line rate, without call-state signalling."""
+        self._take_line_audio()
+        samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
+        del self._exchange_line_buffer[:len(samples)]
+        samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
+        off_hook = self.daa is not None and self.daa.off_hook
+        raw_peak = max(map(abs, samples), default=0)
+        if not off_hook:
+            samples = [0] * LINE_FRAME_SAMPLES
+        self.line.exchange(LineFrame(0, False, False, samples))
+        incoming = self.line.receive_audio()
+        wire_rx_peak = max(map(abs, incoming), default=0)
+        if not off_hook:
+            incoming = [0] * len(incoming)
+        if incoming:
+            self._line_rx_peak = max(self._line_rx_peak,
+                                     max(abs(sample) for sample in incoming))
+            self._queue_line_audio(incoming)
+        self._audio_line_trace.append({
+            "frame": self.line.frames, "instructions": self._instructions,
+            "off_hook": off_hook, "codec_tx_read": self._exchange_tx_index,
+            "tx_buffered": len(self._exchange_line_buffer),
+            "tx_before_hook_peak": raw_peak,
+            "tx_wire_peak": max(map(abs, samples), default=0),
+            "rx_wire_peak": wire_rx_peak,
+            "rx_codec_input_peak": max(map(abs, incoming), default=0),
+        })
+        if self.daa is not None:
+            # A direct wire has no dial tone or ringing. Socket availability
+            # indicates the local line connection, never carrier detection.
+            self.daa.line_state = "quiet" if self.line.connected else "disconnected"
+
     def _service_line(self) -> None:
         """Hand one frame to the far end and take its frame off the line.
 
@@ -1925,6 +1981,23 @@ class CourierDspBridge:
         because a modem waiting on hook still has to keep the far end's run
         moving.
         """
+        if self._audio_only:
+            # A frame sync is an ADC/DAC conversion whether or not the DSP
+            # writes DXR. Use that clock, not CPU instruction counts or TX
+            # writes: the former builds a growing audio backlog and the latter
+            # deadlocks a silent peer whose transmitter is not running yet.
+            codec = self.core.codec_state()
+            frames = codec['frames_clocked']
+            elapsed = max(0, frames - self._audio_codec_frames)
+            self._audio_codec_frames = frames
+            rate = self.codec_sample_rate()
+            if rate:
+                self._audio_line_samples_due += elapsed * LINE_RATE / rate
+            while self._audio_line_samples_due + 1e-9 >= LINE_FRAME_SAMPLES:
+                self._audio_line_samples_due = max(
+                    0.0, self._audio_line_samples_due - LINE_FRAME_SAMPLES)
+                self._service_audio_line()
+            return
         self._line_instructions += self.batch
         if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
             return
@@ -2127,7 +2200,8 @@ class CourierDspBridge:
             ),
             line=(
                 {**self.line.status(), "rx_peak": self._line_rx_peak,
-                 "codec_queue_peak": self._codec_queue_peak}
+                 "codec_queue_peak": self._codec_queue_peak,
+                 "audio_trace": list(self._audio_line_trace)}
                 if self.line is not None else None
             ),
             codec=self.codec.status() if self.codec is not None else None,

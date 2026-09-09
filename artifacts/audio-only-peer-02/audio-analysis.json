@@ -1,0 +1,56 @@
+{
+  "a-rx": {
+    "sample_rate": 8000,
+    "samples": 168800,
+    "duration_seconds": 21.1,
+    "nonzero_samples": 80354,
+    "first_nonzero_seconds": 8.073,
+    "peak": 27780,
+    "dtmf_decoded": "",
+    "sha256_pcm": "7b192fa1047ebc5f807dd8c0708af3948fc58ab5408baaf44e50e7754a3aa3bb",
+    "matches_transmitter": true,
+    "transmitted_but_not_received_samples": 0
+  },
+  "a-tx": {
+    "sample_rate": 8000,
+    "samples": 169600,
+    "duration_seconds": 21.2,
+    "nonzero_samples": 5453,
+    "first_nonzero_seconds": 10.88125,
+    "peak": 22584,
+    "dtmf_decoded": "5551234",
+    "sha256_pcm": "9a5581d8b857999a411193372251188a3dc5e2314ce921c3ddc5a6790cdcc53d"
+  },
+  "b-rx": {
+    "sample_rate": 8000,
+    "samples": 168800,
+    "duration_seconds": 21.1,
+    "nonzero_samples": 5453,
+    "first_nonzero_seconds": 10.88125,
+    "peak": 22584,
+    "dtmf_decoded": "5551234",
+    "sha256_pcm": "7f151cc56d0cab0d7521143070e92de0b69feb936b02d86b889ca273ecf7cfef",
+    "matches_transmitter": true,
+    "transmitted_but_not_received_samples": 800
+  },
+  "b-tx": {
+    "sample_rate": 8000,
+    "samples": 168800,
+    "duration_seconds": 21.1,
+    "nonzero_samples": 80354,
+    "first_nonzero_seconds": 8.073,
+    "peak": 27780,
+    "dtmf_decoded": "",
+    "sha256_pcm": "7b192fa1047ebc5f807dd8c0708af3948fc58ab5408baaf44e50e7754a3aa3bb"
+  },
+  "answer_tone_11s": {
+    "window_ms": 100,
+    "peak_frequency_hz": 2100
+  },
+  "excerpt": {
+    "start_seconds": 8,
+    "end_seconds": 18.0,
+    "left": "caller (a-tx)",
+    "right": "answerer (b-tx)"
+  }
+}

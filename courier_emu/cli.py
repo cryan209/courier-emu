@@ -109,6 +109,11 @@ def daa_codec_wanted(args: argparse.Namespace, image: object) -> bool:
 
 
 def _worker_command(args: argparse.Namespace) -> list[str]:
+    if args.line_audio_only:
+        if not args.line_link:
+            raise ValueError("--line-audio-only requires --line-link")
+        if args.exchange or args.sip_server or args.force_online:
+            raise ValueError("--line-audio-only cannot use exchange, SIP, or forced online mode")
     image = load_image(args.image)
     if args.with_dsp and not hasattr(image, "dsp_program_segments"):
         raise ValueError(
@@ -167,6 +172,10 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--daa-codec-revision", str(args.daa_codec_revision)))
     if args.line_link:
         command.extend(("--line-link", str(args.line_link)))
+        if args.line_audio_only:
+            command.append("--line-audio-only")
+        if args.line_record:
+            command.extend(("--line-record", str(Path(args.line_record).resolve())))
         if args.line_listen:
             command.append("--line-listen")
     # A linked instance always needs a DAA: the link drives its line state
@@ -302,6 +311,11 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--board-id",
         args.board_id,
     ]
+    if args.line_audio_only:
+        command.append("--line-audio-only")
+    if args.audio_dir:
+        prefix = Path(args.audio_dir).resolve() / ("a" if listen else "b")
+        command.extend(("--line-record", str(prefix)))
     if args.tick_ms is not None:
         command.extend(("--tick-ms", str(args.tick_ms)))
     if args.tick_source:
@@ -743,6 +757,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="bind the --line-link socket instead of connecting to it",
     )
+    run.add_argument("--line-audio-only", action="store_true",
+                     help="PCM-only socket; disable synthetic training and carrier events (both ends must use it)")
+    run.add_argument("--line-record", metavar="PREFIX",
+                     help="record socket audio as PREFIX-tx.wav and PREFIX-rx.wav")
     run.add_argument(
         "--dip-preset",
         choices=sorted(DIP_PRESETS),
@@ -824,6 +842,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="run two instances sharing one line, as a dedicated-line pair",
     )
     link.add_argument("image")
+    link.add_argument("--line-audio-only", action="store_true",
+                      help="connect both instances using PCM only, without synthetic training or carrier events")
+    link.add_argument("--audio-dir", metavar="DIR",
+                      help="record both sides' socket audio as a/b-tx/rx.wav in this directory")
     link.add_argument("--instructions", type=_number, default=40_000_000)
     link.add_argument(
         "--nvram-fixture",

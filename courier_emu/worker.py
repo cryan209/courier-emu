@@ -119,6 +119,8 @@ def main() -> int:
     parser.add_argument("--exchange-hotline", action="store_true")
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
+    parser.add_argument("--line-audio-only", action="store_true")
+    parser.add_argument("--line-record")
     parser.add_argument("--daa-codec", action="store_true")
     parser.add_argument("--daa-codec-line", type=int, choices=(1, 2), default=1)
     parser.add_argument("--daa-codec-rate", type=_number, default=9_600)
@@ -174,7 +176,8 @@ def main() -> int:
 
     line = None
     if args.line_link:
-        line = LineLink(path=args.line_link, listen=args.line_listen)
+        line = LineLink(path=args.line_link, listen=args.line_listen,
+                        audio_only=args.line_audio_only, record_prefix=args.line_record)
         line.open()
 
     exchange = None
