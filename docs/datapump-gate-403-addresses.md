@@ -748,3 +748,40 @@ through `AT&L1` before a dial and the overlay download should then occur. And
 **`&T1` is an analog loopback** — the modem trains against itself — which is a
 complete datapump exercise with no far end at all, and the live handshake read
 that this document has wanted throughout.
+
+## `&T` on the board: the model predicts its errors, but the flag was not caught
+
+Two of the router's own rejections were tested directly, and both hold:
+
+| command | board | why the model says so |
+|---|---|---|
+| `AT&T2` | **`ERROR`** | entry 2 of the nine-entry table at `0xa6b70` is the `stc; ret` reject — `&T2` is unused on USR modems |
+| `AT&T3` | **`ERROR`** | `a6b1a` rejects `AL` 3, 6 and 7 when `[0x0237] & 1`; the board reads `[0x0237] = 01` |
+| `AT&T0` | `OK` | `AL=0` dispatches at `a6b43` before the flag tests |
+
+That `&T2` and `&T3` fail for two different, separately predicted reasons — a
+table slot and a runtime flag read off the board — confirms the ampersand
+identification and the router's decoding independently of `&L`.
+
+`AT&T1` behaves like a started test: it returns **no result code at all**, and
+a following `AT&T0` returned `NO CARRIER` on the first run. Entry 1 reaches
+`0x876fb`, whose branch is on `[0x0237] & 4` — clear on this board — so it
+should fall to `0x8770f`, `or byte [0x57c], 1`.
+
+**No sample ever caught it.** Across two runs, `[0x057c]` and every other gate
+cell stayed `00` throughout the loopback and after it.
+
+This is not evidence that the setter does not run. `&T1` returning no result
+code means the transport has nothing to synchronise on, and the test's own
+serial traffic keeps the drain from settling, so the earliest sample landed
+about 8 seconds in on the second run and about 20 on the first. A flag set
+during test setup and cleared by it — and `[0x057c]` has seven `mov ... , 0`
+clearers, three of them in this same `0x876xx` cluster — would not survive
+that latency. The second run is also equivocal about whether the test started
+at all, since its `&T0` answered `OK` rather than `NO CARRIER`.
+
+So `&T1` is unresolved, and resolving it needs sampling that does not depend
+on the serial transport settling — which on this hardware means it may not be
+resolvable this way at all. **`&L1` remains the demonstrated route**: it sets
+`[0x04f2]` immediately, deterministically, and with the CF gate passing as a
+direct consequence.
