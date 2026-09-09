@@ -244,3 +244,63 @@ artifact and is withdrawn.
 - Which overlay is selected when — the table says what the eight images are and
   where they go, not which one a given call needs.
 - `QR060103` has the same downloader shape; its table has not been located.
+
+## Why 302 id 8 has no counterpart: V90A against V90D
+
+V.90 is asymmetric and the two ends run different code. The analog client
+(V90A) **receives** PCM codewords and **transmits** V.34. The digital server
+(V90D) **transmits** codewords straight onto its timeslot and **receives**
+V.34. So the analog Courier and a chassis modem NAC do not share a V.90 layer
+at all, however much else they share.
+
+The Quad's own configuration says which end it is. Its `S81` help block reads:
+
+```
+S81  V.90 Configuration
+  1   TX power level applied before digital pads
+  2   (reserved)
+  32  V.90 server mode
+S82  V.90 Transmit Power Level (-dBm)
+```
+
+There is **no client-mode bit**, and both V.90 settings are transmit level —
+"before digital pads" being a digital-network concern, where the server
+pre-compensates for pads downstream. The Quad is V90D only. (Its `S76` x2
+block does carry client, server and symmetric modes, so the absence on the
+V.90 side is a real distinction, not a missing string.)
+
+That explains the whole match pattern:
+
+| | needs it | Quad has it |
+| --- | --- | --- |
+| V.34 datapump and PCM core (302 id 6, id 7) | both ends | yes — 35-51% across four images |
+| V90A receive layer (302 id 8) | client only | **no** — 0.0% across all eight |
+| V90D transmit mapping | server only | no 302 counterpart exists to match |
+
+It also connects to the serial-port finding in
+[quad-dsp-pcm-path.md](quad-dsp-pcm-path.md). The Quad runs `SPC` with `FO = 1`,
+8-bit bytes MSB first, where the 302 runs `FO = 0`, 16-bit words. For a V90D
+transmitter that *is* the transmit path: it does not synthesise a waveform, it
+writes codewords to a byte-formatted timeslot. The analog client needs 16-bit
+linear samples for its codec because it has to recover codewords from an
+audio waveform.
+
+### The `0xc800` image, as a hypothesis
+
+`0xc800` (1,145 words) is the only Quad image with no 302 ancestry, which makes
+it the candidate for the V90D transmit layer. Supporting, none of it
+conclusive:
+
+- It is shaped like a mapping layer, not a filter. Multiply density 25.3 per
+  thousand words and `rpt` density 11.4, against 46-54 and 55-67 for the PCM
+  cores. 302 id 8 — the other V.90 layer — is likewise low at 12.0 and 11.4.
+  The heavy filtering lives in the shared cores, and both V.90 layers sit on
+  top of them as decision code.
+- It is about one sixth the size of 302 id 8 (1,145 words against 7,350),
+  which is the expected direction: emitting codewords at a chosen level is
+  cheap, recovering them from an analog waveform is not.
+
+Against it: the two profiles are not identical — id 8 has more than twice the
+`bit` density and half the multiply density — so "same character" is as far as
+this goes. And `0xc800` could as easily be DS0-side or timeslot work rather
+than V.90. Identifying it needs the code read, not measured.
