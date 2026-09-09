@@ -687,3 +687,64 @@ belongs to an interpreter the ordinary AT path does not enter.
 Establishing the base empirically is the way out, and the help listing is the
 instrument: pick a command in the listing whose handler is identifiable in the
 image, find which entry it occupies, and the offset falls out.
+
+## Answered: it is the ampersand table, and `&L1` opens the CF gate
+
+The shared entry `a6780` is `stc; ret` — a genuine reject — so entries 4, 14,
+16 and 21 really do reject. Under `letter - 'A'` those are `E`, `O`, `Q`, `V`,
+and the non-reject letters are:
+
+```text
+A B C D F G H I J K L M N P R S T U W X Y Z
+```
+
+**That is the ampersand command set.** There is no `&E`, `&O`, `&Q` or `&V`,
+while `&C`, `&D`, `&F`, `&W` and `&Z` are all standard and all present here.
+The board's own `ATI5` switches — `&A3 &B1 &G2 &H1 &I0 &K1 &L0 &M4 &N0 &P1
+&R2 &S0 &T5 &U0 &X2 &Y1` — are a subset of exactly this list. So `a4f63`
+dispatches the `&` family, not the bare AT letters, which is why `ATL` and
+`ATN` reached nothing: the letters were right and the family was wrong.
+
+That makes the three handlers:
+
+| entry | command | what it does |
+|---|---|---|
+| 11 | **`&L`** — leased line | writes `[0x04f2]`, range `< 2` |
+| 13 | **`&N`** | writes `[0x04f8]` |
+| 19 | **`&T`** — test | the router: `AL` 0..8, **`AL=2` rejected** |
+
+`&T`'s shape is its own confirmation. USR's `&T` takes 0-8 — end test, analog
+loopback, local digital loopback, grant/deny RDL, remote digital loopback,
+self-tests — and **`&T2` is unused on these modems**. The router's nine-entry
+table rejects exactly `AL=2`.
+
+### Measured on the board
+
+```text
+before     04c6=00 04f2=00 04f8=00 ...   CF gate fails
+AT&L1      04c6=00 04f2=01 04f8=00 ...   CF gate PASSES
+AT&L0      04c6=00 04f2=00 04f8=00 ...   CF gate fails
+```
+
+`AT&L1` sets `[0x04f2]` to `1`, and with `[0x04c6]` bit 6 clear and `[0x04f8]`
+zero — both already true at rest — **the CF gate at `0x8b8a1` passes.** The
+line was released and the setting restored; the board answers normally.
+
+### What this resolves
+
+The CF gate passing is what reaches `0x8bc06`, `mov byte [0x0d28], 6` — the
+datapump overlay id — through the branch at `0x8bbf6` that does **not** consult
+the three-flag discriminator. So the datapump is armed by **leased-line mode,
+or by the `&T` loopback tests**, and not by anything on the ordinary dial path.
+
+That is why every dial this project has ever run — emulated or on the board —
+skipped it. [datapump-dispatch-gate.md](datapump-dispatch-gate.md) asked "which
+command sets those flags, and what writes them on a real boot", and looked for
+the answer along the dial. The answer is that no dial sets them: `&T1` sets
+flag C, and `&L1` opens the parallel CF gate. Both are operator commands.
+
+Two things follow, and neither needs a phone line. The emulator can be driven
+through `AT&L1` before a dial and the overlay download should then occur. And
+**`&T1` is an analog loopback** — the modem trains against itself — which is a
+complete datapump exercise with no far end at all, and the live handshake read
+that this document has wanted throughout.
