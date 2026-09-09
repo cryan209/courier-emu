@@ -949,6 +949,12 @@ The line was released, `&L0` restored, and the board answers.
 
 ## Answered: a normal dial arms the datapump from the DSP, by a counter
 
+> **Overstated, corrected below.** The counter chain in this section is real,
+> but both of its feeders are gated on cells that only an extended-register
+> command sets, and the board reads both as zero. So this is *a* route to
+> overlay 5, not the demonstrated normal-dial route. See
+> [the correction](#not-lost-in-the-asic-the-poll-is-disabled-by-default).
+
 Tracing up from `0x8b6c4`'s two callers gives the structure, and it is not a
 flag gate at all:
 
@@ -1013,3 +1019,64 @@ Two conditions qualify this and want their own measurement: both call sites
 are gated — `0x94ddc` on `[0x0d93] & 1` and `0x94e07` on `[0x0d92] & 1` — and
 the board reads both cells as `00` at idle, so at rest neither poll feeds the
 counter. Which of them a real handshake enables is not established here.
+
+## Not lost in the ASIC: the poll is disabled by default
+
+The natural reading of the previous section is that the DSP fails to carry the
+status bit, or that the bridge loses it. The run's own counters rule both out:
+
+| | dial run |
+|---|---|
+| `dsp_originated_messages` | **973** |
+| `dsp_messages_taken` | **972** |
+| `detector_replies` | **0** |
+
+973 replies produced, 972 consumed. **Nothing is being lost in transit.** The
+mailbox works; this project measured it against the board and fixed it months
+of work ago.
+
+What is missing is upstream of that. Both call sites that feed `[0x0b9e]` are
+conditional:
+
+```text
+94dd5  test byte [0xd93], 1  / je 94e00    ; skips the first  counter call
+94e00  test byte [0xd92], 1  / je 94e0a    ; skips the second counter call
+```
+
+and each of those bits has exactly one setter, both inside a parser for the
+`=`/`?` extended-register syntax:
+
+```text
+a1601  cmp al, 0x3d          ; '='
+a1609  cmp al, 0x30 / 0x31   ; '0' or '1'
+a1614  or  byte [0xd92], 1   ; the "=1" arm
+a161b  and byte [0xd92], 0xfe ; the "=0" arm
+a17ff  or  byte [0xd93], 1
+```
+
+The board reads `[0x0d92] = 00` and `[0x0d93] = 00`, and the emulator's
+`--mem-watch` shows `[0x0d92]` taking only boot-time writes across an entire
+dial. **So in the default configuration neither poll runs at all.** The bit is
+not lost; the code that would read it is switched off.
+
+### What that costs the previous section
+
+The counter chain stands as code — `[0x0b9e]` reaching 5 really does reach
+`0x8b7db` and load overlay 5 — but it is not demonstrated to be the route a
+normal dial takes, because on a default board it cannot run. Calling it "how a
+normal dial arms the datapump" was more than the evidence supports, and that
+section is marked accordingly.
+
+The question is therefore still open, and the remaining candidates are the
+ones the overlay-id survey named: `0x8bc8d`/`0x8bc99` inside the
+discriminator-gated block, and `0x94d87`, which takes the id straight from
+`in al, 0x5c`. The last is the only one needing neither a flag nor a setting.
+
+### A separate finding worth its own look
+
+`detector_replies` is **0** on a dial that reached `connected` with 6245
+decoded off the line. The bridge synthesises runtime answers for exactly two
+tags — the line detector `0x7C` and `0x54` — and the detector answered zero
+times. Whether the supervisor never asked, or asked and was not matched, is
+not established here, but a modelled reply path that never fires during a
+successful call is worth explaining on its own account.
