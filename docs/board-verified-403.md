@@ -797,3 +797,54 @@ Still open, and now narrow:
   the loop it is plugged into; `eu` 425 is the ITU-T E.180 tone and produced the
   most reports. Which the Russian firmware's detector is actually tuned for is a
   firmware question this has not asked.
+
+## The country table: 24 records of 121 bytes, and no Russia in it
+
+Scott's point - that this firmware carries selectable regions, and a region tuned
+for one country's tones will not answer another's - is borne out by a table in
+the image, at file offset `0x1fd20` (physical `0x9fd20`), 24 entries of **121
+bytes** each. Each begins with a 16-byte name padded with `!`, then a country
+code byte:
+
+| code | country | code | country | code | country |
+|---|---|---|---|---|---|
+| 0 | US/Canada | 39 | Italy | 49 | Germany |
+| 81 | Japan | 64 | **New Zealand** | 0 | International |
+| 102 | Finland | 42 | Czech/Slovakia | 43 | Austria |
+| 46 | Sweden | 32 | Belgium | 97 | Ireland |
+| 44 | UK | 45 | Denmark | 34 | Spain |
+| 47 | Norway | 61 | Australia | 95 | Portugal |
+| 41 | Switzerland | 33 | France | 82 | South Korea |
+| 31 | Netherlands | 27 | South Africa | 88 | Taiwan |
+
+Mostly ITU dialling codes, with USR's own numbering for a few. **There is no
+Russia entry**, and `ATI7`'s `Product type Russia (ex. US/Canada) External` comes
+from a different string at `0x49980` - the product type is not the country
+record. The Russian ID_SDL build's own additions elsewhere in the image are
+Caller ID features (`RussianCID`, `+S61`), not a country.
+
+Diffing four records shows the per-country payload is dense - some 60 of the 105
+bytes after the name differ between US/Canada, UK, New Zealand and Australia -
+and it is where the telephony parameters live. Nothing in it is a literal
+frequency, so the tone the detector expects is either a coefficient or an index;
+which it is has not been established, and the fields have not been decoded.
+
+### What this means for the harness
+
+The exchange's tone is now selectable and the resident answers a single
+continuous tone with bit `0x40`. What is not yet settled is **which record this
+board runs**, and therefore which tone is the faithful default. Three ways to
+find out, in increasing cost:
+
+1. Decode the country code out of the board's own settings part - the
+   `idsdl403` fixture is that part, captured.
+2. Sweep `--exchange-dial-tone` against the `0x40` report count. `eu` 425
+   currently produces the most, `nz` 400 the fewest of the two single tones -
+   but frequency and level are confounded until the level model is fixed.
+3. Decode the 121-byte record, which would give the detector's expectation
+   directly rather than by search.
+
+The board itself is the tiebreak and needs no probe: it sits on a New Zealand
+loop carrying a solid 400 Hz, and it finds dial tone on it. Whatever record it
+runs accepts 400 Hz, so a harness that models this unit should not be presenting
+North American 350+440 by default.
