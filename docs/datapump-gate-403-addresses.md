@@ -352,3 +352,67 @@ echoes the pair, and an echoed originate-band carrier is not an answer-band
 one, so it cannot train.
 
 The static search for the setter is therefore the route that is actually open.
+
+## The setter is unreachable in 403 too — and that reframes the gate
+
+Repeating the 302 search against the addresses above. Flag C has two genuine
+setters, `0x8770f` (`or [0x57c], 1`) and `0x8779c` (`or [0x57c], 9`); flags A
+and B have none in the whole image, only clears. So flag C is the only one
+with any setter at all, exactly as on 302.
+
+Its cluster resolves completely, and mirrors 302 structurally:
+
+| | 302 | 403 |
+|---|---|---|
+| thunk stubs, `call near`/`retf`, stride 4 | `0x875d8` | `0x87622` |
+| entry 1 handler | `0x876b1` | `0x876fb` |
+| the setter it reaches | `0x876c5` | `0x8770f` |
+| indexed jump | `0xa6ad7` | `0xa6b69` |
+| jump table, nine entries, `AL=2` rejected | `0xa6ade` | `0xa6b70`, CS `a4e2` |
+| router entry, decimal-ASCII parse then `cmp al, 1` | `0xa6a6c` | `0xa6afe` |
+| decimal parser | `8000:9cbc` | `8000:9ce7` |
+| handler-offset table, router at entry 8 | `0xa6615` | `0xa669b` |
+| rejects `AL=1` when set | `[0x0ea7]` | `[0x0d93]` |
+
+**And in 403, as in 302, nothing indexes that table and nothing calls the
+router.** No `jmp`/`call word ptr cs:[bx+disp]` uses its displacement, no far
+pointer targets it, and there is no `mov bx, 187b`. The one indexed jump whose
+CS could have reached it, `0xa6e26`, indexes a coherent local table sitting
+immediately after itself. That the same negative reproduces independently on a
+second image makes it a property of the firmware rather than of one
+disassembly.
+
+### What that means: the gate is on a path the board does not take
+
+If nothing sets the three flags, the discriminator at `0x8b88d` always returns
+equal on this image. The board plainly connects. So **the datapump is not
+armed through this chain**, and
+[datapump-dispatch-gate.md](datapump-dispatch-gate.md)'s conclusion that
+`0x8b84f` returning equal is "the single root cause" identifies a real gate on
+a road that is never driven.
+
+The overlay id makes that concrete. Every write to `[0x0d28]` in 403:
+
+| site | write | reached by |
+|---|---|---|
+| `0x8bc06` | `6` | the **CF gate** `0x8b8a1` returning carry — *not* the discriminator |
+| `0x8bc8d`, `0x8bc99` | `6`, `7` | inside the discriminator-gated selection block |
+| `0x8b7db` | `5` | gated only on `[0x0d92] & 4`, outside both |
+| `0x8e616` | `8` | the loader itself, chaining `6` to `8` |
+| `0x94d87` | `al` | **`in al, 0x5c` then `or al, 0x80`** — the id read from the mailbox data port |
+| `0x8e73a` | `0` | teardown |
+
+Three of these are independent of the three flags. The last is the most
+interesting: `0x94d87` takes the overlay id from ASIC port `0x5c` with bit 7
+forced, so on that path **the DSP side selects which overlay the supervisor
+loads**. Nothing in the previous analysis looked at it, because the search
+started from the discriminator and never left it.
+
+That is where this should go next, and it needs no line: trace which of
+`0x8b7db`, `0x8bc06` and `0x94d87` a real call reaches, and what `[0x0d92]`
+bit 2 and the CF gate cells depend on. The CF gate is the more promising of
+the two flag-based routes, because unlike the discriminator flags its cells
+have ordinary setters.
+
+None of this is yet a measurement. It says which paths exist, not which one
+the board takes.
