@@ -128,3 +128,73 @@ That is the same partition the Courier's flash uses - x2 codes first, the
 V.90-only rates appended in that order - and the same 15 analog x2 rates the
 mask at `8fc9` covers.  The rate tables and the S-register/AT surface are
 common; the processor and the datapump underneath them are not.
+
+## The Courier I-modem is one of the server modems
+
+The vendor documentation in `docs/` names it directly.  The Quad Modem
+product reference (`24186500.PDF`, "Server Modems") lists the server side of
+x2 as:
+
+> Server modems send data to analog x2 client modems at speeds up to 56K.
+> The following modems are examples of server modems: **Courier I-modem**,
+> HiPer DSP, Quad Modem, MP I-modem.
+
+and adds, of the Quad, "The Quad Modem does not support client mode" - these
+are server-role products, not clients with a server option.  The 1997
+NETServer x2 release notes say the same, and give the physical requirement:
+the host end must be digital - "a channelized T1, ISDN PRI, or ISDN BRI" - and
+trunk-side, with "ISDN PRI and BRI lines automatically trunk-side".  A Courier
+I-modem is a BRI device, so it *is* the digital end of the call.
+
+The HiPer DSP reference (`24187300.PDF`) gives S76 in full, as disable bits:
+
+| S76 bit | value | disables |
+|---:|---:|---|
+| 0 | 1 | Client mode |
+| 1 | 2 | Server mode |
+| 2 | 4 | Symmetric mode |
+| 3 | 8 | x2/V.90 fallback to V.34 |
+
+and its `incompatibleX2modes` diagnostic states the pairing rule outright:
+"Either one modem must be a server and the other a client, **or both must be
+symmetric**."  So symmetric is a third role both ends run, not a client or a
+server variant - which is why it needs its own bit and its own
+`x2symmetric` modulation code in the RADIUS dictionary.
+
+One correction to the section above.  The HiPer DSP text for
+`excessiveHFAttenuation` reads: "Some portion of the channeling is analog for
+x2 symmetric and V.90 all-digital modes."  So symmetric/all-digital do not
+require an end-to-end digital path with no analog anywhere; high-frequency
+attenuation on the remaining analog portion is still what fails them.  The
+claim to keep is the narrower one: 64000 is the digital-side rate, and the
+analog **client** Courier cannot reach it because its own DAA and codec are an
+analog conversion.
+
+### What that means for the ISDN image here
+
+It reframes [isdn-vs-analog-dsp.md](isdn-vs-analog-dsp.md)'s last finding.
+The ISDN Courier's overlay 8 shares only ~22% of its bytes with the analog
+overlay 8 - the same 22% against every analog build from 2.1.1 to 2.3.33 -
+and is 7,350 words (302) or 7,498 words (403) against the analog's 6,197.
+That is not a fork that drifted: the two images are doing different jobs, the
+analog one receiving PCM and the ISDN one sending it.
+
+Two things still do not follow from the static image, and should not be
+asserted until traced:
+
+* **The role is not selected in the supervisor.** The x2 setup path is the
+  same code in every image - one capability builder matching the same 26-byte
+  pattern at `8f43` (403), `8eb3` (302), `25112` (2.1.1), `252c3` (2.2.05),
+  `218db` (2.3.31), each followed by a single `mov ax, 70`.  The two
+  undocumented S58 bits it reads (bit 4 -> capability `0x0200`, bit 16 ->
+  clears `0x0400`) are present in all of them, and S76 does not exist on this
+  product - the Courier has no help entry for it, and its S58 help blanks the
+  text for bits 4, 8, 16, 64 and 128.  If those bits carry the role, the
+  difference is in their *value*, not in the code.
+* **The 403 still carries client-side diagnostics** - `Remote modem is an x2
+  server`, `Remote modem supports x2`, `V.90 Server/client pair established`
+  at `4a098` - beside the failure enum at `1c246` that only the ISDN images
+  have (`Remote modem is not a Server`, `Multiple CODECs in channel`,
+  `Incompatible versions`).  The 302 carries only the failure enum.  Whether
+  the 403 can actually train as a client, or merely inherited the strings,
+  is open.
