@@ -24,12 +24,148 @@
     "raw": "<256 bytes>"
   },
   {
+    "cmd": "ATI5",
+    "raw": "ATI5\r\r\nUSRobotics Courier V.Everything NVRAM Settings...\r\n\r\n   BAUD=115200  PARITY=N  WORDLEN=8  DIAL=TONE \r\n\r\n   B0   F1   M1   X7   &A3  &B1  &G2  &H1  &I0  &K1\r\n   &L0  &M4  &N0  &P1  &R2  &S0  &T5  &U0  &X2  &Y1  %N6\r\n\r\n   S00=001  S02=043  S03=013  S04=010  S05=008  S06=002  S07=060  S08=002\r\n   S09=006  S10=014  S11=070  S12=050  S13=000  S15=000  S19=030  S21=010\r\n   S22=017  S23=019  S24=150  S25=005  S26=001  S27=048  S28=008  S29=020\r\n   S31=000  S32=006  S33=000  S34=000  S35=000  S36=000  S37=000  S38=000\r\n   S39=000  S40=000  S41=000  S42=126  S43=200  S44=015  S51=000  S53=000\r\n   S54=064  S55=000  S56=000  S57=224  S58=064  S59=000  S60=000  S61=000\r\n   S69=000\r\n   STORED PHONE NUMBERS\r\n0:                                      1:                                      \r\n2:                                      3:                                      \r\n4:                                      5:                                      \r\n   STORED COMMAND = \r\n\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATX1",
+    "raw": "ATX1\r\r\nOK\r\n"
+  },
+  {
     "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
     "raw": "<256 bytes>"
   },
   {
     "cmd": "ATH0",
     "raw": "ATH0\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATX7",
+    "raw": "ATX7\r\r\nOK\r\n"
   },
   {
     "cmd": "AT",

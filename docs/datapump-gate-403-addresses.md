@@ -326,3 +326,29 @@ is none on this line. The three ways out, in order of preference:
 
 [Capture](../artifacts/gate-cells-live-call/cells.json),
 [script](../artifacts/gate-cells-live-call/live-call-cells.py).
+
+### `ATX1` gives a real handshake window; the escape aborts it
+
+`9898` returns busy tone. With the board's own `X7` the modem detects it and
+gives up in about 15 seconds, so the first two attempts never handshook at all.
+`ATX1` drops busy and dial-tone detection, and the behaviour changes
+completely: no result code for the whole 25-second wait, the line held, the
+modem signalling into the busy tone for the full `S7` window.
+
+That is the state this experiment wanted. It is still not readable. Sending
+`+++` mid-handshake returns `NO CARRIER` — **the firmware treats DTE input
+during handshake as an abort, not as an escape** — and the eight samples taken
+immediately afterwards are all zero, which says nothing, since they follow the
+teardown.
+
+Off hook 36.5 seconds, line released, `X7` restored from the recorded `ATI5`,
+board responsive.
+
+So the routes stand as follows. The mid-handshake escape is closed, not merely
+untried. Sampling after a natural `S7` timeout remains possible but has the
+same weakness the abort samples have. **Reading the live handshake needs a
+modem that answers**, and nothing else on this line will produce one: `9099`
+echoes the pair, and an echoed originate-band carrier is not an answer-band
+one, so it cannot train.
+
+The static search for the setter is therefore the route that is actually open.
