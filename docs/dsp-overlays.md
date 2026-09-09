@@ -109,16 +109,45 @@ windows were never committed and the firmware strobed correctly into a port
 nothing was listening on. Fixing this alone took the answering side from 6
 window strobes to 3,750.
 
-**2. The wrong block size.** The first window arrived as
-`06bc807a` + `83008300`, against overlay 7's `06bc807a9fad807a`: four bytes
-right, four bytes stale. Each acknowledgement commits a **half-block of four
-bytes**, not a full eight-byte window.
+**2 and 3. The wrong block size, and the wrong window for the second half.**
+These were first inferred from arriving data - the opening window came in as
+`06bc807a` + stale bytes against overlay 7's `06bc807a9fad807a` - and the
+inference is unnecessary, because the loop is in the image. From `0x8e6c2`:
 
-**3. The wrong window for the second half.** The resident downloader's strobe
-`2` selects the `0x50` window. The overlay loader's does not: both halves land
-in the **same** `0x40` window, `1` filling lanes 0-3 and `2` lanes 4-7. The
-successive window snapshots show it directly - lanes 0-3 carrying payload
-bytes 0..3, then 8..11, then 16..19, while lanes 4-7 carry 4..7 and 12..15.
+```text
+8e6c2  in   al, 0x1e / test al,1 / je wait / test al,2 / je wait
+8e6cc  lodsw ; out 0x40, al ; out 0x42, ah      ; word 1
+8e6d4  lodsw ; out 0x44, al ; out 0x46, ah      ; word 2
+8e6dc  mov  al, 1 ; out 0x1e, al                ; acknowledge the first half
+8e6f1  in   al, 0x1e / test al, 2 / je wait
+8e6f7  lodsw ; out 0x48, al ; out 0x4a, ah      ; word 3
+8e6ff  lodsw ; out 0x4c, al ; out 0x4e, ah      ; word 4
+8e707  mov  al, 2 ; out 0x1e, al                ; acknowledge the second half
+8e70b  loop 8e6af
+8e730  mov  al, 4 ; out 0x1e, al                ; end of transfer
+```
+
+So the real method, stated rather than fitted:
+
+* a **block is four words**, low byte then high byte to `0x40`, `0x42`,
+  `0x44`, `0x46`, then `0x48`, `0x4a`, `0x4c`, `0x4e`;
+* the loader acknowledges **twice per block** - `1` after words 1-2, `2` after
+  words 3-4 - so each acknowledgement covers **four bytes**;
+* both halves are lanes of the **same** eight-port window; the resident
+  downloader's strobe `2`, which selects `0x50`, has no counterpart here;
+* it polls `0x1e` for bits 1 and 2 before each half, and for 1, 2 and 4 before
+  the closing `out 0x1e, 4`;
+* `CX` is the block count, `(end - start) / 2 / 4` rounded up, from the same
+  table row; `ES` is the source segment chosen by comparing the id against 6,
+  7 and 8 with the resident segment as fall-through.
+
+`out 0x1e, 4` therefore marks **both** boundaries, at `0x8e631` to begin and
+`0x8e730` to end, which is why the bridge treats that value as a transfer
+reset rather than as data.
+
+The empirical framing and the firmware agree exactly. That the reconstructed
+14,996-byte image matches the ROM byte for byte is the same statement made a
+third way.
 
 ### What it does now
 
