@@ -285,22 +285,61 @@ writes codewords to a byte-formatted timeslot. The analog client needs 16-bit
 linear samples for its codec because it has to recover codewords from an
 audio waveform.
 
-### The `0xc800` image, as a hypothesis
+### The `0xc800` image: a mode slot, contents unidentified
 
-`0xc800` (1,145 words) is the only Quad image with no 302 ancestry, which makes
-it the candidate for the V90D transmit layer. Supporting, none of it
-conclusive:
+`0xc800` is the only Quad image with no 302 ancestry. It is **not** therefore
+the V90D layer — that was too quick. What the structure actually shows is that
+it is one of three alternatives for a single slot.
 
-- It is shaped like a mapping layer, not a filter. Multiply density 25.3 per
-  thousand words and `rpt` density 11.4, against 46-54 and 55-67 for the PCM
-  cores. 302 id 8 — the other V.90 layer — is likewise low at 12.0 and 11.4.
-  The heavy filtering lives in the shared cores, and both V.90 layers sit on
-  top of them as decision code.
-- It is about one sixth the size of 302 id 8 (1,145 words against 7,350),
-  which is the expected direction: emitting codewords at a chosen level is
-  cheap, recovering them from an analog waveform is not.
+Program spans, from destination and length:
 
-Against it: the two profiles are not identical — id 8 has more than twice the
-`bit` density and half the multiply density — so "same character" is as far as
-this goes. And `0xc800` could as easily be DS0-side or timeslot work rather
-than V.90. Identifying it needs the code read, not measured.
+| Destination | Words | Span | Matches |
+| --- | ---: | --- | --- |
+| `0x9440` | 3,076 | `0x9440..0xa044` | 302 id 7, 41.9% |
+| `0xa180` | 8,560 | `0xa180..0xc2f0` | 302 id 6, 50.8% |
+| `0xb400` | 4,758 | `0xb400..0xc696` | 302 id 7, 35.2% |
+| `0xc300` | 1,627 | `0xc300..0xc95b` | 302 id 6, 17.2% |
+| `0xc300` | 2,795 | `0xc300..0xcdeb` | 302 id 6, 36.4% |
+| `0xc800` | 1,145 | `0xc800..0xcc79` | **nothing** |
+| `0xd900` | 1,932 | `0xd900..0xe08c` | 302 resident, 26.9% |
+
+The last three overlap each other, so `0xc300`/1,627, `0xc300`/2,795 and
+`0xc800`/1,145 are mutually exclusive: one slot, three alternatives. That is a
+**mode slot**, and `0xc800` is the mode with no analog-Courier counterpart.
+
+Cross-comparing the Quad's images against each other, `0xc800` shares **0.0%**
+with every one of them, so it is not a variant of either sibling either. (The
+1,627-word `0xc300` image does share 16.7% with `0x9440`, so those two are
+related.)
+
+Reading its head: it branches to `0xa98d`, inside the `0xa180` PCM core's span,
+and calls `0xc85b` inside its own — a mode layer sitting on the shared core,
+which is what all three alternatives should look like.
+
+### What it might be
+
+Candidates, none settled:
+
+- **V90D downstream mapping.** The card is V90D-only per `S81` above, and
+  server-side codeword transmission has no analog-Courier counterpart, which
+  fits "matches nothing".
+- **x2 server downstream mapping.** These are `x2` NACs; x2 predates V.90 and
+  is the same shape of scheme. Server-side x2 and V.90 mapping may well share
+  one image, which would explain why only *one* image is unmatched rather than
+  two.
+- **Another G.711 or PCM mode** for the DS0 side.
+
+Against **clear channel / unrestricted 64k**: that needs essentially no DSP,
+and this image branches into the PCM core and does real arithmetic, so a
+straight passthrough does not fit.
+
+On **V.91**: `QF060003` carries an embedded `6.0.3` / `09/22/98` build stamp, so
+anything standardised after 1998 is excluded on date alone. I have not verified
+V.91's approval date against a source here, so treat that exclusion as
+provisional.
+
+What the measurements support is only the shape: 1,145 words, multiply density
+25.3 per thousand against 46-54 for the PCM cores, `rpt` density 11.4 against
+55-67, no large lookup table (entropy is a flat ~6.0-6.7 across every 128-word
+block), and a branch into the shared core. That is a small decision-and-mapping
+layer. Which mapping it implements needs the code read, not measured.
