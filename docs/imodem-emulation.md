@@ -302,3 +302,52 @@ The floor this leaves is still worth having: reset vector, board bring-up from
 the board's own table, the DSP loaded with 47,096 bytes, flash command set,
 DSC register file.  What it cannot do is start the application the way a board
 does.
+
+### The analog Courier's boot block, and what it says about the I-modem's
+
+The analog side has what the I-modem lacks - a whole flash - so its boot path
+can just be read.  From the reset stub at `ffff0`:
+
+```
+ffff0  cli ; mov dx,ffa4 ; mov ax,8000 ; out dx,ax   ; the 80186's UMCS
+       jmp far fc00:1a21                              -> fda21
+
+fda21  cld ; xor ax,ax ; mov ds,ax ; mov es,ax ; mov ss,ax ; mov sp,00f8
+       mov word [ffa8], 00ff                          ; LMCS
+       mov si,1976 ; mov cx,0024                      ; 36 word records
+       lods cs:[si] ; xchg dx,ax ; lods cs:[si] ; out dx,ax ; loop
+       mov si,1a06 ; mov cx,0009                      ; 9 byte records
+       lods cs:[si] ; xchg dx,ax ; lods cs:[si] ; out dx,al ; loop
+       xor ax,ax ; mov si,ax ; mov di,ax ; mov es,ax
+       mov ax,cs ; mov ds,ax ; mov cx,1975 ; shr cx,1 ; inc cx
+fda61  rep movsw                                      ; cs:0 -> 0000:0
+       xor ax,ax ; mov ds,ax
+fda67  int 13
+```
+
+Three things follow, and all three transfer.
+
+* **The table-driven init is the same design.**  Word records then byte
+  records, walked by `lods`/`out` - the I-modem's tables at `40434`/`4049e` are
+  the 386EX version of the same idea.  So replaying them from a synthetic block
+  is the right shape, not a workaround.
+* **The boot block carries a low-RAM image and copies it down** - `0x1976`
+  bytes from the start of its own segment to `0000:0`.  That is the piece the
+  I-modem's missing 32 KiB must also hold, and it explains what the I-modem's
+  code expects to find at segments `0ce0`, `3497` and `7561`.
+* **The application is entered through a vector, not an address.**  The last
+  instruction is `int 13`, dispatched through the table just copied in.  So
+  there is no far reference to a cold entry anywhere in the flash - and there
+  is none in the I-modem's payload either, which is now explained rather than
+  merely observed.
+
+**Correction.**  `a400:0008` was reported here as the I-modem's cold start.  It
+is not.  A normal update run executes it exactly once, called by the updater,
+and it returns through `call far 7561:443e` - into the update program.  The
+sequence is real and does load the DSP resident (`mov cx,247c`), but it is a
+routine the updater calls, not a boot entry.  `imodem_rom.DEFAULT_ENTRY` is
+`UPDATER_ENTRY` again, with `DSP_LOAD_ENTRY` kept under its own name.
+
+What would let the I-modem boot for real is its low-RAM image.  It is not in
+the payload: the code at `79a4e` that the cold path calls appears **nowhere**
+in the flash half, so the boot block is its only home.

@@ -41,16 +41,22 @@ BOOT_BLOCK_OFFSET = 0x78000          # physical 0xf8000
 RESET_VECTOR_OFFSET = 0x7FFF0        # physical 0xffff0
 ERASED = 0xFF
 
-# The application's cold start, recovered rather than assumed - see
-# docs/imodem-emulation.md. `a400` is the firmware's code segment (the DSP
-# overlay loader runs there, and every flash-half vector the updater installs
-# names it), and offset 8 is where it begins: `cld ; mov ax,2600 ; mov ds,ax ;
-# mov es,ax ; … ; mov cx,247c ; call <dsp download>` - 0x247c being the resident
-# DSP image's length to the byte.
-DEFAULT_ENTRY = (0xA400, 0x0008)
+# `a400` is the firmware's code segment - the DSP overlay loader runs there and
+# every flash-half vector the update program installs names it - and `a400:0008`
+# loads the DSP: `cld ; mov ax,2600 ; mov ds,ax ; mov es,ax ; … ; mov cx,247c ;
+# call <download>`, 0x247c being the resident DSP image's length to the byte.
+#
+# It is **not** the application's cold start, though this file once said so.  A
+# normal update run executes it exactly once - the updater calls it - and it
+# returns through `call far 7561:443e`, into the update program itself.  The
+# analog Courier shows what a real entry looks like instead: its boot block
+# copies a low-RAM image into 0000:0 and dispatches with `int 13`, so the entry
+# is a *vector*, not an address, which is why nothing in this payload names one.
+DSP_LOAD_ENTRY = (0xA400, 0x0008)
 
-# The update program's initialiser, for booting the updater instead.
+# The update program's initialiser: the one entry this image really has.
 UPDATER_ENTRY = (0x4030, 0x0000)
+DEFAULT_ENTRY = UPDATER_ENTRY
 
 
 # The board's own bring-up, carried in the image as two tables: three-byte
