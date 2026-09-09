@@ -69,7 +69,37 @@ fingerprint.
 What survives is the content evidence, which is stronger anyway: image 6 is
 V.34 by a 24.8% byte match against the analog overlay 6, image 7 is V.FC by
 68% and a 1,039-byte run against overlay 7, image 9 is fax because every one of
-its seven request sites sits in the Class 2 code.  And the pair, whatever else
-it is, is a two-part datapump that predates x2 by six months and that grew by
-2,622 words in the release that added x2 server and symmetric mode.  Naming it
-outright still needs the disassembly.
+its seven request sites sits in the Class 2 code.
+
+## What the pair actually is: the resident bank, loaded
+
+Asking *where* the shared bytes fall answers it.  Matched runs, binned by
+decile of the analog segment they land in:
+
+```
+idx 6  vs analog ov6   24.8%   18 12  8 15  8 16 17  1  0  0
+idx10  vs analog res   27.7%    0  0  0  1  0  2 48 40  2  4
+idx11  vs analog res   47.6%    1  7 16 21 16 25  0  0  0 10
+```
+
+Image 6 is spread across the first seven tenths of the analog **V.34 overlay** -
+a body, not a startup fragment, which is what settles it as V.34.  But images 10
+and 11 do not match any overlay: they match the analog **resident bank**, in two
+*adjacent and non-overlapping* regions - 11 covering its first six tenths, 10
+covering the seventh and eighth.  Between them they reproduce most of it.
+
+The arithmetic agrees.  The I-modem's resident plus the pair is
+4,670 + 7,536 + 15,997 = **28,203 words**, against the analog resident's 27,710
+- and it holds across the series: 25,793 in 2.00.09, 27,189 in 2.01.04, 27,753
+in 2.02.02, 28,183 in 2.04.05.
+
+So the I-modem does not have a big second datapump.  It has the **same resident
+bank as the analog Courier, delivered as two loadable images** because its
+actual resident is a 4,670-word loader and ISR stub rather than a 27,710-word
+program.  That explains everything the earlier reading strained at: why the
+pair predates x2 by six months (the resident always existed), why it carries the
+`fff1`/`fff3`/`fff4`/`fff7` parameter cells (the host mailbox interface is
+resident code), why it grew 2,622 words exactly when x2 server and symmetric
+arrived (the PCM send path went into the resident-class image), and why it
+matches the analog **PCM overlay** 0.0% (that overlay is the client receiver,
+which this product does not have).
