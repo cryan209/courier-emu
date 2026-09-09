@@ -194,6 +194,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--exchange-outcome", args.exchange_outcome))
         command.extend(("--exchange-answer-after", str(args.exchange_answer_after)))
         command.extend(("--exchange-answer-tone", str(args.exchange_answer_tone)))
+        command.extend(("--exchange-dial-tone", args.exchange_dial_tone))
         if args.exchange_hotline:
             command.append("--exchange-hotline")
     if args.sip_server:
@@ -720,6 +721,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="MS",
         help="how long the answered call carries 2100 Hz answer tone before "
         "the exchange hands it to the far end (default 3000; 0 skips it)",
+    )
+    run.add_argument(
+        "--exchange-dial-tone",
+        choices=("us", "nz", "uk", "eu"),
+        default="us",
+        help="what the loop carries as dial tone: us 350+440 (North American "
+        "precise), nz 400, uk 350+450, eu 425. A detector tuned for one does "
+        "not answer another, and this board reports Product type Russia",
     )
     run.add_argument(
         "--exchange-hotline",

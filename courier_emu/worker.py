@@ -11,7 +11,7 @@ from .console import SerialConsole
 from .daa import CourierDaa, DAA_LINE_STATES, RingSource
 from .flash import ParameterFlash
 from .images import load_image
-from .exchange import EXCHANGE_OUTCOMES, LineExchange
+from .exchange import DIAL_TONES, EXCHANGE_OUTCOMES, LineExchange
 from .line import LineLink
 from .machine import CourierMachine
 from .nvram import CourierNvram
@@ -86,6 +86,7 @@ def main() -> int:
     parser.add_argument("--parameter-flash")
     parser.add_argument("--tick-ms", type=_number, default=None)
     parser.add_argument("--frame-hz", type=_number, default=None)
+    parser.add_argument("--exchange-dial-tone", default="us")
     parser.add_argument("--tick-source", default=None)
     parser.add_argument("--int1-after", type=_number)
     parser.add_argument("--exchange", action="store_true")
@@ -168,6 +169,7 @@ def main() -> int:
             answer_after_rings=args.exchange_answer_after,
             answer_tone_ms=args.exchange_answer_tone,
             hotline=args.exchange_hotline,
+            dial_tone=DIAL_TONES[args.exchange_dial_tone],
         )
 
     ring = None

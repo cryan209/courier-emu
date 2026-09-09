@@ -747,3 +747,53 @@ what does a 3.1.2 resident have to be told before it will listen, and does the
 supervisor's originate path ever tell it? The board can be asked the same way
 the mailbox cadence was - the resident's own traffic during a real dial, sampled
 through the INT0 hook.
+
+## The tone was wrong: the resident detects, and reports it as bit 0x40
+
+Scott's observation, and it turns a dead end into a mechanism. The exchange
+presented `DIAL_TONE = (350, 440)` - **North American precise dial tone** - to a
+unit whose own `ATI7` says `Product type Russia (ex. US/Canada) External`,
+plugged into a loop carrying a single continuous 400 Hz. A detector tuned for
+one does not answer the other.
+
+With the tone made a parameter (`--exchange-dial-tone us|nz|uk|eu`), the same
+failing `ATX2` dial, everything else identical:
+
+| dial tone | codec peak | tag histogram |
+|---|---|---|
+| `us` 350+440 | 7,878 | `0000` x71, `0002` x62, `0003` x1 |
+| `nz` 400 | 3,909 | `0000` x71, `0002` x61, `0003` x1, **`0042` x1** |
+| `eu` 425 | 4,000 | `0000` x71, `0002` x59, `0003` x1, **`0042` x3** |
+| `eu` 425, double level | 8,000 | `0000` x71, `0002` x53, `0003` x5, **`0042` x4, `0043` x1** |
+
+**`0x0002` and `0x0003` become `0x0042` and `0x0043`** - the same low bits with
+`0x40` added, and `0x40` appears **only** for a continuous single tone, never for
+350+440. So tag `0x08` is a status word the resident sends continuously, and
+**bit `0x40` in it is the dial-tone report**.
+
+The resident was never deaf and never needed arming. It was being shown a tone
+its detector does not answer, at half the level besides: the exchange applies its
+level per component, so a two-frequency tone sums to twice the amplitude of a
+one-frequency tone, and the doubled-level run shows the report count rising with
+level as well as with frequency.
+
+### What this changes
+
+The mailbox consume path is now the right thing to build, and for the first time
+the thing it would carry is identified rather than assumed: `0x0008` with bit
+`0x40` set, arriving on the DSP-to-CPU direction whose 20 ms cadence the board
+already gave us, and which `runtime_inbound_delivered` shows nothing consumes.
+
+Still open, and now narrow:
+
+* **The report is sparse** - a handful over more than a second of tone, where the
+  board's own reply cadence is 20 ms. Whether the supervisor needs it sustained,
+  and why the emulated resident only asserts it intermittently, is unmeasured.
+* **The level model is wrong in a way that matters.** Real dial tone is specified
+  at a level, not per component, so `TONE_LEVEL` should apply to the composite.
+  That is why `us` reads 7,878 and `nz` 3,909 for tones that on a real loop would
+  be the same loudness.
+* **The right default is not settled.** `us` is wrong for this board; `nz` matches
+  the loop it is plugged into; `eu` 425 is the ITU-T E.180 tone and produced the
+  most reports. Which the Russian firmware's detector is actually tuned for is a
+  firmware question this has not asked.

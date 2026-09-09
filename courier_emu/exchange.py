@@ -14,7 +14,19 @@ EXCHANGE_SAMPLE_RATE = DAA_SAMPLE_RATE
 
 # North American precise tone plan. Each entry is the pair of frequencies and
 # the cadence in milliseconds; a zero on-time means the tone is continuous.
+# North American precise dial tone. It is **not** universal, and this exchange
+# has been presenting it to units that never expected it: the board this
+# harness is built against reports `Product type Russia (ex. US/Canada)` and the
+# loop it is plugged into carries a single continuous 400 Hz, the NZ/UK-family
+# tone. A detector tuned for one will not answer the other, so the tone is a
+# parameter rather than a constant.
 DIAL_TONE = (350, 440)
+DIAL_TONES = {
+    "us": (350, 440),        # North American precise
+    "nz": (400,),            # New Zealand, continuous
+    "uk": (350, 450),        # United Kingdom
+    "eu": (425,),            # ITU-T E.180 / most of Europe and Russia
+}
 RINGBACK_TONE = (440, 480)
 CONGESTION_TONE = (480, 620)
 # V.25 answer tone. The answering modem, not the exchange, owns anything past
@@ -192,6 +204,8 @@ class LineExchange:
     answer_after_rings: int = 2
     no_answer_rings: int = 8
     answer_tone_ms: int = 3_000
+    # What the loop carries as dial tone. See DIAL_TONES.
+    dial_tone: tuple[int, ...] = DIAL_TONE
     # Routing waits this long after the last digit for one more.
     interdigit_ms: int = 4_000
     # Silence between dial tone ending and the first progress tone, which is
@@ -548,7 +562,7 @@ class LineExchange:
         if not self.off_hook:
             return ((), 0, 0)
         if self.state == "dial-tone":
-            return (DIAL_TONE, 0, 0)
+            return (tuple(self.dial_tone), 0, 0)
         if self.state == "ringback":
             return (RINGBACK_TONE, RINGBACK_ON_MS, RINGBACK_OFF_MS)
         if self.state == "busy":
