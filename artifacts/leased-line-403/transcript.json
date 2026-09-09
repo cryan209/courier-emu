@@ -1,0 +1,326 @@
+[
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "ATI7",
+    "raw": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "AT",
+    "raw": "AT\r\r\nOK\r\n"
+  },
+  {
+    "cmd": "page 00100",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00300",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00400",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00500",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00900",
+    "raw": "<256 bytes>"
+  },
+  {
+    "cmd": "page 00d00",
+    "raw": "<256 bytes>"
+  }
+]

@@ -917,3 +917,32 @@ check, so an entry could be a pattern lying inside data rather than an
 instruction. `0x94b9b` was verified by hand — `3e 80 0e 92 0d 04 c3` is a `ds:`
 override, `or`, `ret`, followed by a clean routine at `0x94ba2` — and stands.
 The others have not been checked that way.
+
+## `&L1` alone is inert on the board
+
+Sampled continuously for 20 seconds with `&L1` set, then restored.
+
+| | `[0x04f2]` | `[0x0d28]` | `[0x0192]` |
+|---|---|---|---|
+| before | `00` | `00` | `0110` |
+| `&L1` live, x11 over 20 s | **`01`** | `00` | **`0110`** |
+| after `&L0` | `00` | `00` | `0110` |
+
+`[0x04f2]` holds `1` for the whole window, so the command took and stayed
+taken. But `[0x0d28]` never moves, and **`[0x0192]` never leaves `0110` —
+the idle state measured in the trajectory run.**
+
+That is the explanation, and it is not a contradiction of the emulator. `&L1`
+selects leased-line mode; it does not itself start a connection. The board
+sits idle with the setting armed until something asks it to connect. The
+emulator's `&L1` runs both included a connection attempt — `ATDT6245` in one,
+the hotline exchange answering in the other — and it was on that attempt that
+`0x8bc06` wrote the overlay id and the loader ran.
+
+So the overlay id is written during a *connection attempt*, in leased-line
+mode as much as in a normal call. This bench route reaches the same wall as
+every other: the cells move only inside the window the DTE cannot read,
+because a connection attempt takes the serial port out of command mode and
+`+++` aborts rather than escapes.
+
+The line was released, `&L0` restored, and the board answers.
