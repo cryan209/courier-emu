@@ -165,7 +165,7 @@ So the graft shows the Courier boot block *executes* on Quad flash. It does not
 reach a handoff, and the table comparison above says it should not be given
 one.
 
-### An open question: the word at `0xfbfee`
+### The word at `0xfbfee` is the image CRC
 
 `recovery.py` shows the Courier loader computing an application CRC and
 comparing it against a stored word before entry (its `application-crc` event at
@@ -173,11 +173,25 @@ comparing it against a stored word before entry (its `application-crc` event at
 entirely unpainted, and paint exactly two bytes at `0xfbfee`, immediately below
 it: `QF 6.0.3 = 0xf40a`, `QR 6.1.3 = 0xc29d`.
 
-Position and precedent both suggest this is the stored application checksum the
-card's own boot block verifies. It is **not proven**. Over the painted body,
-neither value is reproduced by a byte sum, a word sum, their negations, a word
-XOR, or CRC-16 IBM, MODBUS, CCITT-FALSE, or XMODEM. The algorithm and the
-covered range are both still unrecovered.
+Both values are reproduced exactly by **CRC-16/X.25** — reflected polynomial
+`0x8408`, init `0xffff`, final XOR `0xffff` — over `0x80000..0xfbfee`, with
+unpainted flash counted as erased `0xff`:
+
+```
+QF 6.0.3 -> 0xf40a   (stored 0xf40a)
+QR 6.1.3 -> 0xc29d   (stored 0xc29d)
+```
+
+Two independent images matching on the first algorithm tried after the table
+was identified is proof rather than coincidence. The 256-entry `0x8408` table
+itself is present in both Quad images (`QF+0x1cae`, `QR+0x1bd0`) and in the
+chassis NMC image `NM040103.NAC` (`+0x20d0`), byte-identical and
+little-endian — the same CRC the NMC's `msg_head.crc1`/`crc2` framing uses.
+See [nmc-sdl-protocol.md](nmc-sdl-protocol.md).
+
+So the card's own boot block verifies the operational image with the same CRC
+the chassis uses on the wire, and the covered range confirms that
+`0xfbff0..0xfffff` is reserved for the boot block and excluded from the check.
 
 Note also that on the Courier, `0xf8000..0xfbfff` is the parameter sector area
 (`courier rom-info` lists sectors from `0xf8000`), not application space. The
