@@ -333,10 +333,36 @@ Against **clear channel / unrestricted 64k**: that needs essentially no DSP,
 and this image branches into the PCM core and does real arithmetic, so a
 straight passthrough does not fit.
 
-On **V.91**: `QF060003` carries an embedded `6.0.3` / `09/22/98` build stamp, so
-anything standardised after 1998 is excluded on date alone. I have not verified
-V.91's approval date against a source here, so treat that exclusion as
-provisional.
+Against **V.91**: tested directly, and absent. Table 5/V.91 gives the default
+DIL parameters — `N = 125`, `L_SP = L_TP = 12`, `SP = 0x0FC0`, `TP = 0x0FFF`,
+and a 125-symbol training sequence interleaving downward and upward counts
+(`124, 0, 123, 1, 122, 2, ... 63, 61, 62`).
+
+Searching `QF060003`, `QR060103`, `IDSDL302.ROM` and `Ie030002` for that
+training sequence as bytes, as reversed pairs, and as 16-bit words in both
+endiannesses finds **no match in any image**, not even the first sixteen
+entries. The `SP`/`TP` pair never appears adjacent in any of them. `QF060003`
+contains exactly one `0x0FC0`, at flat `0xc78dc` — inside the *resident*, not
+the `0xc800` image, and as the immediate of an `add` (`ldp #006; lacl @2b;
+add #0fc0; sacl @1a`) rather than a stored parameter.
+
+Two caveats. The training sequence is trivially generatable in code, so its
+absence as a literal table is evidence rather than proof. And the same search
+finds nothing in the analog Courier either, which is expected — none of these
+images should contain V.91.
+
+The build stamp says the same thing independently: `QF060003` carries an
+embedded `6.0.3` / `09/22/98`, so anything standardised later is excluded on
+date. Between the two, V.91 is out.
+
+### A usable method
+
+That search is the shape of the test that would settle `0xc800` positively.
+Constants from a specification — parameter values, training or probing
+sequences, scrambler taps, constellation tables — searched across the images
+and localised to a span, would name the mode. It worked as an exclusion for
+V.91; the same run against x2 or V.90 downstream constants would work as a
+confirmation.
 
 What the measurements support is only the shape: 1,145 words, multiply density
 25.3 per thousand against 46-54 for the PCM cores, `rpt` density 11.4 against
