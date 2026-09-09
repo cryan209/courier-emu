@@ -168,10 +168,17 @@ resident stops thrashing its serial port:
 | no frame clock | 118 | 118 | `0x265b` (out of program space) |
 | frame clock | **2** | **2** | `0x82eb` |
 
-That confirms the `TXM = 0` / `MCM = 0` reading: the port waits on external
-timing, and once something clocks it the firmware programs it once and
-proceeds. It also confirms the earlier run's 118 rewrites were a stalled
-retry loop, not normal behaviour.
+The 118 rewrites are therefore a stalled retry loop, not normal behaviour,
+which is consistent with the `TXM = 0` / `MCM = 0` reading: the port waits on
+external timing.
+
+Read that table narrowly. `configure_rom_codec` does not supply a sustained
+frame clock here — the run ends with `primary_frames = 2` and
+**`frames_clocked = 0`**. What it changes is the `XRDY` answer: per
+`native/c5x_core.cpp`, without the codec `XRDY` keeps an optimistic value,
+and with it `XRDY` follows the codec's frame clock. Two frames were enough
+for the firmware to settle its init. That is not the same as a working
+timing source, and the table should not be read as one.
 
 **This is a diagnostic, not a model.** The codec being enabled is the AC01,
 which exchanges 16-bit words; the Quad runs `FO = 1`, 8-bit bytes. It is the
@@ -235,3 +242,49 @@ The remaining work, in order:
    borrowing the AC01.
 
 Only then is asking for a tone meaningful.
+
+
+## Feeding it idle codewords
+
+The right instinct for real hardware: a PCM receiver is never starved, and an
+idle channel carries an idle codeword rather than nothing. The firmware agrees
+— it has an `S71 T1 Idle Disconnect Pattern` register.
+
+It does not help yet, and the reason is worth recording.
+
+Queued 20,000 idle codewords into the receive side and stepped 1.5 M
+instructions, trying mu-law `0xff` and `0x7f`, A-law `0x55` and `0xd5`, plus
+`0x0000` and `0xffff` as controls, through both `queue_serial_rx` and
+`queue_codec_rx`. Every variant gives the identical result:
+
+```
+pc=0x03e6  dxr=0x0001  tdxr_writes=0  rx_consumed=0  frames=2  clocked=0
+```
+
+Two things are wrong there, and neither is the codeword value.
+
+`rx_consumed` stays 0: nothing is clocking frames, so the queue is never
+drained. Feeding the right byte cannot matter while no frame sync consumes it.
+
+More seriously, `pc = 0x03e6` is **outside the loaded program**. The resident
+bank occupies program `0x8000..0xfa28`. A control run with no receive data and
+no interrupt stays put at `0x82eb`; queueing receive data alone — without
+delivering any IRQ — is enough to derail it, because the core raises a receive
+interrupt and the firmware's handler leaves loaded space immediately.
+
+So the blocker is not the idle pattern. It is that **the DSP program is
+incomplete**: only the resident bank is loaded. Per
+[x2/README.md](x2/README.md), the remaining 23,944 (QF) / 19,884 (QR) C50 words
+are an overlay store whose selection mechanism is not yet decoded, and the
+interrupt path evidently reaches code that is not in the resident. Any
+experiment that provokes an interrupt will run off into unmapped memory until
+the overlays are placed.
+
+That reorders the remaining work. Before a tone, or an idle stream, is
+meaningful:
+
+1. Recover the Quad's C50 overlay placement, so a full program is loaded and
+   interrupt handlers land in real code.
+2. Then supply framing suited to `FO = 1` byte transfers, at which point an
+   idle codeword stream becomes the correct thing to feed.
+3. Then decode the shared-memory command queue to ask for a tone.
