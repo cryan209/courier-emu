@@ -5,6 +5,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .nac import NacImage
+from .am79c30 import Am79C30
+from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
@@ -32,6 +34,13 @@ ADDRESS_SPACE_SIZE = 0x1000000
 BOARD_STATUS_PORT = 0x1E
 BOARD_STATUS_READY = 0x07
 DOWNLOAD_PORTS = range(0x40, 0x58)
+
+# The DSP's block handshake. The loader writes 1 and spins until bit 0 reads
+# back, then writes 2 and spins until bit 1 does - the DSP acknowledging each
+# half. The DSP is not executed here, so the latch answers immediately: this
+# models the acknowledgement, and nothing about what the DSP did with the
+# block. Reading it back is how the firmware learns the block was taken.
+DSP_HANDSHAKE_PORT = 0x18
 
 # Two 16550s. UART A is the one the firmware writes to first.
 UART_A_BASE = 0xF8F8
@@ -85,6 +94,8 @@ class IsdnRunResult:
     last_addresses: list[str] = field(default_factory=list)
     pit: dict[str, Any] = field(default_factory=dict)
     pic: dict[str, Any] = field(default_factory=dict)
+    dsc: dict[str, Any] = field(default_factory=dict)
+    flash: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -117,6 +128,9 @@ class IsdnMachine:
 
         self.pit = ProgrammableIntervalTimer()
         self.pic = InterruptControllers()
+        self.dsc = Am79C30()
+        self.flash = FlashDevice()
+        self.dsp_handshake = 0
 
         self.instructions = 0
         self.timer_ticks = 0
@@ -152,6 +166,10 @@ class IsdnMachine:
             return self.pit.read(port, self.instructions)
         if self.pic.handles(port):
             return self.pic.read(port)
+        if self.dsc.handles(port):
+            return self.dsc.read(port)
+        if port == DSP_HANDSHAKE_PORT:
+            return self.dsp_handshake
         if port == BOARD_STATUS_PORT:
             return self.board_status
         base = self._uart_of(port)
@@ -166,6 +184,12 @@ class IsdnMachine:
             return
         if self.pic.handles(port):
             self.pic.write(port, value)
+            return
+        if self.dsc.handles(port):
+            self.dsc.write(port, value)
+            return
+        if port == DSP_HANDSHAKE_PORT:
+            self.dsp_handshake = value & 0xFF
             return
         if port in DOWNLOAD_PORTS:
             if len(self.download) < MAX_SERIAL_BYTES:
@@ -200,6 +224,7 @@ class IsdnMachine:
                 UC_HOOK_INSN,
                 UC_HOOK_INTR,
                 UC_HOOK_MEM_INVALID,
+                UC_HOOK_MEM_WRITE,
                 UC_MODE_16,
                 Uc,
                 UcError,
@@ -229,8 +254,35 @@ class IsdnMachine:
 
         base, flat = self._flat_image()
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
+        # Kept so a caller can read memory back after a run; nothing else uses it.
+        self.machine = uc
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
         uc.mem_write(base, flat)
+
+        self.flash.load(
+            flat[FLASH_BASE - base : FLASH_BASE - base + FLASH_SIZE]
+            if base <= FLASH_BASE
+            else b""
+        )
+        flash_dirty = [False]
+
+        def on_flash_write(_uc: Any, _access: int, address: int, size: int,
+                           value: int, _data: Any) -> None:
+            """A flash decodes command writes; it does not store them.
+
+            The hook runs before the write lands, so what the window should
+            read back is queued and applied on the next instruction boundary,
+            where the CPU's own write cannot overwrite it again.
+            """
+            if not self.flash.contains(address):
+                return
+            self.flash.on_write(address, size, value)
+            flash_dirty[0] = True
+
+        def apply_flash() -> None:
+            flash_dirty[0] = False
+            for address, payload in self.flash.take_patches():
+                uc.mem_write(address, payload)
 
         def push_far(vector: int) -> bool:
             """Take a real-mode interrupt through the vector table."""
@@ -255,6 +307,8 @@ class IsdnMachine:
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             self.instructions += 1
+            if flash_dirty[0]:
+                apply_flash()
             self.pc_counts[address] += 1
             self.recent.append(address)
             if self.instructions < self._next_poll:
@@ -298,6 +352,12 @@ class IsdnMachine:
             return False
 
         uc.hook_add(UC_HOOK_CODE, on_code)
+        uc.hook_add(
+            UC_HOOK_MEM_WRITE,
+            on_flash_write,
+            begin=FLASH_BASE,
+            end=FLASH_BASE + FLASH_SIZE - 1,
+        )
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
         uc.hook_add(UC_HOOK_INTR, on_interrupt)
@@ -347,6 +407,8 @@ class IsdnMachine:
                 and not self.pic.handles(port)
                 and port not in known
                 and port not in DOWNLOAD_PORTS
+                and not self.dsc.handles(port)
+                and port != DSP_HANDSHAKE_PORT
                 and self._uart_of(port) is None
             }
         )
@@ -373,5 +435,7 @@ class IsdnMachine:
             last_addresses=[f"{address:#07x}" for address in self.recent],
             pit=self.pit.status(self.instructions),
             pic=self.pic.status(),
+            dsc=self.dsc.status(),
+            flash=self.flash.status_report(),
             error=self.error,
         )

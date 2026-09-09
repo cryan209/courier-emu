@@ -89,3 +89,52 @@ block sizes above, an `LSR` that reports line status, and the DLC's frame
 interface.  Until it answers, reads return zero and the boot stalls where it
 waits for the LIU to come up - which is where `courier-emu isdn-run` sits
 today, spinning at `0x3497f` and `0xa45ef`.
+
+## Modelled
+
+`courier_emu/am79c30.py` is the register file: the command/data pair at
+`0300`/`0301`, every register's block width, a cursor that walks a block and
+rewinds when the command port is written, and counters for reads, writes,
+unknown registers and overruns.  The widths are the check on itself - if one
+were wrong the firmware's writes would overrun a block and the counter would
+say so.  Against `Ie030002.nac` the whole init sequence lands with **no unknown
+registers and no overruns**, and reads back as:
+
+```
+INIT 11    LIU_LMR1 40   LIU_LMR2 78   LIU_2_4 00 00 00
+MCR1..4 00 00 00 00      DLC_DMR1 0b   DMR2 84   DMR3 02   DMR4 0a
+DLC_FRAR_1_2_3 01 01 01  DLC_SRAR_1_2_3 01 01 01  DLC_DRLR 10 01 10 01 10 01
+DLC_EFCR 01              MAP_MMR1 00   MAP_MMR2 40   PP_PPCR1 07  PP_PPCR3 01
+```
+
+The registers the firmware *reads* are few and now recorded: `LIU_LSR` four
+times, `INIT` twice, `MAP_MMR1`, `MAP_MMR2`, `LIU_LMR1`, `DLC_RNGR1`,
+`DLC_RNGR2` once each.  Nothing here invents a line state: `LIU_LSR` reads back
+what was written to it, so a harness that wants an activated S interface has to
+say so deliberately.
+
+Two ports in the same window are still unaccounted for - `0302`, `0303` and
+`0307` are touched and are not the DSC's.
+
+## What that unblocked
+
+Modelling the DSC was not what the boot was waiting on, and following it turned
+up two more parts:
+
+* **The flash** (`courier_emu/flash_device.py`).  `Ie030002.nac` is an update
+  image, and entered at its initialiser it identifies the flash and then erases
+  it.  The identification is at `34970`: Intel's `ff`/`90` read-identifier
+  first, comparing the manufacturer word against `0089`, then AMD's
+  `aa`/`55`/`90` unlock if that fails.  With a part that answers, the run gets
+  into the Intel command set proper - `50` clear status, `20`+`d0` block erase,
+  `70` read status - and the model carries those, with an array that only ever
+  loses bits and a status register that reports the write state machine ready.
+  The block size is the one number not recovered from the image and is a
+  parameter, defaulting to 64 KiB.
+* **The DSP block handshake** at port `18`.  The loader writes `1` and spins
+  until bit 0 reads back, then writes `2` and spins until bit 1 does - the DSP
+  acknowledging each half-block.  The DSP is not executed here, so the latch
+  answers immediately.
+
+With the three in place the update image gets past identification, erases flash
+blocks, streams 52,856 bytes to the DSP, and starts writing progress to SIO0.
