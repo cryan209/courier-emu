@@ -334,12 +334,48 @@ rates, and the Quad in fact holds more of each than the 302 does. What is solid
 is only the structural difference: one extra constant, in both Quad builds, at
 the end of the rate-table block.
 
-### Channel count: inference, not measurement
+### Four CPUs, one DSP each
 
-The Quad resident is 31,272 words against the single-channel 302's 27,710 — 13%
-larger. Four channels multiplexed into one DSP would need roughly four times
-the per-channel state and a different structure, and the supervisor issues
-exactly one download. The natural reading is one C50 per channel running the
-same image, with the download bus reaching all of them. **Not measured** — no
-channel-select port has been identified on either side, and the 8-word preamble
-the supervisor sends to destination `0xfff8` before the download is unexplained.
+The card is **four 80186 + C50 engines**, not one supervisor driving four
+channels. The single image runs on all four, which is why the resident is only
+13% larger than the single-channel 302's and why the supervisor code is shaped
+like a single modem throughout.
+
+The firmware reads its own position. At `0x801d6`, early in the entry path:
+
+```
+mov  dx, 0x260
+in   al, dx
+shr  al, 4
+and  al, 3            ; a 2-bit field: 0..3
+mov  byte [0x213], al ; cached
+cmp  byte [0x213], 1
+je   0x801ec
+call 0x80dd8          ; taken only when the position is not 1
+```
+
+So **port `0x260` bits 4-5 carry the engine's position**, cached at RAM
+`0x213`, and position 1 is distinguished from the rest. The same field is read
+again at `0x8169e`, and at `0x8262b` it drives a three-way dispatch
+(`cmp al,1` / `cmp al,2` / else). Port `0x260` carries at least two other
+fields, read as `and al,0xc0` at `0x81661` and `and al,0x0f` at `0x81683`.
+
+Confirmed in the emulator by seeding the port:
+
+| Seed | I/O events | MMIO events |
+| --- | ---: | ---: |
+| unseeded (reads `0xff`, so position 3) | 192,624 | 652 |
+| `0x260 = 0x00` (position 0) | 192,624 | 652 |
+| `0x260 = 0x10` (**position 1**) | **192,604** | **642** |
+| `0x260 = 0x20` (position 2) | 192,624 | 652 |
+| `0x260 = 0x30` (position 3) | 192,624 | 652 |
+
+Position 1 diverges, by exactly the skipped `call 0x80dd8`. The branch is live
+and the field is what selects it. All five still park at the chassis-link wait,
+which is a separate blocker.
+
+For a board model this is a required input: something has to present a position
+on `0x260` bits 4-5, and the four instances differ.
+
+The 8-word preamble the supervisor sends to destination `0xfff8` before the DSP
+download remains unexplained.
