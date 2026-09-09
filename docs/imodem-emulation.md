@@ -109,3 +109,56 @@ Programming is new - every earlier run reported `programs 0` and never got past
 identification.  It then stops where it stopped before, spinning in the ring
 wait at `a543b` for `[c9ae] == [c9b0]`, which only the serial ISR at `b7dcc`
 advances.  Interrupts from the SIOs are the next piece.
+
+## The application's entry point is not in the payload
+
+Looked for, not found, and there is a structural reason rather than a search
+failure.
+
+A cold start on this board has to bring up the 386EX: chip selects, both
+8259s, the 8254, both SIOs, the port configuration.  The firmware does that
+from a **table of three-byte records** - port word, then value - walked by a
+loop at `4040b`.  The table is at `40434`-`4046a`, and the runs in it are
+recognisable:
+
+```
+43 f0 34 | 43 f0 74 | 43 f0 b4        the 8254
+20 f0 11 | 21 f0 20 | 21 f0 04 | …    ICW1..ICW4, master then slave
+fb f8 80 | f9 f8 00 | f8 f8 02 | …    SIO0, then the same for SIO1
+```
+
+Searching the whole payload for those runs finds **one copy of each, all in the
+updater half**.  The flash half has none.  So the application does not bring up
+its own hardware - the boot block does, and the boot block is exactly the
+32 KiB the payload never supplies.  Nothing in an update image needs to name
+the application's cold entry, and nothing in this one does.
+
+Two consequences worth stating plainly:
+
+* **What was modelled as "the firmware's init" is the updater's.**  The 386EX
+  sequence runs at `403af`, `403cf` and `4040b`; the Am79C30A setup in
+  [imodem-isdn-front-end.md](imodem-isdn-front-end.md) runs at `40b3a`.  All
+  three are below `0x80000`.  The register semantics recovered there are
+  unaffected - the chip is the chip - but the code driving them is the update
+  program, not the application.
+* **The flash half is entered through gates, and those we do have.**  The
+  vectors the updater installs into it:
+
+| vector | target | |
+|---|---|---|
+| INT `02` | `c774:0300` = `c7a40` | |
+| INT `20` | `a400:ef1a` = `b2f1a` | a real ISR - `pusha ; push ds ; push es ; mov ax,2600 ; …` |
+| INT `23` | `b2aa2` | |
+| INT `25` | `cfdb0` | |
+| INT `26` | `a400:120a` = `a520a` | |
+| INT `2c` | `c774:0502` = `c7c42` | |
+| INT `30` | `7360:0000` = `73600` | the updater's own gate, 2,085 calls in 3M instructions |
+| INT `31` | `98d1:0000` = `98d10` | data, not code - the relocation descriptor for the `41c0` bytes moved from `98d50` to `0ce00` |
+
+Those are real entry points into the flash half and are worth having.  None of
+them is the cold entry.
+
+What would settle it is 32 KiB off a board - `f8000`-`fffff`.  Short of that,
+the next thing to try is a scan of the flash half for a routine that installs
+the interrupt table wholesale, on the assumption that the application re-points
+the vectors the updater currently owns.
