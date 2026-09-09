@@ -946,3 +946,70 @@ because a connection attempt takes the serial port out of command mode and
 `+++` aborts rather than escapes.
 
 The line was released, `&L0` restored, and the board answers.
+
+## Answered: a normal dial arms the datapump from the DSP, by a counter
+
+Tracing up from `0x8b6c4`'s two callers gives the structure, and it is not a
+flag gate at all:
+
+```text
+8b79f  call 8bf74
+8b7a2  mov  word [0x134], 0x2760      ; a countdown
+8b7a8  mov  byte [0xb9e], 0           ; the counter, cleared
+8b7ad  cmp  word [0x134], 0
+8b7b2  je   8b7cb                     ; countdown expired -> the [0x0d92] probe
+8b7b4  test [0x225], 0x80  / jne 8b803    ; abort
+8b7bb  test [0xa7c], 0x20  / jne 8b803    ; abort
+8b7c2  cmp  byte [0xb9e], 5
+8b7c7  jb   8b7ad                     ; keep waiting
+8b7c9  jmp  8b7db                     ; reached 5 -> overlay 5, loader
+```
+
+**`[0x0b9e]` reaching 5 is what loads the datapump overlay.** The `[0x0d92]`
+probe path this document chased earlier is the *timeout* branch, taken only
+when the countdown runs out first — a fallback, not the normal route.
+
+### What feeds the counter
+
+`0x94fdc` is a four-instruction routine: `test ah, 1`, and on that bit either
+`inc byte [0xb9e]` or `mov byte [0xb9e], 0`. So it counts **consecutive**
+successes, and any failure resets it. Its two callers are the answer:
+
+```text
+94dc8  in   al, 0x5e          ; the DSP reply tag, high byte
+94dca  mov  ah, al
+94dcc  in   al, 0x5c          ; the DSP reply data
+94dce  lcall c800:0008        ; classify
+94dd3  jne  94ddf
+94dd5  test [0xd93], 1
+94dda  je   94e00
+94ddc  call 94fdc             ; AH bit 0 -> increment or reset
+```
+
+`AH` comes from **`in al, 0x5e`** — the CPU side of the DSP mailbox, the same
+port pair `0x5c`/`0x5e` this project has used all along. So the supervisor
+polls the DSP for status, and when the DSP reports the bit set five times in a
+row, the supervisor loads the datapump overlay and dispatches it.
+
+**A normal dial arms the datapump from the DSP, not from a command.** That is
+why no AT command, no profile setting and no NVRAM fixture ever moved these
+cells: nothing on the host side arms it. The DSP does, by reporting five
+consecutive good statuses during the handshake.
+
+The same module carries the corroboration. `0x94dc1` writes `mov word
+[0x192], 0x5742` — `5742` is exactly the off-hook state value measured on the
+board in the trajectory run — so this is the live call-progress state machine,
+not a dormant path. And `0x94d87`, the other overlay-id writer, sits here too,
+taking the id straight from `in al, 0x5c`.
+
+### Why the emulator never arms
+
+The counter is fed only from DSP replies. The bridge's replies never carry the
+bit, so `0x94fdc` resets `[0x0b9e]` on every poll, it never reaches 5, and the
+countdown at `[0x0134]` expires into the `[0x0d92]` probe, which also fails.
+Hence `bootstraps: 1` on every dial this project has ever run.
+
+Two conditions qualify this and want their own measurement: both call sites
+are gated — `0x94ddc` on `[0x0d93] & 1` and `0x94e07` on `[0x0d92] & 1` — and
+the board reads both cells as `00` at idle, so at rest neither poll feeds the
+counter. Which of them a real handshake enables is not established here.
