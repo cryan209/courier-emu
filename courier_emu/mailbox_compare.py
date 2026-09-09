@@ -94,6 +94,67 @@ def compare(rom, capture):
             'steps': steps}
 
 
+def compare_booted_g_capture(rom, capture):
+    """Replay the measured G-query sequence through a normally booted DSP.
+
+    This tests the DSP/bridge boundary, not the supervisor AT parser. Hardware
+    capture and the separate isolated G-handler check establish that parser.
+    No data RAM or register state is copied from the hardware into the core.
+    """
+    from .bridge import CourierDspBridge
+
+    validate(rom)
+    requests = []
+    for row in capture['steps']:
+        command = row['command']
+        if len(command) != 11 or not command.startswith('ATG'):
+            raise ValueError('expected exactly eight hex digits after ATG')
+        tag, value = int(command[3:7], 16), int(command[7:11], 16)
+        if tag not in (7, 0x62, 0x2D):
+            raise ValueError('not a measured query/no-op')
+        requests.append((row, tag, value))
+    bridge = CourierDspBridge(rom)
+    try:
+        payload = bridge.expected_bootstrap
+        for offset in range(0, len(payload), 8):
+            strobe, ports = bridge.transfer.windows[(offset // 8) % 2]
+            for port, byte in zip(range(ports, ports + 16, 2),
+                                  payload[offset:offset + 8].ljust(8, b'\xff')):
+                bridge.write(port, 1, byte)
+            bridge.write(bridge.transfer.command_port, 1, strobe)
+        bridge.write(bridge.transfer.command_port, 1, bridge.transfer.checksum_strobe)
+        bridge.core.step(1_500_000)
+        bridge._runtime_mode = True
+        bridge.write(0x1C, 1, 6)
+        steps = []
+        for row, tag, value in requests:
+            if not bridge.read(0x1C, 1) & 1:
+                raise RuntimeError('DSP input holding register not free')
+            for port, byte in zip((0x58, 0x5A, 0x5C, 0x5E),
+                                  (tag & 255, tag >> 8, value & 255, value >> 8)):
+                bridge.write(port, 1, byte)
+            bridge.write(0x1C, 1, 1)
+            bridge.core.step(100_000)
+            bridge._collect_dsp_messages()
+            pending = bool(bridge.read(0x1C, 1) & 2)
+            actual = [bridge.read(lo, 1) | bridge.read(hi, 1) << 8
+                      for lo, hi in ((0x58, 0x5A), (0x5C, 0x5E))]
+            ports = row['ports']
+            expected = [int(ports[lo], 16) | int(ports[hi], 16) << 8
+                        for lo, hi in (('58', '5A'), ('5C', '5E'))]
+            steps.append({'command': row['command'], 'hardware': expected,
+                          'emulated': actual, 'matches': actual == expected,
+                          'new_reply': pending,
+                          'request_consumed': not bool(bridge.core.io(0x57) & 1)})
+            bridge.write(0x1C, 1, 2)
+        return {'rom_sha256': hashlib.sha256(rom.data).hexdigest(),
+                'scope': 'Real DSP boot, resident initialization and bridge mailbox; '
+                         'supervisor parser, UART, live audio and interrupt timing excluded',
+                'steps': steps}
+    finally:
+        bridge.core.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--rom', type=Path, required=True)

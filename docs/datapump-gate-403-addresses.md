@@ -219,7 +219,7 @@ convention had to be established first, and it is not the one assumed above:
   words out to ports `0x5e` and `0x5f`, which the CPU reads as the byte pairs
   `58/5a` and `5c/5e`.
 
-Twenty-one tags reply: `07 14 23 24 28 29 2e 2f 32 33 34 3b 3d 4b 55 59 5a 5f
+Twenty tags reply: `07 14 23 24 28 29 2e 2f 32 33 34 3b 3d 4b 55 59 5a 5f
 62 7f`. Every one returns either a constant tag word paired with a status
 cell, or a value computed from receive-side analysis — `62` sums squares of
 `0900..098f`, as already recorded. **None replies with a value read from the

@@ -354,6 +354,11 @@ ATC8=31      ; enable x2
 ATNX         ; save changes
 ```
 
+Later captured-403 disassembly identifies `ATNX` as a supervisor restart,
+not a demonstrated NVRAM-save operation. The same investigation resolves
+numeric `ATN` as a state-dependent manual rate-change event rather than an
+arbitrary DSP procedure call. See [the command analysis](docs/undocumented-atn-commands.md).
+
 This maps very cleanly onto the observed `ATY14` string, even though the write
 commands themselves have not been confirmed on the 03/13/98 image:
 

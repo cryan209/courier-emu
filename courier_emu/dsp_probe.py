@@ -168,6 +168,41 @@ IO_ALIAS_SAMPLES = 6
 # Sentinels rather than zeroes: ARCR and INDX are set to values the LAR cannot
 # produce, so "loaded" and "untouched" are distinguishable rather than being
 # told apart by a zero that could mean either.
+NDX_LONG_LABELS = ('run_marker',) + tuple(
+    f'ndx{ndx}.{reg}' for ndx in (0, 1)
+    for reg in ('pmst', 'arcr', 'indx', 'ar0'))
+
+
+def build_ndx_long_probe() -> "RomProbe":
+    """Exact LAR AR0,#1234 discriminator using the board-verified sender.
+
+    PMST and AR0 are controls; independent ARCR/INDX sentinels distinguish
+    copying from preservation. No AR0 addressing updates occur while sampling.
+    """
+    words = [0xBE41, 0xBC00, 0x5D07, 0x0030,
+             0xBF0A, ROM_DUMP_BUFFER, 0x8B8A,
+             0xBF80, 0x9209, 0x90A0]
+    for ndx in (0, 1):
+        words += [0x5D07, 4] if ndx else [0x5E07, 0xFFFB]
+        words += [0x0807, 0x90A0]  # PMST readback
+        words += [0xBF80, 0xEEEE, 0x8819, 0xBF80, 0xDDDD, 0x8818]
+        words += [0xBF08, 0x1234]  # lar ar0,#1234 (long immediate)
+        for read in (0x0819, 0x0818, 0x0810):
+            words += [read, 0x90A0]
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, ROM_DUMP_BUFFER]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll,
+              0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, ROM_DUMP_TAG_BASE + len(NDX_LONG_LABELS), 0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
+
+
 NDX_ARCR_SENTINEL = 0xEEEE
 NDX_INDX_SENTINEL = 0xDDDD
 NDX_DIRECT_VALUE = 0x1234       # via a scratch cell, the 'C2x direct form

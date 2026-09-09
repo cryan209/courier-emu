@@ -1,4 +1,4 @@
-"""Replay the exact RAM probes captured from the Courier on 2026-09-07."""
+"""Replay exact RAM probes captured from the Courier DSP 3.1.2 board."""
 import json
 from pathlib import Path
 
@@ -14,7 +14,8 @@ class EmptyImage:
         return []
 
 
-@pytest.mark.parametrize('name', ['ndx-addressing-02', 'dsp-status-03'])
+@pytest.mark.parametrize('name', ['ndx-addressing-02', 'dsp-status-03',
+                                 'ndx-long-1234-20260909'])
 def test_instruction_probe_matches_board(name):
     folder = ROOT / 'artifacts' / name
     labels = json.loads((folder / 'labels.json').read_text())
@@ -38,6 +39,40 @@ def test_instruction_probe_matches_board(name):
                 actual &= ~0x80
                 expected &= ~0x80
             assert actual == expected, (label, hex(actual), hex(expected))
+
+
+def test_exact_long_immediate_probe_preserves_existing_model():
+    from courier_emu.dsp_probe import build_ndx_long_probe, NDX_LONG_LABELS
+
+    probe = build_ndx_long_probe()
+    assert probe.payload == (ROOT / 'artifacts/ndx-long-1234-20260909/'
+                             'probe-c5x.bin').read_bytes()
+    with NativeC5x(EmptyImage()) as core:
+        core.set_mpmc_pin(0)
+        core.configure_rom_codec()
+        core.set_io(0x57, 2)
+        core.load_program(probe.payload, 0x8000)
+        core.set_pc(0x8000)
+        core.step(2000)
+        samples = dict(zip(NDX_LONG_LABELS,
+                           (core.data(0x1000 + i) for i in range(9)), strict=True))
+    assert samples['run_marker'] == 0x9209
+    for ndx in (0, 1):
+        assert samples[f'ndx{ndx}.pmst'] & 4 == ndx * 4
+        assert samples[f'ndx{ndx}.ar0'] == 0x1234
+    assert (samples['ndx0.arcr'], samples['ndx0.indx']) == (0x1234, 0x1234)
+    assert (samples['ndx1.arcr'], samples['ndx1.indx']) == (0xEEEE, 0xDDDD)
+
+
+def test_long_probe_capture_integrity():
+    from courier_emu.probe_transport import parse_capture
+
+    folder = ROOT / 'artifacts/ndx-long-1234-20260909'
+    raw = (folder / 'frame.txt').read_bytes()
+    parsed = parse_capture(raw[raw.index(b'CDRP1 START'):])
+    assert parsed['word_count'] == 9
+    assert parsed['words'] == json.loads((folder / 'hardware.json').read_text())['words']
+    assert (folder / 'readback.bin').read_bytes() == (folder / 'diagnostic-ram.bin').read_bytes()
 
 
 def test_pa7_acknowledgement_does_not_create_download_ready():
