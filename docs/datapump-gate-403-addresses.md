@@ -1172,3 +1172,53 @@ other entries include `0x94dc8`, the routine that polls `0x5e`/`0x5c` and
 feeds the counter; tracing which of these entries actually run during a dial,
 and with what, would expose the dispatch that static analysis cannot reach.
 That is the next step, and it costs one instrumented run.
+
+## The DSP does send requests, and one has the right shape
+
+`dsp_originated_tags` records every DSP-to-CPU message. Across a 403 dial,
+973 messages, 13 distinct:
+
+```text
+0008:0080 x440   0008:0002 x308   0008:0885 x114   0008:0000 x59
+0008:0082 x27    0008:0180 x8     0008:0003 x5     0008:08c5 x4
+0006:0000 x2     0008:0042 x2     000f:0000 x2     0008:0043 x1
+0008:0081 x1
+```
+
+Nearly everything is tag `0008` with a varying data word. Two of those matter.
+
+**`0008:0885`, 114 times.** `0x94d83` reads port `0x5c` — the reply data's low
+byte — forces bit 7, and stores it as the overlay id, which the loader then
+masks with `0x7f`. Low byte `0x85` is `0x80 | 5`: bit 7 already set, and
+overlay **5** underneath, which is exactly the overlay the other route at
+`0x8b7db` selects. The `or al, 0x80` in the consumer and the `and al, 0x7f` in
+the loader both make sense of a value shaped like this one.
+
+**`0008:0180`, 8 times.** Its high byte is `0x01`, so bit 0 is set — the bit
+`0x94fdc` tests to increment `[0x0b9e]`. Every other message has a high byte
+with bit 0 clear, so on this traffic the counter would reset far more often
+than it incremented, and five consecutive would never happen.
+
+So the DSP is not silent about wanting a page: **something with the shape of an
+overlay-5 request goes CPU-ward 114 times in a single dial**, and the datapump
+is still never loaded.
+
+### The tension this creates, which is not resolved
+
+The supervisor consuming those messages is the real 4.03d ROM, not a model of
+it. It receives all 973, acknowledges 972, and loads nothing. If `0008:0885`
+were straightforwardly "load overlay 5", the genuine firmware would have acted
+on it. So one of these must be true, and this document does not say which:
+
+* the reading is a coincidence — `0x85` means something else under tag `0008`,
+  and the `0x80 | 5` correspondence is numerology;
+* the dispatch to `0x94d83` is state-gated, and the state is one this run
+  never enters — consistent with every other gate found here;
+* the messages are being delivered with the right tag but at a point in the
+  handshake where the receive handler routes tag `0008` elsewhere.
+
+Distinguishing them needs the receive-side dispatch, which is the same
+indirect table the previous section could not resolve statically. But the
+question has narrowed a long way: not "what arms the datapump" but "why does
+the supervisor ignore `0008:0885`", and that is one message, 114 occurrences,
+in a run we can instrument freely.
