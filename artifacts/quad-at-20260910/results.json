@@ -1,0 +1,26 @@
+{
+  "mode": "QF060003 CPU byte terminal (autobaud adapter)",
+  "commands": [
+    "ATQ0V1",
+    "AT",
+    "AT+NOTACOMMAND",
+    "AT"
+  ],
+  "input_hex": "4154513056310d41540d41542b4e4f5441434f4d4d414e440d41540d",
+  "controller_status": "instruction-limit",
+  "modem_status": "instruction-limit",
+  "error": null,
+  "flash_sha256": "86e8d044ad162087283d5478398d59b9dbaa3df0f9dc84eb1aeab8feb635ce41",
+  "serial_raw_hex": "55aa008d0acf4b8d0a8d0acf4b8d0a8d0ac5d2d2cfd28d0a8d0acf4b8d0a",
+  "terminal_text": "\r\nOK\r\n\r\nOK\r\n\r\nERROR\r\n\r\nOK\r\n",
+  "input_remaining": 0,
+  "bytes_received": 28,
+  "commands_opened": 4,
+  "watch_counts": {
+    "serial_receive": 28,
+    "attention": 4,
+    "command_collect": 20,
+    "command_dispatch": 4
+  },
+  "final_command_state": "e691"
+}

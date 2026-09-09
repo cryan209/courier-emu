@@ -1,0 +1,118 @@
+{
+  "valid": {
+    "packet": "000000000400000041427c4d",
+    "residue": "0xf0b8",
+    "status": "instruction-limit",
+    "error": null,
+    "counts": {
+      "receive": 15,
+      "attention_first": 1,
+      "attention_second": 1,
+      "stx": 1,
+      "header": 8,
+      "body": 4,
+      "crc_ok": 1,
+      "control_complete": 1
+    },
+    "usart": {
+      "rx_queued": 0,
+      "rx_fifo": 0,
+      "data_reads": 15,
+      "empty_reads": 0,
+      "status_reads": 0,
+      "interrupt_reads": 15,
+      "interrupt_mask": 3,
+      "irq_pending": false,
+      "receiver_enabled": true,
+      "transmitter_enabled": false,
+      "tx": "",
+      "tx_len": 0,
+      "mode_writes": [
+        "0x93",
+        "0x17"
+      ],
+      "command_writes": [
+        "0x10",
+        "0x20",
+        "0x30",
+        "0x40",
+        "0x50",
+        "0x80",
+        "0x01"
+      ],
+      "aux_writes": [
+        "0x0222=0xff",
+        "0x0228=0x60",
+        "0x022a=0x03"
+      ]
+    },
+    "state": "f619",
+    "crc": "b8f0",
+    "transitions": [
+      "0000",
+      "19f6",
+      "1a01",
+      "1a19",
+      "1a44",
+      "1afc",
+      "19f6"
+    ]
+  },
+  "bad_crc": {
+    "packet": "000000000400000041427c4c",
+    "residue": "0xe131",
+    "status": "instruction-limit",
+    "error": null,
+    "counts": {
+      "receive": 15,
+      "attention_first": 1,
+      "attention_second": 1,
+      "stx": 1,
+      "header": 8,
+      "body": 4
+    },
+    "usart": {
+      "rx_queued": 0,
+      "rx_fifo": 0,
+      "data_reads": 15,
+      "empty_reads": 0,
+      "status_reads": 0,
+      "interrupt_reads": 15,
+      "interrupt_mask": 3,
+      "irq_pending": false,
+      "receiver_enabled": true,
+      "transmitter_enabled": false,
+      "tx": "",
+      "tx_len": 0,
+      "mode_writes": [
+        "0x93",
+        "0x17"
+      ],
+      "command_writes": [
+        "0x10",
+        "0x20",
+        "0x30",
+        "0x40",
+        "0x50",
+        "0x80",
+        "0x01"
+      ],
+      "aux_writes": [
+        "0x0222=0xff",
+        "0x0228=0x60",
+        "0x022a=0x03"
+      ]
+    },
+    "state": "f619",
+    "crc": "31e1",
+    "transitions": [
+      "0000",
+      "19f6",
+      "1a01",
+      "1a19",
+      "1a44",
+      "1afc",
+      "19f6"
+    ]
+  }
+}

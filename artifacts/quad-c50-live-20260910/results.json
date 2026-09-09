@@ -1,0 +1,26 @@
+{
+ "status": "instruction-limit",
+ "instructions": 6000001,
+ "endpoint": {
+  "steps": 28034217,
+  "pulls": 0,
+  "bursts": 7842,
+  "resets": 17,
+  "acks": 0,
+  "core_log_resets": 0,
+  "window_open": true,
+  "program_words": 0,
+  "completion": true
+ },
+ "dsp_status_mmr": "0x0",
+ "watched": {
+  "dsp_load_entry": 4,
+  "dsp_load_ok": 1,
+  "dsp_load_fail": 7,
+  "dsp_give_up": 2,
+  "msg_cursor_seed": 0,
+  "msg_buffer_fill": 0,
+  "param_id_compare": 0,
+  "param_1f2_handler": 0
+ }
+}

@@ -42,6 +42,14 @@ dist/
 # together ~32 MB across ~8,200 files, all reconstructible from what is kept.
 artifacts/**/responses/
 artifacts/**/blocks/
+# The Quad's flash and RAM dumps are the same case: probe_quad_identify.py and
+# probe_quad_bringup rebuild every one of them from docs/x2/Qf060003.zip, which
+# is tracked, and probe_quad_c50.py rebuilds the DSP stream from those. ~6 MB of
+# images reconstructible from 363 KB of source, so the JSON and markdown results
+# beside them are kept and the images are not.
+artifacts/quad-identify-*/*.bin
+artifacts/quad-bringup-*/*.bin
+artifacts/quad-c50-*/stream.bin
 *.s16le
 *.pcm
 *.wav
@@ -60,3 +68,6 @@ artifacts/**/blocks/
 *.sdl
 *.SDL
 nvram.sav
+
+# Scratch working directory.
+tmp/
