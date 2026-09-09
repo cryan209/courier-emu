@@ -21,6 +21,7 @@ USR/3Com remote access
 ├── Courier I-modem / ISDN — Intel 386EX + AMD Am79C30A
 │   └── IE/IM releases in NAC or XMP containers, including Ie030002
 └── Total Control / NETServer ISP platform
+    ├── Quad x2 Modem NAC — 80186 + C50, shared analog Courier code lineage
     ├── Network Application Cards: analog/digital modem and PRI/ISDN service code
     └── HiPer ARC/DSP/NMC/MultiSpan DMF firmware
 ```
@@ -68,6 +69,25 @@ The I-modem feature history is independently documented in
 [imodem-firmware-timeline.md](imodem-firmware-timeline.md): x2 appears in
 2.01.04 and V.90 in 2.04.05/06.  That timeline is a protocol feature timeline,
 not a regional classification.
+
+## Quad x2 Modem NAC
+
+| Series | In-repository forms | CPU / line hardware | Line modes | Evidence |
+| --- | --- | --- | --- | --- |
+| Quad x2 Modem NAC | `QF060003.NAC` (6.0.3), `QR060103.NAC` (6.1.3), both 1998-09-22 | Intel 80186 + TMS320C50, per channel | One combined image: `%D0` Standard Analog (POTS), `%D1` T1 Mode (DS0), `%D2` ISDN PRI Mode | Byte-level comparison against `IDSDL302.ROM` and `main211`, the `%D` help table, and an 8M-instruction execution run. |
+
+This is the closest branch to the standalone analog Courier in this tree: the
+Quad NAC shares more 32-byte blocks, and a longer identical run, with the
+analog SDL 3.02 ROM than `main211` does, and its product-name table extends the
+Courier list with `Analog Quad`, `Digital Quad`, and `Analog/Digital Quad`.
+Its digital support is DS0-level rather than T1-framer-level.  The shared runs
+are table-dominated on both sides, so this is shared source lineage rather than
+proven byte-identical executable code.
+
+Both images execute without fault when entered at their `0x80000` load base,
+and park polling their chassis host interface.  See
+[quad-x2-modem-nac.md](quad-x2-modem-nac.md) for the measurements, the run
+result, and the limits of each conclusion.
 
 ## Total Control / NETServer: the larger x2-era platform
 
