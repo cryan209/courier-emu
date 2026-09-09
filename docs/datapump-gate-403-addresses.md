@@ -1175,6 +1175,12 @@ That is the next step, and it costs one instrumented run.
 
 ## The DSP does send requests, and one has the right shape
 
+> **The `0008:0885` reading below is refuted.** The request is tag `0x47` with
+> the overlay number as its data, identified under a real peer with every
+> synthetic message disabled. See
+> [the identification](#the-request-is-tag-0x47-and-nothing-was-synthesised).
+> The `0x80 | 5` correspondence that section reasons from is a coincidence.
+
 `dsp_originated_tags` records every DSP-to-CPU message. Across a 403 dial,
 973 messages, 13 distinct:
 
@@ -1385,3 +1391,59 @@ gets downloaded at bootstrap, `bootstrap_match: true`, 56,656 bytes. What it
 does not do is service a *second* transfer requested mid-call. That is the
 next thing to fix, it is in `bridge.py`, and both routes provide a
 reproducible trigger for testing it.
+
+## The request is tag `0x47`, and nothing was synthesised
+
+`--line-audio-only` gates `_queue_runtime_message` at its first line, so on a
+two-instance link **the bridge injects nothing at all**. Both link runs above
+were already what they should be: the DSP talks to the CPU and the CPU talks
+to the DSP, with no manufactured traffic in between.
+
+| | side A | side B |
+|---|---|---|
+| DSP-originated messages | 550 | 1355 |
+| CPU-originated words | 184 | 112 |
+| `detector_replies` | 0 | 0 |
+| injected messages | **none** | **none** |
+
+So the overlay-7 download was reached with no help from the harness, which
+makes it a stronger result than first reported.
+
+And the delivered list names the request outright. Side B carries, exactly
+once:
+
+```text
+0047:0007
+```
+
+**Tag `0x47`, data `0x0007`.** One occurrence, on the answering side, matching
+the single execution of `0x94d83` — which reads port `0x5c`, the data's low
+byte, takes `07`, forces bit 7 to `0x87`, and hands it to the loader, which
+masks it back to `7`. That is the overlay number, from the DSP, in one
+message.
+
+This refutes [the `0008:0885` reading](#the-dsp-does-send-requests-and-one-has-the-right-shape).
+That section reasoned from `0x85` being `0x80 | 5` and from the consumer's
+`or al, 0x80`; the correspondence is a coincidence, and `0008:0885` is
+unrelated traffic that happened to fit. The consumer forces bit 7 because it
+marks the id as DSP-requested for the loader's `and al, 0x7f`, not because the
+DSP sends it set.
+
+### What this settles
+
+The chain is now known end to end, on real traffic, with nothing invented:
+
+```text
+peer answers
+  -> the DSP sends 0047:0007
+  -> 0x94d83 reads 07 off port 0x5c, forces bit 7, stores [0x0d28]
+  -> loader 0x8e60a masks to 7, indexes cs:0xe741, resolves b000
+  -> out 0x1e, 4 starts the transfer at 0x8e631
+  -> 1874 blocks, four words each, acknowledged 1 / 2 per half-block
+  -> 14,996 bytes, matching the ROM, published at b000
+```
+
+Two stand-ins remain under it, both recorded in
+[dsp-overlays.md](dsp-overlays.md): the `0x1e` readiness bits answer all-ones,
+so the transfer never waits, and `load_program` bypasses whatever C52 code
+receives an overlay while the resident runs.
