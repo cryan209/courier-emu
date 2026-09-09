@@ -29,6 +29,11 @@ dist/
 *.dll
 *.exe
 
+# ...but docs/usrdl/ holds vendor SDL upgrade packages, most of which are
+# self-extracting ZIPs carrying the .exe suffix. They are source material, not
+# build output.
+!docs/usrdl/*.exe
+
 # Emulator captures and diagnostic output.
 # Primary evidence under artifacts/ is tracked: assembled ROM/RAM images,
 # manifests, audits, page hashes and hardware transcripts. The per-page
