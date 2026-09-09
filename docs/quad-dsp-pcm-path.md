@@ -200,20 +200,20 @@ The firmware reaches a structured host-command wait at program `0x82d9`:
 82ea  idle                  ; else wait for an interrupt
 ```
 
-Two things follow. First, the address in `ar1` is `0xff57`, and nearby code
-uses `0xff58` and `ldp #1fe` / `@63` (`0xff63`). Those are **global data
-memory**, not I/O ports. So the Quad's CPU-to-DSP link is shared memory, unlike
-the analog Courier's ASIC mailbox on DSP I/O ports `0x5e`/`0x5f`
-([dsp-cpu-interconnect.md](dsp-cpu-interconnect.md)). It is the DSP-side view of
-the supervisor's queue at `0x02ca..0x030e`.
+**Superseded — see [quad-c50-overlay-loader.md](quad-c50-overlay-loader.md).**
+The address in `ar1` is `0xff57`, and the routine at `0x23f0` reaches it with
+`lamm *`, which addresses a memory-mapped register by the low seven bits: MMR
+`0x57`, inside the DSP I/O window. So the link is the DSP I/O window after all —
+the same one the analog Courier's ASIC mailbox uses at `0x5e`/`0x5f`
+([dsp-cpu-interconnect.md](dsp-cpu-interconnect.md)) — not global data memory as
+first written here.
 
 Identifying `0xff57` as *the* host flag cell is inference from the delay-slot
 `lar`; the routine at `0x23f0` has not been read.
 
-Second, writing `0x0200` into `0xff57`, `0xff58` and `0xff63` does **not**
-advance it. The cells read back changed, so the write lands, but the branch
-outcome does not — either the flag is fetched some other way, or the wait is on
-the interrupt rather than the flag.
+Writing `0x0200` into data `0xff57`, `0xff58` and `0xff63` does **not** advance
+it, and the reason is now known: the value is read from an I/O port, never from
+data memory. Seeding DSP I/O `0x58` does change the run.
 
 ### Interrupts do wake it
 
