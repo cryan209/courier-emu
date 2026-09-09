@@ -1,0 +1,2558 @@
+[
+ {
+  "label": "403-as-shipped",
+  "settings": [
+   0,
+   31,
+   7,
+   30,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Fax Options": "Class 1/Class 2.0",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 207,
+   "8839": 0,
+   "862c": 20,
+   "862d": 158,
+   "862e": 7,
+   "81c4": 0,
+   "81d2": 31,
+   "81d3": 30
+  }
+ },
+ {
+  "label": "S1.bit0",
+  "settings": [
+   1,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Japan Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 1,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit1",
+  "settings": [
+   2,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Finland Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 2,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit2",
+  "settings": [
+   4,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "UK Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 4,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit3",
+  "settings": [
+   8,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "South Africa Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 8,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit4",
+  "settings": [
+   16,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Germany Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 16,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit5",
+  "settings": [
+   32,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "t\u0002~@S;%\u0013\u001a`mA@\u001a\\pA@[\u001ae\u0013A@F\u0006",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 32,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit6",
+  "settings": [
+   64,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "\u0000\u0000\u0004\b\u0000\u0000\u0000\u0001\u0010\u0002 \u0004@\b \u0002\"\"\u0015%!\u0003\"#=- \u0005\"\"\u0016% \u0006\"\"<- \u0007\"\"\u0017%F\u0006",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 64,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1.bit7",
+  "settings": [
+   128,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "\u0006R",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 128,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=0",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=1",
+  "settings": [
+   1,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Japan Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 1,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=10",
+  "settings": [
+   10,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "New Zealand Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 10,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=11",
+  "settings": [
+   11,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Czech/Slovakia Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 11,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=12",
+  "settings": [
+   12,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Belgium Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 12,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=13",
+  "settings": [
+   13,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Denmark Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 13,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=14",
+  "settings": [
+   14,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Australia Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 14,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=15",
+  "settings": [
+   15,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "France Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 15,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=16",
+  "settings": [
+   16,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Germany Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 16,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=17",
+  "settings": [
+   17,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "International Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 17,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=18",
+  "settings": [
+   18,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Austria Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 18,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=19",
+  "settings": [
+   19,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Ireland Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 19,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=2",
+  "settings": [
+   2,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Finland Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 2,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=20",
+  "settings": [
+   20,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Spain Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 20,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=21",
+  "settings": [
+   21,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Portugal Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 21,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=22",
+  "settings": [
+   22,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Malaysia Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 22,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=23",
+  "settings": [
+   23,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "PSQW;\u0000",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 23,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=3",
+  "settings": [
+   3,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Sweden Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 3,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=4",
+  "settings": [
+   4,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "UK Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 4,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=5",
+  "settings": [
+   5,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Norway Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 5,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=6",
+  "settings": [
+   6,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Switzerland Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 6,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=7",
+  "settings": [
+   7,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Netherlands Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 7,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=8",
+  "settings": [
+   8,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "South Africa Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 8,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S1=9",
+  "settings": [
+   9,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "Italy Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 9,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit0",
+  "settings": [
+   0,
+   1,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 7,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 1,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit1",
+  "settings": [
+   0,
+   2,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 11,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 2,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit2",
+  "settings": [
+   0,
+   4,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis,Terbo",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 67,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 4,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit3",
+  "settings": [
+   0,
+   8,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis,Terbo,V.FC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 131,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 8,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit4",
+  "settings": [
+   0,
+   16,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 16,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit5",
+  "settings": [
+   0,
+   32,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis,x2,V90",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 35,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 32,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit6",
+  "settings": [
+   0,
+   64,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, X.75, & PIAFS",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 1,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 64,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2.bit7",
+  "settings": [
+   0,
+   128,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 128,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x01",
+  "settings": [
+   0,
+   1,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 7,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 1,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x03",
+  "settings": [
+   0,
+   3,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 15,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 3,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x05",
+  "settings": [
+   0,
+   5,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 71,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 5,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x07",
+  "settings": [
+   0,
+   7,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 79,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 7,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x0b",
+  "settings": [
+   0,
+   11,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 143,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 11,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x0f",
+  "settings": [
+   0,
+   15,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 207,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 15,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x10",
+  "settings": [
+   0,
+   16,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 16,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x11",
+  "settings": [
+   0,
+   17,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 7,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 17,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x18",
+  "settings": [
+   0,
+   24,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis,Terbo,V.FC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 131,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 24,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x19",
+  "settings": [
+   0,
+   25,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 135,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 25,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x1f",
+  "settings": [
+   0,
+   31,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 207,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 31,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x3f",
+  "settings": [
+   0,
+   63,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+,x2,V90",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 239,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 63,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0x7f",
+  "settings": [
+   0,
+   127,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+,x2,V90",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, X.75, & PIAFS",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 239,
+   "8839": 1,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 127,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S2=0xff",
+  "settings": [
+   0,
+   255,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "HST,V32bis,Terbo,V.FC,V34+,x2,V90",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, X.75, & PIAFS",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 239,
+   "8839": 1,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 255,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit0",
+  "settings": [
+   0,
+   0,
+   1,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Fax Options": "Class 1/Class 2.0",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 1,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit1",
+  "settings": [
+   0,
+   0,
+   2,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 2,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit2",
+  "settings": [
+   0,
+   0,
+   4,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 4,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit3",
+  "settings": [
+   0,
+   0,
+   8,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 8,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit4",
+  "settings": [
+   0,
+   0,
+   16,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 16,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit5",
+  "settings": [
+   0,
+   0,
+   32,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 32,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit6",
+  "settings": [
+   0,
+   0,
+   64,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 64,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S3.bit7",
+  "settings": [
+   0,
+   0,
+   128,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 128,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S4.bit0",
+  "settings": [
+   0,
+   0,
+   0,
+   1,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount MSK",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 133,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 1
+  }
+ },
+ {
+  "label": "S4.bit1",
+  "settings": [
+   0,
+   0,
+   0,
+   2,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 134,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 2
+  }
+ },
+ {
+  "label": "S4.bit2",
+  "settings": [
+   0,
+   0,
+   0,
+   4,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 4
+  }
+ },
+ {
+  "label": "S4.bit3",
+  "settings": [
+   0,
+   0,
+   0,
+   8,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 140,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 8
+  }
+ },
+ {
+  "label": "S4.bit4",
+  "settings": [
+   0,
+   0,
+   0,
+   16,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 148,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 16
+  }
+ },
+ {
+  "label": "S4.bit5",
+  "settings": [
+   0,
+   0,
+   0,
+   32,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "Cellular Options": "MNP10 & MNP10EC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 164,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 32
+  }
+ },
+ {
+  "label": "S4.bit6",
+  "settings": [
+   0,
+   0,
+   0,
+   64,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "Cellular Options": "ETC",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 196,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 64
+  }
+ },
+ {
+  "label": "S4.bit7",
+  "settings": [
+   0,
+   0,
+   0,
+   128,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 128
+  }
+ },
+ {
+  "label": "S5.bit0",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   1,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit1",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   2,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit2",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   4,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit3",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   8,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit4",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   16,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit5",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   32,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit6",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   64,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S5.bit7",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   128,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit0",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   1
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit1",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   2
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit2",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   4
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit3",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   8
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit4",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   16
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit5",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   32
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit6",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   64
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "S6.bit7",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   128
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ },
+ {
+  "label": "baseline-zero",
+  "settings": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "fields": {
+   "Product type": "US/Canada Rackmount",
+   "Options": "V32bis",
+   "ISDN Options": "V.110, V.120, SYNC, PPP, & X.75",
+   "Clock Freq": "20.16Mhz",
+   "Flash Rom": "512K",
+   "Ram": "384K"
+  },
+  "cells": {
+   "8838": 3,
+   "8839": 0,
+   "862c": 20,
+   "862d": 132,
+   "862e": 0,
+   "81c4": 0,
+   "81d2": 0,
+   "81d3": 0
+  }
+ }
+]
