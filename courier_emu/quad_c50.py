@@ -179,6 +179,7 @@ class QuadC50Endpoint:
     window: tuple[int, ...] | None = None
     window_group: int | None = None
     acks: int = 0
+    reboots: int = 0
     program: list[int] = field(default_factory=list)
     steps: int = 0
     pulls: int = 0
@@ -223,8 +224,19 @@ class QuadC50Endpoint:
             self.lanes.clear()
             self.window = None
             self.window_group = None
-            if self.core is None:
-                self.program = []
+            # 0xcec38 and 0xcec12 both reset the part before the stream, and the
+            # CPU repeats the whole load each time. On the board that reset puts
+            # the C50 back in its boot ROM, so the loader is there to receive the
+            # image again. Keeping one running core across resets left every
+            # load after the first with nothing to receive it: the resident is
+            # past its boot-time pulls by then and goes quiescent, which is
+            # exactly the silence the CPU was timing out on.
+            if self.core is not None:
+                self.core.close()
+                self.core = None
+                self.started = False
+                self.reboots += 1
+            self.program = []
             return
         self._in_reset = False
         if value == 4:
@@ -372,7 +384,7 @@ class QuadC50Endpoint:
         return {
             "steps": self.steps, "pulls": self.pulls, "bursts": self.bursts,
             "resets": self.resets, "acks": self.acks,
-            "core_log_resets": self.resets_seen,
+            "core_log_resets": self.resets_seen, "reboots": self.reboots,
             "window_open": self.window is not None,
             "program_words": len(self.program), "completion": self._completion,
         }
