@@ -244,3 +244,81 @@ V.Everything is.  The x2 setup path itself is identical in all of them - one
 capability builder matching the same 26-byte pattern at `8f43` (403), `8eb3`
 (302), `25112` (2.1.1), `252c3` (2.2.05), `218db` (2.3.31), each followed by a
 single `mov ax, 70`.
+
+## The I-modem's DSP: seven images, and none of them is the client receiver
+
+The I-modem's overlay loader is not this tree's reader's shape - it takes the
+index, masks `and ax, 0x000f`, multiplies by six against a table at `cs:d682`,
+and picks the source segment from a *second* table at `cs:d6ca` indexed by
+`(index - 5) * 2` (`83 e3 0f / 80 eb 05 / d1 e3 / 2e 8e 87 ca d6`).  With
+`cs = 0xa400` the two tables read out cleanly, and every row's start is zero -
+each image has its own segment:
+
+| idx | segment | file | words | loads at |
+|---:|---|---|---:|---|
+| 5 | `e869` | `a8690` | 4,670 | `8000` |
+| 6 | `d0d6` | `90d60` | 13,909 | `a000` |
+| 7 | `d7a1` | `97a10` | 5,173 | `b800` |
+| 8 | `da28` | `9a280` | 2,436 | `9260` |
+| 9 | `db59` | `9b590` | 3,215 | `b000` |
+| 10 | `dceb` | `9ceb0` | 7,536 | `d100` |
+| 11 | `e099` | `a0990` | **15,997** | `9260` |
+
+Seven images against the analog Courier's four, they tile the DSP region
+`90d60`-`aab0c` contiguously, and the load addresses are its own - `a000`,
+`b800`, `9260`, `d100` - not the analog's `9d00`/`b000`/`dc00`.  The resident
+is 4,670 words where the analog's is 26,080-30,170: this DSP is organised
+differently, with the weight in the loadable images.
+
+**Image 11 is the PCM one, and it is the only one that touches the PCM
+parameter cells.**  Counting the cells the x2/V.90 setup path writes:
+
+| image | `fff3` | `fff4` | `3fff` | `fff7` |
+|---|---:|---:|---:|---:|
+| 5, 7, 9 | 0 | 0 | 0 | 0 |
+| 6 | 0 | 0 | 0 | 1 |
+| 8 | 0 | 0 | 0 | 1 |
+| 10 | 0 | 0 | 0 | 5 |
+| **11** | **6** | **4** | **1** | **8** |
+
+And image 11 is 15,997 words against the analog PCM overlay's 6,197 - **2.6
+times the size**.
+
+**None of the seven is the analog client receiver.**  Coverage against the
+analog 2.3.31 segments, byte-exact runs of ≥12:
+
+| I-modem image | vs analog resident | vs ov6 | vs ov7 | vs **ov8 (PCM)** |
+|---|---:|---:|---:|---:|
+| 5 (4,670 w) | 11.4% | 3.0% | 12.0% | **0.1%** |
+| 6 (13,909 w) | 2.9% | 24.4% | 0.2% | **0.3%** |
+| 7 (5,173 w) | 5.9% | 12.8% | 0.6% | **0.2%** |
+| 8 (2,436 w) | 5.6% | 13.3% | 0.6% | **0.0%** |
+| 9 (3,215 w) | 54.0% | 1.0% | 0.0% | **0.0%** |
+| 10 (7,536 w) | 26.9% | 0.5% | 0.2% | **0.0%** |
+| 11 (15,997 w) | 36.4% | 1.4% | 1.8% | **0.0%** |
+
+The longest shared run with the analog PCM overlay, across all seven images,
+is 14 bytes.  Elsewhere the same metric finds 24-54% and runs of hundreds of
+bytes, so this is not the metric being harsh: the analog's PCM *downstream
+receiver* is simply absent from the I-modem, and image 11 was written for a
+different job.
+
+That is what "server and symmetric, no client" looks like in the image.  A
+server does not need the client receiver; it needs a PCM sender, and symmetric
+mode needs both halves at once - which is a plausible reading of an image 2.6
+times the size of the one it replaces, though what is inside image 11 still
+has to be disassembled to say so outright.
+
+## Where V.90 all-digital sits in the standards
+
+DDPCM was never standardised in this form.  V.90 itself defines only the
+analog client and digital server halves; the symmetric case went to a separate
+work item and came out as **V.91** (approved May 1999), scoped to "a 4-wire
+circuit switched connection and … leased point-to-point 4-wire digital
+circuits" - not the 2-wire dial-up case these modems were doing it on.  V.92
+then went the other way, adding upstream PCM at up to 48 kbit/s over the
+existing asymmetric arrangement rather than a symmetric 64k mode.  So USR's
+`x2 symmetric` and `V.90 all-digital` are pre-standard vendor modes filling a
+gap the ITU addressed only for 4-wire circuits, and they kept their own
+S-register bits and their own RADIUS modulation codes because there was no
+recommendation to name.
