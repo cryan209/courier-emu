@@ -355,6 +355,15 @@ The static search for the setter is therefore the route that is actually open.
 
 ## The setter is unreachable in 403 too — and that reframes the gate
 
+> **Wrong, corrected below.** The "nothing indexes that table and nothing calls
+> the router" finding in this section is an artefact of searching only for
+> direct references. This firmware dispatches through RAM function pointers,
+> and the router's offset is stored into one. See
+> [the correction](#correction-the-router-is-installed-as-a-ram-function-pointer).
+> The address mapping table in this section stands; the reachability conclusion
+> drawn from it does not, and neither does the "gate is on a dead path"
+> reasoning that follows from it.
+
 Repeating the 302 search against the addresses above. Flag C has two genuine
 setters, `0x8770f` (`or [0x57c], 1`) and `0x8779c` (`or [0x57c], 9`); flags A
 and B have none in the whole image, only clears. So flag C is the only one
@@ -416,3 +425,66 @@ have ordinary setters.
 
 None of this is yet a measurement. It says which paths exist, not which one
 the board takes.
+
+## Correction: the router is installed as a RAM function pointer
+
+The reachability search above, and the 302 search it reproduces, both looked
+only for direct references — an indexed `jmp`/`call` using the table's
+displacement, a far pointer, an immediate load of its address. Neither found
+one, and both concluded the code was dead.
+
+That test is too narrow for this firmware, which dispatches through function
+pointers held in RAM. `datapump-dispatch-gate.md` says so itself about a
+different cell: `0x8f564` is `call word ptr [0x298]`, "an indirect call through
+the current state handler". The same pattern answers this question.
+
+**`[0x03ff]` is such a cell.** It is called indirectly at two sites:
+
+```text
+90ef1  call word ptr [3ff]
+92004  call word ptr [3ff]        ; immediately after out 1c / out 1e
+```
+
+and written from about eighty-eight sites between `0x90e67` and `0x91efe`,
+each a small routine installing one handler offset. One of them is:
+
+```text
+910c6  cli
+910c7  mov word ptr [0x3ff], 0x1cde     ; = a4e2:1cde = a6afe, the router
+910cd  mov byte ptr [0x403], 0x64
+910d2  mov word ptr [0x192], 0x1cca
+910d8  sti
+910d9  ret
+```
+
+`0x1cde` is exactly the router entry. So the router is not orphaned code: it
+is installed as the current handler in `[0x03ff]`, and `[0x03ff]` is called.
+
+Two supporting facts. The parser the router calls, `8000:9ce7`, is confirmed
+to be the decimal-ASCII routine — `lodsb`, `sub al, 0x30`, `mov ah, 0xa`,
+`mul ah`, accumulate — so `AL` really is a number taken from a command string,
+as the 302 reading had it. And the second call site sits directly after
+`out 0x1c` / `out 0x1e`, the ASIC mailbox commit, which places this handler
+family in the supervisor's DSP-facing service path rather than off to one side.
+
+### What is now established, and what is not
+
+Established: the dispatch mechanism, the router's installation into it, and
+the parser's identity. The three-flag discriminator, the CF gate cells
+`[0x04f2]` and `[0x04f8]`, and flag C are all written from handlers in this
+same family — entries 0, 3 and 8 of the table at `0xa669b` — and that family
+has a live dispatch path.
+
+Not established: that `0x910c6` itself runs, or under what condition. Showing
+the offset is stored into a called pointer is much stronger than finding
+nothing, but it is not the same as tracing a caller into the installer. That
+is the next link, and it is the one to pull.
+
+**So the "gate is on a dead path" reading two sections up is withdrawn.** The
+gate may well be on the live path after all, with the arming command simply
+never issued by any run we have made — which is a very different problem, and
+a more hopeful one, than code that cannot be reached.
+
+The overlay-id survey stands on its own: `0x8b7db`, `0x8bc06` and `0x94d87`
+are real alternative writers regardless of how this resolves, and `0x94d87`
+taking the id from ASIC port `0x5c` remains the most interesting of them.
