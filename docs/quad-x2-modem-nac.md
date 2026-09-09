@@ -139,24 +139,39 @@ convention.
 Nineteen ports appear in both tables. Only six hold identical values
 (`0xff80`, `0xff84`, `0xff88`, `0xff94`, `0xffa0`, `0xffa4`).
 
-**The two use different peripheral maps, so the tables are not comparable
-register-for-register.** [board-parts.md](board-parts.md) records the analog
-Courier's part as `S80C186`, whose PCB puts chip selects at `0xffa0`-`0xffa8`
-(`UMCS`/`LMCS`/`PACS`/`MMCS`/`MPCS`) and timers at `0xff50`-`0xff66`; its boot
-table writes `0xffa8 = 0x10ff`, an `MPCS` value, which is classic-186 shaped.
+Both parts are **80C186EB**, and the comparison below uses that map
+(Table 4-1 of the manual in this tree). Decoding the 302's boot table with it
+cross-checks against this repository's own hardware-derived model:
+`courier_emu/uart.py` documents the board's serial unit as `B0CMP` "written
+`0x8015`" and `S0CON` "written `0x21`", in a "relocated peripheral control
+block" — and the table writes exactly `0xff60 = 0x8015`, `0xff64 = 0x0021`,
+and `0xffa8 RELREG = 0x10ff`. Three independent agreements, so the decoding is
+right.
 
-The Quad writes a different set entirely: all sixteen registers `0xff80`-`0xff9e`,
-`0xff70`/`0xff72`/`0xff74`, and `0xff16`-`0xff1e`. On the **80C186EB** — whose
-manual is [in this tree](270830-003%2080C186EB,80C188EB%20Microprocessor%20Users%20Manual-Feb95.pdf),
-Table 4-1 — those are `GCS0ST`..`GCS7SP` (eight general chip selects),
-`B1CMP`/`B1CNT`/`S1CON` (baud and control for on-chip serial channel 1), and
-`I4CON`/`IOCON`/`I1CON`/`I2CON`/`I3CON`. It writes no `0xffa8`, which on the EB
-is `RELREG`. That is the EB layout, not the classic one.
+| EB register | 302 boot block | Quad init table |
+| --- | --- | --- |
+| `LCSST` / `LCSSP` | `0x0000` / `0x200a` | `0x0000` / **`0x400a`** |
+| `UCSST` / `UCSSP` | `0x8000` / `0xffce` | `0x8000` / `0xffcf` |
+| `RELREG` | `0x10ff` — PCB relocated | **not written** |
+| `B0CMP`/`B0CNT`/`S0CON` | `0x8015`/`0x0000`/`0x0021` | not in the table |
+| `B1CMP`/`B1CNT`/`S1CON` | not written | **written** |
+| `GCS` pairs | 0, 1, 2, 4, 5, 6 | **all eight, 0-7** |
+| `T0CMPA` / `T0CON` | `0x6270` / `0xc001` | `0x04ec` / `0xc000` |
+| `T1CMPA`/`T1CMPB`/`T1CON`, `T2CNT`/`T2CMPA`/`T2CON` | not in the table | **written** |
+| `P1DIR`/`P1CON`/`P1LTCH`, `P2DIR`/`P2CON`/`P2LTCH` | written | not in the table |
+| `IMASK`, `PRIMSK`, `INSERV`, `REQST`, `INSTS`, `SCUCON`, `I3CON`, `PWRCON` | written | `I1CON`-`I4CON`, `IOCON` instead |
 
-So the two boot tables program different silicon, and the Courier boot block
-would be writing classic-186 chip-select and timer registers into an EB's
-peripheral block. That is a stronger reason for incompatibility than the
-value-by-value comparison this section used to make, and it supersedes it.
+Same silicon, different board. The differences that matter are `LCSSP`
+(`0x200a` against `0x400a` — a different lower chip-select extent, so a
+different RAM size), the Quad using all eight general chip selects where the
+302 uses six, the Quad programming all three timers where the 302's boot table
+programs only `T0`, the 302 relocating its peripheral block where the Quad does
+not, and the two setting up *different* on-chip serial channels — the 302
+channel 0, the Quad channel 1.
+
+So the Courier boot block would hand the Quad application a card with the wrong
+RAM extent, two chip selects unconfigured, its peripheral block relocated out
+from under it, and the wrong serial channel running.
 
 ### Grafting it on
 
@@ -210,39 +225,28 @@ top of flash while disagreeing on what fills it.
 
 ## A note on the peripheral map
 
-`0xff56` is written by the Quad's DSP-interface routine at `0x93864`, which sets
-its bit 1, then later clears bit 1 and pulses bit 3. Table 4-1 of the
+`0xff56` is written by the Quad's DSP-interface routine at `0x93864`, which
+sets its bit 1, then later clears bit 1 and pulses bit 3. Table 4-1 of the
 80C186EB manual in this tree names `0xff56` **`P1LTCH`**, the Port 1 output
-latch — so those are GPIO strobes around the DSP access, not a chip-select
-change.
+latch — so those are GPIO strobes around the DSP access.
 
-That identification is what exposed the map mismatch. Under the EB layout the
-Quad's own initialisation table reads:
+Finding that is what forced the map above. Two claims made here earlier are
+withdrawn:
 
-| Offset | EB name | Quad value |
-| --- | --- | --- |
-| `0xff16`, `0xff18`, `0xff1a`, `0xff1c`, `0xff1e` | `I4CON`, `IOCON`, `I1CON`, `I2CON`, `I3CON` | interrupt control |
-| `0xff32`, `0xff36` | `T0CMPA`, `T0CON` | `0x04ec`, `0xc000` |
-| `0xff3a`, `0xff3c`, `0xff3e` | `T1CMPA`, `T1CMPB`, `T1CON` | `0x0001`, `0x0001`, `0xc003` |
-| `0xff40`, `0xff42`, `0xff46` | `T2CNT`, `T2CMPA`, `T2CON` | `0x0000`, `0x6270`, `0xe001` |
-| `0xff70`, `0xff72`, `0xff74` | `B1CMP`, `B1CNT`, `S1CON` | on-chip serial channel 1 |
-| `0xff80`-`0xff9e` | `GCS0ST`..`GCS7SP` | eight general chip selects |
-| `0xffa0`, `0xffa2` | `LCSST`, `LCSSP` | `0x0000`, `0x400a` |
-| `0xffa4`, `0xffa6` | `UCSST`, `UCSSP` | `0x8000`, `0xffcf` |
+- **"The Quad leaves the Courier's timer setup alone."** It does not. `T0CON`,
+  `T1CON` and `T2CON` are all in its table. That error came from reading
+  `0xff50`-`0xff66` as the timer block, which is the classic 80186 map, not
+  this part's.
+- **"The two program different silicon, so the tables are not comparable."**
+  Also wrong, and briefly committed here. It rested on reading `0xffa8 = 0x10ff`
+  as an `MPCS` value implying a classic part; on the EB `0xffa8` is `RELREG`,
+  and `uart.py` independently describes this board relocating its peripheral
+  control block. Both parts are 80C186EB and the tables compare directly, as
+  above.
 
-Two corrections follow. **The Quad does program its timers** — `T0CON`,
-`T1CON` and `T2CON` are all in the table, at EB offsets. An earlier version of
-this document said it left the Courier's timer setup alone; that came from
-reading `0xff50`-`0xff66` as the timer block, which is the classic map.
-
-And the Quad also programs an **on-chip serial channel** at `0xff70`-`0xff74`,
-separate from the external `0x220` block identified in
-[nmc-sdl-protocol.md](nmc-sdl-protocol.md). Which of the two carries the SDL
-link has not been re-checked in light of this.
-
-The analog Courier is a different part. [board-parts.md](board-parts.md) records
-`S80C186` from the board, and its boot table writes `0xffa8 = 0x10ff`, an `MPCS`
-value — `0xffa8` is `RELREG` on the EB, and writing that mid-table would
-relocate the peripheral block. So the Courier is the classic map and the Quad is
-the EB map, and any register-by-register comparison between the two boot tables
-is comparing different silicon.
+The Quad also programs an on-chip serial channel, and uses **channel 0**
+heavily at runtime — `S0CON` at 38 sites, `S0STS` 30, `S0RBUF` 20, `S0TBUF` 39
+— which is the same channel `uart.py` models as the analog board's DTE path.
+Channel 1 is barely used (`S1RBUF` never read). The external `0x220` block
+identified in [nmc-sdl-protocol.md](nmc-sdl-protocol.md) is a separate device
+and is the one the SDL state machine polls, so that identification stands.
