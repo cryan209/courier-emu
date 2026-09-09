@@ -785,3 +785,43 @@ on the serial transport settling — which on this hardware means it may not be
 resolvable this way at all. **`&L1` remains the demonstrated route**: it sets
 `[0x04f2]` immediately, deterministically, and with the CF gate passing as a
 direct consequence.
+
+## In the emulator: `AT&L1` reaches the overlay loader
+
+Two 403 runs, identical but for one command, 150M instructions each, native
+DSP in lock-step, `--nvram-fixture idsdl403`.
+
+| | plain `ATDT6245` | `AT&L1` then `ATDT6245` |
+|---|---|---|
+| `[0x04f2]` | `00` | **`01`** |
+| `cf-gate` `0x8b8a1` hits | 3 | 2 |
+| **`set-ovl-6` `0x8bc06`** | **0** | **1** |
+| **`overlay-loader` `0x8e60a`** | **0** | **1** |
+| `dialed` | `6245` | `""` |
+| `dsp_messages_taken` | 972 | 1 |
+| exchange state | ringback | `reorder` |
+
+Two things follow.
+
+**`AT&L1` sets `[0x04f2]` to `1` in the emulator exactly as it does on the
+board.** The firmware path is reproduced faithfully; this is not a hardware-only
+behaviour.
+
+**The overlay loader is entered for the first time in this project.** The CF
+gate passes, `0x8bc06` writes `6` to the overlay id, and `0x8e60a` runs. Every
+run before this one — every run recorded in
+[datapump-dispatch-gate.md](datapump-dispatch-gate.md), on either image —
+reached neither. The gate that document identified is real, and `&L1` opens it.
+
+### What it does not yet do
+
+`bootstraps` stays 1 and `call_overlay_active` stays false, so the loader was
+entered but no second download completed. And the run no longer dials: leased
+line mode seizes the loop and hands the modelled exchange no digits, which
+ends in `reorder`. So this run opens the gate and then loses the call for an
+unrelated reason.
+
+The exchange has a mode built for exactly this — `--exchange-hotline`, which
+answers on seizure with no dial tone and no digits. Pairing it with `&L1` is
+the run that should carry a leased-line handshake, and it is the obvious next
+measurement.
