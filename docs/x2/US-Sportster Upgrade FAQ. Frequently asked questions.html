@@ -1,0 +1,663 @@
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=KOI8-R"><title>US-Sportster Upgrade FAQ. Frequently asked questions</title></head><body><pre><div align="left"><form action="/TXT/faqusrob.txt"><select name="format"><option value=".fb2.zip" selected="selected">Fb2.zip</option><option value=".epub">Epub</option><option value="_Contents">Content</option><option value="_with-big-pictures.html">Fine HTML</option><option value="_with-big-pictures.html">Printed version</option><option value="_Ascii.txt">txt(Word,KPC)</option><option value="">Lib.ru html</option></select><input type="submit" value="go"></form></div><pre><ul><a name="0"></a><h2><a href="https://lib.ru/TXT/">US-Sportster Upgrade FAQ. Frequently asked questions</a></h2></ul>
+
+                  Document revisions 1.15.
+                  <a href="http://www.agababyan.com/">Robert Aghababyan (robert@agababyan.com)</a>
+
+ &gt;&gt; You can download from our BBS - 283-4180, 0:00-8:00.
+
+
+
+So, there are 2 main models of high-speed Sportster:
+ 1. Sportster 14,400/PC with v.32bis
+ 2. Sportster 28,800/PC with v.34 and v.FC
+
+        These are internal, corresponding external do not have
+designations /PC. Fax models have a Fax additive.  Modems with
+voice has a Vi supplement.  Based on Sportster 14400 also
+make Sportster 9600 by banning 14400 in configuration.
+Also recently released are truncated Sportster Si (RPI-
+based modem with WinRPI) and Sportster'95 (single-processor
+option).   There are also a few older or
+small models on 2400 and 9600.
+
+
+<ul><a name="1"></a><h2>Initialized</h2></ul>
+
+             Initialized by Sportster line
+AT&amp;F&amp;A3&amp;B1&amp;H1&amp;R2&amp;S1X4. But the USR firm also recommends adding
+&amp;K3 - ban MNP5 compression.  The latest models have
+additionally AT&amp;F1 (Hardware flow control template) and
+AT&amp;F2 (Software flow template) and initialize them
+necessary string AT&amp;F1, and you can add &amp;K3.  About a couple
+S9/S10 - Misha Serov recommends to put 22/55.  I am
+I recommend to leave default 6/7 - with these values my
+Sportster has never thrown the tube himself during the connection and
+Holds the line to the last, and from 22/55 he for some reason at all
+does not want to throw the tube and also sometimes throws it with the code
+"Loss carrier."
+
+<ul><a name="2"></a><h2>Undocumented Teams</h2></ul>
+
+       Sportster-a has also a few undocumented
+commands changing from version to version. Here they are:
+
+ATY4 - Line Status progress (debug mode, for some models'94 -
+ATY24)
+ATY5 - Part of the selftest (diodes)
+ATY6 - Statistic all as ATI6
+ATY7 - Analog stats (only connection)
+ATY9 - 255 unknown numbers (only connection)
+ATY14 - Configuration
+ATY15 - Current DipSwitch settings
+ATGx[A[,B] - Set of I/O commands (A - address, B - byte)
+   = - memory dump (bytes)
+   B - I/O ports dump
+   I - by byte from port
+   O - out by to port
+   R is memory (words)
+   U - ???
+   W - write by to memory
+   BOOT5 - reset modem firmware
+   ? - some more secret commands :)
+ATUSR - Credits
+ATRS99? - USD Copyright message (part of ATUSR)
+AT! E (0,1) - Turn on/off calling tone
+ATI92 - Credits
+ATI99 - The production date of the ROM
+AT&amp;Jn - n=[0,1] Jack type? (only for DSP version &lt; 10)
+ATZn - n=[0.5] software reset
+ATNn - Call DSP procedure number n
+ATNL - Move 10K to port [00C0] (DMA ?)
+ATNX - Boot start
+
+<ul><a name="3"></a><h2>About upgrade-s</h2></ul>
+
+       Now about upgrades. The firm USR has officially announced,
+that the Sportster upgrade line will not, and only buying
+expensive series Courier, you get right to upgrades as
+invest your money in the development of USR technology.  Line
+Sportster was conceived as cheap and reliable consumer
+modem.  And this is confirmed by the fact that for the model Sportster v.34
+There are no serious competitors in the market.
+
+<ul><a name="4"></a><h2>Here are the differences between the Courier line and the Sportster line:</h2></ul>
+
+1.  Adaptive Speed Leveling (ASL)
+2.  V32-terbo (21.6k, 19.2k, 16.8k bps)
+3.  Voice/Data switch with programmable functions (external models)
+4.  V.25bis synchronous mode
+5.  Call duration reporting (Clock operations)
+6.  Automated redialing (the "&gt;" command)
+7.  Remote configurability
+8.  Dialback security, including Autopass
+9.  Five additional panel lamps (external models)
+10. MI/MIC operations (required in some commercial applications)
+11. HST mode (Dual standard models)
+12. HST Cellular mode (Dual models standard)
+13. Class 2.0 fax
+14. Leased line operations
+15. Call selection (auto switch between fax &amp; data mode)
+16. Three additional levels of call reporting (X5, X6, X7)
+17. Stored execution command (AT&amp;ZC)
+18. Selectively enable/disable transmitter receiver for-only (monitor) mode
+19. Touchtone recognition (%T)
+20. More dialed number memory locations
+21. Three additional dipswitches
+22. Compatabile with USR's Total Control Management System
+23. Seve more "AT" commands and "S" registers to tinker with
+24. Vice more command/connections
+25. A much more handsome case (external models)
+26. A much better speak of audio
+27. Upgradeable to V.34 (V.fast) (and beyond??)
+28. Satisfaction in knowing that you own the best modem money can buy.
+
+(Courier was referring to the native external Courier V32T HST DS with ASL).
+In the model Sportster 28800 appeared items 5, 13, 15, 17, 20, 27.
+
+<ul><a name="5"></a><h2>Key Benefits of the Courier Model Over Sportster</h2></ul>
+
+ is the availability of additional ASL and HST protocols.
+ ASL (Adaptive Speed Leveling) is a collective concept,
+including the possibility of raising speed (fall-forward)
+improving the quality of the line;
+ possibility of asymmetrical connection on v.32(bis,Terbo)
+protocols - i.e. the receiver and transmitter are analyzed
+The optimal speed is set separately and on each channel,
+which is very useful and gives a big win on anisotropic
+lines;
+ presence of Quick Retrain - while the retrains can pass for
+very short time - up to 5 seconds, against 20-25 y regular
+modems.
+ HST (High Speed Technology) is an ultra-reliable protocol,
+developed by the company USR specifically for work on bad lines.
+Its distinctive feature is fantastic
+stability (you can lift the tube on a parallel phone,
+scream in line, have a parallel conversation on the phone - HST
+lowers the speed to 4800, but does not fall and continues to work)
+and very fast handshake, almost indistinguishable from 2400
+handshake. These features create a special attraction
+the HST protocol for working on Russian lines, famous for its
+"quality." Many modem users forced by
+bad line to work on 2400 due to the fact that on
+The modems simply did not knit or constantly
+cut off the connection, were just amazed when discovered that HST
+successfully works on this line, without problems giving cps more
+1000. It is for this reason that the world has such a high interest
+to the HST protocol - it very successfully combines speed and
+reliability.  But officially the HST protocol has only very
+expensive series Courier, and in the cheap Sportster model of this
+No protocol.
+
+<ul><a name="6"></a><h2>Let&#8217;s see what the situation really is.</h2></ul>
+
+       The first high-speed Courier HST DS models were
+three-sissing and supported v.32bis from Rockwell,
+installed on a separate daughter, and HST 14400. Then when
+USR has released its v.32bis and HST 16800, a new one has appeared
+model in which the entire intellectual part was delivered on
+one daughter and no Rockwell there did not smell.  On the daughter (with
+double-sided installation) stood N80188, 2 TMS 32025, a bunch of trifles
+(without ordered crystals) and 2 ROM - supervisor and code for TMS.
+This model was produced as in a two-side version (analog
+part on the mother) and in the three-payment (analog part - on
+a separate daughter).
+     There was a variant of this HST only modem on which it was
+only one TMS.  Based on the current model, the Courier was released
+Sportster.  In late 1992 - early 1993, the USR remade the modem -
+installed 80C188, 1 TMS 320C50 and dumped all the little things in the ordered
+Crystal. This allowed the release of a small Sportster.
+       In 1991, 4 Canadian hackers thought: why
+is this Sportster so similar to the old Courier?  Having picked up, they
+found that Sportster and Courier differ only in firmware,
+which autodetects the type of modem by tricky jumpers and NVRAM
+and for Sportster-a simply disables HST and other charms of Couri-
+er-a.  In those Sportsters, the ATGW team has not yet been disabled and
+children for a short time thinking just hacked the memory with the dump
+configurations and began to enjoy HST 16800. :) Here is this
+line:
+
+AT GW3C6,22 GW5CD,2F
+
+       Then ATGW in Sportster-ah was banned. But hackers are not
+confused. They already realized that Sportster from Courier is different
+Only firmware.  In Russia the very first upgrade became
+practiced by Misha Serov (2:5030/106.10) from Peter.   Now this
+also engaged in Anatoly Skoblov (2:5030/78) together with Mikle
+Likhachev (2:5030/131) in St. Petersburg and I, Robert Agababyan
+(2:5020/234) together with Grisha Rusanov (2:5020/69.15) in Moscow.
+Also recently in Moscow upgrades began to be engaged in Dimka Kozlov
+(2:5020/246) and Dennis Kornyukhin (2:5020/150).
+
+<ul><a name="7"></a><h2>Let's look at upgrade-a technology.</h2></ul>
+
+       To turn Sportster-a into a Courier HST DS is necessary
+take two steps: 1) turn Sportster into Courier; 2)
+enable HST and ASL (if not, then Fax).  Here's the detailed
+technology upgrade-a:
+
+1. The transformation of Sportster-a in Courier (though once for the sake of pricking we
+made
+   Sportster with HST. :) This can be done in three ways:
+   a) Close the jumper on the board checked by firmware in order to
+      determine what this modem is (the method has a disadvantage - it is necessary
+      soldering the fee and in addition it is not on all modems);
+   b) Hack the check of this jumper in firmware (the best way);
+   c) Enable ATGW command and in the init line to prescribe using ATGW byte
+      in memory, responsible for defining Sportster/Courier (the method has
+      lack - it only works until the first Power On/Off).
+
+2. Enable HST, ASL and FAX. The presence of these 3 protocols is established in
+   NVRAM and check firmware. You can include them in three ways:
+   a) Enable the ATGW command and fix bytics in the RAM where the copy is stored
+      NVRAM, then say AT&amp;W (the best way);
+   b) Hack firmware in the place where the presence of these is checked
+      protocols (normal method, but the first is more correct);
+   c) Enable ATGW command and in the init line to prescribe using ATGW bytes
+      in memory, responsible for determining HST, ASL and FAX (the method has
+      lack - it only works until the first Power On/Off, Drop DTR,
+      ATZ etc.).
+
+3. Correct the error in firmware, which causes problems with
+   Incoming calls. For a reason, HST was not tested on this
+   firmware. This is only true for the models of the autumn of 93. For 94 models
+   need to fix glitches with a status signal from the DSP on the protocols
+   HST and Terbo (in the current version, these protocols cannot be received when receiving data
+   determine the required transmission speed).
+
+ As you can see, the technology is understandable.  But not all
+Sporster-s upgrades are the same.  Here is a list of possible up-
+grades depending on the checksum issued for
+ATI1:
+
+a) Upgrade in Courier v.32bis 14400 HST DS 16800 with ASL:
+            4887
+            2501
+            CA53
+            3398
+            3C60
+            54B8
+            A81C
+            ...
+            that is, all models released in the summer of 93 and earlier.
+
+b) Upgrade in Courier v.32bis 14400 OutHST DS 16800 with ASL and RA or
+           the Courier Terbo 21600 HST DS 16800 or
+           in Russian Courier:
+            A283
+            E210
+            D40D
+            3069
+            ...
+            that is, all the autumn models of the 93-th year.
+
+c) Upgrade in Courier Terbo 21600/14400 HST DS 16800/9600 Cellular Fax 2.0
+or
+           in Russian Courier:
+            292A
+            EB7B
+            E661
+            793A
+            1D52
+            1D51
+            1960
+            ...
+            All models of the 94-th year.
+
+d) Upgrade in Courier v.32bis 14400 OutHST DS 16800 with ASL and Voice:
+            A5EF
+            ...
+            i.e. all Sportster 14400 Vi models.
+
+(e) The upgrade of the 95-year model in connection with the extreme
+Simplified
+   equipment. These models are extremely _not_recommended_ to purchase:
+            142C
+            C0F9
+            5352
+            ...
+            that is, all models of the 95-th year.
+
+f) The USR also released 2 models of the 94th year with the ATGW team. Control Control
+   the sums of these 1D51(internal) and 1D52(external) models. Unfortunately, in these
+   firmware from HST almost nothing left and although they can be turned into a Courier
+   HST DS, really almost nothing of the opportunities will work. For
+   turning these models into Courier HST DS should enter the following line:
+
+     for internal modems (1D51): AT GW562,28 S34=0 GW778,2F
+     for external modems (1D52): AT GW562,22 S34=0 GW778,2F
+
+   It is highly not recommended to try to prescribe different for these models
+   numbers in memory by the ATGW command. You won't get anything, but you can burn yours
+   modem.    So, how. HST in this model still does not work, then to include it does not have
+   meaning and therefore recommended initialization string for these models:
+
+     1D51: AT &amp;F1 &amp;K3 GW562.28 S34=0
+     1D52: AT &amp;F1 &amp;K3 GW562,22 S34=0
+
+   If there is a problem with UTR, you can add AT S10=255 S19=1.
+
+ The concept of OutHST for autumn models means that after upgrade
+the HST protocol will only work on weekend calls, and on
+only v.32bis will remain in the entrance.  This is due to a mistake in
+firmware. Dimka Kozlov corrected this mistake, but nobody about it
+does not tell and upgrades such does not. :)
+
+ On the basis of the autumn models of the 93-th year Misha Serov does
+hardware upgrade in Couier Terbo 21600 HST DS 16800 Fax Class
+2.0 At the same time the corresponding is completely hardware
+the native courier.
+
+ For modems with a large speaker (autumn'93 - any'94) Misha
+Likhachev and Tolya Skoblov developed an upgrade to the Russian Courier.
+This is Courier v.32bis 14400 HST DS 16800 with AON, Voice and
+some additional possibilities.  Now they are also
+added to RC 21600/V32T and 21600/RHST.
+
+g) Also for any models Sportster 28800 is made upgrade in Courier
+   v.Everything HST DS. These are models:
+            32B8
+            05B1
+            FE63
+            461E
+            1554
+            8D35
+            3D21
+
+h) Do not lend itself to the upgrade of the Sportster 33600 model on TMS:
+
+            3C77
+            07CA
+            6954
+            C85C
+            5529
+
+(i) Sportster Vi 28800 and 33600 on Intel are subject to alteration and on TMS no.
+
+ In all variants, Sportster is converted into a complete analogue
+Courier v.Everything.  And also a lot of improvements, such as:
+UTR correction (bug completely disappears), HST fix
+(so that it does not fall and normally retrained), almost 100% busy.
+Supported protocols: v.32bis, v.32Terbo(21600), v.FC,
+v.34, HST(16800), HST Cellular(16800). That is, it is complete
+analogue of Courier v.Everything, only much better than it, because
+there will be more options and all errors will be fixed.
+
+<ul><a name="8"></a><h2>Concerning the prices of upgrades:</h2></ul>
+
+For 14400, the price ranges from $5 to $100 depending on the type of upgrade.
+For 28800, the price ranges from $40 to $100.
+
+ Sportster models on TMS upgrade are not subject to. This is 14400 95
+the Year and Sportster 33600.
+
+ Sportster V.34 (V.34+) Vi models upgrade to Courier V.Ev-
+erything HST DS Vi except for models on TMS.  Distinguish them
+can by the color of the box - upgraded grey, whereas
+non-afraged blue.
+
+ Conclusion: Today Sportster is undoubtedly
+the best of cheap and reliable v.32bis or v.34 modems.
+The possibility of an inexpensive upgrade to the Courier HST DS gives it
+special charm. So. Sportster is the perfect modem for home
+The station.  And practice confirms this - in Moscow alone
+about half of the hubs and more than 40% of the owners of 28800 work on
+Enhanced Courier v.Everything models and total quantity
+The upgraded exceeds 1000 people.
+
+<ul><a name="9"></a><h2>Glossary.</h2></ul>
+
+* Courier HST DS (HST Dual Standard) - a modem that supports as
+  standard protocols (ITU-T v.xx) and HST protocol.
+* Fax (Facsimile) - a method of transferring a drawing or printed document by
+  telephone line.
+* HST (High Speed Technology) - new noise-resistant protocol,
+  developed by USR and used in Courier models. Supports
+  speeds 4800, 7200, 9600, 12000, 14400 and 16800 bps (judging by
+  additional lines of the connect in
+  the latest USR firmware plans to soon make HST 19200 and 21600).
+* HST Cellular - protocol for cellular communication. Supports speeds 300,
+  1200, 2400, 4800, 7200, 9600 and 12000 bps (in new models also 14400 and 16800
+  bps).
+* ASL (Adaptive Speed Leveling) - extension of the protocol v.42, developed
+  company USR and used in Courier models. It is a set
+  additional features such as Fall-Forward, Quick Retrain (tm), Assimetric
+  transmission lineion, extra v.42 service frames etc.
+* ITU-T (The Telecommunications Sector of the International Telecommunications
+  Union) is an international organization that develops standards for
+  telegraph, telephone and radio equipment. The old name is CCITT.
+* NV RAM (NonVolatile Random Access Memory) - programmable memory, not
+  reset when the power is switched off. Used to store the current
+  configurations.
+* Protocol - a system of rules and procedure, providing a connection between two
+  or more devices.
+* RAM (Random Access Memory) - programmable memory that does not persist at
+  Off the power.
+* ROM (Read Only Memory) - memory available for read only.
+* US Robotics (USR) is an American company that produces Sportster series modems and
+  Courier.
+* v.32 - ITU-T standard for operation at 4800 and 9600 bps.
+* v.32bis - ITU-T standard for operation at 4800, 7200, 9600, 12000 and
+  14400 bps.
+* v.32Terbo - AT&amp;T standard for 4800, 7200, 9600, 12000,
+  14400, 16800 and 19200 bps (with ASL up to 21600 bps).
+* v.FC - Rockwell standard for operating at speeds 14400, 16800, 19200, 21600,
+  24000, 26400 and 28800 bps.
+* v.34 - ITU-T standard for operation at 2400, 4800, 7200, 9600, 12000,
+  14400, 16800, 19200, 21600, 24000, 26400 and 28800 bps.
+* v.42 - LAPM error correction, 1200 bps and above.
+* v.42 bis - data compression, 1200 bps and above.
+* MNP - error correction (levels 2, 3 and 4) and data compression (level 5), 1200 bps
+  and higher.
+
+In the preparation of this FAQ, the materials provided were used
+
+Misha Serov (2:5030/106.10)
+Anatoly Skoblov (2:5030/78)
+Bill Garfield (1:115/500.0)
+Nick Soveiko (2:5030/108.25)
+Grisha Rusanov (2:5020/69.15)
+Mikle Likhachev (2:5030/131)
+Dennis Kornyukhin (2:5020/150)
+Vladimir Dodonov (2:5020/251.12)
+Dimka Kozlov (2:5020/246)
+Boris Bass (2:5020/523.7)
+All (*:*/*. *)
+
+For which I thank them very much. :)
+
+Robert Agababyan (2:5020/234), 04-Jun-96, 17:00.
+Tel: (095)583-5281.                     ARA (C) 1994,95,96.
+
+<ul><a name="10"></a><h2>Courier v.Everything FAQ</h2></ul>
+
+                                 Document revision 1.10.
+
+Q: How do I connect on HST with another v.Everything? How much I'm not trying
+   put B1 - still on v.34 connects. :(
+A: In modems v.Everything v.34 and v.FC have a greater priority than HST and
+   Therefore, for connector on HST, they should be banned. It is necessary for this
+give
+   the following command to call the modem: ATB1S54=192S56=192. Sometimes this
+not
+   enough and you have to add also S27 = 4S34 = 6.
+
+Q: And how do I get rid of such a glitch - with the adaptive response included
+   modem when the station AON-a is instantly transferred to the fax mode?
+A: For treatment, you must put the following line of response to the ATA
+the entrance
+   call - ATX3S6=1DTR.
+
+Q: How will I get rid of connectors without correcting errors? And then very often
+Modem
+   connects to 14400/NONE and hangs on the line until I drop it.
+A: To do this, you need to give the AT&amp;M5 team. This prohibits all /NONE
+Connects
+   except for CONNECT 300.
+
+Q: How do I upload a new firmware to my modem (flash)? I tried it
+   many SDLs (11/21, 12/02 FT and Release) and all of them write "incompatible country
+   code."
+A: These firmware are made for US/Canada. The country code can be viewed by command
+   ATI7 in the "Product type". If there is anything other than US/Canada,
+   for example, International or Finland, then you must either find the corresponding
+   the country SDL or change the country code to US/Canada in the nearest upgrade.
+
+Q: There is a USR Courier and has an MR (Modem Ready) indicator. During
+   session this indicator often goes out and itself at this time session
+   freezes. I would like to know what this can happen and how it is
+   treated (if treated at all).
+A: The MR indicator goes out during a retrain or other process associated with
+   inability to transmit data at a given time. It is appropriate
+   not treated and only informs the user about such a process (usually
+   is a reportan or request for a retrain or fall-back/fall-forward).
+
+Q: Throw the settings for Courier v.34.
+A: ati4
+     USRobotics Courier 16800 HST Dual Standard V.34 Fax Settings...
+
+     B0 C1 E1 F1 L2 M1 Q0 V1 X7 Y0
+     BAUD=38400 PARITY=N WORDLEN=8
+     DIAL=PULSE ON HOOK TIMER
+
+     &amp;A3 &amp;B1 &amp;C1 &amp;D2 &amp;H1 &amp;I0 &amp;K1 &amp;L0 &amp;M4 &amp; N0
+     &amp;P0 &amp;R2 &amp;S0 &amp;T5 &amp;U0 &amp;X0 &amp;Y1
+
+     S00=000 S01=000 S02=043 S03=013 S04=010 S05=008 S06=002
+     S07=060 S08=002 S09=006 S10=007 S11=070 S12=050 S13=000
+     S14=000 S15=000 S16=000 S17=000 S18=000 S19=000 S20=000
+     S21=010 S22=017 S23=019 S24=150 S25=005 S26=001 S27=000
+     S28=008 S29=020 S30=000 S31=000 S32=009 S33=000 S34=000
+     S35=000 S36=014 S37=000 S38=000 S39=000 S40=000 S41=000
+     S42=000 S43=200 S44=015 S45=000 S46=000 S47=000 S48=000
+     S49=000 S50=000 S51=000 S52=000 S53=000 S54=064 S55=000
+     S56=000 S57=0000
+
+     LAST DIALED #:
+
+   OK
+
+Q: I have an external Courier v.34, International. And there was one
+   problem - after dialing the number, he begins to nasty squeak for some reason every
+   2 seconds. What is it and how to cut it?
+A: This is Calling Tones. This is disabled by the S40=1 command.
+
+Q: By the way never used, and here it became interesting - what do the teams do
+   X5, X6 and X7 in Courier? And then in the dock on sports only up to X4 are described.
+A: The following plate will help you:
+   +--------------------------------------------------------------------------------------------------------------------------------------------
+   |Result Codes | X0 | X1 | X2 | X3 | X4 | X5 | X6 | X7 |
+   +--------------------------------------------------------------------------------------------------------------------------------------------
+   |0/OK | * | * * | * | * | | | * | * | | | | | | |
+   |1/CONNECT | * | * | * | * | * | * | * * | * | | * | |
+   |2/RING | * * * | * | * | * | * | * | | * | | | |
+   |3/NO CARRIER | * * | * | * | * | * | * | * | * | * | | | | | |
+   |4/ERROR | * * | * | * | * | * | * | * | * | | | |
+   |5/CONNECT 1200 | | * * | * | * | * | * * | * | | * | |
+   |6/NO DIAL TONE | | | | | | | * | * | | | * |
+   |7/BUSY | | | | | * | * | * | * | * |
+   |8/NO ANSWER | | | | * | * | * | * | * | | | |
+   |9/RESERVED | | | | | | | |
+   |10/CONNECT 2400 | | * | * | * | * | * | * * | | | | |
+   |11/RINGING | | | | | | | * | * | | | | |
+   |12/VOICE | | | | | | * | | |
+   |13/CONNECT 9600 | | * | * | * | * | * | * | * | | * | |
+   |18/CONNECT 4800 | | * | * | * | * | * | * * | * | * | | |
+   |20/CONNECT 7200 | | * | * | | * * | * | * | | * | | |
+   |21/CONNECT 12000 | | * | * | * | * * | * | * | * | | |
+   |25/CONNECT 14400 | | * | * | * | * | * * | * | * | | | |
+   |43/CONNECT 16800 | | * | * | * | * | * | * | * | | |
+   |85/CONNECT 19200 | | * | * | * | * | * | * | * | | | | | |
+   |91/CONNECT 21600 | | * | * | * | * * | * * | * | * | | |
+   |99/CONNECT 24000 | | * | * | * | * | * | * * | * | | * |
+   |103/CONNECT 26400 | | * | * | | * * | * | * | | | | | | |
+   |107/CONNECT 28800 | | * | * | * | * | * | * | * | * | | |
+   +--------------------------------------------------------------------------------------------------------------------------------------------
+   |Functions | | | | | | | |
+   |Adaptive Dialing | | | | * | * | * | * | * | | |
+   |Wait for 2nd Dial Tone (W) | | | | * | * | * * * | * | * | * |
+   |Wait for Answer (@) | | | | | * * | * | * | * | * | |
+   |Fast Dial | | | | * | | | | | * |
+   +--------------------------------------------------------------------------------------------------------------------------------------------
+
+Q: And what does DS mean in the name Courier HST DS?
+A: This means Dual Standard - i.e. modem supports two standards: how
+   ITU-T standards (v.xx - v.32bis, v.34 etc.) and its standard (HST).
+
+Q: And why y me sometimes during the session light a light lamp AA on my
+   Courier?
+A: In the USR Courier modems, the AA light bulb during CONNECT on HST shows
+   direction of high-speed channel HST. When the high-speed channel is directed to
+   reception (16800/450) - AA does not burn when the high-speed channel is directed to
+   parcel (450/16800) - AA lights up.
+
+Q: And the truth is that in the International model it is possible to regulate the output level?
+A: Yes, the manual adjustment of the output signal level is in all models
+   Courier v.Everything except US/Canada. The register is responsible for this
+   S39 and the output level are set on the basis of the following table:
+
+          S39 TX-Level, dBm
+
+         0..5 -4.5
+            6 -6.5
+            7 -6.5
+            8 -8.0
+            9 -8.6
+           10 -9.4
+           11 -10.6
+           12 -11.6
+           13 -13.3
+           14 -14.1
+      15..255 -14.8
+
+Q: Tell me the initialization string for my USR.
+A: First you need to give the modem command AT&amp;F1&amp;W in the terminal. Then prescribe in
+   software the first line ATZ, and the second AT&amp;F1&amp;K3. ATZ cleans the memory and it will save
+   you're from all the glitches left of the previous connection. Example:
+   Init1 AT Z|
+   Init2 ~~AT &amp;F1 &amp;K3|
+
+Q: And I initialize my modem with the ATZM0L0S0=0S1=0S6=255&amp;F1 and no
+   problems! Am I doing the right thing?
+A: In virtually all modems (and USR is no exception) all that is introduced after ATZ
+   - ignored. It also doesn&#8217;t make sense to put any commands before AT&amp;F1,
+   because this command loads the profile from the ROM and accordingly all the previous ones
+   installations are rubbed.
+
+Q: And y me in Windows'95 modem is not identified - what to do?
+A: Select Uninstall in Windows Setup and then install IBM OS/2
+   Warp 3.0 with Win-OS2.
+
+Q: What does MSK mean in the information of the output modem on ATI7?
+A: This is short for Modem Sharing Kit. USR Total Control System checks this
+   word for the identification of the modem. MSK is derived depending on one of
+   bits in the modem configuration in NVRAM and nowhere else this bit is not used.
+
+Q: Which modem is better to buy International or US/Canada?
+A: Better US/Canada. International has a reinforced analog part of which on
+   our lines give exactly the opposite of the intended effect - too
+   overstated output signal level and data-pump overload. Furthermore
+   New firmware for the International are much less frequent. Actually, best of all
+   take Courier v.Everything US/Canada.
+
+Q: I have Courier v.34 without HST. How do I include HST in it?
+A: You need to upload an SDL from 01/11/95 in which HST is included independently
+   from configuration in NVRAM.
+
+Q: What should be the maximum cps by 28800?
+A: Over the years of communication with modems, I have withdrawn the 0.91 ratio. Medium cps in
+   synchronous mode for 128-byte frames (MNP3-128 or v.42) in general
+   equal (DCE/8)*0.91.
+   We therefore have the following plate:
+
+         2400 - 273
+         4800 - 546
+         7200 - 819
+         9600 - 1092
+        12000 - 1365
+        14400 - 1638
+        16800 - 1911
+        19200 - 2184
+        21600 - 2457
+        24000 - 2730
+        26400 - 3003
+        28800 - 3276
+        31200 - 3549
+        33600 - 3822
+
+  On protocols with error correction other than MNP3-128 and v.42 (e.g., HST)
+  or when using 256-byte frames (most implementations of MNP3) cps
+  usually slightly higher and the coefficient rises to 0.93. Matching values
+  Count the formula above. I would just note that for 16800/HST this
+  The number is 1953.
+  Long practice confirmed my theory 100%. :)
+
+Q: I recently bought a native black courier, and no SDL is loaded into it. :(
+A: USR to reduce production everywhere abandons expensive
+   Intel chips. In sports they made a new model entirely on TMS
+   without Intel 80186/8, and in couriers they replaced Intel flash with AMD-shny.
+   Since the algorithms of recording y are different, such modems will be loaded
+   only firmware released later than December 95. For International
+   There is no such firmware yet, for US/Canada - it is 11/01/95,
+   01/23/96 and 04/29/96.
+
+Q: What is the best firmware for Courier V.Everything?
+A: According to my research, the firmware behaves most sustainably from
+   07/05/95. There are almost no claims to it. In later firmware
+   nothing significantly new and useful has appeared, but y they are observed
+   Incomprehensible to me while plugs on the protocol V.34. So I recommend to put
+   It is the firmware from 07/05/95 patched for e-catch Busy and UTR.
+
+
+Robert Agababyan (2:5020/234), 01-Jul-96, 13:38.
+Tel: (095)583-5281.
+
+ + Origin: USR Upgrade Team, Voice (095)583-5281,(095)283-4180 (2:5020/234)
+                                                ARA greet you.
+ * Origin: Ace Hub, Enhanced Courier v.All, 0++-8++, 283-4180 (2:5020/234.2)
+<pre><hr noshade="noshade"><small>Popularity: <b>26</b>, Last-modified: Tue, 12 Dec 2000 10:53:35 GmT
+</small>
+
+
+
+</pre></pre></pre></body></html>

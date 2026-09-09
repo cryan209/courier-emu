@@ -121,3 +121,47 @@ the hybrid leaks transmit into receive. Neither was done.
 
 [Capture](../artifacts/atg-tone-arm-403/tone-interleaved.json),
 [script](../artifacts/atg-tone-arm-403/arm-tone-interleaved.py).
+
+## Off-hook on a live line: query 62 is pinned, not quiet
+
+Repeated with the line seized — `ATH1`, a few seconds, `ATH0`, released
+cleanly with `AT` answering afterwards. Dial tone was present on the pair for
+the three baseline reads before the tone was armed.
+
+| point | query 62 |
+|---|---|
+| on-hook baseline | `0069:0015` |
+| off-hook, dial tone, x3 | `0069:0015` |
+| off-hook, tone armed, x4 | `0069:0015` |
+| off-hook, after tag 16 | `0069:0015` |
+
+Every reply is fresh: the interleaved query `07` mark flips `0031:0000` →
+`0069:0015` on all eleven reads.
+
+**Dial tone is a large, known signal in the receive path, and query 62 does
+not move for it.** That settles what the previous section could only suspect:
+`62` is not an energy detector that happens to be quiet on-hook, it is pinned
+at `0015` under silence, under dial tone and under an armed tone alike. It
+cannot observe the audio path in command mode at all, and no experiment built
+on it will say anything about the transmitter.
+
+Two explanations remain open and this measurement does not separate them: the
+handler may be clamped or reading a buffer nothing fills in this state, or the
+resident may not be in a state where tag `13` arms anything outside a call.
+Distinguishing them needs a transmit-side reading, which no tag in this image
+is yet known to provide.
+
+### A consequence for the existing replay comparison
+
+[mailbox-312-comparison.md](mailbox-312-comparison.md) records the emulator
+reproducing `0069:0015` for query 62 as a match against the board, and treats
+resolving the earlier `0012` discrepancy as a result about initialization. The
+board now says `0015` is returned under every condition tested, including a
+loud signal. Matching it therefore confirms the mailbox transport and the
+dispatcher, and carries no information about the handler's sample arithmetic.
+That document's hedge — "matching this idle result cannot establish
+sample-by-sample audio accuracy" — is right, and understates it: `0015` is not
+an idle result, it is an unconditional one.
+
+[Capture](../artifacts/atg-tone-offhook-403/tone.json),
+[script](../artifacts/atg-tone-offhook-403/offhook-tone.py).

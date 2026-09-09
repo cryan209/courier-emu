@@ -1,5 +1,48 @@
 # CPU–DSP parallel mailbox: board comparison, 2026-09-07
 
+## Exact long-immediate confirmation, 2026-09-09
+
+The fresh [capture](../artifacts/ndx-long-1234-20260909/frame.txt) from the
+attached Courier confirms the existing model for `lar ar0, #1234` (hex).
+ATI7 again reports supervisor 7.4.16 and DSP 3.1.2. The minimal probe seeds
+ARCR=`eeee` and INDX=`dddd` independently before each load, clears then sets
+PMST.NDX, and returns the registers through the verified tagged mailbox.
+PMST and AR0 readbacks are controls; `9209` identifies this probe.
+
+| NDX | PMST | AR0 after LAR | ARCR | INDX |
+|---|---|---|---|---|
+| Clear | `00b0` | `1234` | `1234` | `1234` |
+| Set | `00b4` | `1234` | `eeee` | `dddd` |
+
+The nine-word frame passes its count and checksum (`a908`). The 4256-byte
+supervisor RAM image was read back byte for byte before execution; the DSP
+kernel is 160 bytes. After watchdog recovery, AT answered, vector 8 was
+restored to `8000:108f`, and T0CON read back as `8021`. No flash or stored
+settings were written. This is a standalone instruction test, not a live-call
+measurement. **No C5x behavior change was necessary.**
+
+The [artifact manifest](../artifacts/ndx-long-1234-20260909/manifest.json)
+records hashes, identity, decoded samples and recovery. Raw serial traffic,
+RAM readback, binaries, labels and the separate offline result are alongside
+it. Tests preserve the existing model, replay the exact captured binary,
+validate the raw frame and compare the upload with its readback. Only PMST
+AVIS is masked in the replay, as in the earlier captures; NDX is not masked.
+
+To reproduce from the repository root, using a **new** output directory:
+
+```sh
+.venv/bin/python artifacts/ndx-long-1234-20260909/build.py /tmp/ndx-long-new
+.venv/bin/python artifacts/ndx-long-1234-20260909/run-board.py /tmp/ndx-long-new /dev/cu.usbserial-11420
+.venv/bin/python -m pytest tests/test_dsp_board_ndx.py tests/test_mailbox_protocol.py tests/test_asic_ports.py -q
+```
+
+The runner requires the measured firmware identity, verifies RAM before
+arming Timer 0, and refuses to overwrite an existing frame. The serial device
+name may change when reconnected. Offline execution requires Unicorn JIT
+permission on macOS.
+
+## Earlier findings
+
 The NDX failure is now explained. Two faults masked one another: the core
 omitted AR0 compatibility side effects, and PA7 writes incorrectly manufactured
 download-ready status. Fixing NDX alone made the firmware enter that false

@@ -1,5 +1,42 @@
 # Connected-board DSP 3.1.2 mailbox comparison
 
+## Initialized replay resolves the query-62 discrepancy
+
+The fresh [eight-digit G capture](atg-dsp-command.md) enabled a replay of
+`62, 07, 2d, 62, 07` against the normally booted native DSP and bridge.
+Every reply matches the board, including **`0069:0015` for both query-62
+requests**. Query 07 returns `0031:0000`, including with data `a55a`, and
+the no-op generates no new reply while preserving the holding registers.
+
+The older isolated `execute()` fixture still produces `0069:0012` with
+the same current core. It enters the handler without resident initialization.
+Thus the discrepancy recorded below is not a mismatch between the board
+and the initialized emulator; it is a mismatch between test conditions.
+No arithmetic-core change is justified by that comparison.
+
+**Measured since, off-hook on a live line: the board returns `0015` for query
+62 under silence, under dial tone and under an armed tone alike.** Matching it
+confirms the transport and the dispatcher and says nothing about the handler's
+arithmetic; see [the 403 gate addresses](datapump-gate-403-addresses.md).
+
+This does not prove all query-62 arithmetic: its handler sums squares of
+DSP data `0900..098f`, uses other resident state, and limits its result;
+`0015` is one of its explicit clamp values. Matching this idle result cannot
+establish sample-by-sample audio accuracy. We have not isolated which
+initialized input/register accounts for the fixture's `0012` result.
+
+[Replay report](../artifacts/g-eight-hex-board/booted-emulator.json) and
+`tests/test_g_dsp_capture.py` preserve both results. The new comparison runs
+the real DSP boot and resident initialization and checks request consumption,
+new-reply presence, and exact reply words through the bridge. It does not
+execute the supervisor AT parser/UART or prove interrupt timing equivalence.
+
+This narrows future failures: if the full emulator cannot complete these
+same G commands, investigate supervisor execution, queue draining, mailbox
+interrupt delivery and serial completion before changing these DSP handlers.
+
+## Earlier isolated comparison
+
 On 2026-09-05 the modem on `/dev/cu.usbserial-21210` at 115200 baud
 identified as ID_SDL 4.03d, supervisor 7.4.16 / DSP 3.1.2, 20.16 MHz,
 512 KiB flash. Seven flash pages covering the dispatcher, query handlers,
