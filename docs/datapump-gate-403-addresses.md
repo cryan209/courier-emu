@@ -185,6 +185,27 @@ ATG00130006    digit 6   -> arms the oscillator through ee20
 ATG00160000    restores the idle callback 8128, stopping the tone
 ```
 
+### The exchange acted on it
+
+Dial tone was present when the tone was armed, and holding it took the line to
+busy. That is the switch responding: an off-hook line with dial tone treats a
+DTMF digit as the start of a dial, and a digit held for ten seconds with
+nothing following it is an incomplete dial, which the exchange ends in reorder.
+
+This is better evidence than audibility. A tone can be heard and still be at
+the wrong level or off-frequency; **a tone the exchange decodes and acts on is
+within the network's own tolerance for level, frequency and duration.** The
+transmit path is not merely producing sound, it is producing a valid DTMF
+digit.
+
+**A hazard worth stating plainly.** Arming a tone off-hook on a connected line
+dials into the exchange, and nothing in the firmware times the tone out. This
+run left the line in reorder until it was released. The board was afterwards
+confirmed responsive, on-hook, and back on the idle callback; a reorder clears
+on its own once the line is released. Anyone repeating this should keep the
+armed window short and hang up immediately, or - now that the path is
+confirmed - not seize a live line for tone work at all.
+
 This is the first time this project has driven the audio path on hardware
 directly rather than through a dial, and it confirms the chain
 [datapump-dispatch-gate.md](datapump-dispatch-gate.md) traced statically —
