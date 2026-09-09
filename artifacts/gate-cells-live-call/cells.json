@@ -1,0 +1,118 @@
+{
+  "started_utc": "2026-09-09T04:24:07.469064+00:00",
+  "hardware_tested": true,
+  "mode": "voice",
+  "line_seized": true,
+  "device": "/dev/cu.usbserial-11420",
+  "samples": [
+    {
+      "label": "idle, on-hook",
+      "elapsed": null,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 0",
+      "elapsed": 3.5,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 1",
+      "elapsed": 5.6,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 2",
+      "elapsed": 7.7,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 3",
+      "elapsed": 9.8,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 4",
+      "elapsed": 11.8,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "off-hook ringing 5",
+      "elapsed": 13.9,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    },
+    {
+      "label": "after release",
+      "elapsed": 16.4,
+      "cells": {
+        "098a": 0,
+        "049e": 0,
+        "057c": 0,
+        "04c6": 0,
+        "04f2": 0,
+        "04f8": 0,
+        "0d28": 0
+      }
+    }
+  ],
+  "events": [],
+  "identity": "ATI7\r\r\n!!! NOT For Sales !!!\r\nID_SDL v4.03d 24/01/00, RUSSIA, Khabarovsk, Igor Diagilev ( id@redcom.ru )\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Russia (ex. US/Canada) External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         7.4.16\r\nDSP rev                3.1.2\r\n\r\nSerial Number          0009540034268322\r\n\r\nOK\r\n",
+  "released": true,
+  "off_hook_seconds": 15.2,
+  "responds_after": true
+}

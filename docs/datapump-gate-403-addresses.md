@@ -265,3 +265,64 @@ those handlers reply with the constants `#06` and `#04`.
 
 [Sweep](../artifacts/dispatcher-tag-sweep-312/sweep.py),
 [table](../artifacts/dispatcher-tag-sweep-312/replying-tags.json).
+
+## During a call: still zero, but the mode that matters was not reached
+
+Dialled `ATDT9099;` on the connected line. The semicolon form returns to
+command mode with the line still seized, which is the only way to read RAM
+while a call is up — a plain `ATD` leaves the DTE waiting for a result code
+and accepts no commands. 15.2 seconds off hook, released cleanly, board
+responsive afterwards.
+
+| sample | all seven cells |
+|---|---|
+| idle, on-hook | `00` |
+| off-hook, dialling and ringing, x6 over 6 s | `00` |
+| after release | `00` |
+
+So the flags are not set by seizure, by dialling, or by ringing. That is a
+real exclusion, and it is not the answer: **the semicolon form attempts no
+data handshake**, so this run never ran the datapump and never exercised the
+gate. The untested state is the one that matters.
+
+### What `0d28` being zero implies
+
+The overlay id is the strongest cell here, because its behaviour on a working
+board is not in doubt. A data call on this modem *must* download a datapump
+overlay — the resident bank holds the DTMF oscillator and no data modulation
+— and the loader at `0x8e60a` runs only when `[0x0d28]` is non-zero. The board
+plainly does connect. Therefore `[0x0d28]` **must** become non-zero at some
+point on a real data call.
+
+It is zero at idle, through dialling and through ringing. So whatever sets it
+acts during the data handshake specifically, after the point this experiment
+can reach. The same is then plausible for the three discriminator flags, which
+gate the same selection code — but plausible is all it is, since only `0d28`
+has an argument this strong.
+
+This also revises how the emulator's run should be read. `[0x0e3c]` zero at
+the dial is not by itself the modelling gap; the board is zero there too. The
+gap is whatever the board does later that the emulator never reaches.
+
+### Why this is hard to finish on this hardware
+
+Reading RAM needs command mode. The datapump-active state is precisely when
+the DTE is not in command mode. The `+++` escape reaches command mode with a
+call up, but only after `CONNECT` — which needs an answering modem, and there
+is none on this line. The three ways out, in order of preference:
+
+1. **A modem to call.** Any answering modem gives `CONNECT`, then `+++`, then
+   the cells read with the datapump genuinely running. This is the experiment
+   that settles it.
+2. **Sample immediately after `NO CARRIER`.** A plain `ATD` to a number that
+   answers as anything else runs a real handshake attempt for the `S7` window,
+   and the flags may persist past the failure. Cheap, needs no second modem,
+   and worth trying before anything else — but a negative proves nothing,
+   since the failure path may clear them.
+3. **Find the setter statically.** The 302 analysis found exactly one
+   reachable setter for one of the three flags, in a thunk cluster whose entry
+   is not established. Repeating that search in 403 against the addresses in
+   this document has not been done.
+
+[Capture](../artifacts/gate-cells-live-call/cells.json),
+[script](../artifacts/gate-cells-live-call/live-call-cells.py).
