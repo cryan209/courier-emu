@@ -149,6 +149,11 @@ RESIDENT_WORDS = 0xF450 // 2
 LANE_INIT_WORDS = 8
 LANE_INIT_VALUE = 0x0083
 
+# The recovered on-chip mask ROM, shared with the 302/403 path in bridge.py.
+from .bridge import C50_ROM_FRAME_IRQ as ROM_FRAME_IRQ  # noqa: E402
+
+ROM_SHA256 = "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67"
+
 # Both processors run from the board's 20.16 MHz clock, so the C5x advances at
 # the 80186's cycles-per-instruction, exactly as bridge.py derives it for the
 # 302/403. Reused rather than restated so the two cannot drift apart.
@@ -257,13 +262,40 @@ class QuadC50Endpoint:
             self._start_core()
 
     def _start_core(self) -> None:
+        """Boot the C50 the way bridge.py already boots it on the 302/403.
+
+        Same part - board-parts.md identifies it as a TMS320C50/LC50, not the
+        'C52 the core is named after - so the boot path is the same one that
+        works there: the recovered mask ROM, MP/MC low, a *zeroed* program
+        space, and the loader fed its destination, length and words. The
+        loader writes the resident; nothing here pre-loads a copy for it to
+        execute, which is the mistake bridge.py's own comment warns about and
+        the one this endpoint was making.
+        """
+        from hashlib import sha256
+        from pathlib import Path
+
         from .dsp import NativeC5x
+
+        rom = (Path(__file__).resolve().parent.parent /
+               "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin").read_bytes()
+        if sha256(rom).hexdigest() != ROM_SHA256:
+            raise ValueError("recovered DSP boot ROM checksum mismatch")
         words = self.program[:RESIDENT_WORDS]
-        if words[0] == LANE_INIT_VALUE and words[:LANE_INIT_WORDS] == [LANE_INIT_VALUE] * LANE_INIT_WORDS:
-            raise ValueError("image still carries the lane-init prefix; alignment is wrong")
-        image = b"".join(word.to_bytes(2, "little") for word in words)
-        self.core = NativeC5x.from_program(RESIDENT_ORIGIN, image)
-        self.core.set_pc(RESIDENT_ORIGIN)
+        core = NativeC5x.from_program(RESIDENT_ORIGIN, bytes(RESIDENT_WORDS * 2))
+        core.configure_rom_codec()
+        core.load_rom(rom)
+        core.set_mpmc_pin(0)
+        core.host_write(0xFFFF, 4)  # 16-bit serial boot strap, as on the 302/403.
+        # Hardware vectoring through PMST.IPTR and the ROM, the same call the
+        # 302/403 path makes whenever it boots through the mask ROM. Without it
+        # the loader is never clocked and the part produces no host-link
+        # traffic at all.
+        core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
+        core.set_pc(0)
+        # One trailing word clocks the loader's final comparison.
+        core.queue_codec_boot([RESIDENT_ORIGIN, len(words), *words, 0])
+        self.core = core
         self.started = True
         self.program = []
 
