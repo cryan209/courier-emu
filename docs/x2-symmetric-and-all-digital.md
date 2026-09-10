@@ -583,17 +583,21 @@ c048  bacc                    ; run this record's callback
 Following `c922` in three-word steps terminates exactly at `c93a`, whose first
 word is `c423`.  `c423` is executable resident code that reports status through
 `86cd`; `c8ce` watches working cell `03c8` for that same value and performs the
-`c922 -> c90e` switch.  Following `c90e` with the same stride has no aligned
-`c423` terminator before it flows into the mapper.  Consequently the former is
-the finite server training script and the latter is the steady data script:
-**`c8ce` is the Phase-4-to-data boundary.**
+`c922 -> c90e` switch.  This proves that `c922` is a finite server sub-script
+and that `c8ce` is its completion callback.
 
-The replacement script leads into the substantial engine at `c93e`.  That
-engine initializes six intervals, derives independent counts from the
-negotiated buffers, repeatedly calls the mapping helpers
-`c524`/`c99c`/`c9d2`, and returns to the common output path at `c565`.  Its
-six-interval shape is the PCM data-frame mapper, not just a generic training
-loop.
+It does **not**, by itself, prove a Phase-4-to-data boundary.  A complete
+cross-reference finds an earlier installer at `a180..a18a`: bit 15 of `039f`
+chooses `c67f`, then bit 7 chooses `c7dd` or `c90e`.  The digital-server role
+therefore installs `c90e` before the `c922` detour, and `c8ce` restores that
+enclosing server script.  Calling `c90e` a newly entered data script would
+contradict that earlier use.
+
+The nearby engine at `c93e` remains a strong six-interval PCM mapper candidate:
+it initializes six intervals, derives independent counts from negotiated
+buffers, repeatedly calls `c524`/`c99c`/`c9d2`, and returns to common setup at
+`c565`.  Its actual enable edge still has to be followed rather than inferred
+from adjacency to the script table.
 
 The evidence-backed call spine is therefore:
 
@@ -604,18 +608,18 @@ supervisor mode/config command
     -> shared framed INFO receive + CRC (aaa4..aafe)
     -> c800 server overlay (c86f)
     -> phase cell 03cd = c922
-    -> Phase 4 terminal callback c423 observed at c8ce
+    -> finite server sub-script terminal callback c423 at c8ce
        + phase cell 03cd = c90e
        + mailbox status 6c/6d/74 to the supervisor
-    -> DATA: six-interval mapping engine c93e.. and common output c565
+    -> enclosing server script resumes
 ```
 
 What is still missing is now narrow: identify the resident mailbox handlers
 that set `039f` bits 0 and 7, map their controller commands back to S76/S81,
-and split the finite `c922` training script at the Phase 3-to-Phase 4 boundary.
-The Phase-4-to-data boundary and data mapper are now located; correlating the
-earlier records with the standard's `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, DIL
-and Phase 4 signal order is the remaining waveform-label problem.
+classify the finite `c922` detour within Phase 3 or Phase 4, and follow the
+enable edge into the `c93e` mapper.  Correlating the records with the
+standard's `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, DIL and Phase 4 signal order
+is the remaining waveform-label problem.
 
 ## ISDN is 4-wire
 
