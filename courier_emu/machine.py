@@ -58,6 +58,13 @@ DSP_RESET_BIT = 0x0002
 # take an interrupt the moment IF goes high either. 64 instructions is about
 # 15 us at 20.16 MHz, and it divides the periods that hang off it.
 SERVICE_INSTRUCTIONS = 64
+
+# The processor state carried across a turn-taking yield. Segment registers and
+# flags matter as much as the general set: the machine is resumed mid-routine.
+_RESUME_REGISTER_NAMES = (
+    "AX", "BX", "CX", "DX", "SI", "DI", "BP", "SP",
+    "CS", "DS", "ES", "SS", "FLAGS",
+)
 # How long to wait before offering the next typed byte again while the
 # command parser is busy with the line before it.
 COMMAND_BUSY_COOLDOWN = 256
@@ -513,6 +520,7 @@ class CourierMachine:
         self._alternate_line = bytearray()
         self.console = console
         self.stop_requested = False
+        self._resume_state: dict[str, Any] | None = None
         self.serial_interrupts = 0
         self.timer_interrupts = 0
         self.serial_trace: list[str] = []
@@ -790,6 +798,23 @@ class CourierMachine:
             except Exception:
                 values[name] = "??"
         return values
+
+    def snapshot(self) -> dict[str, Any]:
+        """CPU state at a yield, for handing this machine's turn back later.
+
+        Memory is deliberately not included: in the chassis harness the channel
+        memory is the shared surface and its owner moves it between machines.
+        """
+        from unicorn import x86_const as _x86
+        registers = {name: self.uc.reg_read(getattr(_x86, f"UC_X86_REG_{name}"))
+                     for name in _RESUME_REGISTER_NAMES}
+        return {"registers": registers, "instructions": self.instructions,
+                "pc": self.uc.reg_read(_x86.UC_X86_REG_CS) * 16
+                      + self.uc.reg_read(_x86.UC_X86_REG_IP)}
+
+    def resume_from(self, state: dict[str, Any]) -> None:
+        """Continue from a snapshot on the next run() instead of from reset."""
+        self._resume_state = state
 
     def run(self, instruction_limit: int = 250_000) -> RunResult:
         try:
@@ -2526,6 +2551,20 @@ class CourierMachine:
         error: str | None = None
         try:
             begin = self.image.entry_physical
+            if self._resume_state is not None:
+                # Turn-taking: this machine ran before, yielded, and is being
+                # handed back. run() always builds a fresh Uc, so the previous
+                # CPU state is written back into it and execution continues from
+                # where it stopped instead of from the reset vector. Memory is
+                # restored by the caller, which owns the channel it is shared
+                # with; only the processor state belongs here.
+                state = self._resume_state
+                self._resume_state = None
+                from unicorn import x86_const as _x86
+                for name, value in state["registers"].items():
+                    uc.reg_write(getattr(_x86, f"UC_X86_REG_{name}"), value)
+                self.instructions = state["instructions"]
+                begin = state["pc"]
             while self.instructions < instruction_limit and not self.stop_requested:
                 # A real 80186 wraps segment:offset addresses at 20 bits.  In
                 # particular this firmware reaches F800:8000 (linear 1 MiB)
