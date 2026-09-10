@@ -13,6 +13,10 @@ import json
 
 INFO_FILL = (1, 1, 1, 1)
 INFO_SYNC = (0, 1, 1, 1, 0, 0, 1, 0)
+X2_RATE_CODE_TO_BPS = (
+    33333, 37333, 41333, 42666, 44000, 45333, 46666, 48000,
+    49333, 50666, 52000, 53333, 54666, 56000, 57333, 64000,
+)
 
 
 def lsb_bits(value: int, width: int) -> list[int]:
@@ -53,6 +57,47 @@ def x2_modulation_parameters(carrier: int, rate_1: int, rate_2: int) -> int:
     if not 0 <= rate_1 <= 7 or not 0 <= rate_2 <= 7:
         raise ValueError("symbol-rate indices must fit in three bits")
     return carrier | (rate_1 << 1) | (rate_2 << 4)
+
+
+def x2_pcm_rate(rate_index: int) -> tuple[int, int]:
+    """Decode the DSP's local x2 measurement index into K and nominal bit/s."""
+    if not 0 <= rate_index <= 31:
+        raise ValueError("x2 PCM rate index must fit in five bits")
+    bits_per_six_symbol_frame = rate_index + 22
+    nominal_bps = bits_per_six_symbol_frame * 8000 // 6
+    return bits_per_six_symbol_frame, nominal_bps
+
+
+def x2_rate_code_from_measurement(rate_index: int) -> int:
+    """Translate the measured analogue-path index 10..21 to x2 code 3..14."""
+    if not 10 <= rate_index <= 21:
+        raise ValueError("measured x2 rate index must be in the range 10..21")
+    return rate_index - 7
+
+
+def x2_rate_code(rate_bps: int) -> int:
+    """Return the four-bit ordinal in x2's complete 16-entry rate ladder."""
+    try:
+        return X2_RATE_CODE_TO_BPS.index(rate_bps)
+    except ValueError as exc:
+        raise ValueError(f"unsupported x2 rate {rate_bps}") from exc
+
+
+def reverse_bits(value: int, width: int) -> int:
+    """Reverse a fixed-width field (MP is stored opposite to wire order)."""
+    return bits_value(list(reversed(lsb_bits(value, width))))
+
+
+def v34_mp_rate_word(call_to_answer: int, answer_to_call: int) -> int:
+    """Pack MP bits 20:27 as they appear in the firmware's first MP word.
+
+    The MP receiver stores ITU bits 20:23 in word bits 9:6 and bits 24:27 in
+    word bits 5:2.  Within each field the first transmitted (least
+    significant) field bit therefore occupies the highest DSP bit.
+    """
+    if not 0 <= call_to_answer < 16 or not 0 <= answer_to_call < 16:
+        raise ValueError("MP maximum-rate fields must fit in four bits")
+    return reverse_bits(call_to_answer, 4) << 6 | reverse_bits(answer_to_call, 4) << 2
 
 
 def v90_info1a(
@@ -109,6 +154,18 @@ def main() -> None:
     x2_info.add_argument("--capabilities", type=lambda text: int(text, 0), required=True)
     x2_info.add_argument("--acknowledge", action="store_true")
 
+    x2_rate = sub.add_parser("x2-rate")
+    x2_rate.add_argument("--index", type=int, choices=range(32), required=True)
+
+    mp_rate = sub.add_parser("mp-rate-fields")
+    mp_rate.add_argument("--call-to-answer", type=int, choices=range(16), required=True)
+    mp_rate.add_argument("--answer-to-call", type=int, choices=range(16), required=True)
+
+    x2_wire_rate = sub.add_parser("x2-wire-rate")
+    group = x2_wire_rate.add_mutually_exclusive_group(required=True)
+    group.add_argument("--rate", type=int)
+    group.add_argument("--measurement-index", type=int, choices=range(10, 22))
+
     v90_info = sub.add_parser("v90-info1a")
     v90_info.add_argument("--uinfo", type=int, choices=range(128), required=True)
     v90_info.add_argument("--upstream-rate", type=int, choices=range(8), required=True)
@@ -129,6 +186,34 @@ def main() -> None:
         result = describe(
             args.kind, x2_info0(args.capabilities, acknowledge=args.acknowledge)
         )
+    elif args.kind == "x2-rate":
+        k, bps = x2_pcm_rate(args.index)
+        result = {
+            "kind": args.kind,
+            "local_dsp_measurement_index": args.index,
+            "bits_per_six_symbol_frame": k,
+            "nominal_bits_per_second": bps,
+            "exact_rate": f"{k} * 8000 / 6",
+            "warning": "This telemetry index is not a proven on-wire MP field.",
+        }
+    elif args.kind == "mp-rate-fields":
+        word = v34_mp_rate_word(args.call_to_answer, args.answer_to_call)
+        result = {
+            "kind": args.kind,
+            "itu_mp_bits_20_23_call_to_answer": args.call_to_answer,
+            "itu_mp_bits_24_27_answer_to_call": args.answer_to_call,
+            "dsp_word_0_bits_9_2": f"0x{word:04x}",
+        }
+    elif args.kind == "x2-wire-rate":
+        code = (x2_rate_code(args.rate) if args.rate is not None
+                else x2_rate_code_from_measurement(args.measurement_index))
+        result = {
+            "kind": args.kind,
+            "x2_rate_code": code,
+            "four_bit_time_first": bit_string(lsb_bits(code, 4)),
+            "nominal_bits_per_second": X2_RATE_CODE_TO_BPS[code],
+            "dsp_nibble_reversed": f"0x{reverse_bits(code, 4):x}",
+        }
     else:
         result = describe(
             args.kind,

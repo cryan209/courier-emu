@@ -654,6 +654,84 @@ training constructors; their inputs derived from `0340`/`0341` are the likely
 location where the selected codeword set—and therefore the effective PCM
 rate—is encoded.
 
+### The compact descriptor is received MP, not a five-bit x2 rate
+
+The server overlay copies two selected descriptor words into data `0340` and
+`0341`.  A later unpacker at `c8a5` extracts this slice from the first word:
+
+```text
+lacl  [0340]
+bsar  2
+and   #001f
+```
+
+It was tempting to call `0340[2:6]` the compact x2 PCM-rate code.  A
+cross-generation check disproves that identification: the same receive copy
+and the same consumers occur in the 1995 `SDL_CS3` V.34-only overlay.
+Moreover, `a4fc..a504` in the x2-only image establishes the provenance
+directly: after a valid MP CRC, the DSP copies the first two words of the MP
+receive buffer `ff48` unchanged to `0340` and `0341`.
+
+The MP writer in the V.34-only image masks `03fc`, and its standard field
+construction identifies the layout.  In the first DSP word:
+
+| DSP bits | transmitted MP bits | field |
+|---|---|---|
+| `9:6` | `20:23` (bit order reversed in the word) | maximum rate, call-to-answer |
+| `5:2` | `24:27` (bit order reversed in the word) | maximum rate, answer-to-call |
+
+So the five-bit read crosses the boundary between two ordinary four-bit V.34
+fields; it is not one wire field.  x2's added routine at `a340..a356` performs
+a direction-selected minimum and writes back into this same eight-bit MP
+region.  This proves that the x2 negotiation reuses the two directional MP
+rate nibbles.
+
+The proprietary value mapping is forced by the complete x2 result ladder.
+There are exactly sixteen entries, including the digital-only endpoint, so
+they fill a four-bit ordinal without a hole:
+
+| code | nominal rate | six-symbol `K` |
+|---:|---:|---:|
+| 0 | 33333 | 25 |
+| 1 | 37333 | 28 |
+| 2 | 41333 | 31 |
+| 3..14 | 42666..57333 | 32..43 |
+| 15 | 64000 | 48 |
+
+For the measured analogue range, therefore, the conversion is
+`MP_code = measurement_index - 7`: local indices `10..21` become codes
+`3..14`.  Code 15 naturally names the all-digital 64 kbit/s case, while codes
+0..2 name the three fixed fallback rates that the measurement clamp cannot
+produce.  This mapping is structurally unique given the ordered sixteen-entry
+firmware table; a captured MP exchange would still be the ideal independent
+wire-level confirmation.
+
+Separately, the receiver-side measurement produces local indices 10 through
+21, which decode without another table as
+
+```text
+K = index + 22
+rate = K * 8000 / 6
+```
+
+giving 42,666 2/3 through 57,333 1/3 bit/s.  This is the reversible rate
+representation that the earlier field search was missing.
+
+That local index must not be inserted directly into MP: values 16 through 21
+do not fit either four-bit wire field.  A translation or ordinal selection
+therefore lies between the measurement result and the MP writer.
+
+The surrounding routine expands six records of eight words each from a table
+of six source pointers.  Consequently the compact rate/geometry descriptor
+does not directly list all six mapper constellations; it selects parameters
+from which the DSP builds six interval-specific records.  V.90 CP makes that
+same result explicit with six four-bit constellation-index fields.
+
+The other proven fields are `0340[13:14]`, transformed into a geometry/count
+parameter, `0341[14:15]`, transformed into a second parameter, and `0341[0]`,
+which controls a mode-dependent branch.  Their exact x2 wire names remain to
+be assigned, but they are independent of the five-bit rate index.
+
 What is still missing is now narrow: identify the resident mailbox handlers
 that set `039f` bits 0 and 7, map their controller commands back to S76/S81,
 classify the finite `c922` detour within Phase 3 or Phase 4, and follow the

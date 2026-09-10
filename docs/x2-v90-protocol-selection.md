@@ -2748,9 +2748,11 @@ additions and what remains on the wire is a conforming V.34 handshake.
 
 ## How x2 matches a speed to a line
 
-The handshake never carries the 56k speed - the 7-bit frame's two rate fields
-are V.34 *symbol* rates, not bit rates.  The speed is chosen by measurement in
-the DSP and reported to the supervisor as a small index.
+The 7-bit frame's two rate fields are V.34 *symbol* rates, not bit rates.  The
+PCM speed is chosen by measurement in the DSP and reported to the supervisor
+as a small local index.  The MP/MP' path then participates in agreeing the
+working parameters; the exact translation from the local index to its
+four-bit MP value remains under investigation.
 
 ### Audit of the missing wire-rate field (2026-09-10)
 
@@ -2914,6 +2916,18 @@ dB of usable headroom per step.
 The three sparse rates below the clamp - 33333, 37333, 41333 - cannot be
 produced by this path at all, so they are fixed fallbacks reached another way,
 not measurement outcomes.
+
+### Translation into the four-bit x2 rate ordinal
+
+The full x2 result table contains exactly sixteen ordered entries: fifteen
+analogue rates followed by 64000 for the all-digital path.  This exactly fills
+the four-bit directional value available in MP.  The resulting mapping is
+`0=33333`, `1=37333`, `2=41333`, `3..14=42666..57333`, and `15=64000`.
+Consequently the measured range converts by `wire code = index - 7`, mapping
+`10..21` to `3..14`.  The sparse fallbacks occupy the otherwise unreachable
+low codes, and the non-analogue endpoint occupies the otherwise unreachable
+high code.  No alternative monotone assignment preserves the firmware table
+order and all four boundary conditions.
 
 ### Unchanged for V.90
 
