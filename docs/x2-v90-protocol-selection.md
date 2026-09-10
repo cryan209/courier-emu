@@ -1833,8 +1833,9 @@ Putting the two directions together:
   for one;
 * neither Quad NAC **sends** one.
 
-Nothing in these three images both produces and consumes it, which removes the
-tidy client-to-server reading offered above.  What remains established is
+It looked at this point as though nothing in these images both produced and
+consumed it.  That was wrong, and the reason is in the next section: it is not
+received as a frame at all.  What remains established is
 unchanged - the frame exists, it is x2-gated at `903b`, it carries a 7-bit
 code, and its length matches no sequence in V.34 or V.90.  What it is *for*
 is not answered by these images.
@@ -1844,3 +1845,88 @@ INFO receiver that this sweep has not found; a peer image not in this
 repository, since the NACs here are one server generation and the x2 server
 population was not uniform; or a frame whose presence and timing matter rather
 than its content, which would need no CRC-checked receiver at all.
+
+## Two receive mechanisms, not one
+
+The framed-INFO receiver is only half of the receive path.  Every symbol
+period the tick at `98b9` rotates the newly demodulated bit into a **rolling
+shift register** at `0252` - four word pairs, 128 bits - and then tries *two*
+different things with it:
+
+```text
+98c1  lar   ar1, #0252
+98c4  sfl                        ; new bit into carry
+98c6  lacc16 *+ / or *-
+98c8  ror                        ; rotate the register one place
+98c9  sach  *+ / sacl *+, ar2
+98cb  banz  98c6, *-, ar1
+...
+98d9  call  98f9, *              ; (1) framed INFO: sync 4e + CRC-16
+98db  bcnd  98ed, neq            ;     failed ->
+98dd  lar   ar1, @24             ;     passed: copy the body out
+...
+98eb  opl   @62, #0002           ;     and flag a good frame
+98ed  lar   ar1, #0252           ; (2) CRC FAILED - bare pattern match:
+98ef  lacl  *
+98f0  and   #0000fe00            ;     the newest 7 bits
+98f2  xor   #00007600            ;     against a fixed constant
+98f5  xc    2, eq
+98f6  opl   @62, #0001           ;     flag on match
+```
+
+So the second mechanism has **no sync test, no CRC, and no length
+parameter**.  It asks only whether the last seven bits on the line are a
+particular pattern, and it runs precisely when the framed parse fails.
+
+`@62` bit 0 is then a state-machine event, consumed at `8e8f`, `8e9c`, `8f4d`
+and `8f6d` - each a `bcnd ..., tc` that diverts the handshake - alongside the
+good-frame flags in bits 1 and 2 that the framed path sets.  `8e7f`
+(`apl @62, #fff8`) clears all three when the receiver is re-armed.
+
+### This is what the 7-bit frame is for
+
+The detector's width is 7 bits - the width of the mystery script's body - and
+it is **present in all four images**, with the identical constant:
+
+| image | detector | 7-bit transmit script |
+|---|---|---|
+| Courier 4.03 | `98f0` | yes (`99a3`) |
+| `IDSDL302` | present | - |
+| QF 6.0.3 | `9f44` | **no** |
+| QR 6.1.3 | present | **no** |
+
+The NAC copy sits in the identical fall-through arrangement, only relocated
+(its shift register is at `0270`):
+
+```text
+9f2d  call  9f4d, *
+9f2f  bcnd  9f41, neq
+...
+9f41  lar   ar1, #0270
+9f44  and   #0000fe00
+9f46  xor   #00007600
+```
+
+That resolves the asymmetry.  A 7-bit body can never satisfy the framed
+receiver, because nothing arms `@22` with 7 - so the frame always falls
+through to the pattern test, on both ends.  The Courier announces by
+transmitting it; every image, server included, recognises it by **presence in
+the raw bit stream** rather than by parsing it.  A peer without the detector
+simply sees a frame that fails CRC and ignores it, which is exactly the
+property a proprietary signal needs.
+
+It also explains why the transmitted codes are so small.  They are not a
+message; they are a marker.
+
+### The part that still does not line up
+
+The detector constant is `7600` under mask `fe00`, so the pattern is `3b` in
+the register's bits 9:15.  The transmitted codes are `4d`, `69` and
+`48`/`49`.  Those do not match, and three things could account for it: the
+differential decode between line and register, the bit order the `ror` loop
+produces, or the detector watching a different part of the burst than the body
+- the fill and sync run is also seven-bit-matchable.  Pinning that down needs
+the demodulator's bit convention, which this sweep has not established.
+
+So: the mechanism is settled and the roles are settled.  The exact
+correspondence between the sent code and the matched pattern is not.
