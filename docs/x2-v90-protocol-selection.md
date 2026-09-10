@@ -2468,3 +2468,76 @@ That is the concrete answer to what x2 changed: **three V.34 INFO0 fields -
 symbol-rate asymmetry, the CME flag, and transmit clock source - driven to x2
 values, with the asymmetry field's top bit and the CME flag reserved to mark
 the server direction.**
+
+## The whole capability word, field by field
+
+Applying `ITU bit = 12 + capability bit` to all sixteen, against Table 14/V.34
+and the supervisor sources recorded earlier (`8a1f` -> `49db4`: S54, S56, and
+the channel capability byte `73d`):
+
+| cap bit | ITU | Table 14/V.34 field | where the value comes from |
+|---|---|---|---|
+| 0 | 12 | symbol rate 2743 supported | S54, via the five-byte table at banked `1e41` |
+| 1 | 13 | symbol rate 2800 supported | S54 |
+| 2 | 14 | symbol rate 3429 supported | S54 |
+| 3 | 15 | low carrier at 3000 | S54 |
+| 4 | 16 | high carrier at 3000 | S54 |
+| 5 | 17 | low carrier at 3200 | S54 |
+| 6 | **18** | **high carrier at 3200** | S54 - **the bit the x2 peer test reads at `9049`** |
+| 7 | 19 | 0 = transmission at 3429 disallowed | S54 |
+| 8 | 20 | ability to reduce transmit power | S56, TX-level deviation |
+| 9 | 21 | symbol-rate asymmetry, LSB | channel byte `73d`; **x2 overrides from S58 `0x04`** |
+| 10 | 22 | symbol-rate asymmetry | channel byte `73d`; **x2 sets, unless S58 `0x10`** |
+| 11 | 23 | symbol-rate asymmetry, MSB | **x2 clears** |
+| 12 | 24 | CME modem flag | channel byte `73d`; **x2 clears** |
+| 13 | 25 | up to 1664-point constellations | S56, the V.34+ option |
+| 14 | 26 | transmit clock source, LSB | **x2 clears** |
+| 15 | 27 | transmit clock source, MSB | **x2 clears** |
+
+Three things fall out of laying it flat.
+
+**The channel byte and x2 fight over the same three bits.**  This document
+already recorded that `73d` "enables bits 9, 10, and 12 according to the
+detected channel" - that is ITU `21`, `22` and `24`, which is precisely the
+set x2 then overrides.  So the base word's channel-dependent part *is* the
+asymmetry field plus the CME flag, and x2's edit is a deliberate override of
+the channel's own judgement, not an edit of unrelated bits.
+
+**S54 owns ITU `12:19` entirely**, which is why the x2 peer test's local half
+reads bit 18: the "high carrier at 3200" capability is a pure S54/regulatory
+fact, unmodified by any x2 edit.  That is what makes it usable as a stable
+half of the recognition test, and what its result string - "3200 baud disabled
+on local modem" - is reporting.
+
+**S56 barely reaches INFO0.**  Of the S56 contributions listed for `49db4` -
+nonlinear coding, TX-level deviation, preemphasis, precoding, shaping,
+V.34+/V.34, V.FC - only two have a home in Table 14: TX-level deviation at ITU
+20 and V.34+ at ITU 25.  The rest are INFO1/MP-family fields, so most of S56
+cannot be travelling in this word at all.
+
+### A qualification on `fff7`
+
+The ten-bit condition bitmap this document builds its x2 failure enum on is
+**only in `courier-board.rom`**.  Searching for `lar ar1, #fff7` followed by
+`opl *, #mask` as a byte pattern - which does not depend on any program
+mapping:
+
+| image | masks OR'd into `fff7` |
+|---|---|
+| `courier-board.rom` (4.03) | `0001`, `0004`, `0008`, `0020`, `0080`, `0200` |
+| `IDSDL302.ROM` (3.0.13) | none |
+| `sdl6-x2` (x2-only) | none |
+| `SDL_CS3` (1995) | none |
+| `SDL_49` | none |
+| QF/QR NACs | none |
+
+`IDSDL302.ROM` carries the failure strings but not the DSP-side bitmap, so in
+that generation the conditions are computed on the supervisor side.  The
+DSP-resident bitmap is a 4.03 (DSP 3.1.2) arrangement.  Conclusions drawn from
+`fff7` therefore describe **one firmware version's diagnostic plumbing**, not
+the x2 protocol - and the protocol-level findings above, which rest on the
+capability word and INFO0 field numbers, are the ones that generalise.
+
+The x2-only build shows the same split from the other side: its status report
+builds the tag-`6b` word from `fff6` and `ff01`, where 4.03 uses `fff7` and
+`ff00`.
