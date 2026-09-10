@@ -1918,7 +1918,7 @@ property a proprietary signal needs.
 It also explains why the transmitted codes are so small.  They are not a
 message; they are a marker.
 
-### The part that still does not line up
+### The part that did not line up at first
 
 The detector constant is `7600` under mask `fe00`, so the pattern is `3b` in
 the register's bits 9:15.  The transmitted codes are `4d`, `69` and
@@ -1930,3 +1930,98 @@ the demodulator's bit convention, which this sweep has not established.
 
 So: the mechanism is settled and the roles are settled.  The exact
 correspondence between the sent code and the matched pattern is not.
+
+## The 7 bits are modulation parameters
+
+The builder gives the layout directly:
+
+```text
+909d  lar   ar0, @5b
+909e  lar   ar1, #ff20
+90a0  mar   *0+
+90a1  lacl  *                  ; [ff20 + @5b]
+90a2  and   #00000001          ; -> bit 0
+90a4  add   @5b, 1             ; -> bits 1:3
+90a5  add   @5b, 4             ; -> bits 4:6
+90a6  call  90de, *
+```
+
+`@5b` is the symbol-rate index - the same cell that feeds INFO1a bits `34:36`,
+"Symbol rate ... an integer between 3 and 5" - and `ff20` is the per-rate array
+the INFO1c probing loop reads, whose bit 0 is the high-carrier flag.  So the
+body is:
+
+| bits | meaning |
+|---|---|
+| 0 | carrier: high or low |
+| 1:3 | a 3-bit symbol-rate index |
+| 4:6 | a second 3-bit symbol-rate index |
+
+Two rates and a carrier bit: a modulation-parameter field, one index per
+direction.  Decoding the four transmitted codes:
+
+| code | site | carrier | field 1 | field 2 |
+|---|---|---|---|---|
+| `4d` | `908a`, `[006f]` bit 1 clear | 1 | **6** | 4 |
+| `69` | `908a`, `[006f]` bit 1 set | 1 | 4 | **6** |
+| `48` | `90a6`, `@5b` = 4 | 0 | 4 | 4 |
+| `49` | `90a6`, `@5b` = 4 | 1 | 4 | 4 |
+
+`4d` and `69` are **the same pair swapped**, selected by one bit, and both
+carry the value **6** in one of the two rate fields.  V.34 defines that field
+as an integer 0..5, so 6 is out of range - and it is the identical trick V.90
+later used in INFO1a `37:39`, where "the integer 6" means the 8000 symbol/s
+digital direction.
+
+So x2 announces its asymmetry the same way V.90 does: an out-of-range value in
+a 3-bit rate field.  The difference is placement.  x2 sends **a pair**, in its
+own short frame, so it names both directions at once and says which one is the
+PCM direction by which field holds the 6.  V.90 sends **one**, in a field the
+standard already had.  The `90a6` codes, with 4 in both fields, are the
+symmetric case.
+
+### The detector constant, resolved
+
+The pattern detector compares against `3b`, which in this layout is
+`carrier = 1, field 1 = 5, field 2 = 3` - a symmetric-format code naming rates
+5 and 3 with no 6.  It is not one of the four codes the Courier transmits,
+which is what a detector for the *peer's* announcement should look like.
+
+One near-miss is worth recording because it is tempting and wrong.  `3b` is
+also exactly the differentially encoded line form of the transmitted `4d`
+(running XOR of `1,0,1,1,0,0,1` from zero gives `1,1,0,1,1,1,0` = `3b`).  That
+would be a satisfying loop, but it requires the shift register to hold raw
+line phase - and it does not: the framed receiver reads the *same* register
+and compares its sync field against `4e`, which is V.34's frame sync in the
+**data** domain.  The register is differentially decoded, so `3b` is a code,
+not a phase pattern, and the exact match is a one-in-128 coincidence.
+
+## Looking for an older, x2-only image
+
+There is not one in this repository.  Every image that contains the INFO
+serializer also contains V.90 machinery:
+
+| image | serializer | V.90 17/30 receive switch | 7-bit mod-param builder | 7-bit detector |
+|---|---|---|---|---|
+| `courier-board.rom` (4.03) | yes | yes | **yes** | yes |
+| `IDSDL302.ROM` (3.0.13, 1998-06) | yes | yes | **yes** | yes |
+| `main211`, `main2205`, `3453B`, `2.3.x` XMFs | yes | yes | no | yes |
+| `QF060003`, `QR060103`, `Ie030002` NACs | yes | no (they switch on transmit) | no | yes |
+| `SV25`, `SV_49`, `SDL0430`, `IDSDL302.XMD` | packed - not searchable raw | | | |
+
+Two things follow.  First, the mod-param **builder is Courier-ROM only**,
+while the **detector is universal** - every image that speaks INFO at all can
+recognise the signal, but only the two Courier ROMs still emit it.  That is
+the shape of a deprecated transmitter kept receive-compatible.
+
+Second, the oldest image available, `IDSDL302.ROM` at DSP 3.0.13 and dated
+June 1998 - before V.90 was published - is **byte-identical in this area**.
+Its two sites are at `90bc` and `90d6`, with the same `4d`/`69` selection on
+`[006f]` bit 1 and the same `@5b`-derived symmetric code; the only difference
+is that 3.0.13 reads `fff6` at `90d0` where 4.03 calls the tag-`6b` status
+reporter.  So going older, within this repository, does not simplify it.
+
+An image that would: anything from the 1997 x2 releases, before V.90 support
+was merged at all.  The `SV*`/`SDL*` XMD files are the right vintage but are
+packed, and no unpacker for that container exists here yet.  Unpacking one is
+the concrete next step, and it is a self-contained task.
