@@ -491,3 +491,24 @@ overlay 8; and the Quad carries no V.PCM datapump for it to be a revision of.
 So it is Quad-original code rather than a descendant of anything in this tree,
 which is what a server-side downstream mapping would be. Naming it still needs
 the code read.
+
+### PCM mapping helpers in the larger `0xc300` image
+
+The larger `0xc300` alternative contains an executable, law-sensitive mapping
+family. Routine `0xc7ae` reads flag word `0xffd9` bit 0 and installs its four
+mapping constants. With the bit clear, data `0x03a3/0x03eb/0x03ec/0x03ea`
+becomes `0/0/0x0108/0x007f`; with it set, those words become
+`0x002a/0x0042/0/0x007f`. Routine `0xc789` expands the selected program table
+into eight working levels.
+
+Routine `0xc9c0` is a directly executable codeword-table constructor. It takes
+the destination address in ACC and, using `0xffd9` bit 2, copies nine values
+from `0xc9ce` or `0xc9d7` with `rpt #8 / tblr *+`. Its outputs are
+`c1 a5 a7 ad af b7 bd c5 cf` and `e5 95 97 9d 9f a7 ad b5 bf` respectively.
+The adjacent routines `0xc995`, `0xc9a6`, and `0xc9b7` select further
+program-space tables from bit 2 and submode word `0x03e4`. In particular,
+`0xc9b7` returns table base `0xcc2b` when clear and `0xcb00` when set; these
+addresses are data tables, not executable kernels. The executable consumers
+are in the preceding `0xc8xx..0xc9xx` block. The component runner
+`tools/probe_quad_pcm_codewords.py` executes these helpers and records their
+outputs without invoking compressor `0x817f`.

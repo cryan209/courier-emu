@@ -1,0 +1,98 @@
+{
+  "firmware": "Qf060003.zip",
+  "routine": "0xc9c0",
+  "mode_flags": "0xffd9",
+  "tables": {
+    "bit2-clear": {
+      "flag": "0x0",
+      "file": "bit2-clear.g711",
+      "codewords": [
+        "0xc1",
+        "0xa5",
+        "0xa7",
+        "0xad",
+        "0xaf",
+        "0xb7",
+        "0xbd",
+        "0xc5",
+        "0xcf"
+      ],
+      "instructions": 11
+    },
+    "bit2-set": {
+      "flag": "0x4",
+      "file": "bit2-set.g711",
+      "codewords": [
+        "0xe5",
+        "0x95",
+        "0x97",
+        "0x9d",
+        "0x9f",
+        "0xa7",
+        "0xad",
+        "0xb5",
+        "0xbf"
+      ],
+      "instructions": 12
+    }
+  },
+  "selectors": {
+    "0xc995": {
+      "mode-0": {
+        "bit2-clear": "0xef00",
+        "bit2-set": "0xcb34"
+      },
+      "mode-1": {
+        "bit2-clear": "0xc9ee",
+        "bit2-set": "0xcbbb"
+      },
+      "mode-2": {
+        "bit2-clear": "0xca7e",
+        "bit2-set": "0xcb34"
+      }
+    },
+    "0xc9a6": {
+      "mode-0": {
+        "bit2-clear": "0xef00",
+        "bit2-set": "0xcb93"
+      },
+      "mode-1": {
+        "bit2-clear": "0xca53",
+        "bit2-set": "0xcc0c"
+      },
+      "mode-2": {
+        "bit2-clear": "0xcada",
+        "bit2-set": "0xcb93"
+      }
+    },
+    "0xc9b7": {
+      "mode-0": {
+        "bit2-clear": "0xcc2b",
+        "bit2-set": "0xcb00"
+      },
+      "mode-1": {
+        "bit2-clear": "0xcc2b",
+        "bit2-set": "0xcb00"
+      },
+      "mode-2": {
+        "bit2-clear": "0xcc2b",
+        "bit2-set": "0xcb00"
+      }
+    }
+  },
+  "parameter_setup": {
+    "routine": "0xc7ae",
+    "bit0-clear": {
+      "0x3a3": "0x0",
+      "0x3eb": "0x0",
+      "0x3ec": "0x108",
+      "0x3ea": "0x7f"
+    },
+    "bit0-set": {
+      "0x3a3": "0x2a",
+      "0x3eb": "0x42",
+      "0x3ec": "0x0",
+      "0x3ea": "0x7f"
+    }
+  }
+}
