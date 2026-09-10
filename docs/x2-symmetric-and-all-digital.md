@@ -1110,10 +1110,86 @@ The destinations show its job:
 
 Thus `e172` should be named provisionally `x2_mode_family_init`: it decides
 which x2 engine setup to perform from mode bits 13--15.  It does not itself
-generate training symbols.  Symmetric mode's bit-11 branch reaches this
-dispatcher, but the exact one of its three arms used in a symmetric call is
-determined by the tag-`70` payload's high mode bits and still needs to be
-followed from the supervisor capability builder.
+generate training symbols.
+
+One line above needs correcting: `e17a` is `xpl @60, #0001`, which toggles
+true bit **0** - the low symbol-rate/carrier bit named below - not the bit-15
+selector the following `bit 0, @60` goes on to test.  The toggle and the test
+are two different bits that happen to be adjacent in the listing.
+
+### Every producer of mode bits 8 and 13--15, from the one sender
+
+The remaining question - which of the three arms a symmetric call takes - is
+answered by reading the whole of the tag-`70` payload builder rather than only
+its two S58 edits.  `IM020104` contains exactly one `mov ax, 70`, at `ade03`,
+so `addca..ade10` and the `ada3c` it opens with are the complete producer.
+
+`ada3c` builds the payload from scratch:
+
+```text
+ada3e  al = ~S54 (917a), then al >>= 1        ; S-bits are disables
+ada45  for i in 0..4: if al bit i: bl |= cs:[dabc + i]
+       table dabc = 01 02 18 60 84
+ada5b  S56 (917c) bit 1 clear -> or bx, 0100  ; TX level deviation enabled
+ada66  S56 (917c) bit 5 clear -> or bx, 2000  ; V.34+ enabled
+```
+
+The S-register block is anchored, not assumed: `9146` is the escape character
+compared at `a0cf9` against the counter that trips at three, `914b` is
+multiplied by 100 at `a596e` and `914d` by 10 at `a598c` - S2, S7 and S9 in
+their documented units against a 10 ms tick.  So S0 sits at `9144`, which puts
+S54 at `917a`, S56 at `917c` and **S58 at `917e`** - the byte `addca` tests for
+`01/02/04/08`, confirming the bit names this document already gives S58 from
+the MIB.
+
+That makes the payload's low byte the ordinary V.34 symbol-rate/carrier mask -
+the overlapping table entries pair a low and a high carrier per rate - and it
+identifies the two high-bit producers:
+
+| payload bit | set when | consumer |
+|---:|---|---|
+| 0..7 | S54 symbol rates, inverted through `dabc` | `@60` bits 0..7, the state paths at `e14c`/`e395`/`e542` |
+| 8 | S56 bit 1 clear (TX level deviation) | merged with the `0100` tag-`70` handler adds |
+| 9 | S58 bit 2 set (force A-law) | `or bx, 0200` at `addd8` |
+| 10 | S58 bit 4 set | `or bx, 0400`; `bit 5, @60` at `e14c` -> `e62c` |
+| 11, 12 | always, then cleared for symmetric / server | `e14f`, `e556` |
+| **13** | **S56 bit 5 clear (V.34+ enabled)** | **`e172` arm 1 -> `e60b`** |
+| 14, 15 | **never** | `e172` arms 2 and 3 |
+
+So the arm is not a symmetric decision at all.  Symmetric mode's own edit is
+`and bh, f7h` followed by `and bx, 3fffh`, and bits 14 and 15 were already
+clear: nothing in `ada3c` or `addca` can set them, and inside the engine the
+only writes to `@60` are `e14a`, `e15f` (`or 0200`), `e17a` (`xor 0001`) and
+the `apl/opl` pairs at `e395..e55d`, none of which touch bits 13--15.  The
+`3fff` mask is defensive.
+
+Three consequences follow directly.
+
+* **A symmetric call takes arm 1, `e60b`,** whenever V.34+ is enabled - which
+  is the default - and otherwise falls through to arm 3.  Arm 1 installs
+  `e4ca`/`e4f0`, puts `e5b8` in both working callback cells, sets `@63/@64` to
+  `07d0h`, and calls `e5e7` from `e61d`.
+* **Arm 2 is unreachable in this build.**  `e822` is called from `e176` and
+  from nowhere else in the joined program, and bit 14 has no producer.  The
+  large banked-state initializer is either dead or waiting for a sender that
+  `IM020104` does not contain.
+* **`e5e7` always selects eight bits.**  Its width choice is `bit 0, @60`,
+  true bit 15: set gives mask `007fh` and width 7, clear gives `00ffh` and
+  width 8, and clear is the only case the build can produce.  Eight payload
+  bits at the 8 kHz PCM rate is 64,000 bit/s - the same terminal ordinal the
+  MP rate field reaches, arrived at from the datapump side.
+
+The remaining `e172` unknown is now narrow: what selects seven-bit operation,
+given that no shipping producer does.  A second tag, a later build, or a
+field of `@7d:@7f` imported at `e141..e146` are the three places to look.
+
+Both spaces are reproducible from the archive with
+[imodem_x2_map.py](../tools/imodem_x2_map.py):
+
+```bash
+python tools/imodem_x2_map.py dsp e172 e186
+python tools/imodem_x2_map.py sup ada3c ade12
+```
 
 ## ISDN is 4-wire
 
