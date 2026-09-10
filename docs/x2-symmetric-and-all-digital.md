@@ -1904,3 +1904,55 @@ from 22 occurrences to 2.  The `ff00` page did not stop being used - `ffd9`
 and `ffdb` are still reached through `ar1` - so this is a change of addressing
 style across a nine-month rework, not a change of function, and it lands
 squarely inside the x2 era rather than at the V.90 boundary.
+
+## The four V.90 bits in `ffd9`
+
+Read from `Ie030002` with its own overlay map (`V90_IMAGES` in
+[imodem_x2_map.py](../tools/imodem_x2_map.py)), which the doc's segment table
+already gives: images 5, 6, 7, 8, 9, 10, 11 at `8000`, `a000`, `b800`, `9260`,
+`b000`, `d100`, `9260`.  Loading the trio `5/11/10` the way the first-x2 build
+joins finds only five of the thirty-five `ffd9` references, because **all four
+new bits live in image 6**, the `a000` one, with a single further reader in
+image 11.
+
+| bit | read at | what the branch does |
+|---:|---|---|
+| 4 | `a978`, `aa12` | steers message assembly.  At `aa12`, clear takes the path that copies `0340`, `0341` and a three-word block from `d9f1` into the buffer at `ddb5`, sets `@7d = ddc3` and calls `aa5f`; set jumps away to `a7c9` |
+| 5 | `aa40` | a one-shot.  The reader immediately clears it (`apl *, #ffdf`), then latches `([0340] >> 2) & 1fh` - a five-bit field - into `d9e8`/`d9e9` |
+| 6 | `a5ad` | selects the routine pointer written to `@4d`: `c95a` or `c96e`, decided together with a byte at `dcf5` |
+| 7 | `cb62` | gates one extra `call a666` inside the per-frame routine that also calls `cbf8` |
+
+Two of them have identifiable producers, and they are the useful half:
+
+* **bit 5 is set at `a57a` when `039f` bit 7 is set** - the state this document
+  already identifies, from the Quad, as "select the digital-server receive
+  rules".  So bit 5 is the digital-server role arriving in this image, and its
+  reader's self-clearing five-bit capture is a once-per-entry latch of a
+  negotiated field.
+* **bit 6 is cleared at `a0b3`** once a counter at `@68` reaches 4, immediately
+  after a convergence test against `f6c7` - so it marks a phase as finished
+  rather than a configuration.
+
+Bits 4 and 7 have no `opl`/`apl` writer in any of the seven images, so they are
+set as part of whole-word updates to `ffd9`.  All four are cleared together at
+`9a24`, `apl *, #000e`, which keeps only bits 1--3: a mode reset.
+
+### Tag `72` lands next door, not here
+
+Worth separating, because the two arrive together.  The V.90 command's handler
+in this build is `9283`:
+
+```text
+9283  lamm @7a / sacb            ; the payload
+9285  bsar 1 / and #4000
+928a  or / sacl [ffd9]           ; payload bit 15 -> ffd9 bit 14
+928c  bit 11, [039f]
+9290  lacb / and #0bff
+9292  xc 2, tc / or #0400        ; force bit 10 when 039f bit 11 is set
+9295  sacl [ffdf]                ; the rest -> ffdf
+```
+
+So the level word the supervisor computes - `((n-1)*2|1) << 4 | 0a06h` - is
+stored whole in **`ffdf`**, with the index in bits 4--8, and only its top bit
+reaches `ffd9`, as bit **14**.  The four new bits are neighbours of that, not
+part of it.

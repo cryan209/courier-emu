@@ -28,6 +28,14 @@ from tools.c5x_disasm import disassemble  # noqa: E402
 ARCHIVE = ROOT / "docs/x2/im020104.zip"
 MEMBER = "IM020104.NAC"
 
+# The V.90-era 3.00.02 image's own overlay map, as blob offsets. Images 8 and
+# 11 both load at 9260 and are alternatives; 6 and 10 overlap likewise, so a
+# joined program has to pick one of each pair.
+V90_IMAGES = {5: (0xA8690, 4670, 0x8000), 6: (0x90D60, 13909, 0xA000),
+              7: (0x97A10, 5173, 0xB800), 8: (0x9A280, 2436, 0x9260),
+              9: (0x9B590, 3215, 0xB000), 10: (0x9CEB0, 7536, 0xD100),
+              11: (0xA0990, 15997, 0x9260)}
+
 # Overlay rows of the first-x2 build: source segment, byte count, C5x load word.
 # Segments are physical/16, and the flat image starts at the NAC's load base.
 DSP_IMAGES = ((0xE005, 0x2322, 0x8000),   # image 5, resident-class
