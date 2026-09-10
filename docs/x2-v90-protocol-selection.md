@@ -1039,3 +1039,156 @@ so `@7d` into `fff6`), depends on that split. The reading is self-consistent -
 (`bldd *, #ff2e`, `ar1 = 0345`) makes `ff2e` the source feeding `0345`, which
 is the direction the surrounding code needs - but the mnemonic alone does not
 show it.
+
+## The `ff18` frame: it is shared V.34-family INFO0, not a proprietary x2 frame
+
+The open question above - "what is the framing of the x2-conditioned
+capability payload after the DSP packs it into `ff18`" - is now answered from
+the image alone.  `ff18` is serialized by the same machinery, in the same
+message family, as `ff1a`.
+
+### The bit-offset convention
+
+`8769` (insert) and `877a` (extract) both take a **bit offset** in `@7f` and a
+buffer base in `ar0`:
+
+```text
+8769  sacl  @7d              ; value
+876a  lacc  @7f
+876b  bsar  4                ; word index  = offset >> 4
+876c  samm  @11              ; -> INDX
+876d  lacl  @7f
+876e  cmpl                   ; shift count = ~offset
+876f  samm  @0d              ; -> TREG1
+8770  mar   *0+              ; ar0 += INDX
+...
+8775  addt  @7d              ; value << (15 - (offset & 15))
+```
+
+So offset `n` addresses word `base + (n >> 4)`, bit `15 - (n & 15)`.  Offset 0
+is `ff18` bit 15; offset 16 is `ff19` bit 15.  Offsets count **in transmission
+order**, which is what makes the numbers below comparable with a standard's
+field table.
+
+### The serializer and its script
+
+Message transmission is a small interpreted script.  `996b` is the
+interpreter: `@4b` is the script PC, and each step is a `(handler, bit count)`
+pair read with `tblr`.
+
+```text
+996b  lacl  @4b
+996c  tblr  @48              ; handler
+996d  add   #01
+996e  tblr  @4a              ; bit count
+996f  lacl  @4a
+9970  retc  eq               ; count 0 ends the script
+9971  lacl  @4b
+9972  retd
+9973  add   #02
+9974  sacl  @4b
+```
+
+The handlers share one bit engine.  Two of them differ **only in the buffer
+loaded in a delay slot**:
+
+```text
+99d6  bd    99dc, *
+99d8  lar   ar0, #ff18       ; delay slots - entry for the local INFO0
+99da  lar   ar0, #ff1a       ; separate entry - INFO1a
+99dc  calld 877a, *
+99de  lacl  @4a              ; delay slots: bit offset = remaining count - 1
+99df  sub   #01
+```
+
+Because the offset is `@4a - 1`, a 17-bit body is emitted offset 16 first,
+down to 0.
+
+The bit is then folded into a CRC and a scrambler:
+
+```text
+99e1  and   @7b
+99e2  xor   @59
+99e3  sfr
+99e5  xc    2, c
+99e6  xor   #8408            ; CRC-16-CCITT, reflected polynomial
+99e8  sacl  @59
+```
+
+`99c6` initialises both registers - `@50 = 04ef` (fill pattern) and
+`@59 = ffff` (CRC preset) - and `99d1` shifts `@59` out.
+
+### The scripts
+
+The script table is one region entered at different offsets; `@4b` writers
+select the message.  The `ff18` script is at `9983`, set at `9114`, `9148`
+and - to repeat the message - at `99b8`:
+
+| step | handler | count | meaning |
+|---|---|---|---|
+| `9983` | `99c6` | 12 | init CRC/fill, emit 12 fill bits |
+| `9985` | `99d6` | **17** | **`ff18` body, offsets 16..0** |
+| `9987` | `99d1` | 16 | CRC-16 |
+| `9989` | `99c2` | 4 | trailing constant bits |
+| `998b` | `99af` | 0 | end; restarts the script at `99b8` |
+
+The `ff1a` scripts have the identical shape and differ only in body length:
+`998d` = 77 bits, `9999` = 38 bits, `99a3` = 7 bits, each followed by the same
+12-bit fill preamble and 16-bit CRC.
+
+That settles it.  `ff18` is **not** an x2-proprietary MP-equivalent frame with
+its own framing.  It is a 17-bit body in the same fill/body/CRC-16 message
+family as `ff1a`, emitted by the same handler with a different `ar0`.  The
+77-bit `ff1a` body is the one this document already traced as carrying V.90
+`INFO1a[37:39]` at offset `0025` (37) - and offsets 76, 63, 37, 24, 19, 15 and
+9 all fall inside 77, which independently confirms the offset convention.
+`ff18` is the local INFO0 of that same handshake; x2 rides inside its
+reserved bits rather than replacing the frame.
+
+### What the 17 bits contain
+
+* **Offsets 16..1** - the `fff1`/`fff2` selector word, inserted whole at
+  `8e53` with `splk @7f, #0010`.  That single write covers all but the last
+  bit of the body.
+* **Offset 0** (`ff18` bit 15) - a one-bit flag, cleared at `8e69`
+  (`apl *, #7fff`) and set at `8e8b`, `9120` and `9141` (`opl *, #8000`),
+  always immediately before the `8766` sequencer call.
+* **Offset 5** - the bit the code generator tests at `9047`/`9054`.  This
+  document previously called it "`ff18` bit 5 (bit code 5, so bit 10)"; the
+  offset convention above shows bit 10 of the word *is* body offset 5, so the
+  number is unchanged but now anchored to a position in the transmitted
+  frame.
+
+The receive side matches.  At `9519`-`9528` the firmware reassembles both
+INFO0 bodies and intersects them:
+
+```text
+9519  lar    ar3, #ff00
+951b  lacc16 *+
+951c  or     *-               ; remote INFO0 pair
+951d  bit    0, @1f
+951e  bsar   2
+951f  xc     1, ntc
+9520  bsar   13               ; alignment depends on @1f bit 0
+9521  sacl   @7d
+9522  lar    ar3, #ff18
+9524  lacc16 *+
+9525  or     *-               ; local INFO0 pair
+9526  bsar   15
+9527  sacl   @7e
+9528  and    @7d              ; local AND remote
+9529  sacl   @7f
+```
+
+A bitwise AND of the local and remote capability words is exactly INFO0
+capability negotiation, and it is further evidence that both ends are speaking
+one shared format rather than an x2-only exchange.
+
+### What this still does not give
+
+The *names* of the individual 17 bits.  The image fixes the frame (17-bit
+body, 12-bit fill, CRC-16-CCITT preset `ffff`, poly `8408`), the transmission
+order, the intersection rule, and three individual bit positions (0, 5, and
+the 16..1 span).  Assigning standard field names to the rest needs the V.34
+INFO0 field table or an x2 specification; it no longer needs another pass over
+this firmware.
