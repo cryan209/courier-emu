@@ -2692,3 +2692,59 @@ constant initialisers (`0200`, `0800`, `1000`, `1800`) and some computed
 (`b4fa`, `c3b8`), and identifying the measurement itself needs those
 producers traced.  The *shape* - log, linear map, knee, clamp, one index per
 1333 1/3 bit/s - is what this establishes.
+
+## Where x2's rate agreement happens is still unlocated
+
+V.90 specifies this completely: the analogue modem measures during DIL, sends
+its request in CP, and the result is confirmed in MP - all named phases with
+named sequences.  For x2 the equivalent is **not** established here, and the
+distinction matters, because what the previous section found is a *local*
+chain, not a wire one.
+
+### What is established
+
+Tags `67`, `68` and `69` are absent from the 1995 V.34-only build and present,
+in identical numbers, in both the x2-only build and 4.03:
+
+| build | tag `67` | `68` | `69` | the `387f` descriptor |
+|---|---|---|---|---|
+| `SDL_CS3` (1995) | 0 | 0 | 0 | 0 |
+| `sdl6-x2` | 2 | 2 | 1 | 1 |
+| `courier-board.rom` (4.03) | 2 | 2 | 1 | 1 |
+
+So the whole subsystem is an x2 addition, inherited unchanged by the V.90-era
+firmware.  Within it:
+
+* **`69` is the rate index** - the clamped 10..21 from the log-and-knee
+  measurement.  It goes **DSP to local supervisor**, over the mailbox.  It is
+  not on the line.
+* **`67`/`68` are a receive-side decode.**  At `bc38`-`bc68` the code reads
+  descriptors `387f` and `397e` through `bc92`, indexes a table at `bca9`,
+  tests bit 7 of the result, and - guarded by `039f` bit 11 - reports `[0be6]`
+  under tag `68` followed by tag `67`.  Something arriving is being decoded
+  and handed up.
+
+### What is not
+
+**No on-wire carrier for the rate has been found.**  The rate index does not
+appear in INFO0, in INFO1, in MP, or in the 7-bit modulation-parameter frame -
+all four have been enumerated field by field in this document, and none has a
+field for it.  So x2's rate agreement happens somewhere this investigation has
+not reached.
+
+The client is the end that measures its own receiver, so it must be the end
+that requests, which leaves two readings of the `67`/`68` path:
+
+1. it decodes a rate *assignment* sent by the server, with the client's own
+   index used only locally as an input to a host-side request sent by some
+   other route; or
+2. it is unrelated to rate agreement, and the exchange is elsewhere entirely -
+   most likely a proprietary training phase after the INFO exchange, in the
+   data-pump domain rather than the handshake machinery this document covers.
+
+Distinguishing them means following `bc92`, the `bca9` table, and what sets
+`039f` bit 11 - and, on the other side, finding what the supervisor does with
+tag `69` once it has it.  Both are tractable; neither is done.
+
+That is the honest state: x2's *measurement* is fully traced, its *ladder* is
+fully traced, and its *negotiation* is not.
