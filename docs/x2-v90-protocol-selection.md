@@ -2597,3 +2597,98 @@ varies by firmware version.
 For a proprietary 56k protocol layered on V.34, that is a remarkably small
 footprint, and it is why x2 falls back to plain V.34 so cleanly: strip the two
 additions and what remains on the wire is a conforming V.34 handshake.
+
+## How x2 matches a speed to a line
+
+The handshake never carries the 56k speed - the 7-bit frame's two rate fields
+are V.34 *symbol* rates, not bit rates.  The speed is chosen by measurement in
+the DSP and reported to the supervisor as a small index.
+
+### x2 added six outbound tags
+
+Listing every `lacc #80xx` that feeds the host queue:
+
+| build | outbound tags |
+|---|---|
+| `SDL_CS3` (1995) | 00, 08, 0a, 16, 20, 21, 23, 2d, 2f, 30, 31, 34, 35, 36, 3d, 43, 47, 48, 49, d9 |
+| `sdl6-x2` (x2-only) | the same, **plus 1c, 37, 67, 68, 69, 6b** |
+
+Tag `6b` is the x2 status word already documented.  **Tag `69` carries the
+rate index.**
+
+### The rate ladder
+
+The x2 result strings recovered from the x2-only build are `33333`, `37333`,
+`41333`, then `42666`, `44000`, `45333` ... `57333` - a step of 1333 1/3
+bit/s, so the rate is `K * 8000/6` for `K` bits per six-symbol frame:
+
+```text
+33333 37333 41333   ->  K = 25, 28, 31   (sparse)
+42666 ... 57333     ->  K = 32 ... 43    (contiguous, 12 rates)
+```
+
+### The decision, at `c320`
+
+```text
+c324  lacl  @12               ; the measured quantity
+c325  call  8b7d              ; logarithm
+c327  samm  @0c
+c328  mpy   #0c0b             ; * 3083
+c329  lacc  #05e00000         ; 1504
+c32b  bit   1, @1f
+c32e  add   #00380000         ; ... or 1560
+c330  spac                    ; constant - 3083 * log
+c331  bsar  4                 ; >> 4
+...
+c33a  sub   #00080000         ; knee at 8
+c33d  bcnd  c344, leq
+c341  sfl                     ; above the knee, double the slope
+...
+c347  add   #000a0000         ; + 10
+c34a  sub   #000a0000
+c34e  splk  @65, #000a        ; clamp low  = 10
+c350  sub   #000b0000
+c354  splk  @65, #0015        ; clamp high = 21
+c356  lacc  #00008069         ; report as tag 69
+```
+
+`8b7d` is a logarithm: it normalises its argument with a `rpt #0e` / `norm *-`
+loop to get the exponent, then corrects the mantissa with a polynomial
+(`sqra`, `mpy #0c0b`, `mpy #17ca`, `mpy #0271`, `apac`).  So the chain is
+
+```text
+index = clamp( 10 + knee( (C - 3083 * log(measurement)) >> 4 ), 10, 21 )
+```
+
+with `C = 1504`, or `1560` when `@1f` bit 1 is set.
+
+### And the index is the rate
+
+`10..21` plus 22 gives `32..43` - **exactly the contiguous part of the x2
+ladder**, 42666 through 57333.  So the DSP's whole contribution to speed
+selection is one clamped index, and the supervisor turns it into a rate and a
+result string.
+
+A linear map from a log measurement, with a slope change above a knee, is a
+signal-quality-to-bits mapping: each index step is one bit per six-symbol
+frame, which at 8000 symbols/s is 1333 1/3 bit/s, and in PCM terms roughly one
+dB of usable headroom per step.
+
+The three sparse rates below the clamp - 33333, 37333, 41333 - cannot be
+produced by this path at all, so they are fixed fallbacks reached another way,
+not measurement outcomes.
+
+### Unchanged for V.90
+
+4.03 has the identical ladder at `c4d4`, with the same bounds `000a` and
+`0015` and the same tag.  So the measurement-to-index machinery is shared;
+what differs between x2 and V.90 is only the supervisor-side table the index
+lands in - 16 entries for x2, 28 for V.90.
+
+### What is not established
+
+What `@12` physically holds.  It is written from several places, some with
+constant initialisers (`0200`, `0800`, `1000`, `1800`) and some computed
+(`b4fa`, `c3b8`), and identifying the measurement itself needs those
+producers traced.  The *shape* - log, linear map, knee, clamp, one index per
+1333 1/3 bit/s - is what this establishes.
