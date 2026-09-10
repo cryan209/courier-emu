@@ -261,6 +261,46 @@ model tried. That number not moving across the boot fix as well is further
 evidence the remaining fault is in how a burst is acknowledged, and that it is
 independent of everything else corrected here.
 
+### Why the card reloads the DSP for ever
+
+It is a watchdog, and it is firing because the card has nothing to do.
+
+`0xc0b38` is a periodic tick, measured at 21,779 instructions and stable to
+better than one percent:
+
+```
+c0b45  test [0x9d3e], 1      ; a DSP transfer in progress?
+c0b4a  jne  c0b73            ;   yes -> clear the strike count
+c0b4c  cmp  [0x81cd], 0      ; a DSP exchange in progress?
+c0b51  jne  c0b73            ;   yes -> clear the strike count
+c0b53  inc  [0x81ce]         ; strike
+c0b57  cmp  [0x81ce], 3
+c0b5c  jb   c0b78            ;   under three -> wait
+c0b6e  or   [0x9d3e], 2      ; three strikes: request a reload
+```
+
+The idle loop then services that request at `0xc93e0`, which is where the
+repeated loads come from - `test [0x9d3e], 2`, clear it, and call the download
+path. `[0x81cd]` is **not** a heartbeat the DSP sets. It is incremented at seven
+sites, each a DSP command/response wait that gives up at `0x64` or `0x19`, so
+the test means "is an exchange with the DSP under way".
+
+Measured over six million instructions: 217 ticks, `[0x81cd]` nonzero at **zero**
+of them, **zero** entries into any of the seven wait sites, and 54 strikes. So
+no code ever commands the DSP. The period closes arithmetically: three idle
+ticks arm a reload, the load itself runs about seventeen ticks with the
+transfer flag holding strikes at zero, giving a cycle of roughly twenty ticks -
+435,600 instructions, which is the spacing measured between successive loads.
+
+**So the reload is not a fault in the DSP path.** It is what this card does when
+it is idle: no call, no link traffic, nothing to drive the datapump, so no
+exchange is ever started and the watchdog re-loads the part every ~128 ms. A
+real card sitting in a chassis with no work would do the same.
+
+That closes the question and hands it back to the link. Parameter `0x1f2`
+arrives over the message interpreter, the interpreter needs a message, and
+nothing has yet delivered one. Chasing the DSP further will not produce it.
+
 ### Reproduce
 
 ```sh
