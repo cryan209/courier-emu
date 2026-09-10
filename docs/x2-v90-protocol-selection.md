@@ -3009,3 +3009,56 @@ One standing caveat: every image here is USR's.  Continuity in one vendor's
 codebase is strong evidence about implementation lineage and weaker evidence
 about protocol lineage, since the same team edited the same DSP forward
 through all three eras.
+
+## Phase 3 and where PCM mapping starts
+
+V.90 begins PCM mapping at **Sd**, in Phase 3, and Sd's job is frame
+alignment:
+
+> Sd consists of 64 repetitions of the sequence {+W, +0, +W, -W, -0, -W} where
+> W is ... the PCM codeword whose Ucode is `16 + UINFO` and 0 is the PCM
+> codeword with Ucode 0. ... The first symbol of Sd is defined to be
+> transmitted in data frame interval 0.  The digital modem shall keep data
+> frame alignment from this point on.
+
+That six-symbol pattern is the anchor for everything downstream: the six
+mappers, and CP's six per-interval constellation indices, are all defined
+relative to the alignment Sd establishes.  Phase 3 runs
+`Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, then DIL.
+
+This matters for the x2 comparison because **x2 also uses a six-symbol
+frame** - established here independently from its 1333 1/3 bit/s rate
+granularity - so x2 needs an equivalent alignment signal.  It has not been
+found.
+
+### Negative result: no per-interval constellation parsing by literal offset
+
+CP carries the six constellation indices at bits `103:106`, `107:110`,
+`111:114`, `115:118`, `120:123` and `124:127` - offsets `67`, `6b`, `6f`,
+`73`, `78`, `7c`.  Searching every overlay of the 4.03 image for
+`splk @7f, #<those>`:
+
+| overlay | hits |
+|---|---|
+| 5, 6, 7, 8 | none, for any of the six |
+
+So this firmware does not read or write CP's per-interval indices through
+literal bit offsets.  Either they are handled by a loop with a computed
+offset - six fields at a stride of 4 would be natural - or this image does not
+implement per-interval constellation selection at all.  Distinguishing those
+needs a search for the loop form, not the literal form, and that has not been
+done.
+
+What the Courier *does* build is `UINFO` itself, at INFO1a bits `25:31`
+(`91cd` and `925c`, offset `0x18`, value `127 - @3e`) - the Ucode the 2-point
+train and Sd's `W` are both derived from.  So the endpoints of Phase 3 are
+present in this image even though the constellation indexing is not located.
+
+### The open question this leaves
+
+Where x2 establishes data frame alignment.  A six-symbol frame is useless
+without it, x2 demonstrably has one, and none of the four INFO-family scripts
+carries anything alignment-shaped - they are all DPSK handshake frames, not
+PCM-domain signals.  So x2's alignment signal is in the PCM path, alongside
+the codeword construction in overlay 6, and it is the next thing worth
+finding.
