@@ -1569,5 +1569,59 @@ legal."
 There is no 0 dBm constellation.  The string `dbm` occurs once in the whole
 I-modem image, in that one help line; the analogue Couriers do not carry the
 option at all, and their only `-dBm` strings are the level displays and the
-S16/S17 transmit-level registers.  It is a single boolean: the ordinary
-constellation, or the one that transmits 6 dB hotter where regulation permits.
+S16/S17 transmit-level registers.  It is a single boolean.
+
+### The help text is tokenized, and the tokens set the polarity
+
+`-6` being below zero makes "high power" look backwards, so the reference
+point matters.  It is not 0 dBm, and the firmware says so itself once the help
+strings are decoded: bytes above `7f` in them are dictionary tokens, and two
+of them carry the sense of every bit line.  `ed` is `= `, **`bd` is `Disable`
+and `ee` is `Enable`**, which is checkable against registers whose bits are
+documented independently:
+
+```text
+S15  1 = Disable High-Freq EQ      S27  4 = Disable V32
+S15 16 = Disable MNP Level 4       S27 32 = Disable V.42
+S34  8 = Enable V23 Fallback       S53  1 = Enable Dial Security
+```
+
+So S58 reads, in full:
+
+```text
+S58  1 = Disable x2                4 = Force x2 A-law mode
+     2 = Disable server mode      16 = Enable -6dbm constellation
+     8 = Disable symetric mode
+```
+
+Three disables, one force, one **enable** - and the enable is the only bit of
+the five that is opt-in.  That resolves the sense in three independent ways
+that agree:
+
+* the bit is *Enable*, and setting it *sets* capability bit 10 (`addd8`),
+  where the disable bits *clear* their capability bits (`addf2`, `addfc`).
+  You opt in to this constellation; you opt out of the others;
+* the identical bit on the server is `hdmScHighPowerConst`, S76.7, "the X2
+  **high-power** constellation ... only valid in countries, where it is legal";
+* a country-restricted opt-in is a licence to transmit *more*, not less.
+
+The baseline the `-6` is measured against is therefore the regulatory ceiling
+on the digital end's transmit power, which sits below `-6` dBm - not 0 dBm,
+which no PSTN downstream would be permitted anyway.  The exact default figure
+is not stated anywhere in these images, so this document does not assert one.
+
+This also corrects the polarity used in the S58 table above: bits 1, 2 and 8
+are *disables*, so capability bits 11 and 12 are cleared when symmetric and
+server are **disabled**, and carry the advertisement when they are on.
+
+### On half-dB power steps
+
+Not found in this tree, stated as a negative rather than a denial.  The
+management surface has no V.90 power object at all - `tcmw6013`, the V.90-era
+Total Control build, has `hdmScV90Analogue`, `hdmScV90Digital` and
+`hdmScV90AllDigital` and no power level beside them - and the only `x2`
+power control anywhere in the vendor MIBs is the one boolean above.  Sweeping
+the 4.03 DSP payload for geometric ladders at 0.5, 1.0 and 1.5 dB ratios finds
+exactly one run of six or more: an eight-entry 1 dB ladder in overlay 6, the
+V.34 overlay.  If V.90 signals digital-side power in half-dB steps, it is not
+visible in these images, and nothing here contradicts it either.
