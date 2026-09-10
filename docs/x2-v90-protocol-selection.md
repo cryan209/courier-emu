@@ -2297,3 +2297,93 @@ The x2-only build addresses these buffers with `lar ar1` where 4.03 uses
 `lar ar0`, so a byte signature built from one generation's `lar` form silently
 misses the other.  Signature searches across generations should match the
 address word, not the whole instruction.
+
+## Does x2 have a Jd table?
+
+No.  x2 adds no sequence of its own in that family - it reuses V.34's.
+
+### Jd is an MP-family frame, not an INFO-family one
+
+The two frame families are distinct in both Recommendations:
+
+| family | preamble | terminator | members |
+|---|---|---|---|
+| INFO | fill `1111` + frame sync `01110010` | fill `1111` | INFO0/0a/0d, INFO1a/1c/1d, INFOh |
+| MP | 17-bit frame sync `1` * 17, start bits `0` | fill `000`/`0000` | MP, MP', and **Jd** |
+
+Table 13/V.90 puts Jd squarely in the second: frame sync `11111111111111111`
+at `0:16`, start bits at 17, 34 and 51, CRC at `52:67`, fill `0000` at
+`68:71`.  And 8.4.2/V.90 says outright that "the CRC generator used is
+described in 10.1.2.3.2/V.34" - Jd borrows V.34's generator rather than
+defining one.
+
+### The firmware has exactly four CRC sites, in every era
+
+| build | CRC-`8408` sites |
+|---|---|
+| `SDL_CS3` (1995, V.34 only) | 4 |
+| `sdl6-x2` (x2-only) | 4 |
+| `SDL_49`, 4.03 (x2 + V.90) | 4 |
+| QF/QR NACs | 4 |
+
+Two are the INFO transmit and receive paths already documented.  The other two
+are the MP family, and they are present in the **1995 pre-x2 build**, so that
+machinery is V.34's:
+
+```text
+f1f2  sub   #11                ; the 17-bit sync test
+f1f3  retc  lt
+...
+f200  lar   ar0, #ff48         ; MP receive buffer
+f209  xor   @42                ; CRC, preset ffff
+f20d  xor   #00008408
+```
+
+```text
+fdac  lar   ar0, #ff38         ; MP transmit buffer
+fdae  lt    @54                ; ascending index, as everywhere in this build
+fdb1  satl
+fdb4  xor   @5c                ; CRC, preset ffff
+fdb8  xor   #00008408
+fdbc  rorb                     ; bit out to the modulator
+```
+
+So: **x2 introduced no fifth CRC-protected sequence.**  Had it defined a
+Jd-equivalent - its own repeated, CRC-protected rate-capability sequence for
+the server to send - there would be machinery to build and check it, and there
+is none.  V.90 likewise adds none: Jd is MP-shaped and rides the same code.
+
+### What x2 does instead
+
+The same thing it does for INFO0.  Rather than define a new sequence, it
+overloads the carrier V.34 already provides:
+
+* its **capability** announcement is the substituted INFO0 word (`fff1` for
+  `fff2`), in ITU bits `12:27`;
+* its **modulation parameters** are the 7-bit frame - the one new on-wire
+  structure it adds, and it borrows INFO framing to carry it;
+* its **rate mask** is `fff3`, the shared host-supplied rate-mask word (tag
+  `71`), alongside V.34's own MP rate mask.
+
+That is consistent with everything else found here: x2 shipped before there
+were standard places to put 56k information, so it reused standard fields and
+signalled by value.  V.90, arriving with the standard, got a dedicated field
+in INFO1a and a dedicated sequence in Jd - but even Jd was defined as an
+MP-family frame rather than a new one.
+
+### Weaker supporting evidence, flagged as such
+
+Counting how often each buffer address appears as a literal word - a noisy
+measure, since data can match by chance:
+
+| build | `ff38` MP tx | `ff48` MP rx | `ff18` | `ff1a` | `fff3` |
+|---|---|---|---|---|---|
+| 1995 | 24 | 4 | 10 | 22 | 7 |
+| x2-only | 31 | 6 | 13 | 24 | 10 |
+| x2 + V.90 | 24 | 8 | 17 | 28 | 11 |
+
+The x2-only build touches the MP transmit buffer more than the 1995 build
+does, which is what "x2 rides in MP" predicts.  But these are literal-word
+counts, not verified references, so they suggest rather than establish it.
+Confirming which MP bits x2 uses means diffing the MP field writers across the
+three builds - the next concrete step, and now a tractable one.
