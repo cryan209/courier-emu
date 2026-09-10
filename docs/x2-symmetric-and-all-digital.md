@@ -1767,3 +1767,85 @@ became V.90's ordinary one, or the coincidence is a coincidence.  Settling it
 needs the DSP side of tag `72`, which means recovering the overlay map for a
 V.90-era build - the same work already done for `IM020104` in
 [imodem_x2_map.py](../tools/imodem_x2_map.py), against a different image.
+
+## What builds up the x2 transmitter
+
+The engine's callbacks can now be followed end to end, because the resident
+names the cells they are installed into.
+
+### The per-sample dispatcher
+
+`80e2..80f2` in the resident is the sample-rate service:
+
+```text
+80e2  ar1 = 0889
+80e5  bldd @1b, #088d        ; a8 form: load @1b from [088d]
+80e7  bldd @1a, #088c        ; load @1a from [088c]
+80e9  ar1 = 0888
+80eb  lacl @1a / calad       ; call the first callback with ar1 = 0888
+80ef  ar1 = 0889
+80f1  lacl @1b / cala        ; call the second with ar1 = 0889
+```
+
+`8108..8119` is the same again for a second context, `088e/088f` with
+`088a/088b`.  The two BLDD encodings are opposite directions and that is what
+distinguishes a fetch from an install: `a8` loads the register from the named
+cell, `a9` stores it there.  So `e64b..e65d`, which use the `a9` form, are the
+installers, and `80e5` is the consumer.
+
+Since the first callback is entered with `ar1 = 0888` and ends `sacl *`, and
+the second with `ar1 = 0889` and begins `lacl *`, the direction of each is
+fixed by the code rather than assumed: **`0888` is the transmit sample cell
+and `0889` the receive one.**
+
+### The transmit chain
+
+`e65f` is the transmit callback that `e120` installs:
+
+```text
+e65f  sar ar1, @7d                 ; save the sample-cell pointer
+e660  call 83c4                    ; get the next codeword
+e662  lacl @00 / and @01           ; mask to the width - 00ff or 007f
+e665  bit 9, @60 -> cc 8faa        ; scramble
+e669  ar1 = ffd9; bit 15 -> cc e7e7 ; reverse the octet
+e671  ldp #1fe / sacl @01          ; codeword -> ff01
+e673  @02 -> ff0c                  ; width alongside it
+e679  lacl @00 / sacl *            ; and into the transmit sample cell 0888
+```
+
+Each stage is identifiable:
+
+* **`83c4` is the source.** It gates on `[006f]` bit 2, then dispatches
+  through `@06`, which `e5e7` initializes to `83c9`.  `83c9`, `8439` and
+  `8457` are one small state machine that accumulates bits into `@00`,
+  counting `@04` against **`@02`, the width** - the same cell the 7/8-bit
+  selection writes.  So the width is not decorative: it is the loop bound that
+  decides how many payload bits become one PCM codeword.
+* **`8faa` is the transmit scrambler.**  Its state is `@58/@59`, which at DP 6
+  is `[0358]:[0359]` - exactly the transmitter state
+  [x2-scramblers.md](x2-scramblers.md) recovered and executed against the
+  4.03 ROM.  The receive path's `8fe1` uses `@1e/@1f` = `[031e]:[031f]`, that
+  document's receiver state.  The two documents meet here.
+* **`e7e7` is an octet bit-reversal**: `lacl #07` into the repeat counter, then
+  `rol`/`rorb` shifting ACC and ACCB in opposite directions, `and #00ff`.  It
+  is gated by bit 15 of `ffd9` - the bit the tag-`70` handler `91a1` sets when
+  the capability word lands.  So the wire bit order is chosen by the same
+  command that carries the capability word.
+* **`ff01`/`ff0c`** are on data page `1fe`, the `ff00` peripheral window this
+  DSP also reaches through `ar1` for `ffd9`/`ffdb`.  The codeword and its width
+  go out together.
+
+The receive callback `e67b` mirrors it: read `*` from `0889`, mask with `@21`,
+`8fe1`, then `847e`, which shifts each `@22`-bit codeword into `@24` and emits
+whole octets into the buffer at `@27` - the inverse of the assembly `83c9`
+does.
+
+### The training source is a different callback in the same slot
+
+`e60b` - `e172`'s first arm - overwrites `@1a`/`@1b` with `e4ca`/`e4f0`.
+`e4ca` runs the same width arithmetic (`@04` against `@02`) but takes its bits
+from nowhere: it builds them from the constant `7eh`, shifted by `@04` and
+OR-ed with `@05`.  So the slot that normally carries user data carries a fixed
+pattern instead, and the arm selection at `e172` is the choice between a data
+transmitter and a pattern transmitter - which is what a training phase needs
+and what its `@63/@64 = 07d0h` timers are counting.
