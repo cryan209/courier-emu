@@ -1647,3 +1647,84 @@ matches on single amplitudes occur at the rate chance predicts, including in
 `IM020009`, which predates x2 by six months.  Which fits: the limit binds the
 *digital* modem's transmitter, x2 shipped two years before the
 Recommendation, and a client never needs the table.
+
+## What V.90 added to the same firmware
+
+Two axes, read from the eight I-modem images this tree holds, sorted by the
+date inside their archives rather than by version number - the numbering is
+not monotonic, and `IE020706` (April 1998) predates `IE020405` (August 1998).
+
+### The AT surface: x2 cost five bits, V.90 cost one
+
+[imodem_help.py](../tools/imodem_help.py) decodes the built-in help screens.
+They are tokenized: a length-prefixed word dictionary sits immediately before
+the text and ends flush against `ff`, so its 96 entries fix the first token at
+`a0`.  That yields `bd = Disable`, `ee = Enable`, `ed = " = "` and
+`cf = Reserved` - the Enable/Disable reading above, obtained without inference
+this time.
+
+S58 across the lineage:
+
+| date | image | S58 |
+|---|---|---|
+| 1996-10-31 | `IM020009` | absent |
+| 1997-02-12 | `IM010501` | absent |
+| 1997-03-04 | `IE020104` | 1 Disable x2, 2 Disable server mode, 4 Force x2 A-law mode, 8 Disable symetric mode, 16 Enable -6dbm constellation |
+| 1997-12-07 | `IE020202` | as above, "symetric" spelled correctly |
+| 1998-04-03 | `IE020706` | **+ 32 Disable V.90** |
+| 1998-08-20 | `IE020405` | same six |
+| 1998-09-24 | `IM020406` | same six |
+| - | `Ie030002` | same six |
+
+So x2's entire user-visible surface is five bits of one register, arriving
+whole in March 1997, and V.90's is a **single further bit in the same
+register** - a disable, so on by default.  The firmware treats V.90 as another
+mode of the x2 feature, not as a subsystem beside it.  Everything else that
+moves between these builds is ISDN wording and V.110/V.120 options.
+
+### The DSP surface: V.90 brings one new command, tag `72`
+
+`IM020104` and `IE020202` contain no tag-`72` sender at all.  Every V.90-era
+build does, and it is gated by a predicate that ANDs S58 bit `20h` clear with
+the same environment checks the x2 predicate uses.
+
+In `IE020706` the payload is read straight from an S-register:
+
+```text
+b44c6  S58 bit 20h set (Disable V.90) -> give up
+b44f6  bl = 6
+b44f8  if 6 <= S70 <= 15h: bl = S70
+b450a  bx |= 0b70h
+b450e  send tag 72
+```
+
+and that register is named in its own help text: **`S70 Power Level for
+V.90`**.  Sixteen usable steps, `6..15h`, on a scale the Recommendation
+resolves to the half decibel.
+
+### The knob was taken away again
+
+`S70` reads "Power Level for V.90" in `IE020706` and **`Reserved` in every
+other image** - `IE020405` and `IM020406` mark it reserved, `Ie030002` has no
+S70 heading at all.  The register did not stop being read, though.  In
+`IE020405` (S58 at `d1b2`, so S70 at `d1be`):
+
+```text
+b29b1  bx = [e6c0]                  ; the country-profile record
+b29b5  al = cs:[bx + 71h]           ; that country's ceiling
+b29ba  ah = S70
+b29be  if S70 > 10h: use the ceiling
+b29c3  else use min(S70, ceiling)
+b29cb  ((n - 1) * 2 | 1) << 4 | 0a06h  -> tag 72
+```
+
+So between April and August 1998 the V.90 transmit power stopped being a
+number the user sets and became `min(S70, country_ceiling)`, with S70's own
+range cut from 21 to 16 and its name removed from the help.  The command
+encoding changed with it - `0b70h | n` became `((n-1)*2|1) << 4 | 0a06h`.
+
+That is the sharpest x2/V.90 contrast in the whole tree, and it lands exactly
+where Table 15/V.90 does: x2 controls the digital end's power with **one
+boolean** whose only documented constraint is "legal only in some countries",
+while V.90 controls it with a **numeric level on a half-dB ladder** - which
+this firmware first exposed and then clamped per country.
