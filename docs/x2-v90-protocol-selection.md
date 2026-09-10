@@ -1153,11 +1153,13 @@ reserved bits rather than replacing the frame.
 * **Offset 0** (`ff18` bit 15) - a one-bit flag, cleared at `8e69`
   (`apl *, #7fff`) and set at `8e8b`, `9120` and `9141` (`opl *, #8000`),
   always immediately before the `8766` sequencer call.
-* **Offset 5** - the bit the code generator tests at `9047`/`9054`.  This
-  document previously called it "`ff18` bit 5 (bit code 5, so bit 10)"; the
-  offset convention above shows bit 10 of the word *is* body offset 5, so the
-  number is unchanged but now anchored to a position in the transmitted
-  frame.
+* **Offset 10** - the bit the code generator tests at `9049`/`9056`.  That
+  test is `bit 5, *` on `ff18`, and this document's earlier sections read it
+  correctly as **`ff18` bit 5** (their "bit 10" is the raw encoded bit code,
+  which the disassembler already converts when it prints `bit 5`).  Applying
+  the offset convention above, word bit 5 is body **offset 10**.  An earlier
+  revision of this section stated the inverse - "bit 10 of the word is body
+  offset 5" - which was wrong in both directions.
 
 The receive side matches.  At `9519`-`9528` the firmware reassembles both
 INFO0 bodies and intersects them:
@@ -1192,3 +1194,126 @@ order, the intersection rule, and three individual bit positions (0, 5, and
 the 16..1 span).  Assigning standard field names to the rest needs the V.34
 INFO0 field table or an x2 specification; it no longer needs another pass over
 this firmware.
+
+## The fill pattern and the trailing bits
+
+Both are framing, not payload.  The decisive structural fact is that the fill
+handler (`99cc`), the CRC-output handler (`99d1`) and the constant handler
+(`99c2`) all branch straight to the common tail at `99e9`, **bypassing the CRC
+update at `99e1`-`99e8`**.  Only the `99d6`/`99da` body handler runs the CRC.
+So the CRC-16 covers the 17-bit `ff18` body (or the 77/38/7-bit `ff1a` body)
+and nothing else.
+
+### Every bit is differentially encoded
+
+The common tail is a DBPSK mapper:
+
+```text
+99e9  lacl  @5a
+99ea  xor   @7d              ; running XOR - the differential encoder
+99eb  sacl  @5a
+99ec  bit   0, @5a
+99ed  lacc  #21fc
+99ef  xc    1, ntc
+99f0  neg                    ; bit clear -> -21fc
+99f1  lar   ar1, #01fa
+99f3  sacl  *                ; symbol out
+```
+
+A data `1` inverts the transmitted phase, a data `0` holds it, and the symbol
+written to `01fa` is `+0x21fc` or `-0x21fc`.  `@5a` is reset to `0001` by the
+handler at `99be`, which then branches to `99ec` *past* the XOR - so that
+handler emits a reference symbol without consuming a data bit.
+
+(Only bit 0 of `@5a` is ever read, but the XOR at `99ea` uses the whole word,
+so `@5a`'s upper bits accumulate junk from the handlers that put a full word
+in `@7d`.  That is harmless, not a bug.)
+
+### The 12-bit fill is `04ef`, shifted out LSB first
+
+```text
+99c6  splk  @50, #04ef
+99c8  splk  @59, #ffff       ; CRC preset
+99ca  splk  @48, #99cc       ; subsequent bits re-enter here
+99cc  lacc  @50, 15          ; ACC = @50 << 15
+99cd  bd    99e9, *
+99cf  sach  @50              ; @50 >>= 1
+99d0  sach  @7d, 1           ; @7d = the pre-shift @50
+```
+
+`sach @50` with no shift stores `ACC >> 16`, which is `@50 >> 1`: a plain
+right-shifting register with no feedback, so this is a fixed pattern, not a
+scrambler.  `sach @7d, 1` recovers the pre-shift word, and the tail reads only
+its bit 0.  The bit consumed each period is therefore the **LSB**.
+
+`04ef` = `0000 0100 1110 1111`, so the twelve data bits in transmission order
+are:
+
+```text
+1 1 1 1 0 1 1 1 0 0 1 0
+```
+
+The same `99c6` step heads every message script, so this is a shared frame
+delimiter.  The CRC preset `ffff` is loaded here rather than at the body step,
+which is why the fill must precede the body and cannot be reordered.
+
+### The CRC is also sent LSB first
+
+`99d1` is the identical shift-out applied to `@59`, so the 16 CRC bits follow
+the same LSB-first order as the fill.
+
+### The 4 trailing bits are four `1`s
+
+```text
+99c2  bd    99e9, *
+99c4  splk  @7d, #0001
+```
+
+The handler supplies a constant data `1`, so `@5a` toggles every period and
+the four trailing bits are four **consecutive phase reversals** - an
+alternating symbol pattern closing the frame.  The same handler supplies the
+two *leading* `1`s that head the `998d` and `99a3` scripts.
+
+### Full frame layout
+
+| step | bits | contents |
+|---|---|---|
+| lead-in (`99c2`, some scripts only) | 2 | `1 1` |
+| fill (`99c6`/`99cc`) | 12 | `04ef` LSB first; also presets the CRC |
+| body (`99d6`/`99da`) | 17 / 77 / 38 / 7 | `ff18` or `ff1a`, offset high-to-low |
+| CRC (`99d1`) | 16 | CRC-16-CCITT, preset `ffff`, poly `8408`, LSB first |
+| tail (`99c2`) | 4 | `1 1 1 1` |
+
+`ff18`/INFO0 is therefore a **49-bit** frame (12+17+16+4); the `ff1a` frames
+are 111 (`998d`, with its 2-bit lead-in), 70 (`9999`) and 41 (`99a3`, likewise
+with the lead-in).
+
+### How a script terminates
+
+A step with count 0 does **not** mean "do nothing".  `996b` loads `@48` from
+the table before it checks the count, and its callers (`9929`, `99bc`) do
+`lacl @48 / bacc` regardless of how it returned:
+
+```text
+996f  lacl  @4a
+9970  retc  eq                ; count 0 -> return, but @48 is already loaded
+```
+
+So a count-0 entry is the script's **terminal action**.  For the `ff18` script
+that is `99af`, which either falls through to `99ec` or - at `99b8` - reloads
+`@4b` with `9983` and sends the message again.  `99f4` is a bare `ret`, so it
+serves as the do-nothing terminator, and a `99f4` step with a nonzero count
+(`9977`, `997b`, `997f` all use 42) is an idle interval that holds the last
+symbol for that many periods.
+
+### A transcription note on `bit`
+
+The C5x `BIT` instruction encodes a bit *code* equal to `15 - bit number`, and
+`tools/c5x_disasm.py` converts it when printing (`bit {15 - (base & 15)}`).
+So the operand this document quotes from disassembly listings is the **true
+bit number**: `bit 15, *` at `d45d` and `903d` tests `fff4` bit 15, matching
+its `splk *, #8000` writer, and `bit 5, *` at `9049` tests `ff18` bit 5.  The
+"bit code" parentheticals in the earlier sections name the raw encoded field,
+not the printed operand; their stated conclusions are the correct bit numbers.
+Confirmed independently against `@62`, whose `opl`/`apl` masks span exactly
+bits 0-7 and whose `bit` tests span exactly 0-7.
