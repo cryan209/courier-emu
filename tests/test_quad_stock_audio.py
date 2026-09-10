@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from courier_emu.quad_audio import (DIGITS, COLUMNS, G711_ALAW_FLAG,
+from courier_emu.quad_audio import (ANSWER_VARIANTS, DIGITS, COLUMNS, G711_ALAW_FLAG,
                                     G711_COMPRESS, G711_EXPAND, G711_FLAGS,
                                     G711_LAW_SELECT, ROWS, render,
-                                    render_g711, resident_from_ram, spectrum)
+                                    render_answer, render_answer_g711, render_g711,
+                                    resident_from_ram, spectrum)
 
 
 RAM = (Path(__file__).parents[1] /
@@ -47,3 +48,30 @@ def test_stock_qf_tone_runs_through_both_firmware_g711_branches_and_isr():
         assert (measured["row"], measured["column"]) == (770, 1336)
         assert serial["dxr_writes"] == 800
         assert serial["last_dxr_pc"] == 0x83EF
+
+
+def test_stock_qf_answer_tone_variants_are_armed_by_resident_callbacks():
+    expected = {
+        "ans": (0x8E60, 0x0898),
+        "ans-reversals": (0x8E3B, 0x0898),
+        "ansam": (0x8E14, 0x06CF),
+        "ansam-reversals": (0x8E18, 0x06CF),
+    }
+    assert set(expected) == set(ANSWER_VARIANTS)
+    for variant, (callback, amplitude) in expected.items():
+        samples, armed = render_answer(RAM, variant, count=720)
+        assert armed["callback"] == callback
+        assert armed["increment"] == 0x4AAB
+        assert armed["amplitude"] == amplitude
+        assert max(map(abs, samples)) > 5_000
+
+
+def test_stock_qf_ansam_reaches_both_g711_laws_and_dxr():
+    for law in ("a", "mu"):
+        codewords, decoded, state = render_answer_g711(
+            RAM, "ansam", law=law, count=800)
+        assert len(codewords) == 800
+        assert len(set(codewords)) > 100
+        assert max(map(abs, decoded)) > 5_000
+        assert state["serial"]["dxr_writes"] == 800
+        assert state["serial"]["last_dxr_pc"] == 0x83EF

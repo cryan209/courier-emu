@@ -248,6 +248,24 @@ inverted in opcode bits 11..8. Opcode `0x411f` is therefore `bit 14, @1f`, not
 
 The execution bug was the compressor ABI, not missing signal code. Its repeated
 `norm *-` exponent search expects auxiliary register pointer ARP=1 on entry.
+
+### Stock answer signals
+
+The same resident supplies the V-series answer signals; they are not host-side
+tone approximations. Setup at `0xb0ca` loads phase increment `0x4aab` for the
+2100 Hz carrier and calls the resident oscillator arming routine at `0x8dbd`.
+The four mixer callbacks are `0x8e60` (ANS), `0x8e3b` (ANS with reversals),
+`0x8e14` (ANSam), and `0x8e18` (ANSam with reversals). The reversing setup at
+`0xb0d0` loads `0x0ca7`, about 450 ms at 7.2 kHz. ANSam uses amplitude
+`0x06cf` and the callback's fixed `0x0089` increment, measured as 15.05 Hz.
+
+`tools/probe_quad_answer_g711.py` executes those callbacks, passes their mixer
+samples through compressor `0x817f`, and transmits each result through ISR
+`0x83e1`. A two-second run produces 16,000 A-law codewords and 16,000 mu-law
+codewords for each variant, with the final DXR write at `0x83ef`. The decoded
+ANSam captures show 2100 Hz carrier and symmetric 2084.95/2115.05 Hz sidebands
+at approximately 0.10 of carrier. Results and playable previews are in
+`artifacts/quad-answer-g711-20260910/`.
 Entering it with the mixer's ARP=7 decremented the output pointer during
 normalisation and made the apparent codewords constant. The runner now selects
 ARP=1, loads the stock mixer's signed result into ACCB at its native 16-bit

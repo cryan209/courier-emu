@@ -1423,3 +1423,11 @@ The component runner executes its DTMF generator, either compressor branch,
 and its byte serial ISR, producing raw 8 kHz `.g711` streams without a host
 codec. The chassis call-control request that arms this path remains unfinished;
 see `docs/quad-dsp-pcm-path.md`.
+
+Its stock answer-signal family is executable as well: 2100 Hz ANS, ANS with
+periodic phase reversals, ANSam with the resident's 15.05 Hz amplitude
+modulator, and ANSam with phase reversals. Run
+`PYTHONPATH=. .venv/bin/python tools/probe_quad_answer_g711.py` to emit every
+variant through both the QF A-law and mu-law compressor branches and serial
+ISR. Raw `.g711` streams and decoded WAV previews are written under
+`artifacts/quad-answer-g711-20260910/`.

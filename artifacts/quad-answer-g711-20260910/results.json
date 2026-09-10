@@ -1,0 +1,199 @@
+{
+  "producer": "QF060003 answer-tone callbacks, compressor 0x817f, ISR 0x83e1",
+  "sample_rate": 8000,
+  "symbols_per_tone": 16000,
+  "tones": {
+    "ans": {
+      "a": {
+        "file": "qf-ans-alaw.g711",
+        "preview": "qf-ans-alaw.wav",
+        "sha256": "c668ab1eaf2c7c10d7b4c61d95ab495717b22c2bebf52a91cd4fe52168cdf144",
+        "unique_codewords": 212,
+        "measured": {
+          "carrier_hz": 2100,
+          "sideband_ratio": {
+            "2084.95": 0.0059,
+            "2115.05": 0.0012
+          },
+          "rms": 9332.0,
+          "peak": 13056
+        },
+        "armed": {
+          "callback": "0x8e60",
+          "increment": "0x4aab",
+          "amplitude": "0x898",
+          "reversal_reload": "0xca7"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      },
+      "mu": {
+        "file": "qf-ans-mulaw.g711",
+        "preview": "qf-ans-mulaw.wav",
+        "sha256": "1b1a03c060356d0da26b93fac85f917d25dc18ebedcfbdf60b31a215e493ad59",
+        "unique_codewords": 213,
+        "measured": {
+          "carrier_hz": 2100,
+          "sideband_ratio": {
+            "2084.95": 0.0054,
+            "2115.05": 0.001
+          },
+          "rms": 9326.4,
+          "peak": 13436
+        },
+        "armed": {
+          "callback": "0x8e60",
+          "increment": "0x4aab",
+          "amplitude": "0x898",
+          "reversal_reload": "0xca7"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      }
+    },
+    "ans-reversals": {
+      "a": {
+        "file": "qf-ans-reversals-alaw.g711",
+        "preview": "qf-ans-reversals-alaw.wav",
+        "sha256": "f8da19d8d8024e27c42f20758ff318498c1a9b72f3898fe5d567077a19a4c4b6",
+        "unique_codewords": 212,
+        "measured": {
+          "carrier_hz": 2099,
+          "sideband_ratio": {
+            "2084.95": 0.0412,
+            "2115.05": 0.007
+          },
+          "rms": 9332.1,
+          "peak": 13056
+        },
+        "armed": {
+          "callback": "0x8e3b",
+          "increment": "0x4aab",
+          "amplitude": "0x898",
+          "reversal_reload": "0x707"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      },
+      "mu": {
+        "file": "qf-ans-reversals-mulaw.g711",
+        "preview": "qf-ans-reversals-mulaw.wav",
+        "sha256": "46acae819efc3e185b04f8bc1f508a71101a972d30cfd6525ab9088198d598e7",
+        "unique_codewords": 213,
+        "measured": {
+          "carrier_hz": 2099,
+          "sideband_ratio": {
+            "2084.95": 0.0418,
+            "2115.05": 0.0069
+          },
+          "rms": 9326.2,
+          "peak": 13436
+        },
+        "armed": {
+          "callback": "0x8e3b",
+          "increment": "0x4aab",
+          "amplitude": "0x898",
+          "reversal_reload": "0x707"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      }
+    },
+    "ansam": {
+      "a": {
+        "file": "qf-ansam-alaw.g711",
+        "preview": "qf-ansam-alaw.wav",
+        "sha256": "f36b7e7c2c6cccf81c81af6558ce08d6c98babbc311082c6568f7dff283982ce",
+        "unique_codewords": 220,
+        "measured": {
+          "carrier_hz": 2100,
+          "sideband_ratio": {
+            "2084.95": 0.1015,
+            "2115.05": 0.1
+          },
+          "rms": 9341.3,
+          "peak": 15616
+        },
+        "armed": {
+          "callback": "0x8e14",
+          "increment": "0x4aab",
+          "amplitude": "0x6cf",
+          "reversal_reload": "0xca7"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      },
+      "mu": {
+        "file": "qf-ansam-mulaw.g711",
+        "preview": "qf-ansam-mulaw.wav",
+        "sha256": "7ae0f33d0c88829ec3d4994aacfcfd6b3ee30728ffdd8704df6f7ea34f6a4c43",
+        "unique_codewords": 221,
+        "measured": {
+          "carrier_hz": 2100,
+          "sideband_ratio": {
+            "2084.95": 0.1015,
+            "2115.05": 0.0998
+          },
+          "rms": 9335.0,
+          "peak": 15484
+        },
+        "armed": {
+          "callback": "0x8e14",
+          "increment": "0x4aab",
+          "amplitude": "0x6cf",
+          "reversal_reload": "0xca7"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      }
+    },
+    "ansam-reversals": {
+      "a": {
+        "file": "qf-ansam-reversals-alaw.g711",
+        "preview": "qf-ansam-reversals-alaw.wav",
+        "sha256": "3c504bb2ca627a8c4454fef15225d9b4b19bce26bf6e722ea3721f0a762b055d",
+        "unique_codewords": 224,
+        "measured": {
+          "carrier_hz": 2099,
+          "sideband_ratio": {
+            "2084.95": 0.1516,
+            "2115.05": 0.1146
+          },
+          "rms": 9338.0,
+          "peak": 16896
+        },
+        "armed": {
+          "callback": "0x8e18",
+          "increment": "0x4aab",
+          "amplitude": "0x6cf",
+          "reversal_reload": "0x707"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      },
+      "mu": {
+        "file": "qf-ansam-reversals-mulaw.g711",
+        "preview": "qf-ansam-reversals-mulaw.wav",
+        "sha256": "1be00cf00066358db417b67610f75541fa6112e7621924d19c28c87f03543422",
+        "unique_codewords": 224,
+        "measured": {
+          "carrier_hz": 2099,
+          "sideband_ratio": {
+            "2084.95": 0.1508,
+            "2115.05": 0.1128
+          },
+          "rms": 9332.1,
+          "peak": 16764
+        },
+        "armed": {
+          "callback": "0x8e18",
+          "increment": "0x4aab",
+          "amplitude": "0x6cf",
+          "reversal_reload": "0x707"
+        },
+        "dxr_writes": 16000,
+        "last_dxr_pc": "0x83ef"
+      }
+    }
+  }
+}

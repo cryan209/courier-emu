@@ -40,6 +40,16 @@ G711_COMPRESS = 0x817F
 G711_LAW_SELECT = 0x8238
 G711_FLAGS = 0x039F
 G711_ALAW_FLAG = 0x4000
+ANSWER_INCREMENT = 0x4AAB
+ANSWER_VARIANTS = {
+    "ans": 0x8E60,
+    "ans-reversals": 0x8E3B,
+    "ansam": 0x8E14,
+    "ansam-reversals": 0x8E18,
+}
+ANSWER_ARM = 0xB0CA
+ANSWER_REVERSAL_SAMPLES = 0x0CA7
+ANSWER_AMPLITUDE = 0x06CF
 
 # The first six words establish DP/ARP and enter the stock mixer.  The second
 # entry calls the selector once.  These are scheduling glue, not sample code.
@@ -81,6 +91,10 @@ def resident_from_ram(ram: bytes) -> bytes:
         0x8194: (0xBE01, 0x7980, 0x81AD),
         0x81AB: (0xBFDC, 0x0055),
         G711_LAW_SELECT: (0x087A, 0xBFB0, 0x000F, 0xBF09, 0xFFD9),
+        ANSWER_ARM: (0xBF80, ANSWER_INCREMENT, 0x7A80, 0x8DBD),
+        0xB0D0: (0xAE75, ANSWER_REVERSAL_SAMPLES),
+        0xB0DD: (0xAE1A, 0x8E18),
+        0xB0E0: (0xAE1A, 0x8E14, 0xAE73, ANSWER_AMPLITUDE),
     }
     for address, expected in checks.items():
         offset = address - RESIDENT_ORIGIN
@@ -140,6 +154,14 @@ def render_g711(ram: bytes, digit: str, *, law: str,
         raise ValueError("law is 'a' or 'mu' and count must be positive")
     source_count = (count * RATE + 7_999) // 8_000
     linear, _ = render(ram, digit, source_count)
+    return compress_g711(ram, linear, law=law, count=count)
+
+
+def compress_g711(ram: bytes, linear: list[int], *, law: str,
+                  count: int) -> tuple[bytes, list[int], dict]:
+    """Execute QF's compressor and ISR for already firmware-made samples."""
+    if law not in DECODE or count <= 0 or not linear:
+        raise ValueError("law is 'a' or 'mu', count and samples must be nonzero")
     resident = resident_from_ram(ram)
     driver = G711_DRIVER
     with NativeC5x.from_program(RESIDENT_ORIGIN, resident) as core:
@@ -169,6 +191,57 @@ def render_g711(ram: bytes, digit: str, *, law: str,
             codewords.append(codeword)
         decoded = [DECODE[law](value) for value in codewords]
         return bytes(codewords), decoded, core.serial_state()
+
+
+def render_answer(ram: bytes, variant: str = "ansam-reversals",
+                  count: int = 7_200) -> tuple[list[int], dict]:
+    """Execute QF's 2100 Hz ANS/ANSam oscillator family and mixer."""
+    if variant not in ANSWER_VARIANTS or count <= 0:
+        raise ValueError("unknown answer-tone variant or non-positive count")
+    resident = resident_from_ram(ram)
+    callback = ANSWER_VARIANTS[variant]
+    # The reversal callback's BANZ uses the current auxiliary register. The
+    # stock main reaches the mixer with ARP=1; make that ABI explicit here.
+    frame = (0xBC07, 0xBF01, 0xBF0F, BUFFER - 1, 0x8B89, 0x7980, MIXER)
+    arm = (
+        0xBC07, 0xBF80, ANSWER_INCREMENT, 0x7A80, 0x8DBD,
+        0xAE75, ANSWER_REVERSAL_SAMPLES,
+        0xAE1A, callback,
+    )
+    if variant.startswith("ansam"):
+        arm += (0xAE73, ANSWER_AMPLITUDE)
+    arm += (0x7980, 0)
+    driver = frame + arm
+    with NativeC5x.from_program(RESIDENT_ORIGIN, resident) as core:
+        core.load_rom(struct.pack(f"<{len(driver)}H", *driver))
+        core.set_mpmc_pin(0)
+        for address, value in FIXTURES:
+            core.set_data(address, value)
+        core.set_pc(len(frame))
+        _until(core, 0, 300)
+        samples = []
+        for _ in range(count):
+            _until(core, MIXER_TOP, 500)
+            word = core.data(BUFFER)
+            samples.append(word if word < 0x8000 else word - 0x10000)
+            core.set_data(0x390, BUFFER - 1)
+            core.set_pc(0)
+        armed = {
+            "callback": core.data(0x39A),
+            "increment": core.data(0x3F2),
+            "amplitude": core.data(0x3F3),
+            "reversal_reload": core.data(0x3F5),
+        }
+        return samples, armed
+
+
+def render_answer_g711(ram: bytes, variant: str, *, law: str,
+                       count: int = 8_000) -> tuple[bytes, list[int], dict]:
+    source_count = (count * RATE + 7_999) // 8_000
+    linear, armed = render_answer(ram, variant, source_count)
+    codewords, decoded, serial = compress_g711(
+        ram, linear, law=law, count=count)
+    return codewords, decoded, {"armed": armed, "serial": serial}
 
 
 def spectrum(samples: list[int], *, rate: int = RATE) -> dict[str, object]:
