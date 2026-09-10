@@ -2840,3 +2840,109 @@ here.  So x2 modifies this path rather than adding a separate one.  Isolating
 the modification means running this same overlay-aware read against the
 x2-only and 1995 builds, which needs their overlay tables rather than the
 4.03 ROM's.  That is the next step, and it is now a mechanical one.
+
+## What the x2 code actually does, in overlay 6
+
+`fff4` bit 2 is the "remote is an x2 server" outcome - set at `905d` in the
+resident, guarded by the local ITU 18 / remote ITU 23-24 test.  Overlay 6
+tests it in three places, and they are not diagnostics.
+
+### It selects an alternate parameter row
+
+```text
+c584  lar   ar1, #fff4
+c586  bit   2, *
+c587  lacc  @72, 1
+c588  xc    1, tc
+c589  add   #01                  ; x2 server -> the odd row
+c58a  add   #0000c564
+c58c  tblr  @7c
+```
+
+The table index is `(@72 << 1) + 1` on an x2 call and `(@72 << 1)` otherwise,
+so every parameter row has an x2 variant beside its V.34 one.
+
+### It doubles a set count
+
+```text
+c5e0  lar   ar1, #fff4
+c5e2  bit   2, *
+c5e3  lacl  #02                  ; x2 server -> 2
+c5e4  xc    1, tc
+c5e5  lacl  #01                  ; otherwise 1
+c5e6  sacl  @52
+```
+
+### It constrains the rate mask and builds two codeword sets
+
+```text
+c5e7  lar   ar1, #fff4
+c5e9  bit   13, *
+c5ea  bcnd  c5fe, ntc
+c5ec  bit   2, @6e
+c5ed  lar   ar1, #fff3
+c5ef  apl   *, #0007             ; the host rate word, cut to three bits
+c5f1  xc    2, tc
+c5f2  apl   *, #0003             ; or two
+c5f4  lar   ar1, #faa0
+c5f6  lacl  @70
+c5f7  call  c651, *
+c5f9  lar   ar1, #fb20
+c5fb  lacl  @71
+c5fc  call  c651, *
+```
+
+Two buffers, `faa0` and `fb20`, with independent counts `@70` and `@71` - one
+per direction, which is what an asymmetric protocol needs.
+
+### And `c651` is the PCM codeword snapper
+
+```text
+c651  sub   #01
+c652  samm  @09
+c653  lacc  #0000c66e            ; the allowed-codeword table
+c655  tblr  @7d
+c658  rptb  #c66c
+c65a  lacl  *+                   ; each candidate level
+c65b  sub   @7d
+c65c  bcnd  c66c, lt
+c65e  bcndd c663, gt
+c660  lacb
+c662  tblr  *                    ; snap it to the table entry
+c663  cpl   @7d, #00f1           ; 241 terminates the table
+```
+
+The table at `c66e` is:
+
+```text
+00a7 00a6  00b4 00b3  00bc 00bd  00c5 00c4  00c8 00c7  00d3 00d2 ...  00f1
+```
+
+Ascending **PCM codewords in sign pairs** - each level with its complement -
+running up to the terminator 241.  V.90 names this quantity: Table 10's
+`UINFO` is "the Ucode of the PCM codeword to be used by the digital modem",
+constrained to be greater than 66.  These are the same objects.
+
+So `c651` walks a buffer of candidate levels and snaps each to the nearest
+permitted codeword, and it is run once per direction.
+
+### That closes the loop on matching a speed to a line
+
+The three pieces now join up:
+
+1. **Measure** - the resident's `c320` chain turns a channel measurement into
+   an index 10..21 through a log, a linear map and a knee, and reports it as
+   tag `69`.  The index *is* the rate: plus 22 it is K bits per six-symbol
+   frame, 42666 to 57333.
+2. **Negotiate** - the MP path at `a344` takes a minimum against the
+   host-supplied request into the direction-selected max-rate fields, gated by
+   the symbol-rate-to-rate-mask table at `a37b` and the 1664-point rule.
+3. **Realise** - overlay 6, on an x2 call, takes the x2 parameter row, builds
+   **two** codeword sets instead of one, and snaps each to the permitted PCM
+   codewords at `c66e`.
+
+The number of distinguishable codewords is what a PCM rate *is*, so step 3 is
+where the negotiated rate becomes a physical constellation - and the x2-only
+difference at each step is a row index, a count of one versus two, and a mask
+width.  x2 does not replace V.34's rate machinery anywhere; it parameterises
+it, exactly as it parameterises INFO0 rather than replacing it.
