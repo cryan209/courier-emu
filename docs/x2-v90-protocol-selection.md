@@ -1998,7 +1998,11 @@ not a phase pattern, and the exact match is a one-in-128 coincidence.
 
 ## Looking for an older, x2-only image
 
-There is not one in this repository.  Every image that contains the INFO
+> **Superseded by the next section.**  There *is* one - in
+> `firmware/legacy-usrobotics/`, which the survey below did not cover.  The
+> survey's method is also unsafe for the updater EXEs, because they are packed.
+
+The images searched below - the loose ROMs and XMFs - do not include one.  Every image that contains the INFO
 serializer also contains V.90 machinery:
 
 | image | serializer | V.90 17/30 receive switch | 7-bit mod-param builder | 7-bit detector |
@@ -2025,3 +2029,71 @@ An image that would: anything from the 1997 x2 releases, before V.90 support
 was merged at all.  The `SV*`/`SDL*` XMD files are the right vintage but are
 packed, and no unpacker for that container exists here yet.  Unpacking one is
 the concrete next step, and it is a self-contained task.
+
+## The x2-only image: `sdl6-x2.exe`
+
+`firmware/legacy-usrobotics/` holds the analogue-Courier SDL updaters, and one
+of them is pre-V.90.
+
+### Signature absence is not evidence here
+
+The updater EXEs carry the firmware **packed**.  Byte signatures still hit
+inside literal runs, which is why they appear at odd offsets and why the code
+around them loses alignment part-way:
+
+```text
+sdl6-x2.exe @ 3dff6   lar   ar1, #0270      ; the shift register
+            @ 3dffa   lacl  *
+            @ 3dffc   and   #fe00
+            @ 3e000   xor   #....           ; 7600 appears at 3e006,
+                                            ; with inserted bytes between
+```
+
+So a signature *miss* in one of these EXEs means nothing.  The reliable
+discriminator is the literal strings, which the packer stores intact.
+
+### The strings settle it
+
+| file | `V.90` | `V90` | `x2` | `not x2` | `V.34` |
+|---|---|---|---|---|---|
+| `SDL_CS3.EXE` (1995) | 0 | 0 | 1 | 0 | 22 |
+| **`sdl6-x2.exe`** | **0** | **0** | **41** | 1 | 24 |
+| `SDL_49.EXE` | 5 | 48 | 34 | 1 | 24 |
+| `SDL0430.EXE` | 5 | 48 | 34 | 1 | 24 |
+| `ID_SDL20.EXE` (4.03) | 9 | 51 | 39 | 1 | 24 |
+| `IDSDL302.ROM` | 5 | 57 | 39 | 1 | 2 |
+
+`sdl6-x2.exe` has 41 occurrences of `x2` and **zero** of `V.90` or `V90`,
+against otherwise comparable counts.  That is an x2-only build.  And
+`SDL_CS2`/`SDL_CS3`/`SDL_76AE` from 1995 have neither, giving a pre-x2 V.34
+baseline.
+
+So there are three eras available:
+
+| era | image | x2 | V.90 |
+|---|---|---|---|
+| 1995 | `SDL_CS2`, `SDL_CS3`, `SDL_76AE` | no | no |
+| x2 | `sdl6-x2.exe` | yes | **no** |
+| 1998+ | `SDL_49`, `SDL0430`, `IDSDL302`, `ID20/25_40x` | yes | yes |
+
+### What it already tells us
+
+The x2-only build contains **both** halves of the 7-bit mechanism: the
+modulation-parameter builder (`add @5b, 1` / `add @5b, 4`, at file offset
+`3cc78`, with the same `[ff20 + @5b] & 1` carrier bit) and the pattern
+detector with the **same constant `7600`**.
+
+That is worth recording, because it dates the mechanism.  The detector is not
+something added later for V.90-era interoperability - it shipped with x2
+itself, before V.90 existed.  The 7-bit modulation-parameter frame and its
+presence detector are x2's own, and the later firmware simply kept both.
+
+### Next step
+
+Reading the x2-only DSP program end to end needs the SDL updater's packer
+undone.  The container is a DOS EXE with a byte-oriented packed payload; the
+literal runs are long enough to recognise routines but not to disassemble
+across.  Unpacking one updater makes all of them readable, including the
+1995 pre-x2 baseline, and that comparison - V.34 only, then x2, then x2 plus
+V.90 - is the cleanest way left to separate what x2 added from what V.90
+added.
