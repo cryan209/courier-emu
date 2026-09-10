@@ -372,6 +372,251 @@ V.34 would use (`a000`-`d6a9`), so it is an alternative to V.34 rather than an
 addition to it: a complete datapump, nearly four times the size of the client's
 PCM overlay, sharing nothing with it.
 
+> **Correction from the release-series comparison.**  Images 10 and 11 are
+> not a second standalone datapump.  Together with the small I-modem resident
+> they reconstruct the analogue Courier's resident-class program; the pair
+> predates x2.  What x2 adds is new PCM transmit/state-machine code inside that
+> split resident program.  See [Nine I-modem builds](imodem-firmware-timeline.md).
+
+### Isolating the first x2 server and symmetric addition
+
+The last pre-x2 build (`IM020009`, October 1996) and first x2 build
+(`IM020104`/`IE020104`, March 1997) bound the new DSP code exactly:
+
+| image | pre-x2 words | first-x2 words | growth with x2 |
+|---:|---:|---:|---:|
+| 10 | 5,545 | 6,881 | **1,336** |
+| 11 | 14,525 | 15,811 | **1,286** |
+| combined | 20,070 | 22,692 | **2,622** |
+
+The addition is split almost evenly across the load boundary.  The supervisor
+always loads images 10 and 11 back to back, so this is one program, not one
+image for server mode and another for symmetric mode.
+
+S58 bit 2 (server) and bit 8 (symmetric) also arrive together in the first x2
+release.  Binary presence alone therefore cannot distinguish the two roles,
+and it does not yet prove that either control reaches the DSP.  The required
+discriminating trace is:
+
+```text
+S58 stored byte, bit 2 / bit 8
+    -> supervisor mailbox argument
+    -> DSP parameter word in images 10 and 11
+    -> one-way PCM transmit or two-way symmetric state machine
+    -> equal-rate selection, including the 64,000 terminal case
+```
+
+Only the endpoints of that diagram are presently proved: the S58 labels and
+the x2-era growth in the paired DSP program.  The intervening arrows are the
+open reverse-engineering task.  In particular, a supervisor test of either
+mask is not enough unless its result can be followed into a mailbox write and
+then to a C5x data-cell consumer.
+
+This narrows the 64,000 path as well.  It is outside the analogue client's x2
+rate mask and cannot be produced by the tag-`69` line-quality map.  For x2
+symmetric it must come from the server-side role/rate path above.  Transparent
+ISDN `/DIGITAL` calls remain a separate path that does not require the modem
+DSP.
+
+### False lead closed: `9074` is legacy HST, not x2
+
+An initial comparison appeared to find a new first-x2 bitmap at `ds:9074`.
+Its consumers select levels 2 through 7 from masks `10h`, `08h`, `04h`, `20h`,
+`40h`, and `80h`, and a parser fills it from a literal `HST/c0` record.  That
+looked superficially like the remote-server transmit selector named by S58.
+
+The release comparison disproves it.  In `IM020009`, six months before x2,
+the same `HST/c0` handler stores its two octets at `9086`/`9087` instead of
+`9073`/`9074`, and the consumers of `9087` contain the same mask tests and the
+same level-selection logic.  The whole block moved by 19 bytes as RAM layout
+changed.  It is the legacy USR **HST modulation** parser, not an x2 host/DSP
+message.
+
+This is a useful negative result: direct-address absence is not evidence that
+a state variable is new across firmware releases.  A proposed x2 addition now
+has to survive relocation-aware code matching against `IM020009`.  The real
+server/symmetric trace must connect S58 bits 2 and 8 to the new code in DSP
+images 10 and 11; the HST bitmap contributes nothing to that proof.
+
+### First server-control spine in the DSP
+
+The first-x2 overlay table can now be read independently of the later 3.00.02
+addresses.  Its rows are byte counts and load addresses; its source-segment
+table begins 0x48 bytes after the row-table base.  The three pieces that form
+the resident-class C5x program are:
+
+| image | source | bytes | words | C5x load range |
+|---:|---:|---:|---:|---|
+| 5 | `e005:0000` | `2322h` | 4,497 | `8000..9190` |
+| 11 | `d84c:0000` | `7b86h` | 15,811 | `9194..cf56` |
+| 10 | `d4ef:0000` | `35c2h` | 6,881 | `d000..eadf` |
+
+That makes it possible to follow pointers across the image boundaries instead
+of comparing the three blobs separately.  A dispatch table in image 5 names
+two adjacent entries in image 10:
+
+```text
+e11a: lacc #0000  -> e120
+e11e: lacc #0100  -> e120
+
+e120: sacb                  ; preserve which entry was selected
+      lacc @7a
+      and  #00c0
+      sub  #00c0            ; classify host-supplied mode
+      ...
+      lamm @7d -> @70       ; import host/DSP parameter words
+      lamm @7e -> @6e
+      lamm @7f -> @6f
+      lamm @7a
+      orb  saved-entry-flag
+      -> @60 and @6d        ; working mode words
+```
+
+The resulting mode word is not passive.  `@60` bits 5, 4, 2, 1 and 0 choose
+different state paths, while bit 8 in the saved/combined word chooses between
+callback `e184` and the older callback `8b52`.  The initializer installs
+function pointers `e65f/e67b` or `e692/e6a1`, and state callbacks including
+`e2b1`, `e438`, `e4bc`, `e5e7`, `e60b`, `e61d` and `e62c`.  The large new
+block `e185..e4cc` is therefore a callback-driven protocol engine, not a table
+or unused payload.
+
+This gives the middle of the required control path:
+
+```text
+supervisor-selected DSP entry (e11a or e11e)
+    -> host parameter word @7a and imported @7d:@7f
+    -> combined mode words @60/@6d
+    -> role-dependent callback set
+    -> staged engine e185..e4cc
+```
+
+Two links are still deliberately unnamed.  The supervisor caller that chooses
+`e11a` versus `e11e` must be tied to S58 `02h`/`08h`, and the callbacks must be
+classified against observable V.8, INFO, Phase 3, Phase 4 and data events.
+Those are now bounded searches over this control spine rather than searches of
+all seven images.
+
+### The Quad image exposes the digital-server DSP hand-off
+
+QF 6.0.3 is a better image for naming the server half because its overlay map
+is recovered and it contains the digital modem's V.90 INFO0d builder.  The
+important correction is that "digital mode" is not represented by one bit.
+At least two internal bits in DSP data word `039f` carry different parts of
+the decision:
+
+| DSP state | tested at | effect |
+|---|---|---|
+| `039f` bit 0 | `9535`, `957c`, `a01f` | build and transmit the 30-bit V.90 INFO0d body rather than the 17-bit INFO0a body |
+| `039f` bit 7 | `a92f`, `aab3`, `aad9`, `aafb` | select the digital-server receive rules and enter the server-only overlay at `c800` |
+| `ffd9` bit 8 | `c801`, `c81c`, `c870` | distinguish the two passes/substates inside that overlay |
+| `ffd9` bit 9 | `c89e` | gate the transition out of its setup path |
+
+These are DSP RAM bits, not ITU bit positions.  The first is the advertised
+V.90 role; the second changes executable control flow and therefore proves
+that the role reaches the datapump rather than stopping in the supervisor.
+
+The join after INFO is now concrete.  Shared code at `aaa4..aafe` receives a
+framed bit stream and updates a CRC with polynomial `8408`.  Once the received
+CRC agrees, the ordinary path continues at `ab00`, but `039f` bit 7 branches
+to `c86f`:
+
+```text
+aab3  lar   ar1, #039f
+aab5  bit   7, *             ; choose server receive buffer/rules
+...
+aac9  xor   #8408            ; framed receive CRC
+...
+aaf7  lacl  @42
+aaf8  xor   @24              ; received CRC agrees?
+aaf9  bcnd  ab49, neq
+aafb  lar   ar1, #039f
+aafd  bit   7, *
+aafe  bcnd  c86f, tc         ; valid server frame -> server overlay
+```
+
+`c86f` copies the negotiated working words into `0340`/`0341`, expands the
+server tables, and finally installs `c922` in `03cd`.  `03cd` is the datapump's
+phase callback/descriptor cell throughout these images.  A later threshold
+test at `c8ce` changes the cell to `c90e` and reports a five-word status stream
+to the supervisor:
+
+```text
+c8b7  lar   ar1, #03cd
+c8b9  bd    ab2e
+c8bb  splk  *, #c922         ; install first server phase descriptor
+
+c8ce  lar   ar1, #03c8
+c8d0  cpl   *, #c423
+c8d2  retc  ntc
+c8d3  lar   ar1, #03cd
+c8d5  retd
+c8d6  splk  *, #c90e         ; advance the server phase descriptor
+
+c8d8..c8e7 -> supervisor queue: 806c, 0000, 806d, 0600, 8074
+```
+
+The queue routine is resident `86cd`; it writes each word to the ring at
+`0bd0`.  Thus the transition has both required consequences: a new DSP phase
+descriptor and an observable control-plane notification.  The high bit on
+`806c`, `806d` and `8074` marks control/status words in this mailbox stream;
+the exact supervisor names for tags `6c`, `6d` and `74` remain to be recovered.
+
+The resident dispatcher at `c03d..c048` explains what those values are.  It
+loads `03cd`, copies the next three program words into working cells
+`03c8..03ca`, advances the script address by three, and dispatches through the
+working callback.  Thus `03cd` is a three-word phase-script pointer, rather
+than merely an untyped callback cell:
+
+```text
+c03d  lacl  @4d              ; DP 7: data 03cd, current script pointer
+c03e  bcnd  c047, eq
+c040  sach  @4d              ; consume the pending pointer
+c041  lar   ar1, #03c8       ; three working words
+c043  rpt   #02
+c044  tblr  *+
+c045  add   #03
+c046  sacl  @4b              ; next three-word record
+c047  lacl  @48
+c048  bacc                    ; run this record's callback
+```
+
+Following `c922` in three-word steps terminates exactly at `c93a`, whose first
+word is `c423`.  `c423` is executable resident code that reports status through
+`86cd`; `c8ce` watches working cell `03c8` for that same value and performs the
+`c922 -> c90e` switch.  Following `c90e` with the same stride has no aligned
+`c423` terminator before it flows into the mapper.  Consequently the former is
+the finite server training script and the latter is the steady data script:
+**`c8ce` is the Phase-4-to-data boundary.**
+
+The replacement script leads into the substantial engine at `c93e`.  That
+engine initializes six intervals, derives independent counts from the
+negotiated buffers, repeatedly calls the mapping helpers
+`c524`/`c99c`/`c9d2`, and returns to the common output path at `c565`.  Its
+six-interval shape is the PCM data-frame mapper, not just a generic training
+loop.
+
+The evidence-backed call spine is therefore:
+
+```text
+supervisor mode/config command
+    -> DSP RAM 039f bit 0: INFO0d field layout and 30-bit serializer
+    -> DSP RAM 039f bit 7: digital-server datapump role
+    -> shared framed INFO receive + CRC (aaa4..aafe)
+    -> c800 server overlay (c86f)
+    -> phase cell 03cd = c922
+    -> Phase 4 terminal callback c423 observed at c8ce
+       + phase cell 03cd = c90e
+       + mailbox status 6c/6d/74 to the supervisor
+    -> DATA: six-interval mapping engine c93e.. and common output c565
+```
+
+What is still missing is now narrow: identify the resident mailbox handlers
+that set `039f` bits 0 and 7, map their controller commands back to S76/S81,
+and split the finite `c922` training script at the Phase 3-to-Phase 4 boundary.
+The Phase-4-to-data boundary and data mapper are now located; correlating the
+earlier records with the standard's `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, DIL
+and Phase 4 signal order is the remaining waveform-label problem.
+
 ## ISDN is 4-wire
 
 Worth stating, because it closes the V.91 question rather than leaving it as an

@@ -1,5 +1,60 @@
 # x2 versus V.90 protocol selection
 
+New scrambler evidence: [x2 scramblers recovered and executed](x2-scramblers.md)
+identifies the resident transmit/receive routines in the x2-only build and
+4.03, verifies their two V.34 polynomials and selectors by executing the
+original instructions, and locates an identical fixed-GPC six-bit generator
+in their PCM-associated training code. It also compares the known V.90 DIL
+descriptor signatures against the depacketized x2-only image.
+
+## Open issues status
+
+This document grew as the firmware was decoded, so some early "open" notes are
+historical and are answered by later sections.  The current state is:
+
+| issue | status | answer or next evidence |
+|---|---|---|
+| x2's on-wire selector | **resolved** | the x2 INFO0 capability pattern plus the 7-bit modulation-parameter frame; see "The actual x2 bits in INFO0" and "The 7 bits are modulation parameters" |
+| exact x2 INFO0 capability word | **resolved** | all sixteen capability bits are mapped to V.34 Table 14 and their S54/S56/S58 sources below |
+| x2 data-rate construction | **mostly resolved** | tag `69` is the local line-quality-derived rate index; overlay 6 applies the shared MP capability constraints and builds the PCM codeword sets.  The exact proprietary encoding that communicates the 56k rate between peers has not yet been isolated from the V.34 MP machinery |
+| server/symmetric control path | **partly resolved** | the joined I-modem images expose dual DSP entries `e11a/e11e`, host parameter `@7a`, mode words `@60/@6d`, and callback engine `e185..e4cc`.  QF independently proves the DSP hand-off: `039f` bit 0 selects INFO0d, bit 7 enters server overlay `c800` after a valid framed receive, and the finite script at `c922` terminates through `c423`; `c8ce` then installs the steady script `c90e`, reports tags `6c/6d/74`, and reaches the six-interval data mapper.  This locates Phase 4 -> data; the setters still need tying to S76/S81 and the Phase 3 -> Phase 4 record needs naming |
+| Quad DSP overlay map | **resolved** | the eight supervisor rows and DSP pull loader are recovered in [How the Quad loads C50 code](quad-c50-overlay-loader.md) |
+| V.90 INFO1a `37:39` producer on the analogue Courier | **open** | the consumer is proven, but no direct bit-field write at buffer offset 12 is present; needs a complete data-flow trace into `ff1a` before the 38-bit script runs |
+| exact x2 alignment sequence | **open** | x2's six-symbol frame, fixed-GPC generator, and two-level codeword table are proven, but the digital-side sequence that establishes interval 0 is not yet named |
+| V.90's six per-interval constellation indices | **open in this firmware** | no literal CP-field offsets occur; search for a computed six-iteration, four-bit-stride unpacker and follow its destination tables |
+| physical meaning of the tag `69` input `@12` | **open** | the log/knee/rate conversion is decoded; trace the computed writers at `b4fa` and `c3b8` back to the measured signal statistic |
+| x2 7-bit peer marker `0x3b` semantics | **partly resolved** | it is a raw-stream modulation-parameter marker, not an INFO message; the exact peer role/rate names for indices 3 and 5 still need a server transmit trace |
+
+The remaining issues are implementation archaeology, not gaps in the ITU
+comparison.  V.34 and V.90 define their fields completely; what remains is to
+name the proprietary x2 sequences and connect a few firmware variables to
+those wire events.
+
+### Scope qualification for server modes
+
+Most of this document follows the analogue Courier acting as an x2 client and
+therefore describes the familiar asymmetric pairing: PCM downstream and V.34
+upstream.  That is not the whole x2 protocol.  The server firmware and its
+management definitions expose three roles:
+
+| role | server control | data directions | maximum reported rate |
+|---|---|---|---:|
+| x2 client | S76 bit 0 controls availability | receives PCM, transmits V.34 | 57,333 bit/s PCM direction |
+| x2 server | S76 bit 1 controls availability | transmits PCM, receives V.34 | 57,333 bit/s PCM direction |
+| x2 symmetric | S76 bit 2 controls availability | both ends send and receive at the same x2 rate | 64,000 bit/s on a digital-to-digital path |
+
+The I-modem expresses the same distinction in S58: bit 1 enables x2, bit 2
+selects server mode, bit 8 selects symmetric mode, bit 4 forces x2 A-law, and
+bit 16 selects the -6 dBm constellation.  Its result vocabulary contains
+`x2client`, `x2symmetric`, and `/DIGITAL` rates through 64,000 bit/s.  These
+are separate from transparent ISDN `/DIGITAL` and bonded-B-channel results:
+the x2 symmetric mode still runs modem negotiation and PCM mapping, whereas a
+clear-channel digital call need not use the DSP datapump.
+
+Consequently, statements below that call x2 "asymmetric" refer specifically
+to the client/server role pair.  The symmetric server mode is analysed in
+[x2 Symmetric and V.90 All-Digital](x2-symmetric-and-all-digital.md).
+
 This is deliberately separate from `codec-sample-rates.md`.  That document
 describes the six-row V.34 rate machinery; it must not be used to identify the
 V.90 protocol selector.  Addresses below are for
@@ -33,10 +88,10 @@ only `splk @7f,#0025` site in the downloaded DSP program, so there is no
 second, x2-specific writer for that field hidden elsewhere in this image.
 
 Under Table 10/V.90, `37:39 = 6` is the V.90 request: it selects the 8000
-symbol/s digital-modem direction.  The value is computed by `9267`, which
-first checks call-state flags and otherwise derives a three-bit value from
-live DSP state (`ff26`, `0345`, and `0066`).  Tracing the producer of that
-state is the next step needed to prove the exact condition which yields 6.
+symbol/s digital-modem direction.  This paragraph's field identification is
+superseded: the site writes INFO1a bits `12:14`, not `37:39`.  The genuine
+V.90 selector consumer and its remaining producer question are documented in
+"Against the ITU Recommendations" below.
 
 ## The similarly shaped V.34 path is distinct
 
@@ -63,7 +118,7 @@ incorrect.
 | Local S58 gate | bit `0x01` | bit `0x20` |
 | Supervisor DSP setup | sends tag `0x70` | no scheme-specific tag here |
 | DSP parameter cell | tag `0x70` dispatches to `8d29` and stores `fff1` | no corresponding direct write |
-| Wire-level selector | not recovered | INFO1a `37:39 = 6` |
+| Wire-level selector | INFO0 signature plus 7-bit modulation-parameter frame | INFO1a `37:39 = 6` |
 | PCM result ladder | 16 rate entries | 28 rate entries |
 
 An exhaustive scan of direct `test byte [S58],mask` instructions yields only
@@ -173,19 +228,16 @@ on-wire frame, or prove that a particular bit is the remote-x2/server
 discriminator.
 
 The static image establishes the local half (`x2 setup -> fff1 ->
-ff18[16..31]`) and proves that it is not V.90 `INFO1a[37:39]`. It does not yet
-establish the reciprocal receive buffer or the individual proprietary bit
-assignments. Those require a trace of a successful x2 call or an x2 protocol
-specification.
+ff18[16..31]`) and proves that it is not V.90 `INFO1a[37:39]`.  Later sections
+complete the receive-side and field mapping: `ff18` is the standard INFO0
+buffer, the capability word occupies ITU bits `12:27`, and x2 overrides the
+symbol-rate asymmetry, CME, and clock-source fields.  The separate 7-bit
+modulation-parameter marker supplies the proprietary directional rate signal.
 
-The code-side selection audit is complete for this image: the S58 gates,
-x2-only capability construction/transfer, V.90 INFO1a writer, result ladders,
-and status paths are all distinct and accounted for above. What remains
-unparsed is the **external meaning and framing** of the x2-conditioned
-capability payload after the DSP packs it into `ff18`. It is not a second
-`INFO1a[37:39]` selector. Resolving its named on-wire fields would need a
-protocol trace or an x2 specification, rather than another supervisor
-S-register branch.
+The code-side selection audit is therefore complete for this image: the S58
+gates, x2-only capability construction/transfer, INFO0 signature, 7-bit
+marker, V.90 INFO1a consumer, result ladders, and status paths are distinct
+and accounted for below.
 
 ## x2 status: the DSP sends a bitmap, not the diagnostic string number
 
@@ -1396,6 +1448,101 @@ framing section derived from the image alone is confirmed, and the numbering
 question it left open is now closed - in the opposite direction to what the
 top of this document assumed.
 
+### Wire maps at a glance
+
+These maps use the Recommendations' numbering: bit 0 is transmitted first,
+and a range such as `21:23` is written least-significant bit first.  They show
+the complete framed sequences, not the firmware's reversed buffer offsets.
+
+```text
+V.34 INFO0 / V.90 INFO0a (49 bits)
+
+bit     0       4              12                            29       45   49
+        | fill  | frame sync   | capability and control     | CRC-16 |fill|
+        | 1111  | 01110010     | 17 bits (12 through 28)    |        |1111|
+        +-------+--------------+----------------------------+--------+----+
+time -->
+
+x2 changes the 16-bit capability word at bits 12 through 27.  Bit 28 remains
+the standard acknowledgement bit; framing, CRC and fill are unchanged.
+```
+
+```text
+V.90 INFO1a selecting V.90 (70 bits)
+
+bit     0       4          12      18      25      32   34   37   40       50       66   70
+        | fill  | sync     |rsvd   | MD    | UINFO |rsvd|rate | 6   |offset   | CRC-16 |fill|
+        | 1111  |01110010  |000000 |7 bits |7 bits |00  |3bit |110* |10 bits  |        |1111|
+        +-------+----------+-------+-------+-------+----+-----+-----+---------+--------+----+
+time -->
+
+* `6` is an integer carried LSB first, so its transmitted bits are `0,1,1`.
+  Values 0 through 5 in the same field select V.34 instead.
+```
+
+The first map is where x2 announces itself.  The second is the standardized
+replacement: V.90 names the protocol directly after probing instead of making
+the peer recognize a pattern of V.34 capabilities before probing.
+
+### V.34 INFO0 capability bits and their x2 use
+
+Table 14/V.34 defines bits `12:27` as ordinary V.34 capabilities.  The Courier
+constructs an x2-specific version of that word and sends it with the same
+INFO0 framing.  The table below therefore separates the standard meaning from
+what the bit does during x2 selection.
+
+| ITU bit | V.34 Table 14 meaning | x2 client behavior in this firmware | x2 significance |
+|---:|---|---|---|
+| 12 | 2743 symbol/s supported | copied from S54 | ordinary V.34 fallback capability |
+| 13 | 2800 symbol/s supported | copied from S54 | ordinary V.34 fallback capability |
+| 14 | 3429 symbol/s supported | copied from S54 | ordinary V.34 fallback capability |
+| 15 | 3000 symbol/s low carrier supported | copied from S54 | upstream V.34 carrier capability |
+| 16 | 3000 symbol/s high carrier supported | copied from S54 | upstream V.34 carrier capability |
+| 17 | 3200 symbol/s low carrier supported | copied from S54 | upstream V.34 carrier capability |
+| 18 | 3200 symbol/s high carrier supported | copied from S54 | required local-side condition in the x2 server-recognition test |
+| 19 | 0 disallows 3429 symbol/s transmission | copied from S54 | upstream V.34 constraint |
+| 20 | can reduce transmit power below nominal | copied from S56 | ordinary transmitter capability |
+| 21 | symbol-rate asymmetry bit 0 | replaced by S58 `0x04` | x2 mode parameter; contributes 0 or 1 to the announced asymmetry |
+| 22 | symbol-rate asymmetry bit 1 | normally forced to 1; cleared by S58 `0x10` | x2 mode parameter; contributes 0 or 2 to the announced asymmetry |
+| 23 | symbol-rate asymmetry bit 2 | forced to 0 by the x2 client | distinguishes the client pattern; an x2 server is recognized when remote bit 23 or 24 is set |
+| 24 | CME modem flag | forced to 0 by the x2 client | alternative server marker in the peer-recognition test |
+| 25 | supports up to 1664-point constellations | copied from the V.34-plus option in S56 | ordinary V.34 constellation capability |
+| 26:27 | transmit clock source | forced to `00` | internal clock in V.34; these positions later become reserved-zero in V.90 INFO0a |
+
+The two S58 controls produce the following on-wire asymmetry value.  The bit
+triples are shown in transmitted order (`bit 21, bit 22, bit 23`), so `010`
+represents the integer 2 rather than binary text written most-significant bit
+first.
+
+| S58 `0x04` | S58 `0x10` | bits `21,22,23` on wire | integer | x2 effect |
+|---:|---:|:---:|---:|---|
+| 0 | 0 | `010` | 2 | default x2 client asymmetry |
+| 1 | 0 | `110` | 3 | alternate x2 client asymmetry |
+| 0 | 1 | `000` | 0 | suppress the two-step allowance |
+| 1 | 1 | `100` | 1 | retain only the one-step allowance |
+
+No single one of these standard V.34 bits means "x2".  In the recovered
+Courier code the client recognizes the far end as an x2 server only when its
+own bit 18 is set and the remote INFO0 has at least one of bits 23 or 24 set.
+That conjunction is the proprietary signature.
+
+### V.90 fields that replace the x2 convention
+
+| Sequence and bits | V.90 definition | Difference from x2 |
+|---|---|---|
+| INFO0a `12:25` | analogue-side V.34 capabilities | largely the same information as V.34 INFO0; x2 had already used this message for its signature |
+| INFO0a `26:27` | reserved, transmit as zero | matches the zero value forced by the x2 client, but V.90 removes the V.34 clock-source interpretation |
+| INFO0d `12:28` | digital-side V.34 capabilities and acknowledgement | gives the digital modem a separately named, longer INFO0 message; x2 inferred the server role from the shared INFO0 pattern |
+| INFO0d `29:41` | digital transmit power, measurement point, PCM law and 3429-upstream capability | explicit digital-side parameters with no recovered x2 INFO0 equivalent |
+| INFO1a `37:39` | integer 6 requests V.90; 0 through 5 request V.34 | the direct protocol selector x2 lacks |
+| INFO1a `25:31` | UINFO Ucode for the digital modem's two-point train | standardized PCM training parameter; the firmware writes it as `127 - @3e` |
+| INFO1a `34:36` | analogue-to-digital upstream symbol rate | standardizes the V.34 upstream choice used alongside the PCM downstream |
+
+The result is a difference in signalling, not merely a different CONNECT
+label: x2 changes a complete INFO0 capability word before probing, whereas
+V.90 preserves the capability exchange and makes the final protocol choice in
+one three-bit INFO1a field after probing.
+
 ### What V.34 10.1.2.3 says
 
 * **Modulation** - "All INFO sequences are transmitted using binary DPSK
@@ -1525,7 +1672,7 @@ Two further writers fall into place the same way, both into the 38-bit body:
 A 7-bit value written at the LSB of a 7-bit field, and a 3-bit value at the
 LSB of a 3-bit field.
 
-### Still open
+### Remaining V.90 producer question
 
 **Who writes ITU bits 37:39.**  No `8769` site in this image uses offset
 `0x0c`, so the field `8fbc` reads back is not written by the bit-field writer
@@ -1648,12 +1795,13 @@ why the firmware needs a ten-bit `fff7` condition bitmap and a failure enum
 explain what went wrong.  V.90 needs none of that; a mismatch is just
 `37:39 != 6`.
 
-### Still open
+### Resolved later in this document
 
-The *content* of `fff1` versus `fff2` is set by the supervisor, not the DSP, so
-the specific x2 bit pattern is an 80186-side question this section does not
-answer.  What is established here is where it goes, what constrains it
-(ITU `26:27` forced to 0), and how the peer is tested.
+The *content* of `fff1` versus `fff2` is set by the supervisor, not the DSP.
+The later sections "The actual x2 bits in INFO0" and "The whole capability
+word, field by field" complete that 80186-side trace: x2 overrides INFO0 bits
+`21:24` and `26:27`, while the remaining fields come from S54, S56, and the
+channel capability byte.
 
 ## Is there an x2 INFO1?
 
@@ -2426,8 +2574,8 @@ So the three edits are three fields, not six scattered bits:
 
 ### Why that field, and why it is not really a hack
 
-x2 is an asymmetric protocol - PCM downstream, V.34 upstream - so the transmit
-and receive symbol rates genuinely differ.  ITU `21:23` is the field V.34
+x2 client/server operation is asymmetric - PCM downstream, V.34 upstream - so
+the transmit and receive symbol rates genuinely differ.  ITU `21:23` is the field V.34
 already provides for exactly that, and x2 sets it to 2 or 3 steps.  The clock
 source matters for the same reason: the digital end is network-synchronised
 and the analogue end must run on its own clock, which is what `26:27 = 0`
@@ -2693,13 +2841,14 @@ constant initialisers (`0200`, `0800`, `1000`, `1800`) and some computed
 producers traced.  The *shape* - log, linear map, knee, clamp, one index per
 1333 1/3 bit/s - is what this establishes.
 
-## Where x2's rate agreement happens is still unlocated
+## Where x2's rate agreement happens
 
 V.90 specifies this completely: the analogue modem measures during DIL, sends
 its request in CP, and the result is confirmed in MP - all named phases with
-named sequences.  For x2 the equivalent is **not** established here, and the
-distinction matters, because what the previous section found is a *local*
-chain, not a wire one.
+named sequences.  For x2 the measurement path below is local, while the later
+section "The rate negotiation is in MP" locates the wire agreement in the
+shared V.34 MP machinery.  The historical investigation is retained here to
+show why tag `69` must not be mistaken for an on-wire rate request.
 
 ### What is established
 
@@ -3128,7 +3277,7 @@ found here is the codeword set such a sequence would draw from.  Locating the
 generator that emits it - in the NAC, since the digital modem is the end that
 transmits - remains the open item.
 
-## Reaching the NAC's datapump: the blocker
+## Reaching the NAC's datapump: historical blocker
 
 The expected Phase 3 transmit order is `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`,
 then DIL - so after datapump setup the **first codeword the digital modem
@@ -3153,13 +3302,23 @@ alignment signal directly.  Three attempts, all blocked at the same place:
   downloader's own call site; without the NAC's loader there is no such
   anchor.
 
-So the next step is not more searching in the DSP domain: it is **finding the
-Quad NAC's DSP overlay loader in its 80186 controller code**, and deriving its
-table the way `CourierRom` derives the Courier's.  Once that exists, the
-codeword table at `5cf88` resolves to a DSP address, the code around it
-becomes readable, and the Sd generator should be immediately adjacent.
+This blocker is now resolved.  [How the Quad loads C50 code](quad-c50-overlay-loader.md)
+recovers all eight supervisor rows and the DSP-side pull loader.  In
+particular, the PCM core is loaded at `a180`, and the alternate PCM-mode image
+containing the codeword constructor is loaded at `c300`.  The executable probe
+in `tools/probe_quad_pcm_codewords.py` loads those rows at their real DSP
+addresses and runs the constructor.  The remaining task is therefore to trace
+the state machine that calls the constructor and emits the alignment burst,
+not to recover the overlay map.
 
 ## The Quad's DSP loader is the same shape, with different constants
+
+> **Superseded.**  The `CS:eb98` interpretation below was a false start.  The
+> recovered table is at physical `0x93ba2..0x93be1`, with eight contiguous
+> `(source paragraph, length, destination)` rows, and the resident pulls the
+> selected words through DSP I/O `0x58..0x5b`.  See
+> [How the Quad loads C50 code](quad-c50-overlay-loader.md).  This section is
+> retained as an investigation record, not as a current blocker.
 
 The previous section's blocker was overstated: the Quad loader **is**
 recognisable, it just does not match the Courier's byte signature.  In

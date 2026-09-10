@@ -1,0 +1,114 @@
+{
+  "x2_flat_bias": "0x18100",
+  "tests": [
+    {
+      "build": "x2",
+      "direction": "scrambler",
+      "entry": "0x8c63",
+      "flag": 0,
+      "taps": [
+        18,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "x2",
+      "direction": "scrambler",
+      "entry": "0x8c63",
+      "flag": 1,
+      "taps": [
+        5,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "x2",
+      "direction": "descrambler",
+      "entry": "0x8c94",
+      "flag": 0,
+      "taps": [
+        5,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "x2",
+      "direction": "descrambler",
+      "entry": "0x8c94",
+      "flag": 1,
+      "taps": [
+        18,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "403",
+      "direction": "scrambler",
+      "entry": "0x8cb7",
+      "flag": 0,
+      "taps": [
+        18,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "403",
+      "direction": "scrambler",
+      "entry": "0x8cb7",
+      "flag": 1,
+      "taps": [
+        5,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "403",
+      "direction": "descrambler",
+      "entry": "0x8ce8",
+      "flag": 0,
+      "taps": [
+        5,
+        23
+      ],
+      "cases": 288
+    },
+    {
+      "build": "403",
+      "direction": "descrambler",
+      "entry": "0x8ce8",
+      "flag": 1,
+      "taps": [
+        18,
+        23
+      ],
+      "cases": 288
+    }
+  ],
+  "training": {
+    "x2_entry": "0xed2e",
+    "403_entry": "0xf938",
+    "identical_words": 18,
+    "x2_flat_offset": "0x3f8cc",
+    "six_bit_cases": 256
+  },
+  "v90_descriptor_signatures": {
+    "SP": {
+      "x2_count": 0,
+      "403_count": 1
+    },
+    "TP": {
+      "x2_count": 0,
+      "403_count": 1
+    },
+    "descriptor_header": {
+      "x2_count": 0,
+      "403_count": 1
+    }
+  }
+}
