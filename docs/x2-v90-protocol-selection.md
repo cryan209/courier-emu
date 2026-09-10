@@ -1533,3 +1533,10 @@ anywhere in the downloaded program.  Either an overlay writes it - `ebea` and
 `ec0f` also call `877a` - or it is deposited by a path this sweep has not
 covered.  That is the remaining question for the V.90 request, and it is a
 narrower one than the original "which site selects V.90".
+
+### Server side
+
+The Total Control Quad NAC images build the digital-modem half of the same
+protocol, on the same serializer, selecting a 17- or 30-bit INFO0 body at run
+time.  See "What the NAC changes for x2 and V.90" in
+[`quad-x2-modem-nac.md`](quad-x2-modem-nac.md).

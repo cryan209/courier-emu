@@ -263,3 +263,144 @@ heavily at runtime — `S0CON` at 38 sites, `S0STS` 30, `S0RBUF` 20, `S0TBUF` 39
 Channel 1 is barely used (`S1RBUF` never read). The external `0x220` block
 identified in [nmc-sdl-protocol.md](nmc-sdl-protocol.md) is a separate device
 and is the one the SDL state machine polls, so that identification stands.
+
+## What the NAC changes for x2 and V.90: it can be the digital modem
+
+Measured on `QF060003.NAC` and `QR060103.NAC`, against
+`T-REC-V.90-199809` and the analog Courier baseline in
+[`x2-v90-protocol-selection.md`](x2-v90-protocol-selection.md).
+
+### The INFO machinery is shared, not reimplemented
+
+Both NACs carry the same C5x INFO serializer as the analog Courier, located
+by signature rather than by address:
+
+| signature | Courier 4.03 | `IDSDL302` | QF 6.0.3 | QR 6.1.3 |
+|---|---|---|---|---|
+| bit-field writer prologue | `8769` | present | `9948` | present |
+| bit-field reader prologue | `877a` | present | `9959` | present |
+| DPSK symbol `+/-21fc` | `99ed` | present | `a03c` | `9e3c` |
+| CRC poly `8408` | `99e6` | present | `a035` | `9e5f` |
+
+The fill constant `04ef` is loaded with `lacc`/`sacl` instead of `splk`, which
+is why a naive `splk @50,#04ef` byte search misses it - not because the fill
+differs.  The script tables are structurally identical to the Courier's: the
+same `12 / body / 16 / 4` framing, the same idle-42 and reference-symbol
+steps, and the same three `ff1a` body lengths 77, 38 and 7.  Only the symbol
+output cell is relocated (`01fa` on the Courier, `0218` on QF, `0426` on QR).
+
+### The one protocol difference: a 17-or-30 bit INFO0
+
+On the Courier the INFO0 script step is a fixed 17-bit body.  On both NACs the
+step is nominally 17, but its handler rewrites the count before emitting:
+
+```text
+a01f  bit   0, @1f
+a020  lacl  #1e              ; 30
+a021  xc    1, tc
+a022  sacl  @4a              ; @1f bit 0 set -> body becomes 30 bits
+a023  splk  @48, #a025       ; then hand off to the ff18 emitter
+a025  bd    a02b, *
+a027  lar   ar0, #ff18
+```
+
+17 and 30 are exactly the two V.90 INFO0 body lengths:
+
+| sequence | ITU table | info bits | frame |
+|---|---|---|---|
+| INFO0a - analogue modem | Table 8/V.90 | `12:28` = 17 | 49 |
+| INFO0d - **digital modem** | Table 7/V.90 | `12:41` = 30 | 62 |
+
+So the NAC selects its V.90 role at run time on one flag, and the analog
+Courier has no such branch.  QR 6.1.3 carries the identical construct at
+`9e4f`.
+
+### The builder proves it is really INFO0d
+
+The same `@1f` bit 0 forks the field construction at `9535`:
+
+```text
+9535  lar   ar1, #039f
+9537  bit   0, *
+9538  bcnd  9540, tc          ; digital role -> skip the analogue write
+953a  lar   ar0, #ff18
+953c  bd    9948, *
+953e  splk  @7f, #0010        ; offset 16 -> INFO0a bits 12:27
+9540  ...                     ; digital path continues
+```
+
+Applying the offset rule from the Courier work (`ITU bit = 12 + (N-1-offset)`,
+so `41 - offset` when `N = 30`), the three digital-path writes land on Table 7
+field boundaries:
+
+| site | offset | ITU bits | value written | Table 7/V.90 |
+|---|---|---|---|---|
+| `9547` | 29 | 12:27 | `[ffdb] & f1ff` | the shared capability field, with `21:23` forced to 0 |
+| `9550` | 12 | 29:38 | `6 + ([ffdf] << 5)` | `29:32` nominal Phase 2 power; `33:37` maximum power |
+| `955f` | 3 | 38:40 | see below | `38`, `39`, `40` |
+
+The last one is the cleanest confirmation, because it is three single-bit
+fields in a row:
+
+```text
+9554  lar   ar1, #ffd9
+9556  bit   0, *
+9557  lacl  *
+9558  cmpl
+9559  and   #00000800
+955b  bsar  11                ; value bit 0 = NOT [ffd9] bit 11
+955c  xc    1, tc
+955d  add   #02               ; value bit 1 = [ffd9] bit 0
+955e  add   #04               ; value bit 2 = 1
+955f  calld 9948, *
+9561  splk  @7f, #0003
+```
+
+Value bit `j` lands on ITU bit `38 + j`, and Table 7 reads:
+
+* **38** - "the digital modem's power shall be measured at the output of the
+  codec", from the complement of `[ffd9]` bit 11;
+* **39** - "PCM coding in use by digital modem: 0 = mu-law, 1 = A-law", from
+  `[ffd9]` bit 0;
+* **40** - "ability to operate V.90 with an upstream symbol rate of 3429",
+  hard-wired to 1.
+
+Three named V.90 digital-modem fields, in order, from one write.  This also
+re-derives the Courier's offset rule independently on the server side.
+
+The `29:38` write is consistent in the same way but needs one inference: the
+nominal field `29:32` receives the literal 6, and `[ffdf]` lands from ITU bit
+34 up.  Since `29:32` is in -1 dBm0 steps and `33:37` in -0.5 dBm0 steps, a
+value at bit 34 rather than 33 is the same power doubled - the unit
+conversion between the two fields.  That reading is an interpretation; the
+raw fact is the expression `6 + ([ffdf] << 5)` at offset 12.
+
+### What is *not* different
+
+The x2 half is not a separate server protocol in these images.  The NAC has no
+`ff18`-side x2 construction the Courier lacks, and the x2 diagnostic
+vocabulary is **client-only**:
+
+| string | QF 6.0.3 | Courier 4.03 | `IDSDL302` |
+|---|---|---|---|
+| `not a Server` | 0 | 1 | 1 |
+| `not x2` | 0 | 1 | 1 |
+| `Multiple CODECs` | 0 | 1 | 1 |
+| `Incompatible versions` | 0 | 1 | 1 |
+| `V.90 Status` | 0 | 2 | 2 |
+| `x2 Status` | 2 | 1 | 1 |
+| `x2 Signature` | 2 | 0 | 0 |
+
+That distribution is what a server should look like: the failure enum -
+"Remote modem is not a Server", "Multiple CODECs in channel" - is what a
+*client* prints about a peer, so the NAC does not carry it.  What the NAC adds
+is `x2 Signature` alongside `x2 Status` in its link-diagnostics label block,
+which the Courier does not have.
+
+### What this does not establish
+
+These are static findings from the flattened images.  Nothing here has been
+executed, and the flag that selects the digital role - `@1f` bit 0 in the DSP -
+has not been traced back to the controller command or configuration that sets
+it.  That producer is the next step, and it is the same kind of question as
+the open `37:39` writer on the Courier side.
