@@ -1614,14 +1614,36 @@ This also corrects the polarity used in the S58 table above: bits 1, 2 and 8
 are *disables*, so capability bits 11 and 12 are cleared when symmetric and
 server are **disabled**, and carry the advertisement when they are on.
 
-### On half-dB power steps
+### Half-dB steps are real, and Table 15/V.90 is the scale
 
-Not found in this tree, stated as a negative rather than a denial.  The
-management surface has no V.90 power object at all - `tcmw6013`, the V.90-era
-Total Control build, has `hdmScV90Analogue`, `hdmScV90Digital` and
-`hdmScV90AllDigital` and no power level beside them - and the only `x2`
-power control anywhere in the vendor MIBs is the one boolean above.  Sweeping
-the 4.03 DSP payload for geometric ladders at 0.5, 1.0 and 1.5 dB ratios finds
-exactly one run of six or more: an eight-entry 1 dB ladder in overlay 6, the
-V.34 overlay.  If V.90 signals digital-side power in half-dB steps, it is not
-visible in these images, and nothing here contradicts it either.
+Confirmed from the Recommendation rather than from these images.  Table
+15/V.90, "Limits for the average power calculation", is indexed by "Maximum
+digital modem transmit power, dBm0" and runs **-0.5 to -16 dBm0 in 0.5 dB
+steps**, each row giving a squared amplitude limit from `(15124)^2` down to
+`(2540)^2`.  So V.90 does resolve digital-side transmit power to the half
+decibel.
+
+Two things follow for the `-6` question, and both point the same way as the
+Enable/Disable reading above.
+
+**The scale is dBm0 and its ceiling is -0.5.**  0 dBm0 is not the standard
+power; it is not a permitted value at all - the table stops half a decibel
+short of it.  The ladder runs downward from there, so every real operating
+point is negative, and a bit named "-6dbm" is naming a row in the upper third
+of that ladder rather than an attenuation from a 0 dBm norm.
+
+**-6 against the customary -12 is exactly a 6 dB uplift.**  Both are rows in
+this table, twelve steps apart, and `(8028)^2` against `(4024)^2` is the
+factor of four in power that 6 dB means.  That is the shape of the feature the
+server MIB calls high-power and restricts by country.
+
+**The table itself is in none of these images.**  Ten client builds
+(`IM010501` through `Ie030002`, plus the 4.03 Courier ROM) and ten server
+images (`QF060003`, `QR060103`, `NM040103`, the HiPer DSP and NETServer
+payloads) were searched for it: no run of even three consecutive rows in
+table order at either word alignment, and the squared limits appear in no
+encoding tried - 32-bit little- or big-endian, either alignment.  Isolated
+matches on single amplitudes occur at the rate chance predicts, including in
+`IM020009`, which predates x2 by six months.  Which fits: the limit binds the
+*digital* modem's transmitter, x2 shipped two years before the
+Recommendation, and a client never needs the table.
