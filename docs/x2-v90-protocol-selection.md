@@ -2178,7 +2178,7 @@ corrections to earlier sections:
 Which means x2's 7-bit frame still has **no identified receiver**.  The
 detector was the last candidate and it is not one.
 
-### One difference between x2 generations
+### One apparent difference between x2 generations (it cancels - see below)
 
 The x2-only build writes the modulation-parameter value at bit offset
 **0**, through a different writer:
@@ -2198,3 +2198,102 @@ the field is not in the same place in the two generations - and `91a3` is not
 difference between x2 revisions, and the firmware has a failure string for
 exactly that case: "Incompatible versions".  Confirming it means reading
 `91a3`, which is now possible.
+
+## The two generations number their buffers oppositely - and it cancels
+
+`91a3` is the x2-only build's bit-field writer, the counterpart of `8769`.
+The two derive their shift differently:
+
+```text
+8769  lacl  @7f      |   91a3  (x2-only)
+      cmpl           |         lt    @7f
+      samm  @0d      |         lact  @7b
+      lact  @7b      |         sub   #01
+```
+
+`ADDT`/`LACT` shift by **TREG1**, and `LT` loads TREG0 - but the C5x's PMST
+carries a `TRM` bit, and with `TRM = 0` ("'C2x-compatible mode") any
+C2x-compatible instruction that loads TREG0 **also loads TREG1 and TREG2**
+(`spru056d`, Table 4-3).  So `lt @7f` sets the shift to the offset itself,
+where `cmpl`/`samm @0d` sets it to the complement:
+
+| | x2-only (`91a3`) | 1998 (`8769`) |
+|---|---|---|
+| shift | `offset & 15` | `15 - (offset & 15)` |
+| value bit `j` lands at word bit | `offset + j` | `(15 - offset) + j` |
+| store direction | `sacl *+` / `sach *` | `sacl *-` / `xc` / `sach *` |
+
+The serializer is mirrored to match.  The x2-only body handler keeps its own
+**ascending** counter and shifts left, instead of computing `count - 1`:
+
+```text
+98ad  lacl  @54          ; bit index, counts UP
+98ae  bsar  4
+98af  samm  @18
+98b1  lt    @54          ; TREG1 = index
+98b3  lacl  *
+98b4  satl               ; shift left
+98b6  and   @7b
+...
+98be  lacl  @54
+98bf  add   #01
+98c0  sacl  @54
+```
+
+against 4.03's `lacl @4a / sub #01`, which counts **down**.
+
+So the two generations index the same buffer in opposite directions, and the
+serializer inverts with the writer.  **The bits reach the line in the same
+order.**  Writing the 7-bit field at offset 0 in the x2-only build and at
+offset 6 in 4.03 puts the same bit first in both.  The "Incompatible
+versions" speculation in the previous section is withdrawn: this is an
+internal refactor, not a wire difference.
+
+### The same refactor explains the capability word
+
+Under the ascending convention, buffer indices 0..15 *are* word `ff18`'s bits
+0..15, so the x2-only build does not need the bit-field writer at all - it
+stores the capability word whole:
+
+```text
+8dcd  lar   ar1, #ff18
+8dcf  bldd  *, #fff2        ; default
+8dd1  xc    2, tc
+8dd2  bldd  *, #fff1        ; x2
+8dd4  ret
+```
+
+That is exactly 4.03's `8e4a`-`8e55` (`bldd` into `@7d`, then `8769` at offset
+16), with the offset step made unnecessary by the numbering.  Same field, ITU
+bits `12:27`, both generations.
+
+### What the x2 setup command gained later
+
+The tag-`70` handler is not identical, though:
+
+```text
+8ccb  smmr  @7a, #fff1      ; x2-only
+8ccd  lar   ar1, #fff1
+8ccf  apl   @7d, #fdff      ; extra: clears bit 9 of @7d
+8cd1  apl   *, #3fff        ; same mask - ITU 26:27 forced to 0
+8cd3  opl   *, #0000
+8cd5  lar   ar1, #fff4
+8cd7  splk  *, #8000
+8cd9  ret                   ; ends here
+```
+
+4.03 continues past that point with `lar ar1, #fff7` / `opl *, #0001` - the
+"x2 enabled on local modem" bit.  **The x2-only build never sets it.**  So
+`fff7`, the ten-bit condition bitmap behind the failure enum, is a later
+addition, which fits the enum strings being absent from the server images
+too: the diagnostic apparatus grew after the protocol did.
+
+The capability masking is unchanged between generations - `apl #3fff`, ITU
+bits `26:27` pinned to zero - so that constraint is x2's from the start.
+
+### A search caveat worth recording
+
+The x2-only build addresses these buffers with `lar ar1` where 4.03 uses
+`lar ar0`, so a byte signature built from one generation's `lar` form silently
+misses the other.  Signature searches across generations should match the
+address word, not the whole instruction.
