@@ -3127,3 +3127,34 @@ transmitted sequence with a defined repetition count and symbol order; what is
 found here is the codeword set such a sequence would draw from.  Locating the
 generator that emits it - in the NAC, since the digital modem is the end that
 transmits - remains the open item.
+
+## Reaching the NAC's datapump: the blocker
+
+The expected Phase 3 transmit order is `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`,
+then DIL - so after datapump setup the **first codeword the digital modem
+emits is Sd**, and finding that generator in the server image would give the
+alignment signal directly.  Three attempts, all blocked at the same place:
+
+* **The codeword table is past 64K.**  The shared two-level table sits at
+  `5cf88` in the flattened QF image, which is DSP word address `0x142ec` under
+  the linear map - beyond the 64K program space.  So the NAC's DSP program is
+  overlaid, like the Courier's, and the linear map cannot reach the code that
+  uses it.
+* **`courier_emu.nac` has no overlay support.**  It flattens the container;
+  there is no `dsp_overlays` equivalent.
+* **The Courier's loader signature does not match.**  `CourierRom.dsp_overlays`
+  anchors on the x86 sequence `mov bl,imm8 / mul bl / mov bx,imm16`
+  (`DSP_OVERLAY_TABLE`).  That pattern occurs **zero** times in either NAC, so
+  the Quad's loader is a different routine - unsurprising given its
+  controller-plus-four-channels architecture.
+* **A shape-only search is useless.**  Scanning for three-word rows whose
+  third word is a plausible load address yields 3552 candidates in QF.  The
+  Courier's reader avoids this by cross-checking each row against the
+  downloader's own call site; without the NAC's loader there is no such
+  anchor.
+
+So the next step is not more searching in the DSP domain: it is **finding the
+Quad NAC's DSP overlay loader in its 80186 controller code**, and deriving its
+table the way `CourierRom` derives the Courier's.  Once that exists, the
+codeword table at `5cf88` resolves to a DSP address, the code around it
+becomes readable, and the Sd generator should be immediately adjacent.
