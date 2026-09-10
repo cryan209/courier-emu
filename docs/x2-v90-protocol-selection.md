@@ -7,7 +7,14 @@ V.90 protocol selector.  Addresses below are for
 update ROMs retain x2/V.90 result vocabulary but relocate their executable
 code, so an absolute-address match is not a cross-version test.
 
-## Confirmed V.90 INFO1a writer
+> **Superseded.**  The section below reads `splk @7f, #0025` as writing
+> INFO1a *bits* 37:39.  It does not: the firmware's offsets run opposite to
+> V.34's bit numbering, so offset 37 is bits 12:14.  The V.90 `37:39 = 6`
+> selector is *read* at `8fbc`, at offset 12.  See "Against the ITU
+> Recommendations" at the end of this document; the section is kept here
+> because the surrounding reasoning about `9267` still holds.
+
+## Confirmed V.90 INFO1a writer (superseded - see the ITU section)
 
 In DSP 3.1.2, the code at program `9185` calls `9267`, then writes its returned
 value into the outgoing INFO buffer at bit offset `0x25`:
@@ -1381,3 +1388,148 @@ against an earlier build cite sites that decode to something unrelated in the
 4.03 capture.  The header's warning that the update ROMs relocate their code
 applies to this document's own body text, so an address here should be
 re-resolved before it is trusted, in the way the confirmed table above does.
+
+## Against the ITU Recommendations
+
+Checked against `T-REC-V.34-199610` and `T-REC-V.90-199809`.  Everything the
+framing section derived from the image alone is confirmed, and the numbering
+question it left open is now closed - in the opposite direction to what the
+top of this document assumed.
+
+### What V.34 10.1.2.3 says
+
+* **Modulation** - "All INFO sequences are transmitted using binary DPSK
+  modulation at 600 bit/s.  The transmit point is rotated 180 degrees from the
+  previous point if the transmit bit is a 1, and 0 degrees ... if the transmit
+  bit is a 0."  That is the tail at `99e9` exactly: `@5a ^= bit`, symbol
+  `+/-21fc`.
+* "Each INFO sequence is preceded by a point at an arbitrary carrier phase.
+  When multiple INFO sequences are transmitted as a group, only the first
+  sequence is preceded by a point" - that is the handler at `99be`, which
+  resets `@5a` and branches *past* the XOR so it emits a reference symbol
+  without consuming a data bit.  It explains why only some scripts begin with
+  it.
+* **CRC** - "x16 + x12 + x5 + 1 ... load the shift register with all ones ...
+  output the contents starting with bit 0 ... Bit 0 of the CRC is the LSB."
+  `@59 = ffff`, poly `8408` (the reflection of `1021`), shifted out LSB
+  first.
+* "The CRC is formed by passing all of the information bits in a sequence,
+  **except the frame sync bits, the start bits, and the fill bits**."  That is
+  precisely why `99cc`, `99d1` and `99c2` branch straight to `99e9` and skip
+  the CRC update.
+
+### The fill step is fill bits plus frame sync
+
+Table 14/V.34 gives INFO0 as bits `0:3` "Fill bits: 1111", `4:11` "Frame sync:
+01110010, where the left-most bit is first in time".  The firmware's 12-bit
+step shifts `04ef` out LSB first:
+
+```text
+04ef = 0000 0100 1110 1111   ->   1 1 1 1 | 0 1 1 1 0 0 1 0
+                                  fill      frame sync
+```
+
+So `04ef` is not an opaque constant: it is V.34's fill-plus-frame-sync packed
+into one word for an LSB-first shift register.  The 4 trailing bits are the
+closing "Fill bits: 1111" at `45:48`.  Every INFO sequence in both
+Recommendations uses the same `1111` / `01110010` opening, which is why one
+`99c6` step heads every script.
+
+### Offsets run opposite to ITU bit numbering
+
+V.34 numbers a sequence from bit 0 "transmitted first in time", and the
+serializer emits body offsets `N-1` down to `0`.  Therefore, for a body of
+`N` bits occupying sequence bits `12 : 12+N-1`:
+
+```text
+ITU bit = 12 + (N - 1 - offset)
+```
+
+This is not an inference from one site.  The loop at `9172`-`9180` runs five
+iterations, stepping `@7f` down by 9 from `3f`, and writes
+`[ff20+i] | ([ff28+i] << 5)` each time:
+
+| offset | ITU bit (N = 77) | Table 9/V.90 field |
+|---|---|---|
+| 63 | 25 | probing results, 2400 |
+| 54 | 34 | probing results, 2743 |
+| 45 | 43 | probing results, 2800 |
+| 36 | 52 | probing results, 3000 |
+| 27 | 61 | probing results, 3200 |
+
+Five 9-bit fields landing exactly on their ITU boundaries, walked in
+increasing symbol-rate order.  The 1 + 4 + 4 sub-field layout of each
+(`25` carrier, `26:29` pre-emphasis, `30:33` rate) is why the value is
+`ff20[i]` in bits 0:4 with `ff28[i]` shifted up by 5.  Under the opposite
+reading every field would be misaligned by 2 and the rates would be walked
+backwards.
+
+### The sequences the four scripts build
+
+| script | body | frame | sequence |
+|---|---|---|---|
+| `9983` (`ff18`) | 17 | 49 | INFO0 (V.34 Table 14) = INFO0a (V.90 Table 8) |
+| `998d` (`ff1a`) | 77 | 109 | INFO1c (V.34 Table 15) = INFO1d (V.90 Table 9) |
+| `9999` (`ff1a`) | 38 | 70 | INFO1a (V.90 Table 10 / Table 11) |
+| `99a3` (`ff1a`) | 7 | 39 | not matched to a named sequence |
+
+### `ff18` decoded against Table 14
+
+| firmware | ITU bit | Table 14 meaning |
+|---|---|---|
+| `8e53`, offset 16, a 16-bit word | 12:27 | the whole capability field - symbol rates, carrier abilities, asymmetry, CME, 1664-point, clock source |
+| `ff18` word bit 15 = offset 0 | 28 | "acknowledge correct reception of an INFO0 frame during error recovery" |
+| `ff18` word bit 5 = offset 10 | 18 | "ability to transmit at the high carrier frequency with a symbol rate of 3200" |
+
+The second and third are independent confirmations.  Bit 28 is set by
+`opl *, #8000` at `8e8b`, `9120` and `9141` - each immediately before the
+`8766` sequencer call, on the error-recovery paths, which is what an
+error-recovery acknowledgement is for.  And ITU bit 18 is the local 3200
+capability, which is what this document's own result-string table calls
+**"3200 baud disabled on local modem"**.  So the `fff1`/`fff2` word is the
+INFO0 capability field, and the two loose bits are named.
+
+### The correction to this document's opening claim
+
+`9189`/`918b` writes at offset `0x25` = 37.  In the 38-bit INFO1a body that is
+**ITU bits 12:14**, not 37:39.  Table 11/V.34 makes 12:14 the "Minimum power
+reduction ... An integer between 0 and 7", and `9267` ends by clamping its
+result to exactly `0..7` (`lacl #07 / crlt`, `lacl #00 / crgt`).  So `9185` is
+the power-reduction writer.
+
+The V.90 selector is *read*, at `8fbc`, and the read is unmistakable:
+
+```text
+8fba  call  9185, *
+8fbc  lacl  #0c                ; offset 12  ->  ITU bits 37:39
+8fbd  calld 877a, *
+8fbf  lar   ar0, #ff1a
+8fc1  and   #00000007          ; three bits
+8fc3  sub   #06                ; ... against 6
+8fc5  xc    2, neq
+8fc6  apl   @1f, #bf7f         ; not 6 -> clear @1f bit 7
+8fc8  splk  @4b, #9999         ; arm the 38-bit INFO1a script
+```
+
+Table 10/V.90: "Bits 37:39 represent the integer 6, indicating that V.90
+operation is desired."  Mask to three bits, compare with 6, and drop a flag if
+it differs.
+
+Two further writers fall into place the same way, both into the 38-bit body:
+
+| firmware | offset | ITU bit | Table 10/V.90 |
+|---|---|---|---|
+| `925a`/`925c`, value `127 - @3e` | 24 | 25:31 | UINFO, a 7-bit Ucode |
+| `9263`/`9265`, value `@5b + 30` | 15 | 34:36 | symbol rate, an integer 3..5 |
+
+A 7-bit value written at the LSB of a 7-bit field, and a 3-bit value at the
+LSB of a 3-bit field.
+
+### Still open
+
+**Who writes ITU bits 37:39.**  No `8769` site in this image uses offset
+`0x0c`, so the field `8fbc` reads back is not written by the bit-field writer
+anywhere in the downloaded program.  Either an overlay writes it - `ebea` and
+`ec0f` also call `877a` - or it is deposited by a path this sweep has not
+covered.  That is the remaining question for the V.90 request, and it is a
+narrower one than the original "which site selects V.90".
