@@ -498,6 +498,10 @@ all seven images.
 
 ### Tags `70` and `71` are consecutive setup fields, not the two roles
 
+> **Superseded in part.** The dispatch-table base and the bit-numbering
+> convention used below are both wrong; see *The dispatch base is `882b`*
+> at the end of this document for what survives and what does not.
+
 The small resident's 128-word host-command dispatch table starts at `8817`.
 As on the analogue Courier, the received tag is the direct index into this
 table; the valid range is `00..7f`.  The two adjacent entries therefore resolve
@@ -1039,6 +1043,10 @@ x2, but it cannot identify or order x2's proprietary training stages.
 
 ### The proved supervisor-to-x2-DSP bit bridge
 
+> **Superseded in part.** The dispatch-table base and the bit-numbering
+> convention used below are both wrong; see *The dispatch base is `882b`*
+> at the end of this document for what survives and what does not.
+
 The shared machinery does have an x2-specific use, but the discriminator is
 the mode word passed through tag `70`, not `032a`.  The supervisor builder at
 `addca..ade10` edits the active S58-derived capability word before sending
@@ -1118,6 +1126,10 @@ selector the following `bit 0, @60` goes on to test.  The toggle and the test
 are two different bits that happen to be adjacent in the listing.
 
 ### Every producer of mode bits 8 and 13--15, from the one sender
+
+> **Superseded in part.** The dispatch-table base and the bit-numbering
+> convention used below are both wrong; see *The dispatch base is `882b`*
+> at the end of this document for what survives and what does not.
 
 The remaining question - which of the three arms a symmetric call takes - is
 answered by reading the whole of the tag-`70` payload builder rather than only
@@ -1236,6 +1248,10 @@ depended on that site: S58 `08h` at `addf5` clears payload bit 11, and DSP
 `e14f` branches on it.
 
 ### What a symmetric 56000/56000 connection would be
+
+> **Superseded in part.** The dispatch-table base and the bit-numbering
+> convention used below are both wrong; see *The dispatch base is `882b`*
+> at the end of this document for what survives and what does not.
 
 Worth working out, because 56000 is exactly seven bits at 8 kHz and it is
 tempting to read the `e5e7` width as the robbed-bit case.  The firmware has
@@ -1428,3 +1444,130 @@ So `sath ; satl` there is a fixed 24-bit right shift - the top byte of a
 codec is the separate routine at `81b8`, and the earlier claim that no
 companding existed anywhere in the DSP was wrong: no *table* exists, which is
 a different thing.
+
+## The dispatch base is `882b`, and the bit numbers were double-converted
+
+Two mechanical errors ran through the sections above.  Both are settled by
+executable code and by the C5x manual, and together they move the x2 engine's
+mode word to a different pair of host commands.
+
+### The host-command table starts at `882b`, not `8817`
+
+The resident's receive path is at `851c`:
+
+```text
+851f  in   @7d, #005e        ; tag
+8521  in   @7a, #005f        ; payload, one 16-bit port read
+852f  lacl @7d
+8530  sub  #75
+8531  retc gt                ; reject tag > 75h
+8532  add  #88a0
+8534  tblr @7c               ; table[tag] = (tag - 75h) + 88a0h
+8536  cala
+```
+
+The subtraction is never undone, so the base is `88a0 - 75 = 882b` and the
+table is exactly `76h` entries for tags `00..75` - the `add` names its own
+last row.  `8817..882a` is a signed curve (`0038 0027 0017 0008 fff9 …`),
+not addresses.
+
+Three independent checks agree, and each of them fails on `8817`:
+
+* tags `1c` and `1d` reach `a05d` and `a062`, two adjacent handlers that each
+  compute `@7a * 5` into adjacent cells.  Their senders at `aa09a` pass a byte
+  in `bl` - `[9161]` and S9 at `[914d]` - which is exactly a timer being
+  rescaled.  On the old base tag `1c` reaches `834a`, which ignores its
+  argument.
+* tags `5c` and `5d` reach `e11e` and `e11a`.  Their senders at `a9cac` and
+  `a98bf` both finish with `or bl, (es:[0ce0:b5b9] & 3) << 6`, and `e120`
+  opens with `lacc @7a / and #00c0 / sub #c0` - the same two-bit field, in the
+  same two bit positions.
+* tag `70` reaches `91a1`, which masks the payload with `3fffh` - the same
+  two unused top bits the supervisor's own symmetric edit clears.
+
+### The `bit` operand is already the true bit
+
+`spru056d` gives BIT as `(dma bit at bit address (15 - bit code)) -> TC`, and
+[c5x_disasm.py](../tools/c5x_disasm.py) prints `15 - (base & 15)`.  So the
+number in the listing **is** the bit of the word; the "complemented bit codes"
+rule applied above converts a second time and lands back on the raw code.
+Read directly, the engine tests only bits 0--9 and 15 of `@60`/`@6d`, and
+every write to `@60` inside it (`opl #0200`, `xpl #0001`, `apl #fdff/fffd/
+fffe`, `and #0006`) is in that same low range.
+
+### So tag `70` is the capability word, and `5c`/`5d` are the mode word
+
+`91a1` stores the tag-`70` payload, masked to `3fffh`, into DSP cell `ffdb`
+and sets bit 15 of `ffd9`; `91ae` stores tag `71` into `ffda`.  `ffdb` is read
+at `927f`, which picks `ffdb` or `ffdc` on `039f` bit 12 and spills the word
+into the `fef0` work area - a transmit-side capability structure.  That is the
+INFO0 capability word
+[x2-v90-protocol-selection.md](x2-v90-protocol-selection.md) already derives
+from S54/S56/S58, arrived at here from the receiving end.
+
+**What survives.**  The S-register decode is unchanged: the builder at
+`ada3c`/`addca` is still the only tag-`70` sender in all seven builds, S54,
+S56, S58 are still at `917a`, `917c`, `917e`, the help text still names their
+bits, and S58 is still read at exactly five instructions.  What changes is the
+destination: those bits are the **declared capability word**, not the engine's
+mode word, so "symmetric clears payload bit 11, which `e14f` tests" does not
+hold - `e14f` tests bit 4 of a word that comes from somewhere else.
+
+**Where the mode word comes from.**  `@60`/`@6d` are built from the tag-`5c`
+and tag-`5d` payloads, and their builders read the call descriptor rather than
+S-registers.  The tag-`5c` builder at `a9bc0..a9cac`:
+
+```text
+a9bf8  descriptor mode byte = 8   -> leave without sending
+a9c1d  mode byte = 0ah -> ax = 0, [a416] = 1
+a9c25  mode byte = 9   -> ax = 0, [a416] = 3
+a9c2d  otherwise       -> ax = 2 | (descriptor byte +3 << 8), [a416] = 2
+a9c4f  descriptor byte +1 nonzero -> or ax, 1
+a9c5d  S67 bit 2 set (Fix Connection Rate for Digital Calls):
+           and ax, fffeh
+           S67 bit 4 clear (56K, not 64K) -> or ax, 1
+       S67 bit 2 clear:
+           unless [a416] = 2 or [a410] = 3 -> or ax, 4
+```
+
+### Which answers the 56000 question properly
+
+The seven-bit datapump mode is not unwired at all; the earlier section reached
+that conclusion from the wrong tag.  The chain is short and every link is an
+instruction:
+
+```text
+S67 bit 4 clear = "Connect at 56K"
+    -> tag-5c payload bit 0            (a9c81: or ax, 1)
+    -> @60 bit 0                       (e120: lamm @7a / orb / sacl @60)
+    -> e5e7 selects mask 007fh, width @02 = 7
+    -> 7 bits x 8 kHz = 56000
+```
+
+`e5e7`'s other consumer agrees: `e17c` doubles `@63/@64` when bit 0 is
+**clear**, the 64K case.  So a restricted 56k digital bearer really does drop
+the datapump to a seven-bit alphabet, and the eight-bit alphabet is the 64K
+bearer - which is what the `56000/DIGITAL` and `64000/DIGITAL` result codes
+are naming.  The x2 ladder's own 56000 (`K = 42`, MP ordinal 13, eight-bit
+codewords in a six-symbol frame) remains a separate mechanism for analogue
+paths; both exist, and they are not the same 56000.
+
+`e172`'s three arms are live for the same reason.  Bit 2 selects `e60b` and is
+set for descriptor modes `0ah` and `9` on an unfixed rate; bit 1 selects
+`e822` and is set for the `ax = 2` family, every descriptor mode that is
+neither `0ah` nor `9`; bit 0 - the 56K bit - then chooses the width in the
+fall-through arm.
+
+### The -6 dBm constellation
+
+S58 bit `10h`, "-6dbm constellation", sets capability-word bit 10, which
+reaches `ffdb` and the transmitted INFO0 word.  The server-side counterpart is
+in `HDM.MIB` as `hdmScHighPowerConst`, S76.7: "used to enable/disable the X2
+high-power constellation.  This object is only valid in countries, where it is
+legal."
+
+There is no 0 dBm constellation.  The string `dbm` occurs once in the whole
+I-modem image, in that one help line; the analogue Couriers do not carry the
+option at all, and their only `-dBm` strings are the level displays and the
+S16/S17 transmit-level registers.  It is a single boolean: the ordinary
+constellation, or the one that transmits 6 dB hotter where regulation permits.
