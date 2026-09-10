@@ -1182,6 +1182,92 @@ Three consequences follow directly.
 The remaining `e172` unknown is now narrow: what selects seven-bit operation,
 given that no shipping producer does.  A second tag, a later build, or a
 field of `@7d:@7f` imported at `e141..e146` are the three places to look.
+The first of those is now excluded: `IM020104`, `IE020104`, `IE020202`,
+`IE020405`, `IM020406`, `IE020706` and `Ie030002` each contain exactly one
+tag-`70` sender, and all seven carry the identical `and f9ff / or 0200 /
+or 1800 / or 0400 / and 3fff` edit set.  No I-modem build from the first x2
+release to the V.90 era ever sets bit 14 or bit 15.
+
+### The firmware names its own S-register bits
+
+No inference was needed for S54, S56 and S58 after all: the on-line help text
+the `AT$` screens print is in the image, at `ba130..ba420`, and it enumerates
+the bits by value.
+
+```text
+S54  1 2400 / 2 2743 / 4 2800 / 8 3000 / 16 3200 / 32 3429 symbol rate
+     64 V.8 Call Indicate / 128 V.8 Mode
+S56  1 Non linear coding / 2 TX level deviation / 4 Pre-emphasis /
+     8 Pre-coding / 16 Shaping / 32 V34+ / 64 V.34 / 128 V.FC
+S58  x2 Mode and Remote Server Xmit:
+     1 x2 / 2 server mode / 4 Force x2 A-law mode / 8 symetric mode /
+     16 -6dbm constellation
+S67  Misc. ISDN Configuration:
+     1 Enable V.110 in Automode / 2 Fix Connection Rate for Digital Calls /
+     4 Connect at 64K (else 56K) / 8 AT&T 5ESS Custom: Route Analog to
+     Data Port / 16 Enable Data Link Delay
+```
+
+This confirms the byte assignments from the S0 = `9144` anchor exactly - S54,
+S56 and S58 two apart at `917a`, `917c`, `917e` - and it names two payload
+bits this document had left unnamed: bit 13 is **V34+ enabled**, and bit 10,
+the `or bx, 0400` from S58 `10h`, is the **-6 dBm constellation**, whose
+consumer is `bit 5, @60` at `e14c` branching to `e62c`.
+
+It also shows that **S58 is a DSP register and nothing else.**  All five of
+its bits are read at exactly five instructions - `add95`, `addd1`, `adde0`,
+`addeb`, `addf5` - every one of them inside the tag-`70` builder.  x2 enable,
+server, A-law, symmetric and constellation power reach the datapump through
+that one word and touch no other part of the supervisor.
+
+### Correction: the mode-8 descriptor override is S67, not S58
+
+Which forces a correction to the "S58 bit 8 makes both descriptors mode 8"
+section above.  The byte those builders test is `2800:9187`, and `9187` is
+nine past S58, so it is **S67** - and S67 is also read DS-relative elsewhere
+in the same task, so the two views are one array, not two registers that
+happen to share an offset.  S67 bit `08h` is "AT&T 5ESS Custom: Route Analog
+to Data Port", so `5f649` and `6057c` are rewriting a call descriptor for
+5ESS analog-to-data-port routing, not for x2 symmetric.  The four writes and
+the release bounding stand as observations; the register attribution does not.
+
+The genuinely load-bearing symmetric evidence is unaffected, because it never
+depended on that site: S58 `08h` at `addf5` clears payload bit 11, and DSP
+`e14f` branches on it.
+
+### What a symmetric 56000/56000 connection would be
+
+Worth working out, because 56000 is exactly seven bits at 8 kHz and it is
+tempting to read the `e5e7` width as the robbed-bit case.  The firmware has
+three separate 56k mechanisms and they are not the same thing.
+
+**The x2 rate ladder already contains 56000, at full eight-bit width.**  Rates
+are `K * 8000/6` - `K` bits per six-sample frame - so 56000 is `K = 42`, MP
+ordinal 13, against 64000's `K = 48`, ordinal 15.  A symmetric call at
+56000/56000 is both directional MP nibbles carrying 13.  The datapump still
+runs eight-bit codewords; the six-symbol frame mapper is what drops the
+average to seven bits per sample.  Nothing about that needs mode bit 15, and
+the `a340..a356` directional minimum already makes the two nibbles equal.
+
+**The ISDN 56k restriction is a bearer setting that never reaches the DSP.**
+S67 bit 4, "Connect at 64K (else 56K)", is read at `7d57d`, `7d651` and
+`7d70e`, each time in call setup and each time paired with S67 bit 2, "Fix
+Connection Rate for Digital Calls".  S67 is not read by the tag-`70` builder
+at all.  That is the `56000/DIGITAL` result code's path - rate adaption in the
+ISDN front end, consistent with this document's finding that the ISDN modes
+are not in the DSP.
+
+**Mode bit 15 is the third thing, and it is an alphabet restriction rather
+than a rate.**  It sets the codeword mask to `007fh` and the width `@02` to 7,
+and `@02` is the bit count the resident packer at `83c9` counts `@04` against
+while shifting octets together.  Seven-bit width means the eighth bit of every
+sample is unusable - a channel that can carry only seven bits, which is what a
+genuinely restricted 56k digital path is, as distinct from a clean channel run
+at a lower rate.  The hardware supports it; no shipping producer selects it.
+
+So the honest statement is that a 56000/56000 symmetric connection in this
+firmware is ordinal 13 on a 64k-clean bearer, and the seven-bit datapump mode
+that would serve a restricted bearer was built and left unwired.
 
 Both spaces are reproducible from the archive with
 [imodem_x2_map.py](../tools/imodem_x2_map.py):
