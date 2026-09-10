@@ -2541,3 +2541,59 @@ capability word and INFO0 field numbers, are the ones that generalise.
 The x2-only build shows the same split from the other side: its status report
 builds the tag-`6b` word from `fff6` and `ff01`, where 4.03 uses `fff7` and
 `ff00`.
+
+## What else does x2 set? Nothing else on the wire
+
+Enumerating every bit-field write into each buffer, by tracking `ar0` and
+collecting the `splk @7f, #offset` that follows:
+
+| build | `ff18` offsets | `ff1a` offsets | `ff48` (MP rx) |
+|---|---|---|---|
+| `SDL_CS3` (1995, V.34 only) | - | **0, 3, 6, 13, 18, 22, 28** | 2, 6 |
+| `sdl6-x2` (x2-only) | - | **0, 3, 6, 13, 18, 22, 28** | 2, 6 |
+| `SDL_49`, 4.03 (x2 + V.90) | 16 | 6, 9, 15, 19, 24, 37, 63, 76 | 2, 6 |
+
+**The x2-only build's INFO1 writes are identical to the 1995 V.34-only
+build's.**  Same seven offsets, same buffer.  x2 adds nothing to INFO1.
+
+Neither build lists `ff18` offsets because both store the capability word with
+a whole-word `bldd`, as recorded earlier - the ascending numbering makes the
+offset writer unnecessary there.
+
+Under that ascending convention (`ITU = 12 + offset`) the seven land on
+Table 15/V.34's own field starts:
+
+| offset | ITU | Table 15/V.34 field |
+|---|---|---|
+| 0 | 12 | minimum power reduction, `12:14` |
+| 3 | 15 | additional power reduction, `15:17` |
+| 6 | 18 | length of MD, `18:24` |
+| 13 | 25 | high carrier at 2400, `25` |
+| 18 | 30 | projected maximum data rate at 2400, `30:33` |
+| 22 | 34 | probing results, 2743, `34:42` |
+| 28 | 40 | inside that same 2743 field |
+
+Six exact field starts, and one write inside the 2743 probing field - the
+older builds fill the probing results with individual writes where the
+V.90-era firmware uses the five-iteration loop.  That difference is a
+refactor, like the buffer numbering; it is not an x2 field.
+
+### So x2's complete on-wire footprint is two things
+
+1. **The INFO0 capability word** - three Table 14 fields driven to x2 values:
+   symbol-rate asymmetry `21:23`, the CME flag `24`, transmit clock source
+   `26:27`.  Everything else in that word is S54/S56/channel state that x2
+   leaves alone.
+2. **The 7-bit modulation-parameter frame** - carrier bit plus two 3-bit
+   symbol-rate indices, in an INFO-framed burst of its own, with the
+   out-of-range value 6 marking the PCM direction.
+
+And that is all.  Not INFO1, not MP, not a Jd-equivalent, and no new CRC
+family.  Every other difference found in this investigation - the `fff7`
+bitmap, the result ladders, the status formatters, the failure enum - is
+supervisor or diagnostic plumbing that arrived later than the protocol and
+varies by firmware version.
+
+For a proprietary 56k protocol layered on V.34, that is a remarkably small
+footprint, and it is why x2 falls back to plain V.34 so cleanly: strip the two
+additions and what remains on the wire is a conforming V.34 handshake.
