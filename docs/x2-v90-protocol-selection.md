@@ -1735,9 +1735,9 @@ Their script tables stop after the 38-bit script.  QF 6.0.3 ends at `9ff5`
 with the six extra entries that make up the 7-bit script.  So this message is
 built by the analogue Courier and not by the server images.
 
-That asymmetry is consistent with a client-to-server message - receiving does
-not need a send script, since reception is demodulator plus `877a` reads on
-`ff08` - but it is not proof of one.
+That asymmetry looked at first like a client-to-server message, since
+receiving needs no send script.  The receive side does not support that
+reading - see the next section.
 
 ### What this does and does not establish
 
@@ -1751,3 +1751,96 @@ reads as a short signalling or acknowledgement frame in the x2 phase rather
 than an INFO1 counterpart.  Naming its codes (`4d`, `69`, `48`/`49`) and
 finding the matching receive path is the next step, and the receive side is
 the better target because it is present in both the Courier and the NACs.
+
+## The receive side, and what it says about the 7-bit frame
+
+### The INFO receiver
+
+`98f9` validates a received INFO frame out of the staging buffer at `0252`:
+
+```text
+98f9  lar   ar0, #0252
+98fb  calld 877a, *
+98fd  lacl  @22
+98fe  add   #17                 ; sync at offset @22 + 23, 8 bits
+9900  and   #000000ff
+9901  xor   #0000004e           ; V.34 frame sync
+9903  retc  neq
+9904  splk  @1f, #ffff          ; CRC preset
+9906  lacl  @22
+9907  sacl  @7d
+9908  calld 877a, *             ; loop: offsets @22+15 down to 16
+990a  lacl  @7d
+990b  add   #0f
+990c  and   @7b
+990d  xor   @1f
+...
+9911  xor   #00008408
+9917  bcnd  9908, neq
+```
+
+`01110010` "left-most bit first in time", shifted in LSB-first, is `4e` - so
+the sync test is V.34's, verbatim.  And the offsets confirm the frame model
+from the receive direction:
+
+| offsets | contents |
+|---|---|
+| `@22+23 : @22+16` | the 8 frame-sync bits |
+| `@22+15 : 16` | the body, `@22` bits |
+| `15 : 0` | the CRC |
+
+`8 + body + 16`, with the leading and trailing `1111` fills not stored - the
+leading one is consumed by the sync hunt.  Exactly the layout the transmit
+scripts build.
+
+### It is armed for four lengths, and 7 is not one of them
+
+The receiver is parameterised: `@24` selects the buffer, `@22` the body
+length.  `8e60` sets both:
+
+```text
+8e6c  splk  @24, #ff00
+8e6e  lar   ar1, #039f
+8e70  bit   0, *
+8e71  lacl  #11                 ; 17 - INFO0a
+8e72  xc    1, tc
+8e73  lacl  #1e                 ; 30 - INFO0d
+8e74  b     8e79, *
+8e76  ldp   #006
+8e77  splk  @24, #ff08          ; separate entry, length already in ACC
+8e79  sacl  @22
+```
+
+Every call site:
+
+| site | buffer | length | sequence |
+|---|---|---|---|
+| `8e60` | `ff00` | 17 or 30 on `039f` bit 0 | INFO0a / INFO0d |
+| `8ef9` | `ff08` | `26` = 38 | INFO1a |
+| `8fac` | `ff08` | `4d` = 77 | INFO1c / INFO1d |
+| `8fef` | `ff08` | `4d` = 77 | INFO1c / INFO1d |
+
+Those are the four standard bodies and nothing else.  The Courier never arms
+its INFO receiver for a 7-bit body.  The two overlay `877a` sites (`ebea`,
+`ec0f`) read at offsets `e4` and `e8` - 228 and 232 - so they are working on a
+different, much larger buffer, not this frame.
+
+### So the 7-bit frame is unmatched in all three images
+
+Putting the two directions together:
+
+* the analogue Courier **sends** a 7-bit body frame and never arms a receiver
+  for one;
+* neither Quad NAC **sends** one.
+
+Nothing in these three images both produces and consumes it, which removes the
+tidy client-to-server reading offered above.  What remains established is
+unchanged - the frame exists, it is x2-gated at `903b`, it carries a 7-bit
+code, and its length matches no sequence in V.34 or V.90.  What it is *for*
+is not answered by these images.
+
+The plausible outs, in the order worth testing: a receive path outside the
+INFO receiver that this sweep has not found; a peer image not in this
+repository, since the NACs here are one server generation and the x2 server
+population was not uniform; or a frame whose presence and timing matter rather
+than its content, which would need no CRC-checked receiver at all.
