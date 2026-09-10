@@ -2748,3 +2748,95 @@ tag `69` once it has it.  Both are tractable; neither is done.
 
 That is the honest state: x2's *measurement* is fully traced, its *ladder* is
 fully traced, and its *negotiation* is not.
+
+## The rate negotiation is in MP, and the overlays were hiding it
+
+The previous section's "not located" was partly a tooling failure.  The MP
+rate code lives **above `0xeea7`**, outside the resident DSP program, and both
+the linear blob mapping and `mailbox_compare.program()` stop there.
+`CourierRom.dsp_overlays` already knew the map:
+
+| overlay | loads at | covers |
+|---|---|---|
+| 5 | `8000` | the resident |
+| 6 | `9d00` | `9d00`..`ce31` - **the MP rate code** |
+| 7 | `b000` | `b000`..`cd49` |
+| 8 | `dc00` | `dc00`..`f989` |
+
+Loading overlay 6 makes the region disassemble, and the MP writes are there:
+`ff38` twelve times, `ff39` three.
+
+### The max-rate field negotiation, at `a344`
+
+```text
+a344  lamm  @7a               ; host-supplied value
+a346  retc  eq
+a347  lar   ar2, #ff39        ; MP transmit buffer
+a34a  lacl  *-, ar1           ; current field, ar2 -> ff38
+a34b  and   #00007fff
+a34d  sacl  @7e
+a34e  call  a661
+a350  lar   ar1, #6f
+a351  bit   1, *, ar2         ; the direction bit
+a352  lacc  @7d, 6            ; requested
+a353  sacb
+a354  lacc  @7e, 6            ; current
+a355  crlt                    ; min(current, requested)
+a356  lacc  @7e, 6
+a357  xc    1, tc
+a358  exar                    ; direction bit swaps which one survives
+a359  bsar  4
+a35a  orb
+a35c  or    *
+a35d  sacl  *, ar1            ; back into the MP buffer
+```
+
+A **minimum** against a host-supplied value, written into the MP word pair,
+with the two directions swapped by `[006f]` bit 1 - **the same bit that swaps
+`4d` and `69` in the 7-bit modulation-parameter frame**.  Table 20/V.34 has
+two separate max-rate fields, `20:23` call-to-answer and `24:27`
+answer-to-call, and a direction swap on an asymmetric protocol is exactly what
+picks between them.
+
+### The symbol-rate to rate-mask table, at `a37b`
+
+The code that follows indexes a table by `@5b` - the symbol-rate index - with
+a `+6` bank offset:
+
+| symbol rate index | bank 0 | bank 1 |
+|---|---|---|
+| 0 (2400) | `01ff` | `01ff` |
+| 1 (2743) | `03fe` | `07fe` |
+| 2 (2800) | `03fe` | `07fe` |
+| 3 (3000) | `07fe` | `0ffe` |
+| 4 (3200) | `0ffe` | `1ffe` |
+| 5 (3429) | `0ffe` | `3ffe` |
+
+Contiguous runs of set bits - the shape of Table 20's "Data signalling rate
+capability mask" at `35:49`, where bit 35 is 2400 and bit 48 is 33600.  So for
+each symbol rate the table gives the data rates that symbol rate can carry,
+and the result is ANDed with `[ff2f]`, the locally enabled set.
+
+**The bank is selected by the 1664-point bit.**  At `a35f`-`a36d` the code
+tests `@1f` bit 0 and then reads `ff01` bit 15, `ff00` bit 12, or `ff18`
+bit 12 - and `ff18` bit 12 is ITU bit 25, "ability to support up to 1664 point
+signal constellations".  Table 20's own NOTE says: "Data rates greater than 12
+in bits 20:23 and 24:27 shall only be indicated when the remote modem supports
+up to 1664 point signal constellations."  Bank 1 is exactly the extended
+version, reaching `3ffe` - 33600 - at 3429.
+
+### What this settles, and what it does not
+
+Settled: **the rate agreement runs through MP**, by a min against a
+host-supplied request, in direction-selected fields, gated by a
+symbol-rate-to-rate-mask table that honours the standard's 1664-point rule.
+That is a real negotiation and it is on the wire, which is what the previous
+section said could not be found.
+
+Not settled: how much of it is x2's.  The machinery above is V.34's own rate
+negotiation, correct against Table 20, and the earlier count showed `ff39`
+sites differ across builds - two in 1995, four in the x2-only build, three
+here.  So x2 modifies this path rather than adding a separate one.  Isolating
+the modification means running this same overlay-aware read against the
+x2-only and 1995 builds, which needs their overlay tables rather than the
+4.03 ROM's.  That is the next step, and it is now a mechanical one.
