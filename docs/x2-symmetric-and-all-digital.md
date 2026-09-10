@@ -1933,9 +1933,58 @@ Two of them have identifiable producers, and they are the useful half:
   after a convergence test against `f6c7` - so it marks a phase as finished
   rather than a configuration.
 
-Bits 4 and 7 have no `opl`/`apl` writer in any of the seven images, so they are
-set as part of whole-word updates to `ffd9`.  All four are cleared together at
-`9a24`, `apl *, #000e`, which keeps only bits 1--3: a mode reset.
+All four are cleared together at `9a24`, `apl *, #000e`, which keeps only bits
+1--3: a mode reset.
+
+### The producers, and what they make the four bits mean
+
+The first search for writers missed two of them by only decoding the
+instruction immediately after each `lar ar1, #ffd9`.  Allowing a delay slot or
+a conditional-execute between the pointer load and the operation completes the
+set, and it changes the reading:
+
+```text
+a7c3  lar ar1, #ffd9
+a7c5  bd a824                  ; branch, with the next word in the delay slot
+a7c7  opl *, #0010             ; ... which sets bit 4
+a7c9  apl *, #ffef             ; a separate entry that clears bit 4
+
+a65c  bit 7, @1f               ; DP is 7 here, so @1f is 039f
+a65d  lar ar1, #ffd9
+a65f  xc 2, tc
+a660  opl *, #0080             ; bit 7 = 039f bit 7
+a662  retc tc
+a664  opl *, #0008             ; otherwise bit 3 instead
+```
+
+| bit | set by | cleared by |
+|---:|---|---|
+| 4 | `a7c7`, in a delay slot, on the path that branches to `a824` | `a7c9` - which is exactly where its own reader at `aa15` jumps when it finds the bit set |
+| 5 | `a57a`, when `039f` bit 7 is set | its reader at `aa40`, first thing |
+| 6 | an `opl #0040` present in `IE020706` and `IE020405` | `a0b3`, when the counter at `@68` reaches 4 |
+| 7 | `a660`, from `039f` bit 7 - with `a664` setting **bit 3** in the other case | - |
+
+Three consequences.
+
+**Bits 5 and 7 are both the digital-server role**, fanned out of `039f` bit 7
+into two places that need it, and **bit 3 is bit 7's analogue-side twin** -
+one of the two is always set, which is why bit 3 was already present in the
+x2-only builds and bit 7 was not.  V.90's new nibble is not four independent
+flags; it is the server role plus two handshakes.
+
+**Bit 4 is a one-shot, and the handshake closes visibly.**  It is set in a
+delay slot on the way to `a824`, and the reader at `aa12` that finds it set
+branches to `a7c9`, whose only job is to clear it again.  Set on one path,
+consumed and cleared on the other.
+
+**Bit 6 loses its producer by 3.00.02.**  `IE020706` and `IE020405` both carry
+`opl #0040` and two clears; `Ie030002` carries only the clears.  Since the
+whole-word writes to `ffd9` in that build are the cold-start zero-fill, the
+tag-`70` handler's `or #8000`/`or #0001` and tag `72`'s `or #4000`, nothing in
+the shipped 3.00.02 program can set bit 6 - so `a5ad` always takes its
+clear-side branch, and the routine choice there falls to the byte at `dcf5`
+alone.  The x2-only builds never had the bit at all, so it appeared and went
+dead within the V.90 era.
 
 ### Tag `72` lands next door, not here
 
