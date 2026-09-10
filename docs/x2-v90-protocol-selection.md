@@ -2088,12 +2088,113 @@ something added later for V.90-era interoperability - it shipped with x2
 itself, before V.90 existed.  The 7-bit modulation-parameter frame and its
 presence detector are x2's own, and the later firmware simply kept both.
 
-### Next step
+### Next step (done - see the following section)
 
-Reading the x2-only DSP program end to end needs the SDL updater's packer
-undone.  The container is a DOS EXE with a byte-oriented packed payload; the
+Reading the x2-only DSP program end to end needs the SDL updater's records
+un-interleaved.  The container is a DOS EXE with a byte-oriented packed payload; the
 literal runs are long enough to recognise routines but not to disassemble
 across.  Unpacking one updater makes all of them readable, including the
 1995 pre-x2 baseline, and that comparison - V.34 only, then x2, then x2 plus
 V.90 - is the cleanest way left to separate what x2 added from what V.90
 added.
+
+## Three eras, read side by side
+
+### The updaters are not compressed - they are packetized
+
+`tools/unpack_sdl.py` already handles this, and its docstring says how: the
+firmware is stored as 21-byte records - 16 payload bytes, a checksum, a `10`
+byte, and a 24-bit address token.  Five interleaved bytes per sixteen is
+exactly the alignment loss seen earlier; there is no packer to defeat.
+`packet_runs()` recovers a clean image, and the section above claiming
+otherwise was wrong.
+
+Depacketized, the three eras give:
+
+| build | serializer | x2 mod-param builder | V.90 17/30 switch | detector |
+|---|---|---|---|---|
+| `SDL_CS3.EXE` (1995) | yes | **no** | no | yes |
+| `sdl6-x2.exe` (x2-only) | yes | **yes** | no | yes |
+| `SDL_49.EXE` (x2 + V.90) | yes | yes | yes | yes |
+
+### The 7-bit frame is x2's
+
+Script tables, recovered from each:
+
+| build | scripts (body bits) |
+|---|---|
+| `SDL_CS3` (1995) | 17, 77, 38 |
+| `sdl6-x2` | 17, 77, 38, **7** |
+| `IDSDL302`, 4.03 | 17, 77, 38, **7** |
+| QF/QR NACs | 17, 77, 38 |
+
+The x2-only build's fourth script, at `9872`, is identical in shape to 4.03's
+`99a3`:
+
+```text
+9872:  9891 0002      ; two lead-in 1s
+9874:  9895 000c      ; fill + frame sync, 12
+9876:  98ab 0007      ; ff1a body, 7 bits
+9878:  98a2 0010      ; CRC-16
+987a:  9891 0004      ; closing fill, 4
+987c:  98cc 0000      ; terminator
+```
+
+The 1995 table has no such entry - it ends after the 38-bit script.  So the
+7-bit modulation-parameter frame arrived **with x2** and was inherited by the
+V.90-era firmware, while the server images never send it.  That confirms the
+earlier reading, on an image that contains no V.90 code at all.
+
+### But the detector is V.34's, and this corrects two earlier claims
+
+The detector is **byte-identical in the 1995 pre-x2 build** (`SDL_CS3` at
+`9c4b`) and in `sdl6-x2` (`97ba`): same shift register at `0270`, same mask
+`fe00`, same constant `7600`, same `@62` bit 0.  It cannot be an x2
+mechanism.
+
+What it matches is the preamble.  Register bits 9:15, oldest to newest, are
+`1101110`, and V.34's fill-plus-frame-sync in time order is `111101110010`:
+
+```text
+window 0: 1111011
+window 1: 1110111
+window 2: 1101110   <== the detector constant
+window 3: 1011100
+window 4: 0111001
+window 5: 1110010
+```
+
+So it is a **fill/frame-sync preamble detector** - it tells the state machine
+that INFO-shaped traffic is on the line even when no frame validated, which is
+why it runs only after the CRC path fails.  Two things follow, both
+corrections to earlier sections:
+
+* "the detector shipped with x2 itself" is **wrong** - it predates x2 by at
+  least two years;
+* reading its constant as a modulation-parameter code
+  (`carrier 1, rate 5, rate 3`) is **wrong** - `3b` is a preamble window, not
+  a code, and the 7-bit width is a coincidence of the 12-bit preamble.
+
+Which means x2's 7-bit frame still has **no identified receiver**.  The
+detector was the last candidate and it is not one.
+
+### One difference between x2 generations
+
+The x2-only build writes the modulation-parameter value at bit offset
+**0**, through a different writer:
+
+```text
+908b  splk  @7f, #0000
+908d  calld 91a3, *
+908f  lar   ar0, #ff1a
+9091  bd    97ea, *
+9093  splk  @4b, #9872
+```
+
+4.03 writes the same kind of value at offset **6** through `8769`.  For a
+7-bit body, offset 6 is the first bit transmitted and offset 0 the last, so
+the field is not in the same place in the two generations - and `91a3` is not
+`8769`, so the insertion convention may differ too.  That is a concrete
+difference between x2 revisions, and the firmware has a failure string for
+exactly that case: "Incompatible versions".  Confirming it means reading
+`91a3`, which is now possible.
