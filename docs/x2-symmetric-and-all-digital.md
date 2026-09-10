@@ -496,6 +496,88 @@ classified against observable V.8, INFO, Phase 3, Phase 4 and data events.
 Those are now bounded searches over this control spine rather than searches of
 all seven images.
 
+### Tags `70` and `71` are consecutive setup fields, not the two roles
+
+The small resident's 128-word host-command dispatch table starts at `8817`.
+As on the analogue Courier, the received tag is the direct index into this
+table; the valid range is `00..7f`.  The two adjacent entries therefore resolve
+without guessing:
+
+| host tag | table cell | handler | bit contributed to `@60` / `@6d` |
+|---:|---:|---:|---:|
+| `70` | `8887` | `e11e` | `0100` |
+| `71` | `8888` | `e11a` | `0000` |
+
+There are only two other references to either handler in the joined program.
+They are the internal chooser at `e769..e779`, which tests `@6f` bit 0 and
+branches to the same pair (`e11a` when set, `e11e` when clear).
+
+The extra `0100` is operational, not a status label.  Both handlers merge it
+with host word `@7a` and copy the result to both working mode words.  At
+`e166..e16b`, bit 8 then selects the callback installed in `@1a`:
+
+```text
+mode bit 8 clear  -> e184   ; new callback-driven x2 engine
+mode bit 8 set    -> 8b52   ; older resident callback
+```
+
+Following the supervisor producers corrects the tempting interpretation that
+these are the server and symmetric commands.  `addca..ade10` constructs a
+capability/configuration word in `BX`, sends it as tag `70`, and returns.
+`ade11..ade21` computes the intersection of two rate masks, saves it at
+`a7e3`, and sends that value as tag `71`.  The normal call-start paths at
+`a97c2..a97dd` and `a99c1..a99dc` send both, in that order.  They are two
+fields of one setup transaction, not mutually exclusive roles.  Bit `0100`
+still has the callback effect above, but it must not be named "symmetric" from
+that fact.
+
+### The actual symmetric selector: S58 bit 8 makes both descriptors mode 8
+
+The I-modem keeps S58 at supervisor byte `2800:9187`.  This is identified by
+the complete named bit set in executable code: the same byte is tested for
+`01h`, `02h`, `04h`, and `08h`, matching x2 enable, server mode, forced A-law,
+and symmetric mode.  The symmetric test occurs in two parallel call-record
+builders, at physical `5f649` and `6057c`.
+
+The first path is representative.  Before the override, the builder has made
+an asymmetric x2 record: byte `+7` is mode `0ah` and byte `+9` is 1.  When S58
+bit 8 is set, it performs the following paired update:
+
+```text
+test byte es:[9187], 08h       ; S58 symmetric mode
+jz   ordinary-asymmetric-path
+
+mov  byte [primary + 9], 0
+mov  byte [mirror  + 2], 0
+mov  byte [primary + 7], 8
+mov  byte [mirror  + 3], 8
+```
+
+The second builder at `6057c..605a4` makes the same four writes.  The two
+structures are a primary call descriptor and the mirrored descriptor passed
+to the other side of the negotiation code; the builder deliberately keeps the
+role and modulation bytes identical between them.  Thus the implementation of
+"both modems send and receive at the same x2 speed" begins by replacing the
+ordinary directional x2 role (`+9 = 1`) with **no privileged direction**
+(`+9 = 0`) and selecting the same proprietary modulation mode, internal value
+8, in both descriptors.
+
+This is also release-bounded evidence.  The 45-byte block containing that
+S58-bit-8 override occurs once in `IM020104`, the first x2 build, and not at all
+in `IM020009`, the last pre-x2 build.  Mode 8 here is therefore the executable
+I-modem implementation of x2 symmetric, not the unrelated result-code value 8
+in the analogue Courier diagnostics.
+
+The rate agreement then has the two directional MP maximum-rate nibbles
+recovered below available to it.  The descriptor writes prove equal role/mode,
+but the final write that makes the two MP rate nibbles equal has not yet been
+isolated; using the mutually acceptable ordinal for both is the interpretation
+supported by the MIB's explicit equal-rate requirement.  Ordinal 15 is the
+terminal case, 64,000 bit/s (`K = 48`, eight payload bits per 8-kHz PCM sample).
+On an analogue path the measurement-derived ceiling prevents that ordinal;
+between two digital endpoints there is no analogue measurement clamp, so 15
+remains available.
+
 ### The Quad image exposes the digital-server DSP hand-off
 
 QF 6.0.3 is a better image for naming the server half because its overlay map
@@ -593,6 +675,20 @@ therefore installs `c90e` before the `c922` detour, and `c8ce` restores that
 enclosing server script.  Calling `c90e` a newly entered data script would
 contradict that earlier use.
 
+The complete selector at `a180` is:
+
+| `039f` bit 15 | `039f` bit 7 | installed at `03cd` | present interpretation |
+|---:|---:|---|---|
+| 0 | either | `c67f` | non-PCM/default family; bit 7 is not consulted |
+| 1 | 0 | `c7dd` | PCM analogue/client-side path |
+| 1 | 1 | `c90e` | PCM digital-server path; its constants identify the V.90 sequence in this dual-protocol build |
+
+`c922` is not a fourth peer in that selector.  It is installed later by the
+digital-server receive path as a finite detour, after which `c90e` is restored.
+Therefore the immediate candidate to inspect for an alternative PCM sequence
+is `c7dd`; assigning it specifically to x2 still requires tracing the producer
+of `039f` bit 15 and comparing an x2-only server build.
+
 The nearby engine at `c93e` remains a strong six-interval PCM mapper candidate:
 it initializes six intervals, derives independent counts from negotiated
 buffers, repeatedly calls `c524`/`c99c`/`c9d2`, and returns to common setup at
@@ -641,6 +737,75 @@ The large `0bb8` and `05dc` quantities in `c922` are 375 ms and 187.5 ms at
 8000 symbols/s, respectively, which makes the detour training/timing code
 rather than a packed rate message. The final `c423` callback is still the
 terminal status notification identified above.
+
+### The V.90 interpretation, not yet an x2 result
+
+The following signal names and ordering come specifically from V.90.  V.90
+9.3.1.3 through 9.3.1.6 requires the digital transmitter to send, in order:
+
+```text
+Sd 384T -> Sd-bar 48T -> TRN1d >= 2040T -> repeated Jd -> Jd' 12T
+          -> optional DIL -> enter Phase 4
+```
+
+The beginning of `c90e` has those distinguishing constants in that same
+order.  Its `0180` is the 384-symbol `Sd`.  The following `0018` drives the
+packed two-codeword output path for 24 iterations, hence 48 transmitted
+symbols and `Sd-bar`.  `TRN1d` and `Jd` do not have useful fixed table-length
+constants: `TRN1d` is only bounded below and `Jd` repeats until the receiver
+detects the analogue modem's S transition.  Their callbacks therefore occupy
+the variable/repeating middle of the script.  The subsequent literal `000c`
+is the fixed 12-symbol `Jd'` terminator.  The descriptor-driven step after it
+is the optional DIL; its length and Ucodes come from the negotiated DIL
+descriptor rather than a constant in this table.
+
+The next fixed value is `00c0`, 192 symbols.  V.90 9.4.1.1 says that the first
+digital-modem signal in Phase 4 is `Ri` for a minimum of exactly 192T.  Thus
+the constants strongly identify `c90e` as the V.90 digital-transmit programme
+that carries the end of Phase 3 into the start of Phase 4.
+
+That attribution must not be transferred automatically to x2.  `Qf060003`
+is a dual-protocol x2/V.90 server build, so finding the V.90 sequence in it
+proves that the image contains a V.90D path; it does not prove that x2 uses
+the same training sequence.  A normalized match against a pre-V.90 x2-only
+server image is required before any of these V.90 signal names can be applied
+to x2.
+
+Within that V.90 interpretation, the DSP installs `c922` at
+`c8b7..c8bb` only after the framed receive path has:
+
+1. accepted a CRC-valid MP-family frame;
+2. copied its first two received MP words unchanged to `0340`/`0341`; and
+3. expanded the negotiated mapper parameters.
+
+In V.90, MP is a Phase 4 exchange, after `Ri`, `Ri-bar` and `TRN2d`.
+Consequently none
+of `c922` can be `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, or DIL.  It is the
+post-MP Phase 4 tail: MP/MP' acknowledgement completion, `Ed`, `B1d`, and the
+mapper hand-off toward data mode.  Its `0bb8` and `05dc` values are therefore
+timeouts/guard intervals in that tail, not Phase 3 training lengths.  When its
+terminal `c423` record fires, `c8ce` restores `c90e`, which is the enclosing
+programme it interrupted.
+
+The V.90 waveform labels supported for this path are therefore:
+
+| signal | recovered location | basis |
+|---|---|---|
+| `Sd` | `c90e`, `0180` stage | exact 384T length and correct ordering |
+| `Sd-bar` | following `0018` stage | 24 packed two-symbol iterations = 48T |
+| `TRN1d` | variable middle of `c90e` | follows `Sd-bar`; minimum/duration is runtime-controlled |
+| `Jd` | repeating middle of `c90e` | MP-family framed generator, terminated by received S |
+| `Jd'` | `c90e` literal `000c` stage | exact 12T termination sequence |
+| DIL | descriptor-driven stage after `Jd'` | optional, length/Ucodes are negotiated |
+| `Ri` | `c90e` literal `00c0` stage | exact Phase 4 opening minimum of 192T |
+| post-MP Phase 4 tail | `c922` | installed only after valid received MP and mapper expansion |
+
+For the V.90 path, the remaining callback-level task is narrower: attach the individual
+variable middle callbacks to the `TRN1d` generator versus the repeating `Jd`
+serializer, and split the `c922` tail precisely into MP', `Ed`, and `B1d`.
+The phase placement and the fixed-duration signals no longer depend on that
+last naming step.  The separate x2 task is to determine whether an x2-only
+server build contains an equivalent script or a proprietary alternative.
 
 This changes the remaining reverse-engineering task from "find a hidden
 scalar wire field" to "label each descriptor callback and its duration".
@@ -734,10 +899,10 @@ be assigned, but they are independent of the five-bit rate index.
 
 What is still missing is now narrow: identify the resident mailbox handlers
 that set `039f` bits 0 and 7, map their controller commands back to S76/S81,
-classify the finite `c922` detour within Phase 3 or Phase 4, and follow the
-enable edge into the `c93e` mapper.  Correlating the records with the
-standard's `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'`, DIL and Phase 4 signal order
-is the remaining waveform-label problem.
+and follow the enable edge into the `c93e` mapper.  For V.90, `c922` is now
+placed in the post-MP Phase 4 path.  For x2, the remaining protocol-attribution
+problem is to compare these scripts with an x2-only server build rather than
+assign V.90's `Sd`, `Sd-bar`, `TRN1d`, `Jd`, `Jd'` and DIL names by analogy.
 
 ## ISDN is 4-wire
 
