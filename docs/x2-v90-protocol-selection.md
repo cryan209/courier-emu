@@ -2387,3 +2387,84 @@ does, which is what "x2 rides in MP" predicts.  But these are literal-word
 counts, not verified references, so they suggest rather than establish it.
 Confirming which MP bits x2 uses means diffing the MP field writers across the
 three builds - the next concrete step, and now a tractable one.
+
+## The actual x2 bits in INFO0
+
+The supervisor edits recorded earlier in this document - "clear capability bit
+9 then set it from S58 `0x04`, set bit 10 unless S58 `0x10`, clear bits 11, 12,
+14 and 15" - were never translated into ITU field numbers.  They are the x2
+signature, and they land on named V.34 fields.
+
+The capability word is written at offset 16 into a 17-bit body, so value bit
+`j` lands on **ITU bit `12 + j`**:
+
+| capability bit | ITU bit | Table 14/V.34 field | x2's edit |
+|---|---|---|---|
+| 9 | **21** | symbol-rate asymmetry, LSB | from S58 `0x04` |
+| 10 | **22** | symbol-rate asymmetry | set, unless S58 `0x10` |
+| 11 | **23** | symbol-rate asymmetry, MSB | **cleared** |
+| 12 | **24** | "set to 1 in an INFO0 transmitted from a CME modem" | **cleared** |
+| 14 | **26** | transmit clock source, LSB | **cleared** |
+| 15 | **27** | transmit clock source, MSB | **cleared** |
+
+So the three edits are three fields, not six scattered bits:
+
+* **ITU `21:23` - "Maximum allowed difference in symbol rates in the transmit
+  and receive directions ... an integer between 0 and 5".**  x2 drives this
+  field directly:
+
+  | S58 `0x04` | S58 `0x10` | `21:23` | asymmetry announced |
+  |---|---|---|---|
+  | 0 | 0 | `010` | **2** |
+  | 1 | 0 | `110` | **3** |
+  | 0 | 1 | `000` | 0 |
+  | 1 | 1 | `100` | 1 |
+
+* **ITU `24` cleared** - declares "not a CME modem".
+* **ITU `26:27` cleared** - transmit clock source = **internal**.  This is the
+  `apl #3fff` the DSP applies again on top, so both ends of the path force it.
+
+### Why that field, and why it is not really a hack
+
+x2 is an asymmetric protocol - PCM downstream, V.34 upstream - so the transmit
+and receive symbol rates genuinely differ.  ITU `21:23` is the field V.34
+already provides for exactly that, and x2 sets it to 2 or 3 steps.  The clock
+source matters for the same reason: the digital end is network-synchronised
+and the analogue end must run on its own clock, which is what `26:27 = 0`
+declares.
+
+So x2's INFO0 announcement is not arbitrary bit-stealing.  It is the V.34
+fields that describe an asymmetric, externally-clocked connection, driven to
+the values an x2 call needs.  A V.34-only peer reads them as a legal asymmetry
+preference and a clock declaration and proceeds normally - which is why x2
+falls back cleanly.
+
+### And it explains the peer test
+
+The "remote is an x2 server" condition, from earlier in this document:
+
+```text
+9049  bit   5, *              ; local  ff18 word bit 5  -> ITU 18
+904c  and   #00000c00         ; remote ff00 word bits 10, 11 -> ITU 23, 24
+904e  bcnd  90bd, eq
+```
+
+`ff00:ff01` is packed like `ff18:ff19` - the shift at `951d` differs only to
+account for body length - so the same `ITU = 13 + word bit` mapping applies.
+The test therefore reads **remote ITU 23 or 24 set**, and an x2 *client*
+clears both.  The two directions use the same fields with opposite values:
+
+| | ITU 23 (asymmetry MSB) | ITU 24 (CME) |
+|---|---|---|
+| x2 client sends | 0 | 0 |
+| x2 server must set | 1 or | 1 |
+
+Combined with local ITU 18 - "ability to transmit at the high carrier
+frequency with a symbol rate of 3200" - that is the whole recognition test.
+Asymmetry values above 3, or the CME bit, are what an x2 server puts on the
+wire and what a plain V.34 answer modem does not.
+
+That is the concrete answer to what x2 changed: **three V.34 INFO0 fields -
+symbol-rate asymmetry, the CME flag, and transmit clock source - driven to x2
+values, with the asymmetry field's top bit and the CME flag reserved to mark
+the server direction.**
