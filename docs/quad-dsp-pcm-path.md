@@ -159,10 +159,100 @@ Settling the rest wants the DSP executed rather than read: `courier-emu
 dsp-run` against the Quad resident, with the TDM registers watched, would show
 the ISR and the timeslot writes directly.
 
-## Trying to make it produce samples
+## Digital timeslot model (2026-09-10)
 
-Not achieved. What follows is how far it gets and what each remaining blocker
-is, so the next attempt starts from here rather than from the beginning.
+`NativeC5x.configure_digital_pcm` now models the peer that the analysis below
+found missing. It is deliberately not the AC01 codec path:
+
+- its frame period is `20,160,000 / 8,000 = 2,520` C50 cycles;
+- DRR receives exactly one opaque octet per frame and falls back to the
+  selected law's idle octet when the queue is empty;
+- DXR's low octet is captured once per frame without linearising or
+  recompanding it;
+- XRDY/RRDY follow those frame edges.
+
+`QuadC50Endpoint.connect_digital_call`, `receive_g711`, and `transmit_g711`
+carry that interface across DSP resets and the CPU-driven resident download.
+The focused test also runs a C50 frame ISR that toggles the G.711 sign bit in
+DSP data memory and writes the result to DXR. Its output alternates `1c 9c` at
+8 kHz: a 4 kHz square tone whose codewords are demonstrably written by C50
+instructions, not generated in Python or in the line peripheral.
+`tools/probe_quad_digital_tone.py` makes this executable and records a raw
+one-second stream plus the C50's DXR write count and producing PC.
+
+That closes the framing and codeword-transport blocker. It does not close the
+stock call-control blocker: the QF CPU still needs a chassis request that makes
+it select and download the appropriate overlay before serial interrupts can be
+enabled safely. The resident-only failure described below remains the expected
+result when that ordering is skipped.
+
+## Trying to make the stock firmware produce samples
+
+Achieved for the resident's stock DTMF component path. `courier_emu.quad_audio`
+runs the captured QF060003 selector (`8de0`), two oscillators (`8e54` and
+`8e60`), sine helper (`92da`), mixer (`82be`) and primary serial ISR (`83e1`).
+The runner supplies frame scheduling and idle RAM, but it supplies no waveform
+or oscillator code. For every one of the sixteen keypad indices, spectral
+measurement finds the two frequencies selected by the stock phase table and
+the original ISR writes the mixer's exact word to DXR at `83ef`.
+
+The fourth column is a useful image-specific check: QF stores increment
+`0x3b21`, approximately 1663 Hz at the generator's 7200 Hz rate, where the
+analog Courier stores `0x3a10` for 1633 Hz. The runner measures QF's value,
+which would not happen if it were accidentally executing the analog image.
+
+The stock G.711 path has now been located in this same QF resident. Expansion
+starts at `0x8115`; compression starts at `0x817f`. The mu-law branches use
+`cmpl` and the `0x84` bias, while the A-law branches use `xor #0x00055000`.
+Data word `0x039f` bit 14 selects A-law. Routine `0x8238` clears or sets that
+bit from the low nibble of data word `0x007a`, the resident's host-argument
+scratch word, so idle-codeword selection is not the law control. (The `lamm`
+instruction ignores DP; `0x7a` is not one of the `0x50..0x5f` external I/O
+registers.) `courier_emu.quad_audio.render_g711` now executes that compressor
+with its recovered calling convention and passes every result through the
+stock serial ISR at `0x83e1`. The runner supplies only the 9:10 frame schedule
+between the resident's 7.2 kHz generator and the 8 kHz DS0; it does not
+calculate or compand audio. All sixteen decoded pairs are correct under both
+laws. The remaining control-plane question is tracing the host argument back
+to its supervisor setting.
+
+The compressor dispatch is concrete:
+
+```
+817f  bit   14, @1f        ; data 039f: A-law when set
+8180  bcnd  8197, tc
+8182  lacb                 ; mu-law input
+8187  add   #00840000      ; mu-law bias
+818b  rpt   #06
+818c  norm  *-
+8194  cmpl                 ; mu-law inversion
+8195  b     81ad
+8197  lacb                 ; A-law input
+819c  or    @7b
+819f  rpt   #06
+81a0  norm  *-
+81ab  xor   #00055000      ; A-law alternating-bit transform
+81ad  mar   *, ar7
+81b1  sach  *+, 4          ; store compressed result in the serial buffer
+```
+
+The expander immediately above it has the inverse split at `0x8112`: the
+mu-law half uses `cmpl` and subtracts `0x21` (the `0x84` bias at its working
+scale); the A-law half uses `xor #0x00055000`. These signatures occur in the
+executed QF resident at flat RAM `0x20000`, not in a generated test program or
+in Python.
+
+One tooling correction fell out of this: C5x `BIT` encodes the bit number
+inverted in opcode bits 11..8. Opcode `0x411f` is therefore `bit 14, @1f`, not
+`bit 1, @1f`; the local disassembler now reports it correctly.
+
+The execution bug was the compressor ABI, not missing signal code. Its repeated
+`norm *-` exponent search expects auxiliary register pointer ARP=1 on entry.
+Entering it with the mixer's ARP=7 decremented the output pointer during
+normalisation and made the apparent codewords constant. The runner now selects
+ARP=1, loads the stock mixer's signed result into ACCB at its native 16-bit
+scale, points AR7 at the serial buffer, and lets `0x817f..0x81b1` produce the
+octet. The unchanged ISR writes that octet to DXR at `0x83ef`.
 
 ### Frame timing is the first blocker, and it is real
 

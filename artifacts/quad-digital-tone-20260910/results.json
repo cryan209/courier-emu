@@ -1,0 +1,19 @@
+{
+  "producer": "executed TMS320C50 frame ISR",
+  "law": "mu",
+  "sample_rate": 8000,
+  "sample_bits": 8,
+  "milliseconds": 1000,
+  "codewords": 8000,
+  "levels": [
+    "1c",
+    "9c"
+  ],
+  "unique_codewords": [
+    "1c",
+    "9c"
+  ],
+  "dxr_writes": 8016,
+  "last_dxr_pc": "8014",
+  "frame_period_cycles": 2520
+}

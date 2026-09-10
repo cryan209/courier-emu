@@ -76,7 +76,7 @@ def decode(words: list[int] | tuple[int, ...], pc: int) -> Instruction:
     elif 0x10 <= base <= 0x1f: text = f"lacc    {a}" + (f", {base & 15}" if base & 15 else "")
     elif 0x20 <= base <= 0x2f: text = f"add     {a}" + (f", {base & 15}" if base & 15 else "")
     elif 0x30 <= base <= 0x3f: text = f"sub     {a}" + (f", {base & 15}" if base & 15 else "")
-    elif 0x40 <= base <= 0x4f: text = f"bit     {base & 15}, {a}"
+    elif 0x40 <= base <= 0x4f: text = f"bit     {15 - (base & 15)}, {a}"
     elif base in range(0x50, 0x78):
         names = {0x50:"mpya",0x51:"mpys",0x52:"sqra",0x53:"sqrs",0x54:"mpy",0x55:"mpyu",
                  0x57:"bldp",0x58:"xpl",0x59:"opl",0x5a:"apl",0x5b:"cpl",0x60:"addc",

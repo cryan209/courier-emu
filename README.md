@@ -1404,4 +1404,22 @@ The QF060003 modem now executes `AT` → `OK` with an explicit byte-terminal
 adapter. Run `PYTHONPATH=. .venv/bin/python tools/probe_quad_at.py` to boot the
 controller, load a modem, and verify `OK`, `ERROR`, then `OK` through its real
 firmware parser. See [the measured transcript and adapter limits](docs/quad-at-terminal.md).
-Raw-pin autobaud and Quad DSP execution remain incomplete.
+Raw-pin autobaud remains incomplete. The Quad C50 endpoint now boots the
+resident streamed by this CPU and exposes a digital-call timeslot with one
+opaque 8-bit G.711 codeword in each direction at 8 kHz. `connect_digital_call`
+selects mu-law (`0xff`) or A-law (`0xd5`) idle fill; `receive_g711` and
+`transmit_g711` are the byte-exact ingress and egress surfaces.
+
+The captured QF060003 DSP's **stock** DTMF path now runs too. It executes the
+QF selector at `0x8de0`, oscillators at `0x8e54`/`0x8e60`, sine helper at
+`0x92da`, mixer at `0x82be`, and serial ISR at `0x83e1`; no generated DSP
+program or host oscillator supplies its samples. Run
+`PYTHONPATH=. .venv/bin/python -m courier_emu.quad_audio --ram
+artifacts/quad-identify-20260910/ram.bin --output /tmp/qf-dtmf` to render and
+measure all sixteen stock keypad tones.
+
+The captured resident also contains QF's own G.711 expander and compressor.
+The component runner executes its DTMF generator, either compressor branch,
+and its byte serial ISR, producing raw 8 kHz `.g711` streams without a host
+codec. The chassis call-control request that arms this path remains unfinished;
+see `docs/quad-dsp-pcm-path.md`.

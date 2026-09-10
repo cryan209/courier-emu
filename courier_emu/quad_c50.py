@@ -15,19 +15,12 @@ program image to it. Decoded from QF060003:
 * `0xcec72` writes `0xffff` to `0x98`/`0x9a` and `0x9c`/`0x9e` and then polls
   both pairs until they read `0xffff` back, which is the reset presence check.
 
-This module is deliberately a **passive tap** for now. It is fed from a run's
-own I/O event log rather than wired into the machine's port handlers, so it
-cannot change a single cycle of timing, and it reassembles the streamed words so
-the images the Quad actually ships to its datapumps can be compared against the
-load table in docs/quad-c50-overlay-loader.md before anything drives the return
-path. Wiring the read side into `CourierMachine` is the step that comes with
-making it answer, not before.
-
-Nothing here executes the captured image or answers on the DSP's behalf. The
-CPU already believes every transfer succeeds - `0xced12` returns carry-clear on
-all 24 loads in a 12M-instruction run - because the unmodelled `0x98` floats
-high and reads as ready. Making the link answer honestly means running the
-image on the C5x core, and that is not what this does.
+`QuadC50Link` remains the passive decoder for saved I/O logs.
+`QuadC50Endpoint` is the active device: it boots the CPU-streamed resident on a
+native C50, acknowledges `0x98` bursts only after that core consumes them, and
+implements the distinct runtime-overlay protocol on `0x9e`. It also exposes
+the card's byte-wide 8 kHz digital timeslot without converting its G.711
+codewords.
 """
 from __future__ import annotations
 
@@ -43,6 +36,7 @@ LANE_PORTS = tuple(LANE_BASE + LANE_STRIDE * index for index in range(LANE_COUNT
 # waits on; the reset check reads 0x98/0x9a and 0x9c/0x9e as word pairs.
 STATUS_PORT = 0x98
 STATUS_PORTS = (0x98, 0x9A, 0x9C, 0x9E)
+RUNTIME_STATUS_PORT = 0x9E
 
 
 @dataclass
@@ -191,9 +185,22 @@ class QuadC50Endpoint:
     _completion: bool = False
     _event_cursor: int = 0
     resets_seen: int = 0
+    digital_call: bool = False
+    g711_idle: int = 0xff
+    _g711_rx: bytearray = field(default_factory=bytearray)
+    runtime_active: bool = False
+    runtime_bursts: int = 0
+    runtime_acks: int = 0
+    _runtime_waiting: bool = False
 
     # -- CPU side ---------------------------------------------------------
     def read(self, port: int, size: int) -> int | None:
+        if port == RUNTIME_STATUS_PORT and not self._in_reset and self.runtime_active:
+            # The overlay loader first waits for bit 2 after writing 4, then
+            # waits for bit 1 after every four-word burst.  Keep bit 2 raised
+            # as the link-present indication while the burst acknowledgement
+            # follows the resident's actual 0x57 write.
+            return 0x04 | (0x00 if self._runtime_waiting else 0x02)
         if port == STATUS_PORT:
             if self._in_reset:
                 # 0xcec72 writes 0xffff to 0x98/0x9a and 0x9c/0x9e and polls
@@ -215,7 +222,29 @@ class QuadC50Endpoint:
         if port == STATUS_PORT:
             self._strobe(value & 0xFF)
             return False
+        if port == RUNTIME_STATUS_PORT and not self._in_reset:
+            self._runtime_strobe(value & 0xFF)
+            return False
         return False
+
+    def _runtime_strobe(self, value: int) -> None:
+        """Handle the overlay stream emitted by the CPU routine at 0xcee5f."""
+        if value == 4:
+            self.runtime_active = True
+            self._runtime_waiting = False
+            return
+        if value != 2 or not self.runtime_active or self.core is None:
+            return
+        # Runtime overlays always use the first four lanes.  The CPU does not
+        # issue the 0x98 boot-loader group strobe for these words.
+        self.runtime_bursts += 1
+        self.bursts += 1
+        self.window = tuple(
+            self.lanes.pop(LANE_BASE + LANE_STRIDE * index, 0)
+            for index in range(4)
+        )
+        self.window_group = LANE_BASE
+        self._runtime_waiting = True
 
     def _strobe(self, value: int) -> None:
         if value == 0xFF:
@@ -237,6 +266,8 @@ class QuadC50Endpoint:
                 self.started = False
                 self.reboots += 1
             self.program = []
+            self.runtime_active = False
+            self._runtime_waiting = False
             return
         self._in_reset = False
         if value == 4:
@@ -317,8 +348,41 @@ class QuadC50Endpoint:
         # receive queue, with XRDY answered optimistically off XRST.
         core.queue_codec_rx([RESIDENT_ORIGIN, len(words), *words, 0])
         self.core = core
+        if self.digital_call:
+            core.configure_digital_pcm(idle_codeword=self.g711_idle)
+            core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
+            if self._g711_rx:
+                core.queue_g711_rx(bytes(self._g711_rx))
+                self._g711_rx.clear()
         self.started = True
         self.program = []
+
+    def connect_digital_call(self, *, law: str = "mu") -> None:
+        """Attach one clear 64 kbit/s DS0 to this datapump.
+
+        G.711 bytes remain opaque on the wire. ``law`` only chooses the idle
+        codeword used when the receive side has no queued traffic.
+        """
+        if law not in ("mu", "a"):
+            raise ValueError("G.711 law must be 'mu' or 'a'")
+        self.digital_call = True
+        self.g711_idle = 0xff if law == "mu" else 0xd5
+        if self.core is not None:
+            self.core.configure_digital_pcm(idle_codeword=self.g711_idle)
+            self.core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
+
+    def receive_g711(self, codewords: bytes) -> None:
+        """Deliver 8-bit G.711 codewords to the DSP receive timeslot."""
+        if not self.digital_call:
+            raise RuntimeError("no digital call is connected")
+        if self.core is None:
+            self._g711_rx.extend(codewords)
+        else:
+            self.core.queue_g711_rx(codewords)
+
+    def transmit_g711(self, start: int = 0) -> bytes:
+        """Return codewords clocked from the DSP transmit register."""
+        return b"" if self.core is None else self.core.g711_tx(start)
 
     def _ready_bits(self) -> int:
         if self.core is None:
@@ -379,6 +443,9 @@ class QuadC50Endpoint:
                 self.window = None
                 self.window_group = None
                 self.acks += 1
+                if self._runtime_waiting:
+                    self._runtime_waiting = False
+                    self.runtime_acks += 1
 
     def status(self) -> dict[str, object]:
         return {
@@ -387,4 +454,9 @@ class QuadC50Endpoint:
             "core_log_resets": self.resets_seen, "reboots": self.reboots,
             "window_open": self.window is not None,
             "program_words": len(self.program), "completion": self._completion,
+            "digital_call": self.digital_call,
+            "g711_tx": 0 if self.core is None else len(self.core.g711_tx()),
+            "runtime_active": self.runtime_active,
+            "runtime_bursts": self.runtime_bursts,
+            "runtime_acks": self.runtime_acks,
         }

@@ -220,6 +220,16 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
+        lib.courier_c5x_configure_digital_pcm.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16, ctypes.c_uint32
+        ]
+        lib.courier_c5x_queue_g711_rx.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t
+        ]
+        lib.courier_c5x_get_g711_tx.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t
+        ]
+        lib.courier_c5x_get_g711_tx.restype = ctypes.c_size_t
         lib.courier_c5x_queue_codec_boot.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
@@ -393,6 +403,33 @@ class NativeC5x:
             return
         storage = (ctypes.c_uint16 * len(samples))(*(sample & 0xFFFF for sample in samples))
         self.library.courier_c5x_queue_codec_rx(self.handle, storage, len(storage))
+
+    def configure_digital_pcm(self, enabled: bool = True, *,
+                              idle_codeword: int = 0xff,
+                              clock_hz: int = 20_160_000) -> None:
+        """Clock the C50 serial port as one 8-bit, 8 kHz DS0 timeslot."""
+        if not 0 <= idle_codeword <= 0xff:
+            raise ValueError("G.711 idle codeword must be an octet")
+        if clock_hz < 8_000:
+            raise ValueError("digital PCM clock must be at least 8 kHz")
+        self.library.courier_c5x_configure_digital_pcm(
+            self.handle, int(enabled), idle_codeword, clock_hz)
+
+    def queue_g711_rx(self, codewords: bytes) -> None:
+        """Queue opaque G.711 octets; companding is the call's concern."""
+        if not codewords:
+            return
+        storage = (ctypes.c_uint8 * len(codewords)).from_buffer_copy(codewords)
+        self.library.courier_c5x_queue_g711_rx(self.handle, storage, len(storage))
+
+    def g711_tx(self, start: int = 0) -> bytes:
+        count = int(self.library.courier_c5x_get_g711_tx(
+            self.handle, None, 0))
+        if start >= count:
+            return b""
+        storage = (ctypes.c_uint8 * count)()
+        self.library.courier_c5x_get_g711_tx(self.handle, storage, count)
+        return bytes(storage[max(0, start):])
 
     def queue_codec_boot(self, words: list[int] | tuple[int, ...]) -> None:
         """Boot-table words the ASIC clocks into the serial port.

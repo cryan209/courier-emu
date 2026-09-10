@@ -162,6 +162,24 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 // 3472 cycles is 7200 Hz here, which is the figure this core shipped with.
 static constexpr uint64_t C5X_CLOCK_HZ = 25'000'000;
 
+void C5xCore::configure_digital_pcm(bool enabled, uint16_t idle_codeword,
+    uint32_t clock_hz)
+{
+    m_digital_pcm = enabled;
+    m_g711_idle = idle_codeword & 0xff;
+    // A DS0 presents exactly one octet every 125 us. The Quad clocks both its
+    // 80186 and C50 at 20.16 MHz; this is intentionally not the 25 MHz clock
+    // used by the analog Courier's codec model.
+    m_line_frame_period = enabled ? unsigned(clock_hz / 8'000) : 258;
+    m_codec.tx_ready = true;
+}
+
+void C5xCore::queue_g711_rx(const uint8_t *codewords, std::size_t count)
+{
+    for (std::size_t index = 0; index < count; ++index)
+        m_g711_rx.push_back(codewords[index]);
+}
+
 void C5xCore::configure_rom_codec(bool enabled)
 {
     m_rom_codec = enabled;
@@ -659,7 +677,9 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         }
         // On the AC01 path a word is receivable once a frame sync has clocked
         // one in, not merely because the harness has audio queued.
-        const bool ready = m_rom_codec
+        const bool ready = m_digital_pcm
+            ? m_codec.rx_ready
+            : m_rom_codec
             ? (m_codec.rx_ready || !m_codec_boot.empty())
             : !m_codec_rx.empty();
         if ((m_serial.spc & SPC_RRST) && ready) value |= SPC_RRDY;
@@ -907,6 +927,19 @@ void C5xCore::step()
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
         do m_line_frame_next_cycle += m_line_frame_period;
         while (m_cycles >= m_line_frame_next_cycle);
+        if (m_digital_pcm) {
+            // FO=1 is byte format, MSB first. Keep the octet in the low byte:
+            // no linearisation or companding-law conversion belongs here.
+            m_serial.drr = m_g711_rx.empty() ? m_g711_idle : m_g711_rx.front();
+            if (!m_g711_rx.empty()) m_g711_rx.pop_front();
+            m_codec.rx_ready = true;
+            m_codec.tx_ready = true;
+            m_g711_tx.push_back(uint8_t(m_serial.dxr & 0xff));
+            if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq)))
+                ++m_line_frame_interrupts;
+            interrupt(unsigned(m_line_frame_irq));
+            return;
+        }
         if (m_rom_codec) {
             codec_frame(false);
             if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;

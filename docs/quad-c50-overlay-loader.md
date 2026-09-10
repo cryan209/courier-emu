@@ -238,9 +238,10 @@ artifact and is withdrawn.
 - ~~The request and acknowledge protocol on ports `0x57`/`0x58`~~ — **recovered
   2026-09-10 by running the resident**, see "The host link is a five-word
   window" below.
-- The supervisor code that walks this table and streams a row on request. No
-  16-bit immediate in the code region points at the table's address, so it is
-  reached through a far pointer or a computed address.
+- ~~The supervisor code that walks this table and streams a row on request.~~
+  Recovered at physical `0xcee5f`: it indexes the table at `0xcefa8`, writes 4
+  to CPU port `0x9e`, then streams four words through lanes
+  `0xc0/c4/c8/cc`, strobing `0x9e` with 2 after each burst.
 - Which overlay is selected when — the table says what the eight images are and
   where they go, not which one a given call needs.
 - `QR060103` has the same downloader shape; its table has not been located.
@@ -292,11 +293,12 @@ writes at `0x8058`..`0x8066`: `0x68 = 0x000f`, `0x69 = 0x0002`, `0x6a = 0x0000`,
 Reproduce with `PYTHONPATH=. .venv/bin/python tools/probe_quad_c50_resident.py`;
 results in `artifacts/quad-c50-resident-20260910/results.json`.
 
-**What this does not yet settle** is which bit of the status word the CPU side
-drives to mean "the window holds a fresh burst". Standalone, `0x57` reads back
-whatever the DSP last wrote, so this run cannot separate the CPU's direction
-from the DSP's own. An endpoint that presents four words and treats the
-`0x0300` write as the acknowledge is the next thing to test.
+The CPU-side routine settles the status bits too. After writing 4 to `0x9e` it
+waits on bit 2 (`0x04`); after every four-word strobe it waits on bit 1
+(`0x02`). `QuadC50Endpoint` models those as separate link-ready and
+burst-acknowledge states. A focused test runs the captured resident, withholds
+bit 1 while a burst is pending, and observes the resident read all four words
+and write `0x0300` to `0x57` before bit 1 rises.
 
 ## Why 302 id 8 has no counterpart: V90A against V90D
 

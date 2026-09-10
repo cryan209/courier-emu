@@ -194,6 +194,12 @@ public:
     void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
+    // Quad NAC digital highway: one G.711 octet in each direction per 8 kHz
+    // frame. This is deliberately separate from the AC01's 16-bit words.
+    void configure_digital_pcm(bool enabled, uint16_t idle_codeword = 0xff,
+        uint32_t clock_hz = 20'160'000);
+    void queue_g711_rx(const uint8_t *codewords, std::size_t count);
+    const std::vector<uint8_t> &g711_tx() const { return m_g711_tx; }
     // The boot table the ASIC clocks into the same serial port before the
     // codec matters. It is not audio and must not be consumed by a frame sync,
     // so the ROM loader's DRR polls drain it ahead of the sample stream.
@@ -319,6 +325,8 @@ private:
     uint64_t m_line_frame_interrupts = 0;
     uint64_t m_line_frame_next_cycle = 0;
     bool m_rom_codec = false;
+    bool m_digital_pcm = false;
+    uint16_t m_g711_idle = 0x00ff;
     unsigned m_line_frame_period = 258;
     uint16_t m_line_frame_phase = 0;
     uint32_t m_line_sample_phase = 0;
@@ -367,6 +375,8 @@ private:
     void codec_apply_register(uint16_t word);
     void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
+    std::deque<uint8_t> m_g711_rx;
+    std::vector<uint8_t> m_g711_tx;
     std::deque<uint16_t> m_codec_boot;
     std::deque<int16_t> m_v8_rx_window;
     std::deque<uint16_t> m_line_rx;

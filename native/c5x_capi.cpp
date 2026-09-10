@@ -148,6 +148,27 @@ void courier_c5x_queue_codec_rx(void *handle, const uint16_t *samples, std::size
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_codec_rx(samples, count);
 }
 
+void courier_c5x_configure_digital_pcm(void *handle, int enabled,
+    uint16_t idle_codeword, uint32_t clock_hz)
+{
+    if (handle) static_cast<C5xCore *>(handle)->configure_digital_pcm(
+        enabled != 0, idle_codeword, clock_hz);
+}
+
+void courier_c5x_queue_g711_rx(void *handle, const uint8_t *codewords, std::size_t count)
+{
+    if (handle && codewords) static_cast<C5xCore *>(handle)->queue_g711_rx(codewords, count);
+}
+
+std::size_t courier_c5x_get_g711_tx(void *handle, uint8_t *out, std::size_t capacity)
+{
+    if (!handle) return 0;
+    const auto &codewords = static_cast<C5xCore *>(handle)->g711_tx();
+    const std::size_t count = std::min(codewords.size(), capacity);
+    if (out) std::copy(codewords.begin(), codewords.begin() + count, out);
+    return codewords.size();
+}
+
 void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_data_trace_filter(
