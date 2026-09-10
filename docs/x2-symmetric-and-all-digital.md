@@ -1849,3 +1849,58 @@ OR-ed with `@05`.  So the slot that normally carries user data carries a fixed
 pattern instead, and the arm selection at `e172` is the choice between a data
 transmitter and a pattern transmitter - which is what a training phase needs
 and what its `@63/@64 = 07d0h` timers are counting.
+
+## Is V.90's transmitter different?  Almost not at all
+
+Testable without recovering a second overlay map, by counting instruction
+signatures that carry no absolute addresses and so survive relocation.  Whole
+routines do not survive it - lifting `e65f` or `8faa` byte-for-byte out of
+`IM020104` finds them in no other image, including the x2-only `IE020202` -
+so the comparison has to be made on address-free fragments.
+
+| signature | IM0104 | IE0104 | IE0202 | IE0706 | IE0405 | IM0406 | Ie0002 |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| octet reverse `rol/rorb/rol/and #00ff` | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| TX scrambler `bsar 5 / xor @59` | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| RX scrambler `bsar 5 / xor @1f` | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| `bldd @1a, #088c` (load callback) | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| `bldd #088c, @1a` (install) | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| `splk @21, #00ff` / `#007f` | 3 / 1 | 3 / 1 | 3 / 1 | 3 / 1 | 3 / 1 | 3 / 1 | 3 / 1 |
+| **`ffd9` references** | 24 | 24 | 25 | **37** | 37 | 37 | 35 |
+
+The datapath is the same datapath.  The scrambler recurrences, the octet
+reversal, the callback-slot protocol and the receive-side width pair are
+present in identical numbers in every build from the first x2 release to the
+V.90 one.  Whatever V.90 changed, it did not replace the thing this document
+just traced.
+
+### What V.90 does add: four bits of state in `ffd9`
+
+The one count that moves at the V.90 boundary is `ffd9`, and the bits tested
+through it say what the extra references are for.  Taking the instruction that
+follows each `lar ar1, #ffd9`:
+
+| bit tested | IM020104 | IE020202 | IE020706 | Ie030002 |
+|---:|--:|--:|--:|--:|
+| 0, 1, 2, 3, 15 | yes | yes | yes | yes |
+| **4** | 0 | 0 | **2** | 2 |
+| **5** | 0 | 0 | **1** | 1 |
+| **6** | 0 | 0 | **1** | 1 |
+| **7** | 0 | 0 | **1** | 1 |
+
+Bits 4 through 7 of `ffd9` are tested in no x2-only build and in every V.90
+one.  So V.90 arrives in this DSP as a nibble of new state in the control cell
+that already carried the x2 role bits - bit 15 of it is what gates the octet
+reversal in the transmit chain above - plus the one new host command, tag `72`.
+That is the same shape as the AT surface: one more bit in the register that
+already held x2.
+
+### The one real change to the sample write is older than V.90
+
+Between `IE020104` (March 1997) and `IE020202` (December 1997) the codeword's
+direct write to the peripheral window disappears: `ldp #1fe / sacl @01` and
+`ldp #1fe / sacl @0c` both go from 2 to 0, and `ldp #1fe` as a whole collapses
+from 22 occurrences to 2.  The `ff00` page did not stop being used - `ffd9`
+and `ffdb` are still reached through `ar1` - so this is a change of addressing
+style across a nine-month rework, not a change of function, and it lands
+squarely inside the x2 era rather than at the V.90 boundary.
