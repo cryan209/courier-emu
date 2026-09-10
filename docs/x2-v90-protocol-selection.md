@@ -3212,3 +3212,28 @@ read `CS` from there.  With `CS` known the table resolves, the four DSP images
 are located, and the overlay containing the codeword table at `5cf88` becomes
 disassemblable - after which the Sd generator should be adjacent to the
 codewords it draws from.
+
+### Recovering `CS`: what was tried and why it failed
+
+Scanning for far calls (`9a off seg`) whose `seg*16 + off` lands in the
+loader region gives five hits, four sharing segment `8809`.  That looked
+decisive, but the targets disassemble mid-instruction - `0x0139a4` is
+`add al, 0` followed by `mov dx, [9d38]`, inside a loop body, not an entry
+point.  They are `9a` bytes occurring in code, not calls.  And with
+`CS = 8809` the table would sit at file `0x016c28`, where the rows are again
+code, one containing a recognisable `call far` encoding.
+
+So byte-pattern search is not going to recover `CS`; it has now failed three
+ways (shape-only rows, constrained rows, far-call callers).  What would work:
+
+* **Disassemble the 186 properly** around `0x093ac3` and follow the segment
+  setup - the repository has no x86 disassembler wired up, only the emulator.
+* **Or run it.**  `courier_emu` already boots the Quad controller, and the
+  loader is reached during DSP download, so `CS` could simply be read at the
+  moment the routine executes.  That is the approach the rest of this work has
+  taken - model the hardware rather than infer around it - and it needs the
+  Quad bring-up in `quad-bringup-blockers.md` to be far enough along.
+
+The cost is now clearly in the 186 domain, not the DSP one, and the payoff is
+specific: `CS` unlocks the overlay table, which unlocks the overlay holding
+the codeword table at `5cf88`, which should place the Sd generator.
