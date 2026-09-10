@@ -1540,3 +1540,117 @@ The Total Control Quad NAC images build the digital-modem half of the same
 protocol, on the same serializer, selecting a 17- or 30-bit INFO0 body at run
 time.  See "What the NAC changes for x2 and V.90" in
 [`quad-x2-modem-nac.md`](quad-x2-modem-nac.md).
+
+## What builds the x2 bits, and how x2 and V.90 differ in kind
+
+### The x2 capability word is host-supplied, and there are two of them
+
+The DSP does not compute the INFO0 capability field.  It copies a 16-bit word
+the supervisor hands it, and it keeps **two** such words:
+
+```text
+8d14  smmr  @7a, #fff2        ; tag 51 - the plain capability word
+...
+8d29  smmr  @7a, #fff1        ; tag 70 - the x2 capability word
+8d2b  lar   ar1, #fff1
+8d2d  apl   *, #3fff          ; force the top two bits to 0
+8d2f  opl   *, #0000          ; (no-op)
+8d31  lar   ar1, #fff4
+8d33  splk  *, #8000          ; the x2 setup flag
+8d35  lar   ar1, #fff7
+8d37  opl   *, #0001          ; "x2 enabled on local modem"
+```
+
+Tag `51` writes `fff2` raw; tag `70` writes `fff1` and masks it.  The
+selection between them is one bit:
+
+```text
+8e4a  bit   6, @1f
+8e4b  bldd  @7d, #fff1        ; bit 6 set   -> x2 word
+8e4d  xc    2, ntc
+8e4e  bldd  @7d, #fff2        ; bit 6 clear -> plain word
+8e50  lacl  @7d
+8e51  lar   ar0, #ff18
+8e53  bd    8769, *
+8e55  splk  @7f, #0010        ; offset 16 -> ITU bits 12:27
+```
+
+So **the x2 bits are built by the supervisor and merely placed by the DSP**,
+into the standard V.34 INFO0 capability field.  The `apl #3fff` matters: value
+bit `j` lands on ITU bit `12 + j`, so clearing value bits 14 and 15 forces ITU
+bits **26:27** to zero - Table 14's "Transmit clock source" field, `0 =
+internal`.  The x2 word is a legal INFO0 capability word with the clock-source
+field pinned.
+
+There is also a fallback: at `8e57`-`8e5a` the firmware clears `@1f` bit 6 and
+re-enters `8e4a`, rebuilding the same field from `fff2`.  That is how a call
+drops to the non-x2 capability set without a separate code path.
+
+### x2 is detected by inspecting standard bits, not by a flag
+
+The peer-side test builds the `fff7` "remote is an x2 server" bit from two
+ordinary capability bits:
+
+```text
+9047  lar   ar1, #ff18
+9049  bit   5, *              ; local  ITU bit 18
+904a  bcnd  90bd, ntc
+904c  and   #00000c00         ; remote ITU bits 23 and 24
+904e  bcnd  90bd, eq
+9050  lar   ar1, #fff7
+9052  opl   *, #0200
+```
+
+Local ITU 18 is "ability to transmit at the high carrier frequency with a
+symbol rate of 3200".  The remote pair is ITU 23 - the top bit of the
+`21:23` symbol-rate asymmetry field - and ITU 24, "Set to 1 in an INFO0
+sequence transmitted from a CME modem".
+
+The remote mapping is the same as the local one because `ff00:ff01` is packed
+like `ff18:ff19`; the shift at `951d` only compensates for the body length:
+
+```text
+951d  bit   0, @1f
+951e  bsar  2                 ; always
+951f  xc    1, ntc
+9520  bsar  13                ; total 15 when @1f bit 0 is clear
+```
+
+Shift 15 is the 17-bit INFO0a form, matching `ff18`'s own `bsar 15` at `9526`;
+shift 2 leaves 30 bits, which is the INFO0d body.  So on the Courier `@1f`
+bit 0 means **"the remote INFO0 is a 30-bit digital-modem INFO0d"** - the same
+flag whose NAC counterpart selects sending one.
+
+### The difference in kind
+
+| | x2 | V.90 |
+|---|---|---|
+| carried in | INFO0 | INFO1a |
+| when | before line probing | after line probing |
+| mechanism | swap the whole capability word (`fff1` for `fff2`) | one value in an existing field |
+| field | ITU `12:27`, all standard definitions | ITU `37:39` |
+| how the peer is recognised | a *combination* of standard capability bits - local 18, remote 23 and 24 | `37:39 == 6`, read at `8fbc` |
+| standard status | none - legal V.34 values used as a private code | Table 10/V.90 |
+
+V.34 already defined INFO1a `37:39` as "an integer between 0 and 5, indicating
+that V.34 operation is desired" (Table 11/V.90, quoting V.34).  **V.90 added
+exactly one value to it**: 6.  That is the whole on-wire announcement, which is
+why the firmware's V.90 check is a three-bit mask and a compare with 6, and why
+the V.34 path at `96a3` clamps the same field to 5.
+
+x2 had no such field available, because it shipped before there was a
+standard place to put it.  So it announces itself in the earlier message, by
+sending a capability word whose *pattern* the other end recognises - and pays
+for it twice over: the decision has to be made before probing, and the
+recognition test is a conjunction of bits that mean something else, which is
+why the firmware needs a ten-bit `fff7` condition bitmap and a failure enum
+("Remote modem is not x2", "not a Server", "Multiple CODECs in channel") to
+explain what went wrong.  V.90 needs none of that; a mismatch is just
+`37:39 != 6`.
+
+### Still open
+
+The *content* of `fff1` versus `fff2` is set by the supervisor, not the DSP, so
+the specific x2 bit pattern is an 80186-side question this section does not
+answer.  What is established here is where it goes, what constrains it
+(ITU `26:27` forced to 0), and how the peer is tested.
