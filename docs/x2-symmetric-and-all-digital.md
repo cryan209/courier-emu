@@ -614,6 +614,46 @@ supervisor mode/config command
     -> enclosing server script resumes
 ```
 
+### Decompiling the `c90e` / `c922` script bodies
+
+Loading the Quad's `c800` mode image at its real DSP destination removes an
+important ambiguity: these regions are not opaque encoded bit fields. They
+are descriptor streams containing native callback addresses interleaved with
+counts and parameters. The conspicuous callback words include resident
+`c434`, `c4a6` and `c423`, plus mode-local `c9ec`, `ca00`, `c52e` and `cba0`.
+Following those addresses produces ordinary C5x code for filter setup, mapper
+setup, table construction and terminal mailbox notification.
+
+The raw streams contain the following count-sized values:
+
+| script | values present | value at 8000 symbols/s |
+|---|---|---|
+| enclosing `c90e` | `0180`, `0080`, `0018`, `0012`, `000c`, `00c0` | 384, 128, 24, 18, 12, 192 symbols |
+| finite detour `c922` | `0080`, `0018`, `0bb8`, `000c`, `01ff`, `0120`, `05dc` | 128, 24, 3000, 12, 511, 288, 1500 symbols |
+
+`0180` is especially diagnostic: **384 symbols is exactly the length of
+V.90 Sd**, specified as 64 repetitions of a six-symbol sequence. It occurs
+in the enclosing digital-server script, alongside a call to the same resident
+`c434` waveform setup used by the detour. This is the first direct numerical
+placement of an Sd-sized interval in the recovered server phase program.
+
+The large `0bb8` and `05dc` quantities in `c922` are 375 ms and 187.5 ms at
+8000 symbols/s, respectively, which makes the detour training/timing code
+rather than a packed rate message. The final `c423` callback is still the
+terminal status notification identified above.
+
+This changes the remaining reverse-engineering task from "find a hidden
+scalar wire field" to "label each descriptor callback and its duration".
+There must still be a decodable rate representation: the peer has to recover
+the same mapper configuration.  The likely representation is structural—the
+six interval constellation/cardinality choices—so its inverse is the number
+of payload bits assigned across one six-symbol frame, `K`, followed by
+`rate = K * 8000 / 6`.  In particular,
+the entry points at `c9ec` and `ca00` lead into the server-specific mapper and
+training constructors; their inputs derived from `0340`/`0341` are the likely
+location where the selected codeword set—and therefore the effective PCM
+rate—is encoded.
+
 What is still missing is now narrow: identify the resident mailbox handlers
 that set `039f` bits 0 and 7, map their controller commands back to S76/S81,
 classify the finite `c922` detour within Phase 3 or Phase 4, and follow the

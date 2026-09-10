@@ -2752,6 +2752,95 @@ The handshake never carries the 56k speed - the 7-bit frame's two rate fields
 are V.34 *symbol* rates, not bit rates.  The speed is chosen by measurement in
 the DSP and reported to the supervisor as a small index.
 
+### Audit of the missing wire-rate field (2026-09-10)
+
+A new supervisor-side sweep rules out two tempting interpretations of that
+report.  `sdl6-x2.exe` was depacketized into its sixteen load-addressed 80186
+modules, and every direct installation of the common mailbox receive-table
+dispatcher was enumerated.  The dispatcher is the relocated copy at physical
+`0x8edba`; each caller supplies a byte-tag table, a parallel handler-word
+table, and a count before jumping to it.  None of those directly installed
+tag tables contains `67`, `68`, or `69`.
+
+This is a negative result, not proof that the supervisor never consumes the
+rate report: a handler can replace the receive vector indirectly, and the
+DSP's high-bit queue convention can make a following value a stream word
+rather than an ordinary tag.  It does show that there is no simple permanent
+`tag 69 -> send rate back to DSP` handler in the resident controller state
+tables.
+
+Two apparent controller matches for literal `69` were also rejected.  The
+routines at physical `0x895a9..0x8964b` and their later overlay copy parse the
+ASCII string grammar `+F[PL]PI=""`; their acceptance of ASCII `I` (`49`) and
+`i` (`69`) is unrelated to the x2 seven-bit modulation-parameter codes.
+
+Together with the field-width audit below, the present working model is:
+
+```text
+DSP measures the PCM receive path
+    -> retains the selected index in datapump state
+    -> reports the index under 8069 for status/control-plane use
+    -> a Phase-3/4 DSP script encodes the selection in PCM symbols
+    -> the peer decodes the selected symbol/table pattern
+```
+
+The last two arrows remain a hypothesis.  The next discriminating trace is
+from the retained index, not from the supervisor tag: locate the post-`c356`
+uses of the selected cell in a correctly overlaid x2 PCM image, then compare
+the selected transmit table against the receive-side `bc38..bc92` descriptor
+decoder and table `bca9`.  If the selected index changes a table address,
+repeat count, or codeword subset, that quantity is the proprietary wire-rate
+encoding.  If it does not, the supervisor's indirect stream consumer must be
+revisited.
+
+That first trace changes the balance of the hypothesis.  The `c320` rate
+routine is not in an overlay at all: it is in the x2 resident image, under the
+verified flat mapping `file = 0x18100 + 2*PC`.  Its byte sequence occurs once,
+at flat `0x30740`; `lacl @12 / call 8b7d / samm @0c` begins at `c324`, exactly
+as disassembled above.  This corrects an attempted overlay-6 anchor which
+matched data rather than code.
+
+More importantly, the chosen index is DP-007 cell `03e5`.  After clamping it,
+the routine queues `8069` and then queues `03e5`'s value:
+
+```text
+c34e  splk  @65, #000a        ; DP 7: low clamp in 03e5
+c354  splk  @65, #0015        ; DP 7: high clamp in 03e5
+c356  lacc  #00008069
+c358  call  83cf              ; queue the tagged header
+c35a  lacl  @65               ; reload 03e5
+c35b  call  83cf              ; queue the value
+```
+
+There is no second `lacl @65` in the resident image.  The queue sender at
+`83ed..83fd` interprets bit 15 of `8069` as a paired-word marker: it strips
+the high bit, writes tag `0069`, and writes the following word as that tag's
+value in the same mailbox transaction.  Thus the controller receives an
+ordinary `(tag=69, value=10..21)` pair, not an untyped second stream word.
+
+This initially made a controller-selected encoding script the leading model,
+but enumerating the installed `0192` callbacks rejects it.  Paired-value
+handlers are easy to identify: after the tag dispatcher selects one, the
+handler reads the associated value with `in al,5e / in al,5c`.  The main x2
+table at controller offsets `5730`/`5750` maps 32 tags, including x2 status
+tags `6a`, `6b`, `6c`, `6d` and `6e`, to such handlers.  It does not contain
+`69`.  Neither the smaller table-dispatch callbacks nor the direct state
+callbacks compare against `69` or read its attached value.
+
+So tag `69` is an exported measurement/status value, not a controller command
+that selects a DSP phase script in this supervisor build.  The final-rate
+negotiation must remain inside the line-side Phase-3/4 machinery: the
+three-word phase scripts and the codeword/mapper tables they select.  This is
+also consistent with the absence of a final 56k rate field from INFO0, INFO1,
+MP and the proprietary 7-bit modulation-parameter body.
+
+`tools/encode_x2_v90_fields.py` makes the recovered wire distinction
+executable.  It emits the complete INFO-framed bit stream (V.34 fill/sync,
+body, reflected `8408` CRC, trailing fill) for x2's 17-bit INFO0 and 7-bit
+modulation-parameter marker, and for V.90's 38-bit INFO1a.  Its four x2 marker
+checks reproduce `4d`, `69`, `48` and `49`; critically, its `69` is the
+on-wire 7-bit marker code and is unrelated to DSP mailbox tag `69`.
+
 ### x2 added six outbound tags
 
 Listing every `lacc #80xx` that feeds the host queue:
@@ -3102,6 +3191,16 @@ Interpretation, separated by what supports it.
 
 ### Measured from these images
 
+* **The Phase-4 overlays have direct binary ancestry.**  Comparing the
+  x2-only `sdl6-x2` module 13 (loaded at `dc00`, 4,472 words) with
+  `IDSDL302` overlay 8 (also loaded at `dc00`, 7,350 words) finds exact
+  relocated islands of 161, 138, 81, 49, 41 and 33 consecutive words, plus
+  numerous smaller runs.  The 138-word island moves from x2 `e197` to V.90
+  `de2e`; its executable prefix is instruction-for-instruction identical and
+  enters the same callback-driven sample-processing machinery.  The 161-word
+  island moves from x2 `ec4f` to V.90 `f785` and is a shared mapping/data
+  table.  This is stronger than shared constants: the later V.PCM page retains
+  x2 code and tables while growing by 2,878 words (64%).
 * **x2 uses a six-symbol data frame.**  Its rate granularity is 1333 1/3
   bit/s, and `1333 1/3 = 8000 / 6`.  This falls out of the rate ladder alone,
   with no reference to any specification.
