@@ -3062,3 +3062,68 @@ carries anything alignment-shaped - they are all DPSK handshake frames, not
 PCM-domain signals.  So x2's alignment signal is in the PCM path, alongside
 the codeword construction in overlay 6, and it is the next thing worth
 finding.
+
+## The codeword tables, and a correction
+
+Scanning every image for runs of word-sized values in the PCM codeword range
+finds two distinct kinds of table.
+
+### The sign-pair table is 4.03-only
+
+```text
+403 @3c16c:  a7 a6  b4 b3  bc bd  c5 c4  c8 c7  d3 d2  d6 d5  de df  ec ed  f1 f0
+```
+
+Twenty entries in sign pairs - the table at `c66e` that the snapper `c651`
+walks.  It is **absent** from `sdl6-x2`, from `SDL_CS3`, and from both Quad
+NACs.
+
+That qualifies the earlier section: `c651` and its table are 4.03-era code.
+They are *gated* on `fff4` bit 2, the x2-server flag, but they are not what an
+x2-only modem ran.  "What the x2 code does in overlay 6" describes what 4.03
+does on an x2 call, which is not the same claim.
+
+### The two-level table is shared, and the levels are 16 apart
+
+A different table appears in the x2-only client, the server NAC, and 4.03
+alike:
+
+```text
+group 1:  a5 a7 ad af b7 bd c5 cf e5
+group 2:  95 97 9d 9f a7 ad b5 bf d5
+```
+
+Nine codewords, then the same nine again with **every entry exactly 16 lower**:
+
+```text
+a5-95 = a7-97 = ad-9d = af-9f = b7-a7 = bd-ad = c5-b5 = cf-bf = e5-d5 = 0x10
+```
+
+| image | offset | entries |
+|---|---|---|
+| `sdl6-x2` (x2-only) | `3e0b2` | 4 prefix + the 18 |
+| `QF060003.NAC` (server) | `5cf88` | 3 prefix + the 18 |
+| `courier-board.rom` (4.03) | `3c8ba` | the 18 |
+
+**Sixteen is V.90's Sd constant.**  Table 8.4.4/V.90 defines Sd's `W` as "the
+PCM codeword whose Ucode is `16 + UINFO`".  The same offset, between the same
+kind of objects, is sitting in x2 firmware from before V.90 existed - and on
+both ends of the link, client and server.
+
+In mu-law terms an offset of 16 is one segment, so the two groups are the same
+nine-point constellation at two levels about 6 dB apart.  That is what a
+two-level set *is*, and it connects the `@52 = 2` count found earlier to a
+concrete pair of tables rather than to an inference.
+
+### What this does and does not show
+
+Shows: x2 carries a two-level codeword constellation, the levels separated by
+the same 16 that V.90 later wrote into Sd, and the table is present in the
+server image as well as the client - so it is a property of the protocol, not
+of one end's implementation.
+
+Does not show: that this table *is* x2's alignment signal.  Sd is a
+transmitted sequence with a defined repetition count and symbol order; what is
+found here is the codeword set such a sequence would draw from.  Locating the
+generator that emits it - in the NAC, since the digital modem is the end that
+transmits - remains the open item.
