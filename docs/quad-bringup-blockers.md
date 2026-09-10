@@ -312,6 +312,51 @@ PYTHONPATH=. .venv/bin/python tools/probe_quad_c50_live.py      # the endpoint, 
 `probe_quad_c50_live.py` needs `CourierMachine`'s `quad_c50` read/write/service
 hooks, which are not committed.
 
+## What the controller-to-card transport actually is (2026-09-10)
+
+Measured before building the concurrency the section above asks for, and it
+changes what needs building.
+
+Feeding the controller a valid SDL frame and watching every write into its
+memory aperture at `0x40000` separates two kinds of traffic. The bulk clear and
+image copy at `0x80751`, `0x807f4`, `0x8082f` and `0x80842` account for all but
+a handful. The only **targeted** write is at `0x813f0`, twenty of them, one byte
+of `0x11` to aperture offset `0xbae1` - which is exactly the offset this
+document already noted being written "for each selected target" through the
+port `0x280` selection.
+
+On the card side that byte has exactly one reader, `0xf64ec`, and it is inside
+the message interpreter's segment. It is not a doorbell. It is a response
+builder:
+
+```
+f64df  di = [0x9c36]          ; reply buffer
+f64e3  ax = 0x00f3 ; stosw    ; parameter id
+f64e7  al = 2      ; stosb    ; length
+f64ec  al = [0xbae1] ; stosb  ; the byte the controller stamped
+f64f2..f6518                  ; a second byte derived from [0x82ed]
+```
+
+So `0xbae1` is a **slot identity** the chassis stamps into each channel's memory,
+which the card reports back as parameter `0x00f3`. The interpreter is a
+request/response agent whose replies are assembled at `[0x9c36]` while requests
+are parsed from `[0x9c2c]`, and both buffers live in card RAM that the
+controller can reach through the aperture it already has.
+
+**That means true concurrency may not be the requirement.** Nothing here shows
+the two processors needing to run at the same instant; it shows them taking
+turns over shared channel memory - the controller writes a request and the card
+answers into another buffer. A harness that runs one side, hands the channel
+memory over, runs the other, and hands it back would exercise the same paths. It
+is a much smaller thing to build than lock-stepped execution, and it is testable
+against a known-good outcome: the card should answer parameter `0x00f3` with the
+slot byte the controller stamped.
+
+What is still not decoded is which buffer the controller writes a *request* into
+and how it signals one - the twenty writes above are provisioning, not a
+request, because a bare frame carries none. Recovering that needs a frame whose
+body is an actual parameter request, and the body format is not yet known.
+
 ## Recommended order
 
 1. Implement a separate Quad board profile with channel-selected memory and
