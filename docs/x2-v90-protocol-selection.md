@@ -2946,3 +2946,66 @@ where the negotiated rate becomes a physical constellation - and the x2-only
 difference at each step is a row index, a count of one versus two, and a mask
 width.  x2 does not replace V.34's rate machinery anywhere; it parameterises
 it, exactly as it parameterises INFO0 rather than replacing it.
+
+## Assessment: how close is x2 to V.90
+
+Interpretation, separated by what supports it.
+
+### Measured from these images
+
+* **x2 uses a six-symbol data frame.**  Its rate granularity is 1333 1/3
+  bit/s, and `1333 1/3 = 8000 / 6`.  This falls out of the rate ladder alone,
+  with no reference to any specification.
+* **x2's rate set is a strict subset of V.90's.**  Both are `K * 8000/6`;
+  x2 uses `K` in `{25, 28, 31, 32..43}`, V.90 `21..47`.  V.90 fills x2's gaps
+  (26, 27, 29, 30) and extends both ends.
+* **The implementation is continuous.**  The same measurement-to-index code
+  serves both, with identical clamp bounds; the tags x2 added (`67`, `68`,
+  `69`) are inherited unchanged; the PCM codeword sets x2 builds are the same
+  objects V.90 calls `UINFO` Ucodes.
+* **On a PCM call this firmware builds two level sets**, `faa0` and `fb20`,
+  with `fba0` and `fc20` as their sign variants (`opl` 1 / `apl` fe), snapped
+  to the permitted codewords at `c66e`.  The count is 2 under `fff4` bit 2 and
+  1 otherwise.
+
+### From the Recommendations
+
+* V.90 is also six-symbol: "a six-symbol structure", "six PCM code sets, one
+  for each data frame interval 0 to 5", "six independent mappers", and CP
+  carries six 4-bit constellation indices, one per interval.
+* What V.90 adds over x2 is **declaration**, not mechanism: INFO0d gives the
+  digital modem a 30-bit body of its own, Jd gives it a rate-capability
+  sequence, and INFO1a `37:39` gives the protocol an explicit selector.  x2
+  has none of these - its server is recognised by a conjunction of standard
+  bits that officially mean something else.
+
+### Reported, not verified here
+
+K56flex is understood to use a **four**-symbol mapping frame, which would give
+2000 bit/s granularity and match its 32000/34000/.../56000 ladder.  There is
+no K56flex image in this repository, so this is not checked.  If it holds,
+then the six-symbol frame is x2's rather than common ground, and V.90 inherited
+its frame structure - and with it the rate granularity, the modulus encoder and
+the mapper count - from x2 rather than from K56flex.
+
+### Explicitly not established
+
+An earlier draft of this assessment suggested x2 builds two constellation sets
+where V.90 builds six.  **That is not supported.**  The overlay-6 code above
+serves both protocols in the 4.03 image, and there is no six-way constellation
+loop anywhere in that overlay.  The two-versus-one count is keyed on `fff4`
+bit 2, the x2-server flag, so it distinguishes a PCM call from a V.34 call -
+not x2 from V.90.  Whether V.90's per-interval constellation selection is
+implemented elsewhere in this firmware is an open question.
+
+### The reading this supports
+
+V.90 is x2's mechanism given a standard place to live.  The frame structure,
+rate quantisation, measurement path and codeword construction are continuous;
+what changed is that the things x2 signalled by inference acquired explicit
+fields, and the rate ladder was filled in and extended.
+
+One standing caveat: every image here is USR's.  Continuity in one vendor's
+codebase is strong evidence about implementation lineage and weaker evidence
+about protocol lineage, since the same team edited the same DSP forward
+through all three eras.
