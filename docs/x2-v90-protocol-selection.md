@@ -1654,3 +1654,100 @@ The *content* of `fff1` versus `fff2` is set by the supervisor, not the DSP, so
 the specific x2 bit pattern is an 80186-side question this section does not
 answer.  What is established here is where it goes, what constrains it
 (ITU `26:27` forced to 0), and how the peer is tested.
+
+## Is there an x2 INFO1?
+
+No.  x2's capability exchange is the INFO0 word swap described above - it has
+no INFO1 of its own.  But the Courier does send a **fourth message that exists
+in neither Recommendation**, and it is built inside the x2 region.
+
+### The complete standard set, for contrast
+
+Enumerating every `1111`-delimited sequence in both Recommendations by its
+closing fill position:
+
+| body | frame | sequence |
+|---|---|---|
+| 17 | 49 | INFO0 (Table 14/V.34) = INFO0a (Table 8/V.90) |
+| 19 | 51 | INFOh (Table 22/V.34, half-duplex only) |
+| 30 | 62 | INFO0d (Table 7/V.90) |
+| 38 | 70 | INFO1a (Tables 10 and 11/V.90) |
+| 77 | 109 | INFO1c (Table 15/V.34) = INFO1d (Table 9/V.90) |
+
+The Courier's fourth script, `99a3`, is a **7-bit body in a 39-bit frame**.
+It matches nothing in that table, while using the standard framing exactly -
+the same 12-bit fill and sync, the same CRC-16, the same closing `1111`.
+
+### It is built only under the x2 gates
+
+The builder is at `90de`, and it is not reached from the tag-`6b` status path
+that precedes it (`90da bd 83b1` branches away with its delay slots).  Its two
+call sites are `908a` and `90a6`, both inside the routine that begins:
+
+```text
+903b  lar   ar1, #fff4
+903d  bit   15, *              ; x2 has been set up
+903e  retc  ntc
+903f  lar   ar1, #039f
+9041  bit   6, *               ; the x2 capability word is selected
+9042  retc  ntc
+```
+
+Both gates must hold, so nothing here runs on a non-x2 call.  What the two
+sites send is a small code, and the body is 7 bits wide because the code is:
+
+```text
+9085  lar   ar1, #6f
+9086  bit   1, *
+9087  lacl  #4d                ; 0x4d
+9088  xc    1, tc
+9089  lacl  #69                ; or 0x69
+908a  call  90de, *
+```
+
+```text
+909b  apl   @1f, #bf3f         ; clears bit 6 - drop the x2 capability word
+...
+90a1  lacl  *                  ; [ff20 + @5b] & 1
+90a4  add   @5b, 1
+90a5  add   @5b, 4             ; -> 0x48 or 0x49 with @5b = 4
+90a6  call  90de, *
+```
+
+`90de` writes the value into `ff1a` at offset 6 - the top of a 7-bit body, so
+the code occupies ITU bits `12:18` - and arms the script:
+
+```text
+90de  lar   ar0, #ff1a
+90e0  calld 8769, *
+90e2  splk  @7f, #0006
+90e4  bd    991d, *
+90e6  splk  @4b, #99a3
+```
+
+Note that the second site clears `@1f` bit 6 immediately before sending, so at
+least one of these codes accompanies *dropping* the x2 capability word.
+
+### The Quad NACs do not have it
+
+Their script tables stop after the 38-bit script.  QF 6.0.3 ends at `9ff5`
+(`a043 0000`) and QR 6.1.3 at `9e25`; the Courier's table continues to `99ad`
+with the six extra entries that make up the 7-bit script.  So this message is
+built by the analogue Courier and not by the server images.
+
+That asymmetry is consistent with a client-to-server message - receiving does
+not need a send script, since reception is demodulator plus `877a` reads on
+`ff08` - but it is not proof of one.
+
+### What this does and does not establish
+
+Established: a fourth transmitted frame exists; it uses V.34's framing with a
+body length no standard sequence has; it is gated on both x2 conditions; it
+carries a 7-bit code; and the server images do not build it.
+
+Not established: that it is "the x2 INFO1".  It is far too small to be a
+capability or probing-results message - 7 bits against INFO1c's 77 - so it
+reads as a short signalling or acknowledgement frame in the x2 phase rather
+than an INFO1 counterpart.  Naming its codes (`4d`, `69`, `48`/`49`) and
+finding the matching receive path is the next step, and the receive side is
+the better target because it is present in both the Courier and the NACs.
