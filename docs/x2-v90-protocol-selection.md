@@ -3158,3 +3158,57 @@ Quad NAC's DSP overlay loader in its 80186 controller code**, and deriving its
 table the way `CourierRom` derives the Courier's.  Once that exists, the
 codeword table at `5cf88` resolves to a DSP address, the code around it
 becomes readable, and the Sd generator should be immediately adjacent.
+
+## The Quad's DSP loader is the same shape, with different constants
+
+The previous section's blocker was overstated: the Quad loader **is**
+recognisable, it just does not match the Courier's byte signature.  In
+`QF060003.NAC` at flattened `0x013ac3` (physical `0x093ac3`):
+
+```text
+c6 06 3e 9d 01     mov  byte [9d3e], 1
+33 c0              xor  ax, ax
+86 06 3d 9d        xchg al, [9d3d]        ; the requested image code
+25 0f 00           and  ax, 000f          ; four-bit index - as on the Courier
+b3 08              mov  bl, 8             ; row width 8, not 6
+f6 e3              mul  bl
+bf 98 eb           mov  di, eb98          ; table base -> DI, not BX
+03 f8              add  di, ax
+2e 8b 5d 06        mov  bx, cs:[di+6]     ; row word 3
+b0 04              mov  al, 4
+e6 9e              out  9e, al            ; the Quad's DSP port
+9a 87 06 db cf     call far cfdb:0687
+...
+2e 8b 75 02        mov  si, cs:[di+2]     ; row word 1 - start
+2e 8b 4d 04        mov  cx, cs:[di+4]     ; row word 2 - end
+2b ce              sub  cx, si            ; length in bytes
+d1 e9              shr  cx, 1             ; -> words
+```
+
+So the differences from `CourierRom.dsp_overlays` are exactly three: **row
+width 8 rather than 6**, **the base in `DI` rather than `BX`**, and a **four-
+word row** `[?, start, end, segment]` rather than three.  The four-bit index
+mask, the multiply-and-add addressing, and the `end - start` length are
+identical in shape.  `in al, 9e` polling appears a few instructions later,
+which is the Quad's analogue of the Courier's `0x18`/`0x1e` handshake ports.
+
+### What still blocks the table
+
+The table is at `CS:eb98`, and `CS` is not recovered.  The loader sits at
+physical `0x093ac3`, so `CS * 16` lies in `[0x83ac4, 0x93ac3]` and the table
+in `[0x9265c, 0xa265b]`.  Every candidate in that window disassembles as code,
+including one where the row bytes are visibly the `call far cfdb:0687`
+instruction itself - so either the loader is relocated before it runs, or the
+row layout differs from the `[?, start, end, segment]` read above.
+
+Segments in this image are absolute: the far call target `cfdb:0687` resolves
+to `0xcfdb0`, inside the image's `0x80000`-`0xfc000` span.  That is consistent
+but not sufficient to pin `CS`.
+
+### The concrete next step
+
+Find the caller of this routine, or the code that sets up its segment, and
+read `CS` from there.  With `CS` known the table resolves, the four DSP images
+are located, and the overlay containing the codeword table at `5cf88` becomes
+disassemblable - after which the Sd generator should be adjacent to the
+codewords it draws from.
