@@ -1711,15 +1711,20 @@ S70 heading at all.  The register did not stop being read, though.  In
 
 ```text
 b29b1  bx = [e6c0]                  ; the country-profile record
-b29b5  al = cs:[bx + 71h]           ; that country's ceiling
+b29b5  al = cs:[bx + 71h]           ; that country's own value
 b29ba  ah = S70
-b29be  if S70 > 10h: use the ceiling
-b29c3  else use min(S70, ceiling)
+b29be  if S70 > 10h -> keep al      ; out of range, fall back to the country
+b29c3  if S70 <  al -> keep al      ; below the country's value, clamp up to it
+b29c7  else al = S70
 b29cb  ((n - 1) * 2 | 1) << 4 | 0a06h  -> tag 72
 ```
 
-So between April and August 1998 the V.90 transmit power stopped being a
-number the user sets and became `min(S70, country_ceiling)`, with S70's own
+Note the direction: `jb` keeps the country byte when S70 is **below** it, so
+the country value is a **lower bound** on the index and `10h` is the upper
+one.  The result is `clamp(S70, country, 16)`, not a ceiling.
+
+So between April and August 1998 the V.90 transmit power stopped being a free
+number and became a clamp between a per-country value and 16, with S70's own
 range cut from 21 to 16 and its name removed from the help.  The command
 encoding changed with it - `0b70h | n` became `((n-1)*2|1) << 4 | 0a06h`.
 
@@ -1728,3 +1733,37 @@ where Table 15/V.90 does: x2 controls the digital end's power with **one
 boolean** whose only documented constraint is "legal only in some countries",
 while V.90 controls it with a **numeric level on a half-dB ladder** - which
 this firmware first exposed and then clamped per country.
+
+### The country table
+
+The record the clamp reads is a 26-entry country profile at `cs:c482` with
+`cs = a400` (fixed by the far calls into that segment at `a400:e971` and
+`a400:e9ab`), `72h` bytes per record, the country name in ASCII at `+0` closed
+by `!`, and the V.90 level byte at `+71h` - the record's last byte.  In
+`IE020405`:
+
+| value at `+71h` | countries |
+|---:|---|
+| **6** | **UK, France** |
+| 12 | US/Canada, Japan, Finland, Sweden, Norway, Switzerland, Netherlands, South Africa, Italy, New Zealand, Czech Republic, Belgium, Denmark, Australia, Germany, International, Austria, Ireland, Spain, Portugual, South Korea, Taiwan, Signapore, Hong Kong |
+
+Twenty-four countries share one value and exactly two differ.  That is the
+whole of the geographic variation in this register.
+
+**What the numbers mean in dB is not settled by these images.**  What is
+settled is the arithmetic above: the country byte is the value the index is
+clamped *up* to, and 16 is the maximum.  A lower bound on the index is a
+regulatory clamp only if a larger index means a quieter transmitter - "you
+may always attenuate more, and your country says how much you must attenuate
+at least" - and on that reading UK and France are the two countries allowed to
+transmit louder than the other twenty-four, by whatever six index steps are
+worth.
+
+If a step is the half decibel that Table 15/V.90 uses, six steps is 3 dB, and
+the two values land on `-6.0` and `-3.0` dBm0.  Which is worth flagging rather
+than concluding: `-6` is also the number in the x2 register's own
+"-6dbm constellation", so either the x2 option names the level that later
+became V.90's ordinary one, or the coincidence is a coincidence.  Settling it
+needs the DSP side of tag `72`, which means recovering the overlay map for a
+V.90-era build - the same work already done for `IM020104` in
+[imodem_x2_map.py](../tools/imodem_x2_map.py), against a different image.
