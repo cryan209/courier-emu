@@ -542,9 +542,10 @@ at `9049`.
 
 That the codes and the strings belong together is not an assumption. Code 5's
 test is the exact complement of the condition that sets the "Remote modem is
-an x2 server" bit (`ff18` bit 10 **and** `[ff00] & 0c00` nonzero, at `9052`
-in the 4.03 resident): same two operands, opposite outcome. Code 3 turns on
-`039f` bit 9, code 2 on `ff18` bit 10, and code 1 is the default - each
+an x2 server" bit (`ff18` bit 5 **and** `[ff00] & 0c00` nonzero, tested at
+`9049` and set at `9052` in the 4.03 resident): same two operands, opposite
+outcome. Code 3 turns on `039f` bit 9, code 2 on `ff18` bit 5, and code 1 is
+the default - each
 matching its string's sense. Six independent agreements, on a table nobody
 chose to line up.
 
@@ -746,7 +747,7 @@ writers that matter address it indirectly, with no page dependence at all.
 
 ```text
 d45b  lar   ar1, #fff4
-d45d  bit   0, *              ; bit code 0 = fff4 bit 15
+d45d  bit   15, *             ; encoded bit code 0 = fff4 bit 15
 d45e  lar   ar1, #03e3
 d460  bcndd d468, ntc         ; two delay slots...
 d462  splk  *, #0012          ; ...so this always runs
@@ -788,8 +789,11 @@ unaffected, so everything in this document derived from a mask - the ten
 thresholds, `03e3` - stands unchanged. Everything derived from a `bit`
 instruction was off, and the tables above are now corrected.
 
-The one that matters most: `bit 0, *` on `fff4`, at `9070`, `d47f` and
-`d76f`, is bit code 0 and therefore **`fff4` bit 15**.
+The one that matters most is the `fff4` bit-15 test.  In the 4.03 capture it
+is at **`903d`** and **`d45d`**, and the disassembler prints it as `bit 15, *`
+(encoded bit code 0).  The addresses `9070`, `d47f` and `d76f` given here
+before are not `fff4` bit tests in that image - they are `sacl *`, `ldp #007`
+and `xor @41` - so they belong to a different build.
 
 ## What those three sites actually test: the x2 setup flag
 
@@ -836,14 +840,15 @@ description of `ff18` as "the outgoing INFO buffer": it is the local INFO0
 word pair.
 
 **The bit called "bit 7" here is bit code 7, so it is `ff00` bit 8.** It is
-read once, at `909e` (`9069` in 4.03), as the fallback source for `fff4`
+read once, at `906b` in the 4.03 capture, as the fallback source for `fff4`
 bit 0 - the mask-`0001` bit, not the setup flag - when the scheme word's own
 validity bit is clear.
 
 **And that bit has a second writer this document missed.** The full chain is
 in the next section.
 
-The INFO0 parser at `9223` is the best description of the word's layout the
+The INFO0 parser - at `91e8` in the 4.03 capture, `9223` in the build this
+section was first written against - is the best description of the layout the
 image gives:
 
 | field | code | meaning as used |
@@ -1153,7 +1158,7 @@ reserved bits rather than replacing the frame.
 * **Offset 0** (`ff18` bit 15) - a one-bit flag, cleared at `8e69`
   (`apl *, #7fff`) and set at `8e8b`, `9120` and `9141` (`opl *, #8000`),
   always immediately before the `8766` sequencer call.
-* **Offset 10** - the bit the code generator tests at `9049`/`9056`.  That
+* **Offset 10** - the bit the code generator tests at `9049`.  That
   test is `bit 5, *` on `ff18`, and this document's earlier sections read it
   correctly as **`ff18` bit 5** (their "bit 10" is the raw encoded bit code,
   which the disassembler already converts when it prints `bit 5`).  Applying
@@ -1317,3 +1322,62 @@ its `splk *, #8000` writer, and `bit 5, *` at `9049` tests `ff18` bit 5.  The
 not the printed operand; their stated conclusions are the correct bit numbers.
 Confirmed independently against `@62`, whose `opl`/`apl` masks span exactly
 bits 0-7 and whose `bit` tests span exactly 0-7.
+
+## Appendix: bit-numbering sweep
+
+Prompted by an error introduced in the framing section above, every
+bit-numbering claim in this document was re-checked against the 4.03 capture.
+The conclusion is that the **method was already right**: the disassembler
+converts the encoded bit code when it prints (`bit {15 - (base & 15)}` in
+`tools/c5x_disasm.py`), so a printed operand is the true bit number, and this
+document's stated bit numbers are true bit numbers.  The `(bit N, a bit code)`
+parentheticals name the *encoded* field, which is `15 - bit`.  That reads as a
+contradiction but is not one.
+
+Independently anchored three ways, each pairing a `bit` test against a literal
+mask on the same cell:
+
+| cell | `bit` tests present | `opl`/`apl` masks present | agrees with |
+|---|---|---|---|
+| `@62` | 0..7 only | `0001`..`0080` only, no high bits | printed = bit number |
+| `039f` (= `@1f`, DP 7) | includes `bit 14` at `8da1` | `opl #4040` sets bits 6 and 14 | printed = bit number |
+| `fff4` | `bit 15` at `903d`, `d45d` | `splk #8000` (tag `70`) | printed = bit number |
+
+Under the alternative reading those masks would have to touch bits 8-15, 1
+and 0 respectively, and none of them does.
+
+### Claims checked and confirmed
+
+| claim | 4.03 site | verdict |
+|---|---|---|
+| `@70` bit 2 gates `fff7` `0004` | `d56d  bit 2, @70` | correct |
+| `fedd` bit 7 in the `fff7` `0008` guard | `d61c  bit 7, *` | correct |
+| `@1f` bit 14 set **and** `fff4` bit 1 clear | `8da1  bit 14, @1f`; `8da6  bit 1, *` | correct |
+| `ff18` bit 5 in the `fff7` `0200` guard | `9049  bit 5, *` | correct |
+| `039f` bit 6 on the x2-setup route | `9041  bit 6, *` (`ar1 = 039f`) | correct |
+| `ff00` bit 8 as the `fff4` bit 0 fallback | `906b  bit 8, *` | correct |
+| INFO0 `bit 13` sets `fff4` bit 0 | `91f6  bit 13, *` -> `opl fff4, #0001` | correct |
+| INFO0 `bit 12` clear sets `fff4` bit 8 | `91fe  bit 12, *` -> `opl fff4, #0100` | correct |
+| `ff1a` bit 76 / `ff08` bit 37 / received bit 12 | `9697 #4c`, `969d #25`, `96a3 #0c` | correct - these are bit *offsets*, not codes |
+
+### Claims corrected
+
+* **`ff18` bit 10 -> bit 5.**  Two sentences used the encoded code `10` as if
+  it were the bit number, contradicting the same document's own `ff18` bit 5
+  elsewhere.  The test is `9049  bit 5, *`.
+* **The `d45d` listing.**  It was transcribed as `bit 0, *`; the disassembler
+  prints `bit 15, *`.  The conclusion drawn from it was right.
+* **`9070`, `d47f`, `d76f`.**  Not `fff4` bit tests in this image.  The real
+  sites are `903d` and `d45d`.
+* **`909e`/`9069` -> `906b`** for the `ff00` bit 8 read.
+* **`9223` -> `91e8`** for the INFO0 parser.
+* **The framing section's own `ff18` claim**, which had the offset mapping
+  inverted; word bit 5 is body offset 10.
+
+### Address drift is the real hazard, not bit numbering
+
+Several corrected items are addresses, not bit numbers: sections written
+against an earlier build cite sites that decode to something unrelated in the
+4.03 capture.  The header's warning that the update ROMs relocate their code
+applies to this document's own body text, so an address here should be
+re-resolved before it is trusted, in the way the confirmed table above does.
