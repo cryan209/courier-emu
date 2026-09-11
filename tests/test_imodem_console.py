@@ -88,12 +88,14 @@ def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
 
 
 def test_the_emulated_product_type_is_explicit_and_validated():
+    # The bit values themselves are checked against ATI7's own string table in
+    # test_ati7_names_the_product_type_bits_the_way_the_table_maps_them; this
+    # one only covers the constructor's validation. It used to assert the
+    # mapping inline, which is how a wrong one - every entry shifted by a
+    # position - stayed pinned and looking verified.
     image = NacImage.load(IMAGE) if IMAGE.exists() else object()
-    assert PRODUCT_TYPE_MODES == {
-        "undefined": 0x02,
-        "external": 0x08,
-        "internal": 0x04,
-        "rackmount": 0x00,
+    assert set(PRODUCT_TYPE_MODES) == {
+        "undefined", "external", "internal", "rackmount",
     }
     assert IsdnMachine(image).product_type == "external"
     assert IsdnMachine(image, product_type="internal").product_type == "internal"
@@ -152,3 +154,37 @@ def test_the_firmwares_own_divisor_table_fits_the_two_recovered_clocks():
     # And the two groups are genuinely distinct: neither clock explains both.
     assert round(UART_CLOCK_HIGH_RATES_HZ / (16 * 9600)) != divisors[5]
     assert round(UART_CLOCK_LOW_RATES_HZ / (16 * 38400)) != divisors[3]
+
+
+def test_ati7_names_the_product_type_bits_the_way_the_table_maps_them():
+    """Check PRODUCT_TYPE_MODES against ATI7's own string table.
+
+    The formatter at c0be0 selects a string offset by testing [d2c3] bit 1,
+    then bit 3, then bit 2, with a fallback. Those offsets point into a run of
+    consecutive NUL-terminated strings, so reading them back names each bit
+    from the firmware rather than from a comment.
+    """
+    from courier_emu.isdn import PRODUCT_TYPE_MODES
+    from courier_emu.isdn import IsdnMachine
+    from courier_emu.nac import NacImage
+
+    machine = IsdnMachine(NacImage.load("Ie030002.nac"), with_dsp=True)
+    try:
+        machine.run(6_000_000)
+        # The fallback offset 0x3d8a points at the first of the strings.
+        base = 0xC0C2A - 0x3D8A
+        read = lambda off: bytes(
+            machine.machine.mem_read(base + off, 16)
+        ).split(b"\x00")[0].decode("ascii")
+    finally:
+        machine.mailbox.close()
+
+    assert read(0x3D95) == "External"
+    assert read(0x3D9E) == "Internal"
+    assert read(0x3DA7) == "Rackmount"
+    assert read(0x3D8A).strip() == "Undefined"
+
+    assert PRODUCT_TYPE_MODES["external"] == 0x02
+    assert PRODUCT_TYPE_MODES["internal"] == 0x08
+    assert PRODUCT_TYPE_MODES["rackmount"] == 0x04
+    assert PRODUCT_TYPE_MODES["undefined"] == 0x00

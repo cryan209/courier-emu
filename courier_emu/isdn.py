@@ -138,17 +138,33 @@ DEFAULT_COUNTER_IRQ = {0: 10}
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_IO_EVENTS = 256
 
-# The board probe at a44c0 stores its result in 2600:d2c3.  ATI7's formatter
-# at c0be0 interprets bit 3 as External and bit 2 as Internal; the incomplete
-# electrical probe in the harness otherwise produces 0x22, which the formatter
-# correctly calls Undefined.  Give the emulated machine an explicit enclosure
-# identity until the modem-status loopback used by the real board is modelled.
+# The board probe stores its result in 2600:d2c3, and ATI7's formatter at
+# c0be0 is what names the bits. It picks a string by testing bit 1, then bit 3,
+# then bit 2, falling back to a fourth, and those four offsets -- 0x3d95,
+# 0x3d9e, 0x3da7 and 0x3d8a -- point at consecutive strings whose lengths match
+# the gaps exactly:
+#
+#     bit 1 (0x02)  "External"
+#     bit 3 (0x08)  "Internal"
+#     bit 2 (0x04)  "Rackmount"
+#     no bit set    "Undefined "
+#
+# (and d2c4 bit 0 appends " MODEM"). Every entry in this table used to be one
+# position out, so "external" wrote the Internal bit. The probe's own two
+# outcomes read correctly against it: it stores 0x28 -- Internal -- when the
+# sense line follows one drive, and 0x22 -- External -- when it follows the
+# other. 0x22 is not Undefined, as an earlier note here claimed.
+#
+# This forcing is applied at PRODUCT_TYPE_PROBE_COMPLETE, which is inside the
+# part of the probe that is only reached once the board latch at port 0x14
+# answers. Until that is modelled the probe abandons, d2c3 stays 0, and this
+# whole table is inert -- see docs/imodem-at-interface.md.
 PRODUCT_TYPE_ADDRESS = 0x2600 * 16 + 0xD2C3
 PRODUCT_TYPE_MODES = {
-    "undefined": 0x02,
-    "external": 0x08,
-    "internal": 0x04,
-    "rackmount": 0x00,
+    "undefined": 0x00,
+    "external": 0x02,
+    "internal": 0x08,
+    "rackmount": 0x04,
 }
 PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
 PRODUCT_MODEM_SUFFIX = 0x01

@@ -506,13 +506,71 @@ So the register file is:
 `0xc9` and `0x131` - the serial-number and checksum fields the identifier
 needs filled in per card.
 
-**An open contradiction.** The identifier string ends `INT`, and the whole
-device only makes sense for the internal ISA card, yet `[d2c3]` reads `0x08`
-on this path and ATI7's formatter at `0xc0be0` calls bit 3 External. Either
-the guessed loopback wiring at port `0x14` selects the internal branch, or bit
-3 does not mean what that formatter comment says. This is not resolved, and it
-matters: the Courier I-Modem this repository targets is an external desktop
-unit, so a wiring that lands on the internal ISA card is suspect.
+**The contradiction is resolved: `0x08` is Internal, not External.**
+
+ATI7's formatter at `0xc0be0` is the authority, and it had been read backwards.
+It picks a string by testing bit 1, then bit 3, then bit 2, with a fallback:
+
+```
+c0bf3  mov si,3d95 ; test [d2c3],02 ; jne print
+c0bfd  mov si,3d9e ; test [d2c3],08 ; jne print
+c0c07  mov si,3da7 ; test [d2c3],04 ; jne print
+c0c11  mov si,3d8a
+```
+
+Those four offsets point into a run of consecutive strings whose lengths match
+the gaps exactly (`0x3d95-0x3d8a = 11` = `"Undefined "`, and so on), so
+reading them back names each bit:
+
+| bit | string |
+|---|---|
+| 1 (`0x02`) | `External` |
+| 3 (`0x08`) | `Internal` |
+| 2 (`0x04`) | `Rackmount` |
+| none | `Undefined ` |
+
+with `[d2c4]` bit 0 appending `" MODEM"`.
+
+So the probe's two verdicts are `0x28` = **Internal** and `0x22` = **External**
+- and the earlier note that `0x22` is what the formatter "correctly calls
+Undefined" was wrong too. `courier_emu/isdn.py`'s `PRODUCT_TYPE_MODES` had
+every entry one position out, so `--product-type external` wrote the Internal
+bit; that is fixed.
+
+### Which wiring gives which verdict
+
+Measured at `0xa4503`, the instant the probe stores its verdict, rather than at
+end of run:
+
+| sense wiring at port `0x14` | verdict |
+|---|---|
+| follows the `0x80` drive | `0x28` **Internal** |
+| follows the `0x08` drive | `0x22` **External** |
+| set whenever either is driven | `0x22` **External** |
+| never asserts (today) | probe abandons, `[d2c3]` stays `0`, **Undefined** |
+
+Only one write to `[d2c3]` happens in a whole run, so nothing downstream
+second-guesses it. The `INT` identifier seen earlier was simply the Internal
+branch, reached because the first wiring guessed was the `0x80` one.
+
+### Both real variants use the same UART; only the failure path does not
+
+With the probe completing, External and Internal produce **identical**
+hardware: the port-variable block reads `0082 0085 0086 0080 0080 0081 0082
+0084 0083` and the master mask is `0xda` in both cases. The enclosure bit does
+not change the port map.
+
+That means the `0xf8f8` / IRQ3 interface this harness has been driving all
+along is **the fallback taken when the probe fails** - the 386EX's own SIO0 -
+and is not what either shipped product uses for its command port. The real
+command port is the 16550 at `0x80`, polled from the IRQ0 handler at
+`0xb2f1a`, which is why the echo and the second command have never worked.
+
+Confirmed viable: with the latch answering, a `SerialChannel` at `0x80`, and
+the 8254 tick routed to **IRQ0** instead of IRQ10, that handler runs - 8,703
+entries in a 35M-instruction session, against 0 with the tick on IRQ10.
+Characters reach the part; it does not yet transmit, so the `0x80` channel
+needs finishing.
 
 ### What is still needed
 
