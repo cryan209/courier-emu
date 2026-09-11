@@ -252,9 +252,21 @@ Serial Number          IMD012345678
 Worth noting what else that report gained.  With no valid record, `ATI7`
 printed neither the dates, nor the product type, nor a serial at all - the
 sweep in [imodem-at-interface.md](imodem-at-interface.md) recorded it without
-them.  A record the firmware accepts unlocks the rest of its own report, and
-`Product type  Undefined` says there is a product-type field in the record
-still to be located.
+them.  A record the firmware accepts unlocks the rest of its own report.
+The product type does not come from this record.  The formatter at `c0be0`
+selects it from the hardware-mode byte at `2600:d2c3`: bit 3 is External and
+bit 2 is Internal, neither bit is Rackmount, and bit 1 takes priority to select
+Undefined.  Bit 0 at `2600:d2c4` independently appends ` MODEM`.  The harness
+exposes all combinations through `isdn-run --product-type
+undefined|external|internal|rackmount` and `--product-modem` (or
+`--no-product-modem`), and defaults to External without the suffix.  The old
+Undefined result was the `0x22` left by the incomplete modem-status loopback
+probe, not a missing configuration-sector field.
+
+The adjacent ATI7 options formatter reads the capability byte at `2600:e358`.
+The harness sets it to `0xe5` after the board probe, enabling every modulation
+name present in this image: `HST,V32bis,Terbo,V.FC,V34+,x2,V.90`.  V.90 has no
+capability bit in 3.0.2; the formatter appends it unconditionally.
 
 The serial is **twelve** characters, not the fifteen the copied span covers:
 thirteen were written and `ATI7` printed twelve.  What the remaining three

@@ -113,6 +113,46 @@ DEFAULT_COUNTER_IRQ = {0: 10}
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_IO_EVENTS = 256
 
+# The board probe at a44c0 stores its result in 2600:d2c3.  ATI7's formatter
+# at c0be0 interprets bit 3 as External and bit 2 as Internal; the incomplete
+# electrical probe in the harness otherwise produces 0x22, which the formatter
+# correctly calls Undefined.  Give the emulated machine an explicit enclosure
+# identity until the modem-status loopback used by the real board is modelled.
+PRODUCT_TYPE_ADDRESS = 0x2600 * 16 + 0xD2C3
+PRODUCT_TYPE_MODES = {
+    "undefined": 0x02,
+    "external": 0x08,
+    "internal": 0x04,
+    "rackmount": 0x00,
+}
+PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
+PRODUCT_MODEM_SUFFIX = 0x01
+PRODUCT_TYPE_PROBE_COMPLETE = 0xA4506
+
+# ATI7 walks its modulation-name table according to this capability byte at
+# 2600:e358.  0xe5 selects every entry the 3.0.2 image contains: HST, V32bis,
+# Terbo, V.FC, V34+, and x2.  V.90 is appended unconditionally by this build.
+OPTIONS_ADDRESS = 0x2600 * 16 + 0xE358
+ALL_OPTIONS = 0xE5
+
+# The command task currently starts without the unrecovered layer-2 idle
+# indication. Its receive callback consequently records Keypress Abort even
+# though no call exists, and the common command epilogue turns a plain AT into
+# NO CARRIER. Normalize only that impossible idle combination at the decision
+# point; real call/disconnect causes and any populated state flags are kept.
+RESULT_DECISION = 0xA8067
+DISCONNECT_CAUSE_ADDRESS = 0x2600 * 16 + 0xD08B
+COMMAND_STATE_ADDRESS = 0x2600 * 16 + 0xD2A1
+KEYPRESS_ABORT = 0x17
+DTR_DROPPED = 0x01
+
+
+def idle_result_state(cause: int, flags: int) -> tuple[int, int]:
+    """Return the firmware state a command epilogue should see while idle."""
+    if cause == KEYPRESS_ABORT and flags == 0:
+        return DTR_DROPPED, 0x01
+    return cause, flags
+
 
 @dataclass
 class IsdnRunResult:
@@ -161,11 +201,13 @@ class IsdnMachine:
         mailbox: ImodemMailbox | None = None,
         with_dsp: bool = False,
         serial_signals: int = TERMINAL_PRESENT,
-        serial_pace: int = RX_INSTRUCTIONS_PER_BYTE,
+        serial_pace: int | None = RX_INSTRUCTIONS_PER_BYTE,
         serial_irq: int | None = UART_A_IRQ,
         serial_pump: "Callable[[IsdnMachine], None] | None" = None,
         line_activate: int | None = None,
         flash_overlay: tuple[int, bytes] | None = None,
+        product_type: str = "external",
+        product_modem: bool = False,
     ) -> None:
         self.image = image
         self.entry_segment = entry_segment
@@ -190,6 +232,12 @@ class IsdnMachine:
         # at 0xf8000, so the part's top sectors read erased - and one of them
         # is the configuration store. See docs/imodem-config-sector.md.
         self.flash_overlay = flash_overlay
+        if product_type not in PRODUCT_TYPE_MODES:
+            raise ValueError(
+                f"product type must be one of {sorted(PRODUCT_TYPE_MODES)}"
+            )
+        self.product_type = product_type
+        self.product_modem = product_modem
         self.line_activate = line_activate
         self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
@@ -458,6 +506,26 @@ class IsdnMachine:
             self.instructions += 1
             if flash_dirty[0]:
                 apply_flash()
+            if address == PRODUCT_TYPE_PROBE_COMPLETE:
+                uc.mem_write(OPTIONS_ADDRESS, bytes((ALL_OPTIONS,)))
+                uc.mem_write(
+                    PRODUCT_TYPE_ADDRESS,
+                    bytes((PRODUCT_TYPE_MODES[self.product_type],)),
+                )
+                suffix = uc.mem_read(PRODUCT_MODEM_SUFFIX_ADDRESS, 1)[0]
+                suffix = (
+                    suffix | PRODUCT_MODEM_SUFFIX
+                    if self.product_modem
+                    else suffix & ~PRODUCT_MODEM_SUFFIX
+                )
+                uc.mem_write(PRODUCT_MODEM_SUFFIX_ADDRESS, bytes((suffix,)))
+            elif address == RESULT_DECISION:
+                cause = uc.mem_read(DISCONNECT_CAUSE_ADDRESS, 1)[0]
+                flags = uc.mem_read(COMMAND_STATE_ADDRESS, 1)[0]
+                idle_cause, idle_flags = idle_result_state(cause, flags)
+                if (idle_cause, idle_flags) != (cause, flags):
+                    uc.mem_write(DISCONNECT_CAUSE_ADDRESS, bytes((idle_cause,)))
+                    uc.mem_write(COMMAND_STATE_ADDRESS, bytes((idle_flags,)))
             self.pc_counts[address] += 1
             self.recent.append(address)
             if self.instructions < self._next_poll:

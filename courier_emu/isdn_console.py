@@ -17,7 +17,10 @@ from __future__ import annotations
 import os
 import select
 import sys
+import time
 from typing import Any, Callable, Iterable
+
+from .pit import INSTRUCTIONS_PER_SECOND
 
 # Long enough for the kernel to create and first-run the command task; the
 # nine-task startup completes a little before 3M instructions.
@@ -115,6 +118,9 @@ def interactive_pump(
     source = input_stream if input_stream is not None else sys.stdin
     sink = output_stream if output_stream is not None else sys.stdout
     detached = [False]
+    primed = [False]
+    clock_origin: list[tuple[int, float] | None] = [None]
+    next_clock_sync = [after]
 
     def pump(machine: Any) -> None:
         received = machine.take_serial()
@@ -122,6 +128,24 @@ def interactive_pump(
             sink.write(_readable(received))
             sink.flush()
         if detached[0] or machine.instructions < after:
+            return
+        if clock_origin[0] is None:
+            clock_origin[0] = (machine.instructions, time.monotonic())
+        if machine.instructions >= next_clock_sync[0]:
+            guest_start, wall_start = clock_origin[0]
+            guest_seconds = (
+                machine.instructions - guest_start
+            ) / INSTRUCTIONS_PER_SECOND
+            delay = wall_start + guest_seconds - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            next_clock_sync[0] = machine.instructions + INSTRUCTIONS_PER_SECOND // 100
+        if not primed[0]:
+            # The command task consumes its first line without answering it.
+            # Prime that firmware quirk here so the user's first command is
+            # not mysteriously lost in an interactive session.
+            machine.send_serial("AT\r")
+            primed[0] = True
             return
         try:
             ready, _, _ = select.select([source], [], [], 0)
@@ -139,7 +163,8 @@ def interactive_pump(
             detached[0] = True
         if data:
             # A terminal sends CR for Return; the parser wants exactly that.
-            machine.send_serial(data.replace(b"\n", b"\r"))
+            data = data.replace(b"\n", b"\r")
+            machine.send_serial(data)
         if detached[0]:
             machine.stop("detached")
 

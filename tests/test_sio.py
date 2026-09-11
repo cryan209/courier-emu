@@ -106,7 +106,20 @@ def test_dlab_routes_the_first_two_registers_to_the_divisor(channel):
     assert channel.tx == b"", "a divisor write is not a transmitted byte"
     channel.write(BASE + 3, 0x03)
     channel.write(BASE, ord("O"))
+    assert channel.tx == b"", "the byte is still in THR"
+    channel.advance(0)
+    assert channel.tx == b"", "the byte is still crossing the serial line"
+    channel.advance(channel.pace)
     assert channel.tx == b"O"
+
+
+def test_the_programmed_divisor_sets_the_character_time():
+    channel = SerialChannel(BASE, irq=3)
+    channel.write(BASE + 3, 0x83)
+    channel.write(BASE, 80)
+    channel.write(BASE + 1, 0)
+    channel.write(BASE + 3, 0x03)  # 8 data, no parity, one stop
+    assert channel.character_instructions == 17_362
 
 
 def test_loopback_folds_the_outputs_back_onto_the_status_inputs(channel):

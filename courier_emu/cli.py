@@ -40,6 +40,7 @@ from .xmp import XmpFormatError, XmpImage
 
 DEFAULT_LINE_SOCKET = "/tmp/courier-line.sock"
 DEFAULT_RUN_INSTRUCTIONS = 250_000
+DEFAULT_ISDN_INSTRUCTIONS = 20_000_000
 # A console session ends when its terminal detaches rather than at a count,
 # so this only has to be further away than a session will reach: about four
 # hours of emulated execution.
@@ -432,7 +433,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="execute the ISDN Courier 386 payload with its PC-AT peripherals",
     )
     isdn_run.add_argument("image")
-    isdn_run.add_argument("--instructions", type=_number, default=20_000_000)
+    isdn_run.add_argument(
+        "--instructions",
+        type=_number,
+        default=None,
+        help=f"stop after this many instructions (default "
+             f"{DEFAULT_ISDN_INSTRUCTIONS:,}, or run until Ctrl-] in terminal mode)",
+    )
     isdn_run.add_argument("--with-dsp", action="store_true",
                           help="execute the downloaded DSP with the native C5x core")
     isdn_run.add_argument(
@@ -479,9 +486,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--serial-pace",
         type=_number,
         default=RX_INSTRUCTIONS_PER_BYTE,
-        help="instructions between received characters; 0 delivers a line "
-             "as one burst, which the command parser does not read the same "
-             "way",
+        help="instructions per serial character (default 20,000, measured "
+             "working with this firmware; use 0 for an immediate burst)",
     )
     isdn_run.add_argument(
         "--serial-signals",
@@ -489,6 +495,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=TERMINAL_PRESENT,
         help="modem-status inputs the firmware sees: CTS 0x10, DSR 0x20, "
              "RI 0x40, DCD 0x80",
+    )
+    isdn_run.add_argument(
+        "--product-type",
+        choices=("undefined", "external", "internal", "rackmount"),
+        default="external",
+        help="I-modem enclosure reported by ATI7 (default: external)",
+    )
+    isdn_run.add_argument(
+        "--product-modem",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="append ' MODEM' to ATI7's product type (default: disabled)",
     )
     isdn_run.add_argument(
         "--line-activate",
@@ -517,8 +535,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--terminal",
         action="store_true",
         help="attach this terminal to SIO0: keystrokes go to the firmware "
-             "and its output is printed as it arrives. Ctrl-] detaches. The "
-             "run report goes to stderr, since stdout is the serial stream",
+             "and its output is printed as it arrives. Ctrl-] detaches",
+    )
+    isdn_run.add_argument(
+        "--report",
+        action="store_true",
+        help="print the diagnostic JSON report after a terminal session",
     )
 
     extract = subparsers.add_parser(
@@ -1061,6 +1083,14 @@ def main(argv: list[str] | None = None) -> int:
             _print_json(NacImage.load(args.image).describe())
             return 0
         if args.command == "isdn-run":
+            instructions = args.instructions
+            if instructions is None:
+                instructions = (
+                    CONSOLE_INSTRUCTIONS if args.terminal
+                    else DEFAULT_ISDN_INSTRUCTIONS
+                )
+            if instructions <= 0:
+                raise ValueError("instruction limit must be positive")
             try:
                 source: NacImage | XmpImage = NacImage.load(args.image)
             except NacFormatError:
@@ -1106,13 +1136,15 @@ def main(argv: list[str] | None = None) -> int:
                 with_dsp=args.with_dsp, serial_pump=pump,
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
+                product_type=args.product_type,
+                product_modem=args.product_modem,
                 line_activate=args.line_activate,
                 flash_overlay=overlay,
                 **entry
             )
             try:
                 with raw_terminal() if args.terminal else _nothing():
-                    result = machine.run(args.instructions).to_dict()
+                    result = machine.run(instructions).to_dict()
             finally:
                 if args.with_dsp:
                     machine.mailbox.close()
@@ -1123,12 +1155,12 @@ def main(argv: list[str] | None = None) -> int:
                     {"instructions": count, "direction": direction, "text": text}
                     for count, direction, text in transcript
                 ]
-            if args.terminal:
-                # stdout is the serial stream in this mode, so the report
-                # goes beside it rather than into it.
+            if args.terminal and args.report:
+                # stdout is the serial stream in this mode, so an explicitly
+                # requested report goes beside it rather than into it.
                 print(json.dumps(result, indent=2, sort_keys=True),
                       file=sys.stderr)
-            else:
+            elif not args.terminal:
                 _print_json(result)
             return 0
         if args.command == "extract":

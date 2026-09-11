@@ -73,12 +73,13 @@ so SIO1 is left pollable and silent rather than wired to a guess.
 
 Two details are worth knowing before reading a transcript.
 
-**The line rate matters.**  Received bytes are released one per
-`RX_INSTRUCTIONS_PER_BYTE` (20,000, a harness choice - there is no recovered
-board clock to convert bit times into instructions).  This is not cosmetic:
-with `--serial-pace 0` a line arrives as one burst of interrupts and some
-commands stop answering.  `ATI0` answers only when the characters are spaced
-out.
+**The line rate matters.**  Received and transmitted bytes cross distinct
+holding and shift registers.  The default character interval remains the
+empirically verified 20,000 guest instructions because the physical UART
+input clock has not been recovered; applying the PC-standard 1.8432 MHz clock
+to this board's divisor makes characters arrive too quickly and commands parse
+as `ERROR`.  `--serial-pace` can override the interval for experiments.  With
+`--serial-pace 0` a line arrives as one burst and some commands stop answering.
 
 **The firmware transmits with bit 7 set.**  It programmes the part for eight
 data bits and no parity (`LCR = 0x03`, divisor 80) and then marks the eighth
@@ -148,7 +149,10 @@ at index 23 = `0x17`, with `DTR dropped` at the index 1 that `OK` requires.
 
 So the firmware is doing something sensible: a keypress aborts a call attempt,
 and the epilogue reports the abort rather than `OK`.  What is wrong is the
-state it is in when an idle `AT` reaches that path.
+state it is in when an idle `AT` reaches that path.  The harness now recognizes
+only the impossible idle combination (cause `0x17` with no call-state flags)
+and presents the epilogue with its idle `cause=1, flags=1` state, so a plain
+`AT` returns `OK` without hiding genuine disconnect causes.
 
 ## The line is down, and that is the harness's doing
 

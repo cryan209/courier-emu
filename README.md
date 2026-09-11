@@ -4,7 +4,17 @@ The I-modem's AT interface answers. `isdn-run` now models the 386EX SIO's
 receive side - RBR, IIR, MSR and the IRQ3 line its own ISR at `0xb2aa2`
 names - so commands can be typed at the firmware and its replies read back:
 `--send ATI3` returns `USRobotics Courier I-Modem with ISDN/V.34`, and
-`--terminal` attaches a live console. See
+`--terminal` attaches a live console.  For normal interactive use, run:
+
+```sh
+./courier isdn-run Ie030002.nac --terminal
+```
+
+Type AT commands normally and press Return; press Ctrl-] to exit. Terminal
+mode runs until detached and does not print the diagnostic JSON report unless
+`--report` is also supplied. During interaction the guest clock is paced to
+the timer model's 2.5 million instructions per second, so the modem continues
+running without racing hours ahead of the terminal. See
 [the AT interface](docs/imodem-at-interface.md) for the `ATI0`-`ATI30` sweep,
 and for why a bare `AT` answers `NO CARRIER`: the firmware records a
 `Keypress Abort` disconnect cause because the S/T line never activates, which

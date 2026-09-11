@@ -8,7 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from courier_emu.isdn import IsdnMachine
+from courier_emu.isdn import (
+    ALL_OPTIONS,
+    IsdnMachine,
+    PRODUCT_TYPE_MODES,
+    idle_result_state,
+)
 from courier_emu.isdn_console import scripted_pump
 from courier_emu.nac import NacImage
 
@@ -80,3 +85,32 @@ def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
     answer = "".join(text for count, direction, text in transcript
                      if direction == "received" and count > typed)
     assert answer.strip() == "OK"
+
+
+def test_the_emulated_product_type_is_explicit_and_validated():
+    image = NacImage.load(IMAGE) if IMAGE.exists() else object()
+    assert PRODUCT_TYPE_MODES == {
+        "undefined": 0x02,
+        "external": 0x08,
+        "internal": 0x04,
+        "rackmount": 0x00,
+    }
+    assert IsdnMachine(image).product_type == "external"
+    assert IsdnMachine(image, product_type="internal").product_type == "internal"
+    assert IsdnMachine(image, product_type="rackmount").product_type == "rackmount"
+    assert IsdnMachine(image, product_type="undefined").product_type == "undefined"
+    assert IsdnMachine(image, product_modem=True).product_modem is True
+    with pytest.raises(ValueError, match="product type"):
+        IsdnMachine(image, product_type="desktop")
+
+
+def test_all_ati7_modulation_options_are_enabled_by_default():
+    # Bits 0/2 select HST and V32bis; 6/7 walk through Terbo, V.FC and V34+;
+    # bit 5 adds x2. V.90 is unconditional in this firmware.
+    assert ALL_OPTIONS == 0x01 | 0x04 | 0x20 | 0x40 | 0x80
+
+
+def test_an_idle_keypress_does_not_report_a_spurious_disconnect():
+    assert idle_result_state(0x17, 0) == (1, 1)
+    assert idle_result_state(0x17, 0x40) == (0x17, 0x40)
+    assert idle_result_state(3, 0) == (3, 0)

@@ -77,14 +77,12 @@ MCR_LOOPBACK = 0x10
 
 MAX_SERIAL_BYTES = 64 * 1024
 
-# How far apart queued receive bytes are handed to the firmware, in CPU
-# instructions. A real line delivers a character every ten bit times; this
-# harness has no recovered board clock to convert that into instructions, so
-# the figure is a harness choice, like MAILBOX_SERVICE_INSTRUCTIONS in
-# courier_emu/isdn.py. It is not cosmetic: delivered back to back, a pasted
-# command line reaches the parser as one burst of interrupts and is handled
-# differently -- ATI0 answers only when the characters arrive spaced out.
+# Compatibility value for callers that explicitly request the old fixed
+# receive pacing. The default now derives a complete character time from the
+# guest-programmed divisor and LCR frame format.
 RX_INSTRUCTIONS_PER_BYTE = 20000
+UART_CLOCK_HZ = 1_843_200
+CPU_INSTRUCTIONS_PER_SECOND = 2_500_000
 
 
 class SerialChannel:
@@ -102,7 +100,7 @@ class SerialChannel:
         irq: int | None = None,
         signals: int = TERMINAL_PRESENT,
         max_bytes: int = MAX_SERIAL_BYTES,
-        pace: int = RX_INSTRUCTIONS_PER_BYTE,
+        pace: int | None = None,
     ) -> None:
         self.base = base
         self.irq = irq
@@ -122,6 +120,9 @@ class SerialChannel:
         # a part powering up beside an already-cabled terminal would.
         self.deltas = self._deltas_for(self.signals)
         self.thre = False
+        self.tx_holding: int | None = None
+        self.tx_shift: int | None = None
+        self._tx_complete = 0
         self.overruns = 0
         self.received = 0
         self.transmitted = 0
@@ -138,19 +139,48 @@ class SerialChannel:
 
     def advance(self, instructions: int) -> None:
         """Release staged bytes onto the wire at the modelled line rate."""
+        character_time = self.character_instructions
         if not self.staged:
             # An idle line does not bank up credit for a later burst.
-            self._next_byte = instructions + self.pace
-            return
-        if self.pace <= 0:
+            self._next_byte = instructions + character_time
+        elif character_time <= 0:
             while self.staged:
                 self._receive(self.staged.popleft())
-            return
-        while self.staged and instructions >= self._next_byte:
-            self._next_byte += self.pace
-            self._receive(self.staged.popleft())
-        if instructions >= self._next_byte:
-            self._next_byte = instructions + self.pace
+        else:
+            while self.staged and instructions >= self._next_byte:
+                self._next_byte += character_time
+                self._receive(self.staged.popleft())
+            if instructions >= self._next_byte:
+                self._next_byte = instructions + character_time
+
+        # THR and the shift register are distinct. A write fills THR; on the
+        # next clock advance it transfers to an idle shifter and only then
+        # raises THRE. The byte reaches the host after a complete frame.
+        while self.tx_shift is not None and instructions >= self._tx_complete:
+            if len(self.tx) < self.max_bytes:
+                self.tx.append(self.tx_shift)
+                self.transmitted += 1
+            else:
+                self.overruns += 1
+            self.tx_shift = None
+        if self.tx_shift is None and self.tx_holding is not None:
+            self.tx_shift = self.tx_holding
+            self.tx_holding = None
+            self._tx_complete = instructions + max(1, character_time)
+            self.thre = True
+
+    @property
+    def character_instructions(self) -> int:
+        """One serial frame at the divisor and line format programmed by the guest."""
+        if self.pace is not None:
+            return self.pace
+        divisor = max(1, self.divisor)
+        data_bits = 5 + (self.lcr & 0x03)
+        stop_bits = 2 if self.lcr & 0x04 else 1
+        parity_bits = 1 if self.lcr & 0x08 else 0
+        frame_bits = 1 + data_bits + parity_bits + stop_bits
+        numerator = CPU_INSTRUCTIONS_PER_SECOND * 16 * divisor * frame_bits
+        return max(1, (numerator + UART_CLOCK_HZ - 1) // UART_CLOCK_HZ)
 
     def _receive(self, value: int) -> None:
         self.rx.append(value)
@@ -231,7 +261,12 @@ class SerialChannel:
         if offset == MCR:
             return self.mcr
         if offset == LSR:
-            return LSR_TX_READY | (LSR_DATA_READY if self.rx else 0)
+            tx_status = 0
+            if self.tx_holding is None:
+                tx_status |= 0x20
+            if self.tx_holding is None and self.tx_shift is None:
+                tx_status |= 0x40
+            return tx_status | (LSR_DATA_READY if self.rx else 0)
         if offset == MSR:
             if self.mcr & MCR_LOOPBACK:
                 value = self._loopback_status()
@@ -251,12 +286,12 @@ class SerialChannel:
                 return
             if self.mcr & MCR_LOOPBACK:
                 self.rx.append(value)
-            elif len(self.tx) < self.max_bytes:
-                self.tx.append(value)
-                self.transmitted += 1
             else:
-                self.overruns += 1
-            self.thre = True
+                # Firmware must wait for THRE before replacing this byte. Keep
+                # the latest write if it violates that contract, matching a
+                # one-byte holding register rather than an unbounded sink.
+                self.tx_holding = value
+            self.thre = False
             return
         if offset == IER:
             if dlab:
@@ -302,6 +337,7 @@ class SerialChannel:
             "lcr": self.lcr,
             "mcr": self.mcr,
             "divisor": self.divisor,
+            "character_instructions": self.character_instructions,
             "signals": self.signals,
             "queued": self.queued,
             "received": self.received,
