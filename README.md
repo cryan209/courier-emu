@@ -1400,6 +1400,11 @@ boot-time NVRAM profile load in this firmware to model.
 
 ### Quad CPU AT terminal
 
+For the current server answer attempt, see
+[Quad server bring-up](docs/quad-server-bringup.md). The probe can now boot
+from the QF archive and records the watchdog-induced `NO CARRIER` path.
+CPU/DSP call control remains incomplete; it is not yet a negotiation peer.
+
 The QF060003 modem now executes `AT` → `OK` with an explicit byte-terminal
 adapter. Run `PYTHONPATH=. .venv/bin/python tools/probe_quad_at.py` to boot the
 controller, load a modem, and verify `OK`, `ERROR`, then `OK` through its real

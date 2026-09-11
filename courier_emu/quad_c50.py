@@ -188,6 +188,8 @@ class QuadC50Endpoint:
     digital_call: bool = False
     g711_idle: int = 0xff
     _g711_rx: bytearray = field(default_factory=bytearray)
+    _boot_pending: bool = False
+    _pcm_active: bool = False
     runtime_active: bool = False
     runtime_bursts: int = 0
     runtime_acks: int = 0
@@ -266,6 +268,9 @@ class QuadC50Endpoint:
                 self.started = False
                 self.reboots += 1
             self.program = []
+            self._boot_pending = False
+            self._pcm_active = False
+            self._event_cursor = 0
             self.runtime_active = False
             self._runtime_waiting = False
             return
@@ -348,12 +353,11 @@ class QuadC50Endpoint:
         # receive queue, with XRDY answered optimistically off XRST.
         core.queue_codec_rx([RESIDENT_ORIGIN, len(words), *words, 0])
         self.core = core
-        if self.digital_call:
-            core.configure_digital_pcm(idle_codeword=self.g711_idle)
-            core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
-            if self._g711_rx:
-                core.queue_g711_rx(bytes(self._g711_rx))
-                self._g711_rx.clear()
+        # DRR first carries the ROM's 16-bit download, not DS0 octets. Frame
+        # interrupts during this phase can run before resident vectors exist.
+        self._boot_pending = True
+        self._pcm_active = False
+        self._event_cursor = 0
         self.started = True
         self.program = []
 
@@ -367,15 +371,23 @@ class QuadC50Endpoint:
             raise ValueError("G.711 law must be 'mu' or 'a'")
         self.digital_call = True
         self.g711_idle = 0xff if law == "mu" else 0xd5
-        if self.core is not None:
+        if self.core is not None and not self._boot_pending:
+            self._activate_pcm()
+
+    def _activate_pcm(self) -> None:
+        if self.digital_call:
             self.core.configure_digital_pcm(idle_codeword=self.g711_idle)
             self.core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
+            self._pcm_active = True
+            if self._g711_rx:
+                self.core.queue_g711_rx(bytes(self._g711_rx))
+                self._g711_rx.clear()
 
     def receive_g711(self, codewords: bytes) -> None:
         """Deliver 8-bit G.711 codewords to the DSP receive timeslot."""
         if not self.digital_call:
             raise RuntimeError("no digital call is connected")
-        if self.core is None:
+        if self.core is None or not self._pcm_active:
             self._g711_rx.extend(codewords)
         else:
             self.core.queue_g711_rx(codewords)
@@ -415,6 +427,11 @@ class QuadC50Endpoint:
                     self.core.set_io(port, word)
             slice_size = min(budget, 64)
             self.core.step(slice_size)
+            if (self._boot_pending
+                    and self.core.codec_state()["codec_rx_size"] == 0
+                    and self.core.state()["pc"] >= RESIDENT_ORIGIN):
+                self._boot_pending = False
+                self._activate_pcm()
             self.steps += slice_size
             budget -= slice_size
             self._drain_pulls()
@@ -455,6 +472,7 @@ class QuadC50Endpoint:
             "window_open": self.window is not None,
             "program_words": len(self.program), "completion": self._completion,
             "digital_call": self.digital_call,
+            "boot_pending": self._boot_pending, "pcm_active": self._pcm_active,
             "g711_tx": 0 if self.core is None else len(self.core.g711_tx()),
             "runtime_active": self.runtime_active,
             "runtime_bursts": self.runtime_bursts,

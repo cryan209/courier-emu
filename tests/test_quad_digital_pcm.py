@@ -60,6 +60,38 @@ def test_quad_endpoint_buffers_g711_until_the_real_dsp_has_booted():
     assert endpoint.transmit_g711() == b""
 
 
+def test_digital_call_waits_for_rom_download_before_clocking_octets():
+    # A small transmit loop padded to the CPU's resident transfer size. It
+    # must be loaded by the actual recovered ROM before any DS0 frame occurs.
+    words = [0xAE22, 0x40CC, 0xB8A5, 0x9021, 0x7980, 0x8004]
+    words += [0] * (RESIDENT_WORDS - len(words))
+    endpoint = QuadC50Endpoint(program=words)
+    endpoint.connect_digital_call(law="a")
+    endpoint.receive_g711(b"\x55")
+    endpoint._start_core()
+    try:
+        endpoint.service(100)
+        assert endpoint.status()["boot_pending"]
+        assert endpoint.transmit_g711() == b""
+        assert endpoint._g711_rx == b"\x55"
+        for _ in range(100):
+            endpoint.service(1000)
+            if not endpoint.status()["boot_pending"]:
+                break
+        assert not endpoint.status()["boot_pending"]
+        assert endpoint.core.serial_state()["codec_rx_consumed"] == RESIDENT_WORDS + 3
+        assert endpoint.status()["pcm_active"]
+        assert endpoint._g711_rx == b""
+        endpoint.service(1000)
+        assert endpoint.transmit_g711()[-4:] == b"\xa5" * 4
+        endpoint._strobe(0xFF)
+        assert not endpoint.status()["pcm_active"]
+        assert endpoint._event_cursor == 0
+    finally:
+        if endpoint.core is not None:
+            endpoint.core.close()
+
+
 def test_quad_runtime_overlay_waits_for_the_resident_c50_ack():
     stream = (Path(__file__).parents[1] /
               "artifacts/quad-c50-20260910/stream.bin").read_bytes()
