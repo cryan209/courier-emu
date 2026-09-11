@@ -106,11 +106,30 @@ exactly the span of the NAC payload, which loads at `40000` and runs to
 agreeing is worth something.
 
 But two 4 Mbit parts is **1 MiB of silicon**, and 768 KiB is not 1 MiB.  So at
-least 256 KiB of what is fitted is not mapped into the first megabyte, and the
-arithmetic does not close.  The reading that fits best is one part at
-`80000`-`fffff` and only half of the other at `40000`-`7ffff` through CS4 -
-but that is a reading, not a decode, and CS2's `c0000`-`fffff` overlapping
-whatever UCS covers means the windows are not a simple sum.
+least 256 KiB of what is fitted is not mapped into the first megabyte.
+
+The update image is what says how that 768 KiB is composed.  `Ie030002.nac` is
+840,105 bytes on disk - 42,222 records, of which 42,023 carry data and 197 set
+the segment address - and it flattens to **753,664 bytes, 736 KiB, at
+`40000`-`f8000`**.  It splits exactly on the chip-select boundary:
+
+| region | bytes | | erased |
+|---|---:|---|---:|
+| `40000`-`7ffff` | 262,144 | 256 KiB - all of CS4 | 3.8% |
+| `80000`-`f8000` | 491,520 | 480 KiB - 512 KiB bar the top 32 KiB | 18.5% |
+
+So the image supplies precisely one whole 256 KiB window and one whole 512 KiB
+part minus the boot block it does not replace.  256 + 512 is the 768 KiB, and
+it composes as **one part mapped whole at `80000`-`fffff` and half of the
+other at `40000`-`7ffff`** - the reading proposed above, now with the image
+agreeing rather than just the address arithmetic.  The unmapped 256 KiB is the
+rest of the CS4 part.
+
+That also means the payload's first 256 KiB is not "the updater, loaded into
+RAM": RAM ends at `3ffff`, and the initialiser relocates its working copy down
+to `0ce00`.  `40000` is flash, so that 256 KiB is flash part B's own contents,
+and the NAC image is a dump of both mapped windows rather than only what an
+update writes.
 
 One caution on using `ATI7` as corroboration: this repository has already
 caught `ATI7` reporting a firmware constant as though it were measured - its
