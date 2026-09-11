@@ -109,12 +109,15 @@ DLC_EFCR 01              MAP_MMR1 00   MAP_MMR2 40   PP_PPCR1 07  PP_PPCR3 01
 
 The registers the firmware *reads* are few and now recorded: `LIU_LSR` four
 times, `INIT` twice, `MAP_MMR1`, `MAP_MMR2`, `LIU_LMR1`, `DLC_RNGR1`,
-`DLC_RNGR2` once each.  Nothing here invents a line state: `LIU_LSR` reads back
-what was written to it, so a harness that wants an activated S interface has to
-say so deliberately.
+`DLC_RNGR2` once each.  Nothing here invents a line state: the LIU sits in F1
+until a harness says otherwise, so an activated S interface has to be asked
+for deliberately - see [imodem-d-channel.md](imodem-d-channel.md).
 
-Two ports in the same window are still unaccounted for - `0302`, `0303` and
-`0307` are touched and are not the DSC's.
+Three ports in the same window were unaccounted for here - `0302`, `0303` and
+`0307`.  They are the DSC's after all: the part's *direct* registers sit above
+the command/data pair, and the firmware's own IRQ14 handler names every one of
+them.  See [imodem-d-channel.md](imodem-d-channel.md), which also brings the S
+interface up and gets `ATI12` to report the physical layer active.
 
 ## What that unblocked
 

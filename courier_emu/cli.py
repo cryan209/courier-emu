@@ -491,6 +491,15 @@ def build_parser() -> argparse.ArgumentParser:
              "RI 0x40, DCD 0x80",
     )
     isdn_run.add_argument(
+        "--line-activate",
+        type=_number,
+        metavar="INSTRUCTIONS",
+        help="bring the S interface up at this point in the run, walking the "
+             "I.430 states the way the network does. Without it the line "
+             "stays in F1 and the firmware reports Physical Interface "
+             "Inactive, which is what ATI12 says today",
+    )
+    isdn_run.add_argument(
         "--terminal",
         action="store_true",
         help="attach this terminal to SIO0: keystrokes go to the firmware "
@@ -1074,6 +1083,7 @@ def main(argv: list[str] | None = None) -> int:
                 with_dsp=args.with_dsp, serial_pump=pump,
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
+                line_activate=args.line_activate,
                 **entry
             )
             try:

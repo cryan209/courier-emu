@@ -1,21 +1,57 @@
 """The Am79C30A Digital Subscriber Controller, as the I-modem drives it.
 
-The board reaches the chip through two ports: a command register that selects
-which of the chip's registers is addressed, and a data register that streams
-that register's bytes.  Every register is a *block* of a fixed width, and the
-data port walks the block one byte per access - so the widths are part of the
-protocol, not decoration.  They are also how the part was identified: the
+The board reaches the chip through eight consecutive ports at `0300`.  Two of
+them are the indirect register file - a command register that selects which of
+the chip's registers is addressed, and a data register that streams that
+register's bytes.  Every indirect register is a *block* of a fixed width, and
+the data port walks the block one byte per access, so the widths are part of
+the protocol, not decoration.  They are also how the part was identified: the
 firmware writes exactly seven bytes to `DLC_1_7` and exactly two to `DRCR`.
-See docs/imodem-isdn-front-end.md.
 
-Nothing here decides what the chip *does*; it holds what the firmware wrote and
-reports back what a real part would return for the registers the firmware
-reads.  Where a reported value is not recovered from the image it is named and
-left configurable rather than guessed at silently.
+The other six are the part's *direct* registers, and the firmware's own
+interrupt handler names every one of them.  Vector `0x2e` - slave IRQ14 - is
+`4030:02f8`, which far-calls `71d7:000f`, and that routine is a D-channel
+interrupt service in full view:
+
+    71ec0  in 0300              read IR, the interrupt register
+    71ed5  test al, 2f          loop while any of bits 0,1,2,3,5 is set
+    71d97  test [bp-4], 20      bit 5: the LIU's line state changed
+    71dff  test [bp-4], 1       bit 0: the transmit buffer wants more
+    71e48  test [bp-4], 2       bit 1: a received byte is waiting
+    71eaf  test [bp-4], 0c      bits 2,3: D-channel status and error
+
+with the data paths underneath it reading `0304` for received bytes and
+`0307` for the byte-by-byte status, and `0302`/`0303` read by the status
+handler at `72caf`.  That is the Am79C30A direct map exactly - CR/IR, DR,
+DSR1, DER, DCTB/DCRB, the two B-channel buffers, DSR2 - and it settles the
+three ports left unaccounted for in docs/imodem-isdn-front-end.md.  `0305`
+and `0306` are never touched: the B channels are routed by the MCRs to the
+peripheral port, not read through the host.
+
+What the firmware does with each is what the model has to produce, and the
+transmit and receive paths are both recovered rather than assumed:
+
+* **Transmit** (`71cb0`): push bytes to DCTB while DSR2 bit 4 says there is
+  room, then write the frame's total length to DTCR as two bytes.  Writing
+  DTCR is what arms the frame, so that is where this model closes one.
+* **Receive** (`71e64`, again at `72e1e`): read DCRB, then DSR2 - bit 1 says
+  another byte is waiting, bit 0 says the byte just read ended a frame.  The
+  status handler then reads DER for the frame's errors and DRCR for its
+  length, and passes the frame up only when `DER & 0x7b` is clear.
+* **Line state** (`70e6f`): read LSR, take `(LSR & 7) + 2` as the interface
+  state, and on a change dispatch through a six-entry table.  Adding two to a
+  three-bit field puts the resting state at 4 and the top of the range at 9,
+  which is I.430's F1..F8 numbered from 2 - and the entry the table reaches
+  for LSR&7 = 6, internal 8, is the one that notifies layer 2 that the line
+  came up.  So **LSR bits 2:0 carry the F-state, biased by one**.
+
+Nothing here decides what the chip *does* on its own: the line state and the
+received frames come from whoever is playing the network, and until a caller
+says otherwise the interface sits in F1 with nothing on the D channel.
 """
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
 
 
@@ -87,15 +123,66 @@ REGISTERS: dict[int, tuple[str, int]] = {
     0xC8: ("PP_PPCR3", 1),
 }
 
-# Reads whose value is not held in a written block. The LIU's line state is the
-# one the activation sequence turns on; it is left at reset until a caller says
-# otherwise, so nothing here fakes a line that is not there.
+# The direct registers, at the six ports above the command/data pair. The
+# names are the part's; which port is which is the firmware's interrupt
+# service, above.
+DSR1_PORT = 0x0302   # D-channel status 1: whole-frame events
+DER_PORT = 0x0303    # D-channel error: why a received frame was no good
+DCB_PORT = 0x0304    # DCTB writing, DCRB reading: the D-channel byte
+BB_PORT = 0x0305     # Bb transmit/receive - never touched on this board
+BC_PORT = 0x0306     # Bc transmit/receive - likewise
+DSR2_PORT = 0x0307   # D-channel status 2: the byte-by-byte handshake
+PORTS = range(COMMAND_PORT, DSR2_PORT + 1)
+
+# IR, read at the command port. Each bit is named by the branch the firmware's
+# ISR takes on it; the mask it loops on is 0x2f.
+IR_TX_READY = 0x01   # 71dff: push more of the frame being transmitted
+IR_RX_BYTE = 0x02    # 71e48: a received byte is waiting in DCRB
+IR_DSR1 = 0x04       # 71eaf: DSR1 has a whole-frame event
+IR_DER = 0x08        # 71eaf, same branch: DER has an error
+IR_LIU = 0x20        # 71d97: the line state changed
+IR_SERVICED = 0x2F   # what the ISR loops on
+
+# DSR1, read first by the status handler at 72caf, which loops on 0x42.
+DSR1_RX_FRAME_END = 0x02   # 72de6: a received frame ended
+DSR1_TX_FRAME_DONE = 0x40  # 72cf5: the transmitted frame went out
+
+# DSR2, read between bytes by both data paths.
+DSR2_RX_LAST_BYTE = 0x01   # 71e9c: the byte just read ended the frame
+DSR2_RX_BYTE = 0x02        # 71eaa: another byte is waiting
+DSR2_TX_ROOM = 0x10        # 71d29: the transmit buffer will take a byte
+
+# Indirect registers the model has to answer from its own state rather than
+# from what was written: the line status, and the received frame's length.
+LIU_LSR = 0xA1
+DLC_DTCR = 0x85
+DLC_DRCR = 0x89
+
+# I.430's interface states, as the firmware numbers them: it reads LSR, takes
+# (LSR & 7) + 2, and dispatches state - 3 through a six-entry table. F3 is the
+# resting state and the one entry that notifies nobody; F7 is the activated
+# line, and is what an incoming call needs before its SETUP can arrive.
+F1_INACTIVE = 1
+F2_SENSING = 2
+F3_DEACTIVATED = 3
+F6_SYNCHRONIZED = 6
+F7_ACTIVATED = 7
+F8_LOST_FRAMING = 8
+
+# LSR's other two bits, known only by the firmware's use of them: at 70ebd it
+# treats bit 7 as a one-shot indication worth reporting upwards, carrying bit 6
+# as that report's payload. Neither is needed to bring a line up, so both are
+# left to the caller.
+LSR_INDICATION = 0x80
+LSR_INDICATION_FLAG = 0x40
+
+# Reads whose value is not held in a written block.
 DEFAULT_READS: dict[int, int] = {}
 
 
 @dataclass
 class Am79C30:
-    """The register file behind the command/data pair."""
+    """The register file, the line interface, and the D-channel controller."""
 
     reads: dict[int, int] = field(default_factory=lambda: dict(DEFAULT_READS))
     blocks: dict[int, bytearray] = field(default_factory=dict)
@@ -106,8 +193,127 @@ class Am79C30:
     unknown: Counter = field(default_factory=Counter)
     overruns: Counter = field(default_factory=Counter)
 
+    # The line interface. F1 is the reset state: no signal either way.
+    liu_state: int = F1_INACTIVE
+    lsr_flags: int = 0
+
+    # The D channel. `rx` is the byte the host has yet to read plus the frame
+    # boundaries behind it; `sent` is what the host has finished transmitting,
+    # for whoever is playing the network to pick up.
+    ir: int = 0
+    dsr1: int = 0
+    dsr2: int = 0
+    der: int = 0
+    rx_bytes: deque = field(default_factory=deque)
+    rx_ends: set = field(default_factory=set)
+    rx_lengths: deque = field(default_factory=deque)
+    rx_last_was_end: bool = False
+    rx_frame_length: int = 0
+    tx_buffer: bytearray = field(default_factory=bytearray)
+    sent: list = field(default_factory=list)
+    received: int = 0
+    transmitted: int = 0
+    tx_length_mismatch: int = 0
+
     def handles(self, port: int) -> bool:
-        return port in (COMMAND_PORT, DATA_PORT)
+        return port in PORTS
+
+    # -- the line ----------------------------------------------------------
+
+    def set_liu_state(self, state: int) -> None:
+        """Put the S interface in an I.430 state, the way the line would.
+
+        The firmware learns of this exactly as it would from the part: LSR
+        changes and IR's line-status bit goes up, so its own handler at 70e6f
+        reads the new state and tells layer 2 about it.
+        """
+        state = max(F1_INACTIVE, min(F8_LOST_FRAMING, int(state)))
+        if state == self.liu_state:
+            return
+        self.liu_state = state
+        self.ir |= IR_LIU
+
+    def activate(self) -> None:
+        """Bring the line up the way the network does, through the states."""
+        self.set_liu_state(F6_SYNCHRONIZED)
+        self.set_liu_state(F7_ACTIVATED)
+
+    def deactivate(self) -> None:
+        self.set_liu_state(F3_DEACTIVATED)
+
+    @property
+    def activated(self) -> bool:
+        return self.liu_state == F7_ACTIVATED
+
+    def _lsr(self) -> int:
+        return ((self.liu_state - 1) & 7) | (self.lsr_flags & 0xC0)
+
+    # -- the D channel, from the network side ------------------------------
+
+    def deliver_frame(self, frame: bytes | bytearray) -> None:
+        """Hand the host a received LAPD frame, byte by byte as the chip does."""
+        frame = bytes(frame)
+        if not frame:
+            return
+        for byte in frame:
+            self.rx_bytes.append(byte)
+        self.rx_ends.add(len(self.rx_bytes) - 1)
+        self.rx_lengths.append(len(frame))
+        self.received += 1
+        self.ir |= IR_RX_BYTE
+        self.dsr2 |= DSR2_RX_BYTE
+
+    def take_sent(self) -> list:
+        """Take the frames the host has transmitted since the last call."""
+        frames, self.sent = self.sent, []
+        return frames
+
+    def _read_dcrb(self) -> int:
+        if not self.rx_bytes:
+            self.rx_last_was_end = False
+            return 0
+        index = 0
+        value = self.rx_bytes.popleft()
+        self.rx_last_was_end = index in self.rx_ends
+        # The ends are counted from the front of the queue, so shift them down
+        # with it rather than keeping absolute positions.
+        self.rx_ends = {end - 1 for end in self.rx_ends if end > 0}
+        if self.rx_last_was_end:
+            # The frame is complete: DRCR reports its length, which is what
+            # the status handler reads before it passes the frame up.
+            self.rx_frame_length = self.rx_lengths.popleft() if self.rx_lengths else 0
+            # The frame is complete: the status handler wants DSR1 to say so,
+            # and it reads DER and DRCR before it passes the frame up.
+            self.dsr1 |= DSR1_RX_FRAME_END
+            self.der = 0
+            self.ir |= IR_DSR1
+        if not self.rx_bytes:
+            self.dsr2 &= ~DSR2_RX_BYTE
+        return value
+
+    def _write_dctb(self, value: int) -> None:
+        self.tx_buffer.append(value & 0xFF)
+
+    def _arm_transmit(self) -> None:
+        """DTCR has been written: the frame's length is now known."""
+        block = self.blocks.get(DLC_DTCR)
+        if block is None:
+            return
+        length = block[0] | (block[1] << 8)
+        if length != len(self.tx_buffer):
+            # The bytes and the length disagree, which on a real part would
+            # send a short or a truncated frame. Count it rather than paper
+            # over it: it means this model's idea of the buffer is wrong.
+            self.tx_length_mismatch += 1
+        self.sent.append(bytes(self.tx_buffer[:length] if length else self.tx_buffer))
+        self.transmitted += 1
+        self.tx_buffer.clear()
+        self.dsr1 |= DSR1_TX_FRAME_DONE
+        self.ir |= IR_DSR1
+
+    def interrupting(self) -> bool:
+        """Whether the part is asserting its interrupt line."""
+        return bool(self.ir & IR_SERVICED)
 
     # -- the command port --------------------------------------------------
 
@@ -118,6 +324,19 @@ class Am79C30:
         self.cursor = 0
         if register not in REGISTERS:
             self.unknown[register] += 1
+
+    def read_ir(self) -> int:
+        """IR, which the ISR loops on - so reading it has to clear it."""
+        value = self.ir
+        self.read_counts[COMMAND_PORT] += 1
+        self.ir = 0
+        # Whatever is still true re-arms itself, which is what keeps the ISR
+        # looping until the D channel is actually drained.
+        if self.rx_bytes:
+            self.ir |= IR_RX_BYTE
+        if self.dsr1:
+            self.ir |= IR_DSR1
+        return value & 0xFF
 
     # -- the data port -----------------------------------------------------
 
@@ -139,12 +358,22 @@ class Am79C30:
         block[self.cursor] = value & 0xFF
         self.cursor += 1
         self.write_counts[register] += 1
+        if register == DLC_DTCR and self.cursor == width:
+            self._arm_transmit()
 
     def read_data(self) -> int:
         register = self.selected
         if register is None:
             return 0
         self.read_counts[register] += 1
+        if register == LIU_LSR:
+            return self._lsr()
+        if register == DLC_DRCR:
+            # The received frame's length, low byte first, as the status
+            # handler reads it after draining the frame.
+            value = (self.rx_frame_length >> (8 * self.cursor)) & 0xFF
+            self.cursor += 1
+            return value
         if register in self.reads:
             return self.reads[register] & 0xFF
         block = self.blocks.get(register)
@@ -160,17 +389,48 @@ class Am79C30:
     def read(self, port: int) -> int:
         if port == DATA_PORT:
             return self.read_data()
-        return self.selected or 0
+        if port == COMMAND_PORT:
+            return self.read_ir()
+        if port == DSR1_PORT:
+            value, self.dsr1 = self.dsr1, 0
+            self.read_counts[port] += 1
+            return value & 0xFF
+        if port == DER_PORT:
+            value, self.der = self.der, 0
+            self.read_counts[port] += 1
+            return value & 0xFF
+        if port == DSR2_PORT:
+            self.read_counts[port] += 1
+            value = self.dsr2 | DSR2_TX_ROOM
+            if self.rx_last_was_end:
+                value |= DSR2_RX_LAST_BYTE
+            return value & 0xFF
+        if port == DCB_PORT:
+            self.read_counts[port] += 1
+            return self._read_dcrb()
+        self.read_counts[port] += 1
+        return 0
 
     def write(self, port: int, value: int) -> None:
         if port == COMMAND_PORT:
             self.select(value)
-        else:
+        elif port == DATA_PORT:
             self.write_data(value)
+        elif port == DCB_PORT:
+            self.write_counts[port] += 1
+            self._write_dctb(value)
+        else:
+            self.write_counts[port] += 1
 
     # -- reporting ---------------------------------------------------------
 
     def name(self, register: int) -> str:
+        if register in PORTS:
+            return {
+                COMMAND_PORT: "CR_IR", DATA_PORT: "DR", DSR1_PORT: "DSR1",
+                DER_PORT: "DER", DCB_PORT: "DCB", BB_PORT: "BB",
+                BC_PORT: "BC", DSR2_PORT: "DSR2",
+            }[register]
         entry = REGISTERS.get(register)
         return entry[0] if entry else f"unknown_{register:02x}"
 
@@ -186,4 +446,11 @@ class Am79C30:
             },
             "unknown_registers": {f"{r:#04x}": c for r, c in self.unknown.most_common()},
             "overruns": {self.name(r): c for r, c in self.overruns.most_common()},
+            "liu_state": f"F{self.liu_state}",
+            "d_channel": {
+                "frames_received": self.received,
+                "frames_transmitted": self.transmitted,
+                "rx_pending": len(self.rx_bytes),
+                "tx_length_mismatch": self.tx_length_mismatch,
+            },
         }

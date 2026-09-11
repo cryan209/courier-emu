@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
 
 from .nac import NacImage
+from . import am79c30
 from .am79c30 import Am79C30
 from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .pic import InterruptControllers
@@ -59,6 +60,26 @@ UART_A_BASE = 0xF8F8
 UART_B_BASE = 0xF4F8
 UART_A_IRQ = 3
 UART_B_IRQ = None
+
+# The Am79C30's interrupt line. Vector 0x2e is slave IRQ14 - the slave's ICW2
+# is 0x28 - and it reads back 4030:02f8, a stub that far-calls 71d7:000f. That
+# routine reads the DSC's IR at 0x300 and dispatches the line-state, transmit,
+# receive and error paths off its bits, so IRQ14 is the part's own line and not
+# a guess. See courier_emu/am79c30.py.
+DSC_IRQ = 14
+
+# Bringing the S interface up walks the I.430 states in order, because the
+# firmware's layer-1 machine at 0x6296f dispatches on the state it is already
+# in: handed F7 out of F1 it has no entry for the event and drops it, and the
+# stored state never moves. Through F2 and F6 it does, and the state byte at
+# ce0:a458 reaches 8 - the firmware's number for F7.
+#
+# The spacing is a harness choice, not an I.430 timing: it only has to be long
+# enough for the interrupt service to read LSR once per state.
+S_INTERFACE_WALK = (
+    am79c30.F2_SENSING, am79c30.F6_SYNCHRONIZED, am79c30.F7_ACTIVATED,
+)
+S_INTERFACE_STEP_INSTRUCTIONS = 500_000
 
 # The PS/2-style system control port, written once during init.
 SYSTEM_CONTROL_PORT = 0xF092
@@ -143,6 +164,7 @@ class IsdnMachine:
         serial_pace: int = RX_INSTRUCTIONS_PER_BYTE,
         serial_irq: int | None = UART_A_IRQ,
         serial_pump: "Callable[[IsdnMachine], None] | None" = None,
+        line_activate: int | None = None,
     ) -> None:
         self.image = image
         self.entry_segment = entry_segment
@@ -161,6 +183,9 @@ class IsdnMachine:
         self._dsp_instructions = 0
         self.mailbox = mailbox if mailbox is not None else ImodemMailbox()
         self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
+
+        self.line_activate = line_activate
+        self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
         self.pit = ProgrammableIntervalTimer()
         self.pic = InterruptControllers()
@@ -300,6 +325,9 @@ class IsdnMachine:
         for channel in self.channels.values():
             if channel.irq is not None and channel.interrupting():
                 self.pic.raise_irq(channel.irq)
+        self._advance_line()
+        if self.dsc.interrupting():
+            self.pic.raise_irq(DSC_IRQ)
         if self.mailbox_service and self.instructions >= self._next_mailbox_service:
             self._next_mailbox_service = self.instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
@@ -311,6 +339,16 @@ class IsdnMachine:
             self.timer_ticks += wraps
             if irq is not None:
                 self.pic.raise_irq(irq)
+
+    def _advance_line(self) -> None:
+        """Walk the S interface up, one state per step, once the run reaches it."""
+        if not self._line_walk:
+            return
+        due = self.line_activate + S_INTERFACE_STEP_INSTRUCTIONS * (
+            len(S_INTERFACE_WALK) - len(self._line_walk)
+        )
+        if self.instructions >= due:
+            self.dsc.set_liu_state(self._line_walk.pop(0))
 
     # -- execution ---------------------------------------------------------
 

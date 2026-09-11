@@ -77,9 +77,13 @@ that needs two loads to fit.
 ## What is missing
 
 * The C5x is downloaded but not executed - the harness records the stream.
-* The ISDN front end: S/T transceiver, HDLC, B-channel routing.  Nothing in the
-  DSP images touches it ([x2-symmetric-and-all-digital.md](x2-symmetric-and-all-digital.md)),
-  so it is all on the 386 side and all unmodelled.
+* The ISDN settings store.  The S/T transceiver and the D-channel HDLC are
+  modelled now, and the line comes up
+  ([imodem-d-channel.md](imodem-d-channel.md)), but every ISDN setting reads
+  back invalid or empty, so Q.921 never starts.  Where the I-modem keeps them
+  is not established; this image is an update payload, so anything past its
+  end reads erased.  B-channel routing is still unmodelled - the MCRs are
+  recorded, not acted on.
 * Which device raises the system tick.  The harness drives IRQ10 from 8254
   counter 0 because that is the line the tick-delay routine at `a45df` needs;
   the physical wiring is not recovered.

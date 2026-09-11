@@ -159,17 +159,18 @@ state it is in when an idle `AT` reaches that path.
    Data Link Layer   :  Inactive
 ```
 
-`courier_emu/am79c30.py` answers the Am79C30's registers out of what the
-firmware wrote, and its `DEFAULT_READS` is **empty** - so `LIU_LSR`, the S/T
-line status, reads `0` and the line never activates.  That is deliberate:
-nothing there fakes a line that is not there.  The consequence is that L1 and
+`courier_emu/am79c30.py` starts the LIU in I.430's F1, so `LIU_LSR`, the S/T
+line status, reads `0` and the line never activates unless a harness brings it
+up.  That is deliberate: nothing there fakes a line that is not there.  The consequence is that L1 and
 L2 never come up, the modem is never idle-with-a-line, and commands that end
 in the go-idle epilogue report a disconnect instead of `OK`.
 
-Modelling the S/T activation is the ISDN front end, which is on the missing
-list in [imodem-emulation.md](imodem-emulation.md#what-is-missing) and is its
-own piece of work.  Answering `LIU_LSR` with an activated value would change
-the result code without modelling anything, so it is not done here.
+S/T activation is now modelled, and `isdn-run --line-activate` walks the
+interface up: with it, `ATI12` reports **Physical Interface: Active**.  See
+[imodem-d-channel.md](imodem-d-channel.md).  It does not change this result
+code - the keypress-abort cause above is recorded by the receive callback and
+has nothing to do with the line - and layer 2 stays down for want of a
+settings store, which that page ends on.
 
 `tools/imodem_at_probe.py` reproduces the whole chain - it watches `a8067`,
 `ab33b` and the transcript together:
