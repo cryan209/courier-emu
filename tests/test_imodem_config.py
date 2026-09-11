@@ -72,3 +72,23 @@ def test_a_byte_past_the_block_is_refused():
 def test_a_wrong_sized_sector_is_refused():
     with pytest.raises(ValueError):
         seal(b"\xff" * 16)
+
+
+def test_the_recovered_field_offsets():
+    from courier_emu.imodem_config import (
+        BUS_CONFIGURATION, DATA_TEI, SWITCH_PROTOCOL, VOICE_DIRECTORY_NUMBER,
+        VOICE_TEI, set_voice_directory_number,
+    )
+    assert (SWITCH_PROTOCOL, BUS_CONFIGURATION) == (0, 1)
+    assert (VOICE_DIRECTORY_NUMBER, VOICE_TEI, DATA_TEI) == (44, 86, 87)
+
+    sealed = set_voice_directory_number(seal(blank_sector()), "5551000")
+    block = read_isdn_block(sealed)
+    assert block[44:52] == b"5551000\x00"
+    assert page_is_sealed(sealed[:PAGE_SIZE])
+
+
+def test_a_directory_number_that_does_not_fit_is_refused():
+    from courier_emu.imodem_config import set_voice_directory_number
+    with pytest.raises(ValueError):
+        set_voice_directory_number(seal(blank_sector()), "123456789")

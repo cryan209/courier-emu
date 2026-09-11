@@ -34,6 +34,13 @@ What settles it is not the arithmetic but the firmware: a sector resealed with
 this and a switch protocol of ASCII `4` boots, and `ATI12` prints
 `Switch Protocol *W   4   ETSI NET3`.  The firmware accepts a record this
 module built.
+
+The field offsets below were recovered the other way round, and more cheaply:
+set each setting over the AT interface, let the firmware write its own sector,
+and diff it.  That also showed what the firmware wants for the settings to
+take - it answers `*ATZ! Required*  :  Settings Have Changed` until a reset -
+and it is the check on this module's CRC from the other side, since a sector
+the *firmware* wrote verifies against `page_crc` too.
 """
 from __future__ import annotations
 
@@ -53,7 +60,17 @@ SEED = 0x169E
 # The ISDN settings, as loaded into 2600:d476.
 ISDN_BLOCK = 0x1B0
 ISDN_BLOCK_LENGTH = 0x5B
-SWITCH_PROTOCOL = 0           # the block's first byte
+
+# Field offsets within the block, recovered the way the user suggested and the
+# only way that needs no guessing: set each one over the AT interface, let the
+# firmware write the sector itself, and diff it. Every one of these was
+# observed changing in response to its own command, and `ATI12` names it back.
+SWITCH_PROTOCOL = 0           # *W, an ASCII digit '0'-'8'
+BUS_CONFIGURATION = 1         # *M, '0' point to point, '1' multipoint
+VOICE_DIRECTORY_NUMBER = 44   # *P1, ASCII, NUL terminated
+VOICE_DIRECTORY_LENGTH = 8
+VOICE_TEI = 86                # *T1, ASCII, '00' is automatic assignment
+DATA_TEI = 87                 # *T2
 
 # The switch types the firmware's own help page at 0xbf9f0 lists for *W=n.
 SWITCH_PROTOCOLS = {
@@ -128,6 +145,26 @@ def set_isdn_byte(sector: bytes | bytearray, index: int, value: int) -> bytes:
     for page in range(PAGES):
         out[page * PAGE_SIZE + ISDN_BLOCK + index] = value & 0xFF
     return seal(out)
+
+
+def set_string(sector: bytes | bytearray, index: int, length: int,
+               text: str) -> bytes:
+    """Write an ASCII, NUL-terminated field - the form *P1 is stored in."""
+    encoded = text.encode("ascii")
+    if len(encoded) >= length:
+        raise ValueError(f"{text!r} does not fit in {length} bytes with its NUL")
+    out = bytearray(sector)
+    for page in range(PAGES):
+        base = page * PAGE_SIZE + ISDN_BLOCK + index
+        out[base:base + length] = encoded + b"\x00" + bytes(
+            [0xFF] * (length - len(encoded) - 1)
+        )
+    return seal(out)
+
+
+def set_voice_directory_number(sector: bytes | bytearray, number: str) -> bytes:
+    return set_string(sector, VOICE_DIRECTORY_NUMBER,
+                      VOICE_DIRECTORY_LENGTH, number)
 
 
 def set_switch_protocol(sector: bytes | bytearray, protocol: int) -> bytes:

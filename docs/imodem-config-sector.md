@@ -153,8 +153,51 @@ through a twenty-entry table, validating each: the switch type at `d476` has
 to be an ASCII digit `0`-`8` or it stores `ff`, which is the `Invalid Switch
 Type` `ATI12` has been printing all along.
 
-The switch protocol is set and accepted.  What Q.921 still wants is the rest
-of the block - multipoint, dialing mode, the SPIDs, the directory numbers and
-the TEIs, all still `Invalid` - and where each lives inside the 91 bytes is
-not yet mapped.  The offset-painting trick above will map them one field at a
-time, since each shows up in `ATI12` by name.
+### Let the firmware fill it in
+
+Painting offsets works, but there is a better way to map the block and it
+needs no reverse engineering at all: **set each field over the AT interface,
+let the firmware write its own sector, and diff it.**  `isdn-run` has both
+halves already.
+
+```sh
+.venv/bin/python -m courier_emu isdn-run Ie030002.nac \
+    --instructions 300000000 --send-every 20000000 \
+    --flash-overlay 0xf8000=config.bin --flash-save flash-after.bin \
+    --send AT --send "AT*M=1" --send "AT*P1=5551000" \
+    --send "AT*T1=0" --send "AT&W" --send ATZ --send ATI12
+```
+
+`ATI12` reads the result back in the firmware's own words:
+
+```
+   Multipoint      *M   1                     Multi-point
+   Directory No.   *P1  5551000               ADP Directory Number
+   TEI             *T1  00                    Automatic TEI
+```
+
+and the sector it wrote differs from the one it started with in exactly the
+fields that were set:
+
+| block index | field | command | stored as |
+|---:|---|---|---|
+| 0 | switch protocol | `*W=n` | ASCII digit `0`-`8` |
+| 1 | bus configuration | `*M=n` | ASCII `0` or `1` |
+| 44-51 | voice directory number | `*P1=n..n` | ASCII, NUL terminated |
+| 86 | voice channel TEI | `*T1=nn` | ASCII, `00` is automatic |
+| 87 | data channel TEI | `*T2=nn` | ASCII |
+
+Two things that method settles for free.  The firmware answers
+`*ATZ! Required*  :  Settings Have Changed` until a reset, so a session that
+changes settings has to end `AT&W`, `ATZ` before the sector is what the next
+boot will read.  And a sector the *firmware* wrote verifies against
+`page_crc`, which checks the CRC recovered above from the other side - not
+just that our seal is accepted, but that we compute the same word the firmware
+does.
+
+The remaining fields - dialing mode, the SPIDs, the data directory number -
+map exactly the same way; they are not listed above only because a run drops
+some commands at the current `--serial-pace`, so each needs a short session of
+its own rather than one long one.
+
+`courier_emu/imodem_config.py` carries the offsets that are established.
