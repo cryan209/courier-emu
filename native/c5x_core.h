@@ -191,6 +191,8 @@ public:
     MemoryMap memory_map() const;
     void set_io_callbacks(IoRead read, IoWrite write);
     void set_io(uint16_t port, uint16_t value);
+    void configure_host_mailbox(bool enabled) { m_host_mailbox = enabled; }
+    uint64_t xf_falling_edges() const { return m_xf_falling_edges; }
     void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
@@ -325,6 +327,8 @@ private:
     uint64_t m_line_frame_interrupts = 0;
     uint64_t m_line_frame_next_cycle = 0;
     bool m_rom_codec = false;
+    bool m_host_mailbox = false;
+    uint64_t m_xf_falling_edges = 0;
     bool m_digital_pcm = false;
     uint16_t m_g711_idle = 0x00ff;
     unsigned m_line_frame_period = 258;

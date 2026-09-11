@@ -211,6 +211,9 @@ class NativeC5x:
         lib.courier_c5x_get_io_output.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io_output.restype = ctypes.c_uint16
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
+        lib.courier_c5x_configure_host_mailbox.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_get_xf_falling_edges.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_xf_falling_edges.restype = ctypes.c_uint64
         lib.courier_c5x_host_write.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
         ]
@@ -391,6 +394,13 @@ class NativeC5x:
         self.library.courier_c5x_host_write(
             self.handle, address & 0xFFFF, value & 0xFFFF
         )
+
+    def configure_host_mailbox(self) -> None:
+        """Use separate holding registers and write-one acknowledgements."""
+        self.library.courier_c5x_configure_host_mailbox(self.handle, 1)
+
+    def xf_falling_edges(self) -> int:
+        return int(self.library.courier_c5x_get_xf_falling_edges(self.handle))
 
     def queue_serial_rx(self, samples: list[int] | tuple[int, ...]) -> None:
         if not samples:

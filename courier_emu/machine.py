@@ -1660,6 +1660,14 @@ class CourierMachine:
                             and not self._quad_irq_in_service
                             and self._int0_pending is None):
                         self._int0_pending = INT0_VECTOR
+                # The modem's C50 timer pulses XF (8467..847f). Route those
+                # edges to its INT0, separately from the controller's DUART.
+                # Retain in-service through EOI: the modem ISR also uses STI.
+                if (self.quad_c50 is not None and self.quad_c50.irq_pending
+                        and interrupts_on and self.timers.controller.enabled("int0")
+                        and not self._quad_irq_in_service and self._int0_pending is None):
+                    self._int0_pending = INT0_VECTOR
+                    self.quad_c50.irq_pending = False
                 if (
                     not self._quad_profile
                     and self._int0_pending is None
@@ -2608,7 +2616,7 @@ class CourierMachine:
                     self._external_interrupt_pending = None
                     continue
                 if self._int0_pending is not None:
-                    if self.quad_usart is not None:
+                    if self.quad_usart is not None or self.quad_c50 is not None:
                         self._quad_irq_in_service = True
                     begin = dispatch_interrupt(self._int0_pending, software=False)
                     self._int0_pending = None

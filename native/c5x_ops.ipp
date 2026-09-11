@@ -2060,6 +2060,7 @@ void C5xCore::op_clrc_intm()
 
 void C5xCore::op_clrc_xf()
 {
+	if (m_st1.xf) ++m_xf_falling_edges;
 	m_st1.xf = 0;
 
 	CYCLES(1);

@@ -128,6 +128,16 @@ void courier_c5x_set_io(void *handle, uint16_t port, uint16_t value)
     if (handle) static_cast<C5xCore *>(handle)->set_io(port, value);
 }
 
+void courier_c5x_configure_host_mailbox(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->configure_host_mailbox(enabled != 0);
+}
+
+uint64_t courier_c5x_get_xf_falling_edges(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->xf_falling_edges() : 0;
+}
+
 void courier_c5x_host_write(void *handle, uint16_t address, uint16_t value)
 {
     if (handle) static_cast<C5xCore *>(handle)->host_write(address, value);

@@ -194,9 +194,24 @@ class QuadC50Endpoint:
     runtime_bursts: int = 0
     runtime_acks: int = 0
     _runtime_waiting: bool = False
+    _cpu_status: int = 0
+    _reply: dict[int, int] = field(default_factory=dict)
+    _xf_cursor: int = 0
+    irq_pending: bool = False
+    commands_sent: int = 0
+    commands_acked: int = 0
+    replies_posted: int = 0
+    replies_acked: int = 0
+    exchanges: list[dict[str, object]] = field(default_factory=list)
 
     # -- CPU side ---------------------------------------------------------
     def read(self, port: int, size: int) -> int | None:
+        # Runtime reads see DSP reply latches, independent of CPU writes.
+        if port in (0xD8, 0xDA, 0xDC, 0xDE) and not self._in_reset:
+            word = self._reply.get(0x5E if port < 0xDC else 0x5F, 0)
+            return (word >> (8 if port & 2 else 0)) & 0xFF
+        if port == 0x9C and not self._in_reset:
+            return self._cpu_status
         if port == RUNTIME_STATUS_PORT and not self._in_reset and self.runtime_active:
             # The overlay loader first waits for bit 2 after writing 4, then
             # waits for bit 1 after every four-word burst.  Keep bit 2 raised
@@ -211,6 +226,8 @@ class QuadC50Endpoint:
             return self._ready_bits()
         if port in STATUS_PORTS and self._in_reset:
             return 0xFF
+        if port in (0x9A, 0x9E):
+            return 0
         return None
 
     def write(self, port: int, size: int, value: int) -> bool:
@@ -223,6 +240,22 @@ class QuadC50Endpoint:
             return False
         if port == STATUS_PORT:
             self._strobe(value & 0xFF)
+            return False
+        if port == 0x9C and not self._in_reset and self.core is not None:
+            # QF cfe92 hands off a command with bit 0 and releases the reply
+            # slot with bit 1. The DSP acknowledges these at 86b9 / 8704.
+            value &= 3
+            if value & 1 and self._cpu_status & 1:
+                self.core.set_io(0x5E, self.lanes.get(0xD8, 0))
+                self.core.set_io(0x5F, self.lanes.get(0xDC, 0))
+                self.commands_sent += 1
+                if len(self.exchanges) < 256:
+                    self.exchanges.append({"direction": "cpu-to-dsp", "steps": self.steps,
+                        "command": self.lanes.get(0xD8, 0), "argument": self.lanes.get(0xDC, 0)})
+            if value & 2 and self._cpu_status & 2:
+                self.replies_acked += 1
+            self._cpu_status &= ~value
+            self.core.set_io(0x57, self.core.io(0x57) | value)
             return False
         if port == RUNTIME_STATUS_PORT and not self._in_reset:
             self._runtime_strobe(value & 0xFF)
@@ -247,6 +280,7 @@ class QuadC50Endpoint:
         )
         self.window_group = LANE_BASE
         self._runtime_waiting = True
+        self.core.set_io(DSP_STATUS_MMR, self.core.io(DSP_STATUS_MMR) | 0x0200)
 
     def _strobe(self, value: int) -> None:
         if value == 0xFF:
@@ -271,6 +305,10 @@ class QuadC50Endpoint:
             self._boot_pending = False
             self._pcm_active = False
             self._event_cursor = 0
+            self._xf_cursor = 0
+            self.irq_pending = False
+            self._cpu_status = 0
+            self._reply.clear()
             self.runtime_active = False
             self._runtime_waiting = False
             return
@@ -331,6 +369,8 @@ class QuadC50Endpoint:
             raise ValueError("recovered DSP boot ROM checksum mismatch")
         words = self.program[:RESIDENT_WORDS]
         core = NativeC5x.from_program(RESIDENT_ORIGIN, bytes(RESIDENT_WORDS * 2))
+        core.configure_host_mailbox()
+        core.set_io(0x57, 0)
         core.load_rom(rom)
         core.set_mpmc_pin(0)
         # The boot strap the ROM reads to pick its mode. Not codec-specific -
@@ -338,19 +378,11 @@ class QuadC50Endpoint:
         # at program 0x3f.
         core.host_write(0xFFFF, 4)
         core.set_pc(0)
-        # Deliberately *not* configure_rom_codec(). That mode is the Courier
-        # ASIC's, and it redefines two things the Quad needs as they are:
-        #
-        #   * port 0x57 becomes an acknowledgement register whose writes clear
-        #     bits (c5x_core.cpp IO_WRITE16), so the resident's 0x0300 would
-        #     clear bits 8 and 9 instead of setting them - which is exactly why
-        #     0x57 read back 0x0000 here and the host link looked dead;
-        #   * XRDY is gated on a codec frame clock this board does not drive,
-        #     so the loader's reset handshake would spin for ever.
-        #
-        # The boot words do not need that mode. The loader takes them from DRR
-        # gated by RRDY, and the ordinary path serves both from the codec
-        # receive queue, with XRDY answered optimistically off XRST.
+        # Use mailbox acknowledgements without enabling the analog AC01 clock.
+        # Treating writes to 0x57 as ordinary storage fabricated overlay bit 9
+        # during resident initialization and consumed nonexistent boot words.
+        # DRR still carries the ROM download, with XRDY following XRST, until
+        # the separate digital timeslot is activated after handoff.
         core.queue_codec_rx([RESIDENT_ORIGIN, len(words), *words, 0])
         self.core = core
         # DRR first carries the ROM's 16-bit download, not DS0 octets. Frame
@@ -431,10 +463,16 @@ class QuadC50Endpoint:
                     and self.core.codec_state()["codec_rx_size"] == 0
                     and self.core.state()["pc"] >= RESIDENT_ORIGIN):
                 self._boot_pending = False
+                self._cpu_status = 1
+                self.core.set_io(0x57, self.core.io(0x57) | 2)
                 self._activate_pcm()
             self.steps += slice_size
             budget -= slice_size
             self._drain_pulls()
+            edges = self.core.xf_falling_edges()
+            if edges > self._xf_cursor:
+                self.irq_pending = True
+            self._xf_cursor = edges
 
     def _drain_pulls(self) -> None:
         library = self.core.library
@@ -452,6 +490,19 @@ class QuadC50Endpoint:
             library.courier_c5x_get_io_event(handle, self._event_cursor, values, 5)
             self._event_cursor += 1
             write, port = int(values[0]), int(values[1])
+            value = int(values[2])
+            if write and port in (0x5E, 0x5F):
+                self._reply[port] = value
+            if write and port == DSP_STATUS_MMR and not self._boot_pending:
+                if value == 1:
+                    self.commands_acked += 1
+                    self._cpu_status |= 1
+                elif value == 2:
+                    self.replies_posted += 1
+                    self._cpu_status |= 2
+                    if len(self.exchanges) < 256:
+                        self.exchanges.append({"direction": "dsp-to-cpu", "steps": self.steps,
+                            "command": self._reply.get(0x5E, 0), "argument": self._reply.get(0x5F, 0)})
             if not write and port == DSP_FETCH_MMR:
                 self.pulls += 1
             elif write and port == DSP_STATUS_MMR and self.window is not None:
@@ -477,4 +528,8 @@ class QuadC50Endpoint:
             "runtime_active": self.runtime_active,
             "runtime_bursts": self.runtime_bursts,
             "runtime_acks": self.runtime_acks,
+            "commands_sent": self.commands_sent, "commands_acked": self.commands_acked,
+            "replies_posted": self.replies_posted, "replies_acked": self.replies_acked,
+            "xf_edges": self._xf_cursor,
+            "exchanges": list(self.exchanges),
         }

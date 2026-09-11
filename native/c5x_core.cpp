@@ -56,6 +56,7 @@ void C5xCore::reset()
     m_map = {};
     m_st0.intm = 1;
     m_st1.c = 1; m_st1.hm = 1; m_st1.sxm = 1; m_st1.xf = 1;
+    m_xf_falling_edges = 0;
     m_ifr = m_imr = 0;
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
@@ -556,14 +557,14 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
-    if (m_rom_codec && port == 0x57)
+    if ((m_rom_codec || m_host_mailbox) && port == 0x57)
         // PA7 is an acknowledgement register, not ordinary port storage.
         // The board leaves 0002 unchanged after writes of 0200, 0300 and 0000
         // (artifacts/dsp-status-03). Assigning FFFF during resident init used
         // to invent download-ready bit 9; with NDX working the firmware then
         // consumed nonexistent download words indefinitely.
         m_io[port] &= uint16_t(~value);
-    else if (m_rom_codec && port >= 0x5e && port <= 0x60)
+    else if ((m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60)
         // The CPU and DSP each own a holding register. A DSP reply must not
         // overwrite an incoming CPU word, or vice versa.
         m_mailbox_output[port - 0x5e] = value;
