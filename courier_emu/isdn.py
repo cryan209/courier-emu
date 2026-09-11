@@ -12,7 +12,13 @@ from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .imodem_mailbox import ImodemMailbox
-from .sio import RX_INSTRUCTIONS_PER_BYTE, TERMINAL_PRESENT, SerialChannel
+from .sio import (
+    RX_INSTRUCTIONS_PER_BYTE,
+    TERMINAL_PRESENT,
+    UART_CLOCK_HIGH_RATES_HZ,
+    UART_CLOCK_LOW_RATES_HZ,
+    SerialChannel,
+)
 
 
 # The ISDN Courier's payload is an update image, not a whole flash part, so the
@@ -52,14 +58,33 @@ DSP_HANDSHAKE_PORT = 0x18
 # f8fa / f8fd / f8fe / f8f8, this part's IIR, LSR, MSR and RBR. See
 # courier_emu/sio.py for the decode that recovers.
 #
-# SIO1's interrupt line is not recovered. The only other line the firmware
-# unmasks on the master is IRQ6, and its vector 0x26 reaches 0xa520a, which
-# services ports 0x00 and 0x0a rather than a UART. So SIO1 is left pollable
-# and silent rather than wired to a guess.
+# SIO1 has no interrupt line because the firmware never services it. The
+# variable block at 2600:e83a runs to e84a and holds all nine registers of one
+# part -- f8fa, f8fd, f8fe, f8f8, f8f8, f8f9, f8ff, f8fc, f8fb -- and there is
+# no second block. Over a command session SIO1 is touched seven times, all of
+# them in the init at 4030:010b that sets its LCR, divisor and IER and reads
+# its MSR twice; after that nothing addresses 0xf4f8 again. So SIO1 is
+# initialised and left idle by the firmware, and leaving it pollable and
+# silent is what the firmware does with it, not a gap in the decode.
+#
+# The one interrupt-driven path that does exist beyond IRQ3 is IRQ12, whose
+# handler at 0xc7c42 masks SIO0's IER through [e844], programmes the 386EX DMA
+# registers at 0xf001/0xf00a/0xf00c/0xf010/0xf098, and restores IER -- a
+# DMA-fed transmitter for SIO0, gated on [ca42] bit 1. None of those DMA
+# registers is touched during a command session, so the AT interface does not
+# use it and it is not modelled here.
 UART_A_BASE = 0xF8F8
 UART_B_BASE = 0xF4F8
 UART_A_IRQ = 3
 UART_B_IRQ = None
+
+# The board's UART clock select. The rate setter at 0xc7ae7 reads this port,
+# clears bit 1 for the four fastest rate codes and sets it for the rest, and
+# writes it back -- and that boundary is exactly where the firmware's divisor
+# table stops fitting one clock and starts fitting the other. See
+# courier_emu/sio.py for the table and the two clocks it recovers.
+UART_CLOCK_SELECT_PORT = 0xF836
+UART_CLOCK_SELECT_BIT = 0x02
 
 # The Am79C30's interrupt line. Vector 0x2e is slave IRQ14 - the slave's ICW2
 # is 0x28 - and it reads back 4030:02f8, a stub that far-calls 71d7:000f. That
@@ -201,7 +226,7 @@ class IsdnMachine:
         mailbox: ImodemMailbox | None = None,
         with_dsp: bool = False,
         serial_signals: int = TERMINAL_PRESENT,
-        serial_pace: int | None = RX_INSTRUCTIONS_PER_BYTE,
+        serial_pace: int | None = None,
         serial_irq: int | None = UART_A_IRQ,
         serial_pump: "Callable[[IsdnMachine], None] | None" = None,
         line_activate: int | None = None,
@@ -246,6 +271,10 @@ class IsdnMachine:
         self.dsc = Am79C30()
         self.flash = FlashDevice()
         self.dsp_handshake = 0
+        # The init at 4030:010b writes 0x00 here in the same breath as it sets
+        # both SIOs to divisor 2, so the board starts on the clock that serves
+        # the fast rates -- and divisor 2 on 3.6864 MHz is 115200 exactly.
+        self.uart_clock_select = 0
 
         self.instructions = 0
         self.timer_ticks = 0
@@ -256,10 +285,12 @@ class IsdnMachine:
             UART_A_BASE: SerialChannel(
                 UART_A_BASE, irq=serial_irq, signals=serial_signals,
                 max_bytes=MAX_SERIAL_BYTES, pace=serial_pace,
+                input_clock_hz=UART_CLOCK_HIGH_RATES_HZ,
             ),
             UART_B_BASE: SerialChannel(
                 UART_B_BASE, irq=UART_B_IRQ, signals=serial_signals,
                 max_bytes=MAX_SERIAL_BYTES, pace=serial_pace,
+                input_clock_hz=UART_CLOCK_HIGH_RATES_HZ,
             ),
         }
         self.serial_pump = serial_pump
@@ -323,6 +354,8 @@ class IsdnMachine:
             return self.dsp_handshake
         if port == BOARD_STATUS_PORT:
             return self.board_status
+        if port == UART_CLOCK_SELECT_PORT:
+            return self.uart_clock_select
         if port in self.mailbox.PORTS:
             return self.port_values.get(port, self.mailbox.read(port))
         base = self._uart_of(port)
@@ -348,6 +381,19 @@ class IsdnMachine:
             return
         if port == DSP_HANDSHAKE_PORT:
             self.dsp_handshake = value & 0xFF
+            return
+        if port == UART_CLOCK_SELECT_PORT:
+            self.uart_clock_select = value & 0xFF
+            # Only SIO0's clock is traced to this bit: the rate setter writes
+            # it as part of loading SIO0's divisor, and SIO1's divisor is never
+            # set again after the init that left this register at 0x00. So
+            # SIO1 keeps the fast-rate clock it was initialised on -- 115200 at
+            # its divisor of 2 -- and whether the bit would have moved it too
+            # is not separable from what the firmware does.
+            self.channels[UART_A_BASE].input_clock_hz = (
+                UART_CLOCK_LOW_RATES_HZ if value & UART_CLOCK_SELECT_BIT
+                else UART_CLOCK_HIGH_RATES_HZ
+            )
             return
         if port in self.mailbox.PORTS:
             self.mailbox.write(port, value)

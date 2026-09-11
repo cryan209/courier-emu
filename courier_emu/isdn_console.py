@@ -6,10 +6,26 @@ whatever the host has to say and takes whatever the firmware has said back.
 
 Two things about the timing are worth knowing before reading a transcript.
 The firmware needs a warm-up - the command task is created late in the VRTX
-startup - and it consumes the first line it sees without answering it, so a
-scripted session should open with a throwaway `AT`.  And characters have to
-arrive spaced out: delivered as one burst, a line reaches the parser
+startup, and anything typed before it exists is discarded.  And characters
+have to arrive spaced out: delivered as one burst, a line reaches the parser
 differently and some commands do not answer at all.
+
+The firmware does *not* swallow the first line it is given.  A session whose
+only command is `ATI3` gets the banner, and one that opens with `AT` gets an
+answer to that `AT` as well; what made it look otherwise is that a bare `AT`
+answers `NO CARRIER` rather than `OK`, which reads like a lost line when the
+transcript starts with a throwaway.  See docs/imodem-at-interface.md.
+
+The link is 7E1, and the firmware generates the parity bit itself rather than
+asking the part for it - see `even_parity` in courier_emu/sio.py for why a
+transmitter programmed 8N1 emits exactly that frame.  So a terminal on the
+other end is a 7E1 terminal, and `_on_the_wire` makes this one behave like
+one.
+
+The firmware masks the parity bit on receive rather than checking it, so what
+this sends in is not load-bearing: a line sent with parity and a line sent
+without it produce identical answers.  It is here because it is what the DTE
+at the other end puts on the wire, not because anything depends on it.
 """
 
 from __future__ import annotations
@@ -21,6 +37,7 @@ import time
 from typing import Any, Callable, Iterable
 
 from .pit import INSTRUCTIONS_PER_SECOND
+from .sio import even_parity
 
 # Long enough for the kernel to create and first-run the command task; the
 # nine-task startup completes a little before 3M instructions.
@@ -81,7 +98,7 @@ def scripted_pump(
     def pump(machine: Any) -> None:
         while schedule and machine.instructions >= schedule[-1][0]:
             _, line = schedule.pop()
-            machine.send_serial(line)
+            machine.send_serial(_on_the_wire(line))
             log.append((machine.instructions, "sent", line))
         received = machine.take_serial()
         if received:
@@ -91,13 +108,21 @@ def scripted_pump(
 
 
 def _readable(data: bytes) -> str:
-    """Drop the eighth bit before decoding.
+    """Drop the parity bit before decoding.
 
-    The firmware transmits its result codes and banners with bit 7 set - mark
-    parity applied in software, on a part it has programmed for eight data
-    bits and none. A terminal set the matching way never sees it.
+    Bit 7 of what the firmware transmits is even parity over the low seven,
+    computed in software on a part it has programmed for eight data bits and
+    none: over a full banner-and-result-code stream, 73 bytes of 73 agree, and
+    ATI4 describes the link the same way - ``PARITY=E WORDLEN=7``. A terminal
+    set the matching way never sees it.
     """
     return bytes(byte & 0x7F for byte in data).decode("ascii", "replace")
+
+
+def _on_the_wire(text: str | bytes) -> bytes:
+    """What a 7E1 terminal puts on the line for this text."""
+    data = text.encode("ascii", "replace") if isinstance(text, str) else bytes(text)
+    return bytes(even_parity(byte) for byte in data)
 
 
 def interactive_pump(
@@ -118,7 +143,6 @@ def interactive_pump(
     source = input_stream if input_stream is not None else sys.stdin
     sink = output_stream if output_stream is not None else sys.stdout
     detached = [False]
-    primed = [False]
     clock_origin: list[tuple[int, float] | None] = [None]
     next_clock_sync = [after]
 
@@ -140,13 +164,6 @@ def interactive_pump(
             if delay > 0:
                 time.sleep(delay)
             next_clock_sync[0] = machine.instructions + INSTRUCTIONS_PER_SECOND // 100
-        if not primed[0]:
-            # The command task consumes its first line without answering it.
-            # Prime that firmware quirk here so the user's first command is
-            # not mysteriously lost in an interactive session.
-            machine.send_serial("AT\r")
-            primed[0] = True
-            return
         try:
             ready, _, _ = select.select([source], [], [], 0)
         except (OSError, ValueError):  # pragma: no cover - closed stream
@@ -164,7 +181,7 @@ def interactive_pump(
         if data:
             # A terminal sends CR for Return; the parser wants exactly that.
             data = data.replace(b"\n", b"\r")
-            machine.send_serial(data)
+            machine.send_serial(_on_the_wire(data))
         if detached[0]:
             machine.stop("detached")
 

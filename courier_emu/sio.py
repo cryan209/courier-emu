@@ -77,12 +77,78 @@ MCR_LOOPBACK = 0x10
 
 MAX_SERIAL_BYTES = 64 * 1024
 
-# Compatibility value for callers that explicitly request the old fixed
-# receive pacing. The default now derives a complete character time from the
-# guest-programmed divisor and LCR frame format.
+# Compatibility value for callers that explicitly request a fixed receive
+# pacing. The default derives a complete character time from the divisor the
+# guest programmes and the clock the board feeds the part.
 RX_INSTRUCTIONS_PER_BYTE = 20000
-UART_CLOCK_HZ = 1_843_200
-CPU_INSTRUCTIONS_PER_SECOND = 2_500_000
+
+# The board's two UART input clocks, and the rate ranges each one serves.
+#
+# Both are recovered from the firmware's own baud-rate table rather than
+# assumed. The rate setter at 0xc7ae7 takes a rate code 1..12, indexes a
+# twelve-word table at c774:04db, and writes that word into the divisor latch:
+#
+#     1 2 4 6 40 80 161 322 643 1286 2572 1782
+#
+# It also records 0x0c - code at [d1db], and the setup menu at 0xc0570 labels
+# those display indices -- 5 is "4800 bps", 6 "9600", 7 "19200", 8 "38400",
+# 9 "57600", 10 "115200". So code 1 is 230400 and code 11 is 300, and every
+# divisor in the table is then exact:
+#
+#     code 1..4    230400 115200 57600 38400   ->  1 2 4 6         3.6864 MHz
+#     code 5..11    19200 9600 4800 2400 1200 600 300
+#                                  -> 40 80 161 322 643 1286 2572  12.3456 MHz
+#
+# Each group is exact to the rounding a divisor needs -- 12.3456 MHz over
+# 16*4800 is 160.75 and the table holds 161, over 16*2400 is 321.5 and the
+# table holds 322 -- and neither group fits the other's clock. Code 12's 1782
+# has no menu entry and is not interpreted here.
+#
+# The setter picks between them itself: after loading the divisor it reads
+# 0xf836, clears bit 1 for codes 1..4 and sets it for codes 5..12, and writes
+# it back. That boundary is exactly the boundary between the two clocks, so
+# bit 1 of 0xf836 is the board's UART clock select. (It is where the 386EX
+# puts its serial configuration register, which is consistent, but the split
+# is established by the table, not by the part number.)
+UART_CLOCK_HIGH_RATES_HZ = 3_686_400   # 38400..230400, clock-select bit clear
+UART_CLOCK_LOW_RATES_HZ = 12_345_600   # 300..19200, clock-select bit set
+
+# The instruction clock, from the firmware's own description of its board:
+# ATI7 prints "Clock Freq 20.16Mhz". At roughly one instruction per clock this
+# puts a 9600-baud character at about 21,000 instructions, which is within 5%
+# of the 20,000 that was verified empirically against this firmware long
+# before the clock was recovered -- two independent routes to the same number.
+#
+# Note that pit.INSTRUCTIONS_PER_SECOND still carries the older 2,500,000
+# assumption for the 8254 ratio. That figure is documented there as a stated
+# assumption rather than a measurement; reconciling the two is a separate
+# change with a much wider blast radius, and is not made here.
+CPU_INSTRUCTIONS_PER_SECOND = 20_160_000
+
+def even_parity(value: int) -> int:
+    """The parity bit the firmware generates in software.
+
+    The link is 7E1: start, seven data bits, even parity, stop. The firmware
+    produces that frame from a transmitter it has programmed 8N1
+    (``LCR = 0x03``), which works because the two frames are the same bits in
+    the same order -- an 8N1 frame's eighth data bit sits exactly where a 7E1
+    frame's parity bit sits, and both are ten bits long. Computing parity into
+    the top bit and letting the part shift out eight "data" bits therefore
+    puts a real 7E1 frame on the wire, which a 7E1 receiver parses correctly.
+    Doing parity in software rather than in the LCR is what lets the firmware
+    offer every parity setting, and pass eight-bit data, without touching the
+    line format.
+
+    The evidence is both halves agreeing: over a full banner-and-result-code
+    stream 73 bytes of 73 carry correct even parity, and ATI4 states the link
+    in words -- "BAUD=9600 PARITY=E WORDLEN=7".
+
+    The receive direction is the same technique in reverse: the firmware takes
+    eight bits and masks the top one off, so the parity a terminal sends is
+    accepted and discarded rather than checked.
+    """
+    value &= 0x7F
+    return value | (0x80 if bin(value).count("1") % 2 else 0)
 
 
 class SerialChannel:
@@ -101,11 +167,16 @@ class SerialChannel:
         signals: int = TERMINAL_PRESENT,
         max_bytes: int = MAX_SERIAL_BYTES,
         pace: int | None = None,
+        input_clock_hz: int = UART_CLOCK_LOW_RATES_HZ,
     ) -> None:
         self.base = base
         self.irq = irq
         self.max_bytes = max_bytes
         self.pace = pace
+        # Which of the board's two clocks reaches this part. The firmware
+        # selects it through 0xf836 as part of setting the rate; the default
+        # is the one that serves 9600, which is where it starts.
+        self.input_clock_hz = input_clock_hz
         self.staged: deque[int] = deque()
         self._next_byte = 0
         self.rx: deque[int] = deque()
@@ -170,8 +241,13 @@ class SerialChannel:
             self.thre = True
 
     @property
+    def baud(self) -> int:
+        """The line rate this channel is running at, as the part derives it."""
+        return self.input_clock_hz // (16 * max(1, self.divisor))
+
+    @property
     def character_instructions(self) -> int:
-        """One serial frame at the divisor and line format programmed by the guest."""
+        """One serial frame at the divisor, clock and format the guest set."""
         if self.pace is not None:
             return self.pace
         divisor = max(1, self.divisor)
@@ -180,7 +256,7 @@ class SerialChannel:
         parity_bits = 1 if self.lcr & 0x08 else 0
         frame_bits = 1 + data_bits + parity_bits + stop_bits
         numerator = CPU_INSTRUCTIONS_PER_SECOND * 16 * divisor * frame_bits
-        return max(1, (numerator + UART_CLOCK_HZ - 1) // UART_CLOCK_HZ)
+        return max(1, (numerator + self.input_clock_hz - 1) // self.input_clock_hz)
 
     def _receive(self, value: int) -> None:
         self.rx.append(value)
@@ -337,6 +413,8 @@ class SerialChannel:
             "lcr": self.lcr,
             "mcr": self.mcr,
             "divisor": self.divisor,
+            "input_clock_hz": self.input_clock_hz,
+            "baud": self.baud,
             "character_instructions": self.character_instructions,
             "signals": self.signals,
             "queued": self.queued,

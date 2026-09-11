@@ -18,7 +18,10 @@ from courier_emu.sio import (
     MSR_DCD,
     MSR_DELTA_CTS,
     MSR_DSR,
+    UART_CLOCK_HIGH_RATES_HZ,
+    UART_CLOCK_LOW_RATES_HZ,
     SerialChannel,
+    even_parity,
 )
 
 BASE = 0xF8F8
@@ -119,7 +122,33 @@ def test_the_programmed_divisor_sets_the_character_time():
     channel.write(BASE, 80)
     channel.write(BASE + 1, 0)
     channel.write(BASE + 3, 0x03)  # 8 data, no parity, one stop
-    assert channel.character_instructions == 17_362
+    # Divisor 80 on the clock that serves the low rates is the firmware's own
+    # 9600 default, and a ten-bit frame at 20.16 MHz takes this long.
+    assert channel.input_clock_hz == UART_CLOCK_LOW_RATES_HZ
+    assert channel.baud == 9645
+    assert channel.character_instructions == 20_903
+
+
+def test_each_clock_makes_its_own_half_of_the_firmware_baud_table_exact():
+    # The table at c774:04db, against the clock the rate setter picks for it.
+    fast = {230400: 1, 115200: 2, 57600: 4, 38400: 6}
+    slow = {19200: 40, 9600: 80, 4800: 161, 2400: 322,
+            1200: 643, 600: 1286, 300: 2572}
+    for clock, entries in ((UART_CLOCK_HIGH_RATES_HZ, fast),
+                           (UART_CLOCK_LOW_RATES_HZ, slow)):
+        for rate, divisor in entries.items():
+            assert round(clock / (16 * rate)) == divisor, (clock, rate)
+
+
+def test_a_terminal_puts_even_parity_in_the_top_bit():
+    # The link is 7E1; the part is programmed 8N1 because that emits the same
+    # ten bits once the parity is computed into the top one. "USRobotics"
+    # leaves the part as 55 53 d2 6f e2 6f 74 69 63 f3.
+    assert even_parity(ord("U")) == 0x55  # four bits set already, parity 0
+    assert even_parity(ord("S")) == 0x53  # four again
+    assert even_parity(ord("R")) == 0xD2  # three, so the parity bit is set
+    assert even_parity(ord("s")) == 0xF3  # five
+    assert all(bin(even_parity(b)).count("1") % 2 == 0 for b in range(0x80))
 
 
 def test_loopback_folds_the_outputs_back_onto_the_status_inputs(channel):

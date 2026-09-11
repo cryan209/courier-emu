@@ -66,28 +66,124 @@ with all of them deasserted, so nothing here depends on the choice.
 IER, IIR with the standard priority, LCR, MCR including loopback, LSR with a
 real data-ready bit, and MSR with read-once delta bits.  `courier_emu/isdn.py`
 gives each SIO one, raises the channel's IRQ from `poll_timers`, and exposes
-`send_serial` / `take_serial`.  SIO1's interrupt line is **not** recovered -
-the only other master line the firmware unmasks is IRQ6, and its vector
-reaches `a520a`, which services ports `0x00` and `0x0a` rather than a UART -
-so SIO1 is left pollable and silent rather than wired to a guess.
+`send_serial` / `take_serial`.
 
-Two details are worth knowing before reading a transcript.
+**SIO1 has no interrupt line because the firmware never services it.**  The
+variable block at `2600:e83a` runs to `e84a` and holds all nine registers of
+one part - `f8fa f8fd f8fe f8f8 f8f8 f8f9 f8ff f8fc f8fb`, this 16550's IIR,
+LSR, MSR, RBR, THR, IER, SCR, MCR and LCR - and there is no second block.
+Over a command session SIO1 is addressed seven times, all of them in the init
+at `4030:010b` that sets its LCR, divisor and IER and reads its MSR twice;
+after that nothing touches `0xf4f8` again.  So leaving SIO1 pollable and
+silent is what the firmware does with it, not a gap in the decode.
 
-**The line rate matters.**  Received and transmitted bytes cross distinct
-holding and shift registers.  The default character interval remains the
-empirically verified 20,000 guest instructions because the physical UART
-input clock has not been recovered; applying the PC-standard 1.8432 MHz clock
-to this board's divisor makes characters arrive too quickly and commands parse
-as `ERROR`.  `--serial-pace` can override the interval for experiments.  With
-`--serial-pace 0` a line arrives as one burst and some commands stop answering.
+The one interrupt-driven path beyond IRQ3 is **IRQ12**, and it belongs to SIO0
+rather than SIO1.  Its handler at `0xc7c42` masks SIO0's IER through `[e844]`,
+programmes the 386EX DMA registers at `0xf001`, `0xf00a`, `0xf00c`, `0xf010`
+and `0xf098`, and restores IER - a DMA-fed transmitter for the command port,
+gated on `[ca42]` bit 1.  None of those DMA registers is touched during a
+command session, so the AT interface does not use it; it is recorded here
+rather than modelled.
 
-**The firmware transmits with bit 7 set.**  It programmes the part for eight
-data bits and no parity (`LCR = 0x03`, divisor 80) and then marks the eighth
-bit in software, so `USRobotics` goes out as `d5 d3 d2 ...`.  The console
-masks it for display; `serial_a` in the report is the raw stream.
+Three details are worth knowing before reading a transcript.
 
-The firmware also swallows the first line it is given without answering it,
-so a scripted session should open with a throwaway `AT`.
+**The line rate is derived, not assumed.**  Received and transmitted bytes
+cross distinct holding and shift registers, and the interval between them now
+comes from the divisor the firmware programmes and the clock it selects for
+it - about 20,900 guest instructions at its own 9600 default.  See
+[the two clocks](#the-board-has-two-uart-clocks) below.  `--serial-pace`
+overrides the interval for experiments; with `--serial-pace 0` a line arrives
+as one burst and some commands stop answering.
+
+**The link is 7E1, generated in software.**  The firmware programmes the part
+for eight data bits and no parity (`LCR = 0x03`) and computes the parity bit
+itself into the top bit, so `USRobotics` leaves the part as
+`55 53 d2 6f e2 6f 74 69 63 f3`.  That is not an 8N1 stream with a quirk: an
+8N1 frame's eighth data bit occupies exactly the slot a 7E1 frame's parity bit
+occupies, and both frames are ten bits, so what reaches the wire *is* 7E1 and
+a 7E1 terminal parses it correctly.  Over a full banner-and-result-code stream
+73 bytes of 73 carry correct even parity, and `ATI4` says the same thing in
+words: `BAUD=9600 PARITY=E WORDLEN=7`.  The console masks the parity bit for
+display and sets it on the way in; `serial_a` in the report is the raw stream.
+
+Receive is the same technique in reverse - the firmware takes eight bits and
+masks the top one rather than checking it - so parity on the way in is not
+load-bearing.  A line sent with it and a line sent without it produce
+identical answers.
+
+**The firmware does not swallow the first line.**  A session whose only
+command is `ATI3` gets the banner, and one that opens with `AT` gets an answer
+to the `AT` as well.  What made it look otherwise is that a bare `AT` answers
+`NO CARRIER` rather than `OK` (see below), which reads like a lost line when
+the transcript opens with a throwaway.  Nothing needs to be primed.
+
+## The board has two UART clocks
+
+The rate setter at `0xc7ae7` takes a rate code 1..12, indexes a twelve-word
+table at `c774:04db`, and writes that word into the divisor latch:
+
+```
+1  2  4  6  40  80  161  322  643  1286  2572  1782
+```
+
+It also records `0x0c - code` at `[d1db]`, and the setup menu at `0xc0570`
+labels those display indices - 5 is `4800 bps`, 6 `9600`, 7 `19200`, 8
+`38400`, 9 `57600`, 10 `115200`.  So code 1 is 230400 and code 11 is 300.
+
+Having named the rates, every divisor in the table comes out exact - against
+two different clocks:
+
+| code | rate | divisor | clock | exact value |
+|---|---|---|---|---|
+| 1 | 230400 | 1 | 3.6864 MHz | 1 |
+| 2 | 115200 | 2 | 3.6864 MHz | 2 |
+| 3 | 57600 | 4 | 3.6864 MHz | 4 |
+| 4 | 38400 | 6 | 3.6864 MHz | 6 |
+| 5 | 19200 | 40 | 12.3456 MHz | 40.1875 |
+| 6 | 9600 | 80 | 12.3456 MHz | 80.375 |
+| 7 | 4800 | 161 | 12.3456 MHz | 160.75 |
+| 8 | 2400 | 322 | 12.3456 MHz | 321.5 |
+| 9 | 1200 | 643 | 12.3456 MHz | 643 |
+| 10 | 600 | 1286 | 12.3456 MHz | 1286 |
+| 11 | 300 | 2572 | 12.3456 MHz | 2572 |
+
+Each group is exact to the rounding a divisor latch forces, and neither group
+fits the other's clock.  Code 12's `1782` has no menu entry and is not
+interpreted.
+
+The firmware picks between the two itself.  Immediately after loading the
+divisor it reads `0xf836`, clears bit 1 for codes 1..4 and sets it for codes
+5..12, and writes it back:
+
+```
+c7b17  mov dx, 0xf836
+c7b1a  in al, dx
+c7b1b  shr bx, 1          ; bx = code - 1
+c7b1d  cmp bx, 3
+c7b20  ja  c7b26
+c7b22  and al, 0xfd       ; codes 1..4  -> 3.6864 MHz
+c7b24  jmp c7b28
+c7b26  or  al, 2          ; codes 5..12 -> 12.3456 MHz
+c7b28  out dx, al
+```
+
+That boundary is exactly the boundary between the two clocks, so bit 1 of
+`0xf836` is the board's UART clock select.  (It is where the 386EX puts its
+serial configuration register, which is consistent, but the split is
+established by the table, not by the part number.)  The init at `4030:010b`
+writes `0x00` there while setting both SIOs to divisor 2 - which on 3.6864 MHz
+is 115200 exactly.
+
+The instruction clock the interval is scaled against comes from the firmware's
+own description of its board: `ATI7` prints `Clock Freq 20.16Mhz`.  At roughly
+one instruction per clock that puts a 9600-baud character at about 20,900
+instructions - within 5% of the 20,000 that had been verified empirically long
+before the clock was recovered.  Two independent routes to the same number.
+
+Note that `pit.INSTRUCTIONS_PER_SECOND` still carries an older 2,500,000
+assumption for the 8254 ratio, documented there as an assumption rather than a
+measurement.  Reconciling the two is a separate change with a much wider blast
+radius and has not been made.
 
 ## Why a bare `AT` answers `NO CARRIER`
 

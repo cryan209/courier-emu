@@ -32,7 +32,18 @@ from .isdn_console import (
     raw_terminal,
     scripted_pump,
 )
-from .sio import RX_INSTRUCTIONS_PER_BYTE, TERMINAL_PRESENT
+from .sio import (
+    CPU_INSTRUCTIONS_PER_SECOND,
+    RX_INSTRUCTIONS_PER_BYTE,
+    TERMINAL_PRESENT,
+    UART_CLOCK_LOW_RATES_HZ,
+)
+
+# Only for the help text: one ten-bit frame at the rate the firmware
+# starts in, so the default the user reads matches what they will get.
+DERIVED_9600_INSTRUCTIONS = (
+    CPU_INSTRUCTIONS_PER_SECOND * 16 * 80 * 10 + UART_CLOCK_LOW_RATES_HZ - 1
+) // UART_CLOCK_LOW_RATES_HZ
 from .nac import NacFormatError, NacImage
 from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
@@ -485,9 +496,13 @@ def build_parser() -> argparse.ArgumentParser:
     isdn_run.add_argument(
         "--serial-pace",
         type=_number,
-        default=RX_INSTRUCTIONS_PER_BYTE,
-        help="instructions per serial character (default 20,000, measured "
-             "working with this firmware; use 0 for an immediate burst)",
+        default=None,
+        help="override the instructions per serial character. By default the "
+             "interval is derived from the divisor the firmware programmes "
+             "and the clock it selects at 0xf836, which at its own 9600 8-bit "
+             f"default is about {DERIVED_9600_INSTRUCTIONS:,} instructions. "
+             f"{RX_INSTRUCTIONS_PER_BYTE} is the value the harness used "
+             "before that clock was recovered; use 0 for an immediate burst",
     )
     isdn_run.add_argument(
         "--serial-signals",
