@@ -165,8 +165,12 @@ The transport is not there, though:
 So whatever fills `2600:d476` is not the 93C66 store this repository already
 models, and pointing `courier_emu/nvram.py` at the I-modem would not be
 modelling its hardware.  Where the block does come from is not established.
-The two candidates left are the flash - `Ie030002.nac` is an update payload,
-so everything past its end reads erased - and the missing 32 KiB boot block,
-which is where a loader that runs before anything else would sit.  Finding it
+The candidates left are flash.  The board carries **two** 4 Mbit parts, and
+the chip selects put 768 KiB of them at `40000`-`fffff`
+([imodem-board-map.md](imodem-board-map.md)); the harness models only the one
+at `80000` and treats the other window as ordinary RAM.  Above that, the
+Am29F400AT's two untouched boot sectors at `7a000` and `7c000` are exactly
+what an update leaves alone, and the missing 32 KiB boot block is where a
+loader that runs before anything else would sit.  Finding it
 is what stands between this and Q.921.  Note that `courier_emu/parameters.py`
 is not it: that store is the 211's, and does not exist on this board.

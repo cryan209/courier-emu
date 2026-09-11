@@ -132,8 +132,11 @@ up two more parts:
   into the Intel command set proper - `50` clear status, `20`+`d0` block erase,
   `70` read status - and the model carries those, with an array that only ever
   loses bits and a status register that reports the write state machine ready.
-  The block size is the one number not recovered from the image and is a
-  parameter, defaulting to 64 KiB.
+  The block size was the one number not recovered from the image, and the
+  board settles it: the part is an AMD Am29F400AT, top boot, and the erase at
+  `78100` lands in its first 8 KiB sector.  It also settles which command set
+  runs - AMD's, not Intel's.  See
+  [imodem-board-map.md](imodem-board-map.md).
 * **The DSP block handshake** at port `18`.  The loader writes `1` and spins
   until bit 0 reads back, then writes `2` and spins until bit 1 does - the DSP
   acknowledging each half-block.  The DSP is not executed here, so the latch
