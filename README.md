@@ -5,8 +5,10 @@ receive side - RBR, IIR, MSR and the IRQ3 line its own ISR at `0xb2aa2`
 names - so commands can be typed at the firmware and its replies read back:
 `--send ATI3` returns `USRobotics Courier I-Modem with ISDN/V.34`, and
 `--terminal` attaches a live console. See
-[the AT interface](docs/imodem-at-interface.md), including the one answer
-that is still wrong.
+[the AT interface](docs/imodem-at-interface.md) for the `ATI0`-`ATI30` sweep,
+and for why a bare `AT` answers `NO CARRIER`: the firmware records a
+`Keypress Abort` disconnect cause because the S/T line never activates, which
+`ATI12` reports as `Physical Interface: Inactive`.
 
 The captured 20.16 MHz DSP boot ROM is now integrated for the 302/403
 firmware under `--with-dsp`. The DSP executes reset and downloads its resident

@@ -1,0 +1,46 @@
+{
+  "recipe": {
+    "sent": [
+      "AT",
+      "AT",
+      "<command>"
+    ],
+    "after": 5000000,
+    "every": 20000000,
+    "instructions": 54000000
+  },
+  "answers": {
+    "ATI": "\r\nUSR009F\r\n",
+    "ATI0": "\r\nUSR009F\r\n",
+    "ATI1": "\r\nA190\r\n",
+    "ATI2": "\r\nOK\r\n",
+    "ATI3": "\r\nUSRobotics Courier I-Modem with ISDN/V.34\r\n",
+    "ATI4": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Settings...\r\n\r\n   B0  C1  E1  F1  L2  M1  Q0  V1  X1\r\n   BAUD=9600   PARITY=E  WORDLEN=7\r\n   DIAL=TONE   OFF HOOK   TIMER\r\n\r\n   &A1  &B0  &C0  &D0  &G0  &H0  &I0  &K1  &L0  &M4  &N0  &P0  &R1  &S0\r\n   &T5  &U0  &X0  &Y1  %N6  *C0  *V1=0  *V2=0  *X0=2048  *X1=7  \r\n   #CID=0\r\n\r\n   S00=000  S01=000  S02=043  S03=013  S04=010  S05=008  S06=002  S07=060  \r\n   S08=002  S09=006  S10=018  S11=070  S12=050  S13=000  S14=000  S15=000  \r\n   S16=000  S17=000  S18=000  S19=000  S20=000  S21=010  S22=017  S23=019  \r\n   S24=150  S25=005  S26=001  S27=000  S28=008  S29=020  S30=000  S31=000  \r\n   S32=009  S33=000  S34=000  S35=000  S36=000  S37=000  S38=000  S39=000  \r\n   S40=000  S41=000  S42=000  S43=000  S44=015  S45=000  S46=001  S47=000  \r\n   S48=000  S49=016  S50=100  S51=000  S52=005  S53=000  S54=064  S55=000  \r\n   S56=000  S57=000  S58=000  S59=000  S60=000  S61=000  S62=000  S63=000  \r\n   S64=000  S65=000  S66=000  S67=000  S68=000  S69=000  S70=012  S71=000  \r\n   S72=000  S73=000  S74=000  S75=000  S76=000  S77=000  S78=000  S79=001  \r\n   S80=016  S81=001  S82=001  S83=000  \r\n\r\n   LAST DIALED #:                                        \r\n",
+    "ATI5": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 NVRAM Settings...\r\n\r\n   DIAL=PULSE  B0  E1  F1  L2  M1  Q0  V1  X1\r\n   BAUD=9600   PARITY=E  WORDLEN=7\r\n\r\n   &A1  &B0  &C0  &D0  &G0  &H0  &I0  &K1  &L0  &M4  &N0  &P0  &R1  &S0\r\n   &T5  &U0  &X0  &Y1  %N6  *C0  *V1=0  *V2=0 *X0=2048  *X1=7  \r\n   #CID=0\r\n\r\n   S00=000  S02=043  S03=013  S04=010  S05=008  S06=002  S07=060  S08=002\r\n   S09=006  S10=018  S11=070  S12=050  S13=000  S14=000  S15=000  S19=000\r\n   S21=010  S22=017  S23=019  S24=150  S25=005  S26=001  S27=000  S28=008\r\n   S29=020  S31=000  S32=009  S33=000  S34=000  S35=000  S36=000  S37=000\r\n   S38=000  S39=000  S40=000  S41=000  S42=000  S43=000  S44=015  S45=000\r\n   S46=001  S47=000  S48=000  S49=016  S50=100  S51=000  S52=005  S53=000\r\n   S54=064  S55=000  S56=000  S57=000  S58=000  S59=000  S60=000  S61=000\r\n   S62=000  S63=000  S67=000  S68=000  S69=000  S70=012  S79=001  S80=016\r\n   S81=001  S82=001  S83=000\r\n\r\n      STORED PHONE NUMBERS\r\n0:                                      1:                                      \r\n2:                                      3:                                      \r\n4:                                      5:                                      \r\n6:                                      7:                                      \r\n8:                                      9:                                      \r\n         ",
+    "ATI6": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nDisconnect Reason is Keypress Abort",
+    "ATI7": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Configuration Profile...\r\n\r\nProduct type            Undefined \r\nOptions                V32bis,x2,V.90\r\nClock Freq             20.16Mhz\r\nEprom                  768k\r\nRam                    256k\r\n\r\nSupervisor date        07/06/00\r\nDSP date               11/12/99\r\n\r\nSupervisor rev         3.0.2\r\nDSP rev                3.0.5\r\n\r\nProduct ID             992332-01\r\n\r\nSerial Number          \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\r\n\r\n",
+    "ATI8": "",
+    "ATI9": "",
+    "ATI10": "\r\nUSRobotics Courier I-Modem with ISDN/V.34\r\n\r\n                            DIAL SECURITY STATUS\r\n\r\n    DIAL SECURITY ENABLED:[N]                  LOCAL SECURITY ENABLED:[N]\r\n\r\n    PROMPTING ENABLED:[N]                      FORCED AUTOPASS:[N]\r\n\r\n    LOCAL ACCESS PASSWORD:\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f             AUTOPASS PASSWORD:\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f       \r\n\r\nACCOUNT   PSW       PHONE #                              ACCT/E   DIAL/B   NEW_#\r\n   #0     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #1     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #2     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #3     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #4     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #5     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #6     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #7     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #8     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]\r\n   #9     \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f                                        [Y]      [Y]      [Y]",
+    "ATI11": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nModulation               Unknown Speed\r\nCarrier Freq (Hz)        0/0\r\nSymbol Rate              0/0\r\nTrellis Code             \r\nNonlinear Encoding       \r\nPrecoding                \r\nShaping                  \r\nPreemphasis (-dB)        \r\nRecv/Xmit Level (-dB)    0/0\r\nRoundtrip Delay (msec)   \r\nTiming Offset   ( ppm)   \r\nCarrier Offset  ( ppm)   \r\n\r\n",
+    "ATI12": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 ISDN Switch Settings...\r\n\r\n   Switch Protocol *W                         Invalid Switch Type (Mu-Law)\r\n   Multipoint      *M                         Invalid value\r\n   Dialing Mode    *O                         Invalid Value\r\n   SPID            *S1                        Voice SPID\r\n                   *S2                        Data SPID\r\n   Directory No.   *P1                        Voice Directory Number (DN1)\r\n                   *P2                        Data Directory Number (DN2)\r\n   TEI             *T1                        Invalid fixed TEI\r\n                   *T2                        Invalid fixed TEI\r\n\r\n   Physical Interface:  Inactive\r\n   Data Link Layer   :  Inactive\r\n",
+    "ATI13": "",
+    "ATI14": "",
+    "ATI15": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Party Number Status...\r\n\r\nCalling Party\r\n  Type of Number:  \r\n  Numbering Plan:  \r\n  Number:          \r\n\r\nParty Called\r\n  Type of Number:  \r\n  Numbering Plan:  \r\n  Number:          \r\n\r\nCharge Advice:   \r\n\r\nDate:\r\nTime:\r\n\r\nDisplay:",
+    "ATI16": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Turbo PPP Settings...\r\n\r\n  *D0=0  *D1=0  *D2=0  *D3=0  *D4=0  *K=1   *P=3  *T=0\r\n\r\n   PPP mode                        *P    3    Multi Link Turbo PPP\r\n\r\n   Dynamic BW Allocation           *D0   0    Enabled\r\n      2nd link up sample time      *D1   0    Seconds\r\n      2nd link down sample time    *D2   0    Seconds\r\n      2nd link up threshold        *D3   0    %\r\n      2nd link down threshold      *D4   0    %\r\n\r\n   Compression mode                *K    1    Auto Compression\r\n\r\n   Multi Link Tone                 *T    0    Enabled\r\n\r\n   *** For PPP set *V2=5. I-Modem is not set for PPP now.***\r\n",
+    "ATI17": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 (Diagnostics)...\r\n\r\nCP:    \r\nCGP:   \r\n\r\nCPSA:  \r\nCGPSA: \r\n\r\nBC:    \r\n\r\nLLC:   \r\nHLC:   \r\n\r\nCHID:  ",
+    "ATI18": "",
+    "ATI19": "",
+    "ATI20": "",
+    "ATI21": "",
+    "ATI22": "",
+    "ATI23": "",
+    "ATI24": "",
+    "ATI25": "",
+    "ATI26": "",
+    "ATI27": "",
+    "ATI28": "",
+    "ATI29": "",
+    "ATI30": ""
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "disconnect_causes": [
+    {
+      "cause": 23,
+      "instructions": 25021472,
+      "recorded_at": "0xa4e1e"
+    }
+  ],
+  "image": "Ie030002.nac",
+  "result_decisions": [
+    {
+      "answer": "NO CARRIER",
+      "cause": 23,
+      "flags": 0,
+      "instructions": 25314806,
+      "result": 3
+    }
+  ],
+  "sent": [
+    "AT",
+    "AT",
+    "ATI3"
+  ],
+  "serial": {
+    "a": {
+      "base": "0xf8f8",
+      "divisor": 80,
+      "ier": 11,
+      "irq": 3,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 11,
+      "signals": 176,
+      "transmitted": 59
+    },
+    "b": {
+      "base": "0xf4f8",
+      "divisor": 2,
+      "ier": 11,
+      "irq": null,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 0,
+      "signals": 176,
+      "transmitted": 0
+    }
+  },
+  "session": [
+    {
+      "direction": "sent",
+      "instructions": 5000192,
+      "text": "AT\r"
+    },
+    {
+      "direction": "sent",
+      "instructions": 25000448,
+      "text": "AT\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 25392128,
+      "text": "\r\nNO CAR"
+    },
+    {
+      "direction": "received",
+      "instructions": 25392640,
+      "text": "RIER\r\n"
+    },
+    {
+      "direction": "sent",
+      "instructions": 45000192,
+      "text": "ATI3\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 48482304,
+      "text": "\r\nUSRo"
+    },
+    {
+      "direction": "received",
+      "instructions": 48482816,
+      "text": "botics C"
+    },
+    {
+      "direction": "received",
+      "instructions": 48483328,
+      "text": "ourier I"
+    },
+    {
+      "direction": "received",
+      "instructions": 48483840,
+      "text": "-Modem wi"
+    },
+    {
+      "direction": "received",
+      "instructions": 48484352,
+      "text": "th ISDN/V"
+    },
+    {
+      "direction": "received",
+      "instructions": 48484864,
+      "text": ".34\r\n"
+    }
+  ],
+  "status": "instruction-limit"
+}

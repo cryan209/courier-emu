@@ -3,8 +3,8 @@
 The command interface answers: `isdn-run --send ATI3` gets
 `USRobotics Courier I-Modem with ISDN/V.34` back out of SIO0, and
 `--terminal` attaches a live console. The 16550 model, the evidence for the
-port decode and IRQ3, and the one behaviour still unexplained are in
-[the AT interface](imodem-at-interface.md). Everything below predates the
+port decode and IRQ3, the `ATI0`-`ATI30` sweep, and why a bare `AT` answers
+`NO CARRIER` are in [the AT interface](imodem-at-interface.md). Everything below predates the
 receive path and describes a harness that could only transmit.
 
 Current runtime transport: [mailbox service and acknowledgment](imodem-mailbox-service.md).

@@ -60,3 +60,23 @@ def test_the_banner_is_transmitted_with_bit_seven_set(session):
     raw = bytes(machine.channels[0xF8F8].tx)
     assert b"USRobotics" not in raw, "the firmware marks the eighth bit"
     assert b"USRobotics" in bytes(byte & 0x7F for byte in raw)
+
+
+def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
+    """The reason a bare AT answers NO CARRIER is not a bad table index.
+
+    Index 0 of the result table at 0xcef4b is reachable: ATI2 - the ROM
+    checksum test - answers a plain OK. See docs/imodem-at-interface.md for
+    what sends the other commands down the go-idle epilogue instead.
+    """
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    transcript: list[tuple[int, str, str]] = []
+    pump = scripted_pump(["AT", "AT", "ATI2"], transcript=transcript)
+    machine = IsdnMachine(NacImage.load(IMAGE), serial_pump=pump)
+    machine.run(BANNER_INSTRUCTIONS)
+    typed = max(count for count, direction, _ in transcript
+                if direction == "sent")
+    answer = "".join(text for count, direction, text in transcript
+                     if direction == "received" and count > typed)
+    assert answer.strip() == "OK"

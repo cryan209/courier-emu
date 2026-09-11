@@ -88,24 +88,128 @@ masks it for display; `serial_a` in the report is the raw stream.
 The firmware also swallows the first line it is given without answering it,
 so a scripted session should open with a throwaway `AT`.
 
-## Open: bare `AT` answers `NO CARRIER`, not `OK`
+## Why a bare `AT` answers `NO CARRIER`
 
-`ATI3` is correct and repeatable.  A bare `AT`, `ATZ`, `ATE1` and `ATV0` all
-answer `NO CARRIER` - result code 3 from the table at `0xcef4b`
-(`OK / CONNECT / RING / NO CARRIER / ERROR`) where code 0 is expected.
-`ATV0` does not take effect either; the next answer is still verbose.  With a
-longer script the answers also stop arriving one per command: `AT ATV0 AT AT
-ATE1` produces two `NO CARRIER`s, and `AT AT ATI3 ATI0 ATI1` produces four
-answers for five commands, one of them the banner prefixed to `ATI1`'s
-`A190`.
+It is not a mis-indexed result table.  `ATI2` answers a plain `OK`, so index 0
+is reachable; the firmware asks for index 3 deliberately.  The chain is short
+and every step is named by the firmware's own text.
 
-This is unaffected by `--serial-signals` (all three deasserted behaves
-identically), so it is not the modem-status inputs.  Whether the parser is
-mis-framing the line, or the call-control layer is genuinely reporting
-carrier loss because the ISDN front end is unmodelled
-([imodem-isdn-front-end.md](imodem-isdn-front-end.md)), is not settled here.
-The next thing to do is find the producer of the result code - the routine
-that indexes the string table - and log its argument.
+**Where the code is chosen.**  Commands that fall through to the go-idle
+epilogue at `a8000` end at:
 
-What is established is the transport: the firmware receives what is typed,
-parses it, and transmits firmware text in reply.
+```
+a8067  cmp byte ptr [d08b], 1     ; the recorded disconnect cause
+a806c  jne a808c
+a806e  test byte ptr [d2a1], 47
+a8073  je  a808c
+a8083  xor al, al                 ; -> 0, OK
+a808c  ...
+a8096  mov al, 3                  ; -> 3, NO CARRIER
+a80d3  call acf8c                 ; emit the result code in AL
+```
+
+So `OK` needs the cause to be **1** and a second flag set.  In a run the cause
+is `0x17` and `[d2a1]` is `0`.
+
+**Where the cause comes from.**  `ab329` is a helper that pops its return
+address, reads one inline byte after the call, and stores it in `[d08b]` -
+but only if `[d08b]` is still zero, so the first writer wins:
+
+```
+ab329  pop ax ; xchg si,ax ; push ax ; cld
+ab32d  lodsb cs:[si]                   ; the inline cause byte
+ab32f  or byte ptr [ca57], 80
+ab334  cmp byte ptr [d08b], 0
+ab339  jne ab33e
+ab33b  mov byte ptr [d08b], al
+```
+
+The site that records `0x17` is `a4e1e`:
+
+```
+a4e0e  test byte ptr [e753], 2
+a4e13  je a4e17
+a4e15  clc ; ret                       ; nothing recorded
+a4e17  cmp byte ptr [d1ea], 6
+a4e1c  jge a4e22
+a4e1e  call ab329
+a4e21  db 17                           ; the cause
+```
+
+**And `a4e0e` is the received-character callback.**  `a4de5` and `a4dfb` load
+`[c922]` with `0e0d` - `a400:0e0d`, the `ret` immediately above this routine -
+and `[c922]` is what the serial ISR's received-data handler at `b2c8d` calls
+for every character.  So typing is what records the cause.
+
+**The firmware names `0x17` itself.**  `ATI6` prints
+`Disconnect Reason is Keypress Abort`, and the reason table at `0xc1abb` -
+`DTR dropped`, `Escape code`, `Loss of Carrier`, ... - puts **Keypress Abort**
+at index 23 = `0x17`, with `DTR dropped` at the index 1 that `OK` requires.
+
+So the firmware is doing something sensible: a keypress aborts a call attempt,
+and the epilogue reports the abort rather than `OK`.  What is wrong is the
+state it is in when an idle `AT` reaches that path.
+
+## The line is down, and that is the harness's doing
+
+`ATI12` says so in as many words:
+
+```
+   Physical Interface:  Inactive
+   Data Link Layer   :  Inactive
+```
+
+`courier_emu/am79c30.py` answers the Am79C30's registers out of what the
+firmware wrote, and its `DEFAULT_READS` is **empty** - so `LIU_LSR`, the S/T
+line status, reads `0` and the line never activates.  That is deliberate:
+nothing there fakes a line that is not there.  The consequence is that L1 and
+L2 never come up, the modem is never idle-with-a-line, and commands that end
+in the go-idle epilogue report a disconnect instead of `OK`.
+
+Modelling the S/T activation is the ISDN front end, which is on the missing
+list in [imodem-emulation.md](imodem-emulation.md#what-is-missing) and is its
+own piece of work.  Answering `LIU_LSR` with an activated value would change
+the result code without modelling anything, so it is not done here.
+
+`tools/imodem_at_probe.py` reproduces the whole chain - it watches `a8067`,
+`ab33b` and the transcript together:
+
+```sh
+.venv/bin/python tools/imodem_at_probe.py --send AT --send AT --send ATI3 \
+  --instructions 54000000 --output artifacts/imodem-at/probe.json
+```
+
+```json
+"disconnect_causes":  [{"cause": 23, "recorded_at": "0xa4e1e", ...}],
+"result_decisions":   [{"cause": 23, "flags": 0, "result": 3,
+                        "answer": "NO CARRIER", ...}]
+```
+
+## `ATI` through `ATI30`
+
+Swept one command per run - `AT`, a throwaway `AT`, then the command - and
+recorded in `artifacts/imodem-at/ati-sweep.json`.  `ATI` alone is `ATI0`.
+
+| command | answer |
+|---|---|
+| `ATI0` | `USR009F` - the product code |
+| `ATI1` | `A190` - the ROM checksum |
+| `ATI2` | `OK` - the checksum test passing |
+| `ATI3` | `USRobotics Courier I-Modem with ISDN/V.34` |
+| `ATI4` | current settings: the `B/C/E/F/L/M/Q/V/X` set, `BAUD=9600 PARITY=E WORDLEN=7`, the `&` and `%`/`*` registers, and S00-S83 |
+| `ATI5` | the same again from NVRAM, plus the ten stored phone numbers |
+| `ATI6` | link diagnostics - byte and block counters, retrains, `Data Compression NONE`, `Equalization Long`, and `Disconnect Reason is Keypress Abort` |
+| `ATI7` | configuration profile: `Options V32bis,x2,V.90`, `Clock Freq 20.16Mhz`, `Eprom 768k`, `Ram 256k`, `Supervisor rev 3.0.2`, `DSP rev 3.0.5`, `Product ID 992332-01` |
+| `ATI10` | dial security status - the account, password and phone-number table |
+| `ATI11` | link diagnostics, physical layer: modulation, carrier frequency, symbol rate, trellis, precoding, shaping, preemphasis, levels, delay and offsets - all empty or zero with no call up |
+| `ATI12` | ISDN switch settings: `*W` protocol, `*M`, `*O`, the `*S`/`*P`/`*T` SPID, directory-number and TEI pairs, and the two layer states quoted above |
+| `ATI15` | party-number status: calling and called party type, plan and number, charge advice, date, time, display |
+| `ATI16` | Turbo PPP settings - `*D0`-`*D4`, `*K`, `*P`, `*T`, and a note that the modem is not set for PPP |
+| `ATI17` | a diagnostics page: `CP`, `CGP`, `CPSA`, `CGPSA`, `BC`, `LLC`, `HLC`, `CHID` |
+| `ATI8` `ATI9` `ATI13` `ATI14` `ATI18`-`ATI30` | nothing within the window |
+
+`ATI7` is worth keeping: it is the firmware describing its own board, and it
+agrees with the hardware this repository has been reading - 20.16 MHz, 768 KiB
+of EPROM, 256 KiB of RAM, and x2/V.90 in the options list.  The empty ones are
+reported as observed; whether they are unimplemented or simply slower than the
+window has not been separated.
