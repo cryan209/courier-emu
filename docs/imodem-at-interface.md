@@ -314,3 +314,73 @@ agrees with the hardware this repository has been reading - 20.16 MHz, 768 KiB
 of EPROM, 256 KiB of RAM, and x2/V.90 in the options list.  The empty ones are
 reported as observed; whether they are unimplemented or simply slower than the
 window has not been separated.
+
+
+## Open: the board probe never completes, so there is no echo
+
+This is the live defect, and it is not fixed.
+
+`ATI4` reports `E1`, so the firmware should echo every character typed at it.
+It does not. The receive handler's echo is gated on two flags:
+
+```
+b2c8d  mov dx,[e840] ; in al,dx     ; RBR
+b2c92  test [d2c3], 8               ; External?
+b2c97  je  b2ca1                    ; no -> skip the echo
+b2c99  test [d1e0], 0xff            ; echo enabled?
+b2c9e  je  b2ca1
+b2ca0  out dx, al                   ; echo, straight back to THR
+```
+
+At runtime `[d1e0]` is `1` - echo is on, as `ATI4` says - and `[d2c3]` is
+**`0x00`**, so bit 3 fails and the echo never happens.
+
+`[d2c3]` is meant to be written by the board probe, and **the probe never gets
+that far**. It runs seven instructions and gives up:
+
+```
+a44c2  mov ax,082a ; call a5ebf     ; drive one signal
+a44c8  mov ax,802a ; call a5ebf     ; drive another
+a44ce  mov ax,4024 ; call a5e0e     ; sense
+a44d4  je  a4528                    ; sense clear -> abandon the probe
+```
+
+Decoding the three signal routines gives the wiring. A signal id's low byte
+indexes a port table at `a400:1f97` (`0010 0012 0014 0012 0014 0100 f870
+f862`); `0x082a` and `0x802a` set bits `0x08` and `0x80` in the latch at
+**port `0x14`**, and `0x4024` reads bit **`0x40`** back from that same port.
+The harness answers `0` for port `0x14`, so the sense line never asserts and
+the probe abandons.
+
+The consequence is wider than the echo: **`--product-type` is a no-op.** It is
+applied by a hook on `0xa4506`, which is inside the part of the probe that is
+never reached, so every run has `[d2c3] = 0` whatever the flag says.
+
+### Why simply modelling the latch is not the fix
+
+Making port `0x14` read back, with the sense bit following the driven `0x80`,
+does let the probe finish and store an External `[d2c3]` - and then the
+command port goes **completely silent**. Characters still arrive (8 in, all of
+both test lines) but nothing is transmitted at all: no THRE interrupts, two
+THR writes in a whole session, no echo, and the DMA transmitter at `0xc7c42`
+is not used either.
+
+So `[d2c3]` bit 3 is not a cosmetic identity bit. It switches the signal
+routines onto the UART's own modem-control lines, and it inverts their sense
+in both directions:
+
+* set (`a5ebf`) does `in al,dx ; not ah ; and al,dx ; out dx,al` on the MCR at
+  `[e848]` - asserting a signal **clears** an MCR bit;
+* clear (`a5f2b`) **sets** it;
+* query (`a5e0e`) reads the MSR at `[e83e]`, masks, and `sete` - a signal is
+  present when its MSR bit reads **`0`**.
+
+That is an external unit's active-low RS-232 wiring. But sweeping the MSR
+inputs over `0xb0`, `0x00`, `0x20` and `0x80` changes nothing: transmit stays
+at zero in every case, so whatever the firmware is waiting on once it believes
+it is external has not been found yet.
+
+What is established: the probe's ports and bits, the inversion, and that
+`[d2c3]` gates the echo. What is not: what else the External path needs before
+it will transmit. Until that is answered the harness stays on the
+`[d2c3] = 0` path, which talks but does not echo.

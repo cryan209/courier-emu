@@ -114,3 +114,41 @@ def test_an_idle_keypress_does_not_report_a_spurious_disconnect():
     assert idle_result_state(0x17, 0) == (1, 1)
     assert idle_result_state(0x17, 0x40) == (0x17, 0x40)
     assert idle_result_state(3, 0) == (3, 0)
+
+
+def test_the_firmwares_own_divisor_table_fits_the_two_recovered_clocks():
+    """Read the baud table out of the booted firmware, not out of sio.py.
+
+    This is the evidence the two clocks rest on, so it has to come from the
+    image. The table is at c774:04db and is only there once the payload has
+    relocated itself, so the machine has to boot to reach it. Rate codes run
+    fastest-first: the setter stores 0x0c - code at [d1db], and the setup menu
+    at c0570 labels those display indices (5 is "4800 bps", 6 "9600", ...).
+    """
+    from courier_emu.isdn import IsdnMachine
+    from courier_emu.nac import NacImage
+    from courier_emu.sio import (
+        UART_CLOCK_HIGH_RATES_HZ,
+        UART_CLOCK_LOW_RATES_HZ,
+    )
+
+    machine = IsdnMachine(NacImage.load("Ie030002.nac"), with_dsp=True)
+    try:
+        machine.run(6_000_000)
+        raw = bytes(machine.machine.mem_read(0xC774 * 16 + 0x4DB, 11 * 2))
+    finally:
+        machine.mailbox.close()
+
+    divisors = [int.from_bytes(raw[i:i + 2], "little") for i in range(0, len(raw), 2)]
+    # code -> the rate its menu index names, fastest first.
+    rates = [230400, 115200, 57600, 38400, 19200, 9600, 4800, 2400, 1200, 600, 300]
+    clocks = [UART_CLOCK_HIGH_RATES_HZ] * 4 + [UART_CLOCK_LOW_RATES_HZ] * 7
+
+    for rate, clock, divisor in zip(rates, clocks, divisors):
+        assert round(clock / (16 * rate)) == divisor, (
+            f"{rate} baud: the firmware holds divisor {divisor}, but "
+            f"{clock} Hz wants {clock / (16 * rate):.4f}"
+        )
+    # And the two groups are genuinely distinct: neither clock explains both.
+    assert round(UART_CLOCK_HIGH_RATES_HZ / (16 * 9600)) != divisors[5]
+    assert round(UART_CLOCK_LOW_RATES_HZ / (16 * 38400)) != divisors[3]

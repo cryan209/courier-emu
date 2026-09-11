@@ -129,15 +129,6 @@ def test_the_programmed_divisor_sets_the_character_time():
     assert channel.character_instructions == 20_903
 
 
-def test_each_clock_makes_its_own_half_of_the_firmware_baud_table_exact():
-    # The table at c774:04db, against the clock the rate setter picks for it.
-    fast = {230400: 1, 115200: 2, 57600: 4, 38400: 6}
-    slow = {19200: 40, 9600: 80, 4800: 161, 2400: 322,
-            1200: 643, 600: 1286, 300: 2572}
-    for clock, entries in ((UART_CLOCK_HIGH_RATES_HZ, fast),
-                           (UART_CLOCK_LOW_RATES_HZ, slow)):
-        for rate, divisor in entries.items():
-            assert round(clock / (16 * rate)) == divisor, (clock, rate)
 
 
 def test_a_terminal_puts_even_parity_in_the_top_bit():
