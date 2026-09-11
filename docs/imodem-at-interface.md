@@ -200,7 +200,7 @@ recorded in `artifacts/imodem-at/ati-sweep.json`.  `ATI` alone is `ATI0`.
 | `ATI4` | current settings: the `B/C/E/F/L/M/Q/V/X` set, `BAUD=9600 PARITY=E WORDLEN=7`, the `&` and `%`/`*` registers, and S00-S83 |
 | `ATI5` | the same again from NVRAM, plus the ten stored phone numbers |
 | `ATI6` | link diagnostics - byte and block counters, retrains, `Data Compression NONE`, `Equalization Long`, and `Disconnect Reason is Keypress Abort` |
-| `ATI7` | configuration profile: `Options V32bis,x2,V.90`, `Clock Freq 20.16Mhz`, `Eprom 768k`, `Ram 256k`, `Supervisor rev 3.0.2`, `DSP rev 3.0.5`, `Product ID 992332-01` |
+| `ATI7` | configuration profile: `Options V32bis,x2,V.90`, `Clock Freq 20.16Mhz`, `Eprom 768k`, `Ram 256k`, `Supervisor rev 3.0.2`, `DSP rev 3.0.5`, `Product ID 992332-01`. With a valid configuration record in place it prints more - product type, the supervisor and DSP dates, and the serial number. See [imodem-config-sector.md](imodem-config-sector.md) |
 | `ATI10` | dial security status - the account, password and phone-number table |
 | `ATI11` | link diagnostics, physical layer: modulation, carrier frequency, symbol rate, trellis, precoding, shaping, preemphasis, levels, delay and offsets - all empty or zero with no call up |
 | `ATI12` | ISDN switch settings: `*W` protocol, `*M`, `*O`, the `*S`/`*P`/`*T` SPID, directory-number and TEI pairs, and the two layer states quoted above |

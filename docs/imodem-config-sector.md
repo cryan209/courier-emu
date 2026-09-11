@@ -233,7 +233,32 @@ sector = set_record_bytes(sector, MAC_ADDRESS,
 2600:d2e6 -> 00 c0 49 01 ab 74 00 00
 ```
 
-The serial is ASCII and NUL-terminated; the MAC is six raw bytes in an
+And `ATI7` prints it back, which is the proof that closes this:
+
+```
+Product type            Undefined
+Options                V32bis,x2,V.90
+Clock Freq             20.16Mhz
+Eprom                  768k
+Ram                    256k
+Supervisor date        07/06/00
+DSP date               11/12/99
+Supervisor rev         3.0.2
+DSP rev                3.0.5
+Product ID             992332-01
+Serial Number          IMD012345678
+```
+
+Worth noting what else that report gained.  With no valid record, `ATI7`
+printed neither the dates, nor the product type, nor a serial at all - the
+sweep in [imodem-at-interface.md](imodem-at-interface.md) recorded it without
+them.  A record the firmware accepts unlocks the rest of its own report, and
+`Product type  Undefined` says there is a product-type field in the record
+still to be located.
+
+The serial is **twelve** characters, not the fifteen the copied span covers:
+thirteen were written and `ATI7` printed twelve.  What the remaining three
+bytes before the MAC carry is not established.  The MAC is six raw bytes in an
 eight-byte field.  `00:c0:49` is USRobotics' OUI, which is also what the
 board's own barcode label carries - so a unit's real identity can be put back
 into a sector from the sticker on the board.

@@ -62,8 +62,13 @@ SEED = 0x169E
 # "MAC " and bx with 0xd2d7 before "Serial Number ", so those are where they
 # live in RAM - and painting the sector shows d2d7 loaded from page offset
 # 0x011 and d2e6 from 0x020, contiguous.
+# ATI7 prints the serial as twelve characters: writing thirteen and reading
+# the report back gives twelve, so twelve is the field. The copied span runs
+# the full fifteen bytes to the MAC field, and what the last three carry is
+# not established.
 SERIAL_NUMBER = 0x011
-SERIAL_NUMBER_LENGTH = 15
+SERIAL_NUMBER_LENGTH = 12
+SERIAL_NUMBER_SPAN = 15
 MAC_ADDRESS = 0x020
 MAC_ADDRESS_LENGTH = 8
 

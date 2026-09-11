@@ -97,10 +97,13 @@ def test_a_directory_number_that_does_not_fit_is_refused():
 def test_the_identity_fields_sit_where_the_firmware_reads_them():
     from courier_emu.imodem_config import (
         MAC_ADDRESS, MAC_ADDRESS_LENGTH, SERIAL_NUMBER, SERIAL_NUMBER_LENGTH,
-        read_mac_address, read_serial_number, set_record_bytes,
+        SERIAL_NUMBER_SPAN, read_mac_address, read_serial_number,
+        set_record_bytes,
     )
-    # 0x011 for 15 bytes, then 0x020 for 8 - contiguous, as observed.
-    assert SERIAL_NUMBER + SERIAL_NUMBER_LENGTH == MAC_ADDRESS
+    # 0x011 for 15 bytes, then 0x020 for 8 - contiguous, as observed. ATI7
+    # prints only the first twelve of the serial.
+    assert SERIAL_NUMBER_LENGTH == 12
+    assert SERIAL_NUMBER + SERIAL_NUMBER_SPAN == MAC_ADDRESS
     assert MAC_ADDRESS + MAC_ADDRESS_LENGTH == 0x028
 
     sealed = set_record_bytes(seal(blank_sector()), SERIAL_NUMBER,
