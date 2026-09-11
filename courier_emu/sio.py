@@ -64,9 +64,20 @@ MSR_DSR = 0x20
 MSR_RI = 0x40
 MSR_DCD = 0x80
 
-# The DTE's RTS and DTR as this part sees them, plus carrier. A terminal that
-# is plugged in and ready.
-TERMINAL_PRESENT = MSR_CTS | MSR_DSR | MSR_DCD
+# A terminal that is plugged in and ready -- which on this board means the
+# modem-status bits read *clear*, not set.
+#
+# The firmware's signal query at 0xa5e0e masks the MSR and then does `sete al`,
+# so it reports a signal present when its bit reads 0; the matching set/clear
+# routines at 0xa5ebf and 0xa5f2b drive the MCR the same way round, asserting a
+# signal by clearing its bit. That is the inversion an external unit's RS-232
+# transceivers put in the path.
+#
+# It is load-bearing, not cosmetic. With DSR reading 1 the firmware decides no
+# terminal is attached and answers a bare AT but goes silent on anything
+# longer: ATI7 prints nothing at all. With it reading 0, ATI7 prints its whole
+# configuration profile.
+TERMINAL_PRESENT = 0x00
 
 LCR_DLAB = 0x80
 
@@ -188,8 +199,11 @@ class SerialChannel:
         self.divisor = 0
         self.signals = signals & 0xF0
         # A cold read should tell the firmware the lines just changed, the way
-        # a part powering up beside an already-cabled terminal would.
-        self.deltas = self._deltas_for(self.signals)
+        # a part powering up beside an already-cabled terminal would. This is
+        # deliberately not derived from the signal levels: on this board an
+        # asserted line reads 0 (see TERMINAL_PRESENT), so deriving it would
+        # report no change for exactly the case that wants one.
+        self.deltas = MSR_DELTA_CTS | MSR_DELTA_DSR | MSR_DELTA_DCD | MSR_TERI
         self.thre = False
         self.tx_holding: int | None = None
         self.tx_shift: int | None = None

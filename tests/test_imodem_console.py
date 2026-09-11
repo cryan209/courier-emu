@@ -97,9 +97,13 @@ def test_the_emulated_product_type_is_explicit_and_validated():
     assert set(PRODUCT_TYPE_MODES) == {
         "undefined", "external", "internal", "rackmount",
     }
+    # Rackmount is a bit the formatter can name but the board probe has no
+    # verdict for, so it is not a machine the harness can be asked to be.
+    with pytest.raises(ValueError):
+        IsdnMachine(image, product_type="rackmount")
     assert IsdnMachine(image).product_type == "external"
     assert IsdnMachine(image, product_type="internal").product_type == "internal"
-    assert IsdnMachine(image, product_type="rackmount").product_type == "rackmount"
+    assert IsdnMachine(image, product_type="undefined").product_type == "undefined"
     assert IsdnMachine(image, product_type="undefined").product_type == "undefined"
     assert IsdnMachine(image, product_modem=True).product_modem is True
     with pytest.raises(ValueError, match="product type"):

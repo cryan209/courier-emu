@@ -572,9 +572,60 @@ entries in a 35M-instruction session, against 0 with the tick on IRQ10.
 Characters reach the part; it does not yet transmit, so the `0x80` channel
 needs finishing.
 
-### What is still needed
+### Correction: the external unit uses SIO0, and it is now modelled
 
-Three separate things, now that they are separable:
+An earlier conclusion here - that both variants use the `0x80` UART and the
+`0xf8f8` interface is only a failure path - was an artifact of the forcing
+hook, which overwrote `[d2c3]` in *both* runs being compared so both were
+really the Internal branch. With the probe's own verdict left alone:
+
+| verdict | command port | master mask |
+|---|---|---|
+| `0x22` **External** | SIO0 at `0xf8f8`, IRQ3 | `0xb3` |
+| `0x28` **Internal** | 16550 at `0x80`, IRQ0, plus PnP on IRQ5 | `0xda` |
+| probe abandons, Undefined | SIO0 at `0xf8f8`, IRQ3 | `0xb3` |
+
+So `0xf8f8` / IRQ3 **is** the external unit's command port. The harness had the
+right part all along; what it did not have was the identity, the signal sense,
+or the enclosure probe.
+
+The ISR-level echo at `0xb2ca0` is gated on `[d2c3]` bit 3, which is
+*Internal* - so the external unit does not echo from its ISR, and the absence
+of echo there is the firmware's behaviour rather than a modelling gap.
+
+### The modem-status inputs are active low, and it is load-bearing
+
+The signal query at `0xa5e0e` masks the MSR and then does `sete al`: it reports
+a signal present when its bit reads **0**. The matching set and clear routines
+drive the MCR the same way round. That is the inversion an external unit's
+RS-232 transceivers put in the path, and `TERMINAL_PRESENT` had it backwards.
+
+It is not cosmetic. With DSR reading 1 the firmware decides no terminal is
+attached: a bare `AT` still answers, but anything longer produces **nothing** -
+`ATI7` printed not a single byte. With DSR reading 0 it prints its whole
+configuration profile. That one bit is the difference between a command port
+that looks half-broken and one that works.
+
+### Where this leaves the interface
+
+`--product-type external` (the default) now:
+
+* answers the probe's board latch at port `0x14`, so the firmware reaches its
+  own verdict instead of abandoning - no value is written into `[d2c3]` by the
+  harness any more;
+* reports **`Product type            External`** in `ATI7`, where it used to
+  say `Undefined`;
+* answers `ATI3` with `OK` rather than `NO CARRIER`.
+
+`--product-type internal` installs the 16550 at `0x80` on IRQ0 and routes the
+8254 tick to IRQ0, which is what services it. That much works: the handler at
+`0xb2f1a` runs 8,703 times in a 35M-instruction session, and all eight
+characters of a two-line session are received and dispatched through `[e834]`.
+**It does not transmit yet** - the transmit routine at `0xb2fd6` is entered
+8,448 times and finds something to send once, so the internal command task is
+not producing output. That is the open end.
+
+### What is still neededThree separate things, now that they are separable:
 
 1. **The board latch at port `0x14`** so the probe completes at all - but with
    its sense wiring settled rather than guessed, because the guess currently

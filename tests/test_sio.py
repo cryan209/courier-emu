@@ -93,11 +93,14 @@ def test_the_channel_interrupts_only_while_a_source_is_pending(channel):
 
 
 def test_modem_status_shows_a_ready_terminal_and_latches_its_changes(channel):
+    # On this board an asserted modem-status line reads 0: the firmware's
+    # signal query masks the MSR and does `sete`, so a ready terminal is all
+    # three bits clear, not all three set. See TERMINAL_PRESENT.
     first = channel.read(BASE + 6)
-    assert first & (MSR_CTS | MSR_DSR | MSR_DCD) == MSR_CTS | MSR_DSR | MSR_DCD
+    assert not first & (MSR_CTS | MSR_DSR | MSR_DCD)
     assert first & MSR_DELTA_CTS, "a cold read reports the lines as changed"
     assert not channel.read(BASE + 6) & 0x0F, "the deltas are read-once"
-    channel.set_signals(MSR_DSR | MSR_DCD)
+    channel.set_signals(MSR_CTS)
     assert channel.read(BASE + 6) & MSR_DELTA_CTS
 
 

@@ -513,9 +513,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     isdn_run.add_argument(
         "--product-type",
-        choices=("undefined", "external", "internal", "rackmount"),
+        choices=("external", "internal", "undefined"),
         default="external",
-        help="I-modem enclosure reported by ATI7 (default: external)",
+        help="which enclosure the board probe finds, by how the sense line at "
+             "port 0x14 is strapped: external and internal make the firmware's "
+             "own probe store 0x22 and 0x28, and undefined leaves the sense "
+             "dead so the probe abandons, as it did before it was modelled. "
+             "Rackmount is a bit ATI7 can name but the probe has no verdict "
+             "for. Note the internal card moves the AT port to the 16550 at "
+             "0x80 on IRQ0 (default: external)",
     )
     isdn_run.add_argument(
         "--product-modem",

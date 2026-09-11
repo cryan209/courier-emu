@@ -78,6 +78,28 @@ UART_B_BASE = 0xF4F8
 UART_A_IRQ = 3
 UART_B_IRQ = None
 
+# The board latch the enclosure probe drives, and the sense line it reads back.
+#
+# The probe sets bits 0x08 and 0x80 here through the signal routines (their id
+# low byte indexes a port table at a400:1f97, and 0x082a / 0x802a both land on
+# this port), then reads bit 0x40 back from the same port and classifies by how
+# the sense follows the drives. Answering 0, as the harness used to, makes it
+# abandon at its first test and leave [d2c3] at 0 -- Undefined.
+#
+# Which drive the sense follows is the enclosure wiring, and it is what selects
+# the product: following 0x08 the probe stores 0x22 (External), following 0x80
+# it stores 0x28 (Internal). The bits themselves are established -- the ports,
+# the drives and the sense are all read off the firmware -- but which physical
+# strap a given enclosure uses is not, so it is exposed as a choice rather than
+# asserted. Rackmount is not reachable through this probe at all.
+BOARD_LATCH_PORT = 0x14
+BOARD_LATCH_SENSE = 0x40
+BOARD_LATCH_WIRING = {
+    "external": 0x08,
+    "internal": 0x80,
+    "undefined": 0x00,
+}
+
 # The board's UART clock select. The rate setter at 0xc7ae7 reads this port,
 # clears bit 1 for the four fastest rate codes and sets it for the rest, and
 # writes it back -- and that boundary is exactly where the firmware's divisor
@@ -85,6 +107,24 @@ UART_B_IRQ = None
 # courier_emu/sio.py for the table and the two clocks it recovers.
 UART_CLOCK_SELECT_PORT = 0xF836
 UART_CLOCK_SELECT_BIT = 0x02
+
+# The internal card's command port, and the line that services it.
+#
+# When the probe stores Internal the firmware repoints its whole serial
+# variable block at 2600:e83a from the 386EX's SIO0 to 0x0082 0x0085 0x0086
+# 0x0080 0x0080 0x0081 0x0082 0x0084 0x0083 -- a 16550 register file at base
+# 0x80 in standard order -- masks IRQ3 and unmasks IRQ0 and IRQ5. IRQ5 is the
+# ISA Plug and Play responder (see docs/imodem-at-interface.md), not the UART.
+# IRQ0 is: the handler at 0xb2f1a polls this part's LSR at 0x85 and MSR at
+# 0x86, transmits on THRE and dispatches receives through [e834].
+#
+# So on the internal card the command port is serviced from the timer tick on
+# the PC-AT line, not from the UART's own interrupt. The external unit keeps
+# SIO0 on IRQ3 and does not have this part at all, which is why it is only
+# installed for the enclosure that has it.
+INTERNAL_UART_BASE = 0x80
+INTERNAL_UART_IRQ = 0
+INTERNAL_TICK_IRQ = 0
 
 # The Am79C30's interrupt line. Vector 0x2e is slave IRQ14 - the slave's ICW2
 # is 0x28 - and it reads back 4030:02f8, a stub that far-calls 71d7:000f. That
@@ -273,6 +313,12 @@ class IsdnMachine:
         # at 0xf8000, so the part's top sectors read erased - and one of them
         # is the configuration store. See docs/imodem-config-sector.md.
         self.flash_overlay = flash_overlay
+        if product_type not in BOARD_LATCH_WIRING:
+            raise ValueError(
+                "product type must be one of "
+                f"{sorted(BOARD_LATCH_WIRING)}; rackmount is not reachable "
+                "through the board probe"
+            )
         if product_type not in PRODUCT_TYPE_MODES:
             raise ValueError(
                 f"product type must be one of {sorted(PRODUCT_TYPE_MODES)}"
@@ -287,6 +333,7 @@ class IsdnMachine:
         self.dsc = Am79C30()
         self.flash = FlashDevice()
         self.dsp_handshake = 0
+        self.board_latch = 0
         # The init at 4030:010b writes 0x00 here in the same breath as it sets
         # both SIOs to divisor 2, so the board starts on the clock that serves
         # the fast rates -- and divisor 2 on 3.6864 MHz is 115200 exactly.
@@ -309,6 +356,22 @@ class IsdnMachine:
                 input_clock_hz=UART_CLOCK_HIGH_RATES_HZ,
             ),
         }
+        # Which channel the AT interface lives on for this enclosure. The
+        # external unit and the probe-failed fallback both use SIO0; only the
+        # internal card moves it.
+        self.command_base = (
+            INTERNAL_UART_BASE if product_type == "internal" else UART_A_BASE
+        )
+        if product_type == "internal":
+            self.channels[INTERNAL_UART_BASE] = SerialChannel(
+                INTERNAL_UART_BASE, irq=INTERNAL_UART_IRQ,
+                signals=serial_signals, max_bytes=MAX_SERIAL_BYTES,
+                pace=serial_pace, input_clock_hz=UART_CLOCK_HIGH_RATES_HZ,
+            )
+            if counter_irq is None:
+                # The tick is what services this part, so it has to reach the
+                # line the handler sits on.
+                self.counter_irq = {0: INTERNAL_TICK_IRQ}
         self.serial_pump = serial_pump
         self.machine: Any = None
         self.download = bytearray()
@@ -341,13 +404,13 @@ class IsdnMachine:
     # -- host side ---------------------------------------------------------
 
     def send_serial(self, data: bytes | bytearray | str,
-                    base: int = UART_A_BASE) -> int:
+                    base: int | None = None) -> int:
         """Queue bytes on a channel as if a terminal had typed them."""
-        return self.channels[base].feed(data)
+        return self.channels[base or self.command_base].feed(data)
 
-    def take_serial(self, base: int = UART_A_BASE) -> bytes:
+    def take_serial(self, base: int | None = None) -> bytes:
         """Take what the firmware has transmitted since the last call."""
-        return self.channels[base].take_output()
+        return self.channels[base or self.command_base].take_output()
 
     def stop(self, reason: str) -> None:
         """End the run early -- what a console does when the user detaches."""
@@ -372,6 +435,11 @@ class IsdnMachine:
             return self.board_status
         if port == UART_CLOCK_SELECT_PORT:
             return self.uart_clock_select
+        if port == BOARD_LATCH_PORT:
+            drive = BOARD_LATCH_WIRING[self.product_type]
+            if drive and self.board_latch & drive:
+                return self.board_latch | BOARD_LATCH_SENSE
+            return self.board_latch & ~BOARD_LATCH_SENSE
         if port in self.mailbox.PORTS:
             return self.port_values.get(port, self.mailbox.read(port))
         base = self._uart_of(port)
@@ -397,6 +465,9 @@ class IsdnMachine:
             return
         if port == DSP_HANDSHAKE_PORT:
             self.dsp_handshake = value & 0xFF
+            return
+        if port == BOARD_LATCH_PORT:
+            self.board_latch = value & 0xFF
             return
         if port == UART_CLOCK_SELECT_PORT:
             self.uart_clock_select = value & 0xFF
@@ -569,11 +640,11 @@ class IsdnMachine:
             if flash_dirty[0]:
                 apply_flash()
             if address == PRODUCT_TYPE_PROBE_COMPLETE:
+                # [d2c3] is the probe's own verdict now that the latch answers
+                # it -- 0x22 External or 0x28 Internal -- so it is left alone.
+                # Overwriting it here used to drop the probe's bit 5 as well,
+                # which is what put the machine back on the wrong branch.
                 uc.mem_write(OPTIONS_ADDRESS, bytes((ALL_OPTIONS,)))
-                uc.mem_write(
-                    PRODUCT_TYPE_ADDRESS,
-                    bytes((PRODUCT_TYPE_MODES[self.product_type],)),
-                )
                 suffix = uc.mem_read(PRODUCT_MODEM_SUFFIX_ADDRESS, 1)[0]
                 suffix = (
                     suffix | PRODUCT_MODEM_SUFFIX
@@ -709,7 +780,9 @@ class IsdnMachine:
             serial_b=self.channels[UART_B_BASE].tx.decode("ascii", "replace"),
             serial={
                 name: self.channels[base].status()
-                for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE))
+                for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE),
+                                   ("internal", INTERNAL_UART_BASE))
+                if base in self.channels
             },
             download_bytes=len(self.download),
             io_summary={
