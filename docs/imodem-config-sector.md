@@ -201,3 +201,39 @@ some commands at the current `--serial-pace`, so each needs a short session of
 its own rather than one long one.
 
 `courier_emu/imodem_config.py` carries the offsets that are established.
+
+## The serial number and the MAC address
+
+Both are in the same record, near its front, and the firmware's own printer
+names them.  At `cd270`:
+
+```
+cd273  mov bx, d2e6 ; lcall a400:8f88 ; call ...   db "MAC ", 0
+cd283  mov bx, d2d7 ; lcall a400:8f88 ; call ...   db "Serial Number ", 0
+```
+
+so the serial lives at **`2600:d2d7`** and the MAC at **`2600:d2e6`** in RAM,
+fifteen bytes and then eight.  In a run both read back as `ff` rather than the
+`00` the RAM wipe leaves, which is the tell that they are loaded from the
+record and simply unset: an update-written sector has no identity in it,
+because a factory-programmed unit already had one.
+
+Painting the sector puts them at page offsets **`0x011`** (15 bytes) and
+**`0x020`** (8 bytes), contiguous, ending just before the generation byte at
+`0x02e`.  Writing them proves the path:
+
+```python
+sector = set_record_bytes(sector, SERIAL_NUMBER, b"IMD0123456789\x00\x00")
+sector = set_record_bytes(sector, MAC_ADDRESS,
+                          bytes.fromhex("00c04901ab74") + b"\x00\x00")
+```
+
+```
+2600:d2d7 -> 49 4d 44 30 31 32 33 34 35 36 37 38 39 00 00   "IMD0123456789"
+2600:d2e6 -> 00 c0 49 01 ab 74 00 00
+```
+
+The serial is ASCII and NUL-terminated; the MAC is six raw bytes in an
+eight-byte field.  `00:c0:49` is USRobotics' OUI, which is also what the
+board's own barcode label carries - so a unit's real identity can be put back
+into a sector from the sticker on the board.

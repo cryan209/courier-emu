@@ -92,3 +92,28 @@ def test_a_directory_number_that_does_not_fit_is_refused():
     from courier_emu.imodem_config import set_voice_directory_number
     with pytest.raises(ValueError):
         set_voice_directory_number(seal(blank_sector()), "123456789")
+
+
+def test_the_identity_fields_sit_where_the_firmware_reads_them():
+    from courier_emu.imodem_config import (
+        MAC_ADDRESS, MAC_ADDRESS_LENGTH, SERIAL_NUMBER, SERIAL_NUMBER_LENGTH,
+        read_mac_address, read_serial_number, set_record_bytes,
+    )
+    # 0x011 for 15 bytes, then 0x020 for 8 - contiguous, as observed.
+    assert SERIAL_NUMBER + SERIAL_NUMBER_LENGTH == MAC_ADDRESS
+    assert MAC_ADDRESS + MAC_ADDRESS_LENGTH == 0x028
+
+    sealed = set_record_bytes(seal(blank_sector()), SERIAL_NUMBER,
+                              b"IMD0123456789\x00\x00")
+    sealed = set_record_bytes(sealed, MAC_ADDRESS,
+                              bytes.fromhex("00c04901ab74") + b"\x00\x00")
+    for page in range(2):
+        assert read_serial_number(sealed, page).split(b"\x00")[0] == b"IMD0123456789"
+        assert read_mac_address(sealed, page)[:3] == bytes.fromhex("00c049")
+        assert page_is_sealed(sealed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE])
+
+
+def test_a_record_write_that_would_hit_the_trailer_is_refused():
+    from courier_emu.imodem_config import TRAILER_OFFSET, set_record_bytes
+    with pytest.raises(ValueError):
+        set_record_bytes(seal(blank_sector()), TRAILER_OFFSET - 1, b"ab")

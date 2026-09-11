@@ -57,6 +57,16 @@ TRAILER_OFFSET = 0xFFA
 CRC_OFFSET = 0xFFE
 SEED = 0x169E
 
+# The unit's identity, near the front of the record. The firmware's own
+# printer names both: at cd270 it loads bx with 0xd2e6 before the literal
+# "MAC " and bx with 0xd2d7 before "Serial Number ", so those are where they
+# live in RAM - and painting the sector shows d2d7 loaded from page offset
+# 0x011 and d2e6 from 0x020, contiguous.
+SERIAL_NUMBER = 0x011
+SERIAL_NUMBER_LENGTH = 15
+MAC_ADDRESS = 0x020
+MAC_ADDRESS_LENGTH = 8
+
 # The ISDN settings, as loaded into 2600:d476.
 ISDN_BLOCK = 0x1B0
 ISDN_BLOCK_LENGTH = 0x5B
@@ -129,6 +139,30 @@ def seal(sector: bytes | bytearray) -> bytes:
         value = page_crc(bytes(out[base:base + PAGE_SIZE]))
         struct.pack_into("<H", out, base + CRC_OFFSET, value)
     return bytes(out)
+
+
+def read_serial_number(sector: bytes, page: int = 0) -> bytes:
+    """The 15 bytes the firmware copies to 2600:d2d7."""
+    base = page * PAGE_SIZE + SERIAL_NUMBER
+    return bytes(sector[base:base + SERIAL_NUMBER_LENGTH])
+
+
+def read_mac_address(sector: bytes, page: int = 0) -> bytes:
+    """The 8 bytes the firmware copies to 2600:d2e6."""
+    base = page * PAGE_SIZE + MAC_ADDRESS
+    return bytes(sector[base:base + MAC_ADDRESS_LENGTH])
+
+
+def set_record_bytes(sector: bytes | bytearray, offset: int,
+                     data: bytes) -> bytes:
+    """Write raw bytes at a page offset in every page, and reseal."""
+    if offset + len(data) > TRAILER_OFFSET:
+        raise ValueError("that would run into the trailer")
+    out = bytearray(sector)
+    for page in range(PAGES):
+        base = page * PAGE_SIZE + offset
+        out[base:base + len(data)] = data
+    return seal(out)
 
 
 def read_isdn_block(sector: bytes, page: int = 0) -> bytes:
