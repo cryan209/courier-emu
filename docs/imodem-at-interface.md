@@ -435,12 +435,98 @@ path where the board probe bails out, which is the fallback that uses the
 386EX's own SIO0 at `0xf8f8` on IRQ3. The external unit does not use SIO0 for
 its command port at all.
 
+### Correction: IRQ5 is not the command port, IRQ0 is
+
+The note above that IRQ5 carries the command port was wrong, and decoding its
+ISR is what shows it. `0xcfdb0` never touches `0x80`..`0x86` at all. It reads
+status from `0x8b`, `0x8c` and `0x8a`, streams bytes out of a table in its own
+code segment, and writes them a word at a time to `0x9c` and `0x9b`:
+
+```
+cfdb7  in al,0x8b ; test al,80 ; jne ...      ; else EOI and leave
+cfdc0  in al,0x8c ; test al,40 ; jne ...      ; else EOI and leave
+cfdc9  mov byte ptr [e8d8],1
+cfdce  mov al,0 ; out 0x8c,al                 ; acknowledge
+cfdd2  mov dx,0x8a ; in al,dx ; and al,8
+cfdd8  jne ...     ; bit 3 clear -> mov word ptr [e8d0],00c1   (rewind)
+cfe04  mov al,cs:[si] ; inc [e8d0]            ; si = [e8d0], the read cursor
+cfe61  out 0x9c,al ; xchg ah,al ; out 0x9b,al
+```
+
+The **command port on this path is the 16550 at `0x80`, serviced from IRQ0**,
+whose handler at `0xb2f1a` is a polled service driven by the tick:
+
+```
+b2f24  in al,0x86            ; MSR -> [e857]
+b2f34  in al,0x85            ; LSR, test 10 (break)
+b2f53  in al,0x85 ; test 20  ; THRE -> call b2fd6, transmit
+b2f67  in al,0x85 ; shr al,1 ; data ready -> jmp [e834], receive
+```
+
+Note IRQ0 is the PC-AT timer line. The harness routes 8254 counter 0 to IRQ10,
+which is what the `[d2c3] = 0` fallback wants; this path wants IRQ0.
+
+### The IRQ5 device is the ISA Plug and Play responder
+
+The table the ISR clocks out, at `cfdb:00c1`, parses exactly as ISA PnP
+resource data with nothing left over:
+
+```
+serial identifier: vendor USR009E  serial ffffffff  checksum 0xb1
+  PnP version                1.0
+  ANSI identifier string     'USRobotics Courier I-Modem INT'
+  Logical device ID          USR009E
+  Compatible device ID       PNPC10F
+  Start dependent function 0   Fixed I/O 0x02f8 len 8   IRQ 3
+  Start dependent function 1   Fixed I/O 0x03f8 len 8   IRQ 4
+  Start dependent function 1   Fixed I/O 0x03e8 len 8   IRQ 4
+  Start dependent function 1   Fixed I/O 0x02e8 len 8   IRQ 3
+  Start dependent function 2   Fixed I/O 0x03e8 len 8   IRQ 3,5,7
+  Start dependent function 2   Fixed I/O 0x02e8 len 8   IRQ 4,5,7
+  End dependent function / End tag
+```
+
+`USR` is the correctly compressed EISA form of `56 72`, `PNPC10F` is the
+standard modem compatible id, and the COM2/COM1/COM3/COM4 alternatives with
+IRQ 3, 4, 5 and 7 are what an internal card offers a **host PC** - they are
+the host's resources, and say nothing about this board's own port map.
+
+So the register file is:
+
+| port | meaning |
+|---|---|
+| `0x8b` bit 7 | host request pending; the ISR leaves unless it is set |
+| `0x8c` bit 6 | second gate on the same request |
+| `0x8c` write 0 | acknowledge the request |
+| `0x8a` bit 3 | clear rewinds the read cursor `[e8d0]` to the start of the structure |
+| `0x9c`, `0x9b` | the data path back to the host, low byte then high |
+
+`[e8d0]` is the cursor, running `0x00c1`..`0x0131`; the ISR substitutes
+`[e8d2]`, `[e8d4]`, `[e8d6]` and `[e8d7]` at cursor positions `0xc5`, `0xc7`,
+`0xc9` and `0x131` - the serial-number and checksum fields the identifier
+needs filled in per card.
+
+**An open contradiction.** The identifier string ends `INT`, and the whole
+device only makes sense for the internal ISA card, yet `[d2c3]` reads `0x08`
+on this path and ATI7's formatter at `0xc0be0` calls bit 3 External. Either
+the guessed loopback wiring at port `0x14` selects the internal branch, or bit
+3 does not mean what that formatter comment says. This is not resolved, and it
+matters: the Courier I-Modem this repository targets is an external desktop
+unit, so a wiring that lands on the internal ISA card is suspect.
+
 ### What is still needed
 
-Modelling the board latch alone is not enough, and neither is dropping a plain
-`SerialChannel` at `0x80` with `irq=5`: the ISR at `0xcfdb0` will not proceed
-until `0x8b` bit 7 and `0x8c` bit 6 both read set, and `0x88`/`0x89`/`0x8f`/
-`0x9d` are part of the same device. What the interface needs is that device
-decoded - the meaning of `0x8a`, `0x8b` and `0x8c`, and of the init table's
-first six writes - not a 16550 dropped at `0x80` and hoped over. Until then
-the harness stays on the `[d2c3] = 0` fallback, which talks but does not echo.
+Three separate things, now that they are separable:
+
+1. **The board latch at port `0x14`** so the probe completes at all - but with
+   its sense wiring settled rather than guessed, because the guess currently
+   selects a branch whose own identifier says `INT`.
+2. **The 16550 at `0x80`**, which is an ordinary one - the IRQ0 handler only
+   uses RBR, THR, LSR and MSR - plus the 8254 tick routed to **IRQ0** rather
+   than IRQ10, since that handler is what polls it.
+3. **The PnP responder** at `0x8a`/`0x8b`/`0x8c`/`0x9b`/`0x9c`, which is
+   decoded above but needs no model unless a host bus is being emulated: with
+   `0x8b` bit 7 reading 0 the ISR simply EOIs and returns, which is a card
+   nobody is interrogating.
+
+Item 3 is therefore *not* a blocker for the AT interface. Items 1 and 2 are.
