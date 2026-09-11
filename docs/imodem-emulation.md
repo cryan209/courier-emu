@@ -81,9 +81,11 @@ that needs two loads to fit.
   modelled now, and the line comes up
   ([imodem-d-channel.md](imodem-d-channel.md)), but every ISDN setting reads
   back invalid or empty, so Q.921 never starts.  Where the I-modem keeps them
-  is not established - it is a 91-byte checksummed block at `2600:d476` that
-  nothing in the image ever fills, and it is **not** the 93C66 the other
-  Couriers carry.  B-channel routing is still unmodelled - the MCRs are
+  is flash sector SA8 at `0xf8000`, holding two copies of the record
+  ([imodem-config-sector.md](imodem-config-sector.md)) - not the 93C66 the
+  other Couriers carry.  `--flash-overlay` carries a sector into a run; what
+  is still open is writing a record the firmware will accept, since the
+  trailer's checksum is not recovered.  B-channel routing is still unmodelled - the MCRs are
   recorded, not acted on.
 * Which device raises the system tick.  The harness drives IRQ10 from 8254
   counter 0 because that is the line the tick-delay routine at `a45df` needs;

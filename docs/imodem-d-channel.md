@@ -164,7 +164,11 @@ The transport is not there, though:
 
 So whatever fills `2600:d476` is not the 93C66 store this repository already
 models, and pointing `courier_emu/nvram.py` at the I-modem would not be
-modelling its hardware.  Where the block does come from is not established.
+modelling its hardware.  **It is the flash**: the store is sector SA8 at
+`0xf8000`, holding two copies of a record whose S-register defaults identify it
+outright, and the firmware loads it into this block.  See
+[imodem-config-sector.md](imodem-config-sector.md), which also gives
+`isdn-run` the overlay and save options that carry a sector between runs.
 The candidates left are flash.  The board carries **two** 4 Mbit parts, and
 the chip selects put 768 KiB of them at `40000`-`fffff`
 ([imodem-board-map.md](imodem-board-map.md)); the harness models only the one
