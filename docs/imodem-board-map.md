@@ -17,9 +17,38 @@ and one of them was being modelled wrong.
 | Altera **EPM7032LC44** (`USR 19457`) | the glue - the board latches the firmware reaches at ports `0x10`-`0x1e` and `0x100` |
 | Sipex **SP503CP** | the DTE transceiver |
 
-plus the line section: a Valor **ST15069** transformer module, a Takamisawa
-**RY5W-K** relay, a CP Clare **LH1502** solid-state relay and an **XCA111E**
-optocoupler - an analogue telephone interface, not an ISDN one.
+plus an **AT&T** part marked `T 7256 ML2` (date code `9613S`), and the line
+section: a Valor **ST15069** transformer module, a Takamisawa **RY5W-K**
+relay, a CP Clare **LH1502** solid-state relay and an **XCA111E** optocoupler.
+
+## The AT&T part: what can be said without its datasheet
+
+Its function is not identified here, and guessing a part number's job into
+this file would be worse than leaving it open.  What the firmware does settle
+is that **the emulator does not need it**:
+
+* It is not in I/O space.  The port census below covers every port a
+  40-million-instruction run touches; there is no window for it.
+* It is not in the two chip-select windows above 1 MiB either.  CS1 at
+  `100000` and CS3 at `104400`, both 16 KiB, are programmed at init and then
+  **never read or written** in a run - though that is weak evidence, since
+  this harness enters in real mode and could not reach them anyway.
+* The firmware has no vocabulary for a U interface.  `NT1`, `2B1Q`,
+  `U-Interface` and the like appear nowhere in its strings; the only loopback
+  text is the analogue and digital loopbacks every Courier has.  So the 386
+  does not drive it.
+
+Which leaves a part that is autonomous or slaved to another chip.  Three cases
+are distinguishable by what its pins go to, and one probe settles it:
+
+| if it connects to | then it is |
+|---|---|
+| the line jack and the Valor transformer on one side, the Am79C30A's LIU pins on the other | a U-to-S/T converter - an integrated NT1, which by design needs no host configuration, and would make this the US variant |
+| the DSC's **peripheral port** pins | an audio or codec part on the DSC's serial port - which would fit `PP_PPCR1` being enabled at init and `MCR1`-`MCR4` never routed |
+| the analogue line section and the relays | part of the telephone interface rather than the ISDN one |
+
+The second is the one the firmware faintly favours, for the reasons in the
+section above; none of it is established.
 
 The two flash parts are the important observation.  A board carrying an Intel
 and an AMD part at once explains the boot code's identify sequence far better
