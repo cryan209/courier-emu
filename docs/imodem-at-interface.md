@@ -356,7 +356,7 @@ The consequence is wider than the echo: **`--product-type` is a no-op.** It is
 applied by a hook on `0xa4506`, which is inside the part of the probe that is
 never reached, so every run has `[d2c3] = 0` whatever the flag says.
 
-### Why simply modelling the latch is not the fix
+### What is behind it: a second UART at 0x80 on IRQ5
 
 Making port `0x14` read back, with the sense bit following the driven `0x80`,
 does let the probe finish and store an External `[d2c3]` - and then the
@@ -365,22 +365,82 @@ both test lines) but nothing is transmitted at all: no THRE interrupts, two
 THR writes in a whole session, no echo, and the DMA transmitter at `0xc7c42`
 is not used either.
 
-So `[d2c3]` bit 3 is not a cosmetic identity bit. It switches the signal
-routines onto the UART's own modem-control lines, and it inverts their sense
-in both directions:
+So `[d2c3]` bit 3 is not a cosmetic identity bit: it selects **which serial
+interface the modem uses at all**.
 
-* set (`a5ebf`) does `in al,dx ; not ah ; and al,dx ; out dx,al` on the MCR at
-  `[e848]` - asserting a signal **clears** an MCR bit;
-* clear (`a5f2b`) **sets** it;
-* query (`a5e0e`) reads the MSR at `[e83e]`, masks, and `sete` - a signal is
-  present when its MSR bit reads **`0`**.
+Tracing the stall shows the firmware is not stuck, it is idle. The spin is
+`0xac62f` (`xchg bx,ax / clc / ret`), the no-op entry of the jump table at
+`0xac617`, reached 92,825 times from the main loop's `mov al,0 / call [c926]`
+at `0xac4e5` - the idle poll of a state machine that never gets a command
+event. It never gets one because **the serial ISR is never entered**: zero
+entries at `0xb2aa2`, zero RBR reads, zero IIR reads.
 
-That is an external unit's active-low RS-232 wiring. But sweeping the MSR
-inputs over `0xb0`, `0x00`, `0x20` and `0x80` changes nothing: transmit stays
-at zero in every case, so whatever the firmware is waiting on once it believes
-it is external has not been found yet.
+The master 8259 mask says why. It goes from `0xb3` to `0xda`:
 
-What is established: the probe's ports and bits, the inversion, and that
-`[d2c3]` gates the echo. What is not: what else the External path needs before
-it will transmit. Until that is answered the harness stays on the
-`[d2c3] = 0` path, which talks but does not echo.
+| | unmasked master lines |
+|---|---|
+| probe bails (today) | 2 (cascade), **3**, 6 |
+| External | 0, 2 (cascade), **5** |
+
+**IRQ3 is masked and IRQ5 is unmasked**, and IRQ5's vector `0x25` points at
+`cfdb:0000` = `0xcfdb0` - a different serial ISR entirely, which opens
+
+```
+cfdb0  pusha ; push ds ; mov ax,2600 ; mov ds,ax
+cfdb7  in al, 0x8b   ; test al,80 ; jne ...   ; else give up
+cfdc0  in al, 0x8c   ; test al,40 ; jne ...   ; else give up
+cfdc9  mov byte ptr [e8d8], 1
+cfdce  mov al,0 ; out 0x8c, al                ; acknowledge
+cfdd2  mov dx,0x8a ; in al,dx ; and al,8
+```
+
+And the firmware re-points its whole serial port-variable block to match.
+Read back from the two runs, `2600:e83a`..`e84a`:
+
+| | IIR | LSR | MSR | RBR | THR | IER | SCR | MCR | LCR |
+|---|---|---|---|---|---|---|---|---|---|
+| probe bails | `f8fa` | `f8fd` | `f8fe` | `f8f8` | `f8f8` | `f8f9` | `f8ff` | `f8fc` | `f8fb` |
+| **External** | `0082` | `0085` | `0086` | `0080` | `0080` | `0081` | `0082` | `0084` | `0083` |
+
+That is a 16550 register file at base **`0x80`**, in its standard order, on
+**IRQ5**. The runtime trace agrees: with the probe completing, the signal
+query's MSR read at `0xa5e4c` goes to port `0x86` 9,469 times, and `0xb2a3a`
+reads port `0x80` 500 times - while nothing in `0x80..0x8f` is touched at all
+on the path the harness takes today.
+
+The init that sets it up is a table walk at `0xb2a6a`:
+
+```
+b2a6a  mov dx, cs:[si] ; inc si ; inc si     ; port
+b2a6f  mov al, cs:[si] ; inc si              ; value
+b2a73  out dx, al
+b2a74  loop b2a6a                            ; cx = 0x0e, si = 0xea78
+```
+
+whose fourteen (port, value) pairs at `a400:ea78` begin
+
+```
+0088=76  0088=66  009d=25  0088=04  0089=00  008f=00
+0082=80  0083=80  0080=08  0081=00  0083=00 ...
+```
+
+- the DLAB sequence `0083=80`, `0080=08`, `0081=00`, `0083=00` is a divisor of
+**8** being loaded, which is what confirms `0x80`/`0x83` as THR/LCR - plus
+board registers at `0x88`, `0x89`, `0x8f` and `0x9d` that are not part of the
+16550.
+
+So the earlier note in this file that no UART at `0x80` on IRQ5 could be found
+was **wrong**, and wrong for a specific reason: it was measured only on the
+path where the board probe bails out, which is the fallback that uses the
+386EX's own SIO0 at `0xf8f8` on IRQ3. The external unit does not use SIO0 for
+its command port at all.
+
+### What is still needed
+
+Modelling the board latch alone is not enough, and neither is dropping a plain
+`SerialChannel` at `0x80` with `irq=5`: the ISR at `0xcfdb0` will not proceed
+until `0x8b` bit 7 and `0x8c` bit 6 both read set, and `0x88`/`0x89`/`0x8f`/
+`0x9d` are part of the same device. What the interface needs is that device
+decoded - the meaning of `0x8a`, `0x8b` and `0x8c`, and of the init table's
+first six writes - not a 16550 dropped at `0x80` and hoped over. Until then
+the harness stays on the `[d2c3] = 0` fallback, which talks but does not echo.
