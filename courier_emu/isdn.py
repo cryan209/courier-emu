@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from .nac import NacImage
 from .am79c30 import Am79C30
@@ -11,6 +11,7 @@ from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .imodem_mailbox import ImodemMailbox
+from .sio import RX_INSTRUCTIONS_PER_BYTE, TERMINAL_PRESENT, SerialChannel
 
 
 # The ISDN Courier's payload is an update image, not a whole flash part, so the
@@ -44,12 +45,20 @@ DOWNLOAD_PORTS = range(0x40, 0x58)
 # block. Reading it back is how the firmware learns the block was taken.
 DSP_HANDSHAKE_PORT = 0x18
 
-# Two 16550s. UART A is the one the firmware writes to first.
+# Two 16550s. UART A is the one the firmware writes to first, and it is the
+# command interface: vector 0x23 -- IRQ3, which the firmware unmasks -- points
+# at the serial ISR at 0xb2aa2, whose port variables at 2600:e83a read back
+# f8fa / f8fd / f8fe / f8f8, this part's IIR, LSR, MSR and RBR. See
+# courier_emu/sio.py for the decode that recovers.
+#
+# SIO1's interrupt line is not recovered. The only other line the firmware
+# unmasks on the master is IRQ6, and its vector 0x26 reaches 0xa520a, which
+# services ports 0x00 and 0x0a rather than a UART. So SIO1 is left pollable
+# and silent rather than wired to a guess.
 UART_A_BASE = 0xF8F8
 UART_B_BASE = 0xF4F8
-UART_THR = 0
-UART_LSR = 5
-LSR_TX_READY = 0x60  # holding register empty | shift register empty
+UART_A_IRQ = 3
+UART_B_IRQ = None
 
 # The PS/2-style system control port, written once during init.
 SYSTEM_CONTROL_PORT = 0xF092
@@ -105,6 +114,7 @@ class IsdnRunResult:
     dsc: dict[str, Any] = field(default_factory=dict)
     flash: dict[str, Any] = field(default_factory=dict)
     mailbox: dict[str, Any] = field(default_factory=dict)
+    serial: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -129,6 +139,10 @@ class IsdnMachine:
         mailbox_service: bool = True,
         mailbox: ImodemMailbox | None = None,
         with_dsp: bool = False,
+        serial_signals: int = TERMINAL_PRESENT,
+        serial_pace: int = RX_INSTRUCTIONS_PER_BYTE,
+        serial_irq: int | None = UART_A_IRQ,
+        serial_pump: "Callable[[IsdnMachine], None] | None" = None,
     ) -> None:
         self.image = image
         self.entry_segment = entry_segment
@@ -159,7 +173,18 @@ class IsdnMachine:
         self.hardware_interrupts = 0
         self.software_interrupts: Counter[int] = Counter()
         self.io_counts: Counter[tuple[str, int]] = Counter()
-        self.serial: dict[int, bytearray] = {UART_A_BASE: bytearray(), UART_B_BASE: bytearray()}
+        self.channels: dict[int, SerialChannel] = {
+            UART_A_BASE: SerialChannel(
+                UART_A_BASE, irq=serial_irq, signals=serial_signals,
+                max_bytes=MAX_SERIAL_BYTES, pace=serial_pace,
+            ),
+            UART_B_BASE: SerialChannel(
+                UART_B_BASE, irq=UART_B_IRQ, signals=serial_signals,
+                max_bytes=MAX_SERIAL_BYTES, pace=serial_pace,
+            ),
+        }
+        self.serial_pump = serial_pump
+        self.machine: Any = None
         self.download = bytearray()
         self.pc_counts: Counter[int] = Counter()
         self.recent: deque[int] = deque(maxlen=32)
@@ -177,10 +202,32 @@ class IsdnMachine:
     # -- I/O ---------------------------------------------------------------
 
     def _uart_of(self, port: int) -> int | None:
-        for base in (UART_A_BASE, UART_B_BASE):
-            if base <= port < base + 8:
+        for base, channel in self.channels.items():
+            if channel.handles(port):
                 return base
         return None
+
+    @property
+    def serial(self) -> dict[int, bytearray]:
+        """The transmitted stream per channel, by base address."""
+        return {base: channel.tx for base, channel in self.channels.items()}
+
+    # -- host side ---------------------------------------------------------
+
+    def send_serial(self, data: bytes | bytearray | str,
+                    base: int = UART_A_BASE) -> int:
+        """Queue bytes on a channel as if a terminal had typed them."""
+        return self.channels[base].feed(data)
+
+    def take_serial(self, base: int = UART_A_BASE) -> bytes:
+        """Take what the firmware has transmitted since the last call."""
+        return self.channels[base].take_output()
+
+    def stop(self, reason: str) -> None:
+        """End the run early -- what a console does when the user detaches."""
+        self._stop_reason = reason
+        if self.machine is not None:
+            self.machine.emu_stop()
 
     def read_port(self, port: int) -> int:
         self._advance_dsp()
@@ -200,8 +247,8 @@ class IsdnMachine:
         if port in self.mailbox.PORTS:
             return self.port_values.get(port, self.mailbox.read(port))
         base = self._uart_of(port)
-        if base is not None and port - base == UART_LSR:
-            return LSR_TX_READY
+        if base is not None:
+            return self.channels[base].read(port)
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:
@@ -231,10 +278,8 @@ class IsdnMachine:
                 self.download.append(value & 0xFF)
             return
         base = self._uart_of(port)
-        if base is not None and port - base == UART_THR:
-            sink = self.serial[base]
-            if len(sink) < MAX_SERIAL_BYTES:
-                sink.append(value & 0xFF)
+        if base is not None:
+            self.channels[base].write(port, value)
 
     # -- timing ------------------------------------------------------------
 
@@ -248,6 +293,13 @@ class IsdnMachine:
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
         self._advance_dsp()
+        if self.serial_pump is not None:
+            self.serial_pump(self)
+        for channel in self.channels.values():
+            channel.advance(self.instructions)
+        for channel in self.channels.values():
+            if channel.irq is not None and channel.interrupting():
+                self.pic.raise_irq(channel.irq)
         if self.mailbox_service and self.instructions >= self._next_mailbox_service:
             self._next_mailbox_service = self.instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
@@ -472,8 +524,12 @@ class IsdnMachine:
                 for number, count in sorted(self.software_interrupts.items())
             },
             timer_ticks=self.timer_ticks,
-            serial_a=self.serial[UART_A_BASE].decode("ascii", "replace"),
-            serial_b=self.serial[UART_B_BASE].decode("ascii", "replace"),
+            serial_a=self.channels[UART_A_BASE].tx.decode("ascii", "replace"),
+            serial_b=self.channels[UART_B_BASE].tx.decode("ascii", "replace"),
+            serial={
+                name: self.channels[base].status()
+                for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE))
+            },
             download_bytes=len(self.download),
             io_summary={
                 f"{direction} {port:#06x}": count

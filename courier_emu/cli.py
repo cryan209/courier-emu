@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
@@ -24,6 +25,14 @@ from .panel import (
 )
 from .images import load_image
 from .isdn import IsdnMachine
+from .isdn_console import (
+    SERIAL_LINE_INSTRUCTIONS,
+    SERIAL_WARMUP_INSTRUCTIONS,
+    interactive_pump,
+    raw_terminal,
+    scripted_pump,
+)
+from .sio import RX_INSTRUCTIONS_PER_BYTE, TERMINAL_PRESENT
 from .nac import NacFormatError, NacImage
 from .rom import CourierRom, RomFormatError
 from .xmf import XmfFormatError, XmfImage
@@ -38,6 +47,11 @@ CONSOLE_INSTRUCTIONS = 10_000_000_000
 from .dsp import run_dsp
 from .machine import SUGGESTED_TICK_MS, TICK_SOURCES
 from .terminal import run_console
+
+
+@contextlib.contextmanager
+def _nothing():
+    yield
 
 
 def _number(value: str) -> int:
@@ -439,6 +453,49 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="PORT=VALUE",
         help="seed an input port value; numbers accept 0x notation",
+    )
+    isdn_run.add_argument(
+        "--send",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="type TEXT on SIO0 once the firmware is up; repeat for more "
+             "lines. A trailing carriage return is added unless the text "
+             "already ends in one; \\r, \\n and \\\\ are recognised",
+    )
+    isdn_run.add_argument(
+        "--send-after",
+        type=_number,
+        default=SERIAL_WARMUP_INSTRUCTIONS,
+        help="instructions to run before the first --send line is typed",
+    )
+    isdn_run.add_argument(
+        "--send-every",
+        type=_number,
+        default=SERIAL_LINE_INSTRUCTIONS,
+        help="instructions between one --send line and the next",
+    )
+    isdn_run.add_argument(
+        "--serial-pace",
+        type=_number,
+        default=RX_INSTRUCTIONS_PER_BYTE,
+        help="instructions between received characters; 0 delivers a line "
+             "as one burst, which the command parser does not read the same "
+             "way",
+    )
+    isdn_run.add_argument(
+        "--serial-signals",
+        type=_number,
+        default=TERMINAL_PRESENT,
+        help="modem-status inputs the firmware sees: CTS 0x10, DSR 0x20, "
+             "RI 0x40, DCD 0x80",
+    )
+    isdn_run.add_argument(
+        "--terminal",
+        action="store_true",
+        help="attach this terminal to SIO0: keystrokes go to the firmware "
+             "and its output is printed as it arrives. Ctrl-] detaches. The "
+             "run report goes to stderr, since stdout is the serial stream",
     )
 
     extract = subparsers.add_parser(
@@ -1001,15 +1058,42 @@ def main(argv: list[str] | None = None) -> int:
                     "entry_offset": int(offset, 16),
                 }
             counter_irq = None if args.tick_irq is None else {0: args.tick_irq}
+            if args.terminal and args.send:
+                raise ValueError("use --terminal or --send, not both")
+            transcript: list[tuple[int, str, str]] = []
+            pump = None
+            if args.send:
+                pump = scripted_pump(
+                    args.send, after=args.send_after, every=args.send_every,
+                    transcript=transcript,
+                )
+            elif args.terminal:
+                pump = interactive_pump(after=args.send_after)
             machine = IsdnMachine(
                 source, port_values=ports, counter_irq=counter_irq,
-                with_dsp=args.with_dsp, **entry
+                with_dsp=args.with_dsp, serial_pump=pump,
+                serial_pace=args.serial_pace,
+                serial_signals=args.serial_signals,
+                **entry
             )
             try:
-                _print_json(machine.run(args.instructions).to_dict())
+                with raw_terminal() if args.terminal else _nothing():
+                    result = machine.run(args.instructions).to_dict()
             finally:
                 if args.with_dsp:
                     machine.mailbox.close()
+            if transcript:
+                result["serial_session"] = [
+                    {"instructions": count, "direction": direction, "text": text}
+                    for count, direction, text in transcript
+                ]
+            if args.terminal:
+                # stdout is the serial stream in this mode, so the report
+                # goes beside it rather than into it.
+                print(json.dumps(result, indent=2, sort_keys=True),
+                      file=sys.stderr)
+            else:
+                _print_json(result)
             return 0
         if args.command == "extract":
             try:
