@@ -216,23 +216,29 @@ PRODUCT_TYPE_PROBE_COMPLETE = 0xA4506
 OPTIONS_ADDRESS = 0x2600 * 16 + 0xE358
 ALL_OPTIONS = 0xE5
 
-# The command task currently starts without the unrecovered layer-2 idle
-# indication. Its receive callback consequently records Keypress Abort even
-# though no call exists, and the common command epilogue turns a plain AT into
-# NO CARRIER. Normalize only that impossible idle combination at the decision
-# point; real call/disconnect causes and any populated state flags are kept.
+# The common command epilogue's result decision.
+#
+# There used to be a rewrite here: when the recorded disconnect cause was
+# Keypress Abort with no call-state flags, the harness substituted a
+# DTR-dropped cause so that a plain AT answered OK. It is gone, because it
+# was not doing anything and it described the problem wrongly.
+#
+# What actually happens, swept over AT, ATZ, AT&F, ATE1, ATH, ATQ0, ATV1, ATX0
+# and AT&V: **every** command emits result code 3, and code 0 is never emitted
+# at all. The recorded cause is 0 -- no disconnect, not Keypress Abort -- so
+# that rewrite's condition never matched. The decision at a8067 wants
+# [d08b] == 1 (DTR dropped) and [d2a1] & 0x47, and both read 0.
+#
+# ATI2's "OK" is its own text, not a result code; the NO CARRIER that follows
+# it is the result. The earlier reasoning that "index 0 is reachable, so the
+# result table is not mis-indexed" rested on reading that OK as a result code,
+# and does not hold. See docs/imodem-at-interface.md for where the trail
+# currently stops.
 RESULT_DECISION = 0xA8067
 DISCONNECT_CAUSE_ADDRESS = 0x2600 * 16 + 0xD08B
 COMMAND_STATE_ADDRESS = 0x2600 * 16 + 0xD2A1
 KEYPRESS_ABORT = 0x17
 DTR_DROPPED = 0x01
-
-
-def idle_result_state(cause: int, flags: int) -> tuple[int, int]:
-    """Return the firmware state a command epilogue should see while idle."""
-    if cause == KEYPRESS_ABORT and flags == 0:
-        return DTR_DROPPED, 0x01
-    return cause, flags
 
 
 @dataclass
@@ -660,13 +666,6 @@ class IsdnMachine:
                     else suffix & ~PRODUCT_MODEM_SUFFIX
                 )
                 uc.mem_write(PRODUCT_MODEM_SUFFIX_ADDRESS, bytes((suffix,)))
-            elif address == RESULT_DECISION:
-                cause = uc.mem_read(DISCONNECT_CAUSE_ADDRESS, 1)[0]
-                flags = uc.mem_read(COMMAND_STATE_ADDRESS, 1)[0]
-                idle_cause, idle_flags = idle_result_state(cause, flags)
-                if (idle_cause, idle_flags) != (cause, flags):
-                    uc.mem_write(DISCONNECT_CAUSE_ADDRESS, bytes((idle_cause,)))
-                    uc.mem_write(COMMAND_STATE_ADDRESS, bytes((idle_flags,)))
             if profile:
                 self.pc_counts[address] += 1
             self.recent.append(address)

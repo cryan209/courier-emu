@@ -185,14 +185,21 @@ assumption for the 8254 ratio, documented there as an assumption rather than a
 measurement.  Reconciling the two is a separate change with a much wider blast
 radius and has not been made.
 
-## Why a bare `AT` answers `NO CARRIER`
+## Why every command answers `NO CARRIER`
 
-It is not a mis-indexed result table.  `ATI2` answers a plain `OK`, so index 0
-is reachable; the firmware asks for index 3 deliberately.  The chain is short
-and every step is named by the firmware's own text.
+Not just a bare `AT`. Swept over `AT`, `ATZ`, `AT&F`, `ATE1`, `ATH`, `ATQ0`,
+`ATV1`, `ATX0` and `AT&V`, watching `AL` at `0xacf8c` - the routine that emits
+the result code - **every one of them emits code 3, and code 0 is never
+emitted at all.**
 
-**Where the code is chosen.**  Commands that fall through to the go-idle
-epilogue at `a8000` end at:
+**An earlier claim on this page was wrong.** It argued the result table was not
+mis-indexed because "`ATI2` answers a plain `OK`, so index 0 is reachable".
+`ATI2`'s `OK` is its own text - the checksum test passing - and the result code
+that follows it is `NO CARRIER` like everything else. Index 0 was never shown
+to be reachable. (The table itself does look conventional: 0 OK, 1 CONNECT,
+2 RING, 3 NO CARRIER.)
+
+**Where the code is chosen.** Commands end at the go-idle epilogue's decision:
 
 ```
 a8067  cmp byte ptr [d08b], 1     ; the recorded disconnect cause
@@ -205,50 +212,53 @@ a8096  mov al, 3                  ; -> 3, NO CARRIER
 a80d3  call acf8c                 ; emit the result code in AL
 ```
 
-So `OK` needs the cause to be **1** and a second flag set.  In a run the cause
-is `0x17` and `[d2a1]` is `0`.
+In a run `[d08b]` is **0** and `[d2a1]` is 0, so both tests fail.
 
-**Where the cause comes from.**  `ab329` is a helper that pops its return
-address, reads one inline byte after the call, and stores it in `[d08b]` -
-but only if `[d08b]` is still zero, so the first writer wins:
+**The reason table confirms what 0 and 1 mean.** The NUL-separated list starts
+at `0xc194a`, not the `0xc1abb` quoted earlier, which lands mid-string. From
+there: 1 `DTR dropped`, 2 `Escape code`, 3 `Loss of Carrier`, ... and index 23
+= `0x17` lands exactly on `Keypress Abort`, which is the cross-check that the
+indexing is right. So index **0 means no disconnect was recorded at all** -
+and the firmware answers `NO CARRIER` for it.
+
+**The Keypress Abort story no longer applies.** The cause is 0, not `0x17`: the
+receive callback at `0xa4e0e` is never entered, because `[c922]` is loaded with
+a different handler (`0x9d17` from `0xadc37`). A rewrite used to sit in
+`courier_emu/isdn.py` turning a `0x17`-with-no-flags state into DTR-dropped so
+a plain `AT` would answer `OK`; its condition never matched, so it did nothing.
+It has been removed rather than left looking like a fix.
+
+**How a command gets to that epilogue.** Through `0xadc82`, which is reached
+only when three flags are all clear:
 
 ```
-ab329  pop ax ; xchg si,ax ; push ax ; cld
-ab32d  lodsb cs:[si]                   ; the inline cause byte
-ab32f  or byte ptr [ca57], 80
-ab334  cmp byte ptr [d08b], 0
-ab339  jne ab33e
-ab33b  mov byte ptr [d08b], al
+adc3d  test [e78e], 1 ; jne adc88     ; set -> a different route entirely
+adc44  test [e78f], 1 ; je  adc63
+adc63  test [e770], 4 ; je  adc82     ; adc82 calls the epilogue
 ```
 
-The site that records `0x17` is `a4e1e`:
+All three read 0 for the whole run, and each has exactly one setter:
 
-```
-a4e0e  test byte ptr [e753], 2
-a4e13  je a4e17
-a4e15  clc ; ret                       ; nothing recorded
-a4e17  cmp byte ptr [d1ea], 6
-a4e1c  jge a4e22
-a4e1e  call ab329
-a4e21  db 17                           ; the cause
-```
+* `[e770]` bit 2 is set only at `0xc83d0`, and that site is gated on `[d2c5]`
+  bit 0, which is 0.
+* `[e78e]` bit 0 is set only at `0xc824c`, reached by parsing an AT command of
+  the `...=1` form.
+* `[d1ea]`, tested against 6 along this path, is 4 - and it is copied from a
+  settings block at `0xab700`, so it is configuration rather than live state.
 
-**And `a4e0e` is the received-character callback.**  `a4de5` and `a4dfb` load
-`[c922]` with `0e0d` - `a400:0e0d`, the `ret` immediately above this routine -
-and `[c922]` is what the serial ISR's received-data handler at `b2c8d` calls
-for every character.  So typing is what records the cause.
+**What has been ruled out.** `--line-activate` walks the S interface to F7 and
+changes nothing. A sealed but all-zero configuration record laid over the
+config sector makes it worse - the modem emits nothing at all - so an empty
+record is not simply a missing field either.
 
-**The firmware names `0x17` itself.**  `ATI6` prints
-`Disconnect Reason is Keypress Abort`, and the reason table at `0xc1abb` -
-`DTR dropped`, `Escape code`, `Loss of Carrier`, ... - puts **Keypress Abort**
-at index 23 = `0x17`, with `DTR dropped` at the index 1 that `OK` requires.
+**Where it stops.** The modem is running the *call-termination* epilogue for
+every command, and answering with the "no disconnect recorded" code. Whether
+the fix is upstream (it should not reach that epilogue while idle) or in a
+state the harness has not brought up, is not settled. The next thread is
+`[d2c5]` bit 0, the single gate on the one site that sets `[e770]` bit 2.
 
-So the firmware is doing something sensible: a keypress aborts a call attempt,
-and the epilogue reports the abort rather than `OK`.  What is wrong is the
-state it is in when an idle `AT` reaches that path.  The harness now recognizes
-only the impossible idle combination (cause `0x17` with no call-state flags)
-and presents the epilogue with its idle `cause=1, flags=1` state, so a plain
-`AT` returns `OK` without hiding genuine disconnect causes.
+`tests/test_imodem_console.py` pins the current behaviour, so that a fix shows
+up as a failing test rather than passing unnoticed.
 
 ## The line is down, and that is the harness's doing
 

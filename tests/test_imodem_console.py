@@ -12,7 +12,6 @@ from courier_emu.isdn import (
     ALL_OPTIONS,
     IsdnMachine,
     PRODUCT_TYPE_MODES,
-    idle_result_state,
 )
 from courier_emu.isdn_console import scripted_pump
 from courier_emu.nac import NacImage
@@ -116,10 +115,44 @@ def test_all_ati7_modulation_options_are_enabled_by_default():
     assert ALL_OPTIONS == 0x01 | 0x04 | 0x20 | 0x40 | 0x80
 
 
-def test_an_idle_keypress_does_not_report_a_spurious_disconnect():
-    assert idle_result_state(0x17, 0) == (1, 1)
-    assert idle_result_state(0x17, 0x40) == (0x17, 0x40)
-    assert idle_result_state(3, 0) == (3, 0)
+def test_every_command_still_answers_no_carrier():
+    """Pins a known defect, so that fixing it fails here and gets noticed.
+
+    The firmware emits result code 3 for every command, not just for a bare
+    AT, and never emits 0. The decision at a8067 wants [d08b] == 1 and
+    [d2a1] & 0x47 and both read 0. This replaced a test of a pure function
+    that the run never called, which proved nothing about the modem.
+
+    When the cause is found, this test should start failing: change it to
+    assert 0 (OK) and delete this docstring.
+    """
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    from unicorn import UC_HOOK_CODE
+    from unicorn.x86_const import UC_X86_REG_AX
+
+    emitted = []
+    installed = [False]
+
+    def on_emit(uc, address, size, data):
+        emitted.append(uc.reg_read(UC_X86_REG_AX) & 0xFF)
+
+    inner = scripted_pump(["ATI2"], after=5_000_000, every=15_000_000)
+
+    def pump(machine):
+        if not installed[0] and machine.machine is not None:
+            # 0xacf8c is the routine that emits the result code in AL.
+            machine.machine.hook_add(UC_HOOK_CODE, on_emit,
+                                     begin=0xACF8C, end=0xACF8C)
+            installed[0] = True
+        inner(machine)
+
+    machine = IsdnMachine(NacImage.load(IMAGE), with_dsp=True, serial_pump=pump)
+    try:
+        machine.run(35_000_000)
+    finally:
+        machine.mailbox.close()
+    assert emitted == [3], f"result codes emitted were {emitted}"
 
 
 def test_the_firmwares_own_divisor_table_fits_the_two_recovered_clocks():
