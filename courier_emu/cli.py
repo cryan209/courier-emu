@@ -1083,13 +1083,13 @@ def main(argv: list[str] | None = None) -> int:
             counter_irq = None if args.tick_irq is None else {0: args.tick_irq}
             overlay = None
             if args.flash_overlay:
-                where, separator, source = args.flash_overlay.partition("=")
+                where, separator, overlay_path = args.flash_overlay.partition("=")
                 if not separator:
                     raise ValueError(
                         f"invalid flash overlay: {args.flash_overlay!r}, "
                         "expected ADDR=FILE"
                     )
-                overlay = (_number(where), Path(source).read_bytes())
+                overlay = (_number(where), Path(overlay_path).read_bytes())
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")
             transcript: list[tuple[int, str, str]] = []
