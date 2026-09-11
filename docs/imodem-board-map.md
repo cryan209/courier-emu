@@ -21,40 +21,29 @@ plus an **AT&T** part marked `T 7256 ML2` (date code `9613S`), and the line
 section: a Valor **ST15069** transformer module, a Takamisawa **RY5W-K**
 relay, a CP Clare **LH1502** solid-state relay and an **XCA111E** optocoupler.
 
-## The AT&T part: what can be said without its datasheet
+## The AT&T part is the NT, and the board is the integrated-NT variant
 
-Its function is not identified here, and guessing a part number's job into
-this file would be worse than leaving it open.  What the firmware does settle
-is that **the emulator does not need it**:
+The board this came from is the integrated-NT version, with an analogue jack
+alongside the ISDN one - which places the AT&T part.  It is the U transceiver:
+line jack and Valor transformer on one side, an S/T loop to the Am79C30A's LIU
+on the other, doing on the board what an external NT1 would do in a box.
 
-* It is not in I/O space.  The port census below covers every port a
-  40-million-instruction run touches; there is no window for it.
-* It is not in the two chip-select windows above 1 MiB either.  CS1 at
-  `100000` and CS3 at `104400`, both 16 KiB, are programmed at init and then
-  **never read or written** in a run - though that is weak evidence, since
-  this harness enters in real mode and could not reach them anyway.
-* The firmware has no vocabulary for a U interface.  `NT1`, `2B1Q`,
-  `U-Interface` and the like appear nowhere in its strings; the only loopback
-  text is the analogue and digital loopbacks every Courier has.  So the 386
-  does not drive it.
+That is consistent with everything the firmware does, and it is why it needs
+no model.  An integrated NT is autonomous by design: the 386 never configures
+it, which is why there is no window for it in I/O space, nothing in the CS1
+and CS3 windows above 1 MiB, and no `NT1`, `2B1Q` or `U-Interface` anywhere in
+the firmware's strings.  The only loopback text in the image is the analogue
+and digital loopbacks every Courier has.  As far as the emulator is concerned
+the S interface starts at the Am79C30A's LIU, and
+`courier_emu/am79c30.py` driving that LIU through its I.430 states is the
+whole of the line.
 
-Which leaves a part that is autonomous or slaved to another chip.  Three cases
-are distinguishable by what its pins go to, and one probe settles it:
-
-| if it connects to | then it is |
-|---|---|
-| the line jack and the Valor transformer on one side, the Am79C30A's LIU pins on the other | a U-to-S/T converter - an integrated NT1, which by design needs no host configuration, and would make this the US variant |
-| the DSC's **peripheral port** pins | an audio or codec part on the DSC's serial port - which would fit `PP_PPCR1` being enabled at init and `MCR1`-`MCR4` never routed |
-| the analogue line section and the relays | part of the telephone interface rather than the ISDN one |
-
-The second is the one the firmware faintly favours, for the reasons in the
-section above; none of it is established.
-
-The two flash parts are the important observation.  A board carrying an Intel
-and an AMD part at once explains the boot code's identify sequence far better
-than second-sourcing does: it tries Intel's `ff`/`90` first and falls back to
-AMD's `aa`/`55`/`90`, which is what you write when either vendor's part may
-answer at the window you are addressing.
+The analogue jack places the other unknown too.  A POTS jack needs an audio
+path between a B channel and a handset, which is exactly what the DSC's MAP
+and peripheral port are for - `PP_PPCR1` is enabled at init and `MCR1`-`MCR4`
+are left unrouted for want of a call - and the **Am7945** sitting off the bus
+next to the analogue line section is the natural occupant of that path.  Still
+an inference, but now a well-supported one.
 
 ## The Am79C30A is the part at 0300, and the Am7945 is not on the bus
 
@@ -94,21 +83,46 @@ the mask registers naming the don't-care bits:
 | CS0 | `0000` | `00000`-`1ffff` | 128 KiB |
 | CS5 | `0002` | `20000`-`3ffff` | 128 KiB |
 | CS4 | `0004` | `40000`-`7ffff` | 256 KiB |
-| UCS | - | `80000`-`fffff` | 512 KiB |
 | CS2 | `000c` | `c0000`-`fffff` | 256 KiB |
+| UCS | - | **not determined** | - |
 | CS1 | `0010` | `100000`+ | 16 KiB |
 | CS3 | `0010` | `104400`+ | 16 KiB |
 
 CS0 and CS5 are contiguous: **256 KiB of SRAM at `00000`-`3ffff`**, which is
 the pair of LGS parts and is exactly the `Ram 256k` that `ATI7` reports.
 
-Everything from `40000` to `fffff` is **768 KiB**, which is exactly the
-`Eprom 768k` `ATI7` reports - and it is not one part.  CS4 covers `40000`-
-`7ffff` on its own, and the flash the updater identifies is at `80000`:
-`34983` loads `es` with `8000` and probes there, with no bank loop and no
-parameter.  So the region this repository has been describing as "the updater,
-in RAM" at `40000`-`80000` is its own chip-select window, and the second flash
-part is the obvious occupant.
+**UCS is only half programmed.**  The firmware writes `UCSADL` and nothing
+else - `f432`, `f434` and `f436` are never written in a whole run - so the
+upper chip select keeps its reset window, and this file does not claim to know
+what that is.  Something decodes `80000`, because that is where the flash
+identify at `34983` probes (`es = 8000`, no bank loop, no parameter), but the
+extent of that window is not recovered.
+
+### 768 KiB mapped, 1 MiB fitted
+
+`40000`-`fffff` is **768 KiB**, and `ATI7` says `Eprom 768k`.  It is also
+exactly the span of the NAC payload, which loads at `40000` and runs to
+`f8000` - the whole flash image bar the top 32 KiB boot block.  Three numbers
+agreeing is worth something.
+
+But two 4 Mbit parts is **1 MiB of silicon**, and 768 KiB is not 1 MiB.  So at
+least 256 KiB of what is fitted is not mapped into the first megabyte, and the
+arithmetic does not close.  The reading that fits best is one part at
+`80000`-`fffff` and only half of the other at `40000`-`7ffff` through CS4 -
+but that is a reading, not a decode, and CS2's `c0000`-`fffff` overlapping
+whatever UCS covers means the windows are not a simple sum.
+
+One caution on using `ATI7` as corroboration: this repository has already
+caught `ATI7` reporting a firmware constant as though it were measured - its
+options list on the Quad
+([quad-settings-eeprom.md](quad-settings-eeprom.md)) was the firmware's own XOR
+constant surfacing as data, with nothing read from any part.  `Eprom 768k` may
+be a constant too, in which case it records what the design intends rather
+than what is fitted.
+
+What is certain either way: the region this repository has been describing as
+"the updater, in RAM" at `40000`-`80000` is its own chip-select window, and a
+flash part is the obvious occupant.
 
 That matters for [imodem-d-channel.md](imodem-d-channel.md)'s open question.
 The settings block at `2600:d476` is never filled in a run, and the harness
