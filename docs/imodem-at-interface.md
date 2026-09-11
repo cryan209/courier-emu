@@ -251,11 +251,68 @@ changes nothing. A sealed but all-zero configuration record laid over the
 config sector makes it worse - the modem emits nothing at all - so an empty
 record is not simply a missing field either.
 
-**Where it stops.** The modem is running the *call-termination* epilogue for
-every command, and answering with the "no disconnect recorded" code. Whether
-the fix is upstream (it should not reach that epilogue while idle) or in a
-state the harness has not brought up, is not settled. The next thread is
-`[d2c5]` bit 0, the single gate on the one site that sets `[e770]` bit 2.
+**The gate is `[d2c5]`, and it comes from a configuration record.**
+`[d2c5]` has exactly one computed write, at `0xa449b`, in a routine that
+unpacks a block of product-capability bytes:
+
+```
+a4451  mov [d2c5], 0
+a4456  mov [d2c4], 0
+a4460  and [e358], 33
+a4465  test [d2c6], 1 ; jne a4484     ; else walk a table at cs:04ac by [d2c7]
+a4484  test [d2c6], 2 ; jne a4491     ; else [d2c8] -> c8e4
+a4491  test [d2c6], 4 ; jne a449e     ; else [d2c9] -> d2c5
+a449e  test [d2c6], 8 ; jne a44ab     ; else [d2ca] -> d2c4
+```
+
+So `[d2c5]` is `[d2c9]`, unless `[d2c6]` bit 2 says the field is absent. And
+`[d2c6]` onwards is not computed at all - it is a **4 KiB configuration record
+copied out of flash**. The loader at `0xc532b` walks four 0x1000-byte pages
+from segment `f800`, validates each at `0xc53fd` with a CRC-16 seeded `0xffff`
+whose residue must be `0xf0b8`, keeps the highest version word at `0xffc`, and
+copies the winner verbatim to `2600:d2c6..e2c5`. When none validates,
+`0xc5312` fills that whole 4 KiB with `0xff` instead.
+
+That is what happens here. `[d2c6]` reads `0xff`, so bit 2 is set, so the copy
+is skipped, so `[d2c5]` stays `0`, so `0xc83d0` can never set `[e770]` bit 2,
+so every command routes to the disconnect epilogue and answers the
+"no disconnect recorded" code.
+
+**The chain, end to end:**
+
+```
+no capability record in flash
+  -> c5312 blanks 2600:d2c6..e2c5 to ff
+  -> [d2c6] bit 2 set, so [d2c9] is not copied
+  -> [d2c5] = 0
+  -> c83d0 gated off, so [e770] bit 2 is never set
+  -> adc63 falls to adc82, the call-termination epilogue
+  -> [d08b] = 0 (no disconnect recorded), so a8067 fails
+  -> result code 3, NO CARRIER, for every command
+```
+
+### The record format is recovered; its values are not
+
+`tools/imodem_capability_record.py` builds one, and **the firmware accepts it**
+- it validates, it wins on version, the blank path stops running, and its
+bytes arrive at `d2c6` with `[d2c9]` copied on to `[d2c5]`. That is what
+establishes the CRC transcription and the layout, and
+`tests/test_imodem_console.py` checks it against the firmware rather than
+against our arithmetic.
+
+What the fields should *hold* on a real unit is **not** recovered, and guessing
+makes things worse rather than better: a record setting `[d2c9]` bit 0 leaves
+the firmware masking IRQ3 and silent, and a record that is merely valid but
+all-zero silences it too, because those 4 KiB are real configuration and
+zeroing them is not a neutral choice. No page anywhere in this repository
+validates against the loader - the single hit in a compressed archive is a
+chance CRC collision, which one expects at roughly this rate over the data
+volume searched.
+
+So `NO CARRIER` is not a fault in the serial port, the line, or the result
+table. It is the absence of the product-capability record, and closing it
+needs that record's real contents - a dump from a unit, or the field meanings
+recovered one at a time from the sites that read them.
 
 `tests/test_imodem_console.py` pins the current behaviour, so that a fix shows
 up as a failing test rather than passing unnoticed.

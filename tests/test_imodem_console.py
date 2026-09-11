@@ -225,3 +225,55 @@ def test_ati7_names_the_product_type_bits_the_way_the_table_maps_them():
     assert PRODUCT_TYPE_MODES["internal"] == 0x08
     assert PRODUCT_TYPE_MODES["rackmount"] == 0x04
     assert PRODUCT_TYPE_MODES["undefined"] == 0x00
+
+
+def test_the_firmware_accepts_a_capability_record_this_repo_builds():
+    """The firmware's own loader is the check, not our CRC arithmetic.
+
+    A record built by tools/imodem_capability_record.py has to validate at
+    0xc53fd, be preferred at 0xc5387, keep the blank path at 0xc5312 from
+    running, and land its bytes at 2600:d2c6 -- where d2c9 is copied on to
+    d2c5. Without a record that whole 4 KiB reads 0xff and d2c5 stays 0, which
+    is the chain behind every command answering NO CARRIER.
+    """
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "imodem_capability_record",
+        Path(__file__).resolve().parent.parent / "tools"
+        / "imodem_capability_record.py",
+    )
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+
+    # d2c6 bit 2 clear is what lets d2c9 through; 0x5a is just a value no
+    # other path would leave lying there.
+    sector = builder.build({0x000: 0xFB, 0x003: 0x5A}, version=0x1234)
+
+    SEG = 0x2600 * 16
+    results = {}
+    for label, overlay in (("absent", None), ("present", (0xF8000, sector))):
+        machine = IsdnMachine(NacImage.load(IMAGE), with_dsp=True,
+                              flash_overlay=overlay)
+        try:
+            machine.run(20_000_000)
+            results[label] = (
+                machine.machine.mem_read(SEG + 0xD2C6, 1)[0],
+                machine.machine.mem_read(SEG + 0xD2C9, 1)[0],
+                machine.machine.mem_read(SEG + 0xD2C5, 1)[0],
+                machine.pc_counts.get(0xC5312, 0),   # the blank path
+            )
+        finally:
+            machine.mailbox.close()
+
+    d2c6, d2c9, d2c5, blanked = results["absent"]
+    assert (d2c6, d2c9, d2c5) == (0xFF, 0xFF, 0x00), "no record: the shadow is erased"
+    assert blanked > 0, "no record: the blank path runs"
+
+    d2c6, d2c9, d2c5, blanked = results["present"]
+    assert d2c6 == 0xFB, "the record's own bytes reached the shadow"
+    assert d2c9 == 0x5A
+    assert d2c5 == 0x5A, "d2c9 is copied on to d2c5 once bit 2 of d2c6 is clear"
+    assert blanked == 0, "a valid record means the blank path never runs"
