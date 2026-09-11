@@ -559,6 +559,16 @@ def build_parser() -> argparse.ArgumentParser:
              "and its output is printed as it arrives. Ctrl-] detaches",
     )
     isdn_run.add_argument(
+        "--local-echo",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="echo what you type in --terminal mode. The modem does not: its "
+             "only character echo is in the serial ISR and is gated on the "
+             "Internal enclosure bit, so an external unit never echoes, and "
+             "raw mode has already turned the terminal's own echo off. "
+             "--no-local-echo shows the literal stream instead",
+    )
+    isdn_run.add_argument(
         "--report",
         action="store_true",
         help="print the diagnostic JSON report after a terminal session",
@@ -1151,13 +1161,20 @@ def main(argv: list[str] | None = None) -> int:
                     transcript=transcript,
                 )
             elif args.terminal:
-                pump = interactive_pump(after=args.send_after)
+                pump = interactive_pump(
+                    after=args.send_after,
+                    local_echo=args.local_echo,
+                    ready_notice=sys.stderr,
+                )
             machine = IsdnMachine(
                 source, port_values=ports, counter_irq=counter_irq,
                 with_dsp=args.with_dsp, serial_pump=pump,
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
                 product_type=args.product_type,
+                # A terminal session wants responsiveness, not a profile --
+                # unless one was asked for, since hot_addresses comes from it.
+                profile=not args.terminal or args.report,
                 product_modem=args.product_modem,
                 line_activate=args.line_activate,
                 flash_overlay=overlay,

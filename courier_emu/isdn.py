@@ -278,6 +278,7 @@ class IsdnMachine:
         port_values: dict[int, int] | None = None,
         counter_irq: dict[int, int] | None = None,
         max_io_events: int = MAX_IO_EVENTS,
+        profile: bool = True,
         mailbox_service: bool = True,
         mailbox: ImodemMailbox | None = None,
         with_dsp: bool = False,
@@ -297,6 +298,11 @@ class IsdnMachine:
         self.port_values = dict(port_values or {})
         self.counter_irq = dict(DEFAULT_COUNTER_IRQ if counter_irq is None else counter_irq)
         self.max_io_events = max_io_events
+        # Counting every executed address costs about a third of the run: it
+        # is a dict update per instruction, inside a callback the emulator
+        # already crosses into Python for. Worth it for a probe, pure overhead
+        # for a terminal session that only wants the serial stream.
+        self.profile = profile
         self.mailbox_service = mailbox_service
         if with_dsp and mailbox is not None:
             raise ValueError('with_dsp and an explicit mailbox are mutually exclusive')
@@ -635,6 +641,8 @@ class IsdnMachine:
             uc.reg_write(UC_X86_REG_IP, offset)
             return True
 
+        profile = self.profile
+
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             self.instructions += 1
             if flash_dirty[0]:
@@ -659,7 +667,8 @@ class IsdnMachine:
                 if (idle_cause, idle_flags) != (cause, flags):
                     uc.mem_write(DISCONNECT_CAUSE_ADDRESS, bytes((idle_cause,)))
                     uc.mem_write(COMMAND_STATE_ADDRESS, bytes((idle_flags,)))
-            self.pc_counts[address] += 1
+            if profile:
+                self.pc_counts[address] += 1
             self.recent.append(address)
             if self.instructions < self._next_poll:
                 return

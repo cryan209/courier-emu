@@ -130,8 +130,19 @@ def interactive_pump(
     after: int = SERIAL_WARMUP_INSTRUCTIONS,
     input_stream: Any = None,
     output_stream: Any = None,
+    local_echo: bool = True,
+    ready_notice: Any = None,
 ) -> Callable[[Any], None]:
-    """Hand this terminal to SIO0 until Ctrl-] is typed.
+    """Hand this terminal to the command port until Ctrl-] is typed.
+
+    **Echo is local, and has to be.** The modem does not echo: the firmware's
+    only character echo is in the serial ISR at 0xb2ca0, gated on `[d2c3]`
+    bit 3, and that bit is *Internal* - the external unit never takes that
+    branch. Raw mode has already turned the terminal driver's own echo off, so
+    without this a person types completely blind, sees a reply appear only
+    when they press Return, and reasonably concludes the thing has buffered
+    their input and is replaying it. Set `local_echo=False` to see the literal
+    stream instead.
 
     Raw mode is the caller's business (`raw_terminal` below); this only moves
     bytes, so it works just as well against a pipe.  Input is left unread
@@ -142,6 +153,8 @@ def interactive_pump(
     """
     source = input_stream if input_stream is not None else sys.stdin
     sink = output_stream if output_stream is not None else sys.stdout
+    notice = ready_notice
+    announced = [False]
     detached = [False]
     clock_origin: list[tuple[int, float] | None] = [None]
     next_clock_sync = [after]
@@ -153,6 +166,13 @@ def interactive_pump(
             sink.flush()
         if detached[0] or machine.instructions < after:
             return
+        if notice is not None and not announced[0]:
+            # Anything typed before this point is discarded by the firmware,
+            # so say when it stops being discarded. Goes to stderr, because
+            # stdout is the serial stream.
+            announced[0] = True
+            notice.write("[command port ready]\n")
+            notice.flush()
         if clock_origin[0] is None:
             clock_origin[0] = (machine.instructions, time.monotonic())
         if machine.instructions >= next_clock_sync[0]:
@@ -181,6 +201,11 @@ def interactive_pump(
         if data:
             # A terminal sends CR for Return; the parser wants exactly that.
             data = data.replace(b"\n", b"\r")
+            if local_echo:
+                # Show it the way a terminal would: Return moves to column one
+                # and down a line.
+                sink.write(data.decode("ascii", "replace").replace("\r", "\r\n"))
+                sink.flush()
             machine.send_serial(_on_the_wire(data))
         if detached[0]:
             machine.stop("detached")

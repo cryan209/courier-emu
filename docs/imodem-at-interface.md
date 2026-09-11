@@ -639,3 +639,52 @@ not producing output. That is the open end.
    nobody is interrogating.
 
 Item 3 is therefore *not* a blocker for the AT interface. Items 1 and 2 are.
+
+
+## Using the terminal, and what it still gets wrong
+
+Four things a person hits with `--terminal`, and where each comes from.
+
+**It does not echo.** It does now, locally. The modem genuinely does not echo:
+the firmware's only character echo is the `out dx, al` at `0xb2ca0` in the
+serial ISR, gated on `[d2c3]` bit 3 - which is *Internal*. An external unit
+never takes that branch. Raw mode has already turned the terminal driver's own
+echo off, so before this a person typed completely blind. `--no-local-echo`
+shows the literal stream.
+
+**It looks like it buffers your commands and replays them on Return.** The
+receive path is correct - traced over a four-command session, the firmware
+consumes exactly the sixteen characters typed, in order, with nothing lost or
+repeated. What creates the impression is the two things above and below it:
+you cannot see what you type, and the answer arrives seconds later, so it
+lands next to whatever you typed since.
+
+**It is slow.** About **9x slower than the real board**: 2.26M instructions a
+second against the 20.16 MHz the firmware runs at. A command takes 4-9M
+instructions to answer, which is a fifth of a second of emulated time but
+three to five seconds of yours. The cost is the per-instruction Python
+callback the emulator makes for every instruction executed. Making the
+address profile opt-in (`profile=False`, which `--terminal` now selects unless
+`--report` asks for it) recovered about a fifth of it; the rest needs the
+instruction count to come from somewhere other than a per-instruction hook,
+which has not been attempted.
+
+Anything typed before the command task exists is discarded, so `--terminal`
+now prints `[command port ready]` on stderr - stdout is the serial stream -
+when it stops being discarded.
+
+**It answers `NO CARRIER` a lot.** Every bare `AT` does, and that is the
+keypress-abort chain described above, not a fault in the port.
+
+### Open: a response is sometimes re-sent
+
+Typing faster than the modem answers, a previous answer is emitted again
+alongside the new one - `ATI3` after `ATI0` produces `USR009F` a second time
+before its banner.
+
+This is **not** the UART model. Traced over a session that reproduces it, the
+firmware makes 143 THR writes, all from `0xa4f16`, and the host receives
+exactly 143 bytes: every byte written is delivered once, and the duplicate
+bytes are written twice by the firmware. Something in the firmware's output
+path re-sends when a command arrives while it is still transmitting. Not
+explained yet.
