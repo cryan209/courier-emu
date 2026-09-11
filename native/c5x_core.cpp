@@ -384,7 +384,7 @@ void C5xCore::set_v8_answering(bool enabled)
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::io_output(uint16_t port) const
 {
-    return m_rom_codec && port >= 0x5e && port <= 0x60
+    return (m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60
         ? m_mailbox_output[port - 0x5e] : m_io[port];
 }
 uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }

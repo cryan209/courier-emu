@@ -419,6 +419,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     isdn_run.add_argument("image")
     isdn_run.add_argument("--instructions", type=_number, default=20_000_000)
+    isdn_run.add_argument("--with-dsp", action="store_true",
+                          help="execute the downloaded DSP with the native C5x core")
     isdn_run.add_argument(
         "--entry",
         default=None,
@@ -1000,9 +1002,14 @@ def main(argv: list[str] | None = None) -> int:
                 }
             counter_irq = None if args.tick_irq is None else {0: args.tick_irq}
             machine = IsdnMachine(
-                source, port_values=ports, counter_irq=counter_irq, **entry
+                source, port_values=ports, counter_irq=counter_irq,
+                with_dsp=args.with_dsp, **entry
             )
-            _print_json(machine.run(args.instructions).to_dict())
+            try:
+                _print_json(machine.run(args.instructions).to_dict())
+            finally:
+                if args.with_dsp:
+                    machine.mailbox.close()
             return 0
         if args.command == "extract":
             try:

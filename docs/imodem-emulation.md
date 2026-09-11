@@ -1,5 +1,12 @@
 # Emulating the I-modem
 
+Current runtime transport: [mailbox service and acknowledgment](imodem-mailbox-service.md).
+IRQ13 now services the supervisor's command ring, eliminating its observed
+drain timeouts. `isdn-run --with-dsp` now executes the downloaded resident and
+overlays on the native C5x, with bidirectional mailbox acknowledgments. The
+default endpoint still captures commands for comparison. Historical
+startup interpretations below are superseded by the VRTX trace.
+
 Most of it already exists, and the DSP half is the same part.
 
 ## What runs today

@@ -10,6 +10,7 @@ from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
+from .imodem_mailbox import ImodemMailbox
 
 
 # The ISDN Courier's payload is an update image, not a whole flash part, so the
@@ -58,6 +59,12 @@ SYSTEM_CONTROL_PORT = 0xF092
 # ticks, which at the harness ratio is a few thousand instructions.
 TIMER_POLL_INSTRUCTIONS = 512
 
+# INT 2d -> 4030:0316 -> [2600:c893] is the mailbox service path.
+# This instruction cadence is a harness choice, not a recovered board clock.
+MAILBOX_SERVICE_INSTRUCTIONS = 2048
+# Scheduling ratio for the coupled harness; not a measured I-modem clock.
+DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
+
 # Which 8254 counter drives which IRQ line.
 #
 # Counter 0 to IRQ0 is the PC-AT wiring, but this firmware leaves IRQ0 masked,
@@ -97,6 +104,7 @@ class IsdnRunResult:
     pic: dict[str, Any] = field(default_factory=dict)
     dsc: dict[str, Any] = field(default_factory=dict)
     flash: dict[str, Any] = field(default_factory=dict)
+    mailbox: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -118,6 +126,9 @@ class IsdnMachine:
         port_values: dict[int, int] | None = None,
         counter_irq: dict[int, int] | None = None,
         max_io_events: int = MAX_IO_EVENTS,
+        mailbox_service: bool = True,
+        mailbox: ImodemMailbox | None = None,
+        with_dsp: bool = False,
     ) -> None:
         self.image = image
         self.entry_segment = entry_segment
@@ -126,6 +137,16 @@ class IsdnMachine:
         self.port_values = dict(port_values or {})
         self.counter_irq = dict(DEFAULT_COUNTER_IRQ if counter_irq is None else counter_irq)
         self.max_io_events = max_io_events
+        self.mailbox_service = mailbox_service
+        if with_dsp and mailbox is not None:
+            raise ValueError('with_dsp and an explicit mailbox are mutually exclusive')
+        if with_dsp:
+            from .imodem_dsp import ImodemDsp
+            mailbox = ImodemDsp()
+        self.with_dsp = with_dsp
+        self._dsp_instructions = 0
+        self.mailbox = mailbox if mailbox is not None else ImodemMailbox()
+        self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
 
         self.pit = ProgrammableIntervalTimer()
         self.pic = InterruptControllers()
@@ -162,6 +183,7 @@ class IsdnMachine:
         return None
 
     def read_port(self, port: int) -> int:
+        self._advance_dsp()
         self.io_counts[("in", port)] += 1
         if self.pit.handles(port):
             return self.pit.read(port, self.instructions)
@@ -169,17 +191,26 @@ class IsdnMachine:
             return self.pic.read(port)
         if self.dsc.handles(port):
             return self.dsc.read(port)
+        if self.with_dsp and port in (0x18, 0x1a, 0x1c, 0x1e, *self.mailbox.LANES):
+            return self.mailbox.read(port)
         if port == DSP_HANDSHAKE_PORT:
             return self.dsp_handshake
         if port == BOARD_STATUS_PORT:
             return self.board_status
+        if port in self.mailbox.PORTS:
+            return self.port_values.get(port, self.mailbox.read(port))
         base = self._uart_of(port)
         if base is not None and port - base == UART_LSR:
             return LSR_TX_READY
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:
+        self._advance_dsp()
         self.io_counts[("out", port)] += 1
+        if self.with_dsp and (port in (0x18, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
+            self.mailbox.write(port, value)
+            if port not in DOWNLOAD_PORTS:
+                return
         if self.pit.handles(port):
             self.pit.write(port, value, self.instructions)
             return
@@ -191,6 +222,9 @@ class IsdnMachine:
             return
         if port == DSP_HANDSHAKE_PORT:
             self.dsp_handshake = value & 0xFF
+            return
+        if port in self.mailbox.PORTS:
+            self.mailbox.write(port, value)
             return
         if port in DOWNLOAD_PORTS:
             if len(self.download) < MAX_SERIAL_BYTES:
@@ -204,8 +238,19 @@ class IsdnMachine:
 
     # -- timing ------------------------------------------------------------
 
+    def _advance_dsp(self) -> None:
+        if self.with_dsp:
+            elapsed = self.instructions - self._dsp_instructions
+            self._dsp_instructions = self.instructions
+            if elapsed:
+                self.mailbox.step(elapsed * DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION)
+
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
+        self._advance_dsp()
+        if self.mailbox_service and self.instructions >= self._next_mailbox_service:
+            self._next_mailbox_service = self.instructions + MAILBOX_SERVICE_INSTRUCTIONS
+            self.pic.raise_irq(13)
         for counter in self.pit.counters:
             irq = self.counter_irq.get(counter.index)
             wraps = counter.take_wraps(self.pit.ticks(self.instructions))
@@ -398,6 +443,8 @@ class IsdnMachine:
 
     def _result(self, status: str, registers: dict[str, int]) -> IsdnRunResult:
         known = set()
+        if self.with_dsp:
+            known.add(0x1a)
         for port in (BOARD_STATUS_PORT, SYSTEM_CONTROL_PORT):
             known.add(port)
         unmodelled = sorted(
@@ -410,6 +457,7 @@ class IsdnMachine:
                 and port not in DOWNLOAD_PORTS
                 and not self.dsc.handles(port)
                 and port != DSP_HANDSHAKE_PORT
+                and port not in self.mailbox.PORTS
                 and self._uart_of(port) is None
             }
         )
@@ -438,5 +486,6 @@ class IsdnMachine:
             pic=self.pic.status(),
             dsc=self.dsc.status(),
             flash=self.flash.status_report(),
+            mailbox=self.mailbox.status(),
             error=self.error,
         )
