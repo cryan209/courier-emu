@@ -18,8 +18,9 @@ from .xmp import XmpImage
 #
 # 4030:0000 is that initialiser. It clears 256 KiB of RAM a paragraph at a time,
 # relocates 0x41c0 bytes from physical 0x98d50 down to 0x0ce00, and far-jumps to
-# 7360:1ec0. That destination agrees with the NAC's own type 03 start segment
-# record, which names 0ce0:0000.
+# 7360:1ec0. The NAC type 03 record instead names 0ce0:0000, the data
+# relocation destination (its bytes begin with text), not a verified code
+# entry. See docs/imodem-payload-entry-points.md.
 ENTRY_SEGMENT = 0x4030
 ENTRY_OFFSET = 0x0000
 

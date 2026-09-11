@@ -1,0 +1,803 @@
+Image SHA256 58c750c84c890bcbc14ed00ee72146b9a561da9d25168de79fbccab7ae479ef5
+Selected verified code spans; branch targets outside spans require separate decoding.
+
+## task
+46dd:000a 55                       push bp
+46dd:000b 8bec                     mov bp, sp
+46dd:000d 83ec06                   sub sp, 6
+46dd:0010 56                       push si
+46dd:0011 57                       push di
+46dd:0012 9abe1f6073               lcall 0x7360, 0x1fbe
+46dd:0017 9a88036340               lcall 0x4063, 0x388
+46dd:001c 16                       push ss
+46dd:001d 8d46fa                   lea ax, [bp - 6]
+46dd:0020 50                       push ax
+46dd:0021 6a00                     push 0
+46dd:0023 6a00                     push 0
+46dd:0025 6a0a                     push 0xa
+46dd:0027 9aa5006340               lcall 0x4063, 0xa5
+46dd:002c 83c40a                   add sp, 0xa
+46dd:002f 8956fe                   mov word ptr [bp - 2], dx
+46dd:0032 8946fc                   mov word ptr [bp - 4], ax
+46dd:0035 9abe1f6073               lcall 0x7360, 0x1fbe
+46dd:003a 837efa00                 cmp word ptr [bp - 6], 0
+46dd:003e 7419                     je 0x59
+46dd:0040 ff76fa                   push word ptr [bp - 6]
+46dd:0043 685871                   push 0x7158
+46dd:0046 9a0a005f62               lcall 0x625f, 0xa
+46dd:004b 83c404                   add sp, 4
+46dd:004e 68b761                   push 0x61b7
+46dd:0051 9a13005f62               lcall 0x625f, 0x13
+46dd:0056 83c402                   add sp, 2
+46dd:0059 9a7c036340               lcall 0x4063, 0x37c
+46dd:005e 8b56fe                   mov dx, word ptr [bp - 2]
+46dd:0061 8b46fc                   mov ax, word ptr [bp - 4]
+46dd:0064 89168ea4                 mov word ptr [0xa48e], dx
+46dd:0068 a38ca4                   mov word ptr [0xa48c], ax
+46dd:006b c41e8ca4                 les bx, ptr [0xa48c]
+46dd:006f 268a4708                 mov al, byte ptr es:[bx + 8]
+46dd:0073 b400                     mov ah, 0
+46dd:0075 50                       push ax
+46dd:0076 9a09006175               lcall 0x7561, 9
+46dd:007b 83c402                   add sp, 2
+46dd:007e 687210                   push 0x1072
+46dd:0081 c45efc                   les bx, ptr [bp - 4]
+46dd:0084 26ff37                   push word ptr es:[bx]
+46dd:0087 9a11058e6e               lcall 0x6e8e, 0x511
+46dd:008c 83c404                   add sp, 4
+46dd:008f 0bc0                     or ax, ax
+46dd:0091 7d16                     jge 0xa9
+46dd:0093 685470                   push 0x7054
+46dd:0096 9a0a005f62               lcall 0x625f, 0xa
+46dd:009b 83c402                   add sp, 2
+46dd:009e 68e160                   push 0x60e1
+46dd:00a1 9a13005f62               lcall 0x625f, 0x13
+46dd:00a6 83c402                   add sp, 2
+46dd:00a9 803e5fa300               cmp byte ptr [0xa35f], 0
+46dd:00ae 7503                     jne 0xb3
+46dd:00b0 e964ff                   jmp 0x17
+46dd:00b3 c45efc                   les bx, ptr [bp - 4]
+46dd:00b6 26ff37                   push word ptr es:[bx]
+46dd:00b9 9a84005f62               lcall 0x625f, 0x84
+46dd:00be 83c402                   add sp, 2
+46dd:00c1 e953ff                   jmp 0x17
+46dd:00c4 5f                       pop di
+46dd:00c5 5e                       pop si
+46dd:00c6 c9                       leave 
+46dd:00c7 cb                       retf 
+
+## dispatcher
+7561:0009 55                       push bp
+7561:000a 8bec                     mov bp, sp
+7561:000c 83ec08                   sub sp, 8
+7561:000f 56                       push si
+7561:0010 57                       push di
+7561:0011 9abe1f6073               lcall 0x7360, 0x1fbe
+7561:0016 c41e8ca4                 les bx, ptr [0xa48c]
+7561:001a 268b5716                 mov dx, word ptr es:[bx + 0x16]
+7561:001e 268b4714                 mov ax, word ptr es:[bx + 0x14]
+7561:0022 8956fe                   mov word ptr [bp - 2], dx
+7561:0025 8946fc                   mov word ptr [bp - 4], ax
+7561:0028 8a4606                   mov al, byte ptr [bp + 6]
+7561:002b 98                       cwde 
+7561:002c 3d0300                   cmp ax, 3
+7561:002f 7503                     jne 0x34
+7561:0031 e9bb01                   jmp 0x1ef
+7561:0034 7f1a                     jg 0x50
+7561:0036 0bc0                     or ax, ax
+7561:0038 7503                     jne 0x3d
+7561:003a e97f00                   jmp 0xbc
+7561:003d 3d0100                   cmp ax, 1
+7561:0040 7503                     jne 0x45
+7561:0042 e9eb00                   jmp 0x130
+7561:0045 3d0200                   cmp ax, 2
+7561:0048 7503                     jne 0x4d
+7561:004a e91a01                   jmp 0x167
+7561:004d e9e101                   jmp 0x231
+7561:0050 3d0700                   cmp ax, 7
+7561:0053 7410                     je 0x65
+7561:0055 3d0a00                   cmp ax, 0xa
+7561:0058 7503                     jne 0x5d
+7561:005a e9b301                   jmp 0x210
+7561:005d 3d4000                   cmp ax, 0x40
+7561:0060 740b                     je 0x6d
+7561:0062 e9cc01                   jmp 0x231
+7561:0065 9abf146175               lcall 0x7561, 0x14bf
+7561:006a e9dd01                   jmp 0x24a
+7561:006d 9a2a3b6175               lcall 0x7561, 0x3b2a
+7561:0072 8946fa                   mov word ptr [bp - 6], ax
+7561:0075 3dffff                   cmp ax, 0xffff
+7561:0078 7503                     jne 0x7d
+7561:007a e9cd01                   jmp 0x24a
+7561:007d 817efa8000               cmp word ptr [bp - 6], 0x80
+7561:0082 7403                     je 0x87
+7561:0084 e9c301                   jmp 0x24a
+7561:0087 c6064ba601               mov byte ptr [0xa64b], 1
+7561:008c c60623a601               mov byte ptr [0xa623], 1
+7561:0091 33d2                     xor dx, dx
+7561:0093 8bda                     mov bx, dx
+7561:0095 8a874014                 mov al, byte ptr [bx + 0x1440]
+7561:0099 88878fa5                 mov byte ptr [bx - 0x5a71], al
+7561:009d 8a876014                 mov al, byte ptr [bx + 0x1460]
+7561:00a1 8887afa5                 mov byte ptr [bx - 0x5a51], al
+7561:00a5 8bda                     mov bx, dx
+7561:00a7 42                       inc dx
+7561:00a8 80bf6014ff               cmp byte ptr [bx + 0x1460], 0xff
+7561:00ad 75e4                     jne 0x93
+7561:00af c606d0a500               mov byte ptr [0xa5d0], 0
+7561:00b4 9a0a326175               lcall 0x7561, 0x320a
+7561:00b9 e98e01                   jmp 0x24a
+7561:00bc 1e                       push ds
+7561:00bd 68f714                   push 0x14f7
+7561:00c0 9ab2296175               lcall 0x7561, 0x29b2
+7561:00c5 83c404                   add sp, 4
+7561:00c8 9ab2066175               lcall 0x7561, 0x6b2
+7561:00cd 8bd0                     mov dx, ax
+7561:00cf 83fa02                   cmp dx, 2
+7561:00d2 7524                     jne 0xf8
+7561:00d4 c45efc                   les bx, ptr [bp - 4]
+7561:00d7 26807f0201               cmp byte ptr es:[bx + 2], 1
+7561:00dc 740e                     je 0xec
+7561:00de 26807f0309               cmp byte ptr es:[bx + 3], 9
+7561:00e3 7407                     je 0xec
+7561:00e5 26807f030b               cmp byte ptr es:[bx + 3], 0xb
+7561:00ea 750c                     jne 0xf8
+7561:00ec c746fa8000               mov word ptr [bp - 6], 0x80
+7561:00f1 c6068ea501               mov byte ptr [0xa58e], 1
+7561:00f6 eb0b                     jmp 0x103
+7561:00f8 c7068aa50000             mov word ptr [0xa58a], 0
+7561:00fe c746fa0100               mov word ptr [bp - 6], 1
+7561:0103 803e558e00               cmp byte ptr [0x8e55], 0
+7561:0108 751b                     jne 0x125
+7561:010a c45efc                   les bx, ptr [bp - 4]
+7561:010d 26807f0201               cmp byte ptr es:[bx + 2], 1
+7561:0112 750c                     jne 0x120
+7561:0114 c746fa8000               mov word ptr [bp - 6], 0x80
+7561:0119 c6068ea501               mov byte ptr [0xa58e], 1
+7561:011e eb05                     jmp 0x125
+7561:0120 c746fa0100               mov word ptr [bp - 6], 1
+7561:0125 ff76fa                   push word ptr [bp - 6]
+7561:0128 9ab70e6175               lcall 0x7561, 0xeb7
+7561:012d e91701                   jmp 0x247
+7561:0130 1e                       push ds
+7561:0131 680b15                   push 0x150b
+7561:0134 9ab2296175               lcall 0x7561, 0x29b2
+7561:0139 83c404                   add sp, 4
+7561:013c 9a2a3b6175               lcall 0x7561, 0x3b2a
+7561:0141 8946fa                   mov word ptr [bp - 6], ax
+7561:0144 3dffff                   cmp ax, 0xffff
+7561:0147 7503                     jne 0x14c
+7561:0149 e9fe00                   jmp 0x24a
+7561:014c ff76fa                   push word ptr [bp - 6]
+7561:014f 9afe1f6175               lcall 0x7561, 0x1ffe
+7561:0154 83c402                   add sp, 2
+7561:0157 6a01                     push 1
+7561:0159 ff76fa                   push word ptr [bp - 6]
+7561:015c 9aea2e6175               lcall 0x7561, 0x2eea
+7561:0161 83c404                   add sp, 4
+7561:0164 e9e300                   jmp 0x24a
+7561:0167 1e                       push ds
+7561:0168 681f15                   push 0x151f
+7561:016b 9ab2296175               lcall 0x7561, 0x29b2
+7561:0170 83c404                   add sp, 4
+7561:0173 c41e8ca4                 les bx, ptr [0xa48c]
+7561:0177 268a470b                 mov al, byte ptr es:[bx + 0xb]
+7561:017b 8846f9                   mov byte ptr [bp - 7], al
+7561:017e 3a0640a6                 cmp al, byte ptr [0xa640]
+7561:0182 7406                     je 0x18a
+7561:0184 3a0634a6                 cmp al, byte ptr [0xa634]
+7561:0188 7550                     jne 0x1da
+7561:018a b80026                   mov ax, 0x2600
+7561:018d 8ec0                     mov es, ax
+7561:018f 26803e8bd000             cmp byte ptr es:[0xd08b], 0
+7561:0195 740a                     je 0x1a1
+7561:0197 8ec0                     mov es, ax
+7561:0199 26803e8bd090             cmp byte ptr es:[0xd08b], 0x90
+7561:019f 721c                     jb 0x1bd
+7561:01a1 c41e8ca4                 les bx, ptr [0xa48c]
+7561:01a5 26f647107f               test byte ptr es:[bx + 0x10], 0x7f
+7561:01aa 7411                     je 0x1bd
+7561:01ac 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:01b0 247f                     and al, 0x7f
+7561:01b2 045a                     add al, 0x5a
+7561:01b4 ba0026                   mov dx, 0x2600
+7561:01b7 8ec2                     mov es, dx
+7561:01b9 26a28bd0                 mov byte ptr es:[0xd08b], al
+7561:01bd c41e8ca4                 les bx, ptr [0xa48c]
+7561:01c1 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:01c5 b400                     mov ah, 0
+7561:01c7 257f00                   and ax, 0x7f
+7561:01ca 3d1100                   cmp ax, 0x11
+7561:01cd 750b                     jne 0x1da
+7561:01cf b80026                   mov ax, 0x2600
+7561:01d2 8ec0                     mov es, ax
+7561:01d4 26800eeee402             or byte ptr es:[0xe4ee], 2
+7561:01da c41e8ca4                 les bx, ptr [0xa48c]
+7561:01de 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:01e2 50                       push ax
+7561:01e3 6a02                     push 2
+7561:01e5 9a603b6175               lcall 0x7561, 0x3b60
+7561:01ea 83c404                   add sp, 4
+7561:01ed eb5b                     jmp 0x24a
+7561:01ef 1e                       push ds
+7561:01f0 683315                   push 0x1533
+7561:01f3 9ab2296175               lcall 0x7561, 0x29b2
+7561:01f8 83c404                   add sp, 4
+7561:01fb c41e8ca4                 les bx, ptr [0xa48c]
+7561:01ff 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:0203 50                       push ax
+7561:0204 6a03                     push 3
+7561:0206 9a603b6175               lcall 0x7561, 0x3b60
+7561:020b 83c404                   add sp, 4
+7561:020e eb3a                     jmp 0x24a
+7561:0210 1e                       push ds
+7561:0211 684715                   push 0x1547
+7561:0214 9ab2296175               lcall 0x7561, 0x29b2
+7561:0219 83c404                   add sp, 4
+7561:021c c41e8ca4                 les bx, ptr [0xa48c]
+7561:0220 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:0224 50                       push ax
+7561:0225 6a0a                     push 0xa
+7561:0227 9a603b6175               lcall 0x7561, 0x3b60
+7561:022c 83c404                   add sp, 4
+7561:022f eb19                     jmp 0x24a
+7561:0231 1e                       push ds
+7561:0232 685a15                   push 0x155a
+7561:0235 9ab2296175               lcall 0x7561, 0x29b2
+7561:023a 83c404                   add sp, 4
+7561:023d 8a4606                   mov al, byte ptr [bp + 6]
+7561:0240 98                       cwde 
+7561:0241 50                       push ax
+7561:0242 9a952a6175               lcall 0x7561, 0x2a95
+7561:0247 83c402                   add sp, 2
+7561:024a c41e8ca4                 les bx, ptr [0xa48c]
+7561:024e 26837f0c00               cmp word ptr es:[bx + 0xc], 0
+7561:0253 7419                     je 0x26e
+7561:0255 684a10                   push 0x104a
+7561:0258 26ff770e                 push word ptr es:[bx + 0xe]
+7561:025c 9a11058e6e               lcall 0x6e8e, 0x511
+7561:0261 83c404                   add sp, 4
+7561:0264 c41e8ca4                 les bx, ptr [0xa48c]
+7561:0268 26c7470c0000             mov word ptr es:[bx + 0xc], 0
+7561:026e 5f                       pop di
+7561:026f 5e                       pop si
+7561:0270 c9                       leave 
+7561:0271 cb                       retf 
+
+## status dispatcher
+7561:14bf 55                       push bp
+7561:14c0 8bec                     mov bp, sp
+7561:14c2 83ec2a                   sub sp, 0x2a
+7561:14c5 56                       push si
+7561:14c6 57                       push di
+7561:14c7 c41e8ca4                 les bx, ptr [0xa48c]
+7561:14cb 268a4710                 mov al, byte ptr es:[bx + 0x10]
+7561:14cf b400                     mov ah, 0
+7561:14d1 3d0800                   cmp ax, 8
+7561:14d4 7503                     jne 0x14d9
+7561:14d6 e9fd07                   jmp 0x1cd6
+7561:14d9 7f11                     jg 0x14ec
+7561:14db 8bd8                     mov bx, ax
+7561:14dd 83fb07                   cmp bx, 7
+7561:14e0 7603                     jbe 0x14e5
+7561:14e2 e9b709                   jmp 0x1e9c
+7561:14e5 03db                     add bx, bx
+7561:14e7 2effa7bf1e               jmp word ptr cs:[bx + 0x1ebf]
+7561:14ec 3d1600                   cmp ax, 0x16
+7561:14ef 7503                     jne 0x14f4
+7561:14f1 e97d09                   jmp 0x1e71
+7561:14f4 7f1b                     jg 0x1511
+7561:14f6 3d0a00                   cmp ax, 0xa
+7561:14f9 7503                     jne 0x14fe
+7561:14fb e95a09                   jmp 0x1e58
+7561:14fe 3d0b00                   cmp ax, 0xb
+7561:1501 7503                     jne 0x1506
+7561:1503 e93909                   jmp 0x1e3f
+7561:1506 3d0f00                   cmp ax, 0xf
+7561:1509 7503                     jne 0x150e
+7561:150b e91e09                   jmp 0x1e2c
+7561:150e e98b09                   jmp 0x1e9c
+7561:1511 3d6000                   cmp ax, 0x60
+7561:1514 7503                     jne 0x1519
+7561:1516 e99502                   jmp 0x17ae
+7561:1519 3d6200                   cmp ax, 0x62
+7561:151c 7503                     jne 0x1521
+7561:151e e9ec03                   jmp 0x190d
+7561:1521 3d6500                   cmp ax, 0x65
+7561:1524 7503                     jne 0x1529
+7561:1526 e95c03                   jmp 0x1885
+7561:1529 e97009                   jmp 0x1e9c
+
+## BCH_ENABLED
+7561:17ae 1e                       push ds
+7561:17af 683f16                   push 0x163f
+7561:17b2 9ab2296175               lcall 0x7561, 0x29b2
+7561:17b7 83c404                   add sp, 4
+7561:17ba 9a2a3b6175               lcall 0x7561, 0x3b2a
+7561:17bf 8946f6                   mov word ptr [bp - 0xa], ax
+7561:17c2 3dffff                   cmp ax, 0xffff
+7561:17c5 7503                     jne 0x17ca
+7561:17c7 e9f106                   jmp 0x1ebb
+7561:17ca 817ef68000               cmp word ptr [bp - 0xa], 0x80
+7561:17cf 7507                     jne 0x17d8
+7561:17d1 c606d0a500               mov byte ptr [0xa5d0], 0
+7561:17d6 eb27                     jmp 0x17ff
+7561:17d8 837ef601                 cmp word ptr [bp - 0xa], 1
+7561:17dc 7521                     jne 0x17ff
+7561:17de 803e33a600               cmp byte ptr [0xa633], 0
+7561:17e3 751a                     jne 0x17ff
+7561:17e5 833e8aa501               cmp word ptr [0xa58a], 1
+7561:17ea 7513                     jne 0x17ff
+7561:17ec 803e27a601               cmp byte ptr [0xa627], 1
+7561:17f1 750c                     jne 0x17ff
+7561:17f3 6a00                     push 0
+7561:17f5 6a01                     push 1
+7561:17f7 9a1e436175               lcall 0x7561, 0x431e
+7561:17fc 83c404                   add sp, 4
+7561:17ff c41e8ca4                 les bx, ptr [0xa48c]
+7561:1803 268a470b                 mov al, byte ptr es:[bx + 0xb]
+7561:1807 50                       push ax
+7561:1808 ff76f6                   push word ptr [bp - 0xa]
+7561:180b 9a90426175               lcall 0x7561, 0x4290
+7561:1810 83c404                   add sp, 4
+7561:1813 ff76f6                   push word ptr [bp - 0xa]
+7561:1816 9acf1e6175               lcall 0x7561, 0x1ecf
+7561:181b 83c402                   add sp, 2
+7561:181e 8b5ef6                   mov bx, word ptr [bp - 0xa]
+7561:1821 6bdb0c                   imul bx, bx, 0xc
+7561:1824 80bf36a60b               cmp byte ptr [bx - 0x59ca], 0xb
+7561:1829 7403                     je 0x182e
+7561:182b e98d06                   jmp 0x1ebb
+7561:182e 817ef68000               cmp word ptr [bp - 0xa], 0x80
+7561:1833 7503                     jne 0x1838
+7561:1835 e98306                   jmp 0x1ebb
+7561:1838 b80026                   mov ax, 0x2600
+7561:183b 8ec0                     mov es, ax
+7561:183d 26a0bfd1                 mov al, byte ptr es:[0xd1bf]
+7561:1841 b400                     mov ah, 0
+7561:1843 a804                     test al, 4
+7561:1845 7403                     je 0x184a
+7561:1847 e97106                   jmp 0x1ebb
+7561:184a 833e8aa500               cmp word ptr [0xa58a], 0
+7561:184f 7403                     je 0x1854
+7561:1851 e96706                   jmp 0x1ebb
+7561:1854 6a02                     push 2
+7561:1856 ff76f6                   push word ptr [bp - 0xa]
+7561:1859 9a363f6175               lcall 0x7561, 0x3f36
+7561:185e 83c404                   add sp, 4
+7561:1861 6a02                     push 2
+7561:1863 8b5ef6                   mov bx, word ptr [bp - 0xa]
+7561:1866 6bdb0c                   imul bx, bx, 0xc
+7561:1869 895ef0                   mov word ptr [bp - 0x10], bx
+7561:186c 8a8738a6                 mov al, byte ptr [bx - 0x59c8]
+7561:1870 50                       push ax
+7561:1871 8a873aa6                 mov al, byte ptr [bx - 0x59c6]
+7561:1875 04fb                     add al, 0xfb
+7561:1877 50                       push ax
+7561:1878 6a00                     push 0
+7561:187a 9aaf086f8f               lcall 0x8f6f, 0x8af
+7561:187f 83c408                   add sp, 8
+7561:1882 e93606                   jmp 0x1ebb
+
+## bearer notification
+7561:1ecf 55                       push bp
+7561:1ed0 8bec                     mov bp, sp
+7561:1ed2 83ec02                   sub sp, 2
+7561:1ed5 56                       push si
+7561:1ed6 57                       push di
+7561:1ed7 817e068000               cmp word ptr [bp + 6], 0x80
+7561:1edc 741a                     je 0x1ef8
+7561:1ede 8b5e06                   mov bx, word ptr [bp + 6]
+7561:1ee1 6bdb0c                   imul bx, bx, 0xc
+7561:1ee4 8a8734a6                 mov al, byte ptr [bx - 0x59cc]
+7561:1ee8 3a06ea8e                 cmp al, byte ptr [0x8eea]
+7561:1eec 7505                     jne 0x1ef3
+7561:1eee a0e98e                   mov al, byte ptr [0x8ee9]
+7561:1ef1 eb29                     jmp 0x1f1c
+7561:1ef3 a0ed8e                   mov al, byte ptr [0x8eed]
+7561:1ef6 eb24                     jmp 0x1f1c
+7561:1ef8 803e3aa6ff               cmp byte ptr [0xa63a], 0xff
+7561:1efd 750e                     jne 0x1f0d
+7561:1eff 803e46a6ff               cmp byte ptr [0xa646], 0xff
+7561:1f04 7507                     jne 0x1f0d
+7561:1f06 c746fe0100               mov word ptr [bp - 2], 1
+7561:1f0b eb17                     jmp 0x1f24
+7561:1f0d 803e3aa6ff               cmp byte ptr [0xa63a], 0xff
+7561:1f12 7505                     jne 0x1f19
+7561:1f14 a046a6                   mov al, byte ptr [0xa646]
+7561:1f17 eb03                     jmp 0x1f1c
+7561:1f19 a03aa6                   mov al, byte ptr [0xa63a]
+7561:1f1c b400                     mov ah, 0
+7561:1f1e 05fbff                   add ax, 0xfffb
+7561:1f21 8946fe                   mov word ptr [bp - 2], ax
+7561:1f24 803e36a60b               cmp byte ptr [0xa636], 0xb
+7561:1f29 7507                     jne 0x1f32
+7561:1f2b 803e42a60b               cmp byte ptr [0xa642], 0xb
+7561:1f30 744d                     je 0x1f7f
+7561:1f32 ff76fe                   push word ptr [bp - 2]
+7561:1f35 6a5e                     push 0x5e
+7561:1f37 9a1e436175               lcall 0x7561, 0x431e
+7561:1f3c 83c404                   add sp, 4
+7561:1f3f 8a46fe                   mov al, byte ptr [bp - 2]
+7561:1f42 2402                     and al, 2
+7561:1f44 080692a4                 or byte ptr [0xa492], al
+7561:1f48 817e068000               cmp word ptr [bp + 6], 0x80
+7561:1f4d 7425                     je 0x1f74
+7561:1f4f 803e42a608               cmp byte ptr [0xa642], 8
+7561:1f54 750c                     jne 0x1f62
+7561:1f56 833e8aa500               cmp word ptr [0xa58a], 0
+7561:1f5b 7405                     je 0x1f62
+7561:1f5d 9a4aa500a4               lcall 0xa400, 0xa54a
+7561:1f62 8b5e06                   mov bx, word ptr [bp + 6]
+7561:1f65 6bdb0c                   imul bx, bx, 0xc
+7561:1f68 80bf36a60b               cmp byte ptr [bx - 0x59ca], 0xb
+7561:1f6d 7505                     jne 0x1f74
+7561:1f6f 800e92a401               or byte ptr [0xa492], 1
+7561:1f74 b80026                   mov ax, 0x2600
+7561:1f77 8ec0                     mov es, ax
+7561:1f79 26c60676d101             mov byte ptr es:[0xd176], 1
+7561:1f7f 5f                       pop di
+7561:1f80 5e                       pop si
+7561:1f81 c9                       leave 
+7561:1f82 cb                       retf 
+
+## connection confirm
+7561:1ffe 55                       push bp
+7561:1fff 8bec                     mov bp, sp
+7561:2001 83ec02                   sub sp, 2
+7561:2004 56                       push si
+7561:2005 57                       push di
+7561:2006 8b4606                   mov ax, word ptr [bp + 6]
+7561:2009 250100                   and ax, 1
+7561:200c 8946fe                   mov word ptr [bp - 2], ax
+7561:200f 8b5efe                   mov bx, word ptr [bp - 2]
+7561:2012 6bdb0c                   imul bx, bx, 0xc
+7561:2015 80bf33a601               cmp byte ptr [bx - 0x59cd], 1
+7561:201a 7536                     jne 0x2052
+7561:201c 817e068000               cmp word ptr [bp + 6], 0x80
+7561:2021 742f                     je 0x2052
+7561:2023 6a01                     push 1
+7561:2025 50                       push ax
+7561:2026 ff368ea4                 push word ptr [0xa48e]
+7561:202a ff368ca4                 push word ptr [0xa48c]
+7561:202e 9ae2206175               lcall 0x7561, 0x20e2
+7561:2033 83c408                   add sp, 8
+7561:2036 803e94a408               cmp byte ptr [0xa494], 8
+7561:203b 7415                     je 0x2052
+7561:203d 8b5efe                   mov bx, word ptr [bp - 2]
+7561:2040 83f301                   xor bx, 1
+7561:2043 6bdb0c                   imul bx, bx, 0xc
+7561:2046 80bf33a600               cmp byte ptr [bx - 0x59cd], 0
+7561:204b 7505                     jne 0x2052
+7561:204d 9a8706efc4               lcall 0xc4ef, 0x687
+7561:2052 817e068000               cmp word ptr [bp + 6], 0x80
+7561:2057 7512                     jne 0x206b
+7561:2059 c41e8ca4                 les bx, ptr [0xa48c]
+7561:205d 268b4712                 mov ax, word ptr es:[bx + 0x12]
+7561:2061 a348a6                   mov word ptr [0xa648], ax
+7561:2064 c6064ba604               mov byte ptr [0xa64b], 4
+7561:2069 eb73                     jmp 0x20de
+7561:206b c41e8ca4                 les bx, ptr [0xa48c]
+7561:206f 268b4712                 mov ax, word ptr es:[bx + 0x12]
+7561:2073 8b5efe                   mov bx, word ptr [bp - 2]
+7561:2076 6bdb0c                   imul bx, bx, 0xc
+7561:2079 8bcb                     mov cx, bx
+7561:207b 898730a6                 mov word ptr [bx - 0x59d0], ax
+7561:207f c68733a604               mov byte ptr [bx - 0x59cd], 4
+7561:2084 8a8730a6                 mov al, byte ptr [bx - 0x59d0]
+7561:2088 24ff                     and al, 0xff
+7561:208a ba0026                   mov dx, 0x2600
+7561:208d 8ec2                     mov es, dx
+7561:208f 26a2e9e4                 mov byte ptr es:[0xe4e9], al
+7561:2093 80bf36a60b               cmp byte ptr [bx - 0x59ca], 0xb
+7561:2098 7544                     jne 0x20de
+7561:209a b80026                   mov ax, 0x2600
+7561:209d 8ec0                     mov es, ax
+7561:209f 26a0bfd1                 mov al, byte ptr es:[0xd1bf]
+7561:20a3 b400                     mov ah, 0
+7561:20a5 a804                     test al, 4
+7561:20a7 7535                     jne 0x20de
+7561:20a9 6a01                     push 1
+7561:20ab 8a8738a6                 mov al, byte ptr [bx - 0x59c8]
+7561:20af 50                       push ax
+7561:20b0 8a873aa6                 mov al, byte ptr [bx - 0x59c6]
+7561:20b4 04fb                     add al, 0xfb
+7561:20b6 50                       push ax
+7561:20b7 6a00                     push 0
+7561:20b9 9aaf086f8f               lcall 0x8f6f, 0x8af
+7561:20be 83c408                   add sp, 8
+7561:20c1 8b5efe                   mov bx, word ptr [bp - 2]
+7561:20c4 83f301                   xor bx, 1
+7561:20c7 6bdb0c                   imul bx, bx, 0xc
+7561:20ca 80bf36a60b               cmp byte ptr [bx - 0x59ca], 0xb
+7561:20cf 750d                     jne 0x20de
+7561:20d1 6a01                     push 1
+7561:20d3 ff76fe                   push word ptr [bp - 2]
+7561:20d6 9a363f6175               lcall 0x7561, 0x3f36
+7561:20db 83c404                   add sp, 4
+7561:20de 5f                       pop di
+7561:20df 5e                       pop si
+7561:20e0 c9                       leave 
+7561:20e1 cb                       retf 
+
+## connection lookup
+7561:3b2a 55                       push bp
+7561:3b2b 8bec                     mov bp, sp
+7561:3b2d 56                       push si
+7561:3b2e 57                       push di
+7561:3b2f c41e8ca4                 les bx, ptr [0xa48c]
+7561:3b33 268a470b                 mov al, byte ptr es:[bx + 0xb]
+7561:3b37 8ad0                     mov dl, al
+7561:3b39 3a0634a6                 cmp al, byte ptr [0xa634]
+7561:3b3d 7504                     jne 0x3b43
+7561:3b3f 33c0                     xor ax, ax
+7561:3b41 eb19                     jmp 0x3b5c
+7561:3b43 3a164ca6                 cmp dl, byte ptr [0xa64c]
+7561:3b47 7505                     jne 0x3b4e
+7561:3b49 b88000                   mov ax, 0x80
+7561:3b4c eb0e                     jmp 0x3b5c
+7561:3b4e 3a1640a6                 cmp dl, byte ptr [0xa640]
+7561:3b52 7505                     jne 0x3b59
+7561:3b54 b80100                   mov ax, 1
+7561:3b57 eb03                     jmp 0x3b5c
+7561:3b59 b8ffff                   mov ax, 0xffff
+7561:3b5c 5f                       pop di
+7561:3b5d 5e                       pop si
+7561:3b5e 5d                       pop bp
+7561:3b5f cb                       retf 
+
+## mode command builder
+7561:3f36 55                       push bp
+7561:3f37 8bec                     mov bp, sp
+7561:3f39 83ec02                   sub sp, 2
+7561:3f3c 56                       push si
+7561:3f3d 57                       push di
+7561:3f3e 8b4e08                   mov cx, word ptr [bp + 8]
+7561:3f41 33d2                     xor dx, dx
+7561:3f43 8b5e06                   mov bx, word ptr [bp + 6]
+7561:3f46 6bdb0c                   imul bx, bx, 0xc
+7561:3f49 8a873aa6                 mov al, byte ptr [bx - 0x59c6]
+7561:3f4d b400                     mov ah, 0
+7561:3f4f 05faff                   add ax, 0xfffa
+7561:3f52 8946fe                   mov word ptr [bp - 2], ax
+7561:3f55 c1e007                   shl ax, 7
+7561:3f58 0bd0                     or dx, ax
+7561:3f5a 83ca40                   or dx, 0x40
+7561:3f5d b80026                   mov ax, 0x2600
+7561:3f60 8ec0                     mov es, ax
+7561:3f62 26f606bed102             test byte ptr es:[0xd1be], 2
+7561:3f68 7411                     je 0x3f7b
+7561:3f6a 8ec0                     mov es, ax
+7561:3f6c 26f606bed104             test byte ptr es:[0xd1be], 4
+7561:3f72 7402                     je 0x3f76
+7561:3f74 eb08                     jmp 0x3f7e
+7561:3f76 83ca01                   or dx, 1
+7561:3f79 eb03                     jmp 0x3f7e
+7561:3f7b 83ca04                   or dx, 4
+7561:3f7e b80026                   mov ax, 0x2600
+7561:3f81 8ec0                     mov es, ax
+7561:3f83 26f606c0d120             test byte ptr es:[0xd1c0], 0x20
+7561:3f89 740b                     je 0x3f96
+7561:3f8b 83f901                   cmp cx, 1
+7561:3f8e 7506                     jne 0x3f96
+7561:3f90 83e2fb                   and dx, 0xfffb
+7561:3f93 83ca01                   or dx, 1
+7561:3f96 83f901                   cmp cx, 1
+7561:3f99 7505                     jne 0x3fa0
+7561:3f9b 52                       push dx
+7561:3f9c 6a5c                     push 0x5c
+7561:3f9e eb13                     jmp 0x3fb3
+7561:3fa0 b80026                   mov ax, 0x2600
+7561:3fa3 8ec0                     mov es, ax
+7561:3fa5 26803eefe401             cmp byte ptr es:[0xe4ef], 1
+7561:3fab 7503                     jne 0x3fb0
+7561:3fad 83ca04                   or dx, 4
+7561:3fb0 52                       push dx
+7561:3fb1 6a5d                     push 0x5d
+7561:3fb3 9a1e436175               lcall 0x7561, 0x431e
+7561:3fb8 83c404                   add sp, 4
+7561:3fbb 8b46fe                   mov ax, word ptr [bp - 2]
+7561:3fbe c1e003                   shl ax, 3
+7561:3fc1 0d0300                   or ax, 3
+7561:3fc4 50                       push ax
+7561:3fc5 6a0a                     push 0xa
+7561:3fc7 9a1e436175               lcall 0x7561, 0x431e
+7561:3fcc 83c404                   add sp, 4
+7561:3fcf 8b46fe                   mov ax, word ptr [bp - 2]
+7561:3fd2 c1e003                   shl ax, 3
+7561:3fd5 0d0300                   or ax, 3
+7561:3fd8 ba0026                   mov dx, 0x2600
+7561:3fdb 8ec2                     mov es, dx
+7561:3fdd 26a386c9                 mov word ptr es:[0xc986], ax
+7561:3fe1 800e92a404               or byte ptr [0xa492], 4
+7561:3fe6 5f                       pop di
+7561:3fe7 5e                       pop si
+7561:3fe8 c9                       leave 
+7561:3fe9 cb                       retf 
+
+## bearer record update
+7561:4290 55                       push bp
+7561:4291 8bec                     mov bp, sp
+7561:4293 56                       push si
+7561:4294 57                       push di
+7561:4295 8b5606                   mov dx, word ptr [bp + 6]
+7561:4298 8a5e08                   mov bl, byte ptr [bp + 8]
+7561:429b 381eea8e                 cmp byte ptr [0x8eea], bl
+7561:429f 7528                     jne 0x42c9
+7561:42a1 803ee98e06               cmp byte ptr [0x8ee9], 6
+7561:42a6 750e                     jne 0x42b6
+7561:42a8 8bda                     mov bx, dx
+7561:42aa 6bdb0c                   imul bx, bx, 0xc
+7561:42ad 8bc3                     mov ax, bx
+7561:42af c68739a600               mov byte ptr [bx - 0x59c7], 0
+7561:42b4 eb3f                     jmp 0x42f5
+7561:42b6 8bda                     mov bx, dx
+7561:42b8 6bdb0c                   imul bx, bx, 0xc
+7561:42bb 8bc3                     mov ax, bx
+7561:42bd c68739a601               mov byte ptr [bx - 0x59c7], 1
+7561:42c2 c6873aa607               mov byte ptr [bx - 0x59c6], 7
+7561:42c7 eb33                     jmp 0x42fc
+7561:42c9 381eee8e                 cmp byte ptr [0x8eee], bl
+7561:42cd 752d                     jne 0x42fc
+7561:42cf 803eed8e07               cmp byte ptr [0x8eed], 7
+7561:42d4 7513                     jne 0x42e9
+7561:42d6 8bda                     mov bx, dx
+7561:42d8 6bdb0c                   imul bx, bx, 0xc
+7561:42db 8bc3                     mov ax, bx
+7561:42dd c68739a600               mov byte ptr [bx - 0x59c7], 0
+7561:42e2 c6873aa607               mov byte ptr [bx - 0x59c6], 7
+7561:42e7 eb13                     jmp 0x42fc
+7561:42e9 8bda                     mov bx, dx
+7561:42eb 6bdb0c                   imul bx, bx, 0xc
+7561:42ee 8bc3                     mov ax, bx
+7561:42f0 c68739a601               mov byte ptr [bx - 0x59c7], 1
+7561:42f5 8bd8                     mov bx, ax
+7561:42f7 c6873aa606               mov byte ptr [bx - 0x59c6], 6
+7561:42fc 5f                       pop di
+7561:42fd 5e                       pop si
+7561:42fe 5d                       pop bp
+7561:42ff cb                       retf 
+
+## mailbox adapter
+7561:431e 55                       push bp
+7561:431f 8bec                     mov bp, sp
+7561:4321 56                       push si
+7561:4322 57                       push di
+7561:4323 b80026                   mov ax, 0x2600
+7561:4326 8b5606                   mov dx, word ptr [bp + 6]
+7561:4329 8ec0                     mov es, ax
+7561:432b 26891682c9               mov word ptr es:[0xc982], dx
+7561:4330 b80026                   mov ax, 0x2600
+7561:4333 8b5608                   mov dx, word ptr [bp + 8]
+7561:4336 8ec0                     mov es, ax
+7561:4338 26891684c9               mov word ptr es:[0xc984], dx
+7561:433d 9a091700a4               lcall 0xa400, 0x1709
+7561:4342 5f                       pop di
+7561:4343 5e                       pop si
+7561:4344 5d                       pop bp
+7561:4345 cb                       retf 
+
+## modem adapter
+a400:1709 60                       pushaw 
+a400:170a 06                       push es
+a400:170b 1e                       push ds
+a400:170c 680026                   push 0x2600
+a400:170f 1f                       pop ds
+a400:1710 a182c9                   mov ax, word ptr [0xc982]
+a400:1713 8b1e84c9                 mov bx, word ptr [0xc984]
+a400:1717 9a9a04d9b3               lcall 0xb3d9, 0x49a
+a400:171c 1f                       pop ds
+a400:171d 07                       pop es
+a400:171e 61                       popaw 
+a400:171f cb                       retf 
+
+## ring producer
+b3d9:049a e83b00                   call 0x4d8
+b3d9:049d cb                       retf 
+b3d9:049e e80100                   call 0x4a2
+b3d9:04a1 cb                       retf 
+b3d9:04a2 9c                       pushf 
+b3d9:04a3 fa                       cli 
+b3d9:04a4 53                       push bx
+b3d9:04a5 51                       push cx
+b3d9:04a6 b90200                   mov cx, 2
+b3d9:04a9 8b1eb0c9                 mov bx, word ptr [0xc9b0]
+b3d9:04ad 03cb                     add cx, bx
+b3d9:04af 81f9f2c9                 cmp cx, 0xc9f2
+b3d9:04b3 7203                     jb 0x4b8
+b3d9:04b5 b9b2c9                   mov cx, 0xc9b2
+b3d9:04b8 3b0eaec9                 cmp cx, word ptr [0xc9ae]
+b3d9:04bc 7415                     je 0x4d3
+b3d9:04be 8907                     mov word ptr [bx], ax
+b3d9:04c0 890eb0c9                 mov word ptr [0xc9b0], cx
+b3d9:04c4 80fc01                   cmp ah, 1
+b3d9:04c7 7505                     jne 0x4ce
+b3d9:04c9 9a8f1700a4               lcall 0xa400, 0x178f
+b3d9:04ce 59                       pop cx
+b3d9:04cf 5b                       pop bx
+b3d9:04d0 9d                       popf 
+b3d9:04d1 f8                       clc 
+b3d9:04d2 c3                       ret 
+b3d9:04d3 59                       pop cx
+b3d9:04d4 5b                       pop bx
+b3d9:04d5 9d                       popf 
+b3d9:04d6 f9                       stc 
+b3d9:04d7 c3                       ret 
+b3d9:04d8 9c                       pushf 
+b3d9:04d9 fa                       cli 
+b3d9:04da 50                       push ax
+b3d9:04db b800ff                   mov ax, 0xff00
+b3d9:04de e8c1ff                   call 0x4a2
+b3d9:04e1 58                       pop ax
+b3d9:04e2 50                       push ax
+b3d9:04e3 e8bcff                   call 0x4a2
+b3d9:04e6 8bc3                     mov ax, bx
+b3d9:04e8 800e41ca80               or byte ptr [0xca41], 0x80
+b3d9:04ed e8b2ff                   call 0x4a2
+b3d9:04f0 802641ca7f               and byte ptr [0xca41], 0x7f
+b3d9:04f5 58                       pop ax
+b3d9:04f6 3d0100                   cmp ax, 1
+b3d9:04f9 7505                     jne 0x500
+b3d9:04fb 9a8f1700a4               lcall 0xa400, 0x178f
+b3d9:0500 9d                       popf 
+b3d9:0501 c3                       ret 
+
+## mailbox pair consumer
+b3d9:3efb c7069dc93f7f             mov word ptr [0xc99d], 0x7f3f
+b3d9:3f01 8b36aec9                 mov si, word ptr [0xc9ae]
+b3d9:3f05 ad                       lodsw ax, word ptr [si]
+b3d9:3f06 e658                     out 0x58, al
+b3d9:3f08 86c4                     xchg ah, al
+b3d9:3f0a e65a                     out 0x5a, al
+b3d9:3f0c 86c4                     xchg ah, al
+b3d9:3f0e 81fef2c9                 cmp si, 0xc9f2
+b3d9:3f12 7316                     jae 0x3f2a
+b3d9:3f14 ad                       lodsw ax, word ptr [si]
+b3d9:3f15 e65c                     out 0x5c, al
+b3d9:3f17 86c4                     xchg ah, al
+b3d9:3f19 e65e                     out 0x5e, al
+b3d9:3f1b 86c4                     xchg ah, al
+b3d9:3f1d 81fef2c9                 cmp si, 0xc9f2
+b3d9:3f21 7320                     jae 0x3f43
+b3d9:3f23 8936aec9                 mov word ptr [0xc9ae], si
+b3d9:3f27 e99d00                   jmp 0x3fc7
+b3d9:3f2a beb2c9                   mov si, 0xc9b2
+b3d9:3f2d ad                       lodsw ax, word ptr [si]
+b3d9:3f2e e65c                     out 0x5c, al
+b3d9:3f30 86c4                     xchg ah, al
+b3d9:3f32 e65e                     out 0x5e, al
+b3d9:3f34 86c4                     xchg ah, al
+b3d9:3f36 81fef2c9                 cmp si, 0xc9f2
+b3d9:3f3a 7307                     jae 0x3f43
+b3d9:3f3c 8936aec9                 mov word ptr [0xc9ae], si
+b3d9:3f40 e98400                   jmp 0x3fc7
+b3d9:3f43 c706aec9b2c9             mov word ptr [0xc9ae], 0xc9b2
+b3d9:3f49 eb7c                     jmp 0x3fc7
+
+## mailbox marker staging
+b3d9:4014 ad                       lodsw ax, word ptr [si]
+b3d9:4015 81fef2c9                 cmp si, 0xc9f2
+b3d9:4019 7321                     jae 0x403c
+b3d9:401b 8936aec9                 mov word ptr [0xc9ae], si
+b3d9:401f a39dc9                   mov word ptr [0xc99d], ax
+b3d9:4022 baa0f0                   mov dx, 0xf0a0
+b3d9:4025 b020                     mov al, 0x20
+b3d9:4027 9c                       pushf 
+b3d9:4028 fa                       cli 
+b3d9:4029 ee                       out dx, al
+b3d9:402a ec                       in al, dx
+b3d9:402b b00b                     mov al, 0xb
+b3d9:402d ee                       out dx, al
+b3d9:402e ec                       in al, dx
+b3d9:402f 0ac0                     or al, al
+b3d9:4031 7507                     jne 0x403a
+b3d9:4033 ba20f0                   mov dx, 0xf020
+b3d9:4036 b020                     mov al, 0x20
+b3d9:4038 ee                       out dx, al
+b3d9:4039 ec                       in al, dx
+b3d9:403a 9d                       popf 
+b3d9:403b cf                       iret 
+b3d9:403c c706aec9b2c9             mov word ptr [0xc9ae], 0xc9b2
+b3d9:4042 a39dc9                   mov word ptr [0xc99d], ax
+
+Status jump table at 7561:1ebf for codes 0..7: ['0x170b', '0x152c', '0x1e9c', '0x18ef', '0x18fe', '0x1b47', '0x1c4f', '0x1ba5']

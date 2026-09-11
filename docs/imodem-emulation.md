@@ -112,6 +112,14 @@ advances.  Interrupts from the SIOs are the next piece.
 
 ## The application's entry point is not in the payload
 
+**Superseded interpretation:** the later
+[VRTX startup trace](imodem-vrtx-startup.md) demonstrates kernel initialization,
+successful creation of nine named firmware tasks, and execution of all nine.
+`a400:0008` is explicitly registered as `TID_MODEM`. The historical reasoning
+below does not establish that application startup is absent, or that the
+entire lower payload is only updater code. The real reset handoff is still
+unconfirmed.
+
 Looked for, not found, and there is a structural reason rather than a search
 failure.
 

@@ -1,5 +1,11 @@
 """Assembling a whole I-modem flash out of the update payload.
 
+Historical layout hypothesis below: the VRTX trace now proves that the lower
+payload contains the kernel and eight task entries needed by the demonstrated
+startup path, and a400:0008 is the TID_MODEM task entry. Do not interpret the
+updater/runtime split here as an established hardware boot mapping. See
+docs/imodem-vrtx-startup.md. The synthetic image builder remains experimental.
+
 The payload is `0xb8000` bytes based at `0x40000`, and it splits at `0x80000`,
 the flash window's base:
 
@@ -46,15 +52,15 @@ ERASED = 0xFF
 # loads the DSP: `cld ; mov ax,2600 ; mov ds,ax ; mov es,ax ; … ; mov cx,247c ;
 # call <download>`, 0x247c being the resident DSP image's length to the byte.
 #
-# It is **not** the application's cold start, though this file once said so.  A
-# normal update run executes it exactly once - the updater calls it - and it
-# returns through `call far 7561:443e`, into the update program itself.  The
-# analog Courier shows what a real entry looks like instead: its boot block
-# copies a low-RAM image into 0000:0 and dispatches with `int 13`, so the entry
-# is a *vector*, not an address, which is why nothing in this payload names one.
+# This is the TID_MODEM task entry: 4607:042b creates it through VRTX service
+# 00, and the scheduler executes it. Its call to 7561:443e is a callback, not
+# evidence that this is merely an updater helper. It still requires prior
+# kernel/subsystem initialization, so it is not a standalone cold-start entry.
+# Keep the existing constant name for callers; see docs/imodem-vrtx-startup.md.
 DSP_LOAD_ENTRY = (0xA400, 0x0008)
 
-# The update program's initialiser: the one entry this image really has.
+# Historical name for the initializer that reaches VRTX and nine firmware
+# tasks. Its relationship to the real boot-block handoff remains unverified.
 UPDATER_ENTRY = (0x4030, 0x0000)
 DEFAULT_ENTRY = UPDATER_ENTRY
 

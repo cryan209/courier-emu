@@ -1,0 +1,72 @@
+{
+  "image_sha256": "58c750c84c890bcbc14ed00ee72146b9a561da9d25168de79fbccab7ae479ef5",
+  "scope": "Isolated Ie030002 CEML4 bearer-selection probe using original guest code.\n\nCalls the two BCH_ENABLED helpers with synthetic call/channel state; records\nqueued command words and replays their mailbox transmit code. This is not a\ncomplete ISDN call, DSP execution, or proof of PCM sample flow.\n",
+  "cases": [
+    {
+      "bearer_selector": 6,
+      "slot": 0,
+      "connection_id": 17,
+      "record_selector": 6,
+      "queued_words": [
+        65280,
+        94,
+        1
+      ],
+      "mailbox_writes": [
+        [
+          88,
+          1,
+          94
+        ],
+        [
+          90,
+          1,
+          0
+        ],
+        [
+          92,
+          1,
+          1
+        ],
+        [
+          94,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "bearer_selector": 7,
+      "slot": 0,
+      "connection_id": 17,
+      "record_selector": 7,
+      "queued_words": [
+        65280,
+        94,
+        2
+      ],
+      "mailbox_writes": [
+        [
+          88,
+          1,
+          94
+        ],
+        [
+          90,
+          1,
+          0
+        ],
+        [
+          92,
+          1,
+          2
+        ],
+        [
+          94,
+          1,
+          0
+        ]
+      ]
+    }
+  ]
+}
