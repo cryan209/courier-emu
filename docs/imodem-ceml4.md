@@ -114,5 +114,5 @@ instruction spans are in `artifacts/imodem-ceml4/disassembly.txt`.
 CEML4 clearly connects call/bearer events to modem/DSP control commands. The
 evidence does not yet establish the DSP implementation of 5ch/5dh/5eh, the
 Am79C30 multiplexer connection selected for a modem call, or the physical
-path that transfers B-channel PCM. No AT-to-OK exchange or end-to-end modem
+path that transfers B-channel PCM. No end-to-end modem
 call has been demonstrated by this probe.

@@ -73,7 +73,9 @@ The enabled run emits four runtime pairs: `0002:d100`, `0002:9260`,
 `0001:003f`, `005b:0000`. Five earlier commits belong to startup/reset
 traffic. There are no injected DSP replies. These results establish that
 MODEM gets past the blocked send queue; they do not establish DSP command
-completion, an AT-to-OK exchange, or a working modem call.
+completion or a working modem call. An AT-to-OK exchange is no longer
+outstanding - see [the AT interface](imodem-at-interface.md) - but it runs
+over SIO0 and says nothing about this path.
 
 The next DSP integration must consume these committed pairs, drive
 transmit-ready from actual endpoint availability, publish DSP-produced
