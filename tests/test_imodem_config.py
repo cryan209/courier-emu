@@ -111,7 +111,8 @@ def test_the_identity_fields_sit_where_the_firmware_reads_them():
     sealed = set_record_bytes(sealed, MAC_ADDRESS,
                               bytes.fromhex("00c04901ab74") + b"\x00\x00")
     for page in range(2):
-        assert read_serial_number(sealed, page).split(b"\x00")[0] == b"IMD0123456789"
+        # Twelve characters, which is what ATI7 printed for this same record.
+        assert read_serial_number(sealed, page) == b"IMD012345678"
         assert read_mac_address(sealed, page)[:3] == bytes.fromhex("00c049")
         assert page_is_sealed(sealed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE])
 
