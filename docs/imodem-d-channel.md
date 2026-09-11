@@ -114,17 +114,59 @@ value`, both SPIDs and both directory numbers are empty, and both TEIs are
 `Invalid fixed TEI`.  Nothing is configured, so there is nothing for Q.921 to
 start.
 
-`AT*W=4a` - ETSI NET3, A-law, from the firmware's own help page at `bf9f0` -
-does reach the parser: a memory diff across two runs shows `26000:d476` going
-from `ff` to `34`, the ASCII `4`.  `ATI12` still reports the switch type
-invalid afterwards, so the displayed setting is read from somewhere the
-parser's scratch has not reached.
+### The settings block, and that nothing fills it
 
-The likely place is the settings store, and this harness does not have one.
-`Ie030002.nac` is an update payload, not a flash dump, so every address past
-the end of the payload reads as erased - `ff` - which is exactly the value the
-invalid switch type, the invalid TEIs and the empty SPIDs all decode from.
-Establishing where the I-modem keeps its ISDN settings, and giving the harness
-a part that answers there, is the next piece of work, and it is what stands
-between this and Q.921.  Note that `courier_emu/parameters.py` is not it: that
-store is the 211's, and does not exist on this board.
+The ISDN settings are a **91-byte block at `2600:d476`**, and the firmware
+checksums it at `c4ecb`:
+
+```
+c4ecf  mov word ptr [cf30], 0
+c4ed5  mov si, d476
+c4ed8  mov cx, 5b               ; 91 bytes
+c4edb  lodsb ; lcall b3d9:6aa9  ; accumulate into [cf30]
+c4ee1  loop c4edb
+```
+
+Its accessors are the routines around `c3111`-`c357d`, in the same region as
+the switch-type name table at `c339f` (`AT&T 5ESS`, `Northern Telecom
+DMS-100`, ... `Invalid Switch Type`), which is what `ATI12` indexes.
+
+In a run the block is cleared by the general RAM wipe at `a4051` and then
+**never written again**.  A memory watch over it across a session that sends
+`AT*W=4A` records the boot-time zeroing, the boot-time checksum read, and
+nothing else for the remaining 97 million instructions.  So the block is not
+loaded from anywhere, and every field decodes from zero as invalid - which is
+the whole of `ATI12`'s complaint.
+
+### It is not the 93C66 the other Couriers carry
+
+Worth ruling out explicitly, because the board furniture does look familiar.
+The I-modem has the same board-latch signal abstraction as the 302, 403 and
+Quad - a signal id of `mask << 8 | flags | index`, a read helper at `a5e0e`
+and set/clear helpers at `a5f2b`/`a5ebf` - and **index 0 of its input port
+table at `a5f97` is port `0x10`**, the very latch those boards bit-bang their
+Microwire EEPROM on ([quad-settings-eeprom.md](quad-settings-eeprom.md)).
+
+The transport is not there, though:
+
+* A run does look like it clocks a serial part - one signal toggled 941
+  times, another 941, a third 94 - but that is the **front-panel lamps**.  The
+  routine at `abf4b` drives two indicators with modes 0 off, 7 on, 8 slow and
+  anything else fast, dividing a tick by `0x14` or `3`.  A board-revision flag
+  at `[c8f1]` bit 2 switches both lamps between port `0x100` and the older
+  latches, which is why they land on plausible-looking pins.
+* Statically, all ~100 near callers of the three signal helpers are in the
+  `a400` segment and none of them is a shift loop.  There is no 12-bit command
+  frame, no 16-bit read-back.
+* The Courier settings-record obfuscation - `ror(b,2)+5`, `rol(b,1)-0x0f`,
+  `b xor 0x1d` - does not appear either: `xor al,1d` occurs once in the whole
+  image, with no `sub al,0f` anywhere near it.
+
+So whatever fills `2600:d476` is not the 93C66 store this repository already
+models, and pointing `courier_emu/nvram.py` at the I-modem would not be
+modelling its hardware.  Where the block does come from is not established.
+The two candidates left are the flash - `Ie030002.nac` is an update payload,
+so everything past its end reads erased - and the missing 32 KiB boot block,
+which is where a loader that runs before anything else would sit.  Finding it
+is what stands between this and Q.921.  Note that `courier_emu/parameters.py`
+is not it: that store is the 211's, and does not exist on this board.
