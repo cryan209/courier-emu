@@ -165,6 +165,7 @@ class IsdnMachine:
         serial_irq: int | None = UART_A_IRQ,
         serial_pump: "Callable[[IsdnMachine], None] | None" = None,
         line_activate: int | None = None,
+        flash_overlay: tuple[int, bytes] | None = None,
     ) -> None:
         self.image = image
         self.entry_segment = entry_segment
@@ -184,6 +185,11 @@ class IsdnMachine:
         self.mailbox = mailbox if mailbox is not None else ImodemMailbox()
         self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
 
+        # Content to lay over the flash window before the firmware runs, as
+        # (physical address, bytes). The payload is an update image and stops
+        # at 0xf8000, so the part's top sectors read erased - and one of them
+        # is the configuration store. See docs/imodem-config-sector.md.
+        self.flash_overlay = flash_overlay
         self.line_activate = line_activate
         self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
@@ -400,6 +406,13 @@ class IsdnMachine:
             if base <= FLASH_BASE
             else b""
         )
+        if self.flash_overlay is not None:
+            where, data = self.flash_overlay
+            uc.mem_write(where, data)
+            offset = where - FLASH_BASE
+            if 0 <= offset < FLASH_SIZE:
+                self.flash.contents[offset:offset + len(data)] = data
+
         flash_dirty = [False]
 
         def on_flash_write(_uc: Any, _access: int, address: int, size: int,

@@ -500,6 +500,20 @@ def build_parser() -> argparse.ArgumentParser:
              "Inactive, which is what ATI12 says today",
     )
     isdn_run.add_argument(
+        "--flash-overlay",
+        metavar="ADDR=FILE",
+        help="lay a file over the flash window before the run, e.g. "
+             "0xf8000=config.bin. The update payload stops at 0xf8000, so "
+             "the part's top sectors read erased without this - and one of "
+             "them is where the modem keeps its configuration",
+    )
+    isdn_run.add_argument(
+        "--flash-save",
+        metavar="FILE",
+        help="write the flash window out after the run, so a session that "
+             "changes settings can be booted again with them in place",
+    )
+    isdn_run.add_argument(
         "--terminal",
         action="store_true",
         help="attach this terminal to SIO0: keystrokes go to the firmware "
@@ -1067,6 +1081,15 @@ def main(argv: list[str] | None = None) -> int:
                     "entry_offset": int(offset, 16),
                 }
             counter_irq = None if args.tick_irq is None else {0: args.tick_irq}
+            overlay = None
+            if args.flash_overlay:
+                where, separator, source = args.flash_overlay.partition("=")
+                if not separator:
+                    raise ValueError(
+                        f"invalid flash overlay: {args.flash_overlay!r}, "
+                        "expected ADDR=FILE"
+                    )
+                overlay = (_number(where), Path(source).read_bytes())
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")
             transcript: list[tuple[int, str, str]] = []
@@ -1084,6 +1107,7 @@ def main(argv: list[str] | None = None) -> int:
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
                 line_activate=args.line_activate,
+                flash_overlay=overlay,
                 **entry
             )
             try:
@@ -1092,6 +1116,8 @@ def main(argv: list[str] | None = None) -> int:
             finally:
                 if args.with_dsp:
                     machine.mailbox.close()
+            if args.flash_save:
+                Path(args.flash_save).write_bytes(bytes(machine.flash.contents))
             if transcript:
                 result["serial_session"] = [
                     {"instructions": count, "direction": direction, "text": text}
