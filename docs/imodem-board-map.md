@@ -5,23 +5,53 @@ and one of them was being modelled wrong.
 
 ## What is on it
 
-| part | what it is |
+| marking | what it is |
 |---|---|
 | Intel **KU80386EX25** | the CPU, as [imodem-isdn-front-end.md](imodem-isdn-front-end.md) worked out from its peripheral registers |
-| AMD **Am79C30A** (`AM79C30JC`) | the ISDN front end, likewise - and now confirmed in the flesh |
-| **AMD Am29F400AT** and an **Intel 28F400** | *two* 4 Mbit flash parts, side by side |
+| AMD **AM79C30AJC/J** | the ISDN front end - the part at ports `0300`-`0307` |
+| AMD **AM7945JC** | a second AMD telecom part, not addressed by anything this image executes - see below |
+| Intel **TE28F400** and AMD **AM29F400AT** | *two* 4 Mbit flash parts, side by side |
 | LGS **GM76C8128ALLFW70** x2 | 128K x 8 SRAM each - 256 KiB paired |
 | ISSI **IS61C256AH-12** x2 | 32K x 8 SRAM - the DSP's |
 | USR **DSP EBS-64A56DW** | the DSP, custom-marked |
 | Altera **EPM7032LC44** (`USR 19457`) | the glue - the board latches the firmware reaches at ports `0x10`-`0x1e` and `0x100` |
-| AT&T **T7256** | in the line section, with the Valor **ST15069** transformer module |
 | Sipex **SP503CP** | the DTE transceiver |
+
+plus the line section: a Valor **ST15069** transformer module, a Takamisawa
+**RY5W-K** relay, a CP Clare **LH1502** solid-state relay and an **XCA111E**
+optocoupler - an analogue telephone interface, not an ISDN one.
 
 The two flash parts are the important observation.  A board carrying an Intel
 and an AMD part at once explains the boot code's identify sequence far better
 than second-sourcing does: it tries Intel's `ff`/`90` first and falls back to
 AMD's `aa`/`55`/`90`, which is what you write when either vendor's part may
 answer at the window you are addressing.
+
+## The Am79C30A is the part at 0300, and the Am7945 is not on the bus
+
+Worth separating, now that two AMD telecom parts are known to be fitted.  The
+chip at `0300`-`0307` is the **Am79C30A** and that is not in doubt: the
+indirect register file matches its block widths exactly - seven bytes to
+`DLC_1_7`, two to `DRCR`, forty-six to `MAP_1_10` - and the IRQ14 handler uses
+CR/IR, DR, DSR1, DER, DCTB/DCRB and DSR2 in that part's direct-map order
+([imodem-d-channel.md](imodem-d-channel.md)).
+
+The **Am7945** is not reached through I/O space at all.  A census of every
+port a 40-million-instruction run touches, with the code site behind each,
+leaves nothing that looks like a second device: `0x00`-`0x16` are written once
+apiece from one board-init sweep at `40509` and otherwise belong to the board
+latches, `0x1a` is the DSP handshake, `0x100` is the lamps, and there is no
+second command/data pair anywhere.
+
+Where such a part could sit without appearing is the DSC's own **peripheral
+port**, which the firmware enables at init and never routes: `PP_PPCR1` is set
+to `07` and `PP_PPCR3` to `01`, while `MCR1`-`MCR4` stay at zero for want of a
+call.  That, the MAP's transmit and receive filter coefficients, and the
+analogue line section on the board together point at an audio path between a
+B channel and an analogue handset - which is what an I-modem does when you
+plug a telephone into it.  That is an inference from the firmware and the
+board, though, not something the image states; what would settle it is the
+Am7945's own datasheet or a probe of which of its pins go to the DSC.
 
 ## The map, from the chip-select unit
 
