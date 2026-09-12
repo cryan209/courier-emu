@@ -197,62 +197,74 @@ they are the highest-value pins left on the package - a CPU-to-flash path
 running through the ASIC is a structural fact about the memory map that nothing
 here has modelled.
 
-#### The address latch, and the one transposition left in it
+#### The CPU is an 80C186EB in the 80-lead QFP, and now the pin numbers check
 
-`ALE` is on **pin 11**, `LE` - the latch enable, which is where an address
-latch wants it. That settles the numbering frame, and it retires an earlier
-revision of this section which read `ALE` on pin 1 (`OE#`), could not make that
-work, and proposed a mirrored numbering frame to explain it. The frame was
-never wrong.
+`'573` pin 9 goes to **CPU pin 11**, and that reading is worth more than the
+latch question it was asked to settle. Every CPU pin number in this file can
+now be checked against a datasheet instead of taken on trust.
 
-What is left is much narrower. The readings:
+Intel's `80C186EB/80C188EB` datasheet, Table 7, gives the 80-lead QFP package
+locations. Against the readings recorded here:
 
-| reading | the '573 pin | implies |
+| CPU pin | this file says | datasheet Table 7 | |
+|---|---|---|---|
+| 36 | `RD#` | `RD` | ok |
+| 37 | `WR#` | `WR` | ok |
+| 38 | `ALE` | `ALE` | ok |
+| 62 | `INT0`, unconnected | `INT0` | ok |
+| 64 | `INT2`/`INTA0#` | `INT2/INTA0` | ok |
+| 11 | *(this reading)* | `AD8 (A8)` | - |
+| 75 | `INT3` | `T0OUT` | **no** |
+
+Five exact matches is not a coincidence, and it settles two things at once.
+**The part is an 80C186EB**, not the plain `S80C186` that
+[board-parts.md](board-parts.md) records from the marking - the XL's QFP puts
+`ALE` on pin 10 and `INT0` on 31, which these readings are nothing like. And
+the **package is the 80-lead QFP**, which is why pin numbers above 68 appear at
+all. Everything the harness does with `EbSerial` is on the right device.
+
+The one miss is `INT3`. It is on QFP **65**, not 75; 75 is `T0OUT`. That
+reading should be retaken - it is a loose end in the interrupt map, and now it
+is a loose end with a predicted answer.
+
+#### Which makes this the high-byte address latch
+
+`'573` pin 9 is `D7`, and CPU pin 11 is `AD8`. So `AD8` is on this latch's
+input side, which is the **second** reading to say so - the earlier one said
+only "the other side goes to `AD8`" without naming a pin. Two readings agreeing
+on the one signal that decides the question is enough: **this '573 latches the
+high byte**, `AD8`-`AD15` into `A8`-`A15`.
+
+That resolves the conflict the previous revision could not, and by the
+explanation that was second on its list. The `A7` net - `'573` pin 12 to flash
+pin 4 and RAM pin 3 - **cannot be this part at all**, because `A7` is not one of
+the eight bits it carries. So there are **two '573s**, the readings were taken
+across both without distinguishing them, and no single-latch assignment was ever
+going to close.
+
+What each reading belongs to, on that basis:
+
+| reading | latch | note |
 |---|---|---|
-| pin 11 &#8594; CPU pin 38 (`ALE`) | `LE` | a normal address latch |
-| pin 2 &#8594; CPU `AD7` | `D0` | `Q0` (pin 19) = `A7` |
-| input side also on CPU `AD8` | some `D`n | consistent with `D1` |
-| pin 19 &#8594; RAM pin 1, flash pin 20 | `Q0` | `A14` at the RAM |
-| pin 12 &#8594; flash pin 4, RAM pin 3 | `Q7` | `A7` at the RAM |
+| pin 11 to CPU 38 (`ALE`) | either | both latches share `ALE` |
+| pin 9 to CPU 11 (`AD8`) | **high** | `D7` = `AD8`, so the bit order is reversed: `D0` = `AD15` |
+| "input side on `AD8`" | **high** | same signal, same part |
+| pin 2 to CPU `AD7` | ? | `AD7` is CPU pin 27 and `AD15` is pin 28 - an off-by-one if this is the high latch |
+| pin 19, pin 12, to the memory `A7`/`A14` nets | **low**, probably | `A7` is a low-latch bit; `A14` is not |
 
-A '573 is flow-through - `D`n on pin `2+n`, `Q`n on pin `19-n`, directly
-opposite - so pin 2 and pin 19 are the same bit. `AD7` on pin 2 makes pin 19
-`A7`, and the reading puts `A7` on pin 12 instead, seven bits away, with pin 19
-on `A14`.
+**Two things to read, and they are small.** Confirm the '573 count on the board
+- the argument above predicts exactly two. Then take `AD7`/`AD15` again at CPU
+pins 27 and 28, because a bit order reversed across a latch is unusual enough
+that one off-by-one on an adjacent pin pair is the likelier reading.
 
-**Transposing those two output readings makes every one of the five consistent
-at once.** Pin 19 (`Q0`) = `A7` &#8594; RAM pin 3, flash pin 4. Pin 12 (`Q7`) =
-`A14` &#8594; RAM pin 1, flash pin 20. `D0` = `AD7`, `D7` = `AD14`, and `AD8`
-sits on `D1` exactly as the earlier reading said. Nothing else has to be wrong.
-
-**But it implies an odd slice of the bus**, and that is the reason not to just
-adopt it. `AD7`-`AD14` is neither the low byte nor the high byte. An 80C186
-multiplexes `AD0`-`AD15`, and the normal design latches `AD0`-`AD7` into
-`A0`-`A7` and `AD8`-`AD15` into `A8`-`A15`. A latch straddling the byte
-boundary at bit 7 is not a thing a board does without a reason, and no reason
-is visible. The competing explanation is that these readings are from **two
-different '573s** that were not distinguished, which would also explain a seven
--bit jump - though the specific pin numbers do not fall out of that as cleanly.
-
-**One probe decides it: which CPU pin is on '573 pin 9 (`D7`)?**
-
-* `AD14` - the slice is real, the transposition is the only error, and the
-  board does something worth understanding on its own.
-* `AD0` - this is the ordinary low-byte latch, `pin 2 = AD7` is the wrong
-  reading rather than the output pins, and the memory nets need retaking.
-
-Counting the '573s on the board is worth doing in the same pass, since the
-two-latch explanation stands or falls on it.
-
-Until one of those comes back, the memory map gets nothing from this section.
-The shared-low-address-bus conclusion from two revisions ago stays withdrawn.
+Until the count is confirmed the memory map still gets nothing from this, and
+the shared-low-address-bus conclusion stays withdrawn.
 
 **What does not depend on any of it:** the ASIC takes `AD0`-`AD7` raw on pins
 `84`-`77` and `ALE` on pin `57`, both measured on the package itself. Those are
-a latch's *input* side whatever this '573 turns out to be, so the ASIC
-demultiplexes the address for itself rather than reading anyone's `Q` outputs.
-That is what `ALE` is doing on the ASIC, and it is consistent with the part
-holding its own `0x00`-`0x7f` decode.
+a latch's *input* side, so the ASIC demultiplexes the address for itself rather
+than reading anyone's `Q` outputs. That is what `ALE` is doing on the ASIC, and
+it is consistent with the part holding its own `0x00`-`0x7f` decode.
 
 ### Bottom edge - the panel and the two handshake lines
 
@@ -566,14 +578,22 @@ finding next, in the order they would pay:
 
 ### Readings recorded but not yet interpreted
 
-**The `SD` reading runs CPU pin to CPU pin.** As recorded, `SD` is on CPU
-pins 4, 7 and 63 and on 74AHC04 pin 11, and the matching inverter output at
-AHC04 pin 10 goes to CPU pin 78. An inverter taking a CPU pin and returning
-it to another CPU pin is not an obvious circuit - a loopback, a level or
-polarity fix between the UART and the transceiver, or three of those pin
-numbers being supply pins that the probe shorted through, are all live
-readings of it. It is enough to place `SD` off the ASIC, which is what the
-section above uses it for, and not enough to say what the gate is doing.
+**The `SD` reading mostly resolves against the EB pinout.** `SD` is on CPU
+pins 4, 7 and 63 and on 74AHC04 pin 11; AHC04 pin 10 goes to CPU pin 78. With
+Table 7 those stop being anonymous. **Pin 7 is `P2.0/RXD1`**, the receive input
+of the CPU's second serial channel - exactly where the DTE's transmitted data
+should arrive, and independent confirmation that the DTE runs on the CPU's own
+UART rather than through the ASIC. **Pin 78 is `T1IN`**, a timer input, so the
+AHC04 gate feeds an inverted copy of that same data to a timer, which is what
+measuring a bit cell for autobaud - or timing a break - looks like. The harness
+has seen the firmware side of this without knowing the wiring:
+[machine.py:2357](../courier_emu/machine.py) notes the ROM measuring something
+before it enables the receiver.
+
+Two of the three are still unexplained. Pin 4 is `P2.5/BCLK0` and pin 63 is
+`INT1` - and `INT1` is separately recorded as reaching ASIC pin 47, so either
+one of those readings is wrong or this net is not what it appears. That wants
+`SD` re-probed pin by pin rather than as a group.
 
 **A second `RS` is noted as reaching codec pin 13.** On the AC01's FN package
 pin 13 is `SCLK`, the serial shift clock, which is not a reset of anything and
