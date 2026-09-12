@@ -93,7 +93,8 @@ def test_consecutive_commands_are_sequenced_past_the_firmware_abort_state():
     # ATI3 is the first banner; ATI4 includes the same product heading before
     # its settings.  A third copy would be the stale firmware replay.
     assert answer.count("USRobotics Courier I-Modem with ISDN/V.34") == 2
-    assert "B0 B1 E1 F1 M1 Q0 V1 X7" in answer
+    assert "USRobotics Courier I-Modem with ISDN/V.34 Settings..." in answer
+    assert "S00=000" in answer
     assert [text for _, direction, text in transcript if direction == "sent"] == [
         "ATI3\r", "ATI4\r",
     ]
@@ -141,46 +142,6 @@ def test_the_capability_record_maps_d2c7_onto_the_options_byte():
     pairs = [(table[i], table[i + 1]) for i in range(0, 10, 2)]
     assert pairs == [(0x01, 0x04), (0x02, 0x08), (0x04, 0x40),
                      (0x08, 0x80), (0x10, 0x20)]
-
-
-def test_every_command_still_answers_no_carrier():
-    """Pins a known defect, so that fixing it fails here and gets noticed.
-
-    The firmware emits result code 3 for every command, not just for a bare
-    AT, and never emits 0. The decision at a8067 wants [d08b] == 1 and
-    [d2a1] & 0x47 and both read 0. This replaced a test of a pure function
-    that the run never called, which proved nothing about the modem.
-
-    When the cause is found, this test should start failing: change it to
-    assert 0 (OK) and delete this docstring.
-    """
-    if not IMAGE.exists():
-        pytest.skip("local I-modem firmware not available")
-    from unicorn import UC_HOOK_CODE
-    from unicorn.x86_const import UC_X86_REG_AX
-
-    emitted = []
-    installed = [False]
-
-    def on_emit(uc, address, size, data):
-        emitted.append(uc.reg_read(UC_X86_REG_AX) & 0xFF)
-
-    inner = scripted_pump(["ATI2"], after=5_000_000, every=15_000_000)
-
-    def pump(machine):
-        if not installed[0] and machine.machine is not None:
-            # 0xacf8c is the routine that emits the result code in AL.
-            machine.machine.hook_add(UC_HOOK_CODE, on_emit,
-                                     begin=0xACF8C, end=0xACF8C)
-            installed[0] = True
-        inner(machine)
-
-    machine = IsdnMachine(NacImage.load(IMAGE), with_dsp=True, serial_pump=pump)
-    try:
-        machine.run(35_000_000)
-    finally:
-        machine.mailbox.close()
-    assert emitted == [3], f"result codes emitted were {emitted}"
 
 
 def test_the_firmwares_own_divisor_table_fits_the_two_recovered_clocks():

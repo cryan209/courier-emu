@@ -162,6 +162,15 @@ and the tick is 5.000 ms.
 
 ## The codec is a TLC320AC0x, and the firmware proves it
 
+> **Withdrawn (2026-09-12): the photograph stands, the firmware proof does
+> not.** The part next to the DSP on the 20 MHz board really is a TI
+> `320AC01CFN`. But the code offered below as confirmation is in `main211.xmf`
+> alone, and that board carries an Si3021/Si3014 pair and no TI codec. The
+> heading's claim is therefore unsupported, and probably inverted. See
+> [so the claim is withdrawn](#so-the-the-firmware-proves-it-is-a-tlc320ac0x-claim-is-withdrawn)
+> at the end of this document. The disassembly below is still an accurate
+> reading of what that code does; only the part it is attributed to is wrong.
+
 The part next to the DSP is a TI PLCC marked `320AC01CFN`. The DSP's own code
 confirms the family, independently of the photograph.
 
@@ -298,36 +307,65 @@ the file is dated 2003. That points at the business Courier.
 > `25 Mhz`) in every byte but the four checksum bytes at `0x77ffc..0x77fff`.
 >
 > **The result is that the middle generation groups with the old one, not the
-> new one.** The AC0x initialisation table `0911 0967 ... 8b8f 8711` appears in
+> new one.** The 16-word control table `0911 0967 ... 8b8f 8711` appears in
 > `main211.xmf` alone, at `0x628`; it is absent from the 25 MHz build, from
-> both 20.16 MHz builds, and from `IDSDL302.ROM`. So the AC0x codec path is not
-> what separates 20.16 MHz hardware from 25 MHz hardware - it arrives later,
-> with the 25.8048 MHz / 736 KiB `main211` generation. A 25 MHz board is
-> therefore not evidence of an AC03-driven codec path in firmware. The 2000+ V.92 image is also out of
-reach here: `firmware/legacy-usrobotics/USR03232004/` is a compressed
-InstallShield package and no extractor is installed.
+> both 20.16 MHz builds, and from `IDSDL302.ROM`. See the part list below for
+> what that table actually initialises - not a TI codec.
+>
+> The 2000+ V.92 image is still out of reach here:
+> `firmware/legacy-usrobotics/USR03232004/` is a compressed InstallShield
+> package and no extractor is installed.
 
-### Which board has which part is still not recorded
+### Which board has which part, recorded at last
 
-`courier_firmware_analysis.md` says the Si3014/Si3021 pair was "read off the
-board" - line side at the phone jack, digital side near the CPU - but does not
-say **which** board. There are at least two units in this repository's
-evidence: the 20.16 MHz one photographed here, and a 25 MHz US/Canada unit
-(`artifacts/io-port-map/hardware-25mhz/`, supervisor 7.3.14 / DSP 3.0.13).
+This section previously listed two live possibilities and asked for "a datum
+from the boards, not from the images". The owner supplied it on 2026-09-12,
+from the units in hand:
 
-The photograph covers the DSP/ASIC area of the 20.16 MHz board only. Its DAA
-section, at the phone jack, is not in frame. So the two attributions are not
-yet in conflict, and there are two live possibilities:
+| board | part on the DSP's serial port |
+|---|---|
+| the 20 MHz boards | **TLC320AC01** |
+| the 25 MHz Courier 2806 | **TLC320AC03** |
+| the 3453C - taken to be `main211.xmf` | **Si3021 + Si3014**, no TI codec |
 
-- **one board, two parts in two roles** - a TLC320AC0x on the DSP's serial port
-  and an Si3021/Si3014 as the line interface; or
-- **two board generations** - a TI codec in the older design and a Silicon Labs
-  silicon DAA in the newer, with one firmware carrying both paths, which would
-  explain the dormant AC0x code directly.
+That is three generations, one part each, and it retires the "one board, two
+parts in two roles" option. It also settles the direction: TI first, Silicon
+Labs last. The earlier guess of "older TI, newer Si" was right after all; the
+firmware reading that appeared to invert it was the thing at fault, as below.
 
-What would settle it is one look: whether the photographed 20.16 MHz board also
-carries Si parts near its phone jack, and whether the 25 MHz board carries a
-TI PLCC near its DSP. That is a datum from the boards, not from the images.
+#### So the "the firmware proves it is a TLC320AC0x" claim is withdrawn
+
+The proof offered above rests on two observations, and the part list breaks
+both of them.
+
+The control table at program `0x019c` is the stronger one, and it is in
+`main211.xmf` and nowhere else - measured, not inferred. But `main211`'s board
+is the one carrying **no TI codec at all**. So that table is the bring-up of
+the Silicon Labs pair, not of a TLC320AC0x, and the section title has it
+exactly backwards. This also rehabilitates `CodecBringUp`, which the closing
+line of this document calls questionable for running an `SI3038.PDF` register
+sequence: a Silicon Labs sequence is the *right* family for this build, and
+only the specific part number is now in doubt.
+
+The secondary-frame protocol - bit 0 of the transmitted DAC word requesting a
+control frame - cannot discriminate either, because it shows up on both sides
+of the part split: in `main211` (Si pair) and in the ID_SDL 4.03 build for a
+20.16 MHz board (AC01). A protocol common to the build for a TI-codec board and
+the build for a no-TI-codec board is evidence about the serial framing, not
+about the silicon.
+
+#### The AC01 to AC03 change is invisible to the DSP
+
+Stock 7.3.14 runs on both a 20.16 MHz AC01 board and the 25 MHz AC03 board, and
+its DSP payload is **byte-identical between them**: aligned on the shared
+wait-state anchor, 126,851 consecutive identical bytes, covering the payload
+and all three overlays and ending at the blank region past `0x48000`. The whole
+difference between those two images is in the supervisor, not the DSP.
+
+So the firmware does not distinguish AC01 from AC03. That is what reading 1 of
+the previous section predicts - the ASIC fronts the codec and the C52 does not
+have to know which variant is fitted - and it means an AC03 board cannot be
+identified from its DSP code.
 
 Either way `CodecBringUp` is questionable: it runs an `SI3038.PDF` register
 sequence, and the part the DSP's own code initialises is not that one.
