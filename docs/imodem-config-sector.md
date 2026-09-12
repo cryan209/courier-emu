@@ -419,12 +419,30 @@ A session that sends `AT*V1=1`, `AT*V2=3` and `AT&W` changes exactly one byte
 of the record, at **page offset `0x25f`**, from `00` to `0x10`.  Which of the
 two wrote it, and how the value is packed, is not established.
 
-### Commands only land early in a run
+### `AT*V1` is refused, and it is not the interface going deaf
 
-Worth recording because it wasted several runs here: the AT interface answers
-`NO CARRIER` to everything from roughly 40,000,000 instructions into a run
-onwards, including `ATI12`, which prints its full report when sent at
-8,000,000.  So a session that needs settings to take has to send them early -
-`--send-after 6000000 --send-every 7000000` works where `--send-every
-30000000` silently does nothing.  What puts the interface into that state is
-not established.
+An earlier revision of this page claimed the AT interface answers `NO
+CARRIER` to everything past roughly 40,000,000 instructions into a run.
+**That was wrong**, and the way it was wrong is worth keeping, because it is
+the ordinary trap of reading a response as belonging to the command before
+it.  Sent on its own at 65,000,000, `ATI12` prints its whole report.
+
+What actually happens is per-command, and one run separates it cleanly:
+
+```sh
+.venv/bin/python -m courier_emu isdn-run Ie030002.nac \
+    --instructions 120000000 --line-activate 3000000 \
+    --send ATI12 --send 'AT*V1=1' --send ATI12 \
+    --send-after 30000000 --send-every 30000000
+```
+
+```
+30000128  sent ATI12       31855616  the full report
+60000256  sent AT*V1=1     60425216  NO CARRIER
+90000384  sent ATI12       91871232  the full report
+```
+
+So `AT*V1=1` is **refused**, with `NO CARRIER` as its own answer, and the
+interface is untouched either side of it.  Why that command is refused is not
+established; `*V1` is in the firmware's help page and `*V2` appears to be
+accepted, since a session sending both changes the byte at `0x25f`.
