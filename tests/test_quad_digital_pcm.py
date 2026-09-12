@@ -13,10 +13,15 @@ from courier_emu.quad_c50 import (
 
 
 def _tx_program(codeword: int) -> bytes:
-    # lacl #codeword; samm @21 (DXR); b 8002. The branch keeps the DSP—not
-    # the host model—responsible for every byte placed in the transmit latch.
-    words = (0xB800 | codeword, 0x9021, 0x7980, 0x8002)
-    return struct.pack("<4H", *words)
+    # splk @22, #40cc releases the serial port in the Quad's own format: SPC
+    # bit 2, FO, set for eight-bit bytes, which is what makes one octet per
+    # frame the right thing to expect. A program that never writes SPC is not
+    # entitled to an opinion about the word format - the 302 writes 40c8 to the
+    # same register and gets sixteen-bit words (docs/quad-dsp-pcm-path.md).
+    # Then lacl #codeword; samm @21 (DXR); b 8004, the branch keeping the DSP -
+    # not the host model - responsible for every byte in the transmit latch.
+    words = (0xAE22, 0x40CC, 0xB800 | codeword, 0x9021, 0x7980, 0x8004)
+    return struct.pack(f"<{len(words)}H", *words)
 
 
 def _dsp_square_tone_program() -> bytes:
