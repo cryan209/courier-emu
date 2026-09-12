@@ -170,6 +170,7 @@ LIU_LSR = 0xA1
 # any of this was modelled.
 LSR_HOOK_CHANGED = 0x80
 LSR_ON_HOOK = 0x40
+
 DLC_DTCR = 0x85
 DLC_DRCR = 0x89
 
@@ -199,7 +200,43 @@ F2_SENSING = 2
 F3_DEACTIVATED = 3
 F6_SYNCHRONIZED = 6
 F7_ACTIVATED = 7
+
 F8_LOST_FRAMING = 8
+
+# LSR's low three bits are the LIU's state, and the numbering is the *chip's*,
+# not I.430's - the Am79C30's LIU state machine has fewer states than F1..F8.
+# The firmware is the only source for it here, and it is an unambiguous one,
+# because it stores `(LSR & 7) + 2` and then compares that byte all over:
+#
+#   LSR 0 -> stores 2   the reset state, tested at 0x71da4
+#   LSR 1 -> stores 3   what the layer-1 machine at 0x62a27 polls until it
+#                       leaves, so: sensing
+#   LSR 2 -> stores 4   the resting state - the one entry in the dispatch
+#                       table at 0x70f7e that notifies nobody
+#   LSR 5 -> stores 7   **activated**. The D-channel transmit gate at 0x71c9b
+#                       admits a frame only in state 7, and it is tested the
+#                       same way at four other sites. A line driven here makes
+#                       the whole stack run: the TEI request is transmitted, a
+#                       TEI is assigned, an incoming SETUP is delivered and the
+#                       firmware starts ringing.
+#   LSR 6 -> stores 8   *not* activated, whatever it looks like. Driving the
+#                       line here gets `LINE_ACTIVE Detected` followed by
+#                       `LINE_NOT_ACTIVE Detected` out of the firmware's own
+#                       log, and every frame queued for transmission is
+#                       dropped by the gate above.
+#
+# So the mapping below is a table rather than a formula, and the entries carry
+# their own evidence. F7 -> 5 is the one that matters and the one that is
+# proven; the others are what the harness drives and are marked where they are
+# assumed rather than shown.
+LSR_STATE_FIELD = {
+    F1_INACTIVE: 0,        # shown: the firmware's reset state is 2
+    F2_SENSING: 1,         # shown: the machine polls state 3 until it moves
+    F3_DEACTIVATED: 2,     # assumed: the resting state the table ignores
+    F6_SYNCHRONIZED: 4,    # assumed: one below activated
+    F7_ACTIVATED: 5,       # shown, and the whole stack depends on it
+    F8_LOST_FRAMING: 6,    # shown to be a state the firmware calls not active
+}
 
 # LSR's other two bits, known only by the firmware's use of them: at 70ebd it
 # treats bit 7 as a one-shot indication worth reporting upwards, carrying bit 6
@@ -298,7 +335,8 @@ class Am79C30:
         self.ir |= IR_LIU
 
     def _lsr(self) -> int:
-        value = ((self.liu_state - 1) & 7) | (self.lsr_flags & 0xC0)
+        field = LSR_STATE_FIELD.get(self.liu_state, (self.liu_state - 1) & 7)
+        value = (field & 7) | (self.lsr_flags & 0xC0)
         if self.on_hook:
             value |= LSR_ON_HOOK
         if self.hook_changed:

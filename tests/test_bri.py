@@ -357,7 +357,8 @@ def test_the_lsr_carries_the_handset_hook_in_its_top_two_bits():
     # STAT_ONHOOK when it is set. Bit 7 is a change indication, so reading
     # LSR acknowledges it.
     from courier_emu.am79c30 import (
-        Am79C30, F7_ACTIVATED, IR_LIU, LIU_LSR, LSR_HOOK_CHANGED, LSR_ON_HOOK,
+        Am79C30, F7_ACTIVATED, IR_LIU, LIU_LSR, LSR_HOOK_CHANGED,
+        LSR_ON_HOOK, LSR_STATE_FIELD,
     )
 
     part = Am79C30()
@@ -369,7 +370,7 @@ def test_the_lsr_carries_the_handset_hook_in_its_top_two_bits():
     resting = part.read_data()
     assert resting & LSR_ON_HOOK
     assert not resting & LSR_HOOK_CHANGED
-    assert resting & 7 == (F7_ACTIVATED - 1) & 7
+    assert resting & 7 == LSR_STATE_FIELD[F7_ACTIVATED]
 
     # Lifting it interrupts, the way a line-state change does.
     part.set_hook(False)
@@ -408,3 +409,29 @@ def test_a_run_lifts_the_handset_when_it_is_asked_to():
     machine.instructions = 9000
     machine.poll_timers()
     assert machine.dsc.hook_changes == 1
+
+
+
+def test_the_activated_lsr_value_is_the_one_the_firmware_transmits_in():
+    # The firmware stores (LSR & 7) + 2 and its D-channel transmit gate at
+    # 0x71c9b admits a frame only when that byte is 7, so the activated state
+    # has to report 5. Reporting 6 instead - which this model did - stores 8,
+    # and every frame queued for transmission is dropped: no TEI request goes
+    # out, layer 2 never starts, and ATI12 reports Data Link Layer Inactive.
+    from courier_emu.am79c30 import (
+        Am79C30, F2_SENSING, F7_ACTIVATED, LIU_LSR, LSR_STATE_FIELD,
+    )
+
+    assert LSR_STATE_FIELD[F7_ACTIVATED] == 5
+    part = Am79C30()
+    part.set_liu_state(F7_ACTIVATED)
+    part.on_hook = False
+    part.select(LIU_LSR)
+    assert (part.read_data() & 7) + 2 == 7, "the firmware's activated state"
+
+    # And the state the layer-1 machine polls its way out of stores 3.
+    part = Am79C30()
+    part.set_liu_state(F2_SENSING)
+    part.on_hook = False
+    part.select(LIU_LSR)
+    assert (part.read_data() & 7) + 2 == 3

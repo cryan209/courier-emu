@@ -49,7 +49,10 @@ through the host interface, which is consistent with what
 | line state | `70e6f` | read LSR, take `(LSR & 7) + 2` as the interface state, and on a change dispatch through a six-entry table at `70f7e`. |
 
 The line-state decode is the useful one, because the bias gives the encoding
-away.  Adding two to a three-bit field puts the range at 2..9, the table covers
+away.  **The reading below is wrong in one place**, and it cost this project
+several rounds: `LSR & 7 = 6` is *not* the activated state.  See
+[LSR's state field](imodem-liu-state-field.md) - the activated value is 5,
+and everything above layer 1 depends on it.  Adding two to a three-bit field puts the range at 2..9, the table covers
 2..8 with one entry - the resting state - notifying nobody, and the entry
 reached for `LSR & 7 = 6` is the one that tells layer 2 the line came up.  That
 is I.430's F1..F8 numbered from 2, so **LSR bits 2:0 carry the F-state, biased
