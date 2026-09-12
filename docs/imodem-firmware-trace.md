@@ -86,7 +86,7 @@ is the next question, and it is now a question about one dispatch on one
 character rather than about the whole stack.
 
 Dialling with the network peer presenting an incoming call first says
-something else, and it is about **this repository's peer, not the firmware**:
+something else:
 
 ```
 LINE_ACTIVE Detected
@@ -96,9 +96,49 @@ default of n_stat_in detected
 l4_DISCONN : modem primitive
 ```
 
-The line goes *down* after coming up.  Nothing in `courier_emu/bri.py`
-deactivates it in that run, so either the peer is disturbing the S interface
-while it delivers the broadcast frame, or the firmware drops layer 1 in
-response to something the peer sent.  `default of n_stat_in detected` with
-code `001A` is an unhandled status on top of it.  That is a concrete defect to
-chase, and it took one run to find because the firmware said so itself.
+That was first written up here as a defect in `courier_emu/bri.py`.  **It is
+not**, and the way it was ruled out is worth keeping, because "our peer must
+be breaking it" is the comfortable answer and it was wrong.
+
+* The peer never touches the line after activation.  A watch on
+  `Am79C30.set_liu_state` records exactly three changes in the whole run -
+  F1→F2, F2→F6, F6→F7 - all during activation, none near the frame.
+* The chip model is not mangling the frame.  35 bytes delivered, **35 bytes
+  read back** by the firmware, and DRCR reports 35.
+* The firmware re-reads the line itself at `0x71b3d`, computes `(LSR & 7) + 2`
+  = **8**, stores F7 - and then raises the status anyway.  Its own stored
+  state says the line is up while it reports that it is not.
+* It is not the broadcast data link, and it is not the information elements.
+  Injecting four different frames and reading the log back separates them
+  completely:
+
+  | frame | firmware's verdict |
+  |---|---|
+  | UI, SAPI 63 / TEI 127, TEI identity check | `LINE_ACTIVE` only |
+  | UI, SAPI 0 / TEI 127, payload `00 00 00` | `LINE_ACTIVE` only |
+  | UI, SAPI 0 / TEI 127, bare SETUP, no IEs | `LINE_NOT_ACTIVE`, `001A` |
+  | UI, SAPI 0 / TEI 127, full SETUP | `LINE_NOT_ACTIVE`, `001A` |
+
+A junk UI down the same broadcast path does nothing.  Only a **valid Q.931
+SETUP** does it.  So this is the firmware's own layer 3 reacting to an
+incoming call it owns no TEI for, and `001A` is a status code its
+`n_stat_in` dispatcher has no arm for - the `default` at `0x774ac`.
+
+### What was actually wrong with the peer
+
+Chasing it did find two real defects, both of which made the firmware's
+behaviour harder to read rather than causing it:
+
+* **No T303.**  The peer sent one SETUP and then reported `call_state:
+  call-present` for the rest of the run, so a call nobody took looked like a
+  call in progress.  Q.931 has the network retransmit once after four
+  seconds and then clear.  It does now, and says so.
+* **No notion of the line going down underneath it.**  The peer only ever
+  read back the state it had set, so had the firmware deactivated its LIU the
+  peer would have gone on reporting a data link that could not exist.  It now
+  notices, drops its layer-2 and call state, and does not walk the line
+  straight back up - re-activating would hide exactly the behaviour worth
+  seeing.
+
+Both are covered by `tests/test_bri.py`.  Neither changes the trace above,
+which is the point: the firmware was never reacting to them.

@@ -383,6 +383,12 @@ N200 = 3                                              # retransmissions
 # keeps a run from spending its instruction budget waiting.
 ESTABLISH_DELAY_INSTRUCTIONS = _INSTRUCTIONS_PER_SECOND // 2
 
+# Q.931 T303: how long the network waits for a response to a SETUP before
+# retransmitting it, and how many times. A call that is never answered has to
+# end, or the peer sits claiming a call is in progress that nobody took.
+T303_INSTRUCTIONS = 4 * _INSTRUCTIONS_PER_SECOND
+T303_RETRANSMISSIONS = 1
+
 # Layer 2 states, named after Q.921 section 5.
 TEI_UNASSIGNED = "tei-unassigned"
 TEI_ASSIGNED = "tei-assigned"
@@ -431,6 +437,9 @@ class BriNetwork:
     _retransmissions: int = 0
     _pending_sabme: bool = False
     _call_placed: bool = False
+    _t303_expiry: int | None = None
+    _setup_retransmissions: int = 0
+    _setup: bytes = b""
     call_reference: int | None = None
     call_state: str = "null"
     events: list[tuple[int, str]] = field(default_factory=list)
@@ -474,6 +483,23 @@ class BriNetwork:
             self._note("the NT drops the line: back to F3")
             dsc.set_liu_state(F3_DEACTIVATED)
             return
+        if not dsc.activated and self.activated_at is not None \
+                and not self._line_walk:
+            # The line went down without this peer dropping it - the firmware
+            # deactivated its own LIU. Everything above layer 1 is gone with
+            # it, so the peer's idea of the link has to go too rather than
+            # reporting a data link that cannot exist.
+            self._note("the line went down underneath us: layer 2 is gone")
+            self.activated_at = None
+            self.state = TEI_UNASSIGNED
+            self._t200_expiry = None
+            self._t303_expiry = None
+            self.call_state = "null"
+            # Do not walk it straight back up. The terminal dropped its own
+            # LIU, and an NT that immediately re-activated would hide exactly
+            # the behaviour worth seeing. `--bri-deactivate-at` aside, the
+            # line comes up once per run.
+            self._line_walk = []
         if self.activate_at is None or self._deactivated:
             return
         if not self._line_started:
@@ -657,6 +683,8 @@ class BriNetwork:
         if (self.call_at is not None and not self._call_placed
                 and self.instructions >= self.call_at):
             self._place_call()
+        if self._t303_expiry is not None and self.instructions >= self._t303_expiry:
+            self._t303()
 
     def _establish(self) -> None:
         self.state = AWAITING_ESTABLISH
@@ -694,10 +722,12 @@ class BriNetwork:
                     + calling_party_number(self.call_from))
         if self.call_to:
             elements += called_party_number(self.call_to)
-        setup = q931_message(SETUP, self.call_reference, True, elements)
+        self._setup = q931_message(SETUP, self.call_reference, True, elements)
+        self._setup_retransmissions = 0
+        self._t303_expiry = self.instructions + T303_INSTRUCTIONS
         if self.state == MULTIPLE_FRAME:
             self._note(f"SETUP to the modem from {self.call_from}")
-            self._send_layer3(self.tei, setup)
+            self._send_setup()
             return
         # No data link, which on a multipoint bus is the normal case for an
         # incoming call: the network has no idea which terminal wants it, and
@@ -707,11 +737,40 @@ class BriNetwork:
         # is the one path that reaches a terminal that has never transmitted.
         self._note(f"SETUP from {self.call_from} on the broadcast data link, "
                    "TEI 127: no terminal has a TEI yet")
+        self._send_setup()
+
+    def _t303(self) -> None:
+        """T303: nobody answered the SETUP.
+
+        Q.931 has the network retransmit it once and then clear the call. A
+        peer that instead sat on `call-present` for the rest of the run would
+        be reporting a call that no terminal ever took.
+        """
+        self._t303_expiry = None
+        if self.call_state not in ("call-present",):
+            return
+        if self._setup_retransmissions >= T303_RETRANSMISSIONS:
+            self._note("T303 expired with no response: clearing the call")
+            self.call_state = "null"
+            self.call_reference = None
+            return
+        self._setup_retransmissions += 1
+        self._note(f"T303 expired, SETUP retransmission "
+                   f"{self._setup_retransmissions}")
+        self._send_setup()
+        self._t303_expiry = self.instructions + T303_INSTRUCTIONS
+
+    def _send_setup(self) -> None:
+        if self.state == MULTIPLE_FRAME:
+            self._send_layer3(self.tei, self._setup)
+            return
         self._send(u_frame(SAPI_CALL_CONTROL, TEI_BROADCAST, U_UI, True,
-                           False, setup))
+                           False, self._setup))
 
     def _call_control(self, message: Q931, tei: int) -> None:
         self._note(f"{message.name} call reference {message.call_reference}")
+        # Any layer 3 answer at all means the SETUP was taken, so T303 stops.
+        self._t303_expiry = None
         reference = message.call_reference
         if message.message_type == SETUP:
             # The modem is placing a call. Take the number it dialled, accept
@@ -760,8 +819,9 @@ class BriNetwork:
 
     def status(self) -> dict[str, object]:
         return {
-            "line": ("activating" if self._line_walk else
-                     "down" if self.activated_at is None else "active"),
+            "line": ("down" if self.activated_at is None and
+                     not self._line_walk else
+                     "activating" if self._line_walk else "active"),
             "state": self.state,
             "tei": self.tei,
             "assigned_teis": dict(self.assigned_teis),

@@ -164,3 +164,24 @@ the part's non-volatile region - the 32 KiB above the update payload, which
 is the three top boot sectors - in `flashnvram.sav` between runs, so a
 session that types settings and `AT&W` leaves them there for the next one.
 `--no-flash-nvram` runs against an erased store.
+
+## The peer's timers, and what it does not pretend
+
+Two corrections to the peer, both found by reading the firmware's own trace
+log ([imodem-firmware-trace.md](imodem-firmware-trace.md)):
+
+* **T303.**  A SETUP with no response is retransmitted once after four
+  seconds and the call is then cleared, as Q.931 has the network do.  Before
+  that the peer reported `call-present` for the rest of a run, which made a
+  call no terminal ever took look like one in progress.
+* **A line that goes down underneath it.**  The peer only ever read back the
+  line state it had set itself.  If the firmware deactivates its own LIU the
+  peer now notices, drops its layer-2 and call state, and leaves the line
+  down rather than walking it straight back up - an NT that immediately
+  re-activated would hide the thing worth looking at.
+
+Worth being precise about the second one, because it is a safety net rather
+than a fix for anything observed: in the incoming-call runs the LIU **does
+not** move.  The firmware reports `LINE_NOT_ACTIVE` while its own stored
+state still says F7.  That is the firmware's layer-1 machine changing its
+mind, not the line changing, and no peer change affects it.

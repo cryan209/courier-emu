@@ -266,3 +266,64 @@ def test_reading_the_trace_of_a_machine_that_has_not_run_is_empty():
     # whatever happens to be at the address.
     machine = IsdnMachine(NacImage.load("Ie030002.nac"))
     assert imodem_trace.read(machine) == []
+
+
+def test_an_unanswered_setup_is_retransmitted_once_and_then_cleared():
+    # Q.931 T303. Without it the peer sits on `call-present` for the rest of
+    # a run, reporting a call no terminal ever took - which is exactly how a
+    # firmware that ignores the SETUP came to look like a peer that had
+    # placed one successfully.
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None, call_at=0)
+    peer.state = bri.MULTIPLE_FRAME
+    peer.service(wire, 0)
+    assert peer.call_state == "call-present"
+    setups = len(wire.to_modem)
+
+    peer.service(wire, bri.T303_INSTRUCTIONS)
+    assert len(wire.to_modem) == setups + 1        # retransmitted once
+    assert peer.call_state == "call-present"
+
+    peer.service(wire, 2 * bri.T303_INSTRUCTIONS)
+    assert len(wire.to_modem) == setups + 1        # and no more
+    assert peer.call_state == "null"
+    assert any("clearing the call" in text for _, text in peer.events)
+
+
+def test_a_layer_3_answer_stops_t303():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None, call_at=0)
+    peer.state = bri.MULTIPLE_FRAME
+    peer.service(wire, 0)
+    wire.from_modem.append(bri.i_frame(
+        0, 0, ns=0, nr=1, pf=False,
+        info=bri.q931_message(bri.CALL_PROCEEDING, 1, False)))
+    peer.service(wire, 1000)
+    before = len(wire.to_modem)
+    peer.service(wire, 3 * bri.T303_INSTRUCTIONS)
+    assert len(wire.to_modem) == before            # nothing retransmitted
+
+
+def test_the_peer_notices_the_line_going_down_underneath_it():
+    # The firmware can deactivate its own LIU. A peer that only ever reads
+    # back the state it set would keep reporting a data link that cannot
+    # exist - which is what made a firmware-side line drop look like a peer
+    # bug in the first place.
+    wire = Wire(activated=False)
+    peer = bri.BriNetwork()
+    for step in range(0, bri.ACTIVATE_AT_INSTRUCTIONS
+                      + 4 * bri.LINE_STEP_INSTRUCTIONS,
+                      bri.LINE_STEP_INSTRUCTIONS // 4):
+        peer.service(wire, step)
+    peer.state = bri.MULTIPLE_FRAME
+    assert peer.status()["line"] == "active"
+
+    # the firmware drops it, with nothing on the peer's side asking for that
+    wire.activated = False
+    wire.liu_state = bri.F3_DEACTIVATED
+    peer.service(wire, bri.ACTIVATE_AT_INSTRUCTIONS
+                 + 10 * bri.LINE_STEP_INSTRUCTIONS)
+    assert peer.status()["line"] == "down"
+    assert peer.state == bri.TEI_UNASSIGNED
+    assert peer.call_state == "null"
+    assert any("went down underneath us" in text for _, text in peer.events)
