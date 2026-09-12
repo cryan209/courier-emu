@@ -122,7 +122,7 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 18 | 73 | flash `A17` - PA28F400 pin 3 |
-| 20 | 71 | 74VHC32 pin 12 - gate 4's `A` **input** |
+| 20 | 71 | 74VHC32 pin 11 - gate 4's `Y` **output**, so an ASIC **input** |
 | 21 | 70 | `A0` - RAM pin 10 **and** flash pin 11 |
 
 Locals 15-17 (`76`-`74`), 19 (`72`) and 22-30 (`69`-`61`) are unread.
@@ -284,40 +284,45 @@ out of the ASIC. Routing it through a part that also holds a latch is what
 **remapping** looks like, not buffering. Flash `A16` and `A18` are what decide
 it, and they are in the same unread run.
 
-#### The ASIC also feeds the decode glue
+#### The glue feeds the ASIC, not the other way round
 
-**Pin 71 goes to 74VHC32 pin 12**, which on a quad 2-input OR is `4A` - an
-*input* to gate 4. So the ASIC drives that gate, and the '32 stops being
-unattributed glue: it is downstream of this part.
+**Pin 71 goes to 74VHC32 pin 11**, which on a quad 2-input OR is `4Y` - gate
+4's *output*. So the signal flows into the ASIC. A previous revision had this
+reading as pin 12, `4A`, and concluded the ASIC drove the gate; that is
+withdrawn, and with it the claim that the part gates a memory strobe and
+"decides what the CPU can reach". The direction was the whole of that argument.
 
-Where that pin sits is the first thing it says. `71` is between flash `A17` on
-73 and `A0` on 70, in the middle of the address run - so **the top edge is not
-purely address**. Something the ASIC computes leaves on a pin its neighbours
-use for address bits.
+It also fires the falsification test that revision set itself. It said pin 11
+landing on a memory `CE#`, `OE#` or `WE#` would establish the decode reading,
+and that if it went "somewhere else entirely, the OR is doing something other
+than decode". It goes to the ASIC.
 
-What a quad OR next to an address latch is normally for is memory decode:
-`OR`ing a chip select with `RD` or `WR` to make per-device strobes. With
-active-low signals an OR gate is an AND of the conditions, so `4Y` low needs
-both inputs low - the shape of "this device is selected **and** this strobe is
-active". If that is what gate 4 is, then the ASIC holds a qualifier on a memory
-access, and **the part decides what the CPU can reach**, not just where the
-address lines run.
+What survives is the observation about position. `71` sits between flash `A17`
+on 73 and `A0` on 70, in the middle of the address run, so **the top edge is
+not purely address** - and now it is known to be mixed in direction too, an
+input between two outputs.
 
-That would join up with `A17`. A part that drives one high flash address line
-*and* gates a memory strobe is doing memory mapping, which is the reading this
-file has been circling since pin 73 turned up.
+What the ASIC is being told is the open question, and the gate's shape narrows
+it. With active-low signals an OR is an AND of the conditions: `4Y` goes low
+only when **both** inputs are low. So pin 71 carries a two-condition qualifier
+into the part - the shape of "selected **and** strobed", which is what a device
+wants when its own access has to be gated by something the board computes.
 
-**Two pins settle it, and they are on the '32, not the ASIC.**
+That makes pin 71 a candidate for the ASIC's own qualified chip select, and it
+is a better-evidenced one than the standing suspect. The right edge's pin 54
+was nominated as the select for the `0x00`-`0x7f` window purely because it is
+the one gap between `RD#` and the interrupts. Pin 71 is a measured input
+carrying a measured `AND` of two conditions. Both can be true - a raw select on
+54 and a qualified one on 71 - but 54's case is now the weaker of the two.
 
-* **pin 13** (`4B`) - gate 4's other input. `RD`, `WR` or a CPU chip select
-  each imply a different circuit.
-* **pin 11** (`4Y`) - its output. If it lands on the flash's or the SRAM's
-  `CE#`, `OE#` or `WE#`, the claim above is established outright. If it goes
-  somewhere else entirely, the OR is doing something other than decode and this
-  paragraph is wrong.
+**The two pins that settle it are gate 4's inputs**, `4A` on pin 12 and `4B` on
+pin 13. `RD`, `WR`, a CPU chip select (`UCS`/`LCS`/`GCS`) and an address decode
+each imply a different circuit, and the pair together names the condition
+exactly.
 
-The '32 has three more gates. Whatever they do is unread, and the same two
-questions apply to each.
+The '32 has three more gates, all unread. The same question applies to each,
+and it is now worth asking which of them are inputs to this part and which are
+outputs of it - this reading shows the answer is not uniform.
 
 **One reading is now known to be wrong.** `A7` was traced from flash pin 4 and
 RAM pin 3 back to `'573` pin 12. `A7` is a low-byte bit, the low byte comes out
@@ -606,9 +611,10 @@ finding next, in the order they would pay:
    edge are unread. `A1` is RAM pin 9 / flash pin 10 and they walk down from
    there; finding them completes the low-byte latch. The `A7` net previously
    recorded on `'573` pin 12 belongs here and should be retaken.
-2. **74VHC32 pins 11 and 13** - the output and other input of the gate ASIC
-   pin 71 drives. If the output is a memory `CE#`, `OE#` or `WE#`, the ASIC
-   gates memory access and the `A17` pin stops looking like buffering.
+2. **74VHC32 pins 12 and 13** - `4A` and `4B`, the two inputs of the gate
+   whose output feeds ASIC pin 71. They name the two-condition qualifier the
+   ASIC is given, and `RD`, `WR`, a CPU chip select and an address decode each
+   imply a different circuit.
 3. **Flash `A16` and `A18`, in the same run.** `A17` on pin 73 has no bus
    reason to be there - those lines need no latch - so if `A16` and `A18` are
    also on the ASIC it is buffering the high address, and if they are not, it
