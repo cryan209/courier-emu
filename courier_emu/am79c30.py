@@ -306,6 +306,25 @@ class Am79C30:
                 routes.append((left, right))
         return routes
 
+    def peripheral_slots(self, count: int) -> list[int | None]:
+        """Which logical port each peripheral-port time slot carries.
+
+        The part's PP clocks several eight-bit slots in each 125 us frame and
+        the MUX decides which channel is in which.  This model takes the slots
+        in the order the MCRs list their connections - MCR1's first - and
+        leaves the rest unconnected, which is the register order the firmware
+        writes rather than a decoding of PPCR1.  PPCR1 (`07` here) and PPCR2
+        are recorded but not interpreted: nothing in the image has shown what
+        their fields mean, and a slot map invented from them would be a guess
+        wearing a datasheet's clothes.
+        """
+        slots: list[int | None] = []
+        for left, right in self.bearer_routes():
+            for port in (left, right):
+                if port >= 3 and port not in slots:
+                    slots.append(port)
+        return (slots + [None] * count)[:count]
+
     def queue_bearer(self, channel: int, octets: bytes) -> None:
         """Network-to-terminal B1/B2 input, without companding conversion."""
         if channel not in (1, 2):
@@ -607,6 +626,7 @@ class Am79C30:
             "liu_state": f"F{self.liu_state}",
             "bearer": {
                 "frames": self.bearer_frames,
+                "peripheral_slots": self.peripheral_slots(2),
                 "routes": self.bearer_routes(),
                 "routed_frames": dict(self.bearer_routed),
                 "rx_pending": {channel: len(q) for channel, q in self.bearer_rx.items()},

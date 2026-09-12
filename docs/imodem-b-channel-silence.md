@@ -197,22 +197,56 @@ codeword at `e8e9` and `e909` - `splk @21, #00ff`, DXR - choosing between `ff`
 and `7f` on a flag bit.  A modem whose HDLC receiver has not synchronised
 transmits mark idle, which is exactly what the capture contains.
 
-## One thing the model has wrong, found on the way
+## Two time slots per frame, which the model now clocks
 
-The firmware programs the serial port with **`SPC = 40c8`**, and bit 0, `FO`, is
-**0**: sixteen-bit word format.  `native/c5x_core.cpp` says the opposite in a
-comment - "FO=1 is byte format" - and puts the B-channel octet in the low byte
-with the high byte zero.  The firmware's own splitter at `80db..80de` takes
-*two* octets out of one word, and the flag hunt's `@7c = 7` terminator is the
-bit index where the top half of a sixteen-bit word ends.  Both say the DSP
-expects two peripheral-port time slots per 125 us frame, not one.
+The firmware programs the serial port with **`SPC = 40c8`**, and `FO` - bit 2,
+per the C5x user's guide table 9-13 - is **0**: sixteen-bit word format.  That
+is not a new reading.  [quad-dsp-pcm-path.md](quad-dsp-pcm-path.md) already
+separates the two products on exactly that bit, the Quad's `40cc` against the
+302's `40c8`, and says in as many words that the 302 moves sixteen-bit words.
+The core had it the other way round - a comment claiming byte format, and one
+octet per frame in the low byte with the high byte left zero.
 
-Delivering the octet in the high half instead does put `007e` into `0x0889`,
-so the wiring is at least plausible - and it changes nothing else, because the
-deadlock above is upstream of it.  Which half carries which slot is not settled
-by anything above, and clocking two slots per frame is a change to
-`Am79C30.clock_bearer` and the harness around it rather than a one-line
-shift, so it is left as the next piece of work rather than guessed at here.
+The firmware says the same thing twice more.  Its splitter at `80db..80de`
+takes *two* octets out of one received word, and the flag hunt's `@7c = 7`
+terminator is the bit index where the top half of a sixteen-bit word ends.
+Sixteen bits every 125 us is 128 kbit/s: **two eight-bit peripheral-port time
+slots**, where one B channel is 64.
+
+So the boundary is now modelled as the part runs it:
+
+* `native/c5x_core.cpp` reads `FO` out of `SPC` instead of assuming it.  `FO=1`
+  keeps one octet per frame, which is the Quad's path and is untouched.  `FO=0`
+  exchanges a whole sixteen-bit word - **MSB first, so the frame's first time
+  slot is the high byte at both ends**, which is what decides the mapping
+  rather than a preference.
+* `Am79C30.peripheral_slots()` says which logical channel each slot carries.
+  It takes them in the order the MCRs list their connections, MCR1 first.
+  `PPCR1` (`07` here) and `PPCR2` are recorded and *not* decoded: nothing in
+  the image has shown what their fields mean, and a slot map invented from
+  them would be a guess wearing a datasheet's clothes.
+* `ImodemDsp._sync_pcm` exchanges one MUX frame per pair of octets, so B1 still
+  carries one octet per 125 us and stays 64 kbit/s.  An odd octet at the end of
+  a scheduler slice is half a frame and waits for its other half.
+
+A modem call programs `MCR1 = 16h` and nothing else, so B1 takes the first slot
+and the second is unconnected.  The run now shows `DRR = 7eff`: the far end's
+flag octet in the high half, from `Bd`, and the idle codeword in the low half,
+from a slot the MUX has nothing on.  `0x0889` - the cell the flag hunt reads -
+holds `007e` where it used to hold zero, and the report names the slots:
+
+```
+pcm   slots ['Bd', None]   frames 144798   octets 289596
+dsc   peripheral_slots [6, None]   routes [[1, 6]]
+```
+
+one `DRR` read and one `DXR` write per frame, which is what a sixteen-bit port
+should do.
+
+This does not move the deadlock, and was not expected to: the flag hunt still
+cannot get a second byte, because the cell is refilled by the background loop
+it is blocking.  What it does is remove the doubt about *which* byte, so the
+question above it is the only one left.
 
 ## What that makes the frontier
 
@@ -230,8 +264,10 @@ it was entered as a blocking loop at all.  A coroutine with a resume address
 in `@7d` is written to be driven a bit at a time from above; this one was
 entered and never left, so the condition that let it start - the byte-ready
 tests at `e8f3` and `e900`, on `@78` and `@60` - was true when there was
-nothing behind it.  That is where the next trace goes, and the two-slot serial
-format above is the most likely reason those tests lie.
+nothing behind it.  That is where the next trace goes.  The two-slot format was
+the obvious suspect for those tests lying and is now ruled out: the slots are
+clocked, the octets land in the half the firmware reads, and the loop is
+unchanged.
 
 Inventing a wake-up instead would produce a modem that appears to talk.  The
 counters are what tells the difference, and they are cheap to read:

@@ -5,6 +5,13 @@ from pathlib import Path
 from .dsp import NativeC5x
 from .imodem_mailbox import ImodemMailbox
 
+# Eight-bit time slots in one peripheral-port frame. Two, because the DSP's
+# serial port is in sixteen-bit word format: see _sync_pcm.
+PP_SLOTS = 2
+# What an unconnected slot carries, and what the part clocks when the MUX has
+# nothing on that channel.
+IDLE_CODEWORD = 0xff
+
 ROM_SHA256 = '3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67'
 
 
@@ -27,6 +34,7 @@ class ImodemDsp(ImodemMailbox):
         self.dsc = dsc
         self.pcm_tx = bytearray()
         self._pcm_cursor = 0
+        self._pcm_partial = b''
 
     def close(self):
         if self.core is not None:
@@ -76,12 +84,30 @@ class ImodemDsp(ImodemMailbox):
         octets = self.core.g711_tx(self._pcm_cursor)
         self._pcm_cursor += len(octets)
         self.pcm_tx.extend(octets)
-        if self.dsc is not None and octets:
-            # A modem call programs MCR1=16h: B1 <-> Bd (PP channel 1).
-            # Exchange the actual DSP serial octets through that MUX. Input
-            # is pipelined by one scheduler slice (normally <= one frame).
-            incoming = bytes(self.dsc.clock_bearer({6: octet})[6] for octet in octets)
-            self.core.queue_g711_rx(incoming)
+        if self.dsc is None or not octets:
+            return
+        # The serial port is in sixteen-bit word format - the firmware writes
+        # SPC = 40c8, so FO is clear - and at 8 kHz that is two eight-bit
+        # peripheral-port time slots per 125 us frame, MSB first. The core
+        # hands them over and takes them back in that order, so a frame is a
+        # pair: the first slot, then the second. An odd octet at the end of a
+        # scheduler slice is half a frame and waits for its other half rather
+        # than being clocked as a whole one.
+        pending = self._pcm_partial + octets
+        self._pcm_partial = pending[len(pending) - len(pending) % PP_SLOTS:]
+        incoming = bytearray()
+        slots = self.dsc.peripheral_slots(PP_SLOTS)
+        for frame in range(len(pending) // PP_SLOTS):
+            sent = pending[frame * PP_SLOTS:(frame + 1) * PP_SLOTS]
+            # One MUX exchange per frame, whatever the slot count: B1 still
+            # carries one octet per 125 us, which is what makes it 64 kbit/s.
+            outputs = self.dsc.clock_bearer({
+                port: octet for port, octet in zip(slots, sent) if port
+            })
+            incoming.extend(outputs.get(port, IDLE_CODEWORD) if port
+                            else IDLE_CODEWORD for port in slots)
+        if incoming:
+            self.core.queue_g711_rx(bytes(incoming))
 
     def read(self, port):
         if port == 0x18:
@@ -160,11 +186,12 @@ class ImodemDsp(ImodemMailbox):
         self.core.set_mpmc_pin(0)
         self.core.set_pc(self.boot_origin)
         # The peripheral port clocks a DS0 even when its MUX is disconnected.
-        self.core.configure_digital_pcm(idle_codeword=0xff)
+        self.core.configure_digital_pcm(idle_codeword=IDLE_CODEWORD)
         self.core.configure_line_frame_interrupt(5, 0xffff)
         self.bootstrap_words = len(self.boot_words)
         self._reply_writes = 0
         self._pcm_cursor = 0
+        self._pcm_partial = b''
         # The bootstrap completion bus must not expose a running mailbox
         # before resident initialization clears PA7. Wait for its first IDLE,
         # rather than delivering a command that that initialization discards.
@@ -182,7 +209,12 @@ class ImodemDsp(ImodemMailbox):
                       consumed=self.consumed, download_blocks=self.download_blocks,
                       error=self.error, core=self.core.state() if self.core else None,
                       dsp_status=self.core.io(0x57) if self.core else None)
-        result['pcm'] = {'frames': len(self.pcm_tx), 'sample_rate': 8000,
-                         'peripheral_port': 'Bd', 'attached': self.dsc is not None,
+        names = {3: 'Ba', 4: 'Bb', 5: 'Bc', 6: 'Bd', 7: 'Be', 8: 'Bf'}
+        slots = (self.dsc.peripheral_slots(PP_SLOTS) if self.dsc
+                 else [None] * PP_SLOTS)
+        result['pcm'] = {'octets': len(self.pcm_tx), 'sample_rate': 8000,
+                         'frames': len(self.pcm_tx) // PP_SLOTS,
+                         'slots': [names.get(port) for port in slots],
+                         'attached': self.dsc is not None,
                          'serial': self.core.serial_state() if self.core else None}
         return result

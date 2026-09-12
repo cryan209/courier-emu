@@ -22,6 +22,13 @@ namespace courier {
 // transmit handshake never completes: the firmware writes DXR twice at
 // program 0x00c2 and then waits forever for a readiness it is never told
 // about, which is exactly what the access counts showed.
+// FO, the word format, is SPC bit 2 - C5x user's guide table 9-13, and the bit
+// docs/quad-dsp-pcm-path.md separates the two products on. The Quad writes
+// 40cc, FO = 1, eight-bit bytes; the I-modem and the 302 write 40c8, FO = 0,
+// sixteen-bit words. At 8 kHz that second case is two eight-bit
+// peripheral-port time slots per frame, MSB first, which puts the frame's
+// first slot in the high byte at both ends.
+static constexpr uint16_t SPC_FO   = 1u << 2;   // word format: 1 = byte
 static constexpr uint16_t SPC_XRST = 1u << 6;   // transmitter out of reset
 static constexpr uint16_t SPC_RRST = 1u << 7;   // receiver out of reset
 static constexpr uint16_t SPC_RRDY = 1u << 10;  // a received word is waiting
@@ -929,13 +936,28 @@ void C5xCore::step()
         do m_line_frame_next_cycle += m_line_frame_period;
         while (m_cycles >= m_line_frame_next_cycle);
         if (m_digital_pcm) {
-            // FO=1 is byte format, MSB first. Keep the octet in the low byte:
-            // no linearisation or companding-law conversion belongs here.
-            m_serial.drr = m_g711_rx.empty() ? m_g711_idle : m_g711_rx.front();
-            if (!m_g711_rx.empty()) m_g711_rx.pop_front();
+            // No linearisation or companding-law conversion belongs here: the
+            // octets are the time slots as they sit on the wire. How many of
+            // them a frame carries is SPC's to say, not this code's.
+            auto next_octet = [&]() -> uint16_t {
+                if (m_g711_rx.empty()) return m_g711_idle;
+                const uint16_t octet = m_g711_rx.front();
+                m_g711_rx.pop_front();
+                return octet;
+            };
+            if (m_serial.spc & SPC_FO) {
+                m_serial.drr = next_octet();
+                m_g711_tx.push_back(uint8_t(m_serial.dxr & 0xff));
+            } else {
+                // Sixteen-bit words, MSB first: the frame's first time slot
+                // is the high byte at both ends.
+                const uint16_t first = next_octet();
+                m_serial.drr = uint16_t((first << 8) | next_octet());
+                m_g711_tx.push_back(uint8_t(m_serial.dxr >> 8));
+                m_g711_tx.push_back(uint8_t(m_serial.dxr & 0xff));
+            }
             m_codec.rx_ready = true;
             m_codec.tx_ready = true;
-            m_g711_tx.push_back(uint8_t(m_serial.dxr & 0xff));
             if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq)))
                 ++m_line_frame_interrupts;
             interrupt(unsigned(m_line_frame_irq));
