@@ -1,0 +1,411 @@
+[
+  {
+    "n": 194204,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194205,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194206,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 777436,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777437,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777438,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 1187456,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 1187457,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4c87"
+  },
+  {
+    "n": 1187470,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8072",
+    "pc": "0xa40c4"
+  },
+  {
+    "n": 2176814,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 2176889,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 2176895,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5000192,
+    "kind": "tx",
+    "text": "\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 5021229,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 5145678,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 5274773,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 5274848,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 5274854,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5375488,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 25000448,
+    "kind": "tx",
+    "text": "I\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 25042477,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 25399277,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 25405440,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n"
+  },
+  {
+    "n": 25528584,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 25528659,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 25528665,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 25629184,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 45000192,
+    "kind": "tx",
+    "text": "I6\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 45065773,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 60407275,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 60412928,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nNo Connection"
+  },
+  {
+    "n": 60536468,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 60536543,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 60536549,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 60637184,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 65000448,
+    "kind": "tx",
+    "text": "Y11\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 65085997,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 80812532,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 80818688,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nNo Connection\r\nFreq     Level\r\n"
+  },
+  {
+    "n": 80941723,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 80941798,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 80941804,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 81042432,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 85000192,
+    "kind": "tx",
+    "text": "\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 85022253,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 100754361,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 100757504,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nNo Connection\r\nFreq     Level\r\n"
+  },
+  {
+    "n": 100883604,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 100883679,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 100883685,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 100984320,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  }
+]

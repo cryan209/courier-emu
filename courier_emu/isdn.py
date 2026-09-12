@@ -245,6 +245,16 @@ PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
 PRODUCT_MODEM_SUFFIX = 0x01
 PRODUCT_TYPE_PROBE_COMPLETE = 0xA4506
 
+# The external enclosure's DTE front-end recognizes the attention sequence
+# before the ordinary command-body collector sees any bytes. The firmware
+# contains that receiver at a400:f596, but the CPU-only harness has no board
+# device to select it when command reception is armed at c7bf1. Select the
+# firmware's own receiver at that boundary; it consumes AT, clears the command
+# length, and installs the body collector for the rest of the line.
+EXTERNAL_COMMAND_RECEIVE_ARMED = 0xC7BF1
+SERIAL_RECEIVE_DISPATCH_ADDRESS = 0x2600 * 16 + 0xE834
+EXTERNAL_ATTENTION_RECEIVER = 0xF596
+
 # 2600:e358 is the modulation-capability byte the record's [d2c7] feeds, through
 # the five (test, set) pairs at a400:04ac -- d2c7 bits 0..4 setting e358 0x04,
 # 0x08, 0x40, 0x80 and 0x20.
@@ -770,6 +780,14 @@ class IsdnMachine:
                     else suffix & ~PRODUCT_MODEM_SUFFIX
                 )
                 uc.mem_write(PRODUCT_MODEM_SUFFIX_ADDRESS, bytes((suffix,)))
+            if (
+                address == EXTERNAL_COMMAND_RECEIVE_ARMED
+                and self.product_type == "external"
+            ):
+                uc.mem_write(
+                    SERIAL_RECEIVE_DISPATCH_ADDRESS,
+                    EXTERNAL_ATTENTION_RECEIVER.to_bytes(2, "little"),
+                )
             if profile:
                 self.pc_counts[address] += 1
             self.recent.append(address)

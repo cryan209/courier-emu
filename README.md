@@ -16,9 +16,8 @@ mode runs until detached and does not print the diagnostic JSON report unless
 the timer model's 2.5 million instructions per second, so the modem continues
 running without racing hours ahead of the terminal. See
 [the AT interface](docs/imodem-at-interface.md) for the `ATI0`-`ATI30` sweep,
-and for why a bare `AT` answers `NO CARRIER`: the firmware records a
-`Keypress Abort` disconnect cause because the S/T line never activates, which
-`ATI12` reports as `Physical Interface: Inactive`.
+and [I-modem terminal framing](docs/imodem-terminal-framing.md) for how the
+external board's attention receiver makes consecutive AT commands independent.
 
 The captured 20.16 MHz DSP boot ROM is now integrated for the 302/403
 firmware under `--with-dsp`. The DSP executes reset and downloads its resident

@@ -1,0 +1,451 @@
+[
+  {
+    "n": 194204,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194205,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194206,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 777436,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777437,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777438,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 1187456,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 1187457,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4c87"
+  },
+  {
+    "n": 1187470,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8072",
+    "pc": "0xa40c4"
+  },
+  {
+    "n": 2176814,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 2176889,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 2176895,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5000192,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xe49a": "0000000000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 5046812,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xb35ee"
+  },
+  {
+    "n": 5068333,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 5192632,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xe49a": "0000000000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 5321881,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 5321956,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 5321962,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5422592,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 25000448,
+    "kind": "tx",
+    "text": "ATI\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xe49a": "0000000000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 25047580,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xb35ee"
+  },
+  {
+    "n": 25085485,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 25442382,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xe49a": "0149000000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 25448448,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n"
+  },
+  {
+    "n": 25571591,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 25571666,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 25571672,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 25672192,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 45000192,
+    "kind": "tx",
+    "text": "ATI6\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xe49a": "0149000000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 45047324,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xb35ee"
+  },
+  {
+    "n": 45108781,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 60212152,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xe49a": "0249360000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 60217856,
+    "kind": "rx",
+    "text": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nNo Connection"
+  },
+  {
+    "n": 60341406,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 60341481,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 60341487,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 60442112,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 65000448,
+    "kind": "tx",
+    "text": "ATY11\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xe49a": "0249360000000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 65049628,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xb35ee"
+  },
+  {
+    "n": 65133613,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 65640932,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xe49a": "0359313100000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 65645568,
+    "kind": "rx",
+    "text": "\r\nFreq     Level\r\n"
+  },
+  {
+    "n": 65770145,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 65770220,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 65770226,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 65870848,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  },
+  {
+    "n": 85000192,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xe49a": "0359313100000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 85043740,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xb35ee"
+  },
+  {
+    "n": 85066797,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 85189049,
+    "kind": "result",
+    "code": 0,
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "2887",
+      "0xe49a": "0000313100000000000000000000000000000000",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 85318302,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 85318377,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 85318383,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 85419008,
+    "kind": "rx",
+    "text": "\r\nOK\r\n"
+  }
+]

@@ -61,13 +61,7 @@ def test_the_banner_is_transmitted_with_bit_seven_set(session):
     assert b"USRobotics" in bytes(byte & 0x7F for byte in raw)
 
 
-def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
-    """The reason a bare AT answers NO CARRIER is not a bad table index.
-
-    Index 0 of the result table at 0xcef4b is reachable: ATI2 - the ROM
-    checksum test - answers a plain OK. See docs/imodem-at-interface.md for
-    what sends the other commands down the go-idle epilogue instead.
-    """
+def test_ati2_text_and_final_result_both_answer_ok():
     if not IMAGE.exists():
         pytest.skip("local I-modem firmware not available")
     transcript: list[tuple[int, str, str]] = []
@@ -78,10 +72,12 @@ def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
                 if direction == "sent")
     answer = "".join(text for count, direction, text in transcript
                      if direction == "received" and count > typed)
-    assert answer.strip() == "OK"
+    # ATI2 prints its own checksum-test OK, then the ordinary command
+    # epilogue emits a second OK result code.
+    assert answer == "\r\nOK\r\n\r\nOK\r\n"
 
 
-def test_consecutive_commands_are_sequenced_past_the_firmware_abort_state():
+def test_consecutive_commands_do_not_replay_stale_responses():
     if not IMAGE.exists():
         pytest.skip("local I-modem firmware not available")
     transcript: list[tuple[int, str, str]] = []
@@ -97,6 +93,26 @@ def test_consecutive_commands_are_sequenced_past_the_firmware_abort_state():
     assert "S00=000" in answer
     assert [text for _, direction, text in transcript if direction == "sent"] == [
         "ATI3\r", "ATI4\r",
+    ]
+
+
+def test_attention_prefix_resets_each_new_external_command():
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    transcript: list[tuple[int, str, str]] = []
+    commands = ["AT", "ATI", "ATI6", "ATY11", "AT"]
+    pump = scripted_pump(commands, transcript=transcript)
+    machine = IsdnMachine(NacImage.load(IMAGE), serial_pump=pump, profile=False)
+    machine.run(105_000_000)
+
+    answer = received(transcript)
+    assert answer.count("\r\nOK\r\n") == len(commands)
+    assert answer.count("USR009F") == 1
+    assert answer.count("Link Diagnostics") == 1
+    assert answer.count("Freq") == 1
+    assert "NO CARRIER" not in answer
+    assert [text for _, direction, text in transcript if direction == "sent"] == [
+        command + "\r" for command in commands
     ]
 
 

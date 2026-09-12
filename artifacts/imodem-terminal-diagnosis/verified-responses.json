@@ -1,0 +1,22 @@
+[
+  {
+    "command": "AT",
+    "response": "\r\nOK\r\n"
+  },
+  {
+    "command": "ATI",
+    "response": "\r\nUSR009F\r\n\r\nOK\r\n"
+  },
+  {
+    "command": "ATI6",
+    "response": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nNo Connection\r\nOK\r\n"
+  },
+  {
+    "command": "ATY11",
+    "response": "\r\nFreq     Level\r\n\r\nOK\r\n"
+  },
+  {
+    "command": "AT",
+    "response": "\r\nOK\r\n"
+  }
+]

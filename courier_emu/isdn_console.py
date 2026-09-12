@@ -4,17 +4,12 @@ SIO0 is the AT port (see courier_emu/sio.py).  Both drivers here are the same
 shape: a callback the harness invokes from `poll_timers`, which queues
 whatever the host has to say and takes whatever the firmware has said back.
 
-Two things about the timing are worth knowing before reading a transcript.
+One thing about the timing is worth knowing before reading a transcript.
 The firmware needs a warm-up - the command task is created late in the VRTX
-startup, and anything typed before it exists is discarded.  And characters
-have to arrive spaced out: delivered as one burst, a line reaches the parser
-differently and some commands do not answer at all.
-
-The firmware does *not* swallow the first line it is given.  A session whose
-only command is `ATI3` gets the banner, and one that opens with `AT` gets an
-answer to that `AT` as well; what made it look otherwise is that a bare `AT`
-answers `NO CARRIER` rather than `OK`, which reads like a lost line when the
-transcript starts with a throwaway.  See docs/imodem-at-interface.md.
+startup, and anything typed before it exists is discarded. The external
+board's DTE front-end then routes each line through the firmware's attention
+receiver, which consumes AT and resets the command buffer before handing the
+body to the parser. See docs/imodem-terminal-framing.md.
 
 The link is 7E1, and the firmware generates the parity bit itself rather than
 asking the part for it - see `even_parity` in courier_emu/sio.py for why a
@@ -44,12 +39,6 @@ from .sio import even_parity
 SERIAL_WARMUP_INSTRUCTIONS = 5_000_000
 # Long enough for a command to be parsed and its result code transmitted.
 SERIAL_LINE_INSTRUCTIONS = 20_000_000
-
-# 3.0.2 leaves its receive callback in the call-abort handler after completing
-# an AT command.  The next line is consumed while that handler returns the
-# command task to idle.  Give it a private, empty line for that transition;
-# terminal users should not have to type every command twice.
-_RECOVERY_LINE = "\0\r"
 
 # Ctrl-], as in telnet.
 DETACH_BYTE = 0x1D
@@ -95,54 +84,19 @@ def scripted_pump(
     so a run's report can show the session rather than just the final stream.
     """
     commands = [command_line(line) for line in lines]
-    schedule: list[tuple[int, str, bool]] = []
+    schedule: list[tuple[int, str]] = []
     for index, line in enumerate(commands):
-        if index:
-            schedule.append((after + (2 * index - 1) * every,
-                             _RECOVERY_LINE, True))
-        schedule.append((after + 2 * index * every, line, False))
+        schedule.append((after + index * every, line))
     schedule.reverse()
     log = transcript if transcript is not None else []
-    recovering = [False]
-    response = bytearray()
-    stale_response = [b""]
-    stale_match = [0]
-    stale_copies = [0]
 
     def pump(machine: Any) -> None:
         while schedule and machine.instructions >= schedule[-1][0]:
-            _, line, hidden = schedule.pop()
+            _, line = schedule.pop()
             machine.send_serial(_on_the_wire(line))
-            recovering[0] = hidden
-            if hidden:
-                stale_response[0] = bytes(response)
-                response.clear()
-            else:
-                # Releasing the abort callback replays the old response once
-                # before the newly typed command is dispatched.
-                stale_match[0] = 0
-                stale_copies[0] = 1 if stale_response[0] else 0
-                log.append((machine.instructions, "sent", line))
+            log.append((machine.instructions, "sent", line))
         received = machine.take_serial()
-        if not received or recovering[0]:
-            return
-        if stale_copies[0]:
-            pattern = stale_response[0]
-            visible = bytearray()
-            for byte in received:
-                if not stale_copies[0]:
-                    visible.append(byte)
-                    continue
-                if byte == pattern[stale_match[0]]:
-                    stale_match[0] += 1
-                    if stale_match[0] == len(pattern):
-                        stale_match[0] = 0
-                        stale_copies[0] -= 1
-                    continue
-                stale_match[0] = 1 if byte == pattern[0] else 0
-            received = bytes(visible)
         if received:
-            response.extend(received)
             log.append((machine.instructions, "received", _readable(received)))
 
     return pump

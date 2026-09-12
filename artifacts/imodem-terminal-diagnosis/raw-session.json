@@ -1,0 +1,212 @@
+[
+  {
+    "n": 194204,
+    "kind": "callback",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 777436,
+    "kind": "callback",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 1187456,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 2176895,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5000192,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 9499251,
+    "kind": "callback",
+    "value": "0x9d17",
+    "pc": "0xadc37"
+  },
+  {
+    "n": 9527682,
+    "kind": "callback",
+    "value": "0xe0e",
+    "pc": "0xa4d84"
+  },
+  {
+    "n": 10000384,
+    "kind": "tx",
+    "text": "ATI\r",
+    "state": {
+      "0xc922": "0e0e",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 10021778,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 10041901,
+    "kind": "callback",
+    "value": "0x8bb2",
+    "pc": "0xacbac"
+  },
+  {
+    "n": 10395047,
+    "kind": "result",
+    "code": 3,
+    "state": {
+      "0xc922": "b28b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 10797056,
+    "kind": "rx",
+    "text": "\r\nNO CARRIER\r\n"
+  },
+  {
+    "n": 10977133,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 15000064,
+    "kind": "tx",
+    "text": "ATI6\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 20000256,
+    "kind": "tx",
+    "text": "ATY11\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 25000448,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 30000128,
+    "kind": "tx",
+    "text": "ATI3\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 34046976,
+    "kind": "rx",
+    "text": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nDisconnect Reason is Keypress Abort"
+  },
+  {
+    "n": 35000320,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 35021357,
+    "kind": "callback",
+    "value": "0x8bb2",
+    "pc": "0xacbac"
+  },
+  {
+    "n": 35021718,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 35041837,
+    "kind": "callback",
+    "value": "0x8bb2",
+    "pc": "0xacbac"
+  },
+  {
+    "n": 35395555,
+    "kind": "result",
+    "code": 3,
+    "state": {
+      "0xc922": "b28b",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 35797504,
+    "kind": "rx",
+    "text": "\r\nNO CARRIER\r\n"
+  },
+  {
+    "n": 35977848,
+    "kind": "callback",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  }
+]

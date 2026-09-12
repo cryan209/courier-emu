@@ -1,0 +1,427 @@
+[
+  {
+    "n": 194204,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194205,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 194206,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0x4031d"
+  },
+  {
+    "n": 777436,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777437,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 777438,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x0",
+    "pc": "0xa4051"
+  },
+  {
+    "n": 1187456,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 1187457,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4c87"
+  },
+  {
+    "n": 1187470,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8072",
+    "pc": "0xa40c4"
+  },
+  {
+    "n": 2176814,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 2176889,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 2176895,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 5000192,
+    "kind": "tx",
+    "text": "ATI\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 5083693,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 7026836,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8553",
+    "pc": "0xac534"
+  },
+  {
+    "n": 7127552,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n"
+  },
+  {
+    "n": 9752238,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x9d17",
+    "pc": "0xadc37"
+  },
+  {
+    "n": 9780191,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0xe0e",
+    "pc": "0xa4d84"
+  },
+  {
+    "n": 9780192,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4d8a"
+  },
+  {
+    "n": 25000448,
+    "kind": "tx",
+    "text": "ATI6\r",
+    "state": {
+      "0xc922": "0e0e",
+      "0xc926": "5385",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 25022360,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 25022361,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4c87"
+  },
+  {
+    "n": 25041965,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8bb2",
+    "pc": "0xacbac"
+  },
+  {
+    "n": 25399207,
+    "kind": "result",
+    "code": 3,
+    "state": {
+      "0xc922": "b28b",
+      "0xc926": "5385",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 25801216,
+    "kind": "rx",
+    "text": "\r\nNO CARRIER\r\n"
+  },
+  {
+    "n": 25980914,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xadd05"
+  },
+  {
+    "n": 25981207,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 25981282,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 25981288,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 45000192,
+    "kind": "tx",
+    "text": "ATY11\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 45125165,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 47166976,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n"
+  },
+  {
+    "n": 49110573,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8553",
+    "pc": "0xac534"
+  },
+  {
+    "n": 49211392,
+    "kind": "rx",
+    "text": "\r\nFreq     Level\r\n"
+  },
+  {
+    "n": 51837552,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x9d17",
+    "pc": "0xadc37"
+  },
+  {
+    "n": 51865839,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0xe0e",
+    "pc": "0xa4d84"
+  },
+  {
+    "n": 51865840,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4d8a"
+  },
+  {
+    "n": 65000448,
+    "kind": "tx",
+    "text": "AT\r",
+    "state": {
+      "0xc922": "0e0e",
+      "0xc926": "5385",
+      "0xd08b": "00",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 65021841,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xa4c81"
+  },
+  {
+    "n": 65021842,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4c87"
+  },
+  {
+    "n": 65041965,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8bb2",
+    "pc": "0xacbac"
+  },
+  {
+    "n": 65395676,
+    "kind": "result",
+    "code": 3,
+    "state": {
+      "0xc922": "b28b",
+      "0xc926": "5385",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0002"
+    }
+  },
+  {
+    "n": 65797632,
+    "kind": "rx",
+    "text": "\r\nNO CARRIER\r\n"
+  },
+  {
+    "n": 65977016,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xadd05"
+  },
+  {
+    "n": 65977195,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x860d",
+    "pc": "0xac5c4"
+  },
+  {
+    "n": 65977270,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x869c",
+    "pc": "0xac633"
+  },
+  {
+    "n": 65977276,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x8b3e",
+    "pc": "0xc7be1"
+  },
+  {
+    "n": 85000192,
+    "kind": "tx",
+    "text": "ATI3\r",
+    "state": {
+      "0xc922": "3e8b",
+      "0xc926": "9c86",
+      "0xd08b": "17",
+      "0xd2a1": "00",
+      "0xd2c5": "00ffffffff",
+      "0xe770": "00",
+      "0xe78e": "0000"
+    }
+  },
+  {
+    "n": 85107757,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8728",
+    "pc": "0xac6d6"
+  },
+  {
+    "n": 87151616,
+    "kind": "rx",
+    "text": "\r\nUSR009F\r\n"
+  },
+  {
+    "n": 89196032,
+    "kind": "rx",
+    "text": "\r\nFreq     Level\r\n"
+  },
+  {
+    "n": 91722795,
+    "kind": "callback",
+    "address": "0x32926",
+    "value": "0x8553",
+    "pc": "0xac534"
+  },
+  {
+    "n": 91823616,
+    "kind": "rx",
+    "text": "\r\nUSRobotics Courier I-Modem with ISDN/V.34\r\n"
+  },
+  {
+    "n": 94448753,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0x9d17",
+    "pc": "0xadc37"
+  },
+  {
+    "n": 94476873,
+    "kind": "callback",
+    "address": "0x32922",
+    "value": "0xe0e",
+    "pc": "0xa4d84"
+  },
+  {
+    "n": 94476874,
+    "kind": "callback",
+    "address": "0x32924",
+    "value": "0x1208",
+    "pc": "0xa4d8a"
+  }
+]
