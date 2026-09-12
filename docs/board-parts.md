@@ -18,7 +18,8 @@ not in frame, so nothing here says what is on it.
 | `CY7C199-15VC` x2 | the **DSP's** SRAM: 2 x 32Kx8, 64 KB = 32K words on a 16-bit bus |
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
-| `74VHC573`, `74VHC32`, `74VHC04` | bus glue |
+| `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is the **address demultiplex latch**: its `Q7` (pin 12) carries `A7` to both the flash and the SRAM |
+| `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
 | `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
 | `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
 | `RA5W-K` | the **hook relay**. The `OH` lamp is on its pin 9, which is why `OH` is the one panel line not on the ASIC |
@@ -395,3 +396,31 @@ So the supervisor really does transfer 30k words whose content is
 `0000..0fff` is written by the CPU, so it is external RAM. Whether the die also
 carries a mask ROM that is simply never mapped is still not something any of
 this can say.
+
+## The flash is an Intel part, and the harness models an AMD one
+
+The 2806's flash is marked `PA28F400` - Intel's 4 Mbit boot-block part.
+`courier_emu/flash_device.py` models an **AMD Am29F400AT**, device code
+`0x2223`, with that part's eleven-sector top-boot map hard-coded as fixed
+geometry rather than a parameter.
+
+Those disagree, but not yet in a way that is a bug, and the distinction is the
+usual one. The AMD choice was never read off a board: it was **inferred from
+the update image**, `Ie030002.nac`, which probes for a manufacturer word and
+takes the AMD path when Intel does not answer. That image is the I-modem's, not
+the 2806's, and nothing establishes the two units carry the same flash. So
+there are two parts here, and possibly two correct answers.
+
+What makes it worth writing down is that the file's sector map is load-bearing.
+Its comment reasons from the Am29F400AT's boot-block layout that the updater's
+one erase lands in `SA8` and leaves `SA9` and `SA10` untouched - "which is what
+a settings store in flash looks like". An Intel 28F400 has its own block map,
+and `-T` and `-B` parts put the boot blocks at opposite ends. If the board the
+updater actually runs on is the Intel part, that inference is being drawn from
+the wrong geometry.
+
+The cheap check is the one the update image itself performs: read the
+autoselect words out of the 2806. Manufacturer `0x0089` is Intel and `0x0001`
+is AMD, and the device word names the part and its boot orientation. That is a
+monitor read, and it would either confirm the marking or find that the marking
+and the silicon disagree.

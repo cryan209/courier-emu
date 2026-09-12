@@ -121,6 +121,10 @@ measured ends being contiguous and in order, and is marked so.
 | 2-5 | 89-86 | DSP `A0` `A1` `A2` `A3` |
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
+| 18 | 73 | flash `A17` - PA28F400 pin 3 |
+
+Locals 15-17 (`76`-`74`) and everything right of local 18 (`72`-`61`) are
+unread. That gap matters: see below.
 
 ### Right edge - the CPU control group
 
@@ -163,6 +167,35 @@ part of either; a ground or supply splitting the bus halves is the obvious
 candidate and it has not been checked.
 
 Pins `110`-`113` and `115`-`120` are unread.
+
+#### The ASIC is in the flash's high address path
+
+Pin 73 goes to the flash's `A17`, and that is not a line the CPU should need
+help with. The part is a **PA28F400**, 4 Mbit, and the 2806 dump
+(`artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom`) is 524,288
+bytes - the whole device, with no second bank hiding behind it. So `A17` here
+is the part's own top address line, not a page select onto more silicon.
+
+Which leaves the question of why it comes out of the ASIC at all. An 80186 has
+a 20-bit address and 512 KiB of flash needs `A0`-`A18` of it; nothing about
+that requires an intermediary. Two readings fit:
+
+* **The ASIC buffers or remaps the high flash addresses.** The CPU's upper
+  address lines are not multiplexed onto `AD0`-`AD7` and have to reach the
+  flash somehow, and if one of them is routed through the ASIC the rest
+  probably are too.
+* **`A17` is switchable**, splitting the part into two 256 KiB halves the ASIC
+  selects between. The dump does not rule this out - a full-device read through
+  the monitor would see both halves either way - but nothing in the firmware
+  analysis has ever needed a flash bank, so this is the weaker of the two.
+
+Either way it makes a prediction, and a cheap one. **`72`-`61` and `76`-`74`
+are the unread rest of this edge**, immediately adjacent, and if the high flash
+addresses come through this part then `A16` and `A18` are in there. Three or
+four continuity readings settle which of the two readings above is right, and
+they are the highest-value pins left on the package - a CPU-to-flash path
+running through the ASIC is a structural fact about the memory map that nothing
+here has modelled.
 
 ### Bottom edge - the panel and the two handshake lines
 
@@ -438,40 +471,56 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Eighty-one of the 120 pins are unread. The bottom edge is now partly read -
+Eighty of the 120 pins are unread. The bottom edge is now partly read -
 nine pins of it - and the other twenty-one are still open. The ones worth
 finding next, in the order they would pay:
 
-1. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+1. **Top-edge pins `76`-`74` and `72`-`61`** - the neighbours of the flash
+   `A17` pin. If `A16` and `A18` are there, the CPU's high address path runs
+   through this part, which is a memory-map fact and not just a pinout one.
+2. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-2. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+3. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-3. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+4. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-4. **What `J7` carries.** The second serial port streams continuously to that
+5. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-5. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+6. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-6. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+7. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-7. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+8. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-8. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+9. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
 ### Readings recorded but not yet interpreted
+
+**A flash/RAM address net was read without an ASIC pin on it.** Flash pin 4,
+`A7`, goes to 74VHC573 pin 12 and to RAM pin 24. The latch half is exactly
+right and settles what that part is: pin 12 of a '573 is `Q7`, so the VHC573 is
+the **address demultiplex latch** holding `A0`-`A7` off the CPU's `AD` bus, and
+flash and RAM share its outputs - one low address bus, as expected.
+
+The RAM half does not fit. On the JEDEC 28-pin 32Kx8 pinout that all three of
+the board's SRAM types use, **pin 24 is `A9`** - neither the `A7` this net
+carries nor the `A2` the reading names, and `A2` is pin 8 on that pinout. One
+of the pin number, the signal name, or the assumed package is wrong. It is left
+here unresolved rather than silently corrected to `A7`, because which of the
+three it is decides whether the low address bus really is shared.
 
 **The `SD` reading runs CPU pin to CPU pin.** As recorded, `SD` is on CPU
 pins 4, 7 and 63 and on 74AHC04 pin 11, and the matching inverter output at
