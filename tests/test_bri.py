@@ -219,3 +219,23 @@ def test_the_isdn_block_accounts_for_itself_exactly():
         assert offset == cursor, f"{offset} leaves a gap or overlaps"
         cursor += length
     assert cursor == config.ISDN_BLOCK_LENGTH
+
+
+def test_the_dipswitch_bank_reads_the_way_the_firmware_expects():
+    # Both switches are bits of port 0x12, and the board's signal helper
+    # reports one present when its bit reads 0 - the same inversion the
+    # modem-status lines carry. An all-on bank therefore reads 0x00, which is
+    # what the port answered before it was modelled at all.
+    from courier_emu.isdn import DIPSWITCH_BITS, DIPSWITCH_PORT, IsdnMachine
+    from courier_emu.nac import NacImage
+
+    image = NacImage.load("Ie030002.nac")
+    assert IsdnMachine(image).read_port(DIPSWITCH_PORT) == 0x00
+    for switch, mask in DIPSWITCH_BITS.items():
+        machine = IsdnMachine(image, dipswitches={switch: False})
+        assert machine.read_port(DIPSWITCH_PORT) == mask
+
+    # An explicit --port assignment still overrides the bank, so the older way
+    # of poking this port keeps working.
+    machine = IsdnMachine(image, port_values={DIPSWITCH_PORT: 0x33})
+    assert machine.read_port(DIPSWITCH_PORT) == 0x33

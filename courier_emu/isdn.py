@@ -102,6 +102,31 @@ BOARD_LATCH_WIRING = {
     "undefined": 0x00,
 }
 
+# The DIP switch bank, and the two switches the firmware reads.
+#
+# Recovered from the firmware's own display: the printer at 0xc7924 emits
+# "CURRENT DIPSWITCH SETTINGS" and then one "DIPSWITCH #n   ON/OFF" line per
+# switch, reading each through the board-signal helper at a400:1e0a with an id
+# out of a two-entry table at 0xc79a3 - `0x4023` and `0x1023`. The low byte is
+# the index into the input-port table at a5f97, whose entry 3 is port 0x12;
+# the high byte is the mask. So both switches are bits of one port, and only
+# two of them are wired to anything the firmware looks at.
+#
+# The sense is the same inversion the modem-status lines use (see
+# courier_emu/sio.py): the signal helper reports a switch present when its bit
+# reads 0, and the printer calls that "ON". Port 0x12 answering 0 - which is
+# what an unmodelled port did - therefore reads as both switches ON, which is
+# the default kept here.
+#
+# What they do is only partly established. The boot code at 0xa5fb4 tests
+# switch 2 and sets [ca3f] bit 7 with [ca38] bit 2 clear when it is ON, and
+# the reverse when it is OFF; five sites test that flag. Switch 1 is
+# observable from outside: with it OFF the modem stops answering the AT
+# interface altogether - ATDT gets no response at all rather than NO CARRIER -
+# which is what a Courier's result-code or dumb-mode strap does.
+DIPSWITCH_PORT = 0x12
+DIPSWITCH_BITS = {1: 0x40, 2: 0x10}
+
 # The board's UART clock select. The rate setter at 0xc7ae7 reads this port,
 # clears bit 1 for the four fastest rate codes and sets it for the rest, and
 # writes it back -- and that boundary is exactly where the firmware's divisor
@@ -305,6 +330,7 @@ class IsdnMachine:
         flash_overlay: tuple[int, bytes] | None = None,
         flash_nvram: bytes | None = None,
         bri: BriNetwork | None = None,
+        dipswitches: dict[int, bool] | None = None,
         product_type: str = "external",
         product_modem: bool = False,
     ) -> None:
@@ -364,6 +390,19 @@ class IsdnMachine:
         # switch it talks to, and it reaches the board only through the
         # chip's receive and transmit buffers. See courier_emu/bri.py.
         self.bri = bri
+        # Which DIP switches are ON, defaulting to all of them - the state an
+        # unmodelled port 0x12 already produced, so a run that says nothing
+        # behaves as it did before this was modelled.
+        self.dipswitches = {
+            switch: True for switch in DIPSWITCH_BITS
+        }
+        for switch, state in (dipswitches or {}).items():
+            if switch not in DIPSWITCH_BITS:
+                raise ValueError(
+                    f"the firmware reads switches {sorted(DIPSWITCH_BITS)}, "
+                    f"not {switch}"
+                )
+            self.dipswitches[switch] = bool(state)
         self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
         self.pit = ProgrammableIntervalTimer()
@@ -483,6 +522,11 @@ class IsdnMachine:
         base = self._uart_of(port)
         if base is not None:
             return self.channels[base].read(port)
+        if port == DIPSWITCH_PORT and port not in self.port_values:
+            # A switch that is ON reads 0, the same inversion the modem-status
+            # lines carry.
+            return sum(mask for switch, mask in DIPSWITCH_BITS.items()
+                       if not self.dipswitches[switch])
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:

@@ -180,3 +180,51 @@ One detail recovered alongside it: `34975` clears bit 7 of the 386EX's P2
 latch and spins 6,000 times before touching the flash, and sets it again
 after.  That is the write protect, and it is why port `f86a` toggles around
 every flash operation.
+
+## The DIP switches
+
+The external unit has a switch bank, and the firmware's own display says
+where it is - no guessing needed.  The printer at `0xc7924` emits
+
+```
+CURRENT DIPSWITCH SETTINGS
+DIPSWITCH #1   ON
+DIPSWITCH #2   ON
+```
+
+reading each switch through the board-signal helper at `a400:1e0a` with an id
+taken from a table at `0xc79a3`.  The table has **two** entries - `0x4023` and
+`0x1023` - and the bytes after them are code, so two switches is all the
+firmware reads, whatever the enclosure carries.
+
+Those ids decode through the same scheme the rest of the board's signals use
+([imodem-d-channel.md](imodem-d-channel.md)): the low byte indexes the
+input-port table at `a5f97`, whose entry 3 is **port `0x12`**, and the high
+byte is the mask.  So both switches are bits of one port:
+
+| switch | id | port | mask |
+|---|---|---|---|
+| 1 | `0x4023` | `0x12` | `0x40` |
+| 2 | `0x1023` | `0x12` | `0x10` |
+
+Port `0x12` is a sibling of the enclosure latch at `0x14`, which is entry 2 of
+the same table.
+
+The sense is the inversion the modem-status lines carry: the signal helper
+reports a switch present when its bit reads **0**, and the printer calls that
+`ON`.  An unmodelled port answering 0 therefore always read as both switches
+ON, which is the default `courier_emu/isdn.py` keeps so older runs are
+unchanged.  `isdn-run --dipswitch 1=off` sets one.
+
+What they do is only partly established:
+
+* **Switch 2** is read at boot by `0xa5fb4`, which sets `[ca3f]` bit 7 with
+  `[ca38]` bit 2 clear when it is ON and the reverse when it is OFF.  Five
+  sites test that flag.
+* **Switch 1** is observable from outside.  With it OFF the modem stops
+  answering the AT interface altogether - `ATDT` gets no response at all
+  rather than `NO CARRIER` - which is what a Courier's result-code or
+  dumb-mode strap does.
+
+Neither setting changes what `ATD` does on the D channel: with all four
+combinations of the two switches, an `ATDT` still transmits no layer-2 frame.

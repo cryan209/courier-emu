@@ -544,6 +544,17 @@ def build_parser() -> argparse.ArgumentParser:
              "Inactive, which is what ATI12 says today",
     )
     isdn_run.add_argument(
+        "--dipswitch",
+        action="append",
+        default=[],
+        metavar="N=on|off",
+        help="set one of the board's DIP switches, e.g. 1=off. The firmware "
+             "reads two of them, both bits of port 0x12, through the signal "
+             "id table its own DIPSWITCH display uses; both default to on, "
+             "which is what the port read as before it was modelled. Switch 1 "
+             "off stops the modem answering the AT interface at all",
+    )
+    isdn_run.add_argument(
         "--bri-network",
         action="store_true",
         help="put an NT and a switch on the far side of the S interface: "
@@ -1249,6 +1260,14 @@ def main(argv: list[str] | None = None) -> int:
                 imodem_config.load_nvram(args.flash_nvram)
                 if args.flash_nvram else None
             )
+            dipswitches: dict[int, bool] = {}
+            for setting in args.dipswitch:
+                number, separator, state = setting.partition("=")
+                if not separator or state not in ("on", "off"):
+                    raise ValueError(
+                        f"invalid dipswitch: {setting!r}, expected N=on|off"
+                    )
+                dipswitches[_number(number)] = state == "on"
             bri = None
             if args.bri_network:
                 bri = BriNetwork(
@@ -1297,6 +1316,7 @@ def main(argv: list[str] | None = None) -> int:
                 flash_overlay=overlay,
                 flash_nvram=nvram,
                 bri=bri,
+                dipswitches=dipswitches,
                 **entry
             )
             try:
