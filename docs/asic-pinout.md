@@ -15,9 +15,21 @@ running ID_SDL 4.03d, supervisor 7.4.16 / DSP 3.1.2, the same board
 
 ## Orientation and pin numbering
 
-The package is 120 pins, 30 a side, with the index dot at the **bottom left**
-as the board is read. Under the JEDEC convention - pin 1 at the dot, numbering
-counter-clockwise viewed from above - that puts:
+The package is 120 pins, 30 a side, with the index dot at the **bottom left**.
+
+"Bottom left" is **in the part's own frame, not the board's**: the readings
+were taken viewed from above with the `NEC USA 1-016-905` markings upright, and
+"top", "right" and "left" below mean the edges of the chip in that position.
+That is the orientation to reproduce before re-checking any of this - it does
+not depend on how the ASIC happens to sit relative to the board's silkscreen,
+and it is the frame a package drawing would use.
+
+It also fixes which of the two common QFP drawing styles applies. Both number
+counter-clockwise from a top view; they differ in where pin 1 sits. Pin 1 at
+the top-left runs `1`-`30` down the left side. Pin 1 at the **bottom** left -
+which is what the dot shows in the part's own frame - runs `1`-`30` along the
+bottom. So, under the JEDEC convention of pin 1 at the dot and numbering
+counter-clockwise viewed from above:
 
 | pins | edge | direction |
 |---|---|---|
@@ -48,8 +60,10 @@ possible and it is not a small difference: clockwise numbers the same dot as
 `1`-`30` up the *left* side, putting the address bus at `31`-`36` instead of
 `85`-`90` and `IS` at `7` instead of `114`. Both are given below.
 
-**No measurement on the board can decide between them.** The two conventions
-number the same physical pins; nothing a meter reads changes which piece of
+**No measurement on the board can decide between them.** Reading the markings
+fixes the reference frame, which is what the two styles above needed, but it
+cannot fix the *direction*: counter-clockwise and clockwise number the same
+physical pins in that same frame, and nothing a meter reads changes which piece of
 metal a wire lands on. Only an NEC package drawing for this body would settle
 it, and for a custom gate array there isn't one to consult. So the numbers here
 are a convenience for talking about the part - **the edge and the count from
