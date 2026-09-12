@@ -44,7 +44,11 @@ for i,n in enumerate(range(93,99)): setp(n,'DSP D%d'%(14-i),'dspi')
 setp(99,'DSP D8','dsp'); setp(100,'? supply','sus')
 setp(101,'DSP D7','dsp'); setp(102,'DSP D6','dsp')
 for i,n in enumerate(range(103,108)): setp(n,'DSP D%d'%(5-i),'dspi')
-setp(108,'DSP D0','dsp'); setp(109,'DSP INT2','dsp'); setp(114,'DSP IS','dsp')
+setp(108, 'DSP D0', 'dsp')
+setp(109, 'DSP INT2', 'dsp')
+setp(114, 'DSP IS', 'dsp')
+setp(119, 'DSP X1 (clock)', 'sus')
+setp(120, 'GND', 'pwr')
 for n,l in [(10,'CS'),(13,'AA'),(14,'ARQ'),(16,'HS'),(17,'SYN'),(18,'TR'),(21,'AA (2nd)'),(25,'RS'),(27,'MR')]: setp(n,l,'pan')
 COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','memi':'#b28ad6','pan':'#b8541f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
 W=H=980; cx=cy=W/2; B=360.0

@@ -178,6 +178,8 @@ CPU `INT0` (CPU pin 62) is **not connected**.
 | 18 | 108 | DSP `D0` |
 | 19 | 109 | DSP `INT2` |
 | 24 | 114 | DSP `IS` |
+| 29 | 119 | DSP pin 97, `X1` - the clock pin; see below |
+| 30 | 120 | `GND` |
 
 The five measured data pins fall in two exact descending runs - `99`-`92` for
 `D8`-`D15` and `101`-`108` for `D7`-`D0` - so the twelve unread ones between
@@ -185,7 +187,7 @@ them are inferred, not read. **Pin 100 sits between the two groups** and is not
 part of either; a ground or supply splitting the bus halves is the obvious
 candidate and it has not been checked.
 
-Pins `110`-`113` and `115`-`120` are unread.
+Pins `110`-`113` and `115`-`118` are unread.
 
 #### The ASIC is in the flash's high address path
 
@@ -540,6 +542,63 @@ RAM pin 3 back to `'573` pin 12. `A7` is a low-byte bit, the low byte comes out
 of the ASIC, and this net should land on the ASIC's top edge alongside `A0`.
 That one wants retaking.
 
+#### Pin 119 reaches the DSP's clock pins, and which one matters a lot
+
+**ASIC pin 119 goes to DSP pin 97.** SPRU056D's Table A-4 - the same table that
+gave `IS` at 90 and the `VDDD` group - puts **`X1`** there, with `X2/CLKIN` next
+door at **96**.
+
+`X1` is not an ordinary signal. On the 'C5x it is one half of the internal
+oscillator, and it only carries anything when a **crystal** is connected across
+`X1` and `X2/CLKIN`. With an external clock source the datasheet is explicit:
+the source goes to `X2/CLKIN` and **`X1` is left unconnected**. So a wire from
+`X1` to the ASIC is a circuit that should not exist on a board whose clock comes
+from a can oscillator - and [board-parts.md](board-parts.md) has that oscillator
+identified, an `ECLIPTEK EC11 40.320M`.
+
+Three readings fit, and they are not close together:
+
+* **It is pin 96, not 97.** Then the ASIC **drives the DSP's clock**, and the
+  board has one oscillator feeding the ASIC which distributes from there. That
+  is an ordinary design, it fits the single 40.320 MHz can, and an adjacent-pin
+  slip is the cheapest explanation for the reading.
+* **It is pin 97 and there is a crystal too.** The DSP would run its own
+  oscillator and `X1` would carry that oscillation out to the ASIC - the DSP
+  clocking the ASIC rather than the reverse. Possible, but it needs a crystal
+  nobody has reported and leaves the can oscillator doing something else.
+* **It is pin 97 and the pin is being driven anyway.** Some designs drive `X1`
+  as an input in crystal mode. The datasheet does not sanction it and it would
+  be worth knowing about.
+
+**The clock mode pins settle it without any guessing**, and they are two more
+continuity readings on the DSP. `CLKMD1` is DSP pin **71** and `CLKMD2` is pin
+**103**, and Table 9-2 reads:
+
+| `CLKMD1` | `CLKMD2` | mode |
+|---|---|---|
+| 0 | 0 | external divide-by-2, **internal oscillator disabled** |
+| 0 | 1 | reserved for test |
+| 1 | 0 | PLL |
+| 1 | 1 | external divide-by-2 **or internal divide-by-2 with a crystal** |
+
+`0`/`0` means there is no crystal, `X1` is dead, and the reading has to be pin
+96 - the ASIC drives the clock. `1`/`1` leaves the crystal reading open and
+makes the next question whether anything is soldered across 96 and 97.
+
+This matters more than a pin. [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)
+anchors the harness's timing on the DSP's software wait states and the
+oscillator, and **[dsp-pin-probes.md](dsp-pin-probes.md) and the rest of the
+DSP-side analysis have taken the clock as a given**. If the ASIC is in the
+clock path, the part can gate or divide it, and the DSP's machine cycle becomes
+something the ASIC has a say in rather than a board constant.
+
+#### A third corner supply
+
+`120` is `GND`. That is the bottom-left corner - the last pin of the left edge,
+adjacent to pin 1 at the index dot. With `90` at the top left and `61`/`60` at
+the top right, three of the four corners are now known to be supplies, which is
+the pad-ring convention holding up everywhere it has been checked.
+
 ### Bottom edge - the panel and the two handshake lines
 
 Read after the edges above, and it is where the lamps were predicted to be.
@@ -819,17 +878,22 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Fifty-nine of the 120 pins are unread. Of the sixty-one that are not,
+Fifty-seven of the 120 pins are unread. Of the sixty-three that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and now `A2`-`A6`. **The top edge is finished but for four
 pins**; the bottom is nine of thirty; the right and left edges are barely
 started. The ones worth finding next, in the order they would pay:
 
-1. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+1. **DSP `CLKMD1` (pin 71) and `CLKMD2` (pin 103), and DSP pin 96.** ASIC pin
+   119 is on the DSP's clock pins. The mode pins say whether the internal
+   oscillator is even enabled, and that decides whether the ASIC **drives** the
+   DSP's clock or merely hangs off it - which is the difference between the
+   machine cycle being a board constant and being something this part controls.
+2. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-2. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
+3. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
    them and can only be one. With `A17` now known to go *into* the ASIC on pin
    62, this decides whether the part shifts the address it remaps or leaves it
    in place. Whichever lands on a direct CPU output - pin 31
@@ -837,36 +901,36 @@ started. The ones worth finding next, in the order they would pay:
    reach the ASIC, it is buffering the high address rather than remapping a
    bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
    `UCS` (QFP pin 61) and would finish the decode.
-3. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+4. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-4. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+5. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-5. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+6. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-6. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+7. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-7. **What `J7` carries.** The second serial port streams continuously to that
+8. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-8. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+9. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-9. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+10. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-10. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+11. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-11. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+12. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
