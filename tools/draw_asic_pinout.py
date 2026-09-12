@@ -38,7 +38,11 @@ setp(62, 'CPU A17 (CPU 30)', 'cpu')
 setp(61, 'VCC', 'pwr')
 setp(60, 'GND', 'pwr')
 setp(57,'ALE  (CPU 38)','cpu'); setp(56,'WR#  (CPU 37)','cpu'); setp(55,'RD#  (CPU 36)','cpu')
-setp(54,'? chip select','sus'); setp(53,'INT2/INTA0# (CPU 64)','cpu'); setp(47,'INT1 (CPU 63)','cpu')
+setp(54, '? chip select', 'sus')
+setp(53, 'INT2/INTA0# (CPU 64)', 'cpu')
+setp(47, 'INT1 (CPU 63)', 'cpu')
+setp(38, 'phone header pin 6', 'tel')
+setp(37, 'phone header pin 5', 'tel')
 setp(92,'DSP D15','dsp')
 for i,n in enumerate(range(93,99)): setp(n,'DSP D%d'%(14-i),'dspi')
 setp(99,'DSP D8','dsp'); setp(100,'? supply','sus')
@@ -53,7 +57,7 @@ setp(118, 'supply (decoupled)', 'pwr')
 setp(119, 'DSP X2/CLKIN - clock out', 'dsp')
 setp(120, 'GND', 'pwr')
 for n,l in [(10,'CS'),(13,'AA'),(14,'ARQ'),(16,'HS'),(17,'SYN'),(18,'TR'),(21,'AA (2nd)'),(25,'RS'),(27,'MR')]: setp(n,l,'pan')
-COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','memi':'#b28ad6','pan':'#b8541f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
+COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','memi':'#b28ad6','pan':'#b8541f','tel':'#8a6b1f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
 W=H=980; cx=cy=W/2; B=360.0
 x0=cx-B/2; y0=cy-B/2; x1=cx+B/2; y1=cy+B/2
 step=B/30.0; L=16.0
@@ -88,7 +92,7 @@ a(f'<text x="{cx}" y="{H-14}" text-anchor="middle" font-size="12.5" font-weight=
 a(f'<text transform="translate(20,{cy}) rotate(-90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">left 91-120 &#8212; DSP data bus, IS, INT2</text>')
 a(f'<text transform="translate({W-16},{cy}) rotate(90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">right 31-60 &#8212; CPU control</text>')
 lx,ly=34,60
-items=[('dsp','DSP side, measured'),('dspi','DSP data, inferred'),('cpu','CPU bus, measured'),('mem','memory address, out'),('memi','address, inferred'),('pan','panel / RS-232 handshake'),('pwr','supply'),('sus','read but unidentified'),('un','unread (%d pins)'%(120-len(PINS)))]
+items=[('dsp','DSP side, measured'),('dspi','DSP data, inferred'),('cpu','CPU bus, measured'),('mem','memory address, out'),('memi','address, inferred'),('pan','panel / RS-232 handshake'),('tel','phone-line header'),('pwr','supply'),('sus','read but unidentified'),('un','unread (%d pins)'%(120-len(PINS)))]
 for i,(k,t) in enumerate(items):
     yy=ly+i*19
     a(f'<rect x="{lx}" y="{yy-9}" width="13" height="11" fill="{COL[k]}"/>')

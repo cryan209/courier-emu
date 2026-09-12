@@ -155,6 +155,8 @@ This edge is the address side of the part: see below.
 | 7 | 54 | *unread* | - |
 | 8 | 53 | `INT2`/`INTA0#` | 64 |
 | 14 | 47 | `INT1` | - |
+| 23 | 38 | phone-line header pin 6 | - |
+| 24 | 37 | phone-line header pin 5 | - |
 
 `ALE`, `WR#` and `RD#` land adjacent, which makes this edge the CPU-side bus
 control group and gives **pin 54 as the prime suspect for the chip select**
@@ -163,6 +165,42 @@ decode somebody chose, and its pin has to be somewhere; one pin between `RD#`
 and the first interrupt is where it would sit.
 
 CPU `INT0` (CPU pin 62) is **not connected**.
+
+**The lower half of this edge is not CPU at all.** `37` and `38` go to the
+**phone-line header**, pins 5 and 6. The CPU control group sits at locals 4-14;
+these are at 23 and 24, well down the edge, with eight unread pins between. So
+the right edge is two groups, not one, and the second is the telco side.
+
+That is the first pin on this package to reach the line interface, and it does
+not arrive without a firmware counterpart waiting for it. Two line signals are
+already attributed to ASIC ports and neither had any physical evidence:
+
+* **Ring sense**, port `0x14` bit `1`. [daa-line-interface-2016mhz.md](daa-line-interface-2016mhz.md)
+  has the cadence machine sampling it directly from a 5 ms ticker - `in al,
+  0x14` / `test al, 2` at `0x1501d` - so this is an **input** the ASIC latches
+  for the CPU to poll.
+* **The hook relay**, port `0x10` bit `0`, which [dsp-rom-probe.md](dsp-rom-probe.md)
+  records as clicking with the `OH` lamp. An **output**.
+
+An input and an output, both line-side, both in this part's ports, and now two
+line-side pins on the package. The obvious pairing is that these are those two,
+but **nothing here establishes which pin is which, or that the pairing is right
+at all** - a header carries whatever the board put on it.
+
+**What to read next is the header itself.** Its pinout is unknown and it is
+cheap: pins 1-6 against ground, the relay coil, and the `RA5W-K`. Two specific
+checks would settle the pairing - continuity from ASIC `37` or `38` to the
+relay's coil terminals names the hook output, and whichever of the two changes
+state when the line rings is the ring sense.
+
+**One thing the header is probably not is bare tip and ring.** A digital gate
+array cannot sit on a telephone line; there has to be a transformer or an opto
+between, and the header is far likelier to be a **DAA module interface carrying
+logic-level signals** than the line itself. [board-parts.md](board-parts.md)
+says outright that "the DAA/line section is" outside the photograph it was
+compiled from, so that module is unidentified, and identifying it is the same
+outstanding item as the EIA-232 receiver - a part everyone knows is there that
+nobody has looked at.
 
 ### Left edge - the DSP data bus and its strobes
 
@@ -890,11 +928,11 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Fifty-four of the 120 pins are unread. Of the sixty-six that are not,
+Fifty-two of the 120 pins are unread. Of the sixty-eight that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
-and the left edge but for six**; the bottom is nine of thirty; the right edge is
-barely started, and it is the one that still holds the ASIC's own chip select.
+and the left edge but for six**; the bottom is nine of thirty; the right edge has two groups started and eight
+pins unread between them, and it still holds the ASIC's own chip select.
 The ones worth finding next, in the order they would pay:
 
 1. **The frequency at DSP pin 96.** The ASIC drives the DSP's clock, and no
@@ -903,11 +941,15 @@ The ones worth finding next, in the order they would pay:
    and every DSP-side analysis treat as a board constant - follows from it.
    `CLKMD1` (DSP pin 71) and `CLKMD2` (pin 103) say what the DSP divides it by,
    and those are meter readings.
-2. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+2. **The phone-line header's pinout**, and which of ASIC `37`/`38` is the
+   hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
+   names the output; watching the pair while the line rings names the input.
+   The DAA module on the far side of that header is unidentified.
+3. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-3. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
+4. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
    them and can only be one. With `A17` now known to go *into* the ASIC on pin
    62, this decides whether the part shifts the address it remaps or leaves it
    in place. Whichever lands on a direct CPU output - pin 31
@@ -915,36 +957,36 @@ The ones worth finding next, in the order they would pay:
    reach the ASIC, it is buffering the high address rather than remapping a
    bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
    `UCS` (QFP pin 61) and would finish the decode.
-4. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+5. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-5. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+6. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-6. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+7. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-7. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+8. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-8. **What `J7` carries.** The second serial port streams continuously to that
+9. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-9. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+10. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-10. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+11. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-11. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+12. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-12. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+13. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 

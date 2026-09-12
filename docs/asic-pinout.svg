@@ -51,8 +51,10 @@
 <rect x="670.0" y="625.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="613.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="601.0" width="16.0" height="6.0" fill="#c9c9c9"/>
-<rect x="670.0" y="589.0" width="16.0" height="6.0" fill="#c9c9c9"/>
-<rect x="670.0" y="577.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="589.0" width="16.0" height="6.0" fill="#8a6b1f"/>
+<text x="692.0" y="596.0" font-size="11.5" fill="#8a6b1f">37 &#183; phone header pin 5</text>
+<rect x="670.0" y="577.0" width="16.0" height="6.0" fill="#8a6b1f"/>
+<text x="692.0" y="584.0" font-size="11.5" fill="#8a6b1f">38 &#183; phone header pin 6</text>
 <rect x="670.0" y="565.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="553.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="541.0" width="16.0" height="6.0" fill="#c9c9c9"/>
@@ -208,12 +210,14 @@
 <text x="54" y="136" font-size="11.5" fill="#3a3a3a">address, inferred</text>
 <rect x="34" y="146" width="13" height="11" fill="#b8541f"/>
 <text x="54" y="155" font-size="11.5" fill="#3a3a3a">panel / RS-232 handshake</text>
-<rect x="34" y="165" width="13" height="11" fill="#6b6b6b"/>
-<text x="54" y="174" font-size="11.5" fill="#3a3a3a">supply</text>
-<rect x="34" y="184" width="13" height="11" fill="#a03060"/>
-<text x="54" y="193" font-size="11.5" fill="#3a3a3a">read but unidentified</text>
-<rect x="34" y="203" width="13" height="11" fill="#c9c9c9"/>
-<text x="54" y="212" font-size="11.5" fill="#3a3a3a">unread (54 pins)</text>
+<rect x="34" y="165" width="13" height="11" fill="#8a6b1f"/>
+<text x="54" y="174" font-size="11.5" fill="#3a3a3a">phone-line header</text>
+<rect x="34" y="184" width="13" height="11" fill="#6b6b6b"/>
+<text x="54" y="193" font-size="11.5" fill="#3a3a3a">supply</text>
+<rect x="34" y="203" width="13" height="11" fill="#a03060"/>
+<text x="54" y="212" font-size="11.5" fill="#3a3a3a">read but unidentified</text>
+<rect x="34" y="222" width="13" height="11" fill="#c9c9c9"/>
+<text x="54" y="231" font-size="11.5" fill="#3a3a3a">unread (52 pins)</text>
 <text x="650" y="60" font-size="11.5" font-weight="600" fill="#3a3a3a">traced, but NOT on this package:</text>
 <text x="650" y="77" font-size="11.5" fill="#8a8a8a">RD &#8594; U22 SN75188 pin 2</text>
 <text x="650" y="94" font-size="11.5" fill="#8a8a8a">CD &#8594; U23 SN75188 pin 4</text>
