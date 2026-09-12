@@ -138,11 +138,13 @@ the configuration rather than the peer's:
 * **The modem does not request a TEI on its own**, even once layer 3 has
   been handed an incoming SETUP over the broadcast data link.  A TE asks for
   a TEI when it has traffic, and this is traffic.
-* **`ATD` is refused before it reaches layer 2.**  It answers `NO CARRIER`
-  immediately with no D-channel activity at all.  `ATI12` still reports
-  `Dialing Mode *O  Invalid Value`, and `*O=n` is in the firmware's own help
-  page, so the next step is to find what it accepts - `AT*O=0` was dropped at
-  the pace these runs send at, rather than rejected.
+* **`ATD` is gated on the data link, so it is not a second problem.**  The
+  `'D'` handler at `0xcc6a3` reads `ce0:8d7d` - the byte `ATI12` prints as
+  `Data Link Layer` - and returns an error when it is zero, before the one
+  site in the image that issues `l4_SETUP` is ever reached.  See
+  [imodem-firmware-trace.md](imodem-firmware-trace.md).  Every configuration
+  hypothesis tested against `ATD` was therefore tested against a gate that
+  none of them could open.
 
 One thing the peer cannot do yet, and the reason is the firmware's:
 **terminal-initiated activation**.  In I.430 a TE that wants the line up

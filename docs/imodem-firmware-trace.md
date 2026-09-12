@@ -81,9 +81,10 @@ LINE_ACTIVE Detected
 l4_DISCONN : modem primitive
 ```
 
-so the AT layer handed layer 3 a disconnect.  Why it chose `'B'` over `'@'`
-is the next question, and it is now a question about one dispatch on one
-character rather than about the whole stack.
+The AT layer did hand layer 3 a disconnect - but it did not *choose* to.
+Following it through settles the question completely, and the answer is not
+in the AT layer at all.  See
+[the ATD path](#atd-never-builds-a-setup-and-the-reason-is-layer-2) below.
 
 Dialling with the network peer presenting an incoming call first says
 something else:
@@ -142,3 +143,82 @@ behaviour harder to read rather than causing it:
 
 Both are covered by `tests/test_bri.py`.  Neither changes the trace above,
 which is the point: the firmware was never reacting to them.
+
+
+## ATD never builds a SETUP, and the reason is layer 2
+
+`l4_DISCONN` turned out to be a red herring, and tracing it is what showed
+that.  The routine that issues it, at `0xc5519`, pushes `0x42`
+**unconditionally** - it is the hang-up routine, not a decision - and during
+an `ATD` it is reached from `0xab2ef`, a teardown sequence that calls it
+without a test.  So `l4_DISCONN` is the cleanup *after* the dial failed, not
+the dial.
+
+The dial itself is easy to find once you look for the other primitive.  Of
+the nine call sites of the primitive handler at `0x75882`, exactly **one**
+pushes `0x40`, `l4_SETUP`:
+
+```
+cbf90  push word [0xc8fc]
+cbf94  push ds
+cbf95  push 0xd130            ; the dialled number
+cbf98  push 0x40              ; l4_SETUP
+cbf9a  lcall 7561:0272
+```
+
+and that block never executes.  Nothing in `0xcbf20`-`0xcbfb8` runs during an
+`ATD` at all, because it is only reached from `0xcbe81`:
+
+```
+cbe7f  or al, al
+cbe81  je cbf1d               ; result code 0 - only then does the dial run
+```
+
+### The command table, and the handler
+
+The interpreter dispatches on a table indexed by the command letter:
+
+```
+cbe36  sub bl, 0x21           ; index = character - '!'
+cbe39  shl bl, 1
+cbe3b  call word ptr cs:[bx + 0x607]
+```
+
+in segment `cbb8`, so the table is at `0xcbe87`.  `'D'` resolves to
+**`0xcc6a3`**, and the handler runs to this, at `0xcc84b`:
+
+```
+cc84b  lcall 6757:0a9e            ; refresh the layer-2 status
+cc852  mov ax, 0ce0 ; mov es, ax
+cc857  mov bl, es:[8d7d]          ; Data Link Layer
+cc85c  mov bh, es:[8d7c]          ; Physical Interface
+cc862  cmp bl, 0
+cc865  je cc869                   ; data link down - keep going, to the error
+cc867  clc ; ret                  ; data link up - success
+...
+cc87e  or byte [0xca57], 0x80
+cc883  stc ; ret                  ; the error return
+```
+
+Those are the same two bytes `ATI12` prints as `Physical Interface` and
+`Data Link Layer`.  Reading them at the gate in a live run:
+
+```
+ATD reads  data link ce0:8d7d = 0, physical ce0:8d7c = 1
+        -> error return, no SETUP is ever built
+```
+
+The handler returns carry, the interpreter ends the command with `al = 3` -
+Hayes result code 3, `NO CARRIER` - and the teardown that follows calls the
+hang-up routine, which is where the `l4_DISCONN` in the log comes from.
+
+### What that settles
+
+**`ATD` is gated on the data link being established.**  It was never going to
+dial, under any switch protocol, dialing mode, bearer capability or DIP
+switch setting, because every one of those was tested with `ATI12` still
+reporting `Data Link Layer   :  Inactive`.
+
+So the two questions this repository has been carrying collapse into one.
+There is no separate "why does the AT layer refuse to dial" problem; there is
+only **layer 2 does not come up**, and everything else follows from it.
