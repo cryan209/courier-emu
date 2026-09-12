@@ -43,10 +43,12 @@ class BearerSipLine:
     """
 
     def __init__(self, session: Any, *, target: str = "",
-                 silence: int = PCMU_SILENCE) -> None:
+                 record: Any = None, silence: int = PCMU_SILENCE) -> None:
         self.session = session
         self.session.set_codewords(True)
         self.target = target
+        self.dialled = ""
+        self.record = record
         self.silence = silence
         self.started = False
         self.octets_in = 0
@@ -55,6 +57,16 @@ class BearerSipLine:
         self.events: list[str] = []
 
     # -- what the call does to it ------------------------------------------
+
+    def dial(self, number: str) -> None:
+        """The digits the modem dialled, which are the ones to INVITE.
+
+        A fixed --bri-sip-target still wins: a run that wants the call to go
+        somewhere other than where the modem pointed it should get that.
+        """
+        self.dialled = number
+        if not self.target:
+            self.target = number
 
     def start(self) -> None:
         """The B channel is up: place the SIP call that is its far end."""
@@ -84,6 +96,8 @@ class BearerSipLine:
         self.session.send_pcmu(octets)
         self.session.poll()
         received = self.session.receive_pcmu(len(octets))
+        if self.record is not None and received:
+            self.record.write(received)
         if len(received) < len(octets):
             # The far end has not sent this much yet. Silence is the honest
             # filler: it is what an idle timeslot carries, and it is counted.
@@ -97,6 +111,8 @@ class BearerSipLine:
     def status(self) -> dict[str, Any]:
         return {
             "sip": self.session.status(),
+            "dialled": self.dialled,
+            "target": self.target,
             "octets": {"to_rtp": self.octets_in, "from_rtp": self.octets_out,
                        "silence_filled": self.underrun},
             "events": list(self.events),

@@ -89,6 +89,22 @@ synchronous 64 kbit/s call - octet 5a `10`, octet 5b `80` - and the modem
 clears the call.  It is a probe, which is why it is off by default and why the
 octets are not written into the peer as a setting.
 
+**And the guess was wrong.**  The modem dials V.120 itself, and a live call
+([imodem-live-sip-call.md](imodem-live-sip-call.md)) caught its own SETUP
+saying what it thinks the element should contain:
+
+```
+low layer compatibility  88 90 28 48 76 3b c0 c2 e2
+```
+
+- the first three octets as above, then `48 76 3b c0` for the rate adaption
+and `c2 e2` naming Q.921 and Q.931 as the layer 2 and 3 protocols, which the
+guess left out entirely.  Offered back to the modem with
+`--bri-v120-llc 48763bc0c2e2` the call is **accepted**: it rings, `BCH_ENABLED`,
+and the bearer carries flags, where `1080` was cleared with `MISC_INFO`.  SABME
+is still not answered, so the question this page ends on is unchanged - but it
+is no longer standing behind a SETUP the modem refused.
+
 ## What is open
 
 Three threads, in the order they are worth pulling:

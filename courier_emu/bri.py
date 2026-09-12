@@ -243,6 +243,7 @@ IE_CALL_STATE = 0x14
 IE_CHANNEL_IDENTIFICATION = 0x18
 IE_PROGRESS_INDICATOR = 0x1E
 IE_CALLING_PARTY_NUMBER = 0x6C
+IE_KEYPAD_FACILITY = 0x2C
 IE_LOW_LAYER_COMPATIBILITY = 0x7C
 IE_CALLED_PARTY_NUMBER = 0x70
 
@@ -519,6 +520,8 @@ class BriNetwork:
     # and --bri-rx-g711 replays whatever it is given.
     v120: V120Link | None = None
     media_peer: Any = None
+    # The digits off the modem's own SETUP, once it has placed a call.
+    dialled: str = ""
     media_channel: int | None = None
     media_tx: bytearray = field(default_factory=bytearray)
     _media_tx_cursor: dict[int, int] = field(
@@ -985,8 +988,18 @@ class BriNetwork:
             requested_channel = channel[0] & 3 if channel else 1
             self.media_channel = requested_channel if requested_channel in (1, 2) else 1
             self.call_state = "call-received"
-            dialled = message.number(IE_CALLED_PARTY_NUMBER)
+            # The I-modem puts its digits in the keypad facility rather than
+            # a called party number - `ATDT8406` arrives as IE 2c, '8406' in
+            # ASCII - which is why this used to report a dial as "(no number)"
+            # while the modem was dialling perfectly well.
+            dialled = (message.number(IE_CALLED_PARTY_NUMBER)
+                       or message.elements.get(IE_KEYPAD_FACILITY, b"")
+                       .decode("ascii", "replace"))
+            self.dialled = dialled
             self._note(f"the modem is calling {dialled or '(no number)'}")
+            peer = self.v120 if self.v120 is not None else self.media_peer
+            if dialled and peer is not None and hasattr(peer, "dial"):
+                peer.dial(dialled)
             self._send_layer3(tei, q931_message(
                 CALL_PROCEEDING, reference, False,
                 channel_identification(self.media_channel)))
@@ -1045,6 +1058,7 @@ class BriNetwork:
             "v120": self.v120.status() if self.v120 is not None else None,
             "media_peer": (self.media_peer.status()
                            if self.media_peer is not None else None),
+            "dialled": self.dialled,
             "media": {
                 "channel": self.media_channel,
                 "rx_pending": len(self.media_rx),

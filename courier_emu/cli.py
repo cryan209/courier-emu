@@ -670,6 +670,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     isdn_run.add_argument("--bri-sip-local-port", type=_number, default=0)
     isdn_run.add_argument(
+        "--bri-sip-record",
+        metavar="FILE",
+        help="save the RTP payload the far end sends, as mu-law at 8 kHz - "
+             "what the modem actually heard",
+    )
+    isdn_run.add_argument(
         "--bri-v120",
         action="store_true",
         help="speak V.120 rate adaption on the B channel once the call is "
@@ -1421,6 +1427,8 @@ def main(argv: list[str] | None = None) -> int:
                             local_port=args.bri_sip_local_port,
                         )),
                         target=args.bri_sip_target or "",
+                        record=(open(args.bri_sip_record, "wb")
+                                if args.bri_sip_record else None),
                     )
                 if args.bri_v120:
                     bri.v120 = V120Link(
