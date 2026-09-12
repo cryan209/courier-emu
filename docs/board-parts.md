@@ -19,6 +19,9 @@ not in frame, so nothing here says what is on it.
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
 | `74VHC573`, `74VHC32`, `74VHC04` | bus glue |
+| `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
+| `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
+| `RA5W-K` | the **hook relay**. The `OH` lamp is on its pin 9, which is why `OH` is the one panel line not on the ASIC |
 | Atmel 8-pin | serial EEPROM, the NVRAM the settings cache comes from |
 
 ## The DSP's RAM is 32K words, and that is its program space
