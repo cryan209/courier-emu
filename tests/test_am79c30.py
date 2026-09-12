@@ -32,11 +32,13 @@ def drain_frame(dsc: Am79C30) -> bytes:
 def test_line_state_is_reported_as_the_firmware_decodes_it():
     dsc = Am79C30()
     assert dsc.liu_state == F1_INACTIVE
-    assert read_register(dsc, LIU_LSR) == b"\x00"
+    # The resting handset is on hook, which is the persistent LSR bit 6.
+    assert read_register(dsc, LIU_LSR) == b"\x40"
 
     dsc.set_liu_state(F7_ACTIVATED)
-    # 70eb3: state = (LSR & 7) + 2, and 8 is the entry that brings layer 2 up.
-    assert (read_register(dsc, LIU_LSR)[0] & 7) + 2 == 8
+    # 70eb3: state = (LSR & 7) + 2, and 7 is the activated state that admits
+    # D-channel transmission and brings layer 2 up.
+    assert (read_register(dsc, LIU_LSR)[0] & 7) + 2 == 7
     assert dsc.activated
 
 

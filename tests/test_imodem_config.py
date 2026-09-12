@@ -80,7 +80,7 @@ def test_the_recovered_field_offsets():
         VOICE_TEI, set_voice_directory_number,
     )
     assert (SWITCH_PROTOCOL, BUS_CONFIGURATION) == (0, 1)
-    assert (VOICE_DIRECTORY_NUMBER, VOICE_TEI, DATA_TEI) == (44, 86, 87)
+    assert (VOICE_DIRECTORY_NUMBER, VOICE_TEI, DATA_TEI) == (44, 86, 88)
 
     sealed = set_voice_directory_number(seal(blank_sector()), "5551000")
     block = read_isdn_block(sealed)
@@ -91,7 +91,8 @@ def test_the_recovered_field_offsets():
 def test_a_directory_number_that_does_not_fit_is_refused():
     from courier_emu.imodem_config import set_voice_directory_number
     with pytest.raises(ValueError):
-        set_voice_directory_number(seal(blank_sector()), "123456789")
+        # The recovered field spans 21 bytes and needs one byte for NUL.
+        set_voice_directory_number(seal(blank_sector()), "123456789012345678901")
 
 
 def test_the_identity_fields_sit_where_the_firmware_reads_them():

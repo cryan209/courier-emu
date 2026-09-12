@@ -52,6 +52,28 @@ one asymmetry that is easy to get backwards - Q.921 gives the C/R bit
 opposite senses on the two sides, so the same octet is a command from the
 user and a response from the network.
 
+## B-channel media
+
+Once Q.931 reaches Active, the peer binds media to the channel selected by the
+Channel Identification information element.  It queues network-to-terminal
+octets into that B1/B2 input and captures terminal-to-network octets after the
+firmware's MCR routing has carried them between the Am79C30 and DSP.  The bytes
+stay opaque at this boundary: a speech call may contain G.711 audio, while an
+unrestricted 64 kbit/s call may use all eight bits as data.
+
+The CLI can inject and capture that stream directly:
+
+```sh
+.venv/bin/python -m courier_emu isdn-run Ie030002.nac --with-dsp \
+    --bri-network --bri-rx-g711 far-end.g711 --bri-tx-g711 modem.g711
+```
+
+Input is held until the call becomes active.  Output recorded before CONNECT
+is discarded, so the capture cannot mistake the idle DS0 for connected media.
+The run's `bri.media` report names the selected channel and gives delivered,
+captured, and non-`ff` octet counts.  It deliberately does not call `ff` silence:
+the B channel is opaque here, and its meaning depends on the negotiated bearer.
+
 ## What it found, on the first run
 
 With a record whose switch protocol is ETSI NET3 and a point-to-point line,

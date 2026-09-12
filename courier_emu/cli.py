@@ -636,6 +636,18 @@ def build_parser() -> argparse.ArgumentParser:
              "(default: 5551000)",
     )
     isdn_run.add_argument(
+        "--bri-rx-g711",
+        metavar="FILE",
+        help="queue an opaque 8 kHz B-channel octet stream from the virtual "
+             "switch to the modem once the call is active",
+    )
+    isdn_run.add_argument(
+        "--bri-tx-g711",
+        metavar="FILE",
+        help="save the B-channel octets emitted by the modem while the "
+             "virtual-switch call is active",
+    )
+    isdn_run.add_argument(
         "--flash-overlay",
         metavar="ADDR=FILE",
         help="lay a file over the flash window before the run, e.g. "
@@ -1298,6 +1310,10 @@ def main(argv: list[str] | None = None) -> int:
                     if args.bri_activate else None,
                     deactivate_at=args.bri_deactivate_at,
                 )
+                if args.bri_rx_g711:
+                    bri.queue_media(Path(args.bri_rx_g711).read_bytes())
+            elif args.bri_rx_g711 or args.bri_tx_g711:
+                raise ValueError("--bri-rx-g711/--bri-tx-g711 require --bri-network")
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")
             transcript: list[tuple[int, str, str]] = []
@@ -1339,6 +1355,8 @@ def main(argv: list[str] | None = None) -> int:
                     machine.mailbox.close()
             if args.flash_save:
                 Path(args.flash_save).write_bytes(bytes(machine.flash.contents))
+            if args.bri_tx_g711:
+                Path(args.bri_tx_g711).write_bytes(bytes(bri.media_tx))
             if args.flash_nvram:
                 # After the run, not during: the firmware erases the sector
                 # before it rewrites it, so a store written mid-erase would

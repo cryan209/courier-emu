@@ -55,10 +55,9 @@ ACKNOWLEDGE, DISCONNECT, RELEASE, RELEASE COMPLETE, and the information
 elements those carry that matter here - bearer capability, channel
 identification, called and calling party number, cause.
 
-What it does not do is B-channel media.  The MCRs route B1 and B2 through
-the peripheral port to the DSP and never through the host interface
-(docs/imodem-d-channel.md), so a connected call here means the signalling
-completed, not that PCM flowed.
+The B channel remains an opaque 8 kHz octet stream here.  The switch queues
+network octets into the selected B channel and drains the octets the modem
+sent on it; companding and interpretation belong to the connected endpoint.
 """
 from __future__ import annotations
 
@@ -426,6 +425,10 @@ class BriNetwork:
     call_from: str = "5551000"
     call_to: str = ""
     bearer: bytes = BEARER_UNRESTRICTED_64K
+    # Opaque G.711/64-kbit/s media offered by the far endpoint.  Keeping this
+    # separate from Q.931's bearer capability is intentional: unrestricted
+    # data and speech are both byte-wide B-channel streams at this boundary.
+    media_rx: deque = field(default_factory=deque)
 
     # -- state, none of which is configuration -----------------------------
     state: str = TEI_UNASSIGNED
@@ -457,6 +460,15 @@ class BriNetwork:
     undecodable: int = 0
     instructions: int = 0
     _sink: Callable[[bytes], None] | None = None
+    media_channel: int | None = None
+    media_tx: bytearray = field(default_factory=bytearray)
+    _media_tx_cursor: dict[int, int] = field(
+        default_factory=lambda: {1: 0, 2: 0})
+    media_rx_delivered: int = 0
+
+    def queue_media(self, octets: bytes | bytearray) -> None:
+        """Queue network-to-modem octets for the connected B channel."""
+        self.media_rx.extend(bytes(octets))
 
     # -- driving -----------------------------------------------------------
 
@@ -474,6 +486,28 @@ class BriNetwork:
             self.frames_in += 1
             self._receive(frame)
         self._timers()
+        self._service_media(dsc)
+
+    def _service_media(self, dsc: Any) -> None:
+        """Move opaque octets between the switch and the selected B channel."""
+        # Lightweight D-channel peers used by callers need not implement the
+        # optional bearer interface.
+        if not hasattr(dsc, "bearer_tx") or not hasattr(dsc, "queue_bearer"):
+            return
+        # Always advance the cursors. This prevents pre-call idle codewords
+        # from appearing as call media when Q.931 later becomes active.
+        for channel in (1, 2):
+            stream = dsc.bearer_tx[channel]
+            start = self._media_tx_cursor[channel]
+            if self.call_state == "active" and channel == self.media_channel:
+                self.media_tx.extend(stream[start:])
+            self._media_tx_cursor[channel] = len(stream)
+        if (self.call_state == "active" and self.media_channel is not None
+                and self.media_rx):
+            octets = bytes(self.media_rx)
+            self.media_rx.clear()
+            dsc.queue_bearer(self.media_channel, octets)
+            self.media_rx_delivered += len(octets)
 
     def _line(self, dsc: Any) -> None:
         """The NT's own half of the line: bring it up, and drop it again.
@@ -543,6 +577,7 @@ class BriNetwork:
         self.call_state = "null"
         self.call_reference = None
         self._t303_expiry = None
+        self.media_channel = None
 
     def _send(self, frame: bytes) -> None:
         if self._sink is None:
@@ -790,6 +825,7 @@ class BriNetwork:
         self._call_placed = True
         self.call_reference = 1
         self.call_state = "call-present"
+        self.media_channel = 1
         elements = (element(IE_BEARER_CAPABILITY, self.bearer)
                     + channel_identification(1)
                     + calling_party_number(self.call_from))
@@ -849,11 +885,15 @@ class BriNetwork:
             # The modem is placing a call. Take the number it dialled, accept
             # the channel, and walk the call up the way a switch does.
             self.call_reference = reference
+            channel = message.elements.get(IE_CHANNEL_IDENTIFICATION, b"")
+            requested_channel = channel[0] & 3 if channel else 1
+            self.media_channel = requested_channel if requested_channel in (1, 2) else 1
             self.call_state = "call-received"
             dialled = message.number(IE_CALLED_PARTY_NUMBER)
             self._note(f"the modem is calling {dialled or '(no number)'}")
             self._send_layer3(tei, q931_message(
-                CALL_PROCEEDING, reference, False, channel_identification(1)))
+                CALL_PROCEEDING, reference, False,
+                channel_identification(self.media_channel)))
             self._send_layer3(tei, q931_message(ALERTING, reference, False))
             self._send_layer3(tei, q931_message(CONNECT, reference, False))
             self.call_state = "connect-request"
@@ -861,6 +901,11 @@ class BriNetwork:
         if message.message_type == CONNECT:
             # The modem answered a call the network placed.
             self.call_state = "active"
+            channel = message.elements.get(IE_CHANNEL_IDENTIFICATION, b"")
+            if channel:
+                self.media_channel = channel[0] & 3
+            if self.media_channel not in (1, 2):
+                self.media_channel = 1
             self._send_layer3(tei, q931_message(CONNECT_ACKNOWLEDGE, reference,
                                                 True))
             return
@@ -901,6 +946,13 @@ class BriNetwork:
             "assigned_teis": dict(self.assigned_teis),
             "call_state": self.call_state,
             "call_reference": self.call_reference,
+            "media": {
+                "channel": self.media_channel,
+                "rx_pending": len(self.media_rx),
+                "rx_delivered": self.media_rx_delivered,
+                "tx_octets": len(self.media_tx),
+                "tx_non_ff": sum(value != 0xff for value in self.media_tx),
+            },
             "frames_from_modem": self.frames_in,
             "frames_to_modem": self.frames_out,
             "undecodable": self.undecodable,

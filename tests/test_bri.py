@@ -337,6 +337,66 @@ def test_nt_deactivation_clears_an_active_call_and_pending_signalling():
     assert peer.status()['unacknowledged_ns'] is None
 
 
+def test_active_call_moves_media_on_the_selected_b_channel_only():
+    from courier_emu.am79c30 import Am79C30
+
+    dsc = Am79C30()
+    dsc.set_liu_state(bri.F7_ACTIVATED)
+    # The firmware's MCR1=16h route: B1 <-> peripheral port Bd.
+    dsc.blocks[0x41] = bytearray((0x16,))
+    peer = bri.BriNetwork(activate_at=None)
+    peer.activated_at = 0
+    peer.state = bri.MULTIPLE_FRAME
+    peer.call_state = 'active'
+    peer.media_channel = 1
+    peer.queue_media(b'\x11\x22')
+
+    peer.service(dsc, 0)
+    assert peer.status()['media']['rx_delivered'] == 2
+    assert bytes(dsc.bearer_rx[1]) == b'\x11\x22'
+
+    # Two DSP frames consume switch input and put the DSP's octets on B1.
+    assert dsc.clock_bearer({6: 0x33})[6] == 0x11
+    assert dsc.clock_bearer({6: 0x44})[6] == 0x22
+    peer.service(dsc, 1)
+    assert peer.media_tx == b'\x33\x44'
+    assert peer.status()['media']['tx_non_ff'] == 2
+
+
+def test_outgoing_call_uses_the_channel_requested_by_the_modem():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None)
+    peer.state = bri.MULTIPLE_FRAME
+    setup = bri.q931_message(
+        bri.SETUP, 9, True,
+        bri.channel_identification(2) + bri.called_party_number('5551212'))
+    wire.from_modem.append(bri.i_frame(0, 0, 0, 0, False, setup))
+    peer.service(wire, 0)
+    assert peer.media_channel == 2
+    proceeding = next(
+        bri.decode_q931(frame.info)
+        for raw in wire.to_modem
+        if (frame := bri.decode(raw, from_user=False)).kind == 'I')
+    assert proceeding.elements[bri.IE_CHANNEL_IDENTIFICATION][0] & 3 == 2
+
+
+def test_pre_call_idle_is_not_reported_as_connected_media():
+    from courier_emu.am79c30 import Am79C30
+
+    dsc = Am79C30()
+    dsc.set_liu_state(bri.F7_ACTIVATED)
+    dsc.blocks[0x41] = bytearray((0x16,))
+    peer = bri.BriNetwork(activate_at=None)
+    peer.activated_at = 0
+    dsc.clock_bearer({6: 0xff})
+    peer.service(dsc, 0)
+    peer.call_state = 'active'
+    peer.media_channel = 1
+    dsc.clock_bearer({6: 0x55})
+    peer.service(dsc, 1)
+    assert peer.media_tx == b'\x55'
+
+
 def test_a_layer_3_answer_stops_t303():
     wire = Wire()
     peer = bri.BriNetwork(activate_at=None, call_at=0)
