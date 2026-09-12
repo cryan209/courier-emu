@@ -127,8 +127,14 @@ SWITCH_PROTOCOL = 0           # *W, an ASCII digit '0'-'8'
 BUS_CONFIGURATION = 1         # *M, '0' point to point, '1' multipoint
 VOICE_DIRECTORY_NUMBER = 44   # *P1, ASCII, NUL terminated
 VOICE_DIRECTORY_LENGTH = 8
-VOICE_TEI = 86                # *T1, ASCII, '00' is automatic assignment
-DATA_TEI = 87                 # *T2
+# The TEI fields are at 88 and 89, not the 86 and 87 recorded when this was
+# first written: a session sending `AT*T1=0`, `AT*T2=0` and `AT&W` leaves
+# `30 30` at 88-89 and 0xff at 90, and ATI12 reads it back as `Automatic
+# TEI`. Which of the two commands wrote which byte is not separable from
+# that run, because both were sent before the save; that they are these two
+# bytes is.
+VOICE_TEI = 88                # *T1, ASCII, '0' is automatic assignment
+DATA_TEI = 89                 # *T2
 
 # The switch types the firmware's own help page at 0xbf9f0 lists for *W=n.
 SWITCH_PROTOCOLS = {
