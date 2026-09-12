@@ -31,6 +31,8 @@ from .bri import (
     CAPABILITY_AUDIO_31KHZ, CAPABILITY_SPEECH, LAW_A, LAW_MU,
     BriNetwork, audio_bearer,
 )
+from .bearer_sip import BearerSipLine
+from .sip import SipConfig, SipSession
 from .v120 import LLI_DEFAULT, V120Link
 from .isdn_console import (
     SERIAL_LINE_INSTRUCTIONS,
@@ -645,6 +647,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="the calling party number --bri-call-at presents "
              "(default: 5551000)",
     )
+    isdn_run.add_argument(
+        "--bri-sip",
+        metavar="HOST[:PORT]",
+        help="put a SIP call at the far end of the B channel. The bearer is "
+             "G.711 at 8 kHz and so is RTP's PCMU payload, so the octets pass "
+             "through untouched - no resampling and no companding conversion, "
+             "which is what a V.90 or x2 datapump needs",
+    )
+    isdn_run.add_argument("--bri-sip-username", default="courier")
+    isdn_run.add_argument(
+        "--bri-sip-password-env",
+        default="COURIER_SIP_PASSWORD",
+        metavar="NAME",
+        help="environment variable holding the SIP password, which is never "
+             "taken on the command line (default: COURIER_SIP_PASSWORD)",
+    )
+    isdn_run.add_argument(
+        "--bri-sip-target",
+        metavar="NUMBER",
+        help="the number to INVITE once the ISDN call is up",
+    )
+    isdn_run.add_argument("--bri-sip-local-port", type=_number, default=0)
     isdn_run.add_argument(
         "--bri-v120",
         action="store_true",
@@ -1382,6 +1406,22 @@ def main(argv: list[str] | None = None) -> int:
                     if args.bri_activate else None,
                     deactivate_at=args.bri_deactivate_at,
                 )
+                if args.bri_sip:
+                    if args.bri_v120:
+                        raise ValueError(
+                            "--bri-sip and --bri-v120 are two different far "
+                            "ends for one B channel; use one"
+                        )
+                    bri.media_peer = BearerSipLine(
+                        SipSession(SipConfig(
+                            server=args.bri_sip,
+                            username=args.bri_sip_username,
+                            password=os.environ.get(
+                                args.bri_sip_password_env, ""),
+                            local_port=args.bri_sip_local_port,
+                        )),
+                        target=args.bri_sip_target or "",
+                    )
                 if args.bri_v120:
                     bri.v120 = V120Link(
                         lli=(LLI_DEFAULT if args.bri_v120_lli is None

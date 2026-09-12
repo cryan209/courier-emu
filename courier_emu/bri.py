@@ -513,9 +513,12 @@ class BriNetwork:
     undecodable: int = 0
     instructions: int = 0
     _sink: Callable[[bytes], None] | None = None
-    # A V.120 far end for the B channel, when the run wants one. Without it
-    # the bearer stays opaque and --bri-rx-g711 replays whatever it is given.
+    # A far end for the B channel, when the run wants one: anything with
+    # start(), stop() and exchange(octets) -> octets. V120Link is one, and
+    # bearer_sip.BearerSipLine is another. Without one the bearer stays opaque
+    # and --bri-rx-g711 replays whatever it is given.
     v120: V120Link | None = None
+    media_peer: Any = None
     media_channel: int | None = None
     media_tx: bytearray = field(default_factory=bytearray)
     _media_tx_cursor: dict[int, int] = field(
@@ -564,11 +567,12 @@ class BriNetwork:
             self._media_tx_cursor[channel] = len(stream)
         if not active:
             return
-        if self.v120 is not None:
+        peer = self.v120 if self.v120 is not None else self.media_peer
+        if peer is not None:
             # The bearer is a conversation rather than a recording: what the
             # modem sent decides what goes back, one octet for one octet.
-            self.v120.start()
-            reply = self.v120.exchange(fresh)
+            peer.start()
+            reply = peer.exchange(fresh)
             if reply:
                 dsc.queue_bearer(self.media_channel, reply)
                 self.media_rx_delivered += len(reply)
@@ -648,8 +652,9 @@ class BriNetwork:
         self.call_reference = None
         self._t303_expiry = None
         self.media_channel = None
-        if self.v120 is not None:
-            self.v120.stop()
+        for peer in (self.v120, self.media_peer):
+            if peer is not None:
+                peer.stop()
 
     def _send(self, frame: bytes) -> None:
         if self._sink is None:
@@ -1038,6 +1043,8 @@ class BriNetwork:
             "call_state": self.call_state,
             "call_reference": self.call_reference,
             "v120": self.v120.status() if self.v120 is not None else None,
+            "media_peer": (self.media_peer.status()
+                           if self.media_peer is not None else None),
             "media": {
                 "channel": self.media_channel,
                 "rx_pending": len(self.media_rx),

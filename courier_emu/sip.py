@@ -262,6 +262,11 @@ class SipSession:
         self._retransmit_after = 0.5
         self._auth_attempted = False
         self._tx_audio: deque[int] = deque(maxlen=PCMU_RATE * 2)
+        # Codeword mode: the B channel's own G.711 octets, in and out, with no
+        # conversion at either end. set_codewords() turns it on.
+        self.codewords = False
+        self._tx_codewords: deque[int] = deque(maxlen=PCMU_RATE * 2)
+        self._rx_codewords: deque[int] = deque(maxlen=PCMU_RATE * 2)
         self._rx_audio: deque[int] = deque()
         self._rtp_sequence = random.getrandbits(16)
         self._rtp_timestamp = random.getrandbits(32)
@@ -512,7 +517,11 @@ class SipSession:
                 break
             if len(packet) < 12 or packet[1] & 0x7F != 0:
                 continue
-            self._rx_audio.extend(ulaw_to_linear(value) for value in packet[12:])
+            if self.codewords:
+                self._rx_codewords.extend(packet[12:])
+            else:
+                self._rx_audio.extend(ulaw_to_linear(value)
+                                      for value in packet[12:])
             self.rtp_packets_received += 1
         now = time.monotonic()
         # Only an INVITE that has drawn no response at all is retransmitted.
@@ -531,15 +540,47 @@ class SipSession:
             self._tx_audio.extend(samples)
         self._flush_rtp(time.monotonic())
 
+    # -- codewords ---------------------------------------------------------
+    #
+    # An ISDN B channel already carries what RTP's PCMU payload carries: G.711
+    # at 8 kHz, one octet per sample. Decoding those octets to linear and
+    # re-encoding them on the way out would be two conversions that cancel on
+    # a good day, and a datapump betting a connection on the low bit of a
+    # codeword does not want a good day - V.90 and x2 are built on the
+    # codewords themselves. So in codeword mode the payload is passed through
+    # untouched, and the linear paths above are left alone for the analogue
+    # side, which really does have to resample.
+
+    def set_codewords(self, enabled: bool = True) -> None:
+        self.codewords = enabled
+
+    def send_pcmu(self, octets: bytes) -> None:
+        if self.state in ("inviting", "trying", "ringing", "connected"):
+            self._tx_codewords.extend(octets)
+        self._flush_rtp(time.monotonic())
+
+    def receive_pcmu(self, count: int | None = None) -> bytes:
+        if count is None:
+            count = len(self._rx_codewords)
+        taken = bytes(self._rx_codewords.popleft()
+                      for _ in range(min(count, len(self._rx_codewords))))
+        return taken
+
     def _flush_rtp(self, now: float) -> None:
+        source = self._tx_codewords if self.codewords else self._tx_audio
         if (
             self.state != "connected"
             or self.remote_rtp is None
-            or len(self._tx_audio) < RTP_PACKET_SAMPLES
+            or len(source) < RTP_PACKET_SAMPLES
             or now < self._next_rtp_at
         ):
             return
-        payload = bytes(linear_to_ulaw(self._tx_audio.popleft()) for _ in range(160))
+        payload = (
+            bytes(self._tx_codewords.popleft() for _ in range(RTP_PACKET_SAMPLES))
+            if self.codewords else
+            bytes(linear_to_ulaw(self._tx_audio.popleft())
+                  for _ in range(RTP_PACKET_SAMPLES))
+        )
         header = bytes((0x80, 0x00))
         header += self._rtp_sequence.to_bytes(2, "big")
         header += self._rtp_timestamp.to_bytes(4, "big")

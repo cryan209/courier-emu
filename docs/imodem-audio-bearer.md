@@ -74,4 +74,7 @@ analogue Courier's own datapump is in this tree to be pointed at it.
 
 The useful shape of the next piece of work is therefore not more ISDN.  It is
 connecting this bearer to the analogue side already modelled here, so the two
-Couriers can answer each other.
+Couriers can answer each other - and the first half of that is done:
+[imodem-bearer-over-sip.md](imodem-bearer-over-sip.md) carries the bearer to a
+SIP call as PCMU, codeword for codeword, and the answer tone above comes out
+of the far end of an RTP stream.
