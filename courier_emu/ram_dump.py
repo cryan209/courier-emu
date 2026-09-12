@@ -94,7 +94,8 @@ def collect(port, output: Path, *, upper: bool = False) -> dict:
         identity = port.query("ATI7")
         (output / "ati7.txt").write_bytes(identity)
         report["identity"], target = validate_identity(identity)
-        report["firmware"] = {"supervisor": target[0], "dsp": target[1]}
+        report["firmware"] = {"supervisor": target[0], "dsp": target[1],
+                              "clock_mhz": target[2]}
         # The anchors are per-build, so they follow the revision the board just
         # reported rather than one hard-coded pair.
         first, reset = TARGETS[target]

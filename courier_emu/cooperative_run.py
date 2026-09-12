@@ -56,7 +56,7 @@ from .flash_dump import (
 # The board this module's hooks were read off. Every vector, every original
 # handler address and the &T8 survivor map come from this pair; on anything else
 # the arming words would be fiction.
-SUPPORTED = ("7.4.16", "3.1.2")
+SUPPORTED = ("7.4.16", "3.1.2", "20.16")
 WRITE = re.compile(r"ATGLK2W([0-9A-F]{4}),([0-9A-F]{4})")
 
 

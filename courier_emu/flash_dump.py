@@ -21,12 +21,15 @@ import termios
 import time
 
 BASE, LENGTH, PAGE = 0x80000, 0x80000, 0x100
-# Known targets, each an ATI7 revision pair with the first flash bytes and the
-# reset vector that build ends with. The anchors are derived from the images
-# themselves, not guessed: stock 7.3.14 from the 2026-09-03 capture, and IDSDL
-# 4.03 from the decoded ID20_403.XMD payload.
+# Known targets, each an ATI7 revision pair plus the reported clock frequency,
+# with the first flash bytes and the reset vector that build ends with. The
+# clock is part of the key because it selects the build: the 25 MHz board runs
+# an image that differs from the 20.16 MHz one while reporting the same
+# revision strings. The anchors are derived from the images themselves, not
+# guessed: stock 7.3.14 from the 2026-09-03 capture, and IDSDL 4.03 from the
+# decoded ID20_403.XMD payload.
 TARGETS = {
-    ("7.3.14", "3.0.13"): (
+    ("7.3.14", "3.0.13", "20.16"): (
         bytes.fromhex("BD 0B 00 E9 7C 0F 0D 0A".replace(" ", "")),
         bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00".replace(" ", "")),
     ),
@@ -35,9 +38,21 @@ TARGETS = {
     # does not erase or program the boot block, so ID20_403.XMD's own loader at
     # fc00:1a21 is never written. Confirmed on hardware 2026-09-05, where
     # f000:fff0 still reads the 7.3.14 vector after a successful 4.03 install.
-    ("7.4.16", "3.1.2"): (
+    ("7.4.16", "3.1.2", "20.16"): (
         bytes.fromhex("BD 0B 00 E9 AD 0F 0D 0A".replace(" ", "")),
         bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00".replace(" ", "")),
+    ),
+    # The 25 MHz US/Canada external board, serial 22AEB36ACKND, read 2026-09-12.
+    # Same revision strings as the 20.16 MHz stock entry above and a different
+    # image: the leading jump displacement is 0f93 rather than 0f7c, and the
+    # reset vector enters at fc00:1bbf rather than fc00:11e9. Unlike the two
+    # entries above, these anchors are taken from the very board this module
+    # reads, so they check that a capture stays self-consistent across its own
+    # sweep; they are not independent confirmation of the build. Replace them
+    # if a second 25 MHz board or a vendor image becomes available.
+    ("7.3.14", "3.0.13", "25"): (
+        bytes.fromhex("BD 0B 00 E9 93 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA BF 1B 00 FC 07 00 00".replace(" ", "")),
     ),
 }
 TERMINAL = re.compile(rb"(?:^|[\r\n])(OK|ERROR)[\r\n]+$")
@@ -231,16 +246,18 @@ class SerialPort:
 def validate_identity(raw: bytes) -> tuple[str, tuple[str, str]]:
     """Confirm the board is one of the known targets, and say which one."""
     text = raw.decode("ascii")
-    expected = (r"Courier", r"Clock Freq\s+20\.16Mhz", r"Flash ROM\s+512k")
+    expected = (r"Courier", r"Flash ROM\s+512k")
     if not all(re.search(pattern, text, re.I) for pattern in expected):
-        raise ValueError("ATI7 does not match the requested 20.16 MHz / 512k target")
+        raise ValueError("ATI7 does not match the requested Courier / 512k target")
+    clock = re.search(r"Clock Freq\s+([0-9.]+)\s*Mhz", text, re.I)
     supervisor = re.search(r"Supervisor rev\s+(\S+)", text, re.I)
     dsp = re.search(r"DSP rev\s+(\S+)", text, re.I)
-    if supervisor is None or dsp is None:
-        raise ValueError("ATI7 does not report both revisions")
-    target = (supervisor[1], dsp[1])
+    if clock is None or supervisor is None or dsp is None:
+        raise ValueError("ATI7 does not report the clock and both revisions")
+    target = (supervisor[1], dsp[1], clock[1])
     if target not in TARGETS:
-        raise ValueError(f"unknown firmware {target[0]} / {target[1]}; add it to TARGETS first")
+        raise ValueError(f"unknown firmware {target[0]} / {target[1]} at "
+                         f"{target[2]} MHz; add it to TARGETS first")
     if not TERMINAL.search(raw) or TERMINAL.search(raw)[1] != b"OK":
         raise ValueError("incomplete or failed ATI7 response")
     return text, target
@@ -305,7 +322,8 @@ def collect(port, output: Path) -> dict:
         identity = port.query("ATI7")
         (output / "ati7.txt").write_bytes(identity)
         report["identity"], target = validate_identity(identity)
-        report["firmware"] = {"supervisor": target[0], "dsp": target[1]}
+        report["firmware"] = {"supervisor": target[0], "dsp": target[1],
+                              "clock_mhz": target[2]}
         first, reset = TARGETS[target]
         print(json.dumps({"event": "identity-confirmed", "device": port.device}), flush=True)
         # Check the two pages the user already demonstrated before bulk reads.

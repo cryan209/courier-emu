@@ -39,7 +39,7 @@ class FakePort:
     def __init__(self, unstable=False):
         self.commands = []
         self.unstable = unstable
-        first, reset = dump.TARGETS[("7.3.14", "3.0.13")]
+        first, reset = dump.TARGETS[("7.3.14", "3.0.13", "20.16")]
         self.pages = {
             0x80000: first + bytes(256 - len(first)),
             0x80100: bytes(240) + reset,
@@ -73,11 +73,11 @@ def test_known_firmware_targets_are_selected_by_revision():
              b"Supervisor rev 7.3.14\r\nDSP rev 3.0.13\r\nOK\r\n")
     idsdl = (b"Courier\r\nClock Freq 20.16Mhz\r\nFlash ROM 512k\r\n"
              b"Supervisor rev 7.4.16\r\nDSP rev 3.1.2\r\nOK\r\n")
-    assert dump.validate_identity(stock)[1] == ("7.3.14", "3.0.13")
-    assert dump.validate_identity(idsdl)[1] == ("7.4.16", "3.1.2")
+    assert dump.validate_identity(stock)[1] == ("7.3.14", "3.0.13", "20.16")
+    assert dump.validate_identity(idsdl)[1] == ("7.4.16", "3.1.2", "20.16")
     # The two builds end with different reset vectors, so the anchor check
     # cannot pass for a board running firmware it was not selected for.
-    assert dump.TARGETS[("7.3.14", "3.0.13")] != dump.TARGETS[("7.4.16", "3.1.2")]
+    assert dump.TARGETS[("7.3.14", "3.0.13", "20.16")] != dump.TARGETS[("7.4.16", "3.1.2", "20.16")]
 
 
 

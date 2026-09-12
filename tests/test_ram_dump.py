@@ -6,7 +6,7 @@ from courier_emu import flash_dump as flash, ram_dump as ram
 
 # The fake board below answers ATI7 as 7.3.14 / 3.0.13, so its anchors are that
 # build's entry in TARGETS rather than a hard-coded pair.
-_FIRST, _RESET = flash.TARGETS[("7.3.14", "3.0.13")]
+_FIRST, _RESET = flash.TARGETS[("7.3.14", "3.0.13", "20.16")]
 
 
 def raw_page(address, data):
