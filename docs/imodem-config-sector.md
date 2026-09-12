@@ -162,11 +162,17 @@ halves already.
 
 ```sh
 .venv/bin/python -m courier_emu isdn-run Ie030002.nac \
-    --instructions 300000000 --send-every 20000000 \
+    --instructions 60000000 --send-every 0 \
     --flash-overlay 0xf8000=config.bin --flash-save flash-after.bin \
     --send AT --send "AT*M=1" --send "AT*P1=5551000" \
-    --send "AT*T1=0" --send "AT&W" --send ATZ --send ATI12
+    --send "AT*T1=0" --send "AT&W" --send ATI12
 ```
+
+The batch driver waits for the complete final-result line from each command.
+`--send-every` is now only a minimum delay, so zero is safe here.  In
+particular, it does not send the next line after seeing `OK\r`; it waits for
+`OK\r\n`.  Sending in that one-character gap was enough for the UART to count
+the next line while the firmware's command task discarded it.
 
 `ATI12` reads the result back in the firmware's own words:
 
@@ -176,34 +182,30 @@ halves already.
    TEI             *T1  00                    Automatic TEI
 ```
 
-and the sector it wrote differs from the one it started with in exactly the
-fields that were set:
-
-| block index | field | command | stored as |
-|---:|---|---|---|
-| 0 | switch protocol | `*W=n` | ASCII digit `0`-`8` |
-| 1 | bus configuration | `*M=n` | ASCII `0` or `1` |
-| 44-51 | voice directory number | `*P1=n..n` | ASCII, NUL terminated |
-| 86 | voice channel TEI | `*T1=nn` | ASCII, `00` is automatic |
-| 87 | data channel TEI | `*T2=nn` | ASCII |
-
-Diffing runs was the cheap way in, and it got two of those wrong.  The whole
-block is now read off the firmware's own display instead - see
-[the block map](#the-block-map-from-the-firmwares-own-descriptor-table)
-below, which supersedes this table.
+and the sector it wrote differs from the one it started with only where those
+fields were set.  The verified offsets are collected in
+[the block map](#the-verified-block-map) below.
 
 Two things that method settles for free.  The firmware answers
 `*ATZ! Required*  :  Settings Have Changed` until a reset, so a session that
-changes settings has to end `AT&W`, `ATZ` before the sector is what the next
-boot will read.  And a sector the *firmware* wrote verifies against
+changes settings uses `AT&W` to persist them and may use `ATZ` to reload them
+in the same session.  And a sector the *firmware* wrote verifies against
 `page_crc`, which checks the CRC recovered above from the other side - not
 just that our seal is accepted, but that we compute the same word the firmware
 does.
 
-The remaining fields - dialing mode, the SPIDs, the data directory number -
-map exactly the same way; they are not listed above only because a run drops
-some commands at the current `--serial-pace`, so each needs a short session of
-its own rather than one long one.
+With command delivery fixed, four erased-NVRAM sessions set exactly one field
+before `AT&W`.  Each produced a sealed page, and comparison with the matching
+baseline page gave these complete ISDN-block diffs:
+
+```text
+AT*S1=11112222  2..10   ff...ff -> 31 31 31 31 32 32 32 32 00
+AT*S2=22223333  23..31  ff...ff -> 32 32 32 32 33 33 33 33 00
+AT*P2=44445555  65..73  ff...ff -> 34 34 34 34 35 35 35 35 00
+AT*O=1           90     ff       -> 31
+```
+
+No other byte in the 91-byte block changed in any of those four comparisons.
 
 `courier_emu/imodem_config.py` carries the offsets that are established.
 
@@ -365,38 +367,38 @@ and it has five ordinary far callers; one of them runs; and the transmitter
 is entered and then refused by a permission flag that nothing ever sets.
 
 
-## The block map, from the firmware's own descriptor table
+## The verified block map
 
-Diffing a run tells you a field moved; it does not tell you how wide it is or
-what sits next to it, and two of the offsets above were wrong because of it.
-There is a better source, and it needs no runs at all: **ATI12's display is
-table-driven, and the table names each row's address.**
+The isolated writes establish the starts of `*S1`, `*S2`, `*P2`, and `*O`.
+Earlier isolated writes establish the other persisted settings.  ATI12's
+descriptor table independently names every row's RAM address and establishes
+the field boundaries.
 
 It runs from `0xc4570` to `0xc4700`, and each row is `80 83 <label>
 <descriptor>`.  A settings row's descriptor is `01 <lo> d4` - the RAM address
 `2600:d4<lo>` that row displays.  Subtract the block's own base, `d476`:
 
-| row | descriptor | address | index | width |
-|---|---|---|---:|---:|
-| `*W` switch protocol | `01 76 d4` | `d476` | 0 | 1 |
-| `*M` bus configuration | `01 77 d4` | `d477` | 1 | 1 |
-| `*S1` voice SPID | `01 78 d4` | `d478` | 2 | 21 |
-| `*S2` data SPID | `01 8d d4` | `d48d` | 23 | 21 |
-| `*P1` voice directory number | `01 a2 d4` | `d4a2` | 44 | 21 |
-| `*P2` data directory number | `01 b7 d4` | `d4b7` | 65 | 21 |
-| `*T1` voice TEI | `01 cc d4` | `d4cc` | 86 | 2 |
-| `*T2` data TEI | `01 ce d4` | `d4ce` | 88 | 2 |
-| `*O` dialing mode | `01 d0 d4` | `d4d0` | 90 | 1 |
+| field | page offset | block index | RAM address | width |
+|---|---:|---:|---|---:|
+| `*W` switch protocol | `0x1b0` | 0 | `d476` | 1 |
+| `*M` bus configuration | `0x1b1` | 1 | `d477` | 1 |
+| `*S1` voice SPID | `0x1b2` | 2 | `d478` | 21 |
+| `*S2` data SPID | `0x1c7` | 23 | `d48d` | 21 |
+| `*P1` voice directory number | `0x1dc` | 44 | `d4a2` | 21 |
+| `*P2` data directory number | `0x1f1` | 65 | `d4b7` | 21 |
+| `*T1` voice TEI | `0x206` | 86 | `d4cc` | 2 |
+| `*T2` data TEI | `0x208` | 88 | `d4ce` | 2 |
+| `*O` dialing mode | `0x20a` | 90 | `d4d0` | 1 |
 
 The widths are the spacings, and the total is the check on the whole reading:
 `1 + 1 + 21 + 21 + 21 + 21 + 2 + 2 + 1 = 91`, which is the length the
 checksum at `c4ecb` covers.  A wrong offset anywhere would leave a gap or an
 overlap.  `tests/test_bri.py` asserts that tiling.
 
-So the two corrections: `*P1` is **21** bytes, not the 8 recorded above, and
-`*T1` and `*T2` are **86** and **88**, each two ASCII digits - not 86 and 87.
-A run that sets only `*T2` leaves `ff ff` at 86 and `30 30` at 88, and ATI12
-reports exactly that: `*T1  Invalid fixed TEI`, `*T2  00  Automatic TEI`.
+Only offsets established by a firmware write/readback or by the descriptor
+table are included here.  In particular, `*P1` is 21 bytes, and `*T1` and
+`*T2` start at 86 and 88; the older 8-byte and 86/87 interpretations were
+artifacts of comparing non-isolated runs.
 
 ### `*O`, the dialing mode
 
@@ -413,7 +415,8 @@ c3316  sub bx, '0' ; shl bx, 1 ; add bx, 0x64b8 ; mov si, cs:[bx]
 a three-entry table of `En-Bloc mode`, `Overlap Sending mode`, `Invalid
 Value`.  So the field is ASCII, `'0'` and `'1'` are the only valid values,
 and an unset `0xff` is why `ATI12` has always printed `Invalid Value`.
-Sealing `'0'` in makes it print `En-Bloc mode`.
+The isolated `AT*O=1` write puts ASCII `1` at index 90; ATI12 renders that as
+`Overlap Sending mode`.
 
 ### The bearer capabilities are not in this block
 

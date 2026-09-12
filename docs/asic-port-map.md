@@ -61,7 +61,7 @@ Thirty-two ports carry a non-zero idle value, all even, all below `0x80`:
 
 | ports | idle | what they are |
 |---|---|---|
-| `0a` `0c` `0e` | `f7` `60` `07` | unattributed - **the LED candidates**, see below |
+| `0a` `0c` `0e` | `f7` `60` `07` | `0e` is a panel latch driver; `0a` and `0c` unattributed |
 | `10` `12` `14` | `86` `8a` `7e` | the board latches: hook relay, NVRAM strobe, carrier-detect pair |
 | `18` `1a` `1c` `1e` | `ff` `ff` `fd` `ff` | the four that move under load |
 | `42` `46` `4a` `4e` `52` `56` | `ff` | the DSP download window, written in thousands and never read |
@@ -76,21 +76,19 @@ versions and two sessions is what identity or strapping looks like. The other
 three (`68` `6a` `70`, and also `58` and `60`) differ between the captures, so
 they are state.
 
-### The panel is driven by the ASIC, and these are where it would live
+### The panel rows here are thinner than the ones already recorded
 
-The ASIC drives the front-panel LEDs (measured on the 2806;
-[asic-pinout.md](asic-pinout.md)). No port here has been attributed to them,
-and `0a`, `0c` and `0e` are the only unattributed ports with non-zero idle
-values - sparse patterns, immediately below the identified latches.
+The "board latches" row above predates
+[dsp-rom-probe.md](dsp-rom-probe.md), which maps these ports bit by bit from
+driving single bits on a physical unit and watching the front of the modem:
+`0x14` is active-low and carries CD, CS, AA, ARQ, HS and SYN; `0x12` bit 1 is
+MR; `0x10` bit 0 is OH and the relay; `0x0e` is a panel latch driver.
+`courier_emu/panel.py` models the whole latch driver and holds the lamp list.
+Read that pair rather than this table's one-line summary.
 
-This is the one port group that can be labelled **from the other end**: write a
-value, look at the front of the modem, and the bit-to-indicator map is read off
-rather than inferred. Nothing else in this file could be calibrated that way.
-
-The probe deliberately writes nothing, and the two reasons to keep it that way
-apply with force next door: `10`-`14` carry the hook relay and the NVRAM
-strobe. A walking-bit test that strays into them can take the line off hook or
-disturb the settings store.
+What this file adds is where those latches physically live:
+[asic-pinout.md](asic-pinout.md) measures the **ASIC** as the part driving the
+panel, which no document had attributed before.
 
 ## What moves
 

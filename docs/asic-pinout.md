@@ -229,45 +229,85 @@ harness does not know that.
 
 ### The ASIC drives the front-panel LEDs
 
-Nothing in this repository had attributed the panel to anything. The ASIC
-drives it.
+The lamps themselves were mapped long before this trace, and thoroughly:
+[dsp-rom-probe.md](dsp-rom-probe.md) has the bit-by-bit table, measured by
+driving single bits on a physical unit and watching the panel - `0x14`
+active-low carrying CD, CS, AA, ARQ, HS and SYN, `0x12` bit 1 MR, `0x10` bit 0
+OH and the relay - and `courier_emu/panel.py` models the latch driver and holds
+the nine-lamp list with the self-test order read off the board.
 
-That is a larger result than it sounds, because **it is the only output of this
-system a person can read without instrumentation.** Every other observation
-here has come through the ID_SDL monitor, a flash dump, a port sweep or a
-meter, and each of those needs the supervisor to be somewhere specific or the
-board to be open. The panel is live, continuous, needs no probe, and keeps
-working during the states the monitor cannot reach - the outage across a reset
-that [asic-port-map.md](asic-port-map.md) documents as a structural limit, a
-call in progress, a training sequence that never completes.
+What this trace adds is **which part the latches are in**. No document had
+attributed the panel to any silicon; it is this ASIC.
 
-It also gives the port map a calibration method it has not had. The ports in
-that file are labelled from what the firmware does with them; the LED ports
-could be labelled from the other end, by writing a value and looking at the
-front of the modem. Bit to indicator, exactly, with no inference.
+That matters for what the panel can be used for. It is the only output of this
+system a person can read without instrumentation: every other observation here
+has needed the monitor at its command loop, a flash dump, a port sweep or a
+meter, and the panel keeps working through the states none of those reach - the
+outage across a reset that [asic-port-map.md](asic-port-map.md) documents as a
+structural limit of the monitor, a call in progress, a training sequence that
+hangs.
 
-**The candidates are `0a`, `0c` and `0e`** - the three ports
-[asic-port-map.md](asic-port-map.md) records as carrying non-zero idle values
-and marks "unattributed", sitting immediately below the identified board
-latches at `10`, `12` and `14`. Their idle values are `f7`, `60` and `07`:
-sparse, mostly-settled patterns, which is what a panel showing one or two
-indicators on an idle on-hook modem looks like if the drive is active-low. That
-is a guess from the shape of three bytes and nothing more.
+The drive pins have not been traced. Nine lamps need nine pins, and the
+**entire bottom edge of the package is unread**, so that is where to look.
 
-Two cautions before anyone writes to them. The neighbouring latches at `10`-`14`
-carry the **hook relay and the NVRAM strobe**, so a walking pattern that
-wanders up into them can take the line off hook or disturb stored settings.
-And the monitor that can write ports is the **ID_SDL** build, which runs on the
-20.16 MHz board - while the trace establishing that the ASIC drives the LEDs
-was taken on the **2806**. That is the split this file's grading section
-describes, and here it is an opportunity rather than a problem: if writing
-`0a`/`0c`/`0e` on the 20.16 MHz board moves its panel, the two boards are
-driving their LEDs from the same ports, which is evidence towards the two
-ASICs being the same part - the question the missing marking left open.
+### The RS-232 control lines are very likely in here too
 
-The drive pins themselves have not been traced. Around ten indicators need
-around ten pins, and the **entire bottom edge of the package is unread**, so
-that is where to look first.
+Proposed by the owner from the board, and the firmware analysis has been
+predicting it from the other side for some time without anyone joining the two
+up.
+
+**Two RS-232 signals are already known to live in ASIC ports.** From
+[dsp-rom-probe.md](dsp-rom-probe.md)'s port table: `0x10` bit 0 is the **CD
+line to the DTE** - set on connect at `0x92b1`/`0x9380`, cleared on teardown -
+and `0x12` reads the **DTE's DTR** at bit `0x40`. An output and an input, both
+already attributed, both in the part now known to hold those latches. So the
+ASIC demonstrably handles at least two interface lines already.
+
+**Four lamps require it.** The same document notes that RD, SD, TR and RS have
+**no latch bit**, and concludes they "are the ones expected to be wired to the
+UART and control lines in hardware". Those lamps light. Something drives them
+from the data and handshake lines without the firmware writing anything. Since
+the ASIC drives the panel, the ASIC is what has those signals - TR from DTR, RS
+from RTS, SD and RD from the data pair. That is close to a deduction rather than
+a guess, and it is the owner's hypothesis arrived at independently.
+
+**It would explain a failure the harness already records.**
+[board-verified-403.md](board-verified-403.md) has an open item: after
+`SELF TEST COMPLETED` the real board shows CS, RD and AA moving in a pattern the
+emulated run does not reproduce, and it makes no panel writes anywhere near it.
+That file's own reading is that the emulator is not missing a write, because
+there is no write - the lamps follow the serial lines, and "modelling the panel
+as following the serial signals" is what it says is needed. If those lines are
+inputs to the ASIC, that is the mechanism, and the discrepancy stops being
+mysterious.
+
+#### What to trace, and where not to look
+
+The signals will not be at the connector. There has to be an **EIA-232
+transceiver** between the DB-25 and the logic - a 1488/1489 pair or a
+single-chip MAX-series part - and the ASIC's pins go to its logic side, not to
+the connector's. [board-parts.md](board-parts.md) does not list a transceiver
+at all, because the photograph it was compiled from did not cover that end of
+the board, so identifying the part is the first step and a new entry for that
+table.
+
+From the transceiver's logic side, the ones that decide the shape of this:
+
+* **`DTR` and `RTS`** - the two inputs. `DTR` is already known to reach port
+  `0x12` bit `0x40`, so finding it on the ASIC confirms the route rather than
+  discovering it. `RTS` has no known port, and the `RS` lamp says something sees
+  it.
+* **`CTS`, `DSR` and `RI`** - the outputs with no established port.
+  [dsp-rom-probe.md](dsp-rom-probe.md) puts ring detect on `0x14` bit `0x02` as
+  an *input* from the line, which is a different signal from `RI` to the DTE.
+* **`TXD` and `RXD`** - the interesting pair, because their route is genuinely
+  unclear. The harness runs the DTE through the 80186EB's own on-chip UART
+  (`EbSerial`, memory-mapped in the peripheral block), but
+  [dsp-rom-probe.md](dsp-rom-probe.md) gives ASIC port `0x00` as the "DTE serial
+  data path" with 12 sites. Those cannot both be the whole story. Whether the
+  data lines pass through the ASIC, merely tap it for the SD and RD lamps, or
+  reach it not at all is a question two continuity readings answer and no amount
+  of disassembly has.
 
 ### The second serial port goes to a debug header, not to a device
 
