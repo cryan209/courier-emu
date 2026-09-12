@@ -876,6 +876,48 @@ pinout work has produced.
 > is the 80186EB's own `P2PIN` in its peripheral control block. The behaviour
 > it describes is unaffected; the name is wrong.
 
+#### But switch 1 is the DTR override, and the firmware reads that elsewhere
+
+The owner reports what switch 1 *does*: off is DTR normal, on is DTR always
+asserted. That is the documented function of a Courier's first DIP switch, and
+it raises the possibility that **`P2.6` carries the DTR signal rather than the
+switch** - the switch shorting the DTR sense line to its asserted level would
+produce exactly that behaviour in hardware, with no firmware involvement at all.
+
+It is a good hypothesis and it has to be taken seriously, because the behaviour
+does not distinguish the two cases. Firmware reading a strap and hardware
+forcing a line both give "DTR always on".
+
+**The wiring does distinguish them, and there is already a reason to doubt the
+simple reading.** `courier_emu/panel.py` maps `dtr-override` to **ASIC port
+`0x12` bit `0x20`** on the XMF supervisor, recovered at `0x63d31`/`0x63d48`
+where a closed switch leaves `S14` at zero - and `S14` bit 0 is what `0x5e89f`
+tests before turning a low DTR reading into event 10. The 302/403 ROM builds
+read the same switch, also on port `0x12` bit `0x20`, through a different
+selector. So on **both** firmware families this file has mapped, switch 1 is a
+strap the firmware reads through the ASIC, and the override is done in software.
+
+If the 2806 routes it to `P2.6` instead, that is a **third** switch wiring. Not
+impossible - `panel.py` already carries two that disagree, and this file's own
+rule is that CPU-side findings do not cross between boards - but it is a claim
+that needs more than one continuity reading.
+
+**The decisive measurement is the switch's other terminal.** One probe:
+
+* to **ground or `VCC`** - it is a strap, `P2.6` reads the switch, and the 2806
+  reads its DTR override on a pin no other build uses.
+* to the **DTR net** - the owner's reading is right, the override is hardware,
+  and `P2.6` is watching a line rather than a switch.
+
+A second check separates them live: unplug the DTE so nothing asserts DTR, then
+toggle switch 1. A pin that follows the switch with no terminal attached is a
+strap; a pin that only moves when a DTE asserts DTR is the signal.
+
+Worth knowing either way that **DTR already has a home in this file** - ASIC
+port `0x12` bit `0x40`, `dte-dtr`, and the `TR` lamp on ASIC pin 18 follows it.
+A second DTR path to the CPU would be redundant unless the 2806 moved the whole
+line off the ASIC, which nothing else suggests.
+
 #### The rest of them are a scanned matrix, which is why the meter misbehaves
 
 The other switches read oddly with a meter, and there is a specific reason to
@@ -1006,15 +1048,19 @@ The ones worth finding next, in the order they would pay:
    hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
    names the output; watching the pair while the line rings names the input.
    The DAA module on the far side of that header is unidentified.
-3. **Which DIP switch is on which strap drive**, read live through the
+3. **What is on the other side of DIP switch 1** - ground/`VCC` makes it a
+   strap on `P2.6`; the DTR net makes `P2.6` the signal and the override
+   hardware. Both firmware families already mapped read this switch through
+   ASIC port `0x12` bit `0x20` instead, so either answer says something.
+4. **Which DIP switch is on which strap drive**, read live through the
    monitor rather than with a meter - drive one of `0x12`/`0x02`,
    `0x14`/`0x40`, `0x14`/`0x10`, `0x14`/`0x20` low and watch `0x14` bit `0x08`
    while flipping each switch. It also shows which switches are read by nothing.
-4. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+5. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-5. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
+6. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
    them and can only be one. With `A17` now known to go *into* the ASIC on pin
    62, this decides whether the part shifts the address it remaps or leaves it
    in place. Whichever lands on a direct CPU output - pin 31
@@ -1022,36 +1068,36 @@ The ones worth finding next, in the order they would pay:
    reach the ASIC, it is buffering the high address rather than remapping a
    bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
    `UCS` (QFP pin 61) and would finish the decode.
-6. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+7. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-7. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+8. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-8. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+9. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-9. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+10. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-10. **What `J7` carries.** The second serial port streams continuously to that
+11. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-11. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+12. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-12. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+13. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-13. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+14. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-14. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+15. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
