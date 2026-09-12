@@ -35,6 +35,7 @@ from .timers import (
 )
 from .uart import EbSerial
 from .rom_serial import locate_rom_serial
+from .x86_clock import NativeX86Clock
 
 try:  # only needed to size a basic block; there is a slower path without it
     import capstone as _capstone
@@ -58,6 +59,12 @@ DSP_RESET_BIT = 0x0002
 # take an interrupt the moment IF goes high either. 64 instructions is about
 # 15 us at 20.16 MHz, and it divides the periods that hang off it.
 SERVICE_INSTRUCTIONS = 64
+# The native ROM clock yields at the peripheral timer's polling granularity.
+# The ROM's receive state machine and the DSP/CPU mailbox both need this
+# resolution; widening it after off-hook changes the DTMF stream. Payload runs
+# retain the 64-instruction Python service interval because their synthetic
+# UART bit edge is finer again.
+NATIVE_ROM_SERVICE_INSTRUCTIONS = TIMER_POLL_INSTRUCTIONS
 
 # The processor state carried across a turn-taking yield. Segment registers and
 # flags matter as much as the general set: the machine is resumed mid-routine.
@@ -754,17 +761,24 @@ class CourierMachine:
         `executed` and `pc_watch` are diagnostics, off unless asked for.
         `last_addresses` is the window the keystroke-spin test looks at, and
         that test is only reached with a byte waiting for the DTE. And
-        `_previous_address` is read by the ISR-exit blocks, which need the
-        instruction that ran immediately before - the serial one while input
-        is being delivered, the timer one only when the DSP paces the tick.
+        `_previous_address` is read by the payload harness's ISR-exit blocks,
+        which need the instruction that ran immediately before - the serial
+        one while input is being delivered, the timer one only when the DSP
+        paces the tick.  A complete ROM uses its modelled EB UART and interrupt
+        controller instead; neither of those paths reads `_previous_address`.
+        Keeping the hook merely because a ROM has queued AT input or a
+        DSP-paced line costs one Python callback per guest instruction for no
+        observable effect.
         """
         return bool(
             self.pc_watch
             or self._code_observer is not None
             or self.track_executed
             or self.console is not None
-            or self.serial_rx
-            or self.tick_source == "dsp"
+            or (
+                self._payload_hooks
+                and (bool(self.serial_rx) or self.tick_source == "dsp")
+            )
         )
 
     def request_stop(self) -> None:
@@ -2543,9 +2557,32 @@ class CourierMachine:
                 uc.hook_add(UC_HOOK_CODE, on_milestone_code, None, _address, _address)
         if self._needs_code_hook():
             uc.hook_add(UC_HOOK_CODE, on_code)
-        if disassembler is not None:
+        # Complete ROM runs have hardware-facing UART and interrupt models and
+        # normally need no per-instruction diagnostic state. Count their basic
+        # blocks in a native hook: the equivalent Python callback crosses the
+        # FFI boundary for almost every two guest instructions and is slower
+        # than the emulation itself. Payload and diagnostic runs retain the
+        # Python hook because their traces consume its per-block state.
+        fast_rom_clock = bool(
+            self._rom_tick and disassembler is not None and not self._needs_code_hook()
+        )
+        def native_service(total: int, elapsed: int) -> None:
+            self.instructions = total
+            self._last_service = total
+            service_chunk(uc, elapsed)
+            self._next_service = total + NATIVE_ROM_SERVICE_INSTRUCTIONS
+
+        native_clock = (
+            NativeX86Clock(
+                uc, self.instructions,
+                NATIVE_ROM_SERVICE_INSTRUCTIONS,
+                native_service,
+            )
+            if fast_rom_clock else None
+        )
+        if disassembler is not None and not fast_rom_clock:
             uc.hook_add(UC_HOOK_BLOCK, on_block)
-        else:
+        elif disassembler is None:
             uc.hook_add(UC_HOOK_CODE, on_code_counting)
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
@@ -2585,6 +2622,8 @@ class CourierMachine:
                 # MiB as Unicorn's optional stop PC terminates the run at that
                 # boundary before Unicorn can apply real-mode wrapping.
                 uc.emu_start(begin, 0, count=instruction_limit - self.instructions)
+                if native_clock is not None:
+                    self.instructions = native_clock.instructions
                 # Unicorn returns after HLT. The Quad modem's scheduler uses
                 # STI/HLT between events; clocks and peripherals continue while
                 # its CPU sleeps. Advance the same bounded simulation clock,
@@ -2713,6 +2752,8 @@ class CourierMachine:
                 interrupt_vectors[f"{vector:#04x}"] = f"{segment:04x}:{offset:04x}"
         if self.dsp_bridge is not None:
             self.dsp_bridge.close()
+        if native_clock is not None:
+            native_clock.close()
         nvram_result = None
         if self.nvram is not None:
             nvram_result = self.nvram.status()

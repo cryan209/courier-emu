@@ -19,6 +19,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CliTests(unittest.TestCase):
+    def test_sip_calls_use_the_realtime_dsp_batch_by_default(self) -> None:
+        args = build_parser().parse_args(
+            ["run", str(ROOT / "IDSDL302.ROM"), "--sip-server", "pbx.example"]
+        )
+        command = _worker_command(args)
+        self.assertEqual(command[command.index("--dsp-batch") + 1], "4096")
+
+        explicit = build_parser().parse_args(
+            [
+                "run", str(ROOT / "IDSDL302.ROM"), "--sip-server", "pbx.example",
+                "--dsp-batch", "1024",
+            ]
+        )
+        explicit_command = _worker_command(explicit)
+        self.assertEqual(
+            explicit_command[explicit_command.index("--dsp-batch") + 1], "1024"
+        )
+
     def test_idsl302_nvram_fixture_is_forwarded_to_the_worker(self) -> None:
         args = build_parser().parse_args(
             ["run", str(ROOT / "IDSDL302.ROM"), "--nvram-fixture", "idsdl302"]

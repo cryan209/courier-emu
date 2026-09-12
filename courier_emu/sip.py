@@ -568,28 +568,33 @@ class SipSession:
 
     def _flush_rtp(self, now: float) -> None:
         source = self._tx_codewords if self.codewords else self._tx_audio
-        if (
-            self.state != "connected"
-            or self.remote_rtp is None
-            or len(source) < RTP_PACKET_SAMPLES
-            or now < self._next_rtp_at
+        # The analogue bridge hands us 100 ms blocks while RTP packetizes
+        # 20 ms. Send every packet whose playout time has arrived, not merely
+        # one packet per bridge call. The old one-shot form turned an otherwise
+        # 30%-real-time emulator into a 6%-rate transmitter.
+        while (
+            self.state == "connected"
+            and self.remote_rtp is not None
+            and len(source) >= RTP_PACKET_SAMPLES
+            and now >= self._next_rtp_at
         ):
-            return
-        payload = (
-            bytes(self._tx_codewords.popleft() for _ in range(RTP_PACKET_SAMPLES))
-            if self.codewords else
-            bytes(linear_to_ulaw(self._tx_audio.popleft())
-                  for _ in range(RTP_PACKET_SAMPLES))
-        )
-        header = bytes((0x80, 0x00))
-        header += self._rtp_sequence.to_bytes(2, "big")
-        header += self._rtp_timestamp.to_bytes(4, "big")
-        header += self._rtp_ssrc.to_bytes(4, "big")
-        self.rtp_socket.sendto(header + payload, self.remote_rtp)
-        self._rtp_sequence = (self._rtp_sequence + 1) & 0xFFFF
-        self._rtp_timestamp = (self._rtp_timestamp + RTP_PACKET_SAMPLES) & 0xFFFFFFFF
-        self._next_rtp_at = max(self._next_rtp_at + 0.020, now)
-        self.rtp_packets_sent += 1
+            payload = (
+                bytes(self._tx_codewords.popleft() for _ in range(RTP_PACKET_SAMPLES))
+                if self.codewords else
+                bytes(linear_to_ulaw(self._tx_audio.popleft())
+                      for _ in range(RTP_PACKET_SAMPLES))
+            )
+            header = bytes((0x80, 0x00))
+            header += self._rtp_sequence.to_bytes(2, "big")
+            header += self._rtp_timestamp.to_bytes(4, "big")
+            header += self._rtp_ssrc.to_bytes(4, "big")
+            self.rtp_socket.sendto(header + payload, self.remote_rtp)
+            self._rtp_sequence = (self._rtp_sequence + 1) & 0xFFFF
+            self._rtp_timestamp = (
+                self._rtp_timestamp + RTP_PACKET_SAMPLES
+            ) & 0xFFFFFFFF
+            self._next_rtp_at += RTP_PACKET_SAMPLES / PCMU_RATE
+            self.rtp_packets_sent += 1
 
     def receive_audio(self) -> list[int]:
         result = list(self._rx_audio)

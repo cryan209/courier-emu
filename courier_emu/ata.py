@@ -27,6 +27,7 @@ and hears ringback or busy, exactly as it does against the bare exchange.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import time
 from typing import Any
 
 from .daa import DAA_SAMPLE_RATE
@@ -75,17 +76,40 @@ class SipLine:
         self._sip_state = self.sip.state
         self.placed = 0
         self.answered = 0
+        self._next_frame_at: float | None = None
+        self.paced_seconds = 0.0
+        self.late_seconds = 0.0
 
     # -- the two faces ---------------------------------------------------
 
     def service(self, off_hook: bool, transmitted: list[int] | None = None,
                 count: int | None = None) -> list[int]:
         """Advance the port by one block; the arguments are the exchange's."""
+        if count is None:
+            count = self.line_rate // 10
+        self._pace(count)
         self.sip.poll()
         self._follow_sip()
         samples = self.exchange.service(off_hook, transmitted, count)
         self._follow_loop()
         return samples
+
+    def _pace(self, count: int) -> None:
+        """Keep the simulated subscriber loop on the RTP wall clock."""
+        now = time.monotonic()
+        if self._next_frame_at is None:
+            self._next_frame_at = now
+        deadline = self._next_frame_at
+        while now < deadline:
+            # Poll while waiting so queued audio leaves in 20 ms RTP packets
+            # and signalling or inbound media never waits for a 100 ms frame.
+            self.sip.poll()
+            delay = min(0.01, deadline - now)
+            time.sleep(delay)
+            self.paced_seconds += delay
+            now = time.monotonic()
+        self.late_seconds += max(0.0, now - deadline)
+        self._next_frame_at = deadline + count / self.line_rate
 
     def _route(self, number: str) -> str | None:
         """The exchange has a number. Place the call and hold for the answer."""
@@ -154,6 +178,8 @@ class SipLine:
             "outcome": self.exchange.outcome,
             "placed": self.placed,
             "answered": self.answered,
+            "paced_ms": round(self.paced_seconds * 1000),
+            "late_ms": round(self.late_seconds * 1000),
             "sip": self.sip.status(),
         }
 

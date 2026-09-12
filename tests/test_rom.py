@@ -43,6 +43,23 @@ class CourierRomTests(unittest.TestCase):
 @unittest.skipUnless(IMAGE.exists(), "no Courier ROM image available")
 class RomBootTests(unittest.TestCase):
 
+    def test_rom_at_input_and_dsp_tick_do_not_require_a_global_code_hook(self) -> None:
+        """The ROM has dedicated UART and interrupt-controller models.
+
+        Payload-only images need the per-instruction history to recognize the
+        exits from their synthetic ISR injection.  A complete ROM does not;
+        enabling the hook there makes every instruction cross into Python and
+        prevents the live audio path from keeping up with a physical peer.
+        """
+        from courier_emu.machine import CourierMachine
+
+        machine = CourierMachine(
+            CourierRom.load(IMAGE),
+            serial_input=b"AT\r",
+            tick_source="dsp",
+        )
+        self.assertFalse(machine._needs_code_hook())
+
 
     def test_a_rom_yields_the_c50_payload_its_supervisor_downloads(self) -> None:
         """A ROM does carry a separable payload; it just is not laid out.
@@ -103,5 +120,4 @@ class RomBootTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 

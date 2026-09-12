@@ -127,3 +127,24 @@ attached, because the real one is the ASIC's and its firmware is not in the
 image - which is the same reason `_play_dial_tone` records the supervisor's
 request rather than playing it. Everything above the tone is the firmware's
 own.
+
+## Real-time physical-peer run
+
+The complete 4.03d ROM now uses a native Unicorn basic-block clock instead of
+crossing into Python for every guest instruction or basic block. SIP runs also
+select a 4096-instruction C52 scheduling batch by default, while retaining the
+timer poll's 1024-instruction CPU service interval. The same 150-million-
+instruction call path advances 44.1 seconds of line time in 27.0 seconds when
+no external clock is attached, leaving enough headroom to pace a live call.
+
+`SipLine` wall-clock-paces each 100 ms line frame and polls SIP/RTP while it
+waits. `SipSession` emits every due 20 ms packet from that block; the former
+one-packet-per-block behavior reduced a 30%-real-time emulator to roughly 6%
+audio at the peer.
+
+A live call through `6000@asterisk.net.cryan.nz` to the physical ID_SDL 4.03d
+Courier on extension `6245` advanced 47.1 seconds of line time in 50.2 seconds
+wall clock and exchanged 1,338 outbound versus 1,330 inbound RTP packets. The
+physical modem rang and heard full-rate audio. It still returned `NO CARRIER`:
+the emulated side reports no call-engine start or call overlay, so real-time
+transport is no longer the blocker and datapump activation remains one.

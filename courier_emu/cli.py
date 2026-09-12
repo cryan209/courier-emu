@@ -198,8 +198,14 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.append("--with-dsp")
     if args.force_online:
         command.append("--force-online")
-    if args.dsp_batch != 256:
-        command.extend(("--dsp-batch", str(args.dsp_batch)))
+    # A live SIP call has to keep up with an external clock. The native C52
+    # runner is insensitive to a four-frame scheduling batch on the complete
+    # ROM path, and this leaves ample real-time headroom. Keep the smaller
+    # diagnostic default everywhere else so existing trace boundaries do not
+    # move.
+    dsp_batch = 4096 if args.sip_server and args.dsp_batch == 256 else args.dsp_batch
+    if dsp_batch != 256:
+        command.extend(("--dsp-batch", str(dsp_batch)))
     if daa_codec:
         command.append("--daa-codec")
         command.extend(("--daa-codec-line", str(args.daa_codec_line)))
