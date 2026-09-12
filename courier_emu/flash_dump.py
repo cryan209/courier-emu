@@ -45,11 +45,11 @@ TARGETS = {
     # The 25 MHz US/Canada external board, serial 22AEB36ACKND, read 2026-09-12.
     # Same revision strings as the 20.16 MHz stock entry above and a different
     # image: the leading jump displacement is 0f93 rather than 0f7c, and the
-    # reset vector enters at fc00:1bbf rather than fc00:11e9. Unlike the two
-    # entries above, these anchors are taken from the very board this module
-    # reads, so they check that a capture stays self-consistent across its own
-    # sweep; they are not independent confirmation of the build. Replace them
-    # if a second 25 MHz board or a vendor image becomes available.
+    # reset vector enters at fc00:1bbf rather than fc00:11e9. These anchors are
+    # independent of the capture: SV25.XMD, decoded by the 128-byte XOR block
+    # transform in `recovery.decode_payload`, carries both of them, and agrees
+    # with the captured image everywhere except the four checksum bytes at
+    # f7ffc..f7fff that the downloader programs. See docs/firmware-lineage.md.
     ("7.3.14", "3.0.13", "25"): (
         bytes.fromhex("BD 0B 00 E9 93 0F 0D 0A".replace(" ", "")),
         bytes.fromhex("FA BA A4 FF B8 00 80 EF EA BF 1B 00 FC 07 00 00".replace(" ", "")),

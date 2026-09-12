@@ -16,10 +16,8 @@ from courier_emu.isdn_console import scripted_pump
 from courier_emu.nac import NacImage
 
 IMAGE = Path("Ie030002.nac")
-# ATI3 answers a little after 48M instructions when the line is typed at the
-# default warm-up and spacing; the margin is for slower answers, not for a
-# different result.
-BANNER_INSTRUCTIONS = 52_000_000
+# A command answers well inside one default command interval.
+BANNER_INSTRUCTIONS = 25_000_000
 
 
 @pytest.fixture(scope="module")
@@ -27,9 +25,7 @@ def session():
     if not IMAGE.exists():
         pytest.skip("local I-modem firmware not available")
     transcript: list[tuple[int, str, str]] = []
-    # The firmware consumes the first line it is given without answering it,
-    # so the session opens with a throwaway AT.
-    pump = scripted_pump(["AT", "AT", "ATI3"], transcript=transcript)
+    pump = scripted_pump(["ATI3"], transcript=transcript)
     machine = IsdnMachine(NacImage.load(IMAGE), serial_pump=pump)
     result = machine.run(BANNER_INSTRUCTIONS)
     return machine, result, transcript
@@ -53,7 +49,7 @@ def test_the_command_port_is_programmed_and_interrupt_driven(session):
     assert channel.lcr == 0x03
     assert channel.ier == 0x0B
     assert channel.irq == 3, "vector 0x23 is the serial ISR at 0xb2aa2"
-    assert channel.received == len("AT\rAT\rATI3\r")
+    assert channel.received == len("ATI3\r")
     assert channel.transmitted > 0
     assert result.serial["a"]["overruns"] == 0
 
@@ -75,7 +71,7 @@ def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
     if not IMAGE.exists():
         pytest.skip("local I-modem firmware not available")
     transcript: list[tuple[int, str, str]] = []
-    pump = scripted_pump(["AT", "AT", "ATI2"], transcript=transcript)
+    pump = scripted_pump(["ATI2"], transcript=transcript)
     machine = IsdnMachine(NacImage.load(IMAGE), serial_pump=pump)
     machine.run(BANNER_INSTRUCTIONS)
     typed = max(count for count, direction, _ in transcript
@@ -83,6 +79,24 @@ def test_ati2_answers_ok_so_the_result_table_is_not_mis_indexed():
     answer = "".join(text for count, direction, text in transcript
                      if direction == "received" and count > typed)
     assert answer.strip() == "OK"
+
+
+def test_consecutive_commands_are_sequenced_past_the_firmware_abort_state():
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    transcript: list[tuple[int, str, str]] = []
+    pump = scripted_pump(["ATI3", "ATI4"], transcript=transcript)
+    machine = IsdnMachine(NacImage.load(IMAGE), serial_pump=pump)
+    machine.run(65_000_000)
+
+    answer = received(transcript)
+    # ATI3 is the first banner; ATI4 includes the same product heading before
+    # its settings.  A third copy would be the stale firmware replay.
+    assert answer.count("USRobotics Courier I-Modem with ISDN/V.34") == 2
+    assert "B0 B1 E1 F1 M1 Q0 V1 X7" in answer
+    assert [text for _, direction, text in transcript if direction == "sent"] == [
+        "ATI3\r", "ATI4\r",
+    ]
 
 
 def test_the_emulated_product_type_is_explicit_and_validated():

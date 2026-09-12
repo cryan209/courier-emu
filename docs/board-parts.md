@@ -285,11 +285,25 @@ above.
 payload is 736 KiB where both V.Everything boards report 512 KiB of flash, and
 the file is dated 2003. That points at the business Courier.
 
-**The middle generation is untested.** `SV25.XMD` cannot be searched raw - the
-shared anchor is absent from it and from `ID20_403.XMD`, and since flashing
-`ID20_403.XMD` produced a capture that *does* contain the anchor, the `.XMD`
-container is record-framed rather than flat. Testing the 1998-2000 V.90 build
-means de-framing that container first. The 2000+ V.92 image is also out of
+> **Superseded (2026-09-12): the middle generation is now tested, and the
+> container is flat after all.** `SV25.XMD` is not record-framed. Strip its
+> 128-byte header and apply the same 128-byte XOR block transform the recovery
+> harness already uses - `recovery.decode_payload`, documented in
+> [sv25-recovery.md](sv25-recovery.md) - and the payload is flat. The shared
+> anchor is at `0x296e0`, not absent. The reason searching raw failed is simply
+> that the bytes were still encoded.
+>
+> That decode is confirmed against hardware: the decoded image matches a
+> 512 KiB capture of a 25 MHz board (supervisor 7.3.14 / DSP 3.0.13, ATI7
+> `25 Mhz`) in every byte but the four checksum bytes at `0x77ffc..0x77fff`.
+>
+> **The result is that the middle generation groups with the old one, not the
+> new one.** The AC0x initialisation table `0911 0967 ... 8b8f 8711` appears in
+> `main211.xmf` alone, at `0x628`; it is absent from the 25 MHz build, from
+> both 20.16 MHz builds, and from `IDSDL302.ROM`. So the AC0x codec path is not
+> what separates 20.16 MHz hardware from 25 MHz hardware - it arrives later,
+> with the 25.8048 MHz / 736 KiB `main211` generation. A 25 MHz board is
+> therefore not evidence of an AC03-driven codec path in firmware. The 2000+ V.92 image is also out of
 reach here: `firmware/legacy-usrobotics/USR03232004/` is a compressed
 InstallShield package and no extractor is installed.
 

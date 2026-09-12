@@ -45,6 +45,12 @@ SERIAL_WARMUP_INSTRUCTIONS = 5_000_000
 # Long enough for a command to be parsed and its result code transmitted.
 SERIAL_LINE_INSTRUCTIONS = 20_000_000
 
+# 3.0.2 leaves its receive callback in the call-abort handler after completing
+# an AT command.  The next line is consumed while that handler returns the
+# command task to idle.  Give it a private, empty line for that transition;
+# terminal users should not have to type every command twice.
+_RECOVERY_LINE = "\0\r"
+
 # Ctrl-], as in telnet.
 DETACH_BYTE = 0x1D
 
@@ -88,20 +94,55 @@ def scripted_pump(
     `transcript` collects `(instructions, "sent"|"received", text)` in order,
     so a run's report can show the session rather than just the final stream.
     """
-    schedule = [
-        (after + index * every, command_line(line))
-        for index, line in enumerate(lines)
-    ]
+    commands = [command_line(line) for line in lines]
+    schedule: list[tuple[int, str, bool]] = []
+    for index, line in enumerate(commands):
+        if index:
+            schedule.append((after + (2 * index - 1) * every,
+                             _RECOVERY_LINE, True))
+        schedule.append((after + 2 * index * every, line, False))
     schedule.reverse()
     log = transcript if transcript is not None else []
+    recovering = [False]
+    response = bytearray()
+    stale_response = [b""]
+    stale_match = [0]
+    stale_copies = [0]
 
     def pump(machine: Any) -> None:
         while schedule and machine.instructions >= schedule[-1][0]:
-            _, line = schedule.pop()
+            _, line, hidden = schedule.pop()
             machine.send_serial(_on_the_wire(line))
-            log.append((machine.instructions, "sent", line))
+            recovering[0] = hidden
+            if hidden:
+                stale_response[0] = bytes(response)
+                response.clear()
+            else:
+                # Releasing the abort callback replays the old response once
+                # before the newly typed command is dispatched.
+                stale_match[0] = 0
+                stale_copies[0] = 1 if stale_response[0] else 0
+                log.append((machine.instructions, "sent", line))
         received = machine.take_serial()
+        if not received or recovering[0]:
+            return
+        if stale_copies[0]:
+            pattern = stale_response[0]
+            visible = bytearray()
+            for byte in received:
+                if not stale_copies[0]:
+                    visible.append(byte)
+                    continue
+                if byte == pattern[stale_match[0]]:
+                    stale_match[0] += 1
+                    if stale_match[0] == len(pattern):
+                        stale_match[0] = 0
+                        stale_copies[0] -= 1
+                    continue
+                stale_match[0] = 1 if byte == pattern[0] else 0
+            received = bytes(visible)
         if received:
+            response.extend(received)
             log.append((machine.instructions, "received", _readable(received)))
 
     return pump

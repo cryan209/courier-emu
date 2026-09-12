@@ -53,6 +53,28 @@ by the original downloader has a corrupt application: the downloadable image,
 programming process and installed checksum may differ. The harness does not
 patch the checksum or force the conditional branch.
 
+> **The caveat is now measured, and it holds.** A 512 KiB capture of a 25 MHz
+> board running this very build differs from decoded `SV25.XMD` in exactly four
+> bytes, all of them here:
+>
+> | flash | decoded `SV25.XMD` | programmed board |
+> |---|---|---|
+> | `0x77ffc..0x77ffd` | `ff ff` | `ec 1c` |
+> | `0x77ffe..0x77fff` | `ff ff` | `59 7d` |
+>
+> So the `0xffff` the harness compares against is the *unprogrammed* state of
+> the distributed image, and the downloader fills both words in. The same four
+> bytes are the only difference between `IDSDL302.ROM` and decoded
+> `IDSDL302.XMD` (`5e 9e bc 53` on that board), so this is the container's
+> normal condition, not something particular to SV25.
+>
+> Note that `0x77ffc..0x77ffd` lies *inside* the CRC'd range `0x40000..0x77ffd`
+> while `0x77ffe` holds the stored value, so a real board's CRC input is not
+> the image's. The algorithm is still unidentified: sum-8, sum-16 and the
+> IBM, MODBUS, CCITT, XMODEM and KERMIT CRC-16s over that range all miss
+> `0x7d59`. Whether the board's own firmware accepts its checksum has not been
+> run through the harness.
+
 ## XMD decode, not a speculative bank transition
 
 Strip the 128-byte header. For each 128-byte payload block:
