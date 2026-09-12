@@ -249,6 +249,18 @@ IE_CALLED_PARTY_NUMBER = 0x70
 BEARER_SPEECH = bytes([0x80, 0x90, 0xA3])          # speech, G.711 A-law
 BEARER_UNRESTRICTED_64K = bytes([0x88, 0x90])      # unrestricted digital
 
+# Q.931 table 4-13, the ones this peer sends or has seen come back.
+CAUSE_NAMES = {
+    16: "normal call clearing",
+    17: "user busy",
+    18: "no user responding",
+    19: "no answer from user",
+    30: "response to STATUS ENQUIRY",
+    65: "bearer capability not implemented",
+    88: "incompatible destination",
+    96: "mandatory information element is missing",
+}
+
 CAUSE_NORMAL_CLEARING = 16
 CAUSE_USER_BUSY = 17
 CAUSE_NO_ANSWER = 19
@@ -267,6 +279,20 @@ class Q931:
     def name(self) -> str:
         return MESSAGE_NAMES.get(self.message_type,
                                  f"0x{self.message_type:02x}")
+
+    @property
+    def cause_value(self) -> int | None:
+        """The cause value a clearing message carries, if it carries one."""
+        raw = self.elements.get(IE_CAUSE)
+        if not raw:
+            return None
+        # Octet 3 is coding standard and location, and a diagnostic may follow
+        # octet 4; the cause value is the low seven bits of the first octet
+        # whose extension bit is set after the location.
+        for octet in raw[1:]:
+            if octet & 0x80:
+                return octet & 0x7F
+        return None
 
     def number(self, element: int) -> str:
         """The digits of a called or calling party number element."""
@@ -877,7 +903,17 @@ class BriNetwork:
                            False, self._setup))
 
     def _call_control(self, message: Q931, tei: int) -> None:
-        self._note(f"{message.name} call reference {message.call_reference}")
+        # The cause belongs in the note. A modem that refuses a call says why
+        # in the message it refuses it with, and a report that prints only the
+        # message type throws that away: "RELEASE_COMPLETE" and
+        # "RELEASE_COMPLETE, cause 88 incompatible destination" are different
+        # amounts of evidence.
+        value = message.cause_value
+        because = ("" if value is None else
+                   f", cause {value}"
+                   f"{' ' + CAUSE_NAMES[value] if value in CAUSE_NAMES else ''}")
+        self._note(f"{message.name} call reference "
+                   f"{message.call_reference}{because}")
         # Any layer 3 answer at all means the SETUP was taken, so T303 stops.
         self._t303_expiry = None
         reference = message.call_reference

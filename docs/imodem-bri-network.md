@@ -74,6 +74,13 @@ The run's `bri.media` report names the selected channel and gives delivered,
 captured, and non-`ff` octet counts.  It deliberately does not call `ff` silence:
 the B channel is opaque here, and its meaning depends on the negotiated bearer.
 
+On an answered call it *is* silence, and
+[imodem-b-channel-silence.md](imodem-b-channel-silence.md) follows it back to
+the single DSP command that is never taken.  That page also carries the two
+things a SETUP must get right before the modem will ring at all - the called
+number and the bearer - which supersedes the "incompatible" question the
+sections below leave open.
+
 ## What it found, on the first run
 
 With a record whose switch protocol is ETSI NET3 and a point-to-point line,
@@ -157,11 +164,13 @@ SETUP and does not act on it".
 Two things stand between this and a call, and both are on the modem's side of
 the configuration rather than the peer's:
 
-* **The modem's TEI request is never transmitted.**  It does build one - a
-  correct Q.921 Identity Request, `0f <Ri> 01 ff` - when an incoming SETUP
-  arrives over the broadcast data link, and it is queued and then thrown
-  away rather than sent.  See [imodem-tei-request.md](imodem-tei-request.md),
-  which corrects the "does not request a TEI" this list used to carry.
+* ~~**The modem's TEI request is never transmitted.**~~  It is now.  Driving
+  the LIU to the value the part actually uses for an activated interface
+  ([imodem-liu-state-field.md](imodem-liu-state-field.md)) is what freed it:
+  runs today show `ID_REQUEST` arriving and a TEI being assigned, layer 2
+  establishing from the modem's own SABME, and the call ringing.  The queued
+  frame in [imodem-tei-request.md](imodem-tei-request.md) was the symptom of
+  the layer-1 state, not a transmit-path defect.
 * **`ATD` is gated on the data link, so it is not a second problem.**  The
   `'D'` handler at `0xcc6a3` reads `ce0:8d7d` - the byte `ATI12` prints as
   `Data Link Layer` - and returns an error when it is zero, before the one
