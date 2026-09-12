@@ -274,3 +274,81 @@ bytes before the MAC carry is not established.  The MAC is six raw bytes in an
 eight-byte field.  `00:c0:49` is USRobotics' OUI, which is also what the
 board's own barcode label carries - so a unit's real identity can be put back
 into a sector from the sticker on the board.
+
+
+## The modem writes its own record: `AT&W`
+
+The recipe on this page starts from a sector dumped off a real unit, and this
+repository has never had one - nothing in the tree holds a page the loader
+accepts. It does not need one. **`AT&W` makes the firmware build a valid record
+itself**, and `--flash-save` captures it:
+
+```sh
+.venv/bin/python -m courier_emu isdn-run Ie030002.nac --with-dsp \
+  --instructions 170000000 --line-activate 3000000 \
+  --send AT --send 'AT*S1=5551212' --send 'AT*P1=5551212' --send 'AT&W' \
+  --send-every 28000000 --flash-save flash-after.bin
+```
+
+The run reports 3 erases and 10,240 programs, and the saved window holds three
+sealed pages - at `0x78000`, `0x7a000` and `0x7b000` - whose ISDN block carries
+what was typed (`35 35 35 31 32 31 32` is the `5551212` from `AT*S1=`). Cut the
+sector out at `0x78000` and it is the base the rest of this page assumed:
+
+```python
+sector = flash[0x78000:0x78000 + 0x2000]
+sector = imodem_config.seal(imodem_config.set_switch_protocol(sector, 4))
+```
+
+Booted back with `--flash-overlay 0xf8000=`, `ATI12` reports
+
+```
+   Switch Protocol *W   4                     ETSI NET3 (Mu-Law)
+   Multipoint      *M   0                     Point to point
+   Directory No.   *P1  5551212               ADP Directory Number
+```
+
+- and the SPID rows correctly disappear, because NET3 uses directory numbers
+rather than SPIDs. That is the firmware changing its own display for the switch
+type it was given, which is what makes the record credible rather than merely
+accepted.
+
+`BUS_CONFIGURATION` (ISDN block index 1) is confirmed the same way: `'0'`
+prints `Point to point` and `'1'` prints `Multi-point`.
+
+### Which settings come from where
+
+| shown by ATI12 | settable by AT | from the record |
+|---|---|---|
+| `*S1`, `*S2` SPID | yes, and `AT&W` persists it | yes |
+| `*P1`, `*P2` directory number | yes, persisted | yes |
+| `*W` switch protocol | **no** - `AT*W4` answers `Invalid Switch Type` | index 0 |
+| `*M` bus configuration | no | index 1 |
+| `*T1`, `*T2` fixed TEI | not established | not established |
+
+So a session can bootstrap itself: type what the AT interface accepts, `AT&W`,
+save the flash, patch the record-only fields into the saved sector, and boot
+with it.
+
+## What this does *not* fix
+
+With all of that in place - switch protocol ETSI NET3, bus configuration set,
+directory number set, and the S interface walked to **F7** - the D channel
+still reports:
+
+```
+{"frames_received": 0, "frames_transmitted": 0, ...}
+```
+
+and `ATI12` still ends `Data Link Layer   :  Inactive`.
+
+The modem never sends a single layer-2 frame, so it never asks for a TEI, so
+there is nothing for a network peer to answer. **That rules configuration out
+as the cause**, which was the leading hypothesis: the settings are now real,
+firmware-written, and displayed back correctly, and layer 2 is no closer to
+starting.
+
+The D-channel transmit path at `0x71cb0` is never entered, and it has no direct
+callers - no far call anywhere in the image targets it, and no near call from
+any plausible segment - so it is reached through a pointer. That indirection is
+where the next look belongs.
