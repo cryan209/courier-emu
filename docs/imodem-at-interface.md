@@ -962,3 +962,48 @@ from one.
 The rewrite that used to be in `courier_emu/isdn.py` made `AT` print `OK` by
 supplying exactly the two values in the table above. That is the only thing
 that ever made it answer `OK`, and it was fiction.
+
+
+## The 186 Courier settles it: the epilogue should not be running
+
+The previous section concluded there was "no route to `OK` for an idle modem in
+this image". **That was wrong**, and the 80186 Courier disproves it directly.
+
+`main211.xmf` answers a bare `AT` with `OK`. And it is the same code: searching
+its supervisor for the I-modem's distinctive `test byte ptr [mem], 0x47` mask
+finds exactly one site, with the identical shape -
+
+```
+cmp  byte ptr [0823], 1      ; the disconnect cause
+jne  +2d
+test byte ptr [09f2], 0x47   ; the state flags
+je   +2d
+...
+xor  al, al                  ; OK
+```
+
+- the same decision as the I-modem's `a8067`, with different variable
+addresses. So both firmwares carry the same epilogue.
+
+Now the measurements that matter, with `--at AT`:
+
+| | disconnect cause | state flags | reaches the decision | answers |
+|---|---|---|---|---|
+| 186 Courier (`0x823`, `0x9f2`) | `0x00` | `0x00` | **never** (`pc_watch` empty at `0x600d5`) | `OK` |
+| I-modem (`[d08b]`, `[d2a1]`) | `0x00` | `0x00` | once per command | `NO CARRIER` |
+
+Identical code, identical inputs, opposite answers - because the working
+modem **never consults it**. The I-modem's cause of 0 is not wrong either:
+the 186's `ATI6` at idle prints `No Connection`, so 0 is the correct idle
+value and the firmware has a proper word for it.
+
+So the fault is not in the decision, not in the cause, not in the result table,
+and not in any of the states swept earlier. It is the **route**: something puts
+the I-modem into the call-termination path at `0xadc82` for every command, and
+a working Courier never goes there for a bare `AT`. `0xadb7f` is reached by a
+jump rather than a call - the stack is empty there - so it is entered through
+the state machine behind `[c926]`, which is where the next look belongs.
+
+(The 186 side is flagged in this repository as not fully modelled, so it is used
+here to locate code and to compare a decision against its own inputs, not as a
+timing or behavioural reference in its own right.)
