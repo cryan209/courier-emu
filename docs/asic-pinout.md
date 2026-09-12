@@ -857,6 +857,67 @@ write - is that the three lamps now have three *different* mechanisms, not one.
 behind it. `RD` is not in the ASIC at all and follows the 75188's input. A
 model that makes the panel "follow the serial signals" has to do it per lamp.
 
+### The DIP switches are read two different ways, and only one is the ASIC
+
+**DIP switch 1 goes to CPU pin 80.** The 80C186EB QFP table gives that as
+**`P2.6`** - a plain general-purpose port pin, no alternate function. So switch
+1 is not in the ASIC at all: the CPU reads it directly, in `P2PIN` at `0xff5a`,
+bit `0x40`.
+
+The harness already lives in that register. `machine.py` models **bit 7** as the
+93C66 EEPROM's data line and **bit 5** as the serial receive the ROM's autobaud
+timer samples ([machine.py:2340](../courier_emu/machine.py),
+[machine.py:2345](../courier_emu/machine.py)). **Bit 6 is not modelled**, so a
+read of it returns whatever the emulated register happens to hold rather than a
+switch position. That is a small, concrete harness item and the first one this
+pinout work has produced.
+
+> A comment near that code calls `ff5a` an "ASIC latch". It is not - `0xff5a`
+> is the 80186EB's own `P2PIN` in its peripheral control block. The behaviour
+> it describes is unaffected; the name is wrong.
+
+#### The rest of them are a scanned matrix, which is why the meter misbehaves
+
+The other switches read oddly with a meter, and there is a specific reason to
+expect that: **the firmware scans them**, and a scan needs a shared return.
+
+`courier_emu/panel.py` has the whole arrangement named already, recovered from
+the supervisor's strap scan at `0x5bfc6` - four drive lines and one common
+sense, all of them ASIC ports:
+
+| line | port | bit | driven at |
+|---|---|---|---|
+| `id-strap-drive-a` | `0x14` | `0x40` | `0x5bfed` |
+| `id-strap-drive-b` | `0x12` | `0x02` | `0x5c001` |
+| `id-strap-drive-c` | `0x14` | `0x10` | `0x5c015` |
+| `id-strap-drive-d` | `0x14` | `0x20` | `0x5c03d` |
+| `id-strap-sense` | `0x14` | `0x08` | *read* |
+
+Each drive is pulled low in turn and the common return is sampled. **Every
+switch on that matrix is therefore wired to every other one through the sense
+line**, and a continuity check with the board unpowered finds exactly that: a
+probe on one switch reads through the closed contacts of its neighbours and the
+common return. Weird readings are the expected result of metering a matrix, not
+evidence against the switches being on the ASIC.
+
+So the picture is a switch the CPU reads directly and a group the ASIC scans -
+which fits, because a board-ID strap is read once at boot and a DIP switch the
+user flips wants to be readable whenever.
+
+**Do not meter it - read it live.** The instrument is already on the board. The
+monitor can drive `0x12` and `0x14` and read `0x14` back, so: pull one strap
+drive low, read bit `0x08`, flip each DIP switch in turn, and the one that
+changes the sense bit is on that drive line. Four passes name four switches
+without a meter touching anything, and it reads through whatever resistors and
+diodes are making the meter lie.
+
+**The arithmetic does not close yet.** Four drives and one sense read four
+straps; switch 1 is a fifth, on the CPU. A Courier's DIP bank has more positions
+than that, so either there are further sense lines not yet found in the
+firmware, or some switches are not read by either part - strapped options that
+only change hardware behaviour. The live scan above would show which, since a
+switch that moves no readable bit is in the second group.
+
 ### The second serial port goes to a debug header, not to a device
 
 This is the question [dsp-pin-probes.md](dsp-pin-probes.md) posed and could not
@@ -945,11 +1006,15 @@ The ones worth finding next, in the order they would pay:
    hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
    names the output; watching the pair while the line rings names the input.
    The DAA module on the far side of that header is unidentified.
-3. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+3. **Which DIP switch is on which strap drive**, read live through the
+   monitor rather than with a meter - drive one of `0x12`/`0x02`,
+   `0x14`/`0x40`, `0x14`/`0x10`, `0x14`/`0x20` low and watch `0x14` bit `0x08`
+   while flipping each switch. It also shows which switches are read by nothing.
+4. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-4. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
+5. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
    them and can only be one. With `A17` now known to go *into* the ASIC on pin
    62, this decides whether the part shifts the address it remaps or leaves it
    in place. Whichever lands on a direct CPU output - pin 31
@@ -957,36 +1022,36 @@ The ones worth finding next, in the order they would pay:
    reach the ASIC, it is buffering the high address rather than remapping a
    bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
    `UCS` (QFP pin 61) and would finish the decode.
-5. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+6. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-6. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+7. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-7. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+8. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-8. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+9. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-9. **What `J7` carries.** The second serial port streams continuously to that
+10. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-10. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+11. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-11. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+12. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-12. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+13. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-13. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+14. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
