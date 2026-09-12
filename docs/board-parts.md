@@ -14,12 +14,12 @@ not in frame, so nothing here says what is on it.
 | `S80C186` | the Intel supervisor. The pin readings identify it more precisely as an **80C186EB in the 80-lead QFP** - `RD`/`WR`/`ALE` on 36/37/38 and `INT0`/`INT2` on 62/64 all match that package's Table 7 exactly, and match the XL's not at all. Which is the device `courier_emu/uart.py`'s `EbSerial` already assumes |
 | `TLC...320AC01CFN` | the voice-band codec, PLCC, next to the DSP |
 | `ECLIPTEK EC11 40.320M` | the master oscillator |
-| `NEC D43256BGU-70LL` x2 | the **80186's** SRAM, `U4` and `U12`: not two banks but the **low and high byte lanes of one 32K x 16**. Both `CE#` on CPU `LCS` (QFP pin 60), separate `WE#` from two '32 gates |
+| `NEC D43256BGU-70LL` x2 | the **80186's** SRAM, `U4` and `U12`: not two banks but the **low and high byte lanes of one 32K x 16**. Both `CE#` on CPU `LCS` (QFP pin 60); separate `WE#` from two '32 gates, `U12`'s qualified by latched `A0` from the ASIC and `U4`'s by `BHE#` straight from CPU pin 39 |
 | `CY7C199-15VC` x2 | the **DSP's** SRAM: 2 x 32Kx8, 64 KB = 32K words on a 16-bit bus |
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
 | `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is an **address demultiplex latch**; there is exactly **one** '573 and it latches the **high** byte, `AD8`-`AD15` into `A8`-`A15`, with a `74VHC32` beside it. `A0`-`A7` come out of the **ASIC** instead - pin 70 drives `A0` into both memories - so the two parts split one address latch between them. The '32 makes both SRAMs' write enables - gate 4 to `U12` pin 27, gate 3 to `U4` pin 27 - each `OR`ing the board write strobe with a byte-lane term, ASIC pin 71 being the low lane's. See [asic-pinout.md](asic-pinout.md) |
-| `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. Pinout confirmed against the Am29F400B 44-lead SO connection diagram - `A17`/`A7`/`A0` on pins 3/4/11 all match the board readings. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
+| `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. Pinout confirmed against the Am29F400B 44-lead SO connection diagram - `A17`/`A7`/`A0` on pins 3/4/11 all match the board readings. On a 16-bit bus its `A`n is system `A`n+1, so pin 3 is system `A18`. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
 | `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
 | `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
 | `RA5W-K` | the **hook relay**. The `OH` lamp is on its pin 9, which is why `OH` is the one panel line not on the ASIC |

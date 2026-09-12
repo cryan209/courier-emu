@@ -121,9 +121,9 @@ measured ends being contiguous and in order, and is marked so.
 | 2-5 | 89-86 | DSP `A0` `A1` `A2` `A3` |
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
-| 18 | 73 | flash `A17` - PA28F400 pin 3 |
-| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**; the byte-lane term of `U12`'s `WE#`, so almost certainly latched `A0` |
-| 21 | 70 | `A0` - RAM pin 10 **and** flash pin 11 |
+| 18 | 73 | flash `A17` (pin 3) = **system `A18`** - the flash's top address bit |
+| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**: latched `A0`, the low byte lane's term in `U12`'s `WE#` |
+| 21 | 70 | system `A1` - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
 
 Locals 15-17 (`76`-`74`), 19 (`72`) and 22-30 (`69`-`61`) are unread.
 This edge is the address side of the part: see below.
@@ -278,11 +278,13 @@ bits, and it is now the cheapest high-value trace on the part - `A1` is RAM pin
 the low-byte latch is fully mapped, and whatever is left over on that edge is
 the next question.
 
-**`A17` is the odd one out and stays odd.** `A16`-`A19` are non-multiplexed CPU
-outputs that need no latch, so there is no bus reason for one of them to come
-out of the ASIC. Routing it through a part that also holds a latch is what
-**remapping** looks like, not buffering. Flash `A16` and `A18` are what decide
-it, and they are in the same unread run.
+**`A17` is the odd one out and stays odd.** The CPU's high address lines are
+non-multiplexed outputs that need no latch, so there is no bus reason for one of
+them to come out of the ASIC. Routing it through a part that also holds a latch
+is what **remapping** looks like, not buffering. Flash `A16` - pin 34, system
+`A17` - is what decides it, and it is in the same unread run. See the note on
+the one-bit shift below: flash `A17` is system `A18`, the top address bit of the
+512 KiB part.
 
 #### The two SRAMs are a 16-bit pair, and the ASIC supplies the byte lane
 
@@ -329,15 +331,55 @@ on the other side of the board, where the DSP's `CY7C199` pair is described as
 "2 x 32Kx8, 64 KB = 32K words on a 16-bit bus". The CPU's pair is the same
 thing and was not recognised as such until its `CE#` lines were read.
 
-**One probe confirms it, at the '32.** Gate 3's inputs are pins 9 (`3A`) and 10
-(`3B`). One should be the same write strobe as `4B`. The other is the high
-lane's term, which is **`BHE#`** - CPU QFP pin 39, possibly latched and
-therefore possibly arriving from the ASIC as well. `BHE#` there makes the
-byte-lane reading certain. Anything else, and pin 71 is something other than
-`A0` after all.
+**Confirmed.** `'32` pin 9 is `3A`, and it goes to **CPU pin 39, `BHE#`**. So
+the two gates are
 
-Worth following `UCS` (CPU pin 61) to the flash's `CE#` (flash pin 12) in the
-same pass, which would complete the decode for both devices.
+```
+U12 WE#  =  ASIC pin 71 (A0)  OR  write strobe      - low byte lane
+U4  WE#  =  CPU BHE#          OR  write strobe      - high byte lane
+```
+
+which is byte-lane steering on a 16-bit bus, complete and unambiguous. `U12`
+carries `D0`-`D7`, `U4` carries `D8`-`D15`, both enabled together by `LCS`.
+
+The asymmetry between the two lane terms is the bus's own. `A0` arrives
+**latched, from the ASIC**, because `AD0` is multiplexed and there is nothing
+else on the board that holds it. `BHE#` arrives **raw from the CPU**, because on
+the 80C186EB it is a dedicated pin and never needed latching. Two different
+routes for the two halves of the same decision, each the only route available.
+
+That is the memory decode closed for the SRAM, and it settles ASIC pin 71 as
+latched `A0` rather than anything more interesting.
+
+#### Every address label at the memories is shifted by one
+
+The consequence is worth stating separately, because it re-reads an earlier
+finding.
+
+On a 16-bit bus `A0` selects the lane and never reaches a memory's address
+pins. So each part's `A`n is system `A`n+1, and the readings in this file that
+name a memory's own pin numbers have to be translated before they mean a system
+address. Pin 70 is the visible case: it lands on RAM pin 10 and flash pin 11,
+both of which those parts call `A0`, and it is **system `A1`**.
+
+That corroborates the flash being in **word mode** - `BYTE#` high - which is
+what a 16-bit bus wants and what makes one net serve both parts' `A0`. It also
+means **flash `A17` on ASIC pin 73 is system `A18`**, the top address bit of the
+512 KiB part rather than one in from it.
+
+Which sharpens the question that pin has always posed. `A18` is CPU QFP pin 31,
+a direct output needing no latch, so there is still no bus reason for it to come
+out of the ASIC - and it is now specifically the bit that would swap the flash's
+two 256 KiB halves. A part that latches the low address and separately drives
+the top flash address bit is the shape of something that **remaps**, and that
+reading is stronger than it was.
+
+**Flash `BYTE#`, pin 33, is the cheap confirmation** - tied high for word mode.
+The part has `A0`-`A17` and no more, so pin 3 really is its top address pin and
+there is nothing above it to find. What the unread top-edge run should hold
+instead is **flash `A16`, pin 34** - system `A17` - and if that is on the ASIC
+too then the part is buffering the high address rather than remapping one bit
+of it.
 
 #### The flash pin numbering is confirmed, and one old net reading is not
 
@@ -646,11 +688,11 @@ finding next, in the order they would pay:
    edge are unread. `A1` is RAM pin 9 / flash pin 10 and they walk down from
    there; finding them completes the low-byte latch. The `A7` net previously
    recorded on `'573` pin 12 belongs here and should be retaken.
-2. **74VHC32 pins 9 and 10** - gate 3's inputs, the high byte lane's pair.
-   `BHE#` (CPU QFP pin 39) on one of them confirms that the two `WE#` gates are
-   byte-lane steering and that ASIC pin 71 is latched `A0`. Follow `UCS` (CPU
-   pin 61) to the flash's `CE#` (flash pin 12) in the same pass to finish the
-   decode.
+2. **Flash `BYTE#` (pin 33) and `CE#` (pin 12).** `BYTE#` high confirms word
+   mode and with it the one-bit shift between system addresses and every
+   address label at the memories - which makes ASIC pin 73 system `A18`. `CE#`
+   should be CPU `UCS` (QFP pin 61), matching the SRAMs' `LCS`, and would
+   finish the memory decode.
 3. **Flash `A16` and `A18`, in the same run.** `A17` on pin 73 has no bus
    reason to be there - those lines need no latch - so if `A16` and `A18` are
    also on the ASIC it is buffering the high address, and if they are not, it
