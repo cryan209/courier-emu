@@ -122,7 +122,7 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 18 | 73 | flash `A17` - PA28F400 pin 3 |
-| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**, qualifying the SRAM's `WE#` |
+| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**; the byte-lane term of `U12`'s `WE#`, so almost certainly latched `A0` |
 | 21 | 70 | `A0` - RAM pin 10 **and** flash pin 11 |
 
 Locals 15-17 (`76`-`74`), 19 (`72`) and 22-30 (`69`-`61`) are unread.
@@ -284,59 +284,60 @@ out of the ASIC. Routing it through a part that also holds a latch is what
 **remapping** looks like, not buffering. Flash `A16` and `A18` are what decide
 it, and they are in the same unread run.
 
-#### The ASIC gates writes to the CPU's SRAM
+#### The two SRAMs are a 16-bit pair, and the ASIC supplies the byte lane
 
-Three readings close this gate, and the answer is neither of the two this file
-reached on the way to it:
+Two more readings finish the memory decode, and they deflate the claim the
+previous revision made from a partial view of it.
 
-| '32 pin | function | connects to |
-|---|---|---|
-| 12 | `4A`, **input** | **ASIC pin 71** |
-| 13 | `4B`, **input** | flash pin 43, `WE#` - the board's write strobe |
-| 11 | `4Y`, **output** | SRAM `U12` pin 27, `WE#` |
+| reading | |
+|---|---|
+| '32 pin 12 (`4A`, in) | ASIC pin 71 |
+| '32 pin 13 (`4B`, in) | flash pin 43, `WE#` - the board write strobe |
+| '32 pin 11 (`4Y`, out) | SRAM `U12` pin 27, `WE#` |
+| '32 pin 8 (`3Y`, out) | SRAM `U4` pin 27, `WE#` |
+| both SRAMs' `CE#` | **CPU pin 60, `LCS`** |
 
-So the circuit is
+**The CPU does its own chip select.** `LCS` reaches both SRAMs directly, so the
+ASIC is not decoding the RAM, and the previous revision's stronger reading -
+that the ASIC owns the SRAM's decode - is excluded outright. That was the probe
+this file asked for and it came back against the claim.
 
-```
-SRAM WE#  =  ASIC pin 71  OR  the write strobe
-```
+**Both SRAMs share one select and have separate write enables, which says what
+they are.** Two 32Kx8 parts enabled together, on a CPU with a 16-bit data bus,
+are not two banks: they are the **low and high byte lanes of one 32K x 16
+memory**. Steering a byte write to one lane or the other is then done exactly
+the way this board does it - a `WE#` per lane, each `OR`ed from the common
+write strobe and a lane term. That is what gate 4 and gate 3 are, one lane each.
 
-and with both inputs active-low, the SRAM's write enable falls only when the
-write strobe is active **and the ASIC is asserting pin 71**. The ASIC holds one
-half of the condition. **It can stop a CPU write from reaching the SRAM**, and
-nothing in the firmware can route around a gate.
+So ASIC pin 71 is the **low lane's term**, and on any 16-bit 80186 design that
+term is `A0`. The ASIC latches `A0`-`A7`; `A0` is the bit that never reaches a
+memory's address pins in a 16-bit system, because it selects the lane instead.
+Which is why pin 70, the other address output found so far, lands on the
+memories' own `A0` pins - **that is system `A1`**, and the whole latched address
+is shifted by one at the parts.
 
-Two earlier revisions of this section were wrong in opposite directions - one
-had the ASIC feeding the gate from a mis-numbered pin, the other had the gate
-feeding the ASIC. The gate feeds the **SRAM**, and the ASIC feeds the gate. The
-first reading had the direction right and the destination wrong.
+**The veto reading is withdrawn.** The previous revision had the ASIC holding a
+term of the SRAM's write enable and concluded it could stop a CPU write and that
+firmware could not route around it. The gate is real and the term is real, but
+the term is an address bit doing byte steering, not a permission. Nothing is
+being gated in the sense that claim meant. The ASIC's role here is the one
+already established - it is the low-byte address latch - and this is that same
+job seen from the memory's side.
 
-**This is the strongest structural claim in the file.** Every other job this
-part is known to do is peripheral: the DSP mailbox, the panel latches, the
-RS-232 handshake lines. Driving `A0`-`A7` made it part of the address path.
-Holding a term of the SRAM's `WE#` makes it part of the **memory system**, on
-the control side, with a veto.
+This is also the arrangement [board-parts.md](board-parts.md) already records
+on the other side of the board, where the DSP's `CY7C199` pair is described as
+"2 x 32Kx8, 64 KB = 32K words on a 16-bit bus". The CPU's pair is the same
+thing and was not recognised as such until its `CE#` lines were read.
 
-What that term *is* decides how large the claim gets:
+**One probe confirms it, at the '32.** Gate 3's inputs are pins 9 (`3A`) and 10
+(`3B`). One should be the same write strobe as `4B`. The other is the high
+lane's term, which is **`BHE#`** - CPU QFP pin 39, possibly latched and
+therefore possibly arriving from the ASIC as well. `BHE#` there makes the
+byte-lane reading certain. Anything else, and pin 71 is something other than
+`A0` after all.
 
-* **A chip select.** If pin 71 is the SRAM's decoded select, the ASIC is doing
-  the memory decode the 80C186EB's own `LCS` would normally do - which is
-  coherent, because the ASIC is the only part with `AD0`-`AD7` and `ALE` and
-  can therefore decode an address nobody else on the board sees whole.
-* **A write protect.** If it is a latched enable rather than an address decode,
-  the ASIC can lock the SRAM under firmware control, which is a different and
-  narrower thing.
-
-**The probe that separates them is the SRAM's `CE#`, `U12` pin 20.** If it
-comes from CPU `LCS` (QFP pin 60), the CPU still does its own selecting and pin
-71 is an extra qualifier - the write-protect reading. If it comes from the
-ASIC, the ASIC owns the SRAM's decode outright and the first reading is
-established. `UCS` on CPU pin 61 is worth following to the flash's `CE#`,
-flash pin 12, in the same pass, for the same reason.
-
-The '32's other three gates are unread. Given this one, the obvious guess is
-that they do the same job for the flash and for the read strobes, which would
-put the whole memory control path through the ASIC and this part.
+Worth following `UCS` (CPU pin 61) to the flash's `CE#` (flash pin 12) in the
+same pass, which would complete the decode for both devices.
 
 #### The flash pin numbering is confirmed, and one old net reading is not
 
@@ -645,11 +646,11 @@ finding next, in the order they would pay:
    edge are unread. `A1` is RAM pin 9 / flash pin 10 and they walk down from
    there; finding them completes the low-byte latch. The `A7` net previously
    recorded on `'573` pin 12 belongs here and should be retaken.
-2. **SRAM `U12` pin 20, `CE#`.** The ASIC holds a term of that SRAM's `WE#`
-   through the '32. Whether its `CE#` comes from CPU `LCS` (QFP pin 60) or from
-   the ASIC decides whether ASIC pin 71 is a write protect or the SRAM's whole
-   decode. Follow `UCS` (pin 61) to the flash's `CE#` (flash pin 12) in the
-   same pass.
+2. **74VHC32 pins 9 and 10** - gate 3's inputs, the high byte lane's pair.
+   `BHE#` (CPU QFP pin 39) on one of them confirms that the two `WE#` gates are
+   byte-lane steering and that ASIC pin 71 is latched `A0`. Follow `UCS` (CPU
+   pin 61) to the flash's `CE#` (flash pin 12) in the same pass to finish the
+   decode.
 3. **Flash `A16` and `A18`, in the same run.** `A17` on pin 73 has no bus
    reason to be there - those lines need no latch - so if `A16` and `A18` are
    also on the ASIC it is buffering the high address, and if they are not, it
