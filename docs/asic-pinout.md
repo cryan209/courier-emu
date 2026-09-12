@@ -197,26 +197,51 @@ they are the highest-value pins left on the package - a CPU-to-flash path
 running through the ASIC is a structural fact about the memory map that nothing
 here has modelled.
 
-#### The low address bus is latched once and shared
+#### The address latch, and a conflict in the three readings of it
 
-One net was read with no ASIC pin on it, and it settles how the CPU's
-multiplexed bus is unpicked. Flash pin 4 - `A7` - goes to **74VHC573 pin 12**
-and to **RAM pin 3**. Pin 12 of a '573 is `Q7` and pin 3 of the JEDEC 28-pin
-32Kx8 pinout that all three of the board's SRAM types use is `A7`, so all three
-agree: the VHC573 is the **address demultiplex latch** holding `A0`-`A7` off
-the CPU's `AD` bus, and flash and SRAM share its outputs. One latch, one low
-address bus, no per-device copy.
+One net was read with no ASIC pin on it. It looked settled a revision ago and
+is not, so the readings are given before the conclusion:
 
-> Read first as RAM pin 24, corrected to pin 3 by the owner. Pin 24 is `A9` on
-> that pinout and would not have been this net; the correction is from memory
-> rather than a re-measurement, and pin 3 is the reading that makes all three
-> parts name the same signal.
+| reading | what the part's pinout calls that pin |
+|---|---|
+| flash pin 4 | `A7` (per the owner) |
+| 74VHC573 pin 12 | `Q7`, a latch **output** |
+| SRAM pin 3 | `A7` on the JEDEC 28-pin 32Kx8 pinout |
+| 74VHC573 **input** side | CPU `AD8` (per the owner) |
 
-**The ASIC is not on that bus.** It takes `AD0`-`AD7` raw on pins `84`-`77`
-and `ALE` on pin `57`, which is the latch's own input side - so the ASIC
-demultiplexes the address itself rather than reading the '573's outputs. That
-is why `ALE` is on the package at all, and it is consistent with the ASIC
-holding its own `0x00`-`0x7f` I/O decode.
+The first three agree and say the '573 latches `A0`-`A7` off the CPU's
+multiplexed bus and feeds both memories from one set of outputs. **The fourth
+contradicts them.** A '573 maps `D`n to `Q`n, so an input side starting at
+`AD8` makes pin 12 carry `A15`, not `A7` - and `A15` is not what either memory
+calls the pin it lands on. Reversing the latch's wiring does not rescue it
+either; that would make pin 12 `A8`.
+
+Two readings survive, and they are not close together:
+
+* **There are two '573s**, and this one is the **high-byte** latch,
+  `AD8`-`AD15` in and `A8`-`A15` out. Then pin 12 is `A15` and the *memory* pin
+  labels are what need re-checking. [board-parts.md](board-parts.md) lists the
+  '573 from a photograph and does not give a count, so a second one is entirely
+  possible and would be the normal way to latch a 16-bit multiplexed bus.
+* **There is one '573**, it is the low-byte latch, and the `AD8` reading is the
+  one that is wrong.
+
+**The measurement that decides it is at the latch, not at the memories.** Read
+which CPU pin lands on '573 **pin 2** (`D0`) and **pin 9** (`D7`), and count
+the '573s on the board. `D0` on `AD0` makes it the low latch; `D0` on `AD8`
+makes it the high one and sends the flash and SRAM readings back for another
+pass.
+
+Until that is done, nothing here establishes that the low address bus is
+shared. An earlier revision of this file said it was; that was drawn from the
+first three rows before the fourth arrived.
+
+**What does not depend on any of it:** the ASIC takes `AD0`-`AD7` raw on pins
+`84`-`77` and `ALE` on pin `57`, both measured on the package. Those are the
+latch's *input* side whichever latch this is, so the ASIC demultiplexes the
+address for itself rather than reading anyone's `Q` outputs. That is what `ALE`
+is doing on the part, and it is consistent with the ASIC holding its own
+`0x00`-`0x7f` decode.
 
 ### Bottom edge - the panel and the two handshake lines
 
