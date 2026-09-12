@@ -210,11 +210,17 @@ PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
 PRODUCT_MODEM_SUFFIX = 0x01
 PRODUCT_TYPE_PROBE_COMPLETE = 0xA4506
 
-# ATI7 walks its modulation-name table according to this capability byte at
-# 2600:e358.  0xe5 selects every entry the 3.0.2 image contains: HST, V32bis,
-# Terbo, V.FC, V34+, and x2.  V.90 is appended unconditionally by this build.
+# 2600:e358 is the modulation-capability byte the record's [d2c7] feeds, through
+# the five (test, set) pairs at a400:04ac -- d2c7 bits 0..4 setting e358 0x04,
+# 0x08, 0x40, 0x80 and 0x20.
+#
+# The harness used to write ALL_OPTIONS here at the probe-complete hook. That
+# was dead: the firmware writes e358 again at 0xa4446, after the hook, and
+# leaves it 0x23. Sweeping the forced value over 0x00..0xe5 changes ATI7's
+# Options line not at all -- it reads `V32bis,x2,V.90` every time. The write is
+# gone rather than left looking effective; what actually drives that line has
+# not been re-established.
 OPTIONS_ADDRESS = 0x2600 * 16 + 0xE358
-ALL_OPTIONS = 0xE5
 
 # The common command epilogue's result decision.
 #
@@ -658,7 +664,6 @@ class IsdnMachine:
                 # it -- 0x22 External or 0x28 Internal -- so it is left alone.
                 # Overwriting it here used to drop the probe's bit 5 as well,
                 # which is what put the machine back on the wrong branch.
-                uc.mem_write(OPTIONS_ADDRESS, bytes((ALL_OPTIONS,)))
                 suffix = uc.mem_read(PRODUCT_MODEM_SUFFIX_ADDRESS, 1)[0]
                 suffix = (
                     suffix | PRODUCT_MODEM_SUFFIX

@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from courier_emu.isdn import (
-    ALL_OPTIONS,
     IsdnMachine,
     PRODUCT_TYPE_MODES,
 )
@@ -109,10 +108,25 @@ def test_the_emulated_product_type_is_explicit_and_validated():
         IsdnMachine(image, product_type="desktop")
 
 
-def test_all_ati7_modulation_options_are_enabled_by_default():
-    # Bits 0/2 select HST and V32bis; 6/7 walk through Terbo, V.FC and V34+;
-    # bit 5 adds x2. V.90 is unconditional in this firmware.
-    assert ALL_OPTIONS == 0x01 | 0x04 | 0x20 | 0x40 | 0x80
+def test_the_capability_record_maps_d2c7_onto_the_options_byte():
+    """The five (test, set) pairs at a400:04ac, read out of the firmware.
+
+    a4476 walks this table with `lodsw`, testing [d2c7] with the low byte and
+    OR-ing the high byte into the options byte at e358. Replaced a test that
+    asserted a constant the harness used to force and which the firmware
+    overwrites anyway.
+    """
+    if not IMAGE.exists():
+        pytest.skip("local I-modem firmware not available")
+    machine = IsdnMachine(NacImage.load(IMAGE), with_dsp=True)
+    try:
+        machine.run(6_000_000)
+        table = bytes(machine.machine.mem_read(0xA44AC, 10))
+    finally:
+        machine.mailbox.close()
+    pairs = [(table[i], table[i + 1]) for i in range(0, 10, 2)]
+    assert pairs == [(0x01, 0x04), (0x02, 0x08), (0x04, 0x40),
+                     (0x08, 0x80), (0x10, 0x20)]
 
 
 def test_every_command_still_answers_no_carrier():

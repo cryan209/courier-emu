@@ -755,3 +755,91 @@ exactly 143 bytes: every byte written is delivered once, and the duplicate
 bytes are written twice by the firmware. Something in the firmware's output
 path re-sends when a command arrives while it is still transmitting. Not
 explained yet.
+
+
+## The capability record's fields, from the sites that read them
+
+Recovered one field at a time, from the code that consumes each. See
+`tools/imodem_capability_record.py` for the page layout these sit in.
+
+### `[d2c6]` - which fields the record carries
+
+Established outright by the unpacker at `0xa4465`..`0xa44ab`: each bit says a
+field is **absent**, and the copy is skipped when it is set.
+
+| bit | when clear |
+|---|---|
+| 0 | walk the options table with `[d2c7]` |
+| 1 | `[d2c8]` -> `c8e4` |
+| 2 | `[d2c9]` -> `d2c5` |
+| 3 | `[d2ca]` -> `d2c4` |
+
+With no record every bit reads 1, so nothing is copied - which is the whole
+reason the rest of the block is inert.
+
+### `[d2c7]` - modulation capability
+
+`0xa4476` walks a five-entry table at `a400:04ac` with `lodsw`, testing
+`[d2c7]` with the low byte and OR-ing the high byte into the options byte at
+`e358`. The table reads `01 04 02 08 04 40 08 80 10 20`:
+
+| `[d2c7]` bit | sets in `[e358]` |
+|---|---|
+| 0 | `0x04` |
+| 1 | `0x08` |
+| 2 | `0x40` |
+| 3 | `0x80` |
+| 4 | `0x20` |
+
+`[e358]` is masked with `0x33` first, so its bits 0, 1, 4 and 5 survive from
+elsewhere. **What the `e358` bits are called is not settled**: the harness used
+to force this byte, and that turns out to have been dead - the firmware writes
+it again at `0xa4446` after the hook and leaves it `0x23`, and sweeping the
+forced value over `0x00`..`0xe5` leaves ATI7 printing `V32bis,x2,V.90` every
+time. That forcing has been removed. The modulation names it chooses between
+live at `0xc0cff`: `NONE`, `HST`, `V32bis`, `Terbo`, `V.FC`, `V34+`, `x2`,
+`V.90`.
+
+### `[d2c9]` -> `[d2c5]` bit 0 - fax capability
+
+ATI7's formatter names it. `0xc0d70`..`0xc0d92` tests the bit and picks a
+string:
+
+```
+c0d70  test [d2c5],1 ; je c0d7c ; mov si,3e87 ; jmp c0d88
+c0d7c  test [d2c5],1 ; je c0d98 ; mov si,3e9b ; jmp c0d92
+c0d88  test [d2c5],1 ; je c0d92 ; mov si,3eb1
+c0d92  call c0b1b                              ; print it
+```
+
+and those three strings are `Fax Options<tab>Class 1`,
+`Fax Options<tab>Class 2.0` and `Fax Options<tab>Class 1/Class 2.0`. So
+**`[d2c5]` bit 0 is "fax fitted"**: set, ATI7 prints a Fax Options line; clear,
+it prints none. All three tests read bit 0 - confirmed against the raw bytes,
+`f6 06 c5 d2 01` three times - so in this build only `Class 1/Class 2.0` is
+reachable and the other two strings are dead.
+
+### `[d2ca]` -> `[d2c4]` bit 0 - the product-name suffix
+
+`0xc0c17` tests it and appends `" MODEM"` to ATI7's product type.
+
+### `[d2c8]` -> `c8e4` - a grouped code, not identified
+
+Its one consumer is `0xbd1a1`, which splits it: repeatedly subtracting 8 into a
+quotient at `[d2b0]`, then translating the remainder through a table with
+`xlatb` into `[d2b1]`. A group-and-member code of some kind; which one is not
+established, and is not guessed at here.
+
+### This does *not* fix `NO CARRIER`, and it corrects the previous section
+
+`[e770]` bit 2 - the flag whose absence routes commands into the
+call-termination epilogue - is set at `0xc83d0`, gated on `[d2c5]` bit 0. Now
+that `[d2c5]` bit 0 is known to mean *fax*, that site is a fax-mode command:
+it parses a `=0` / `=1` / `=2` argument and a `=?` query at `0xc822c`, which is
+the shape of `+FCLASS`.
+
+So the chain in the previous section is mechanically right but its conclusion
+was not: opening that branch would put the modem in **fax mode**, not repair
+the result code. A non-fax modem legitimately takes `0xadc82` into the
+epilogue, so the open question is unchanged and is where it always was - why
+the epilogue answers code 3 when `[d08b]` is 0, i.e. when nothing disconnected.
