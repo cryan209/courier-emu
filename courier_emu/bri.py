@@ -66,6 +66,9 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .pit import INSTRUCTIONS_PER_SECOND as _INSTRUCTIONS_PER_SECOND
+from .am79c30 import (
+    F2_SENSING, F3_DEACTIVATED, F6_SYNCHRONIZED, F7_ACTIVATED,
+)
 
 
 # -- Q.921 ----------------------------------------------------------------
@@ -350,6 +353,26 @@ def q931_message(message_type: int, call_reference: int,
 
 # -- the peer -------------------------------------------------------------
 
+# -- layer 1, the NT's half of I.430 ------------------------------------
+
+# An NT terminates the S bus, and activation is its job: it sends INFO2, the
+# terminal synchronises and answers INFO3, and the NT sends INFO4. What the
+# Am79C30A reports is the *terminal's* own F state as that happens, which is
+# why the walk below is the states the modem passes through rather than the
+# INFO signals the network puts on the wire.
+#
+# F2 comes first for a reason that is the firmware's, not I.430's: its
+# layer-1 machine dispatches on the state it is already in, and an interface
+# handed F7 straight out of F1 drops the event and never moves
+# (docs/imodem-d-channel.md). So the network walks it, as a network does.
+NT_ACTIVATION_WALK = (F2_SENSING, F6_SYNCHRONIZED, F7_ACTIVATED)
+# Far enough apart that the firmware's machine runs between the steps. This
+# is the spacing `isdn-run --line-activate` has always used.
+LINE_STEP_INSTRUCTIONS = 500_000
+# When the network brings the line up. Early, because everything else in a
+# run waits on it, and because an NT with a line to offer offers it.
+ACTIVATE_AT_INSTRUCTIONS = 3_000_000
+
 # The peer's timers are in harness instructions at the same rate the 8254
 # model uses, so a second here is the second the firmware's timers count.
 
@@ -384,6 +407,11 @@ class BriNetwork:
     establish: str = "network"
     # The TEI the network talks to on a point-to-point line.
     tei: int = TEI_POINT_TO_POINT
+    # When the NT brings the S interface up, and when it drops it again.
+    # None for either leaves that transition to whoever else is driving the
+    # line - `isdn-run --line-activate`, or nobody.
+    activate_at: int | None = ACTIVATE_AT_INSTRUCTIONS
+    deactivate_at: int | None = None
     # A number to call the modem on, and when. None places no call.
     call_at: int | None = None
     call_from: str = "5551000"
@@ -396,6 +424,9 @@ class BriNetwork:
     vr: int = 0                      # the next N(S) it expects from the modem
     assigned_teis: dict[int, int] = field(default_factory=dict)
     activated_at: int | None = None
+    _line_walk: list = field(default_factory=list)
+    _line_started: bool = False
+    _deactivated: bool = False
     _t200_expiry: int | None = None
     _retransmissions: int = 0
     _pending_sabme: bool = False
@@ -415,6 +446,7 @@ class BriNetwork:
         """One pass: take what the modem sent, answer it, and run the timers."""
         self.instructions = instructions
         self._sink = dsc.deliver_frame
+        self._line(dsc)
         if not dsc.activated:
             return
         if self.activated_at is None:
@@ -424,6 +456,39 @@ class BriNetwork:
             self.frames_in += 1
             self._receive(frame)
         self._timers()
+
+    def _line(self, dsc: Any) -> None:
+        """The NT's own half of the line: bring it up, and drop it again.
+
+        Nothing here reaches past `set_liu_state`, which is the chip
+        reporting what its receiver sees on the S interface - the same door
+        a real line uses.
+        """
+        if (self.deactivate_at is not None and not self._deactivated
+                and self.instructions >= self.deactivate_at):
+            self._deactivated = True
+            self._line_walk = []
+            self.activated_at = None
+            self.state = TEI_UNASSIGNED
+            self._t200_expiry = None
+            self._note("the NT drops the line: back to F3")
+            dsc.set_liu_state(F3_DEACTIVATED)
+            return
+        if self.activate_at is None or self._deactivated:
+            return
+        if not self._line_started:
+            if self.instructions < self.activate_at:
+                return
+            self._line_started = True
+            self._line_walk = list(NT_ACTIVATION_WALK)
+            self._note("the NT starts activation: INFO2 on the S interface")
+        if not self._line_walk:
+            return
+        due = self.activate_at + LINE_STEP_INSTRUCTIONS * (
+            len(NT_ACTIVATION_WALK) - len(self._line_walk)
+        )
+        if self.instructions >= due:
+            dsc.set_liu_state(self._line_walk.pop(0))
 
     def _note(self, text: str) -> None:
         self.events.append((self.instructions, text))
@@ -590,7 +655,6 @@ class BriNetwork:
         if self._t200_expiry is not None and self.instructions >= self._t200_expiry:
             self._t200()
         if (self.call_at is not None and not self._call_placed
-                and self.state == MULTIPLE_FRAME
                 and self.instructions >= self.call_at):
             self._place_call()
 
@@ -630,9 +694,21 @@ class BriNetwork:
                     + calling_party_number(self.call_from))
         if self.call_to:
             elements += called_party_number(self.call_to)
-        self._note(f"SETUP to the modem from {self.call_from}")
-        self._send_layer3(self.tei, q931_message(SETUP, self.call_reference,
-                                                 True, elements))
+        setup = q931_message(SETUP, self.call_reference, True, elements)
+        if self.state == MULTIPLE_FRAME:
+            self._note(f"SETUP to the modem from {self.call_from}")
+            self._send_layer3(self.tei, setup)
+            return
+        # No data link, which on a multipoint bus is the normal case for an
+        # incoming call: the network has no idea which terminal wants it, and
+        # no terminal has asked for a TEI yet. Q.931 puts the SETUP on the
+        # broadcast data link instead - a UI frame to TEI 127 - and whichever
+        # terminal takes the call gets a TEI and establishes to answer. This
+        # is the one path that reaches a terminal that has never transmitted.
+        self._note(f"SETUP from {self.call_from} on the broadcast data link, "
+                   "TEI 127: no terminal has a TEI yet")
+        self._send(u_frame(SAPI_CALL_CONTROL, TEI_BROADCAST, U_UI, True,
+                           False, setup))
 
     def _call_control(self, message: Q931, tei: int) -> None:
         self._note(f"{message.name} call reference {message.call_reference}")
@@ -684,6 +760,8 @@ class BriNetwork:
 
     def status(self) -> dict[str, object]:
         return {
+            "line": ("activating" if self._line_walk else
+                     "down" if self.activated_at is None else "active"),
             "state": self.state,
             "tei": self.tei,
             "assigned_teis": dict(self.assigned_teis),

@@ -26,7 +26,10 @@ from .panel import (
 from .images import load_image
 from . import imodem_config
 from .isdn import IsdnMachine
-from .bri import BriNetwork
+from .bri import (
+    ACTIVATE_AT_INSTRUCTIONS, BEARER_SPEECH,
+    BEARER_UNRESTRICTED_64K, BriNetwork,
+)
 from .isdn_console import (
     SERIAL_LINE_INSTRUCTIONS,
     SERIAL_WARMUP_INSTRUCTIONS,
@@ -571,6 +574,38 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="INSTRUCTIONS",
         help="place a call at the modem at this point in the run, once the "
              "data link is up: a Q.931 SETUP carrying a calling party number",
+    )
+    isdn_run.add_argument(
+        "--bri-activate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="let the NT terminate the S bus and bring it up, walking the "
+             "terminal through F2, F6 and F7 the way INFO2 and INFO4 do "
+             f"(default: at {ACTIVATE_AT_INSTRUCTIONS:,} instructions, or "
+             "wherever --line-activate names). --no-bri-activate leaves the "
+             "line to whoever else is driving it",
+    )
+    isdn_run.add_argument(
+        "--bri-deactivate-at",
+        type=_number,
+        metavar="INSTRUCTIONS",
+        help="have the NT drop the line at this point, back to F3, so a run "
+             "can see what the firmware does when the network goes away",
+    )
+    isdn_run.add_argument(
+        "--bri-bearer",
+        choices=("data", "speech"),
+        default="data",
+        help="the bearer capability --bri-call-at offers: unrestricted "
+             "digital at 64k, or speech. The modem keeps a directory number "
+             "for each (*P1 is the voice/ADP number, *P2 the data port), so "
+             "which one a call offers decides which side of the modem it is "
+             "for (default: data)",
+    )
+    isdn_run.add_argument(
+        "--bri-call-to",
+        default="",
+        help="the called party number --bri-call-at presents, if any",
     )
     isdn_run.add_argument(
         "--bri-call-from",
@@ -1219,6 +1254,19 @@ def main(argv: list[str] | None = None) -> int:
                 bri = BriNetwork(
                     establish=args.bri_establish, tei=args.bri_tei,
                     call_at=args.bri_call_at, call_from=args.bri_call_from,
+                    call_to=args.bri_call_to,
+                    bearer=(BEARER_SPEECH
+                            if args.bri_bearer == "speech"
+                            else BEARER_UNRESTRICTED_64K),
+                    # --line-activate names when the line comes up whether or
+                    # not a peer is driving it, so it stays the control: with
+                    # a peer it is the NT's activation point rather than a
+                    # scripted walk. --no-bri-activate leaves the line alone.
+                    activate_at=(ACTIVATE_AT_INSTRUCTIONS
+                                 if args.line_activate is None
+                                 else args.line_activate)
+                    if args.bri_activate else None,
+                    deactivate_at=args.bri_deactivate_at,
                 )
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")

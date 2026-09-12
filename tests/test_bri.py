@@ -3,13 +3,20 @@ from courier_emu import bri
 
 
 class Wire:
-    """A stand-in for the chip's two buffers, so the peer can be driven
-    without booting the firmware. `service` only ever touches these."""
+    """A stand-in for the S interface, so the peer can be driven without
+    booting the firmware.
+
+    It offers exactly the three things the chip offers a line - the receive
+    buffer, the transmit buffer, and the state its receiver reports - and
+    nothing else, so a peer that reached for anything more would fail here.
+    """
 
     def __init__(self, activated=True):
         self.activated = activated
+        self.liu_state = bri.F7_ACTIVATED if activated else bri.F3_DEACTIVATED
         self.to_modem = []
         self.from_modem = []
+        self.line_states = []
 
     def deliver_frame(self, frame):
         self.to_modem.append(bytes(frame))
@@ -17,6 +24,11 @@ class Wire:
     def take_sent(self):
         frames, self.from_modem = self.from_modem, []
         return frames
+
+    def set_liu_state(self, state):
+        self.liu_state = state
+        self.line_states.append(state)
+        self.activated = state == bri.F7_ACTIVATED
 
 
 def test_crc_free_frame_encoding_round_trips():
@@ -50,7 +62,7 @@ def test_i_and_s_formats_carry_their_sequence_numbers():
 
 def test_the_network_establishes_the_link_and_the_terminal_answers():
     wire = Wire()
-    peer = bri.BriNetwork()
+    peer = bri.BriNetwork(activate_at=None)
     peer.service(wire, 0)
     peer.service(wire, bri.ESTABLISH_DELAY_INSTRUCTIONS)
     assert peer.state == bri.AWAITING_ESTABLISH
@@ -65,7 +77,7 @@ def test_the_network_establishes_the_link_and_the_terminal_answers():
 
 def test_t200_retransmits_sabme_and_then_gives_up():
     wire = Wire()
-    peer = bri.BriNetwork()
+    peer = bri.BriNetwork(activate_at=None)
     peer.service(wire, 0)
     now = bri.ESTABLISH_DELAY_INSTRUCTIONS
     peer.service(wire, now)
@@ -80,7 +92,7 @@ def test_t200_retransmits_sabme_and_then_gives_up():
 
 def test_a_tei_request_is_answered_with_an_assignment():
     wire = Wire()
-    peer = bri.BriNetwork(establish="terminal")
+    peer = bri.BriNetwork(establish="terminal", activate_at=None)
     wire.from_modem.append(
         bri.u_frame(bri.SAPI_MANAGEMENT, bri.TEI_BROADCAST, bri.U_UI,
                     command=True, pf=False,
@@ -99,7 +111,7 @@ def test_a_tei_request_is_answered_with_an_assignment():
 
 def test_a_setup_from_the_modem_is_walked_up_to_connect():
     wire = Wire()
-    peer = bri.BriNetwork()
+    peer = bri.BriNetwork(activate_at=None)
     peer.state = bri.MULTIPLE_FRAME
     setup = bri.q931_message(bri.SETUP, 0x0A, True,
                              bri.element(bri.IE_BEARER_CAPABILITY,
@@ -121,7 +133,7 @@ def test_a_setup_from_the_modem_is_walked_up_to_connect():
 
 def test_an_out_of_sequence_i_frame_is_rejected_rather_than_accepted():
     wire = Wire()
-    peer = bri.BriNetwork()
+    peer = bri.BriNetwork(activate_at=None)
     peer.state = bri.MULTIPLE_FRAME
     wire.from_modem.append(
         bri.i_frame(0, 0, ns=4, nr=0, pf=False,
@@ -135,7 +147,8 @@ def test_an_out_of_sequence_i_frame_is_rejected_rather_than_accepted():
 
 def test_a_call_the_network_places_reaches_the_modem_as_setup():
     wire = Wire()
-    peer = bri.BriNetwork(call_at=0, call_from="5551000", call_to="5551212")
+    peer = bri.BriNetwork(activate_at=None, call_at=0,
+                          call_from="5551000", call_to="5551212")
     peer.state = bri.MULTIPLE_FRAME
     peer.service(wire, 0)
     frame = bri.decode(wire.to_modem[-1], from_user=False)
@@ -146,12 +159,40 @@ def test_a_call_the_network_places_reaches_the_modem_as_setup():
     assert message.number(bri.IE_CALLED_PARTY_NUMBER) == "5551212"
 
 
-def test_the_peer_never_reaches_past_the_two_buffers():
+def test_the_nt_walks_the_line_up_rather_than_jumping_it():
+    # The firmware's layer-1 machine dispatches on the state it is in and
+    # drops an event that skips ahead, so an NT that jumped straight to F7
+    # would leave the modem thinking the line is still down. The walk is the
+    # network's, so this is the peer's own contract.
+    wire = Wire(activated=False)
+    peer = bri.BriNetwork()
+    for step in range(0, bri.ACTIVATE_AT_INSTRUCTIONS
+                      + 4 * bri.LINE_STEP_INSTRUCTIONS,
+                      bri.LINE_STEP_INSTRUCTIONS // 4):
+        peer.service(wire, step)
+    assert wire.line_states == list(bri.NT_ACTIVATION_WALK)
+    assert wire.activated
+
+
+def test_the_nt_can_drop_the_line_again():
+    wire = Wire(activated=False)
+    peer = bri.BriNetwork(
+        deactivate_at=bri.ACTIVATE_AT_INSTRUCTIONS
+        + 10 * bri.LINE_STEP_INSTRUCTIONS)
+    for step in range(0, bri.ACTIVATE_AT_INSTRUCTIONS
+                      + 12 * bri.LINE_STEP_INSTRUCTIONS,
+                      bri.LINE_STEP_INSTRUCTIONS // 4):
+        peer.service(wire, step)
+    assert wire.line_states[-1] == bri.F3_DEACTIVATED
+    assert peer.state == bri.TEI_UNASSIGNED
+
+
+def test_the_peer_never_reaches_past_the_line():
     # The point of the peer is that it is a peer: if it ever needed anything
-    # but deliver_frame and take_sent it would be poking the modem instead of
-    # talking to it. A wire with nothing else on it is the check.
+    # but the two buffers and the line state it would be poking the modem
+    # instead of talking to it. A wire with nothing else on it is the check.
     wire = Wire()
-    peer = bri.BriNetwork(call_at=0)
+    peer = bri.BriNetwork(activate_at=None, call_at=0)
     for step in range(0, 10 * bri.T200_INSTRUCTIONS, bri.T200_INSTRUCTIONS // 4):
         peer.service(wire, step)
     assert wire.to_modem and peer.frames_out == len(wire.to_modem)

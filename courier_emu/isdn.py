@@ -353,6 +353,11 @@ class IsdnMachine:
             )
         self.product_type = product_type
         self.product_modem = product_modem
+        # A network peer terminates the S bus itself, so the machine's own
+        # scripted walk stands down when there is one: two things driving the
+        # line would race, and the line is the NT's to drive.
+        if bri is not None and bri.activate_at is not None:
+            line_activate = None
         self.line_activate = line_activate
         # The far end of the S interface, if a run asked for one. The modem's
         # own side is the Am79C30A and the firmware; this is the NT and the

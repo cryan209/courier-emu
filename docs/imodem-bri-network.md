@@ -27,6 +27,15 @@ rather than a stand-in.
 `--bri-tei` the TEI the network addresses, and `--bri-call-at` places a call
 at the modem.  The run reports everything the peer did under `bri`.
 
+Note there is no `--line-activate` in that command.  **The NT terminates the
+S bus, so the line is its to drive**, and the peer walks the terminal up
+through F2, F6 and F7 the way INFO2 and INFO4 do - F2 first because the
+firmware's layer-1 machine dispatches on the state it is already in and
+drops an event that skips ahead.  `--line-activate` still names *when*, and
+`--no-bri-activate` stands the NT down for a run that wants to drive the
+line some other way.  `--bri-deactivate-at` drops it back to F3, which is
+the only way to ask the firmware what it does when the network goes away.
+
 ## What the peer speaks
 
 * **Q.921** - address decoding for SAPI and TEI, the U, S and I formats,
@@ -83,20 +92,65 @@ replaces the hypothesis there.  The transmit path at `0x71cb0` is not
 unreachable through some missing pointer; it is simply never asked, because
 no data link exists.
 
+## The broadcast data link is the door
+
+The point-to-point attempt above dies because the modem owns no TEI.  A
+network end has another way in, and it is the one Q.931 specifies for an
+incoming call on a multipoint bus: the network does not know which terminal
+wants the call, so it puts the SETUP on the **broadcast data link** - a UI
+frame to TEI 127 - and whichever terminal takes it gets a TEI and
+establishes to answer.  That path needs nothing of the terminal in advance,
+which makes it the only one that can reach a modem that has never
+transmitted.  The peer uses it automatically when it has no data link.
+
+```sh
+.venv/bin/python -m courier_emu isdn-run Ie030002.nac \
+    --instructions 120000000 --bri-network --bri-establish terminal \
+    --bri-call-at 20000000 --bri-call-to 5551212
+```
+
+And it gets in.  Traced through, the broadcast SETUP is accepted where the
+point-to-point SABME was discarded:
+
+| where | what happens |
+|---|---|
+| `0x66814` | TEI 127, so the broadcast branch rather than the data-link lookup |
+| `0x6685e` | SAPI must be 0; the entry is marked `0xfa`, the wildcard the lookup at `0x6786e` accepts |
+| `0x66882` | raises event `0x16` - one of the types the handler at `0x76acf` dispatches |
+| `0x6724d` | walks data-link entries 3 to 12 and, for each whose interface matches, posts message `0x35` and calls `6757:8ed` |
+
+The body at `0x672bd` executes, so **layer 3 is notified of the incoming
+call**.  That is as far as it goes: the modem does not answer, does not ring
+the AT interface, and transmits nothing.  Offering the call as speech
+rather than unrestricted digital (`--bri-bearer speech`) changes nothing,
+so it is not the bearer capability being refused.
+
+The frontier has moved, though, and it is worth being precise about where.
+It is no longer "the modem never transmits a layer-2 frame and nothing is
+known about why" - it is "the firmware's own call control has been handed a
+SETUP and does not act on it".
+
 ## What is still open
 
 Two things stand between this and a call, and both are on the modem's side of
 the configuration rather than the peer's:
 
-* **The modem does not request a TEI on its own.**  Configured multipoint
-  (`AT*M=1`) with automatic TEI (`AT*T1=0`), with the peer waiting in
-  `--bri-establish terminal`, it sends nothing.  A TE asks for a TEI when it
-  has traffic, so the trigger should be a call.
+* **The modem does not request a TEI on its own**, even once layer 3 has
+  been handed an incoming SETUP over the broadcast data link.  A TE asks for
+  a TEI when it has traffic, and this is traffic.
 * **`ATD` is refused before it reaches layer 2.**  It answers `NO CARRIER`
   immediately with no D-channel activity at all.  `ATI12` still reports
   `Dialing Mode *O  Invalid Value`, and `*O=n` is in the firmware's own help
   page, so the next step is to find what it accepts - `AT*O=0` was dropped at
   the pace these runs send at, rather than rejected.
+
+One thing the peer cannot do yet, and the reason is the firmware's:
+**terminal-initiated activation**.  In I.430 a TE that wants the line up
+sends INFO1, and on this board that would be the firmware writing the
+Am79C30A's `LIU_LMR1`.  It writes it once at init, `0x40`, and never again
+in any run observed here - so there is no request to answer, and inventing a
+bit that means one would be asserting something the image has not shown.
+The NT activating on its own is what the runs above use.
 
 Also worth writing down, because it cost a detour: the ISDN block's TEI field
 is at **index 88**, two ASCII characters, not the index 86 that
