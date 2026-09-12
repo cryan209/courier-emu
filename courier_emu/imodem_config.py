@@ -35,12 +35,10 @@ this and a switch protocol of ASCII `4` boots, and `ATI12` prints
 `Switch Protocol *W   4   ETSI NET3`.  The firmware accepts a record this
 module built.
 
-The field offsets below were recovered the other way round, and more cheaply:
-set each setting over the AT interface, let the firmware write its own sector,
-and diff it.  That also showed what the firmware wants for the settings to
-take - it answers `*ATZ! Required*  :  Settings Have Changed` until a reset -
-and it is the check on this module's CRC from the other side, since a sector
-the *firmware* wrote verifies against `page_crc` too.
+The field offsets below agree by two independent routes: ATI12's descriptor
+table names every field address, and isolated AT command + AT&W sessions put
+the SPIDs, both directory-number channels, TEIs and dialing mode at those
+addresses.  The pages written by the firmware verify against `page_crc`, too.
 """
 from __future__ import annotations
 
@@ -270,6 +268,18 @@ def set_string(sector: bytes | bytearray, index: int, length: int,
 
 def set_voice_directory_number(sector: bytes | bytearray, number: str) -> bytes:
     return set_string(sector, VOICE_DIRECTORY_NUMBER, NUMBER_LENGTH, number)
+
+
+def set_data_directory_number(sector: bytes | bytearray, number: str) -> bytes:
+    return set_string(sector, DATA_DIRECTORY_NUMBER, NUMBER_LENGTH, number)
+
+
+def set_voice_spid(sector: bytes | bytearray, spid: str) -> bytes:
+    return set_string(sector, VOICE_SPID, NUMBER_LENGTH, spid)
+
+
+def set_data_spid(sector: bytes | bytearray, spid: str) -> bytes:
+    return set_string(sector, DATA_SPID, NUMBER_LENGTH, spid)
 
 
 def set_dialing_mode(sector: bytes | bytearray, mode: int) -> bytes:

@@ -500,7 +500,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--send-every",
         type=_number,
         default=SERIAL_LINE_INSTRUCTIONS,
-        help="instructions between one --send line and the next",
+        help="minimum instructions between --send lines; the batch driver "
+             "also waits for the preceding command's final result code",
     )
     isdn_run.add_argument(
         "--serial-pace",

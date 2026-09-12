@@ -1,5 +1,6 @@
 """The configuration sector's CRC and record layout."""
 import struct
+from pathlib import Path
 
 import pytest
 
@@ -76,16 +77,37 @@ def test_a_wrong_sized_sector_is_refused():
 
 def test_the_recovered_field_offsets():
     from courier_emu.imodem_config import (
-        BUS_CONFIGURATION, DATA_TEI, SWITCH_PROTOCOL, VOICE_DIRECTORY_NUMBER,
-        VOICE_TEI, set_voice_directory_number,
+        BUS_CONFIGURATION, DATA_DIRECTORY_NUMBER, DATA_SPID, DATA_TEI,
+        DIALING_MODE, SWITCH_PROTOCOL, VOICE_DIRECTORY_NUMBER, VOICE_SPID,
+        VOICE_TEI, set_data_directory_number, set_data_spid,
+        set_dialing_mode, set_voice_directory_number, set_voice_spid,
     )
     assert (SWITCH_PROTOCOL, BUS_CONFIGURATION) == (0, 1)
-    assert (VOICE_DIRECTORY_NUMBER, VOICE_TEI, DATA_TEI) == (44, 86, 88)
+    assert (VOICE_SPID, DATA_SPID) == (2, 23)
+    assert (VOICE_DIRECTORY_NUMBER, DATA_DIRECTORY_NUMBER) == (44, 65)
+    assert (VOICE_TEI, DATA_TEI, DIALING_MODE) == (86, 88, 90)
 
     sealed = set_voice_directory_number(seal(blank_sector()), "5551000")
     block = read_isdn_block(sealed)
     assert block[44:52] == b"5551000\x00"
     assert page_is_sealed(sealed[:PAGE_SIZE])
+
+    # Each of these byte sequences was produced by an isolated AT command +
+    # AT&W run and was the only ISDN-block difference from the baseline page.
+    cases = (
+        (set_voice_spid, "11112222", 2, b"11112222\x00"),
+        (set_data_spid, "22223333", 23, b"22223333\x00"),
+        (set_data_directory_number, "44445555", 65, b"44445555\x00"),
+    )
+    for setter, value, offset, expected in cases:
+        sector = setter(seal(blank_sector()), value)
+        block = read_isdn_block(sector)
+        assert block[offset:offset + len(expected)] == expected
+        assert all(page_is_sealed(
+            sector[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
+        ) for page in range(2))
+    dialing = set_dialing_mode(seal(blank_sector()), 1)
+    assert read_isdn_block(dialing)[90] == ord("1")
 
 
 def test_a_directory_number_that_does_not_fit_is_refused():
@@ -122,3 +144,35 @@ def test_a_record_write_that_would_hit_the_trailer_is_refused():
     from courier_emu.imodem_config import TRAILER_OFFSET, set_record_bytes
     with pytest.raises(ValueError):
         set_record_bytes(seal(blank_sector()), TRAILER_OFFSET - 1, b"ab")
+
+
+def test_a_scripted_spid_command_reaches_the_firmware_and_flash():
+    """End-to-end guard for the CR-before-LF command delivery race."""
+    image = Path("Ie030002.nac")
+    if not image.exists():
+        pytest.skip("local I-modem firmware not available")
+
+    from courier_emu.isdn import IsdnMachine
+    from courier_emu.isdn_console import scripted_pump
+    from courier_emu.nac import NacImage
+
+    transcript = []
+    commands = ["AT", "AT*S1=11112222", "AT&W"]
+    machine = IsdnMachine(
+        NacImage.load(image), profile=False,
+        serial_pump=scripted_pump(commands, every=0, transcript=transcript),
+    )
+    machine.run(35_000_000)
+
+    assert [text for _, direction, text in transcript if direction == "sent"] == [
+        command + "\r" for command in commands
+    ]
+    pages = (
+        bytes(machine.flash.contents[offset:offset + PAGE_SIZE])
+        for offset in range(0x78000, 0x7C000, PAGE_SIZE)
+    )
+    assert any(
+        page_is_sealed(page)
+        and read_isdn_block(page).startswith(b"\xff\xff11112222\x00")
+        for page in pages
+    )

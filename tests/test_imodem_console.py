@@ -36,6 +36,64 @@ def received(transcript):
                    if direction == "received")
 
 
+class PumpMachine:
+    """The small host-side interface scripted_pump needs."""
+
+    def __init__(self):
+        self.instructions = 0
+        self.output = bytearray()
+        self.sent = []
+
+    def send_serial(self, data):
+        self.sent.append(bytes(byte & 0x7f for byte in data))
+
+    def take_serial(self):
+        data = bytes(self.output)
+        self.output.clear()
+        return data
+
+
+def test_scripted_commands_wait_for_the_previous_final_result_code():
+    machine = PumpMachine()
+    pump = scripted_pump(["AT&W", "ATI12"], after=100, every=20)
+
+    machine.instructions = 100
+    pump(machine)
+    assert machine.sent == [b"AT&W\r"]
+
+    # Passing the old absolute deadline is not enough while AT&W is busy.
+    machine.instructions = 1_000
+    machine.output.extend(b"\r\nwriting flash...")
+    pump(machine)
+    assert machine.sent == [b"AT&W\r"]
+
+    # Fragmented output is normal: only a complete final result-code line
+    # releases the next command.
+    machine.output.extend(b"\r\nO")
+    pump(machine)
+    assert machine.sent == [b"AT&W\r"]
+    machine.output.extend(b"K\r")
+    pump(machine)
+    assert machine.sent == [b"AT&W\r"]
+    machine.output.extend(b"\n")
+    pump(machine)
+    assert machine.sent == [b"AT&W\r", b"ATI12\r"]
+
+
+def test_scripted_commands_still_honour_the_minimum_interval():
+    machine = PumpMachine()
+    pump = scripted_pump(["AT", "ATI3"], after=100, every=50)
+    machine.instructions = 100
+    pump(machine)
+    machine.instructions = 120
+    machine.output.extend(b"\r\nOK\r\n")
+    pump(machine)
+    assert machine.sent == [b"AT\r"]
+    machine.instructions = 150
+    pump(machine)
+    assert machine.sent == [b"AT\r", b"ATI3\r"]
+
+
 def test_the_firmware_identifies_itself_over_the_at_interface(session):
     _, _, transcript = session
     assert "USRobotics Courier I-Modem with ISDN/V.34" in received(transcript)

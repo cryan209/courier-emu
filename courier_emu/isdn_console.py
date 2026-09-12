@@ -78,28 +78,58 @@ def scripted_pump(
     every: int = SERIAL_LINE_INSTRUCTIONS,
     transcript: list[tuple[int, str, str]] | None = None,
 ) -> Callable[[Any], None]:
-    """Type `lines` on SIO0, one every `every` instructions.
+    """Type `lines` on SIO0, waiting for each command's result code.
 
     `transcript` collects `(instructions, "sent"|"received", text)` in order,
     so a run's report can show the session rather than just the final stream.
+
+    ``every`` is a minimum interval between commands, not permission to type
+    over a command which is still running.  That distinction matters for
+    configuration writes: ``AT&W`` can spend longer than the nominal interval
+    erasing and programming flash.  The old absolute schedule sent the next
+    line regardless and the firmware silently discarded it.
     """
     commands = [command_line(line) for line in lines]
-    schedule: list[tuple[int, str]] = []
-    for index, line in enumerate(commands):
-        schedule.append((after + index * every, line))
-    schedule.reverse()
+    commands.reverse()
     log = transcript if transcript is not None else []
+    next_send = [after]
+    waiting = [False]
+    response = bytearray()
 
     def pump(machine: Any) -> None:
-        while schedule and machine.instructions >= schedule[-1][0]:
-            _, line = schedule.pop()
-            machine.send_serial(_on_the_wire(line))
-            log.append((machine.instructions, "sent", line))
         received = machine.take_serial()
         if received:
             log.append((machine.instructions, "received", _readable(received)))
+            if waiting[0]:
+                response.extend(byte & 0x7F for byte in received)
+                if _has_result_code(response):
+                    waiting[0] = False
+        if (commands and not waiting[0]
+                and machine.instructions >= next_send[0]):
+            line = commands.pop()
+            machine.send_serial(_on_the_wire(line))
+            log.append((machine.instructions, "sent", line))
+            response.clear()
+            waiting[0] = True
+            next_send[0] = machine.instructions + every
 
     return pump
+
+
+_RESULT_CODES = {
+    b"OK", b"CONNECT", b"NO CARRIER", b"ERROR", b"NO DIALTONE",
+    b"NO DIAL TONE", b"BUSY", b"NO ANSWER",
+}
+
+
+def _has_result_code(response: bytes | bytearray) -> bool:
+    """Whether a modem response contains a complete final result-code line."""
+    # Do not release on the result's terminating CR alone.  The firmware has
+    # not returned its command receiver to idle until it transmits the LF; a
+    # line injected in that one-character window is received by the UART but
+    # discarded by the command task.
+    framed = b"\r\n" + bytes(response)
+    return any(b"\r\n" + code + b"\r\n" in framed for code in _RESULT_CODES)
 
 
 def _readable(data: bytes) -> str:
