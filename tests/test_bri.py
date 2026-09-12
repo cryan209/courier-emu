@@ -239,3 +239,30 @@ def test_the_dipswitch_bank_reads_the_way_the_firmware_expects():
     # of poking this port keeps working.
     machine = IsdnMachine(image, port_values={DIPSWITCH_PORT: 0x33})
     assert machine.read_port(DIPSWITCH_PORT) == 0x33
+
+
+def test_the_firmware_trace_ring_decodes_to_its_own_lines():
+    from courier_emu import imodem_trace
+
+    # The printer packs characters two to a word low byte first, so the ring
+    # read as bytes is already the text, and terminates each entry with CRLF.
+    raw = b"LINE_ACTIVE Detected\r\nl4_DISCONN : modem primitive\r\n"
+    assert imodem_trace.decode(raw) == [
+        "LINE_ACTIVE Detected",
+        "l4_DISCONN : modem primitive",
+    ]
+    # Capacity is the gap between the ring and its index, in words.
+    assert imodem_trace.TRACE_WORDS == 2048
+    assert imodem_trace.ring_address() == 0xCE0 * 16 + 0xA79A
+
+
+def test_reading_the_trace_of_a_machine_that_has_not_run_is_empty():
+    from courier_emu import imodem_trace
+    from courier_emu.isdn import IsdnMachine
+    from courier_emu.nac import NacImage
+
+    # No unicorn instance yet, so there is nothing to read and nothing to
+    # invent - an index outside the ring reads as empty rather than decoding
+    # whatever happens to be at the address.
+    machine = IsdnMachine(NacImage.load("Ie030002.nac"))
+    assert imodem_trace.read(machine) == []

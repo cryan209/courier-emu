@@ -10,6 +10,7 @@ from .am79c30 import Am79C30
 from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .imodem_config import NVRAM_BASE
 from .bri import BriNetwork
+from . import imodem_trace
 from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
@@ -295,6 +296,7 @@ class IsdnRunResult:
     dsc: dict[str, Any] = field(default_factory=dict)
     flash: dict[str, Any] = field(default_factory=dict)
     bri: dict[str, Any] | None = None
+    firmware_trace: list[str] = field(default_factory=list)
     mailbox: dict[str, Any] = field(default_factory=dict)
     serial: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
@@ -882,6 +884,9 @@ class IsdnMachine:
             dsc=self.dsc.status(),
             flash=self.flash.status_report(),
             bri=None if self.bri is None else self.bri.status(),
+            # The stack's own log, in the words its authors wrote. Two memory
+            # reads, so it costs a run nothing to carry it always.
+            firmware_trace=imodem_trace.read(self),
             mailbox=self.mailbox.status(),
             error=self.error,
         )
