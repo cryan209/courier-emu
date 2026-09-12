@@ -79,6 +79,13 @@ Each of these is falsifiable with a scope or a meter:
 2. **`TDX` (107) is toggling constantly** - the idle task writes `TDXR` every
    pass. **Follow pin 107**: whatever it reaches is what the DSP streams to, and
    that identifies the far end of the second port, which nothing has yet.
+
+   > **Answered, 2026-09-13. `TDX` goes to `J7` pin 2 - a header.** `TFSX` is
+   > `J7` pin 6 and `TDR` is `J7` pin 4, and `TCLKX` reaches `TCLKR` through a
+   > 100 ohm series resistor, which is what a clock driven off-board wants. The
+   > second serial port is wired to no part on the board: it is brought out for
+   > instrumentation, and the firmware drives it whether anything is listening
+   > or not. See [asic-pinout.md](asic-pinout.md).
 3. **`TDR` (44) is tied or floating.** The receive half is unused four ways -
    `TRNT`/`TXNT` never enabled in `IMR`, `TSPC` never read so `RRDY` never
    polled, `TRCV` never read through MMR addressing, and the one direct-addressed
@@ -118,7 +125,9 @@ port is configured identically:
 | `TRCV` reads via MMR | none | **none** |
 | `TSPC` reads | none | **none** |
 
-`IMR = 0x002a` is INT2, TINT and XINT. Note it does **not** include `RINT`
+`IMR = 0x002a` is INT2, TINT and XINT. **`INT2` - DSP pin 39 - is driven by
+the ASIC** (measured; [asic-pinout.md](asic-pinout.md)), so the one external
+interrupt the firmware arms is the mailbox's CPU-to-DSP direction. Note it does **not** include `RINT`
 either, and the codec's receive plainly works - the ports are synchronous, so
 one interrupt per frame services both halves. So "no interrupt enabled" is not
 on its own proof a port is unused. For the TDM port the case rests on three

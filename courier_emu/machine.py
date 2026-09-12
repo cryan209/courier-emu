@@ -2389,6 +2389,11 @@ class CourierMachine:
                 # 8e3aa, the payload at 69c61 - so the bus floats on the edge
                 # the board actually produces rather than at either of those
                 # addresses. probe_transport models the same edge.
+                #
+                # This net is shared: DSP `RS` (pin 127) also reaches the
+                # codec's RESET pin, so on the board every one of these pulses
+                # resets the codec too and returns its registers to defaults.
+                # Nothing below models that - see docs/asic-pinout.md.
                 asserted = not value & DSP_RESET_BIT
                 if asserted and not self._dsp_in_reset:
                     self.dsp_bridge.float_runtime_bus()
