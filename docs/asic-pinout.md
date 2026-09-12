@@ -227,44 +227,64 @@ The one miss is `INT3`. It is on QFP **65**, not 75; 75 is `T0OUT`. That
 reading should be retaken - it is a loose end in the interrupt map, and now it
 is a loose end with a predicted answer.
 
-#### Which makes this the high-byte address latch
+#### There is one '573, and it latches the high byte
 
 `'573` pin 9 is `D7`, and CPU pin 11 is `AD8`. So `AD8` is on this latch's
 input side, which is the **second** reading to say so - the earlier one said
 only "the other side goes to `AD8`" without naming a pin. Two readings agreeing
-on the one signal that decides the question is enough: **this '573 latches the
-high byte**, `AD8`-`AD15` into `A8`-`A15`.
+on the one signal that decides it: **this '573 latches the high byte**,
+`AD8`-`AD15` into `A8`-`A15`.
 
-That resolves the conflict the previous revision could not, and by the
-explanation that was second on its list. The `A7` net - `'573` pin 12 to flash
-pin 4 and RAM pin 3 - **cannot be this part at all**, because `A7` is not one of
-the eight bits it carries. So there are **two '573s**, the readings were taken
-across both without distinguishing them, and no single-latch assignment was ever
-going to close.
+And there is **only one '573 on the board**, with a **74VHC32** beside it. That
+was the other half of the question and it closes off the easy answer. The
+previous revision proposed two latches, one per byte, with the readings taken
+across both without distinguishing them. There is no second latch to distribute
+them to.
 
-What each reading belongs to, on that basis:
+#### So what latches `A0`-`A7`?
 
-| reading | latch | note |
-|---|---|---|
-| pin 11 to CPU 38 (`ALE`) | either | both latches share `ALE` |
-| pin 9 to CPU 11 (`AD8`) | **high** | `D7` = `AD8`, so the bit order is reversed: `D0` = `AD15` |
-| "input side on `AD8`" | **high** | same signal, same part |
-| pin 2 to CPU `AD7` | ? | `AD7` is CPU pin 27 and `AD15` is pin 28 - an off-by-one if this is the high latch |
-| pin 19, pin 12, to the memory `A7`/`A14` nets | **low**, probably | `A7` is a low-latch bit; `A14` is not |
+An 80C186EB multiplexes `AD0`-`AD15` and drives `A16`-`A19` separately. The
+high byte is accounted for. **Nothing identified on this board latches the low
+byte**, and the memories need it - flash and SRAM both take `A0`-`A7` as
+ordinary address inputs and neither has any idea what `ALE` is.
 
-**Two things to read, and they are small.** Confirm the '573 count on the board
-- the argument above predicts exactly two. Then take `AD7`/`AD15` again at CPU
-pins 27 and 28, because a bit order reversed across a latch is unusual enough
-that one off-by-one on an adjacent pin pair is the likelier reading.
+The ASIC is the only candidate, and it is not a weak one. It is the only part
+known to hold **both** `AD0`-`AD7` (pins `84`-`77`) **and** `ALE` (pin `57`) -
+which is to say, exactly the inputs a low-byte address latch takes, and nothing
+else on the board has them. It is already known to drive **flash `A17`** from
+pin 73, so it demonstrably drives address lines into the flash. And the whole
+bottom-right of the package, `28`-`46`, is unread and contiguous - room for
+eight address outputs and then some.
 
-Until the count is confirmed the memory map still gets nothing from this, and
-the shared-low-address-bus conclusion stays withdrawn.
+So the working claim is that **the ASIC is the low-byte address latch**, and
+the '573 beside it is the high-byte half of the same job. That would make the
+`ALE` pin on the ASIC something more than self-decoding for its own `0x00`-`0x7f`
+window, which is all this file has previously used it for.
+
+It also puts the earlier memory reading in a different light. `A7` was traced
+from flash pin 4 and RAM pin 3 back to `'573` pin 12, and `A7` is not a bit
+this latch carries. Under the claim above, **that net should run to the ASIC
+instead**.
+
+**Which is the measurement.** Take flash pin 4 / RAM pin 3 - the `A7` net -
+and follow it to the ASIC rather than to the '573. If it lands on the unread
+`28`-`46` run, the claim is established and the memory bus is half an ASIC
+function. If it really is on `'573` pin 12, then this latch is not the
+high-byte latch after all and the `AD8` readings are what need retaking.
+
+The **74VHC32** is worth a note while the meter is out. A quad 2-input OR next
+to the address latch is the usual shape of memory decode glue - `OR`ing a chip
+select with `RD` or `WR` to make per-device strobes - and it is unattributed.
+Two of its pins would say whether the memories are selected by the CPU's own
+`UCS`/`LCS` or by something the ASIC produces.
+
+Until that is done the memory map gets nothing from this, and the
+shared-low-address-bus conclusion stays withdrawn.
 
 **What does not depend on any of it:** the ASIC takes `AD0`-`AD7` raw on pins
-`84`-`77` and `ALE` on pin `57`, both measured on the package itself. Those are
-a latch's *input* side, so the ASIC demultiplexes the address for itself rather
-than reading anyone's `Q` outputs. That is what `ALE` is doing on the ASIC, and
-it is consistent with the part holding its own `0x00`-`0x7f` decode.
+`84`-`77` and `ALE` on pin `57`, both measured on the package itself. Whatever
+it does with them, it is on the *input* side of the demultiplex, not reading
+anyone's `Q` outputs.
 
 ### Bottom edge - the panel and the two handshake lines
 
@@ -544,35 +564,40 @@ Eighty of the 120 pins are unread. The bottom edge is now partly read -
 nine pins of it - and the other twenty-one are still open. The ones worth
 finding next, in the order they would pay:
 
-1. **Top-edge pins `76`-`74` and `72`-`61`** - the neighbours of the flash
+1. **The `A7` net, followed to the ASIC.** Flash pin 4 and RAM pin 3 carry
+   `A7`, the single '573 latches `A8`-`A15`, and nothing else identified on the
+   board latches the low byte. If that net lands in the unread `28`-`46` run,
+   the ASIC is the low-byte address latch and the memory bus is half an ASIC
+   function.
+2. **Top-edge pins `76`-`74` and `72`-`61`** - the neighbours of the flash
    `A17` pin. If `A16` and `A18` are there, the CPU's high address path runs
-   through this part, which is a memory-map fact and not just a pinout one.
-2. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+   through this part too.
+3. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-3. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+4. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-4. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+5. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-5. **What `J7` carries.** The second serial port streams continuously to that
+6. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-6. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+7. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-7. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+8. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-8. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+9. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-9. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+10. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
