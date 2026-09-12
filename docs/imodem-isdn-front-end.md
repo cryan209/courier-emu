@@ -144,3 +144,53 @@ up two more parts:
 
 With the three in place the update image gets past identification, erases flash
 blocks, streams 52,856 bytes to the DSP, and starts writing progress to SIO0.
+
+
+## LSR's upper bits are the handset hook
+
+The register file above answers `LIU_LSR`'s low three bits - the F-state -
+and returned zero for the rest.  Two of those were carrying something, and
+the firmware names them itself rather than needing a datasheet.
+
+The line-state decode at `0x70e6f` reads LSR and then does this:
+
+```
+70eb6  and al, 7 ; add al, 2         ; the F-state, as already recovered
+70ebd  test byte [bp-2], 0x80        ; bit 7 gates everything below
+70ec1  je 70f24
+70ed2  push 0x136c                   ; "liu_stat.C : sending a LIU_STATUS"
+70ef5  mov ax, [bp-2] ; and ax, 0x40 ; sar ax, 6   ; bit 6, as a 0/1 value
+70f01  mov es:[bx+0x12], ax          ; into the message it posts
+```
+
+so bit 7 is a gate and bit 6 is a value.  Asking the firmware what it calls
+them - by answering LSR with those bits set and reading its own trace log
+([imodem-firmware-trace.md](imodem-firmware-trace.md)) - settles both:
+
+| LSR bits 7:6 | the firmware's log |
+|---|---|
+| `0x80` | `STAT_OFFHOOK Detected>>>` |
+| `0xc0` | `STAT_ONHOOK Detected` |
+
+**Bit 7 is a change indication and bit 6 is the handset hook state**, 0 being
+off hook.  That fits the board rather than being a curiosity: the I-modem
+carries an analogue phone port - the ADP, whose directory number `*P1` holds
+and which `ATI12` labels `ADP Directory Number` - and its hook switch is
+sensed through the DSC.
+
+`courier_emu/am79c30.py` models it: `set_hook` moves the switch, raises the
+part's interrupt the way a line-state change does, and LSR reports both bits;
+reading LSR acknowledges the change, because it is an indication rather than
+a level.  The handset rests on hook, so a run that does not ask for it sees
+exactly what it saw before the bits were modelled - only the bit-6 level
+changes, and nothing reads it without bit 7.  `isdn-run --offhook-at N` lifts
+it, and the firmware answers:
+
+```
+LINE_ACTIVE Detected
+STAT_OFFHOOK Detected>>>
+```
+
+This is not what stops layer 2 - the modem still transmits nothing with the
+handset either way.  It is a part of the chip that was answering zero and now
+answers what the part does.

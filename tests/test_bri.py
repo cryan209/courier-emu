@@ -349,3 +349,62 @@ def test_the_chips_random_registers_are_a_generator_not_storage():
     # Both registers draw from the same generator, as one part would.
     part.select(DLC_RNGR2)
     assert part.read_data() != 0 or part.rng_reads > 6
+
+
+def test_the_lsr_carries_the_handset_hook_in_its_top_two_bits():
+    # Recovered from the firmware, not a datasheet: with LSR bit 7 asserted
+    # its own trace log prints STAT_OFFHOOK when bit 6 is clear and
+    # STAT_ONHOOK when it is set. Bit 7 is a change indication, so reading
+    # LSR acknowledges it.
+    from courier_emu.am79c30 import (
+        Am79C30, F7_ACTIVATED, IR_LIU, LIU_LSR, LSR_HOOK_CHANGED, LSR_ON_HOOK,
+    )
+
+    part = Am79C30()
+    part.set_liu_state(F7_ACTIVATED)
+    part.ir = 0
+
+    # Resting: on hook, nothing changed, and the F-state is untouched.
+    part.select(LIU_LSR)
+    resting = part.read_data()
+    assert resting & LSR_ON_HOOK
+    assert not resting & LSR_HOOK_CHANGED
+    assert resting & 7 == (F7_ACTIVATED - 1) & 7
+
+    # Lifting it interrupts, the way a line-state change does.
+    part.set_hook(False)
+    assert part.ir & IR_LIU
+    part.select(LIU_LSR)
+    lifted = part.read_data()
+    assert lifted & LSR_HOOK_CHANGED and not lifted & LSR_ON_HOOK
+
+    # ...and the change is acknowledged by that read, not left standing.
+    part.select(LIU_LSR)
+    assert not part.read_data() & LSR_HOOK_CHANGED
+
+    # Setting it to what it already is is not a change.
+    before = part.hook_changes
+    part.set_hook(False)
+    assert part.hook_changes == before
+
+
+def test_a_run_lifts_the_handset_when_it_is_asked_to():
+    from courier_emu.isdn import IsdnMachine
+    from courier_emu.nac import NacImage
+
+    machine = IsdnMachine(NacImage.load("Ie030002.nac"), offhook_at=1000)
+    assert machine.dsc.status()["hook"] == "on-hook"
+
+    machine.instructions = 500
+    machine.poll_timers()
+    assert machine.dsc.on_hook, "not due yet"
+
+    machine.instructions = 1500
+    machine.poll_timers()
+    assert not machine.dsc.on_hook
+    assert machine.dsc.hook_changes == 1
+
+    # and only once, however many times the timers run
+    machine.instructions = 9000
+    machine.poll_timers()
+    assert machine.dsc.hook_changes == 1

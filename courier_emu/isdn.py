@@ -333,6 +333,7 @@ class IsdnMachine:
         flash_nvram: bytes | None = None,
         bri: BriNetwork | None = None,
         dipswitches: dict[int, bool] | None = None,
+        offhook_at: int | None = None,
         product_type: str = "external",
         product_modem: bool = False,
     ) -> None:
@@ -392,6 +393,11 @@ class IsdnMachine:
         # switch it talks to, and it reaches the board only through the
         # chip's receive and transmit buffers. See courier_emu/bri.py.
         self.bri = bri
+        # When the handset on the analogue port is lifted, if a run asks.
+        # The firmware reports it through LSR's hook bits and its own trace
+        # log prints STAT_OFFHOOK; see courier_emu/am79c30.py.
+        self.offhook_at = offhook_at
+        self._offhook_done = False
         # Which DIP switches are ON, defaulting to all of them - the state an
         # unmodelled port 0x12 already produced, so a run that says nothing
         # behaves as it did before this was modelled.
@@ -597,6 +603,10 @@ class IsdnMachine:
             if channel.irq is not None and channel.interrupting():
                 self.pic.raise_irq(channel.irq)
         self._advance_line()
+        if (self.offhook_at is not None and not self._offhook_done
+                and self.instructions >= self.offhook_at):
+            self._offhook_done = True
+            self.dsc.set_hook(False)
         if self.bri is not None:
             # Before the interrupt check, so a frame the peer delivers in
             # this pass raises the line in the same pass rather than the next.

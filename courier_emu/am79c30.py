@@ -155,6 +155,21 @@ DSR2_TX_ROOM = 0x10        # 71d29: the transmit buffer will take a byte
 # Indirect registers the model has to answer from its own state rather than
 # from what was written: the line status, and the received frame's length.
 LIU_LSR = 0xA1
+
+# LSR's upper bits are not the line state. They are the handset hook, and the
+# firmware names them itself: with bit 7 asserted its trace log prints
+# `STAT_OFFHOOK Detected>>>` when bit 6 is clear and `STAT_ONHOOK Detected`
+# when it is set (see docs/imodem-firmware-trace.md for how that log is
+# read). The decode at 0x70ebd matches - bit 7 gates the whole branch, and
+# `and ax, 0x40 ; sar ax, 6` lifts bit 6 out as the value it reports.
+#
+# That fits the board: the I-modem carries an analogue phone port, the ADP
+# whose directory number `*P1` holds, and its hook switch is sensed here.
+# Bit 7 is a change indication, so it is cleared when LSR is read; a modelled
+# hook that never moves leaves both clear, which is what the part did before
+# any of this was modelled.
+LSR_HOOK_CHANGED = 0x80
+LSR_ON_HOOK = 0x40
 DLC_DTCR = 0x85
 DLC_DRCR = 0x89
 
@@ -213,6 +228,10 @@ class Am79C30:
     # The line interface. F1 is the reset state: no signal either way.
     liu_state: int = F1_INACTIVE
     lsr_flags: int = 0
+    # The handset. On hook is the resting state: nothing is lifted.
+    on_hook: bool = True
+    hook_changed: bool = False
+    hook_changes: int = 0
 
     # The D channel. `rx` is the byte the host has yet to read plus the frame
     # boundaries behind it; `sent` is what the host has finished transmitting,
@@ -264,8 +283,27 @@ class Am79C30:
     def activated(self) -> bool:
         return self.liu_state == F7_ACTIVATED
 
+    def set_hook(self, on_hook: bool) -> None:
+        """Lift or replace the handset on the analogue port.
+
+        The firmware learns of it the way it learns of a line-state change:
+        LSR's change bit goes up and the part interrupts, and its own handler
+        reads LSR and reports STAT_ONHOOK or STAT_OFFHOOK.
+        """
+        if bool(on_hook) == self.on_hook:
+            return
+        self.on_hook = bool(on_hook)
+        self.hook_changed = True
+        self.hook_changes += 1
+        self.ir |= IR_LIU
+
     def _lsr(self) -> int:
-        return ((self.liu_state - 1) & 7) | (self.lsr_flags & 0xC0)
+        value = ((self.liu_state - 1) & 7) | (self.lsr_flags & 0xC0)
+        if self.on_hook:
+            value |= LSR_ON_HOOK
+        if self.hook_changed:
+            value |= LSR_HOOK_CHANGED
+        return value
 
     def _random_byte(self) -> int:
         """One byte out of the part's random number generator.
@@ -396,7 +434,10 @@ class Am79C30:
             return 0
         self.read_counts[register] += 1
         if register == LIU_LSR:
-            return self._lsr()
+            value = self._lsr()
+            # A change indication, so reading it is what acknowledges it.
+            self.hook_changed = False
+            return value
         if register in (DLC_RNGR1, DLC_RNGR2):
             return self._random_byte()
         if register == DLC_DRCR:
@@ -467,6 +508,8 @@ class Am79C30:
 
     def status(self) -> dict[str, object]:
         return {
+            "hook": "on-hook" if self.on_hook else "off-hook",
+            "hook_changes": self.hook_changes,
             "written": {
                 self.name(r): bytes(b).hex(" ")
                 for r, b in sorted(self.blocks.items())

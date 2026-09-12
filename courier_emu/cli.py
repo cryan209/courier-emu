@@ -555,6 +555,17 @@ def build_parser() -> argparse.ArgumentParser:
              "off stops the modem answering the AT interface at all",
     )
     isdn_run.add_argument(
+        "--offhook-at",
+        type=_number,
+        metavar="INSTRUCTIONS",
+        help="lift the handset on the analogue port at this point. The "
+             "Am79C30's LSR carries the hook switch in bits 7:6 - a change "
+             "indication and the state - and the firmware's own trace log "
+             "prints STAT_OFFHOOK when it sees it. Without this the handset "
+             "rests on hook, which is what the part reported before the bits "
+             "were modelled",
+    )
+    isdn_run.add_argument(
         "--bri-network",
         action="store_true",
         help="put an NT and a switch on the far side of the S interface: "
@@ -1317,6 +1328,7 @@ def main(argv: list[str] | None = None) -> int:
                 flash_nvram=nvram,
                 bri=bri,
                 dipswitches=dipswitches,
+                offhook_at=args.offhook_at,
                 **entry
             )
             try:
