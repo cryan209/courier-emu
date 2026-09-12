@@ -36,6 +36,12 @@ The whole DSP-to-CPU mailbox runs on `OUT` instructions - the sender at
 This is a better test than counting data traces: `IS` is a single pin with
 exactly one purpose, and continuity to the ASIC is a meter reading.
 
+> **Measured, 2026-09-13: `IS` is connected to the ASIC** - the left edge of
+> the package, seven pins up from the bottom corner. The first reading is the
+> right one. The mailbox is parallel, across the bus the SRAMs already sit on,
+> and the DSP's `A0`-`A3` and `A5` land on the ASIC too. See
+> [asic-pinout.md](asic-pinout.md).
+
 The rest of that group, for context: `DS` 89, `PS` 91, `R/W` 92, `STRB` 93,
 `RD` 82, `WE` 83.
 

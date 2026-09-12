@@ -29,7 +29,12 @@ leaves the DTE in command mode. It needs no phone line and never goes off hook.
 | **The idle default is `0x00`** | 96 of the 128 ports below `0x80` read zero |
 
 The ASIC presents 16-bit registers; the monitor reads a byte, so the odd half
-is a high byte nothing drives. Above `0x7f` there is no device at all - what
+is a high byte nothing drives.
+
+> **Withdrawn.** `AD8`-`AD15` do not reach the ASIC at all - they go to the
+> CPU's SRAMs and appear nowhere on the package. See
+> [asic-pinout.md](asic-pinout.md). The ASIC is a byte-wide device decoded on
+> even addresses, and the odd ports read `0x00` because nothing is there. Above `0x7f` there is no device at all - what
 comes back is the bus holding the last address, which is why a sweep there
 looks like a ramp.
 

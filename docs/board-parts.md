@@ -9,7 +9,7 @@ not in frame, so nothing here says what is on it.
 
 | marking | what it is |
 |---|---|
-| `NEC USA 1-016-905 9948LV001` | **the ASIC.** A USR part number on an NEC-fabricated gate array, date code week 48 1999 |
+| `NEC USA 1-016-905 9948LV001` | **the ASIC.** A USR part number on an NEC-fabricated gate array, date code week 48 1999; pinned out in [asic-pinout.md](asic-pinout.md) |
 | `TI DSP 16-912 (C) US ROBOTICS D17140PQ` | the C5x-family DSP, custom-marked with a USR part number |
 | `S80C186` | the Intel supervisor |
 | `TLC...320AC01CFN` | the voice-band codec, PLCC, next to the DSP |
@@ -119,7 +119,11 @@ fabricated it, USR designed it. A gate array in a package that size, on this
 board, is the part every note in this repository has been calling "the
 interposed ASIC" and modelling as a black box.
 
-That is a placement argument, not a pin trace. What supports it is that the
+That is a placement argument, not a pin trace. **It now has a pin trace**:
+[asic-pinout.md](asic-pinout.md) records the DSP's address bus, the CPU's
+`AD0`-`AD7`, the DSP's `IS` strobe and two CPU interrupt lines all landing on
+this package, which is the interposed part described rather than inferred. What
+also supports it is that the
 supervisor's I/O space needs a device of exactly this description and there is
 no other candidate on the bus. From `artifacts/io-port-map/board-21210/`, the
 80186 drives:
