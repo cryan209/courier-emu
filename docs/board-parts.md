@@ -18,8 +18,8 @@ not in frame, so nothing here says what is on it.
 | `CY7C199-15VC` x2 | the **DSP's** SRAM: 2 x 32Kx8, 64 KB = 32K words on a 16-bit bus |
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
-| `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is an **address demultiplex latch**; there is exactly **one** '573 and it latches the **high** byte, `AD8`-`AD15` into `A8`-`A15`, with a `74VHC32` beside it. `A0`-`A7` come out of the **ASIC** instead - pin 70 drives `A0` into both memories - so the two parts split one address latch between them. The '32's gate 4 output feeds **into** the ASIC on pin 71, so that gate is upstream of it rather than decode glue it drives - see [asic-pinout.md](asic-pinout.md) |
-| `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
+| `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is an **address demultiplex latch**; there is exactly **one** '573 and it latches the **high** byte, `AD8`-`AD15` into `A8`-`A15`, with a `74VHC32` beside it. `A0`-`A7` come out of the **ASIC** instead - pin 70 drives `A0` into both memories - so the two parts split one address latch between them. The '32's gate 4 takes the flash's `WE#` (flash pin 43) on one input and feeds its output **into** the ASIC on pin 71, so that gate is upstream of the ASIC rather than decode glue it drives - see [asic-pinout.md](asic-pinout.md) |
+| `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. Pinout confirmed against the Am29F400B 44-lead SO connection diagram - `A17`/`A7`/`A0` on pins 3/4/11 all match the board readings. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
 | `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
 | `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
 | `RA5W-K` | the **hook relay**. The `OH` lamp is on its pin 9, which is why `OH` is the one panel line not on the ASIC |

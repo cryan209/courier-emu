@@ -315,14 +315,61 @@ the one gap between `RD#` and the interrupts. Pin 71 is a measured input
 carrying a measured `AND` of two conditions. Both can be true - a raw select on
 54 and a qualified one on 71 - but 54's case is now the weaker of the two.
 
-**The two pins that settle it are gate 4's inputs**, `4A` on pin 12 and `4B` on
-pin 13. `RD`, `WR`, a CPU chip select (`UCS`/`LCS`/`GCS`) and an address decode
-each imply a different circuit, and the pair together names the condition
-exactly.
+**Gate 4's `B` input is the flash's `WE#`.** `'32` pin 13 goes to flash pin
+43, and the Am29F400B 44-lead SO connection diagram - which the PA28F400 shares
+- gives pin 43 as `WE#`, write enable. So gate 4 is
 
-The '32 has three more gates, all unread. The same question applies to each,
-and it is now worth asking which of them are inputs to this part and which are
-outputs of it - this reading shows the answer is not uniform.
+```
+4Y (ASIC pin 71)  =  4A (unread)  OR  flash WE#
+```
+
+and with both halves active-low that output falls only when the `4A` condition
+holds **and** a write strobe is active. Pin 71 is a **qualified write strobe
+into the ASIC**, which is the "selected and strobed" shape the previous
+revision predicted from the gate type alone.
+
+The ASIC already has CPU `WR#` raw, on pin 56. A board does not spend a gate
+re-deriving a signal a part already has, so the useful content of pin 71 is the
+*other* input: `4A` is what distinguishes this write from every other write.
+**That makes `'32` pin 12 the single most valuable unread pin on the board.** A
+chip select there - `UCS`, `LCS`, a `GCS`, or an address decode - names exactly
+which writes the ASIC is told about.
+
+It is worth saying what this does *not* show. The signal flows inward, so the
+ASIC is **observing** a write, not gating one. It cannot stop the write from
+reaching the flash; the gate output goes to the ASIC and nowhere else that has
+been read.
+
+Whether flash `WE#` and CPU `WR#` are the same net is unchecked and matters. If
+they are, `4A` is a plain select and pin 71 is the ASIC's own write strobe. If
+they are not - if `WE#` is generated on the board, possibly by another gate of
+this same '32 - then the ASIC is being told specifically about **flash** writes,
+which alongside its driving of flash `A17` would start to look like a part that
+supervises the flash rather than merely addressing it. One probe from flash pin
+43 to CPU pin 37 separates those.
+
+The '32 has three more gates, all unread. This reading shows the direction is
+not uniform across the part, so each needs its own answer.
+
+#### The flash pin numbering is confirmed, and one old net reading is not
+
+The same datasheet checks the frame these readings were taken in, and it holds:
+
+| flash pin | the readings say | Am29F400B 44-SO | |
+|---|---|---|---|
+| 3 | `A17` | `A17` | ok |
+| 4 | `A7` | `A7` | ok |
+| 11 | `A0` | `A0` | ok |
+| 43 | *(this reading)* | `WE#` | - |
+
+Three for three, so the flash pin numbers in this file can be trusted the way
+the CPU's now can.
+
+Which condemns one net. `'573` pin 19 was recorded as reaching **RAM pin 1 and
+flash pin 20**, and flash pin 20 is `DQ10` - a *data* line - while RAM pin 1 is
+`A14`, an address line. No latch output is both. That reading was already
+suspect on other grounds; it is now excluded by the pinout itself and needs
+retaking rather than reinterpreting.
 
 **One reading is now known to be wrong.** `A7` was traced from flash pin 4 and
 RAM pin 3 back to `'573` pin 12. `A7` is a low-byte bit, the low byte comes out
@@ -611,10 +658,12 @@ finding next, in the order they would pay:
    edge are unread. `A1` is RAM pin 9 / flash pin 10 and they walk down from
    there; finding them completes the low-byte latch. The `A7` net previously
    recorded on `'573` pin 12 belongs here and should be retaken.
-2. **74VHC32 pins 12 and 13** - `4A` and `4B`, the two inputs of the gate
-   whose output feeds ASIC pin 71. They name the two-condition qualifier the
-   ASIC is given, and `RD`, `WR`, a CPU chip select and an address decode each
-   imply a different circuit.
+2. **74VHC32 pin 12** - `4A`, the other input of the gate whose output feeds
+   ASIC pin 71. `4B` is the flash's `WE#`, so `4A` is the whole of what
+   distinguishes the writes the ASIC is told about from every other write. A
+   chip select or an address decode there names it outright. Worth pairing with
+   a probe from flash pin 43 to CPU pin 37, which says whether flash `WE#` and
+   CPU `WR#` are one net.
 3. **Flash `A16` and `A18`, in the same run.** `A17` on pin 73 has no bus
    reason to be there - those lines need no latch - so if `A16` and `A18` are
    also on the ASIC it is buffering the high address, and if they are not, it
