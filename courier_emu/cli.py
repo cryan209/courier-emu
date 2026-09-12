@@ -30,6 +30,7 @@ from .bri import (
     ACTIVATE_AT_INSTRUCTIONS, BEARER_SPEECH,
     BEARER_UNRESTRICTED_64K, BriNetwork,
 )
+from .v120 import LLI_DEFAULT, V120Link
 from .isdn_console import (
     SERIAL_LINE_INSTRUCTIONS,
     SERIAL_WARMUP_INSTRUCTIONS,
@@ -634,6 +635,63 @@ def build_parser() -> argparse.ArgumentParser:
         default="5551000",
         help="the calling party number --bri-call-at presents "
              "(default: 5551000)",
+    )
+    isdn_run.add_argument(
+        "--bri-v120",
+        action="store_true",
+        help="speak V.120 rate adaption on the B channel once the call is "
+             "active, instead of leaving the bearer opaque: HDLC framing, the "
+             "logical link identifier, and the Q.921 procedures the modem "
+             "answers a call expecting",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-lli",
+        type=_number,
+        default=None,
+        metavar="N",
+        help="the logical link identifier to establish (default: 256, the "
+             "default link)",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-establish",
+        choices=("network", "terminal"),
+        default="network",
+        help="which end sends SABME on the B channel (default: network, the "
+             "end that placed the call)",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-header",
+        default=None,
+        metavar="HEX",
+        help="the terminal adaption header octets an I frame carries, as hex "
+             "(default: 83). The firmware logs its own verdict on them as "
+             "'V120 parse failed, ret_code=', which is what this is for",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-llc",
+        default=None,
+        metavar="HEX",
+        help="offer the V.120 rate adaption in the SETUP's low layer "
+             "compatibility element, as the hex of octets 5a and 5b (try "
+             "1080). The modem parses this and clears the call rather than "
+             "answering it, so it is a probe, not a setting; without it the "
+             "SETUP names only the bearer",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-msb-first",
+        action="store_true",
+        help="put each octet on the B channel most significant bit first. "
+             "HDLC says least, and the flag is a palindrome either way, but "
+             "the modem's receive handler reverses octets on a configuration "
+             "bit, so the peer can be asked to do it the other way round",
+    )
+    isdn_run.add_argument(
+        "--bri-v120-send",
+        action="append",
+        default=None,
+        metavar="TEXT",
+        help="send TEXT to the modem as V.120 user data once the link is up; "
+             "repeat for more frames",
     )
     isdn_run.add_argument(
         "--bri-rx-g711",
@@ -1310,6 +1368,22 @@ def main(argv: list[str] | None = None) -> int:
                     if args.bri_activate else None,
                     deactivate_at=args.bri_deactivate_at,
                 )
+                if args.bri_v120:
+                    bri.v120 = V120Link(
+                        lli=(LLI_DEFAULT if args.bri_v120_lli is None
+                             else args.bri_v120_lli),
+                        establish=args.bri_v120_establish == "network",
+                        header=(b"\x83" if args.bri_v120_header is None
+                                else bytes.fromhex(args.bri_v120_header)),
+                        llc=(None if args.bri_v120_llc is None
+                             else bytes.fromhex(args.bri_v120_llc)),
+                        lsb_first=not args.bri_v120_msb_first,
+                        note=bri._note,
+                    )
+                    for text in args.bri_v120_send or ():
+                        bri.v120.send(text.encode())
+                elif args.bri_v120_send:
+                    raise ValueError("--bri-v120-send requires --bri-v120")
                 if args.bri_rx_g711:
                     bri.queue_media(Path(args.bri_rx_g711).read_bytes())
             elif args.bri_rx_g711 or args.bri_tx_g711:

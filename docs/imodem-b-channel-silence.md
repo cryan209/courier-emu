@@ -333,10 +333,11 @@ counter that could not count.
 What is open now is a floor higher.  The bearer carries HDLC and the modem
 frames it, but the peer at the other end of the B channel replays whatever
 file it was given, so nothing above the framing is answered and the call
-clears on a timeout.  Teaching `courier_emu/bri.py` the rate adaption the
-modem is offering - V.120 first, since `*V2` names it - is what turns a
-synchronised link into a connection, and it is the same kind of work the
-Q.921/Q.931 peer already is: a far end, not a stand-in.
+clears on a timeout.  `courier_emu/v120.py` is that far end now - HDLC, the
+logical link identifier, and Q.921's procedures on the bearer - and
+[imodem-v120.md](imodem-v120.md) records how far it gets: the frames go out
+correctly framed and the modem does not answer them, which makes the remaining
+question a protocol one rather than a hardware one.
 
 Inventing a wake-up instead would produce a modem that appears to talk.  The
 counters are what tells the difference, and they are cheap to read:

@@ -542,3 +542,68 @@ def test_the_activated_lsr_value_is_the_one_the_firmware_transmits_in():
     part.on_hook = False
     part.select(LIU_LSR)
     assert (part.read_data() & 7) + 2 == 3
+
+
+def test_the_frame_check_sequence_leaves_iso_3309_s_residue():
+    # A frame carrying its own good FCS runs to F0B8 and nothing else does,
+    # which is the whole of the receiver's check.
+    from courier_emu.v120 import FCS_GOOD, crc16, frame_check
+
+    frame = bytes.fromhex("0a016f")
+    assert crc16(frame + frame_check(frame)) == FCS_GOOD
+    corrupted = bytearray(frame + frame_check(frame))
+    corrupted[1] ^= 0x01
+    assert crc16(bytes(corrupted)) != FCS_GOOD
+
+
+def test_zero_bit_insertion_survives_a_payload_full_of_flags():
+    # The point of the stuffing is that a frame can contain the flag and the
+    # idle mark without either being mistaken for framing.
+    from courier_emu.v120 import HdlcReceiver, HdlcTransmitter
+
+    payload = bytes.fromhex("0a0100") + b"\x7e\xff\xff\x7e\x3e"
+    for lsb_first in (True, False):
+        transmitter = HdlcTransmitter(lsb_first)
+        transmitter.send(payload)
+        receiver = HdlcReceiver(lsb_first)
+        receiver.feed(transmitter.octets(64))
+        assert list(receiver.frames) == [payload]
+        assert receiver.fcs_errors == receiver.aborts == receiver.runts == 0
+
+
+def test_the_logical_link_identifier_spans_both_address_octets():
+    # 13 bits across two octets with the C/R bit between them, and the same
+    # asymmetry Q.921 gives that bit: one side's command is the other's
+    # response, written the same way on the wire.
+    from courier_emu.v120 import LLI_DEFAULT, address, decode
+
+    assert LLI_DEFAULT == 256
+    octets = address(LLI_DEFAULT, command=True, from_network=True)
+    assert octets == bytes((0x0A, 0x01))
+    seen = decode(octets + b"\x6f", from_network=False)
+    assert seen is not None
+    assert seen.lli == 256 and seen.command and seen.name == "SABME"
+
+    # And a link identifier that uses both halves comes back whole.
+    wide = address(0x1234, command=False, from_network=True)
+    assert decode(wide + b"\x6f", from_network=True).lli == 0x1234
+
+
+def test_the_link_answers_a_modem_that_establishes_first():
+    # The peer offers to send SABME, but a terminal that gets there first is
+    # answered rather than talked over.
+    from courier_emu.v120 import HdlcReceiver, HdlcTransmitter, V120Link, address
+
+    link = V120Link(establish=False)
+    link.start()
+    assert link.state == "released"
+
+    modem = HdlcTransmitter()
+    modem.send(address(256, command=True, from_network=False) + b"\x7f")
+    reply = link.exchange(modem.octets(32))
+    assert link.state == "established"
+
+    seen = HdlcReceiver()
+    seen.feed(reply)
+    answer = [frame for frame in seen.frames]
+    assert answer and answer[0][2] & ~0x10 == 0x63, "UA"

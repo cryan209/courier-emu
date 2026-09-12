@@ -69,6 +69,7 @@ from .pit import INSTRUCTIONS_PER_SECOND as _INSTRUCTIONS_PER_SECOND
 from .am79c30 import (
     F2_SENSING, F3_DEACTIVATED, F6_SYNCHRONIZED, F7_ACTIVATED,
 )
+from .v120 import V120Link
 
 
 # -- Q.921 ----------------------------------------------------------------
@@ -242,6 +243,7 @@ IE_CALL_STATE = 0x14
 IE_CHANNEL_IDENTIFICATION = 0x18
 IE_PROGRESS_INDICATOR = 0x1E
 IE_CALLING_PARTY_NUMBER = 0x6C
+IE_LOW_LAYER_COMPATIBILITY = 0x7C
 IE_CALLED_PARTY_NUMBER = 0x70
 
 # Bearer capabilities, Q.931 section 4.5.5: the transfer-capability byte and
@@ -260,6 +262,11 @@ CAUSE_NAMES = {
     88: "incompatible destination",
     96: "mandatory information element is missing",
 }
+
+# Low layer compatibility for a V.120 call, Q.931 section 4.5.19: unrestricted
+# digital at 64 kbit/s, then a layer 1 protocol of V.120 with more octets to
+# follow. What follows is the rate adaption itself, which V120Link supplies.
+LLC_V120 = bytes([0x88, 0x90, 0x28])
 
 CAUSE_NORMAL_CLEARING = 16
 CAUSE_USER_BUSY = 17
@@ -486,6 +493,9 @@ class BriNetwork:
     undecodable: int = 0
     instructions: int = 0
     _sink: Callable[[bytes], None] | None = None
+    # A V.120 far end for the B channel, when the run wants one. Without it
+    # the bearer stays opaque and --bri-rx-g711 replays whatever it is given.
+    v120: V120Link | None = None
     media_channel: int | None = None
     media_tx: bytearray = field(default_factory=bytearray)
     _media_tx_cursor: dict[int, int] = field(
@@ -515,21 +525,35 @@ class BriNetwork:
         self._service_media(dsc)
 
     def _service_media(self, dsc: Any) -> None:
-        """Move opaque octets between the switch and the selected B channel."""
-        # Lightweight D-channel peers used by callers need not implement the
-        # optional bearer interface.
+        """Carry the B channel, either opaquely or as a V.120 far end."""
+        # Not every harness has a bearer. Reaching it through the chip's own
+        # buffers is what keeps this a peer, so the peer does without when the
+        # optional bearer interface is not there.
         if not hasattr(dsc, "bearer_tx") or not hasattr(dsc, "queue_bearer"):
             return
-        # Always advance the cursors. This prevents pre-call idle codewords
-        # from appearing as call media when Q.931 later becomes active.
+        active = self.call_state == "active" and self.media_channel is not None
+        fresh = b""
         for channel in (1, 2):
             stream = dsc.bearer_tx[channel]
             start = self._media_tx_cursor[channel]
-            if self.call_state == "active" and channel == self.media_channel:
-                self.media_tx.extend(stream[start:])
+            if active and channel == self.media_channel:
+                fresh = bytes(stream[start:])
+                # Output recorded before CONNECT would be the idle DS0, not
+                # call media, and the cursor keeps it from appearing as such.
+                self.media_tx.extend(fresh)
             self._media_tx_cursor[channel] = len(stream)
-        if (self.call_state == "active" and self.media_channel is not None
-                and self.media_rx):
+        if not active:
+            return
+        if self.v120 is not None:
+            # The bearer is a conversation rather than a recording: what the
+            # modem sent decides what goes back, one octet for one octet.
+            self.v120.start()
+            reply = self.v120.exchange(fresh)
+            if reply:
+                dsc.queue_bearer(self.media_channel, reply)
+                self.media_rx_delivered += len(reply)
+            return
+        if self.media_rx:
             octets = bytes(self.media_rx)
             self.media_rx.clear()
             dsc.queue_bearer(self.media_channel, octets)
@@ -604,6 +628,8 @@ class BriNetwork:
         self.call_reference = None
         self._t303_expiry = None
         self.media_channel = None
+        if self.v120 is not None:
+            self.v120.stop()
 
     def _send(self, frame: bytes) -> None:
         if self._sink is None:
@@ -855,6 +881,15 @@ class BriNetwork:
         elements = (element(IE_BEARER_CAPABILITY, self.bearer)
                     + channel_identification(1)
                     + calling_party_number(self.call_from))
+        if self.v120 is not None and self.v120.llc is not None:
+            # A V.120 call can say so in the SETUP, and the modem does parse
+            # it: offering this changes its verdict, from answering the call to
+            # clearing it with MISC_INFO. Which is why it is off by default -
+            # the octets below are what the standards say to send and the
+            # firmware disagrees with them, so they are a probe rather than a
+            # setting. See docs/imodem-v120.md.
+            elements += element(IE_LOW_LAYER_COMPATIBILITY,
+                                LLC_V120 + self.v120.llc)
         if self.call_to:
             elements += called_party_number(self.call_to)
         self._setup = q931_message(SETUP, self.call_reference, True, elements)
@@ -982,6 +1017,7 @@ class BriNetwork:
             "assigned_teis": dict(self.assigned_teis),
             "call_state": self.call_state,
             "call_reference": self.call_reference,
+            "v120": self.v120.status() if self.v120 is not None else None,
             "media": {
                 "channel": self.media_channel,
                 "rx_pending": len(self.media_rx),
