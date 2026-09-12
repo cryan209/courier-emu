@@ -630,7 +630,17 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     // TREG0 is memory-mapped at 0x0c, next to TREG1 and TREG2. Leaving it out
     // splits it in two: LT and its relatives write the register while a read
     // through the data space sees a cell nothing keeps up to date.
+    //
+    // TREG1, TREG2 and DBMR were exactly that split until this line: the write
+    // side below binds all four, the read side bound only TREG0. A bit pump
+    // that keeps its bit number in TREG2 and steps it with
+    // `lamm @0e / sub #01 / samm @0e` then reads zero every time, writes ffff
+    // back, and never reaches the count it is watching for - which is how the
+    // I-modem's HDLC receiver came to sit in one loop for a whole call.
     case 0x0c: return m_treg0;
+    case 0x0d: return m_treg1;
+    case 0x0e: return m_treg2;
+    case 0x0f: return m_dbmr;
     case 0x10: case 0x11: case 0x12: case 0x13:
     case 0x14: case 0x15: case 0x16: case 0x17: return m_ar[offset - 0x10];
     case 0x18: return m_indx; case 0x19: return m_arcr;

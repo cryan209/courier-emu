@@ -248,6 +248,73 @@ cannot get a second byte, because the cell is refilled by the background loop
 it is blocking.  What it does is remove the doubt about *which* byte, so the
 question above it is the only one left.
 
+## Why the byte-ready test never fired: TREG2 was not a register
+
+The flag hunt is a coroutine and it has a driver, at `e63a`, which does exactly
+what a coroutine driver should:
+
+```
+e63a  lacc  #000f
+e63c  samm  @0e        ; TREG2 = 15 - start at the top bit
+e63d  lacc  #0007
+e63f  sacl  @7c        ; stop after bit 8: the high byte, eight bits
+e640  lacl  @67 / sacl @7e     ; restore the hunt's saved counters
+e642  lacl  @69 / sacl @7f
+e644  lacl  @65 / sacl @7d     ; @65 is where it got to last time
+e646  cala                     ; run it
+e647  lacl  @7d / sacl @65     ; and save where it got to this time
+```
+
+with the second stream immediately after it at `e64f`, `@7c = 8` - seven bits
+rather than eight, the same 7/8 choice the initialiser at `e8ec` makes.
+
+So the byte-ready test is not a gate that fired early.  It is `TREG2` counting
+down from 15 to `@7c` as the hunt eats the byte, and the `pop; ret` that trips
+on it is how the hunt gets back to its driver: the helper was `call`ed, so
+discarding its return address and returning lands on the driver's.  The whole
+per-frame cycle is the resident splitting a word, calling the handler the
+overlay installed at `0x088c`/`0x088d`, that handler at `eb39` bit-reversing
+the octet and chaining on, the hunt eating eight bits, and `pop; ret` bringing
+control home.
+
+It never came home because **`TREG2` was only half a register in this core**.
+The write side of `cpuregs_w` bound TREG1, TREG2 and DBMR; the read side of
+`cpuregs_r` bound TREG0 and stopped.  `lamm @0e` therefore read a dead data
+cell rather than the register `samm @0e` had just written - the exact split the
+comment above `case 0x0c` warns about, left half-applied.
+
+The consequences line up with every symptom on this page.  `lamm @0e` returns
+0, `sub @7c` is -7 and never equal, the `pop; ret` never executes, and
+`samm @0e` writes `0 - 1 = ffff` back every single time - so `bitt` tested bit
+15 of the byte, over and over, for 3,186,292 iterations, while the counter it
+was waiting on never moved.  Binding the read side is four lines.
+
+## What it does when the register is whole
+
+Everything downstream of it unblocks at once:
+
+```
+bri.media   tx_non_ff 6937 of 46608      the B channel stops being silent
+mailbox     23 / 23 consumed             the 5e command is taken
+```
+
+and the octets are not noise - they are **`7e`, HDLC flags**, 6,937 of them in
+an unbroken run once the receiver synchronises.  The modem answers, syncs on
+the far end's flags, and idles the link with its own, which is what a V.120
+terminal does after CONNECT.
+
+Given longer, the call finishes properly too.  The far end here only replays
+flags - the peer does not speak anything above HDLC on the B channel yet - so
+the modem waits, gives up, and clears down in its own words:
+
+```
+BCH_ENABLED Detected | l4_DISCONN : modem primitive | Prim = N_DISC_CF :
+```
+
+`NO CARRIER` at the DTE, the call cleared, the mailbox drained 39 of 39, and
+the DSP back at IDLE.  A whole call, from SETUP to hangup, with the bearer
+running underneath it.
+
 ## What that makes the frontier
 
 The chain from an incoming call to a routed B channel is now complete and
@@ -258,16 +325,18 @@ posted.  The single missing joint is the last one:
 **what the DSP is waiting on in that loop, and what would return it to the
 dispatcher at `85c6` so the `5e` command is taken.**
 
-The sections above answer the first half of that: it is an HDLC flag hunt,
-waiting on a byte only the background loop can hand it.  What is left is why
-it was entered as a blocking loop at all.  A coroutine with a resume address
-in `@7d` is written to be driven a bit at a time from above; this one was
-entered and never left, so the condition that let it start - the byte-ready
-tests at `e8f3` and `e900`, on `@78` and `@60` - was true when there was
-nothing behind it.  That is where the next trace goes.  The two-slot format was
-the obvious suspect for those tests lying and is now ruled out: the slots are
-clocked, the octets land in the half the firmware reads, and the loop is
-unchanged.
+That is answered above, and the answer was in this repository's core rather
+than in the firmware: a memory-mapped register bound for writing and not for
+reading.  The modem was never waiting on the board.  It was waiting on a
+counter that could not count.
+
+What is open now is a floor higher.  The bearer carries HDLC and the modem
+frames it, but the peer at the other end of the B channel replays whatever
+file it was given, so nothing above the framing is answered and the call
+clears on a timeout.  Teaching `courier_emu/bri.py` the rate adaption the
+modem is offering - V.120 first, since `*V2` names it - is what turns a
+synchronised link into a connection, and it is the same kind of work the
+Q.921/Q.931 peer already is: a far end, not a stand-in.
 
 Inventing a wake-up instead would produce a modem that appears to talk.  The
 counters are what tells the difference, and they are cheap to read:
