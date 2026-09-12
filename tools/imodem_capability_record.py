@@ -38,70 +38,41 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
-PAGE_SIZE = 0x1000
-SECTOR_SIZE = 0x2000
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from courier_emu.imodem_config import (          # noqa: E402
+    CRC_OFFSET as TRAILER_OFFSET,
+    PAGES,
+    PAGE_SIZE,
+    SECTOR_SIZE,
+    page_is_sealed,
+    seal,
+)
+
 VERSION_OFFSET = 0xFFC
-TRAILER_OFFSET = 0xFFE
-RESIDUE = 0xF0B8
-SEED = 0xFFFF
 
-# What the firmware writes into the shadow when no record validates. Starting
-# from it means a record changes only the fields it names.
+# What the firmware writes into the shadow when no record validates, from
+# 0xc5312. Starting from it means a record changes only the fields it names.
 ABSENT = 0xFF
 
 
-def crc_step(dx: int, byte: int) -> int:
-    """One byte of the CRC at 0xc5415, instruction for instruction."""
-    al = (byte ^ (dx & 0xFF)) & 0xFF          # lodsb ; xor ah,ah ; xor al,dl
-    ah = al                                   # mov ah, al
-    al = (al << 4) & 0xFF                     # mov cl,4 ; shl al,cl
-    ah = (ah ^ al) & 0xFF                     # xor ah, al
-    al = 0                                    # mov al, 0
-    dl = (dx >> 8) & 0xFF                     # mov dl, dh
-    dx = ((ah << 8) | dl) & 0xFFFF            # mov dh, ah
-    ax = ((ah << 8) | al) & 0xFFFF
-    ax = (ax >> 5) & 0xFFFF                   # mov cl,5 ; shr ax,cl
-    dx ^= ax
-    ax = (ax >> 7) & 0xFFFF                   # mov cl,7 ; shr ax,cl
-    return (dx ^ ax) & 0xFFFF
-
-
-def crc(data: bytes, dx: int = SEED) -> int:
-    for byte in data:
-        dx = crc_step(dx, byte)
-    return dx
-
-
-def seal(page: bytearray) -> bytearray:
-    """Solve the trailing two bytes so the page reaches the residue.
-
-    The CRC is a shift register over the whole page, so the trailer is found
-    by carrying the state up to it once and trying both bytes - 65,536 pairs
-    at two steps each, rather than re-CRCing the page 65,536 times.
-    """
-    if len(page) != PAGE_SIZE:
-        raise ValueError(f"a page is {PAGE_SIZE} bytes, not {len(page)}")
-    state = crc(bytes(page[:TRAILER_OFFSET]))
-    for candidate in range(0x10000):
-        low, high = candidate & 0xFF, candidate >> 8
-        if crc_step(crc_step(state, low), high) == RESIDUE:
-            page[TRAILER_OFFSET] = low
-            page[TRAILER_OFFSET + 1] = high
-            return page
-    raise AssertionError("no trailer reaches the residue")
+# The two CRCs are the same check. courier_emu.imodem_config.crc16 is the
+# routine at 0xba80f -- reflected CRC-16-CCITT -- storing its value at 0xffe;
+# the loader's validator at 0xc53fd instead runs its own pass over the whole
+# page including that trailer and requires the residue 0xf0b8. Sealing with
+# either satisfies the other, trailer byte for trailer byte, so the sealing
+# here is simply the module's.
 
 
 def build(fields: dict[int, int], version: int = 1) -> bytes:
     """A sector holding one sealed page, absent-valued except for `fields`."""
-    page = bytearray(bytes([ABSENT]) * PAGE_SIZE)
-    for offset, value in fields.items():
-        page[offset] = value & 0xFF
-    page[VERSION_OFFSET:VERSION_OFFSET + 2] = version.to_bytes(2, "little")
-    seal(page)
     sector = bytearray(bytes([ABSENT]) * SECTOR_SIZE)
-    sector[:PAGE_SIZE] = page
-    return bytes(sector)
+    for offset, value in fields.items():
+        sector[offset] = value & 0xFF
+    sector[VERSION_OFFSET:VERSION_OFFSET + 2] = version.to_bytes(2, "little")
+    return seal(bytes(sector))
 
 
 def _number(text: str) -> int:
@@ -128,7 +99,9 @@ def main(argv: list[str] | None = None) -> int:
     sector = build(fields, version=args.version)
     with open(args.output, "wb") as handle:
         handle.write(sector)
-    print(f"wrote {args.output}: page residue {crc(sector[:PAGE_SIZE]):#06x}, "
+    sealed = [page_is_sealed(sector[i * PAGE_SIZE:(i + 1) * PAGE_SIZE])
+              for i in range(PAGES)]
+    print(f"wrote {args.output}: pages sealed {sealed}, "
           f"{len(fields)} field(s) set")
     return 0
 

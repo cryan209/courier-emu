@@ -1007,3 +1007,48 @@ the state machine behind `[c926]`, which is where the next look belongs.
 (The 186 side is flagged in this repository as not fully modelled, so it is used
 here to locate code and to compare a decision against its own inputs, not as a
 timing or behavioural reference in its own right.)
+
+
+## What is actually missing
+
+Four things, in the order they block each other.
+
+**1. A real configuration record.** One 0x1000-byte page at `0xf8000` carries
+*both* the capability bytes (page offsets 0..4 -> `d2c6`..`d2ca`) and the ISDN
+settings block (page offset `0x1b0` -> `2600:d476`) - the page is copied whole
+to `d2c6`, so `d2c6 + 0x1b0 = d476` exactly as
+[imodem-config-sector.md](imodem-config-sector.md) found it. We can build a
+page the firmware accepts, but not one with the right *contents*: a record that
+is valid but erased-valued makes the modem **worse** - it stops transmitting
+entirely - which is itself proof those bytes are load-bearing. This is a data
+gap, not a code gap, and it gates everything below.
+
+(The sealing was duplicated: `courier_emu.imodem_config.crc16` stores a
+reflected CRC-16-CCITT at `0xffe`, and the loader's validator at `0xc53fd`
+runs its own pass over the whole page and wants the residue `0xf0b8`. They are
+the same check - sealing with either satisfies the other, trailer byte for
+trailer byte - so `tools/imodem_capability_record.py` now uses the module's.)
+
+**2. Layer 2 never starts.** Across every configuration tried - L1 walked to
+F7, a SPID set over the AT interface, a switch protocol set in the record - the
+D channel reports **`frames_transmitted: 0`**. The modem never sends a TEI
+Identity Request, which a real TE does as soon as L1 activates. So this is not
+a network peer that fails to answer; it is a terminal that never asks. `ATI12`
+says why in its own words: `Invalid Switch Type`, `Invalid fixed TEI` twice,
+and empty SPIDs.
+
+**3. Nothing on the network side of Q.921 exists yet.** `frames_received: 0`
+follows from (2), but it also means the harness has never had to model TEI
+assignment or SABME/UA. That work is entirely ahead, and cannot even be
+specified until the modem starts asking for a TEI.
+
+**4. The AT epilogue routing** - which the 186 comparison shows is a routing
+fault, not a decision fault. Our best guess is that it is a *symptom* of (1)
+and (2): an ISDN modem with no configuration and no data link plausibly ends
+every command in "go idle". That is a hypothesis, and it stays one until the
+modem has a working configuration to be tested with.
+
+Settings do not survive `ATZ` either: `AT*S1=` takes and `ATI12` shows it, the
+modem answers `*ATZ! Required* : Settings Have Changed`, and after the reset it
+is gone - the record is laid over flash read-only and nothing writes it back.
+So configuring over the AT interface cannot bootstrap (1) on its own.
