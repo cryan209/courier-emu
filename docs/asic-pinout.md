@@ -197,6 +197,27 @@ they are the highest-value pins left on the package - a CPU-to-flash path
 running through the ASIC is a structural fact about the memory map that nothing
 here has modelled.
 
+#### The low address bus is latched once and shared
+
+One net was read with no ASIC pin on it, and it settles how the CPU's
+multiplexed bus is unpicked. Flash pin 4 - `A7` - goes to **74VHC573 pin 12**
+and to **RAM pin 3**. Pin 12 of a '573 is `Q7` and pin 3 of the JEDEC 28-pin
+32Kx8 pinout that all three of the board's SRAM types use is `A7`, so all three
+agree: the VHC573 is the **address demultiplex latch** holding `A0`-`A7` off
+the CPU's `AD` bus, and flash and SRAM share its outputs. One latch, one low
+address bus, no per-device copy.
+
+> Read first as RAM pin 24, corrected to pin 3 by the owner. Pin 24 is `A9` on
+> that pinout and would not have been this net; the correction is from memory
+> rather than a re-measurement, and pin 3 is the reading that makes all three
+> parts name the same signal.
+
+**The ASIC is not on that bus.** It takes `AD0`-`AD7` raw on pins `84`-`77`
+and `ALE` on pin `57`, which is the latch's own input side - so the ASIC
+demultiplexes the address itself rather than reading the '573's outputs. That
+is why `ALE` is on the package at all, and it is consistent with the ASIC
+holding its own `0x00`-`0x7f` I/O decode.
+
 ### Bottom edge - the panel and the two handshake lines
 
 Read after the edges above, and it is where the lamps were predicted to be.
@@ -508,19 +529,6 @@ finding next, in the order they would pay:
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
 ### Readings recorded but not yet interpreted
-
-**A flash/RAM address net was read without an ASIC pin on it.** Flash pin 4,
-`A7`, goes to 74VHC573 pin 12 and to RAM pin 24. The latch half is exactly
-right and settles what that part is: pin 12 of a '573 is `Q7`, so the VHC573 is
-the **address demultiplex latch** holding `A0`-`A7` off the CPU's `AD` bus, and
-flash and RAM share its outputs - one low address bus, as expected.
-
-The RAM half does not fit. On the JEDEC 28-pin 32Kx8 pinout that all three of
-the board's SRAM types use, **pin 24 is `A9`** - neither the `A7` this net
-carries nor the `A2` the reading names, and `A2` is pin 8 on that pinout. One
-of the pin number, the signal name, or the assumed package is wrong. It is left
-here unresolved rather than silently corrected to `A7`, because which of the
-three it is decides whether the low address bus really is shared.
 
 **The `SD` reading runs CPU pin to CPU pin.** As recorded, `SD` is on CPU
 pins 4, 7 and 63 and on 74AHC04 pin 11, and the matching inverter output at

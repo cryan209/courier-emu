@@ -18,7 +18,7 @@ not in frame, so nothing here says what is on it.
 | `CY7C199-15VC` x2 | the **DSP's** SRAM: 2 x 32Kx8, 64 KB = 32K words on a 16-bit bus |
 | `ISSI IS61C256AH-15J` | 32Kx8 15 ns SRAM |
 | `ADM707` | supervisory/reset |
-| `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is the **address demultiplex latch**: its `Q7` (pin 12) carries `A7` to both the flash and the SRAM |
+| `74VHC573`, `74VHC32`, `74VHC04` | bus glue. The '573 is the **address demultiplex latch**: its `Q7` (pin 12) carries `A7` to flash pin 4 and SRAM pin 3, so one latch feeds both |
 | `PA28F400` | the **flash**. Intel 4 Mbit / 512 KiB, which is the 2806 dump exactly. `A17` (pin 3) comes from ASIC pin 73 - see [asic-pinout.md](asic-pinout.md) |
 | `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
 | `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
