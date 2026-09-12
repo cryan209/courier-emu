@@ -11,17 +11,38 @@ but the package says nothing about what is inside it.
 So the part has to be identified by what it is wired to. This file records
 that, from the owner's continuity readings.
 
-> **Which board these readings come from is not settled.** The marking above
-> was read off the **20.16 MHz** unit - the one running ID_SDL 4.03d,
-> supervisor 7.4.16 / DSP 3.1.2, the board
-> [asic-port-map.md](asic-port-map.md) probed through the monitor. But the
-> codec in the later readings is named as an **AC03**, and
-> [board-parts.md](board-parts.md) records the AC03 as the part on the
-> **25 MHz Courier 2806**, with the 20 MHz boards carrying AC01. If the trace
-> was taken on the 25 MHz board then the ASIC on it has not been read for a
-> marking at all and need not be the same gate array, and the attribution of
-> every pin below has to move with it. The electrical findings stand either
-> way; what they are findings *about* does not.
+> **These readings are from the 25 MHz Courier 2806** - the AC03 board,
+> supervisor 7.3.14 / DSP 3.0.13, the unit dumped in
+> `artifacts/courier-2806-25mhz-flash-20260912`. Confirmed by the owner.
+>
+> The marking above is **not** from that board. It was read off a photo of the
+> **20.16 MHz** unit, the one running ID_SDL 4.03d that
+> [asic-port-map.md](asic-port-map.md) probed through the monitor. **The
+> 2806's ASIC has not been read for a marking at all**, and until it is,
+> nothing establishes that the two boards carry the same gate array. Reading
+> the text off this one is the cheapest outstanding item in the file.
+>
+> What does transfer, and what does not, is worked out below.
+
+## Which findings cross between the two boards
+
+The two boards are not interchangeable and the distinction matters per pin, so
+it is worth settling before the map rather than after.
+
+**The DSP side transfers.** [board-parts.md](board-parts.md) establishes that
+stock 7.3.14 runs on both the 20.16 MHz AC01 board and this 25 MHz AC03 board,
+and that its **DSP payload is byte-identical between them** - 126,851
+consecutive identical bytes covering the payload and all three overlays. Code
+that identical cannot be talking to two different interfaces. So `IS`, `INT2`,
+`READY` and the data bus are findings about both boards, not just this one.
+
+**The CPU side does not.** The same comparison finds the whole difference
+between those two images **is** in the supervisor. A differing supervisor is
+exactly where a differing CPU-side wiring would show up, so `ALE`, `RD#`,
+`WR#`, the two interrupt lines and the unconnected `INT0` are findings about
+the 2806 and are not evidence about the 20.16 MHz board.
+
+That split is what the sections below are graded against.
 
 ## Orientation and pin numbering
 
@@ -149,11 +170,18 @@ presents a **16-bit port to the DSP and an 8-bit port to the CPU**, and the
 width conversion between them is a function of this part, not a property of
 either bus.
 
-That also finishes off the reading
-[asic-port-map.md](asic-port-map.md) started with: the probe's 64 odd ports
-reading `0x00` is not an undriven upper byte of a 16-bit register, because on
-the CPU side there is no upper byte. The CPU sees a byte-wide device on even
-addresses. The 16-bit half faces the DSP.
+The 16-bit half of that is a DSP-side finding and transfers to both boards.
+The 8-bit half is CPU-side and does not.
+
+That matters for what it appears to settle.
+[asic-port-map.md](asic-port-map.md) reads the probe's 64 odd ports returning
+`0x00` as the undriven upper byte of a 16-bit register, and an 8-bit CPU
+interface would replace that with a simpler explanation - nothing is there. But
+**the port sweep was run on the 20.16 MHz board and the bus trace on the 2806**,
+and the CPU side is the half that does not cross. The explanation is the better
+one only if the two boards share the interface, which is precisely what reading
+the 2806's ASIC marking would help establish. Until then it is a candidate, not
+a replacement, and the note in that file says so.
 
 ### Both directions of the mailbox are now physical
 
@@ -232,33 +260,41 @@ port being a one-way stream out to `J7` with the receive half wired for
 completeness and never read - `TDR` is on the header but no instruction reads
 it.
 
-## One discrepancy, and how to settle it
+## The interrupt map, and why it is not yet a discrepancy
 
-**The harness drives the wrong interrupt.** `machine.py` models the board's
-frame edge as `INT0` - `INT0_VECTOR = 12`, type `0x0c`, the service the 302
-build vectors at `8f43:0000` - and the comment at
-[machine.py:585](../courier_emu/machine.py) says so outright. The board says
-`INT0` is unconnected and the ASIC drives `INT2` and `INT1` instead. On the
-80186 `INT2` is interrupt **type 14, `0x0e`**, not `0x0c`.
+On this board CPU `INT0` (pin 62) is **unconnected**, and the ASIC drives
+`INT1` and `INT2` instead. On the 80186 `INT2` is interrupt **type 14, `0x0e`**.
 
-So either the vector-table reading that named the service is right and the pin
-reading is mislabelled, or the harness has been raising a type the hardware
-never raises and it works only because the firmware's service happens to be
-reachable both ways.
+`machine.py` models the board's frame edge as `INT0` - `INT0_VECTOR = 12`,
+type `0x0c`, the service the 302 build vectors at `8f43:0000`
+([machine.py:585](../courier_emu/machine.py)). Those do not agree, and an
+earlier revision of this file called that a harness bug.
 
-This is cheap to decide and does not need a scope. The IVT is at physical `0`
-and is RAM, and the monitor reads it - that is the method
-[ram-probe-delivery.md](ram-probe-delivery.md) already uses, which read
-`08`, `0d`, `0f` and `12` live. **Read vectors `0x0c` and `0x0e` on the running
-board.** Whichever one holds a real far pointer into flash is the edge the ASIC
-drives. The 80186's interrupt controller settles it a second way: the `INT0`
-and `INT2` control registers in the peripheral block will show which input is
-unmasked.
+**It is not, or at least not yet.** The harness models the 20.16 MHz board
+running ID_SDL 302/403; the pin reading is from the 2806 running stock 7.3.14;
+and the CPU side is the half that does not transfer between them, because the
+supervisor is the whole of what differs between the two images. Two boards are
+allowed to wire their interrupts differently, and a supervisor built for each
+is where that difference would live.
 
-`INT1` at right 14 is a second ASIC interrupt on a line the harness already
-uses for the ROM's serial engine ([machine.py:582](../courier_emu/machine.py)).
-Whether that is a conflict or whether the serial engine's `INT1` is a different
-build's arrangement is not resolved here.
+So there are two separate questions, and only one of them is open here.
+
+* **On the 2806**, which vector does `INT2` reach? That is a fact about a board
+  nothing has modelled yet.
+* **On the 20.16 MHz board**, is the harness right that the frame edge is
+  `INT0`? Nothing above bears on this. It needs that board's own `INT0` pin
+  read, which has not been done.
+
+Both are cheap and neither needs a scope. The IVT is at physical `0` and is
+RAM, and the monitor reads it - the method
+[ram-probe-delivery.md](ram-probe-delivery.md) already uses, which read `08`,
+`0d`, `0f` and `12` live. **Read vectors `0x0c` and `0x0e`.** Whichever holds a
+real far pointer into flash is the edge that board's ASIC drives. The 80186's
+interrupt controller settles it a second way: the `INT0` and `INT2` control
+registers in the peripheral block show which input is unmasked.
+
+Doing it on both boards is what would turn this into either a harness bug or a
+board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 

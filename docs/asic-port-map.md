@@ -31,10 +31,16 @@ leaves the DTE in command mode. It needs no phone line and never goes off hook.
 The ASIC presents 16-bit registers; the monitor reads a byte, so the odd half
 is a high byte nothing drives.
 
-> **Withdrawn.** `AD8`-`AD15` do not reach the ASIC at all - they go to the
-> CPU's SRAMs and appear nowhere on the package. See
-> [asic-pinout.md](asic-pinout.md). The ASIC is a byte-wide device decoded on
-> even addresses, and the odd ports read `0x00` because nothing is there. Above `0x7f` there is no device at all - what
+> **A candidate explanation, from a different board.** On the **25 MHz Courier
+> 2806**, `AD8`-`AD15` do not reach the ASIC at all - they go to the CPU's
+> SRAMs and appear nowhere on the package ([asic-pinout.md](asic-pinout.md)).
+> If this board is wired the same way, the odd ports read `0x00` because
+> nothing is there, and the 16-bit-register reading above is simply wrong.
+>
+> That is not established. This sweep was taken on the **20.16 MHz** board, the
+> CPU-side interface is the half that does not transfer between the two - their
+> supervisors differ and their DSP payloads do not - and this board's own
+> `AD8`-`AD15` have never been traced. Tracing them settles it in one reading. Above `0x7f` there is no device at all - what
 comes back is the bus holding the last address, which is why a sweep there
 looks like a ramp.
 
