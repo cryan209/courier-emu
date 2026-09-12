@@ -522,6 +522,11 @@ class BriNetwork:
     media_peer: Any = None
     # The digits off the modem's own SETUP, once it has placed a call.
     dialled: str = ""
+    # Exact bearer fields from the last SETUP the modem originated.  These
+    # are retained after call clearing because they are useful evidence about
+    # which call type the firmware selected from its profile.
+    outbound_bearer: bytes | None = None
+    outbound_low_layer: bytes | None = None
     media_channel: int | None = None
     media_tx: bytearray = field(default_factory=bytearray)
     _media_tx_cursor: dict[int, int] = field(
@@ -988,6 +993,9 @@ class BriNetwork:
             requested_channel = channel[0] & 3 if channel else 1
             self.media_channel = requested_channel if requested_channel in (1, 2) else 1
             self.call_state = "call-received"
+            self.outbound_bearer = message.elements.get(IE_BEARER_CAPABILITY)
+            self.outbound_low_layer = message.elements.get(
+                IE_LOW_LAYER_COMPATIBILITY)
             # The I-modem puts its digits in the keypad facility rather than
             # a called party number - `ATDT8406` arrives as IE 2c, '8406' in
             # ASCII - which is why this used to report a dial as "(no number)"
@@ -1059,6 +1067,15 @@ class BriNetwork:
             "media_peer": (self.media_peer.status()
                            if self.media_peer is not None else None),
             "dialled": self.dialled,
+            "outbound_setup": (
+                None if self.outbound_bearer is None else {
+                    "bearer_capability": self.outbound_bearer.hex(" "),
+                    "low_layer_compatibility": (
+                        None if self.outbound_low_layer is None
+                        else self.outbound_low_layer.hex(" ")
+                    ),
+                }
+            ),
             "media": {
                 "channel": self.media_channel,
                 "rx_pending": len(self.media_rx),

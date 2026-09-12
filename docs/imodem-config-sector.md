@@ -418,15 +418,34 @@ and an unset `0xff` is why `ATI12` has always printed `Invalid Value`.
 The isolated `AT*O=1` write puts ASCII `1` at index 90; ATI12 renders that as
 `Overlap Sending mode`.
 
-### The bearer capabilities are not in this block
+### `*V2` is a binary byte at `0x25f`
 
 `*V1` (voice bearer: `0` Analog Telephony, `1` ISDN 3.1kHz Telephony) and
 `*V2` (data bearer: `0` Auto Detect, `1` V.120, `2` V.110, `3` Modem/Fax
 Emulation, `4` Clear Channel, `5` Auto Mode PPP, `6` X.75) are in the
 firmware's help page but not in ATI12's table, and the block above is full.
-A session that sends `AT*V1=1`, `AT*V2=3` and `AT&W` changes exactly one byte
-of the record, at **page offset `0x25f`**, from `00` to `0x10`.  Which of the
-two wrote it, and how the value is packed, is not established.
+The earlier combined `AT*V1=1`, `AT*V2=3`, `AT&W` experiment changed one
+byte at `0x25f`, but could not attribute or decode it.
+
+Result-code-gated command delivery makes the decisive experiment repeatable.
+Starting every run from erased NVRAM, an `AT&W` baseline and seven isolated
+`AT*V2=n`, `AT&W` sessions produced sealed generations with this byte:
+
+| `*V2` | page `+0x25f` | meaning |
+|---:|---:|---|
+| 0 | `00` | Auto Detect |
+| 1 | `01` | V.120 |
+| 2 | `02` | V.110 |
+| 3 | `03` | Modem/Fax Emulation |
+| 4 | `04` | Clear Channel |
+| 5 | `05` | Auto Mode PPP |
+| 6 | `06` | X.75 |
+
+The value is literal binary, not ASCII and not packed with `*V1`.  Comparing
+the value-1 through value-6 pages pairwise leaves only `0x25f` and the CRC;
+their common generation and all other record bytes are identical.  Value 0
+is byte-identical to the `AT&W` baseline.  `imodem_config.py` therefore
+exposes `DATA_BEARER`, `read_data_bearer`, and `set_data_bearer`.
 
 ### `AT*V1` is refused, and it is not the interface going deaf
 
@@ -453,5 +472,5 @@ What actually happens is per-command, and one run separates it cleanly:
 
 So `AT*V1=1` is **refused**, with `NO CARRIER` as its own answer, and the
 interface is untouched either side of it.  Why that command is refused is not
-established; `*V1` is in the firmware's help page and `*V2` appears to be
-accepted, since a session sending both changes the byte at `0x25f`.
+established; `*V1` is in the firmware's help page, while the isolated sessions
+above establish that `*V2` is accepted and persisted.

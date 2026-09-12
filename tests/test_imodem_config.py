@@ -146,6 +146,28 @@ def test_a_record_write_that_would_hit_the_trailer_is_refused():
         set_record_bytes(seal(blank_sector()), TRAILER_OFFSET - 1, b"ab")
 
 
+def test_the_verified_data_bearer_values_are_binary_at_025f():
+    from courier_emu.imodem_config import (
+        DATA_BEARER, DATA_BEARERS, read_data_bearer, set_data_bearer,
+    )
+
+    assert DATA_BEARER == 0x25F
+    assert DATA_BEARERS[3] == "Modem/Fax Emulation"
+    for value in DATA_BEARERS:
+        sector = set_data_bearer(seal(blank_sector()), value)
+        assert read_data_bearer(sector) == value
+        assert read_data_bearer(sector, page=1) == value
+        assert all(page_is_sealed(
+            sector[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
+        ) for page in range(2))
+
+
+def test_an_unknown_data_bearer_is_refused():
+    from courier_emu.imodem_config import set_data_bearer
+    with pytest.raises(ValueError):
+        set_data_bearer(seal(blank_sector()), 7)
+
+
 def test_a_scripted_spid_command_reaches_the_firmware_and_flash():
     """End-to-end guard for the CR-before-LF command delivery race."""
     image = Path("Ie030002.nac")

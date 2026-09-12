@@ -51,10 +51,13 @@ analogue modem would be sending a calling tone and then answering ANSam.  The
 real Courier answered, sent its answer tone into the bridge, heard an idle
 digital link back, and timed out.  So did we.
 
-`AT*V2=3`, the Modem/Fax Emulation setting, does not move it: this firmware
-refuses the `*V` commands the way
-[imodem-config-sector.md](imodem-config-sector.md) records `AT*V1` being
-refused, and the dial that follows returns `NO CARRIER` without a SETUP at all.
+This run predated reliable multi-command delivery.  The conclusion that
+`AT*V2=3` did not move the bearer was a harness artifact: the setting is
+accepted and persists as binary `03` at record offset `0x25f`.  With the
+fixed sequencer, `AT*V2=3`, `AT&W`, `ATD8406` sends `90 90 a2` (3.1 kHz
+audio, mu-law) and no LLC.  See
+[imodem-dialling-analogue.md](imodem-dialling-analogue.md) for the control and
+the S80 speech override.
 
 ## Two things the live call gave up for free
 
@@ -72,21 +75,19 @@ flags - where `1080` got `MISC_INFO` and a cleared call.  `--bri-v120-llc
 48763bc0c2e2` is the value to use.  The modem still does not answer SABME, so
 that question is unchanged, but it is no longer sitting behind a refused SETUP.
 
-## What it would take to hear them train
+## The next live run
 
 The analogue side of this board works - it answers an audio call as a modem
 and puts ANSam on the bearer ([imodem-audio-bearer.md](imodem-audio-bearer.md)).
-What it will not do is *originate* one.  So the roles have to swap: the real
-Courier dials, and the I-modem answers.
+It can also originate one when `*V2=3` is selected.  The original roles no
+longer have to swap merely to obtain an analogue bearer.
 
-That needs one thing this repository does not have yet: **`sip.py` answers no
-inbound INVITE.**  `_handle_request` handles `BYE` and nothing else, so the
-session can place a call and cannot take one.  Adding it is contained - reply
-200 with our SDP, parse theirs, mark the session connected - and it is the
-whole of what stands between this page and two Couriers training through an
-Asterisk.
+The existing outbound SIP bridge can now repeat this call with `*V2=3` and put
+the two datapumps on an analogue bearer.  Inbound INVITE support remains useful
+for reversing the roles, but it is no longer a prerequisite for trying the
+original direction again.
 
 Pacing is the question after that, not before it.  439 octets of fill in this
 run says the bearer can very nearly keep pace with real time; whether *very
 nearly* is good enough for a V.8 handshake is worth finding out rather than
-assuming, and it can only be found out once both ends are speaking analogue.
+assuming.  The mapped setting now makes that experiment possible.

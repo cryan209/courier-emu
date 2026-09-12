@@ -143,6 +143,21 @@ DATA_TEI = 88                 # *T2
 TEI_LENGTH = 2
 DIALING_MODE = 90             # *O
 
+# The data-bearer selector is outside the 91-byte ATI12 block.  Seven
+# isolated ``AT*V2=n`` + ``AT&W`` sessions wrote the value literally here:
+# the only record difference between the sealed generations, apart from the
+# generation and CRC, was 00..06 at page offset 0x25f.
+DATA_BEARER = 0x25F           # *V2, a binary value (not an ASCII digit)
+DATA_BEARERS = {
+    0: "Auto Detect",
+    1: "V.120",
+    2: "V.110",
+    3: "Modem/Fax Emulation",
+    4: "Clear Channel",
+    5: "Auto Mode PPP",
+    6: "X.75",
+}
+
 # The dialing mode's own renderer at 0xc3304 is four instructions of
 # specification: it reads d4d0, clamps anything outside '0'..'1' to '2', and
 # indexes a three-entry table. So the field is ASCII and there are exactly
@@ -223,6 +238,11 @@ def read_mac_address(sector: bytes, page: int = 0) -> bytes:
     return bytes(sector[base:base + MAC_ADDRESS_LENGTH])
 
 
+def read_data_bearer(sector: bytes, page: int = 0) -> int:
+    """Read the binary ``*V2`` selector from a configuration page."""
+    return sector[page * PAGE_SIZE + DATA_BEARER]
+
+
 def set_record_bytes(sector: bytes | bytearray, offset: int,
                      data: bytes) -> bytes:
     """Write raw bytes at a page offset in every page, and reseal."""
@@ -287,6 +307,13 @@ def set_dialing_mode(sector: bytes | bytearray, mode: int) -> bytes:
     if mode not in DIALING_MODES:
         raise ValueError(f"dialing mode must be one of {sorted(DIALING_MODES)}")
     return set_isdn_byte(sector, DIALING_MODE, ord(str(mode)))
+
+
+def set_data_bearer(sector: bytes | bytearray, bearer: int) -> bytes:
+    """Set ``*V2`` in both pages, in the literal binary form the modem writes."""
+    if bearer not in DATA_BEARERS:
+        raise ValueError(f"data bearer must be one of {sorted(DATA_BEARERS)}")
+    return set_record_bytes(sector, DATA_BEARER, bytes([bearer]))
 
 
 def set_switch_protocol(sector: bytes | bytearray, protocol: int) -> bytes:

@@ -135,10 +135,32 @@ def test_a_setup_from_the_modem_is_walked_up_to_connect():
     assert peer.call_state == "connect-request"
     assert peer.vr == 1 and peer.vs == 3
     assert any("calling 5551212" in text for _, text in peer.events)
+    assert peer.status()["outbound_setup"] == {
+        "bearer_capability": "88 90",
+        "low_layer_compatibility": None,
+    }
     wire.from_modem.append(bri.i_frame(0, 0, 1, 3, False,
         bri.q931_message(bri.CONNECT_ACKNOWLEDGE, 0x0A, True)))
     peer.service(wire, 4000)
     assert peer.call_state == "active"
+
+
+def test_the_peer_records_both_outbound_setup_bearer_fields():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None)
+    peer.state = bri.MULTIPLE_FRAME
+    setup = bri.q931_message(
+        bri.SETUP, 1, True,
+        bri.element(bri.IE_BEARER_CAPABILITY,
+                    bri.audio_bearer())
+        + bri.element(bri.IE_LOW_LAYER_COMPATIBILITY,
+                      bri.LLC_V120 + bytes.fromhex("48763bc0c2e2")))
+    wire.from_modem.append(bri.i_frame(0, 0, 0, 0, False, setup))
+    peer.service(wire, 0)
+    assert peer.status()["outbound_setup"] == {
+        "bearer_capability": "90 90 a2",
+        "low_layer_compatibility": "88 90 28 48 76 3b c0 c2 e2",
+    }
 
 
 def test_an_out_of_sequence_i_frame_is_rejected_rather_than_accepted():

@@ -122,9 +122,10 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 18 | 73 | flash `A17` - PA28F400 pin 3 |
+| 21 | 70 | `A0` - RAM pin 10 **and** flash pin 11 |
 
-Locals 15-17 (`76`-`74`) and everything right of local 18 (`72`-`61`) are
-unread. That gap matters: see below.
+Locals 15-17 (`76`-`74`), 19-20 (`72`-`71`) and 22-30 (`69`-`61`) are unread.
+This edge is the address side of the part: see below.
 
 ### Right edge - the CPU control group
 
@@ -241,50 +242,57 @@ previous revision proposed two latches, one per byte, with the readings taken
 across both without distinguishing them. There is no second latch to distribute
 them to.
 
-#### So what latches `A0`-`A7`?
+#### The ASIC latches `A0`-`A7`, and pin 70 is the proof
 
 An 80C186EB multiplexes `AD0`-`AD15` and drives `A16`-`A19` separately. The
-high byte is accounted for. **Nothing identified on this board latches the low
-byte**, and the memories need it - flash and SRAM both take `A0`-`A7` as
-ordinary address inputs and neither has any idea what `ALE` is.
+'573 accounts for the high byte. **Nothing else identified on the board latches
+the low byte**, and the memories need it - flash and SRAM both take `A0`-`A7`
+as ordinary address inputs and neither has any idea what `ALE` is.
 
-The ASIC is the only candidate, and it is not a weak one. It is the only part
-known to hold **both** `AD0`-`AD7` (pins `84`-`77`) **and** `ALE` (pin `57`) -
-which is to say, exactly the inputs a low-byte address latch takes, and nothing
-else on the board has them. It is already known to drive **flash `A17`** from
-pin 73, so it demonstrably drives address lines into the flash. And the whole
-bottom-right of the package, `28`-`46`, is unread and contiguous - room for
-eight address outputs and then some.
+**ASIC pin 70 goes to RAM pin 10 and flash pin 11. Both are `A0`.** That is the
+low byte's first bit, driven out of this part into both memories, and it settles
+what a previous revision could only propose:
 
-So the working claim is that **the ASIC is the low-byte address latch**, and
-the '573 beside it is the high-byte half of the same job. That would make the
-`ALE` pin on the ASIC something more than self-decoding for its own `0x00`-`0x7f`
-window, which is all this file has previously used it for.
+* the ASIC is the **low-byte address latch** for the memory bus,
+* which is what `AD0`-`AD7` on pins `84`-`77` and `ALE` on pin `57` are *for* -
+  not merely self-decoding its own `0x00`-`0x7f` window, which is all this file
+  had ever used `ALE` to explain,
+* and the '573 beside it is the high-byte half of one shared job.
 
-It also puts the earlier memory reading in a different light. `A7` was traced
-from flash pin 4 and RAM pin 3 back to `'573` pin 12, and `A7` is not a bit
-this latch carries. Under the claim above, **that net should run to the ASIC
-instead**.
+The memory address bus therefore comes from three places at once: `A0`-`A7`
+from the ASIC, `A8`-`A15` from the '573, `A16`-`A19` from the CPU - except
+`A17`, which is also the ASIC, on pin 73.
 
-**Which is the measurement.** Take flash pin 4 / RAM pin 3 - the `A7` net -
-and follow it to the ASIC rather than to the '573. If it lands on the unread
-`28`-`46` run, the claim is established and the memory bus is half an ASIC
-function. If it really is on `'573` pin 12, then this latch is not the
-high-byte latch after all and the `AD8` readings are what need retaking.
+**The outputs are on the top edge, not where the last revision guessed.** It
+predicted the unread `28`-`46` run at the bottom right; `A0` is at 70 and flash
+`A17` at 73, both on the top edge, in the run this file had already flagged as
+the neighbours of the `A17` pin. So the top edge is the address side of the
+package end to end: `AD0`-`AD7` in at locals 7-14, latched address out at
+locals 18 and 21, with locals 15-17, 19-20 and 22-30 still unread between and
+around them.
 
-The **74VHC32** is worth a note while the meter is out. A quad 2-input OR next
-to the address latch is the usual shape of memory decode glue - `OR`ing a chip
-select with `RD` or `WR` to make per-device strobes - and it is unattributed.
-Two of its pins would say whether the memories are selected by the CPU's own
-`UCS`/`LCS` or by something the ASIC produces.
+That is thirteen unread pins on one edge for the seven remaining low-address
+bits, and it is now the cheapest high-value trace on the part - `A1` is RAM pin
+9 and flash pin 10, and they walk down from there. If `A1`-`A7` are in that run
+the low-byte latch is fully mapped, and whatever is left over on that edge is
+the next question.
 
-Until that is done the memory map gets nothing from this, and the
-shared-low-address-bus conclusion stays withdrawn.
+**`A17` is the odd one out and stays odd.** `A16`-`A19` are non-multiplexed CPU
+outputs that need no latch, so there is no bus reason for one of them to come
+out of the ASIC. Routing it through a part that also holds a latch is what
+**remapping** looks like, not buffering. Flash `A16` and `A18` are what decide
+it, and they are in the same unread run.
 
-**What does not depend on any of it:** the ASIC takes `AD0`-`AD7` raw on pins
-`84`-`77` and `ALE` on pin `57`, both measured on the package itself. Whatever
-it does with them, it is on the *input* side of the demultiplex, not reading
-anyone's `Q` outputs.
+The **74VHC32** beside the latch is still unattributed. A quad 2-input OR there
+is the usual shape of memory decode glue - `OR`ing a chip select with `RD` or
+`WR` to make per-device strobes - and two of its pins would say whether the
+memories are selected by the CPU's own `UCS`/`LCS` or by something the ASIC
+produces.
+
+**One reading is now known to be wrong.** `A7` was traced from flash pin 4 and
+RAM pin 3 back to `'573` pin 12. `A7` is a low-byte bit, the low byte comes out
+of the ASIC, and this net should land on the ASIC's top edge alongside `A0`.
+That one wants retaking.
 
 ### Bottom edge - the panel and the two handshake lines
 
@@ -560,18 +568,18 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Eighty of the 120 pins are unread. The bottom edge is now partly read -
+Seventy-nine of the 120 pins are unread. The bottom edge is now partly read -
 nine pins of it - and the other twenty-one are still open. The ones worth
 finding next, in the order they would pay:
 
-1. **The `A7` net, followed to the ASIC.** Flash pin 4 and RAM pin 3 carry
-   `A7`, the single '573 latches `A8`-`A15`, and nothing else identified on the
-   board latches the low byte. If that net lands in the unread `28`-`46` run,
-   the ASIC is the low-byte address latch and the memory bus is half an ASIC
-   function.
-2. **Top-edge pins `76`-`74` and `72`-`61`** - the neighbours of the flash
-   `A17` pin. If `A16` and `A18` are there, the CPU's high address path runs
-   through this part too.
+1. **`A1`-`A7` on the top edge.** `A0` is on pin 70 and thirteen pins of that
+   edge are unread. `A1` is RAM pin 9 / flash pin 10 and they walk down from
+   there; finding them completes the low-byte latch. The `A7` net previously
+   recorded on `'573` pin 12 belongs here and should be retaken.
+2. **Flash `A16` and `A18`, in the same run.** `A17` on pin 73 has no bus
+   reason to be there - those lines need no latch - so if `A16` and `A18` are
+   also on the ASIC it is buffering the high address, and if they are not, it
+   is remapping `A17` alone.
 3. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.

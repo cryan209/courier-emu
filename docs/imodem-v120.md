@@ -114,12 +114,10 @@ Three threads, in the order they are worth pulling:
   rate adaption parameters; `+4` is the one the `no negotiate LLI` branch tests.
   Reading what it requires is the same kind of work that found the called-number
   comparison, and it has the same kind of answer waiting.
-* **Whether the modem wants V.120 at all on this call.**  `*V2` selects the
-  data bearer - Auto Detect, V.120, V.110, Modem/Fax, Clear Channel, PPP, X.75 -
-  and [imodem-config-sector.md](imodem-config-sector.md) records that the two
-  `*V` settings are not in the block ATI12 prints, so which one is in force in
-  these runs is not established.  A modem set to X.75 or PPP would ignore a
-  SABME on LLI 256 exactly like this.
+* **V.120 with `*V2=1`.**  `*V2` is now mapped as a literal binary selector at
+  record offset `0x25f`; these earlier runs used the Auto Detect default.
+  Repeating the link experiment with V.120 explicitly selected will separate
+  protocol negotiation from automatic bearer selection.
 * **Who establishes.**  The peer offers both and neither is answered, so this
   is the least likely of the three - but `--bri-v120-establish terminal` is
   there, and a modem that establishes first would be answered.
