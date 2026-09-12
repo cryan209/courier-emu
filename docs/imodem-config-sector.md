@@ -358,6 +358,12 @@ callers - no far call anywhere in the image targets it, and no near call from
 any plausible segment - so it is reached through a pointer. That indirection is
 where the next look belongs.
 
+**Every sentence of that paragraph is wrong**, and
+[imodem-d-channel-transmit.md](imodem-d-channel-transmit.md) replaces it.
+`0x71cb0` is the middle of a function, not an entry; the entry is `0x71c77`
+and it has five ordinary far callers; one of them runs; and the transmitter
+is entered and then refused by a permission flag that nothing ever sets.
+
 
 ## The block map, from the firmware's own descriptor table
 
