@@ -158,6 +158,23 @@ LIU_LSR = 0xA1
 DLC_DTCR = 0x85
 DLC_DRCR = 0x89
 
+# The part's random number generators. These are not storage: the Am79C30's
+# RNGR pair is a generator the host reads, and the firmware reads it to get
+# the reference number for a TEI Identity Request - Ri, the value that lets
+# two terminals asking at once tell their answers apart (Q.921 Annex D).
+#
+# Answering them out of the register file gave whatever had been written,
+# which is 0, so every request this harness ever saw carried Ri 0. That is a
+# legal value and not the reason a request fails, but it is not what the part
+# does, and two terminals would collide on it.
+#
+# The sequence is a seeded LCG rather than the system generator, so a run
+# stays reproducible: a harness whose frames change between runs is worse to
+# debug than one whose "random" number is fixed per seed.
+DLC_RNGR1 = 0x8A
+DLC_RNGR2 = 0x8B
+RNGR_SEED = 0x2189
+
 # I.430's interface states, as the firmware numbers them: it reads LSR, takes
 # (LSR & 7) + 2, and dispatches state - 3 through a six-entry table. F3 is the
 # resting state and the one entry that notifies nobody; F7 is the activated
@@ -214,6 +231,8 @@ class Am79C30:
     received: int = 0
     transmitted: int = 0
     tx_length_mismatch: int = 0
+    rng_state: int = RNGR_SEED
+    rng_reads: int = 0
 
     def handles(self, port: int) -> bool:
         return port in PORTS
@@ -247,6 +266,16 @@ class Am79C30:
 
     def _lsr(self) -> int:
         return ((self.liu_state - 1) & 7) | (self.lsr_flags & 0xC0)
+
+    def _random_byte(self) -> int:
+        """One byte out of the part's random number generator.
+
+        Numerical Recipes' LCG, seeded per instance, so the bytes differ from
+        each other and from zero while a run stays reproducible.
+        """
+        self.rng_state = (self.rng_state * 1664525 + 1013904223) & 0xFFFFFFFF
+        self.rng_reads += 1
+        return (self.rng_state >> 16) & 0xFF
 
     # -- the D channel, from the network side ------------------------------
 
@@ -368,6 +397,8 @@ class Am79C30:
         self.read_counts[register] += 1
         if register == LIU_LSR:
             return self._lsr()
+        if register in (DLC_RNGR1, DLC_RNGR2):
+            return self._random_byte()
         if register == DLC_DRCR:
             # The received frame's length, low byte first, as the status
             # handler reads it after draining the frame.

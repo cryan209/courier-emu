@@ -135,9 +135,11 @@ SETUP and does not act on it".
 Two things stand between this and a call, and both are on the modem's side of
 the configuration rather than the peer's:
 
-* **The modem does not request a TEI on its own**, even once layer 3 has
-  been handed an incoming SETUP over the broadcast data link.  A TE asks for
-  a TEI when it has traffic, and this is traffic.
+* **The modem's TEI request is never transmitted.**  It does build one - a
+  correct Q.921 Identity Request, `0f <Ri> 01 ff` - when an incoming SETUP
+  arrives over the broadcast data link, and it is queued and then thrown
+  away rather than sent.  See [imodem-tei-request.md](imodem-tei-request.md),
+  which corrects the "does not request a TEI" this list used to carry.
 * **`ATD` is gated on the data link, so it is not a second problem.**  The
   `'D'` handler at `0xcc6a3` reads `ce0:8d7d` - the byte `ATI12` prints as
   `Data Link Layer` - and returns an error when it is zero, before the one

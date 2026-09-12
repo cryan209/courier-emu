@@ -327,3 +327,25 @@ def test_the_peer_notices_the_line_going_down_underneath_it():
     assert peer.state == bri.TEI_UNASSIGNED
     assert peer.call_state == "null"
     assert any("went down underneath us" in text for _, text in peer.events)
+
+
+def test_the_chips_random_registers_are_a_generator_not_storage():
+    # The Am79C30's RNGR pair is what the firmware reads for a TEI Identity
+    # Request's reference number. Answering it out of the register file gave
+    # Ri 0 on every request ever made in this harness.
+    from courier_emu.am79c30 import Am79C30, DLC_RNGR1, DLC_RNGR2
+
+    part = Am79C30()
+    part.select(DLC_RNGR1)
+    values = [part.read_data() for _ in range(6)]
+    assert any(values), "a generator that only returns zero is the old bug"
+    assert len(set(values)) > 1
+
+    # ...but reproducible, so a run can be debugged twice.
+    twin = Am79C30()
+    twin.select(DLC_RNGR1)
+    assert [twin.read_data() for _ in range(6)] == values
+
+    # Both registers draw from the same generator, as one part would.
+    part.select(DLC_RNGR2)
+    assert part.read_data() != 0 or part.rng_reads > 6
