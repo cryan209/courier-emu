@@ -900,3 +900,65 @@ Ruled out by measurement, not by argument:
   execute; the result code is appended afterwards.
 * **Not spontaneous.** With nothing typed, nothing is transmitted at all, so
   the `NO CARRIER` is genuinely the command's result code.
+
+
+## The gate on the direct `[d08b]` write, and the end of this trail
+
+`0xa629c` writes `[d08b] = 1` directly. Its gate, from `0xa6279`:
+
+```
+a6279  test [ca68], 1 ; jne a62b2      ; bit 0 must be clear
+a6280  test [ca68], 2 ; jne a62ae      ; bit 1 must be clear
+a6287  test [ca68], 4 ; je  a62c5      ; bit 2 must be SET
+a628e  cmp  [ca5c], 1 ; jne a62ae      ; and [ca5c] must be 1
+a6295  cmp  [d08b], 0 ; jne a62ae
+a629c  mov  [d08b], 1
+```
+
+`[ca68]` is written as an enum - 1, 2, 4, 0x20, 0x24, 0x80 - and `[ca5c]` is
+set to 1 at exactly four sites, `0xa708c`, `0xa7855`, `0xa78aa` and `0xa7c24`,
+all in the call-setup region. So `0xa629c` is a **call-time** handler: it
+records "DTR dropped" when DTR drops *during a call*. The handler it sits in is
+never entered in an idle session at all.
+
+The other writer of `[d08b] = 1` is `ab329` called from `0xa62ae` - inside the
+same handler, behind the same gate.
+
+### So the OK branch is call-teardown-only, by construction
+
+That is the whole answer. Presented with the state its OK branch wants, the
+decision prints `OK`; presented with the real one, it prints `NO CARRIER`:
+
+| `[d08b]`, `[d2a1]` at `a8067` | a8083 | a8096 | printed |
+|---|---|---|---|
+| the real idle state, `0`, `0` | 0 | 1 | `NO CARRIER` |
+| forced to `1`, `0x01` | 1 | 0 | `OK` |
+
+So the decision is not broken and the result table is not mis-indexed. There is
+simply **no route to `OK` for an idle modem in this image**: the only two
+writers of cause 1 are both behind a gate that only a live call opens.
+
+### Everything eliminated
+
+Each of these was tested, not argued:
+
+| hypothesis | result |
+|---|---|
+| a DTR transition records the cause | the handler at `a6279` is never entered, DTR up, down, or toggled |
+| the fax capability opens an escape | forcing `[d2c5]` bit 0 changes nothing - the escapes are set by *executing* `+FCLASS`, not by the capability |
+| `[d1ea]` is the wrong state | held at every value 0..7; none produces `OK`, and 6 and 7 produce no result at all |
+| the ISDN line is down | `--line-activate` reaches F7, no change |
+| the result table is mis-indexed | `a8083` demonstrably prints `OK` |
+| the command is not parsed | `ATI3` prints its banner |
+| it is spontaneous | nothing typed, nothing transmitted |
+
+What is left is a question this repository cannot settle from the image alone:
+whether a real Courier I-Modem, with no line and no configuration, also answers
+`NO CARRIER` to a bare `AT` - in which case the harness is right and the
+expectation was wrong - or whether a real unit reaches a state that skips this
+epilogue entirely. Settling it needs a real unit, or a capability record dumped
+from one.
+
+The rewrite that used to be in `courier_emu/isdn.py` made `AT` print `OK` by
+supplying exactly the two values in the table above. That is the only thing
+that ever made it answer `OK`, and it was fiction.
