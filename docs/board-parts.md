@@ -11,7 +11,7 @@ not in frame, so nothing here says what is on it.
 |---|---|
 | `NEC USA 1-016-905 9948LV001` | **the ASIC.** A USR part number on an NEC-fabricated gate array, date code week 48 1999; pinned out in [asic-pinout.md](asic-pinout.md) |
 | `TI DSP 16-912 (C) US ROBOTICS D17140PQ` | the C5x-family DSP, custom-marked with a USR part number |
-| `S80C186` | the Intel supervisor. The pin readings identify it more precisely as an **80C186EB in the 80-lead QFP** - `RD`/`WR`/`ALE` on 36/37/38 and `INT0`/`INT2` on 62/64 all match that package's Table 7 exactly, and match the XL's not at all. Which is the device `courier_emu/uart.py`'s `EbSerial` already assumes |
+| `S80C186` | the Intel supervisor. Its `GCS0` (QFP pin 59) is the ASIC's chip select, so the ASIC's I/O window is set by the programmable limits at `0xff80`/`0xff82` rather than decoded in the ASIC. The pin readings identify it more precisely as an **80C186EB in the 80-lead QFP** - `RD`/`WR`/`ALE` on 36/37/38 and `INT0`/`INT2` on 62/64 all match that package's Table 7 exactly, and match the XL's not at all. Which is the device `courier_emu/uart.py`'s `EbSerial` already assumes |
 | `TLC...320AC01CFN` | the voice-band codec, PLCC, next to the DSP |
 | `ECLIPTEK EC11 40.320M` | the master oscillator |
 | `NEC D43256BGU-70LL` x2 | the **80186's** SRAM, `U4` and `U12`: not two banks but the **low and high byte lanes of one 32K x 16**. Both `CE#` on CPU `LCS` (QFP pin 60); separate `WE#` from two '32 gates, `U12`'s qualified by latched `A0` from the ASIC and `U4`'s by `BHE#` straight from CPU pin 39 |

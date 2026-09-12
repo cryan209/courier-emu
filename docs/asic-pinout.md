@@ -1072,9 +1072,9 @@ The ones worth finding next, in the order they would pay:
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-8. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
-   the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
-   CPU-side interface is complete.
+8. **`GCS0 Start` and `GCS0 Stop` at `0xff80`/`0xff82`**, read out of a run
+   rather than off the board. Those two registers define the address range that
+   selects the ASIC, and nothing in `courier_emu` looks at them.
 9. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.

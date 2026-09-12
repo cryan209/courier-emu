@@ -72,8 +72,8 @@
 <rect x="670.0" y="409.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="397.0" width="16.0" height="6.0" fill="#1d5fa8"/>
 <text x="692.0" y="404.0" font-size="11.5" fill="#1d5fa8">53 &#183; INT2/INTA0# (CPU 64)</text>
-<rect x="670.0" y="385.0" width="16.0" height="6.0" fill="#a03060"/>
-<text x="692.0" y="392.0" font-size="11.5" fill="#a03060">54 &#183; ? chip select</text>
+<rect x="670.0" y="385.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="392.0" font-size="11.5" fill="#1d5fa8">54 &#183; GCS0 chip select (CPU 59)</text>
 <rect x="670.0" y="373.0" width="16.0" height="6.0" fill="#1d5fa8"/>
 <text x="692.0" y="380.0" font-size="11.5" fill="#1d5fa8">55 &#183; RD#  (CPU 36)</text>
 <rect x="670.0" y="361.0" width="16.0" height="6.0" fill="#1d5fa8"/>

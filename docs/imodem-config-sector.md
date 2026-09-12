@@ -327,9 +327,11 @@ this repository.  They are not asserted to be recovered I-modem factory
 values, but they are now the practical default for the emulator: a missing or
 factory-erased `flashnvram.sav` is seeded in memory with that header and the
 synthetic serial `COURIEREMU01`.  The firmware writes the seeded record back at
-the end of the run, so subsequent boots retain it.  Explicitly named NVRAM
-files are never seeded; hardware dumps and erased-state experiments therefore
-remain byte-for-byte under the caller's control.
+the end of the run, so subsequent boots retain it.  All four pages considered
+by the loader are seeded: seeding only SA8's first two pages is insufficient
+after `AT&W` has created newer generations in SA9.  Explicitly named NVRAM files
+are never seeded; hardware dumps and erased-state experiments therefore remain
+byte-for-byte under the caller's control.
 
 
 ## The modem writes its own record: `AT&W`
