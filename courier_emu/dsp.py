@@ -251,6 +251,8 @@ class NativeC5x:
         lib.courier_c5x_get_line_phase_samples.restype = ctypes.c_size_t
         lib.courier_c5x_get_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
+        lib.courier_c5x_get_program.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_program.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_set_data_trace_filter.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int]
         lib.courier_c5x_set_data_trace_filter.restype = None
@@ -476,6 +478,15 @@ class NativeC5x:
 
     def io_output(self, port: int) -> int:
         return int(self.library.courier_c5x_get_io_output(self.handle, port))
+
+    def program(self, address: int) -> int:
+        """One word of program memory, as the core would fetch it.
+
+        Downloaded overlays exist only inside the core - nothing on the host
+        side keeps a second copy - so reading them back is the only way to
+        disassemble what the DSP is actually running.
+        """
+        return int(self.library.courier_c5x_get_program(self.handle, address))
 
     def data(self, address: int) -> int:
         return int(self.library.courier_c5x_get_data(self.handle, address))

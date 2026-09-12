@@ -237,6 +237,11 @@ uint16_t courier_c5x_get_io(void *handle, uint16_t port)
     return handle ? static_cast<C5xCore *>(handle)->io(port) : 0xffff;
 }
 
+uint16_t courier_c5x_get_program(void *handle, uint16_t address)
+{
+    return handle ? static_cast<C5xCore *>(handle)->program(address) : 0xffff;
+}
+
 uint16_t courier_c5x_get_data(void *handle, uint16_t address)
 {
     return handle ? static_cast<C5xCore *>(handle)->data(address) : 0xffff;

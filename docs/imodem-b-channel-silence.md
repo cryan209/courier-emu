@@ -115,6 +115,105 @@ the run ends.
 data memory.  It is real downloaded overlay code doing real work; what it is
 not doing is going back to the resident's dispatcher.
 
+## What the loop is waiting on
+
+It is an **HDLC flag hunt**, and reading it back settles both what it wants and
+why it can never get it.  `NativeC5x.program()` reads a downloaded overlay out
+of the core - nothing on the host side keeps a second copy - so the thing the
+DSP is actually running can be disassembled:
+
+```
+e8ac  splk  @7d, #e8b6
+e8b1  splk  @7f, #0009      ; nine flags before sync is declared
+e8b6  call  e8d7            ; one bit
+e8b8  bcnd  e8ac, tc        ; a 1 here is not the leading zero: start over
+e8ba  splk  @7d, #e8be
+e8bc  splk  @7e, #0006      ; six ones
+e8be  call  e8d7
+e8c3  bcnd  e8ba, ntc       ; a 0 breaks the run: start over
+e8c5  lacc  @7e / sub #01 / bcnd e8be, gt
+e8ca  splk  @7d, #e8cc
+e8cc  call  e8d7
+e8ce  bcnd  e8ac, tc        ; a seventh one is an abort, not a flag
+e8d0  lacc  @7f / sub #01 / bcndd e8b6
+```
+
+Zero, six ones, zero - `01111110` - nine times over.  `@7d` holding `e8b6`,
+`e8be` or `e8cc` is a resume address, so this is a coroutine: it is written to
+be re-entered a bit at a time and to hand control back, not to spin.
+
+The bit source is the helper it calls:
+
+```
+e8d7  lamm  @0e             ; TREG2, the bit pointer
+e8d8  sub   @7c             ; @7c = 7
+e8d9  bitt  *               ; bit TREG2 of the word at *AR1
+e8da  xc    2, eq
+e8db  pop / ret             ;   TREG2 == 7: the byte is spent, unwind a level
+e8dd  lamm  @0e
+e8de  retd / sub #01 / samm @0e   ; otherwise step the bit pointer down
+```
+
+`AR1` is `0x0889`, and `@7c` is 7 - the pointer is meant to walk **15 down to
+8**, the top half of a sixteen-bit word, and unwind when it runs out so the
+level above can fetch the next one.
+
+## And why it never gets it
+
+`0x0889` is filled by the resident, at the splitter that takes one received
+serial word apart:
+
+```
+80d9  lacl  *, ar1          ; the received word
+80da  sacl  @0b             ; 0x088b
+80db  apl   @0b, #00ff      ;   low octet
+80dd  bsar  8
+80de  sacl  @09             ; 0x0889 - high octet
+```
+
+That splitter is in the resident, on the same background path as the mailbox
+dispatcher that polls port `57h`.  **It stops when the overlay loop starts**,
+and the counters say so exactly: `0x0889` takes 57,187 writes, the last of them
+from the overlay at `eb3f`, and across the whole 26-second call after the `5e`
+command it takes **none**.  The cell the flag hunt reads is frozen at whatever
+was in it when the background loop stopped running.
+
+The receive path itself is fine, which is what makes this precise rather than
+vague.  Octets keep arriving all through the loop - the interrupt side fills a
+ring at `0x0bd0..0x0bde`, 4,491 writes to each of its eight words, with the
+pointers at `0x0390`/`0x0391` - and feeding the peer `7e` instead of a sine
+wave turns every word of that ring into `007e`.  The bytes are there.  Nothing
+carries one to `0x0889`, because the thing that would is the loop's own caller.
+
+So the deadlock is complete and symmetrical: the flag hunt waits for a byte the
+background loop supplies, the background loop cannot run until the flag hunt
+returns, and the `5e` command waits behind both.  `TREG2` shows it directly -
+3,186,292 writes during the loop, free-running downward through all sixteen bit
+positions instead of being reloaded to 15 per byte, because the per-byte level
+that would reload it is never reached.
+
+The `ff` on the wire, meanwhile, is deliberate.  The overlay picks its own idle
+codeword at `e8e9` and `e909` - `splk @21, #00ff`, DXR - choosing between `ff`
+and `7f` on a flag bit.  A modem whose HDLC receiver has not synchronised
+transmits mark idle, which is exactly what the capture contains.
+
+## One thing the model has wrong, found on the way
+
+The firmware programs the serial port with **`SPC = 40c8`**, and bit 0, `FO`, is
+**0**: sixteen-bit word format.  `native/c5x_core.cpp` says the opposite in a
+comment - "FO=1 is byte format" - and puts the B-channel octet in the low byte
+with the high byte zero.  The firmware's own splitter at `80db..80de` takes
+*two* octets out of one word, and the flag hunt's `@7c = 7` terminator is the
+bit index where the top half of a sixteen-bit word ends.  Both say the DSP
+expects two peripheral-port time slots per 125 us frame, not one.
+
+Delivering the octet in the high half instead does put `007e` into `0x0889`,
+so the wiring is at least plausible - and it changes nothing else, because the
+deadlock above is upstream of it.  Which half carries which slot is not settled
+by anything above, and clocking two slots per frame is a change to
+`Am79C30.clock_bearer` and the harness around it rather than a one-line
+shift, so it is left as the next piece of work rather than guessed at here.
+
 ## What that makes the frontier
 
 The chain from an incoming call to a routed B channel is now complete and
@@ -125,15 +224,17 @@ posted.  The single missing joint is the last one:
 **what the DSP is waiting on in that loop, and what would return it to the
 dispatcher at `85c6` so the `5e` command is taken.**
 
-Two honest possibilities, and this page does not choose between them:
+The sections above answer the first half of that: it is an HDLC flag hunt,
+waiting on a byte only the background loop can hand it.  What is left is why
+it was entered as a blocking loop at all.  A coroutine with a resume address
+in `@7d` is written to be driven a bit at a time from above; this one was
+entered and never left, so the condition that let it start - the byte-ready
+tests at `e8f3` and `e900`, on `@78` and `@60` - was true when there was
+nothing behind it.  That is where the next trace goes, and the two-slot serial
+format above is the most likely reason those tests lie.
 
-* the overlay is waiting for something the board provides and this harness
-  does not, in which case the thing to find is what sets the bit it tests;
-* the overlay is waiting for the `5e` command itself to be delivered some
-  other way than the polled dispatcher - an interrupt the host raises, which
-  the model does not raise because nothing has shown it exists.
-
-Inventing either one would produce a modem that appears to talk.  The counters
-above are what tells them apart, and they are cheap to read: `bri.media`'s
-`tx_non_ff`, the mailbox's `consumed` against `committed`, and port `57h`'s
-read count before and after the command.
+Inventing a wake-up instead would produce a modem that appears to talk.  The
+counters are what tells the difference, and they are cheap to read:
+`bri.media`'s `tx_non_ff`, the mailbox's `consumed` against `committed`, port
+`57h`'s read count before and after the command, and the write count on
+`0x0889`.
