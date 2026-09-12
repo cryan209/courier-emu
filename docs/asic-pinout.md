@@ -713,9 +713,10 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Seventy-eight of the 120 pins are unread. The bottom edge is now partly read -
-nine pins of it - and the other twenty-one are still open. The ones worth
-finding next, in the order they would pay:
+Sixty-nine of the 120 pins are unread, and twelve of the fifty-one that are
+not are the inferred middles of the two DSP data runs rather than measurements.
+The bottom edge is nine pins read of thirty; the top edge is the busiest, with
+seventeen. The ones worth finding next, in the order they would pay:
 
 1. **`A2`-`A7` on the top edge.** `A0` is on pin 72 and `A1` on pin 71, so the
    run should continue 70, 69, and down. `A2` is RAM pin 9 / flash pin 10 and
