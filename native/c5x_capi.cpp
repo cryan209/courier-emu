@@ -179,6 +179,17 @@ std::size_t courier_c5x_get_g711_tx(void *handle, uint8_t *out, std::size_t capa
     return codewords.size();
 }
 
+std::size_t courier_c5x_get_g711_tx_since(void *handle, std::size_t start,
+    uint8_t *out, std::size_t capacity)
+{
+    if (!handle) return 0;
+    const auto &words = static_cast<C5xCore *>(handle)->g711_tx();
+    start = std::min(start, words.size());
+    const auto available = words.size() - start;
+    if (out) std::copy_n(words.begin() + start, std::min(available, capacity), out);
+    return available;
+}
+
 void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_data_trace_filter(

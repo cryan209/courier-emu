@@ -120,15 +120,25 @@ def test_a_setup_from_the_modem_is_walked_up_to_connect():
     wire.from_modem.append(bri.i_frame(0, 0, ns=0, nr=0, pf=False, info=setup))
     peer.service(wire, 0)
 
-    # An RR acknowledging the I frame, then the three call-control messages.
+    # Basic-access signalling has a one-frame window. Each acknowledgement
+    # releases the next call-control message; CONNECT needs a Q.931 ACK too.
+    assert peer.call_state == "connect-request"
+    assert peer.vs == 1
+    for nr in (1, 2, 3):
+        wire.from_modem.append(bri.s_frame(0, 0, bri.S_RR, False, nr, False))
+        peer.service(wire, nr * 1000)
     kinds = [bri.decode(frame, from_user=False) for frame in wire.to_modem]
     assert kinds[0].kind == "S"
     messages = [bri.decode_q931(frame.info).message_type
                 for frame in kinds if frame.kind == "I"]
     assert messages == [bri.CALL_PROCEEDING, bri.ALERTING, bri.CONNECT]
-    assert peer.call_state == "active"
+    assert peer.call_state == "connect-request"
     assert peer.vr == 1 and peer.vs == 3
     assert any("calling 5551212" in text for _, text in peer.events)
+    wire.from_modem.append(bri.i_frame(0, 0, 1, 3, False,
+        bri.q931_message(bri.CONNECT_ACKNOWLEDGE, 0x0A, True)))
+    peer.service(wire, 4000)
+    assert peer.call_state == "active"
 
 
 def test_an_out_of_sequence_i_frame_is_rejected_rather_than_accepted():
@@ -279,15 +289,52 @@ def test_an_unanswered_setup_is_retransmitted_once_and_then_cleared():
     peer.service(wire, 0)
     assert peer.call_state == "call-present"
     setups = len(wire.to_modem)
+    wire.from_modem.append(bri.s_frame(0, 0, bri.S_RR, False, 1, False))
+    peer.service(wire, 1000)
 
     peer.service(wire, bri.T303_INSTRUCTIONS)
     assert len(wire.to_modem) == setups + 1        # retransmitted once
     assert peer.call_state == "call-present"
+    wire.from_modem.append(bri.s_frame(0, 0, bri.S_RR, False, 2, False))
+    peer.service(wire, bri.T303_INSTRUCTIONS + 1000)
 
     peer.service(wire, 2 * bri.T303_INSTRUCTIONS)
     assert len(wire.to_modem) == setups + 1        # and no more
     assert peer.call_state == "null"
     assert any("clearing the call" in text for _, text in peer.events)
+
+
+def test_rej_retransmits_the_unacknowledged_payload_and_keeps_sequence():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None, call_at=0)
+    peer.state = bri.MULTIPLE_FRAME
+    peer.service(wire, 0)
+    original = wire.to_modem[-1]
+    wire.from_modem.append(bri.s_frame(0, 0, bri.S_REJ, False, 0, False))
+    peer.service(wire, 100)
+    assert wire.to_modem[-1] == original
+    assert peer.vs == 1
+    wire.from_modem.append(bri.s_frame(0, 0, bri.S_RR, False, 1, False))
+    peer.service(wire, 200)
+    assert peer.status()['unacknowledged_ns'] is None
+
+
+def test_lapd_rejects_truncated_control_and_invalid_address():
+    for raw in (b'\x00\x01\x00', b'\x01\x01\x03', b'\x00\x00\x03'):
+        assert bri.decode(raw) is None
+
+
+def test_nt_deactivation_clears_an_active_call_and_pending_signalling():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None, deactivate_at=100)
+    peer.state = bri.MULTIPLE_FRAME
+    peer.call_reference = 7
+    peer.call_state = 'active'
+    peer.service(wire, 0)
+    peer._send_layer3(0, bri.q931_message(bri.CONNECT, 7, False))
+    peer.service(wire, 100)
+    assert peer.call_state == 'null' and peer.call_reference is None
+    assert peer.status()['unacknowledged_ns'] is None
 
 
 def test_a_layer_3_answer_stops_t303():

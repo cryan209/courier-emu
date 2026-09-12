@@ -289,6 +289,52 @@ class Am79C30:
     tx_length_mismatch: int = 0
     rng_state: int = RNGR_SEED
     rng_reads: int = 0
+    # Opaque 64 kbit/s octets. MCR1..3 connect two logical ports per
+    # register: B1=1, B2=2, Ba=3, Bb=4, Bc=5, Bd=6, Be=7, Bf=8.
+    # AMD Am79C30A/32A data sheet, MUX control registers, table 18.
+    bearer_rx: dict = field(default_factory=lambda: {1: deque(), 2: deque()})
+    bearer_tx: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
+    bearer_frames: int = 0
+    bearer_routed: Counter = field(default_factory=Counter)
+
+    def bearer_routes(self) -> list[tuple[int, int]]:
+        routes = []
+        for register in (0x41, 0x42, 0x43):
+            value = self.blocks.get(register, b'\x00')[0]
+            left, right = value >> 4, value & 15
+            if 1 <= left <= 8 and 1 <= right <= 8:
+                routes.append((left, right))
+        return routes
+
+    def queue_bearer(self, channel: int, octets: bytes) -> None:
+        """Network-to-terminal B1/B2 input, without companding conversion."""
+        if channel not in (1, 2):
+            raise ValueError('bearer channel must be 1 or 2')
+        self.bearer_rx[channel].extend(octets)
+
+    def clock_bearer(self, peripheral: dict[int, int], idle: int = 0xff) -> dict[int, int]:
+        """Exchange one 8 kHz frame through the programmed MUX connections.
+
+        Peripheral keys are the data sheet's logical port codes, not channel
+        numbers. No default connection bypasses the firmware's MCR writes.
+        """
+        inputs = {port: value & 0xff for port, value in peripheral.items()}
+        for channel in (1, 2):
+            queue = self.bearer_rx[channel]
+            inputs[channel] = queue.popleft() if queue and self.activated else idle
+        outputs = {port: idle for port in range(1, 9)}
+        for left, right in self.bearer_routes():
+            if not self.activated and (left in (1, 2) or right in (1, 2)):
+                continue
+            outputs[left] = inputs.get(right, idle)
+            outputs[right] = inputs.get(left, idle)
+            for channel, other in ((left, right), (right, left)):
+                if channel in (1, 2) and other in peripheral:
+                    self.bearer_routed[channel] += 1
+        for channel in (1, 2):
+            self.bearer_tx[channel].append(outputs[channel])
+        self.bearer_frames += 1
+        return outputs
 
     def handles(self, port: int) -> bool:
         return port in PORTS
@@ -559,6 +605,12 @@ class Am79C30:
             "unknown_registers": {f"{r:#04x}": c for r, c in self.unknown.most_common()},
             "overruns": {self.name(r): c for r, c in self.overruns.most_common()},
             "liu_state": f"F{self.liu_state}",
+            "bearer": {
+                "frames": self.bearer_frames,
+                "routes": self.bearer_routes(),
+                "routed_frames": dict(self.bearer_routed),
+                "rx_pending": {channel: len(q) for channel, q in self.bearer_rx.items()},
+            },
             "d_channel": {
                 "frames_received": self.received,
                 "frames_transmitted": self.transmitted,

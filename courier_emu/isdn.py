@@ -185,6 +185,13 @@ TIMER_POLL_INSTRUCTIONS = 512
 # INT 2d -> 4030:0316 -> [2600:c893] is the mailbox service path.
 # This instruction cadence is a harness choice, not a recovered board clock.
 MAILBOX_SERVICE_INSTRUCTIONS = 2048
+# The vector table at 40573 installs IRQ11 (INT 2b) at 7360:1f56.
+# That ISR advances VRTX time and the ISDN software timers (46bc:0002),
+# then acknowledges the board timer through port 0 bit 40h. IRQ10 only
+# services the modem tick; it cannot wake the ISDN timeout worker.
+# 46bc:0002 subtracts 14h per call. Treat this as a modeled 20 ms period;
+# the oscillator/divider of the board timer has not been recovered.
+RTOS_SERVICE_INSTRUCTIONS = 50_000
 # Scheduling ratio for the coupled harness; not a measured I-modem clock.
 DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
 
@@ -322,6 +329,7 @@ class IsdnMachine:
         max_io_events: int = MAX_IO_EVENTS,
         profile: bool = True,
         mailbox_service: bool = True,
+        rtos_service: bool = True,
         mailbox: ImodemMailbox | None = None,
         with_dsp: bool = False,
         serial_signals: int = TERMINAL_PRESENT,
@@ -350,6 +358,8 @@ class IsdnMachine:
         # for a terminal session that only wants the serial stream.
         self.profile = profile
         self.mailbox_service = mailbox_service
+        self.rtos_service = rtos_service
+        self._next_rtos_service = RTOS_SERVICE_INSTRUCTIONS
         if with_dsp and mailbox is not None:
             raise ValueError('with_dsp and an explicit mailbox are mutually exclusive')
         if with_dsp:
@@ -416,6 +426,8 @@ class IsdnMachine:
         self.pit = ProgrammableIntervalTimer()
         self.pic = InterruptControllers()
         self.dsc = Am79C30()
+        if with_dsp:
+            self.mailbox.dsc = self.dsc
         self.flash = FlashDevice()
         self.dsp_handshake = 0
         self.board_latch = 0
@@ -595,6 +607,9 @@ class IsdnMachine:
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
         self._advance_dsp()
+        if self.rtos_service and self.instructions >= self._next_rtos_service:
+            self._next_rtos_service = self.instructions + RTOS_SERVICE_INSTRUCTIONS
+            self.pic.raise_irq(11)
         if self.serial_pump is not None:
             self.serial_pump(self)
         for channel in self.channels.values():

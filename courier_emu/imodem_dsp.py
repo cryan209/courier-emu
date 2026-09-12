@@ -9,7 +9,7 @@ ROM_SHA256 = '3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67'
 
 
 class ImodemDsp(ImodemMailbox):
-    def __init__(self):
+    def __init__(self, dsc=None):
         super().__init__(self._command)
         self.core = None
         self.tx_ready = False
@@ -24,6 +24,9 @@ class ImodemDsp(ImodemMailbox):
         self.bootstrap_words = 0
         self.error = None
         self._reply_writes = 0
+        self.dsc = dsc
+        self.pcm_tx = bytearray()
+        self._pcm_cursor = 0
 
     def close(self):
         if self.core is not None:
@@ -63,10 +66,22 @@ class ImodemDsp(ImodemMailbox):
         try:
             self.core.step(count)
             self._sync()
+            self._sync_pcm()
         except RuntimeError as exc:
             self.error = str(exc)
             self.tx_ready = False
             raise
+
+    def _sync_pcm(self):
+        octets = self.core.g711_tx(self._pcm_cursor)
+        self._pcm_cursor += len(octets)
+        self.pcm_tx.extend(octets)
+        if self.dsc is not None and octets:
+            # A modem call programs MCR1=16h: B1 <-> Bd (PP channel 1).
+            # Exchange the actual DSP serial octets through that MUX. Input
+            # is pipelined by one scheduler slice (normally <= one frame).
+            incoming = bytes(self.dsc.clock_bearer({6: octet})[6] for octet in octets)
+            self.core.queue_g711_rx(incoming)
 
     def read(self, port):
         if port == 0x18:
@@ -144,12 +159,12 @@ class ImodemDsp(ImodemMailbox):
         self.core.load_rom(rom)
         self.core.set_mpmc_pin(0)
         self.core.set_pc(self.boot_origin)
-        # A modeled idle DS0 supplies the resident's serial receive clock.
-        # Its physical routing from the Am79C30 is not yet connected.
+        # The peripheral port clocks a DS0 even when its MUX is disconnected.
         self.core.configure_digital_pcm(idle_codeword=0xff)
         self.core.configure_line_frame_interrupt(5, 0xffff)
         self.bootstrap_words = len(self.boot_words)
         self._reply_writes = 0
+        self._pcm_cursor = 0
         # The bootstrap completion bus must not expose a running mailbox
         # before resident initialization clears PA7. Wait for its first IDLE,
         # rather than delivering a command that that initialization discards.
@@ -167,4 +182,7 @@ class ImodemDsp(ImodemMailbox):
                       consumed=self.consumed, download_blocks=self.download_blocks,
                       error=self.error, core=self.core.state() if self.core else None,
                       dsp_status=self.core.io(0x57) if self.core else None)
+        result['pcm'] = {'frames': len(self.pcm_tx), 'sample_rate': 8000,
+                         'peripheral_port': 'Bd', 'attached': self.dsc is not None,
+                         'serial': self.core.serial_state() if self.core else None}
         return result

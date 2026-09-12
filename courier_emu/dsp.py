@@ -233,6 +233,11 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t
         ]
         lib.courier_c5x_get_g711_tx.restype = ctypes.c_size_t
+        lib.courier_c5x_get_g711_tx_since.argtypes = [
+            ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint8),
+            ctypes.c_size_t,
+        ]
+        lib.courier_c5x_get_g711_tx_since.restype = ctypes.c_size_t
         lib.courier_c5x_queue_codec_boot.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
@@ -433,13 +438,14 @@ class NativeC5x:
         self.library.courier_c5x_queue_g711_rx(self.handle, storage, len(storage))
 
     def g711_tx(self, start: int = 0) -> bytes:
-        count = int(self.library.courier_c5x_get_g711_tx(
-            self.handle, None, 0))
-        if start >= count:
+        start = max(0, start)
+        count = int(self.library.courier_c5x_get_g711_tx_since(
+            self.handle, start, None, 0))
+        if not count:
             return b""
         storage = (ctypes.c_uint8 * count)()
-        self.library.courier_c5x_get_g711_tx(self.handle, storage, count)
-        return bytes(storage[max(0, start):])
+        self.library.courier_c5x_get_g711_tx_since(self.handle, start, storage, count)
+        return bytes(storage)
 
     def queue_codec_boot(self, words: list[int] | tuple[int, ...]) -> None:
         """Boot-table words the ASIC clocks into the serial port.
