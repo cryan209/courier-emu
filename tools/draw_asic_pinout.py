@@ -27,7 +27,16 @@ setp(90,'VDD / DSP VDDD','pwr')
 for i,n in enumerate(range(89,85,-1)): setp(n,'DSP A%d'%i,'dsp')
 setp(85,'DSP A5','dsp')
 for i,n in enumerate(range(84,76,-1)): setp(n,'CPU AD%d'%i,'cpu')
-setp(74,'flash high addr','mem'); setp(71,"A0 -&gt; '32 (byte lane)",'mem'); setp(70,'A1 -&gt; RAM+flash','mem')
+setp(74, 'flash high addr', 'mem')
+setp(71, "A0 -&gt; '32 (byte lane)", 'mem')
+setp(70, 'A1 -&gt; RAM+flash', 'mem')
+for i, n in enumerate(range(69, 64, -1)):
+    setp(n, 'A%d' % (2 + i), 'memi')
+setp(64, 'A7 -&gt; RAM pin 4', 'mem')
+setp(63, 'CPU AD15 (CPU 28)', 'cpu')
+setp(62, 'CPU A17 (CPU 30)', 'cpu')
+setp(61, 'VCC', 'pwr')
+setp(60, 'GND', 'pwr')
 setp(57,'ALE  (CPU 38)','cpu'); setp(56,'WR#  (CPU 37)','cpu'); setp(55,'RD#  (CPU 36)','cpu')
 setp(54,'? chip select','sus'); setp(53,'INT2/INTA0# (CPU 64)','cpu'); setp(47,'INT1 (CPU 63)','cpu')
 setp(92,'DSP D15','dsp')
@@ -37,7 +46,7 @@ setp(101,'DSP D7','dsp'); setp(102,'DSP D6','dsp')
 for i,n in enumerate(range(103,108)): setp(n,'DSP D%d'%(5-i),'dspi')
 setp(108,'DSP D0','dsp'); setp(109,'DSP INT2','dsp'); setp(114,'DSP IS','dsp')
 for n,l in [(10,'CS'),(13,'AA'),(14,'ARQ'),(16,'HS'),(17,'SYN'),(18,'TR'),(21,'AA (2nd)'),(25,'RS'),(27,'MR')]: setp(n,l,'pan')
-COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','pan':'#b8541f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
+COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','memi':'#b28ad6','pan':'#b8541f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
 W=H=980; cx=cy=W/2; B=360.0
 x0=cx-B/2; y0=cy-B/2; x1=cx+B/2; y1=cy+B/2
 step=B/30.0; L=16.0
@@ -72,7 +81,7 @@ a(f'<text x="{cx}" y="{H-14}" text-anchor="middle" font-size="12.5" font-weight=
 a(f'<text transform="translate(20,{cy}) rotate(-90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">left 91-120 &#8212; DSP data bus, IS, INT2</text>')
 a(f'<text transform="translate({W-16},{cy}) rotate(90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">right 31-60 &#8212; CPU control</text>')
 lx,ly=34,60
-items=[('dsp','DSP side, measured'),('dspi','DSP data, inferred'),('cpu','CPU bus, measured'),('mem','memory address, out'),('pan','panel / RS-232 handshake'),('pwr','supply'),('sus','read but unidentified'),('un','unread (%d pins)'%(120-len(PINS)))]
+items=[('dsp','DSP side, measured'),('dspi','DSP data, inferred'),('cpu','CPU bus, measured'),('mem','memory address, out'),('memi','address, inferred'),('pan','panel / RS-232 handshake'),('pwr','supply'),('sus','read but unidentified'),('un','unread (%d pins)'%(120-len(PINS)))]
 for i,(k,t) in enumerate(items):
     yy=ly+i*19
     a(f'<rect x="{lx}" y="{yy-9}" width="13" height="11" fill="{COL[k]}"/>')

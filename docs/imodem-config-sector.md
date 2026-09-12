@@ -319,13 +319,17 @@ order it appeared on the terminal:
 
 ```sh
 .venv/bin/python tools/imodem_capability_record.py config.bin \
-  --aty14 000,000,030,007,030,000 --serial IMD012345678
+  --aty14 000,000,030,007,030,000 --serial COURIEREMU01
 ```
 
 The example values are the analogue Courier capture already documented in
-this repository; they demonstrate the encoding only.  They are not asserted
-to be correct I-modem factory values.  Until an I-modem capture is available,
-the emulator should not silently manufacture them.
+this repository.  They are not asserted to be recovered I-modem factory
+values, but they are now the practical default for the emulator: a missing or
+factory-erased `flashnvram.sav` is seeded in memory with that header and the
+synthetic serial `COURIEREMU01`.  The firmware writes the seeded record back at
+the end of the run, so subsequent boots retain it.  Explicitly named NVRAM
+files are never seeded; hardware dumps and erased-state experiments therefore
+remain byte-for-byte under the caller's control.
 
 
 ## The modem writes its own record: `AT&W`

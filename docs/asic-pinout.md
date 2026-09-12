@@ -128,10 +128,15 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 17 | 74 | a high flash address line - read as flash pin 3 (`A17`, system `A18`) and later as flash pin 34 (`A16`, system `A17`); see below |
-| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**: latched `A0`, the low byte lane's term in `U12`'s `WE#` |
-| 21 | 70 | system `A1` - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
+| 20 | 71 | latched `A0` **out** - 74VHC32 pin 12 (`4A`), the low byte lane's term in `U12`'s `WE#` |
+| 21 | 70 | latched `A1` **out** - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
+| 22-26 | 69-65 | latched `A2`-`A6` **out** *(inferred)* |
+| 27 | 64 | latched `A7` **out** - RAM pin 4, which is that part's `A6` |
+| 28 | 63 | CPU `AD15` **in** - CPU pin 28 |
+| 29 | 62 | CPU `A17` **in** - CPU pin 30 |
+| 30 | 61 | `VCC` |
 
-Locals 15-16 (`76`-`75`), 18-19 (`73`-`72`) and 22-30 (`69`-`61`) are unread.
+Only locals 15-16 (`76`-`75`) and 18-19 (`73`-`72`) are unread on this edge.
 This edge is the address side of the part: see below.
 
 > **One row was renumbered.** The flash address pin was read with the top edge
@@ -143,6 +148,7 @@ This edge is the address side of the part: see below.
 
 | local | pin | signal | CPU pin |
 |---|---|---|---|
+| 1 | 60 | `GND` | - |
 | 4 | 57 | `ALE` | 38 |
 | 5 | 56 | `WR#` | 37 |
 | 6 | 55 | `RD#` | 36 |
@@ -409,6 +415,87 @@ single bit of it, and the interesting reading is dead. That is the outcome this
 file has been asking after since pin 74 first turned up, and it is now one
 continuity check away.
 
+#### The low-byte latch is complete, `71` down to `64`
+
+**ASIC pin 64 goes to RAM pin 4**, and that pin is the one this file had
+already predicted without knowing it. The latched outputs run contiguously
+down from 71:
+
+| ASIC pin | system address | where it goes |
+|---|---|---|
+| 71 | `A0` | '32 pin 12 - byte lane, never reaches a memory |
+| 70 | `A1` | RAM pin 10, flash pin 11 - those parts' `A0` |
+| 69-65 | `A2`-`A6` | *inferred* |
+| 64 | `A7` | RAM pin 4 - that part's `A6` |
+
+Eight consecutive pins for the eight bits the ASIC latches off `AD0`-`AD7`,
+with the one-bit shift landing `A7` on the SRAM's `A6` exactly. The five in the
+middle are inferred from both ends being measured and in order, the same
+standard the DSP data bus runs in this file are held to.
+
+> The reading named RAM pin 4 as `A8`. On the JEDEC 28-pin 32Kx8 pinout that
+> all three of the board's SRAM types share, **pin 4 is `A6`** - and `A6` at
+> that part is system `A7`, which is what the run predicts for pin 64. The pin
+> number fits perfectly and the label does not; applying the one-bit shift
+> twice, or in the wrong direction, gives exactly `A8`. Recorded as the pin
+> number, which is what was measured.
+
+That closes the low byte. `AD0`-`AD7` in on `84`-`77`, `ALE` in on `57`,
+`A0`-`A7` out on `71`-`64` - the whole latch, both sides, on one part.
+
+#### The ASIC takes `A17` in, which is the other end of the remap
+
+**Pin 62 is CPU pin 30, `A17`.** A high address line, non-multiplexed, going
+*into* the ASIC.
+
+This is the finding the flash address pin has been waiting for. Pin 74 drives a
+high flash address line **out**; pin 62 takes a high system address line **in**.
+A part with an address bit on each side of it is not buffering - a buffer needs
+no other input to decide with, and the ASIC has `A0`-`A7` latched and `A17`
+besides. **The remapping reading now has both ends**, and it stops being an
+inference from one anomalous pin.
+
+What it cannot yet say is the mapping. If pin 74 is flash `A17` (system `A18`)
+then the part takes system `A17` in and drives system `A18` out, which is a
+shift as well as a remap. If pin 74 is flash `A16` (system `A17`) then in and
+out are the same bit and the part is either buffering it after all or
+substituting for it conditionally. **That is the flash pin 3 / pin 34 conflict
+again**, and it now decides something bigger than which bit: it decides whether
+there is a shift.
+
+#### `AD15` on pin 63, which the width-converter claim did not expect
+
+**Pin 63 is CPU pin 28, `AD15`.**
+
+[What this settles](#the-asic-is-a-16-to-8-width-converter) above says only
+`AD0`-`AD7` are on the package, and concludes the ASIC presents an 8-bit port
+to the CPU. One line of the high byte being here does not overturn that - eight
+pins would, and seven of them are elsewhere - but it does mean the claim was
+made from an incomplete edge and needs qualifying rather than repeating.
+
+A single high `AD` line is not a data path. What it is good for is **decoding**:
+`AD15` latched is `A15`, and `A15` with `A17` and the low byte is the beginning
+of an address comparator. A part that has to recognise its own `0x00`-`0x7f`
+window, and that is already taking `A17` in for the flash, would want exactly
+this sort of assortment. That is a reading, not a finding.
+
+**The remaining unread pins on this edge are `76`, `75`, `73` and `72`** - four
+of thirty. Whatever else the ASIC watches on the CPU bus is in there, and the
+edge is otherwise accounted for end to end.
+
+#### The corners are supplies, which corroborates the numbering
+
+`61` is `VCC` and `60` is `GND` - the top-right corner pair, the last pin of the
+top edge and the first of the right. The top-left corner already had `90` on
+`VDD`, shared with the DSP's `VDDD`.
+
+Supply pads at the corners is the gate-array convention this file noted when it
+could not use it: a corner pad is a supply under *either* numbering direction,
+so the top-left one settled nothing about which way the numbers ran. Two corners
+is different in one respect only - it confirms the **30-a-side count** from a
+second place, since the run from `61` to `90` is exactly one edge and both its
+ends are now known.
+
 #### The memories sit on the CPU's raw `AD` bus
 
 **Flash pin 22 goes to CPU pin 20.** The Am29F400B diagram gives flash pin 22
@@ -493,7 +580,12 @@ Four lamps were traced and are **not** on the ASIC:
 ### The ASIC is a 16-to-8 width converter
 
 All sixteen DSP data lines are on the package. Only eight CPU lines are -
-`AD8`-`AD15` go to the CPU's SRAMs and appear nowhere on the ASIC. So the ASIC
+`AD8`-`AD15` go to the CPU's SRAMs and appear nowhere on the ASIC.
+
+> **One exception since found.** `AD15` is on pin 63. Seven of the high byte's
+> eight lines are still absent, so the conclusion below stands - one line is not
+> a data path - but "appear nowhere" was written from an unread edge and is no
+> longer true. What `AD15` is doing there is taken up with the top edge. So the ASIC
 presents a **16-bit port to the DSP and an 8-bit port to the CPU**, and the
 width conversion between them is a function of this part, not a property of
 either bus.
@@ -727,48 +819,54 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Sixty-nine of the 120 pins are unread, and twelve of the fifty-one that are
-not are the inferred middles of the two DSP data runs rather than measurements.
-The bottom edge is nine pins read of thirty; the top edge is the busiest, with
-seventeen. The ones worth finding next, in the order they would pay:
+Fifty-nine of the 120 pins are unread. Of the sixty-one that are not,
+seventeen are inferred middles of a measured run rather than measurements - the
+two DSP data groups and now `A2`-`A6`. **The top edge is finished but for four
+pins**; the bottom is nine of thirty; the right and left edges are barely
+started. The ones worth finding next, in the order they would pay:
 
-1. **`A2`-`A7` on the top edge.** `A0` is on pin 71 and `A1` on pin 70, so the
-   run should continue 69, 68, and down. `A2` is RAM pin 9 / flash pin 10 and
-   they walk down from there; finding them completes the low-byte latch. The
-   `A7` net previously recorded on `'573` pin 12 belongs here and should be
-   retaken.
+1. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+   edge that holds everything else the ASIC does with the CPU bus. Two of them
+   sit between the flash address pin and the latched run, which is where a
+   second high address line would be if the part takes more than `A17`.
 2. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
-   them and can only be one. Whichever lands on a direct CPU output - pin 31
+   them and can only be one. With `A17` now known to go *into* the ASIC on pin
+   62, this decides whether the part shifts the address it remaps or leaves it
+   in place. Whichever lands on a direct CPU output - pin 31
    (`A18`) or pin 30 (`A17`) - is the one the ASIC does not drive. If both
    reach the ASIC, it is buffering the high address rather than remapping a
    bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
    `UCS` (QFP pin 61) and would finish the decode.
-3. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
+3. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+   `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
+   drives system `A7` from pin 64. That reading should be retaken toward the
+   ASIC.
+4. **ASIC pin 54** - the one gap in the CPU control group, between `RD#` and
    the interrupts. If that is the chip select decoding `0x00`-`0x7f`, the
    CPU-side interface is complete.
-4. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+5. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-5. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+6. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-6. **What `J7` carries.** The second serial port streams continuously to that
+7. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-7. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+8. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-8. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+9. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-9. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+10. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-10. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+11. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
