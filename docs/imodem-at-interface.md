@@ -1,5 +1,15 @@
 # The I-modem's AT interface
 
+> **2026-09-12 correction:** The terminal's `NO CARRIER` and repeated-command
+> failures are traced to bypassed AT-prefix recognition and command-buffer
+> reset. The leading A is parsed as answer-call, and old command bodies
+> accumulate. A controlled run through the existing external prefix handler
+> answers consecutive commands correctly, and the emulator now selects that
+> handler when the external command receiver is armed. See
+> [I-modem terminal framing](imodem-terminal-framing.md) for the evidence and
+> fix. The older capability-record, timing, and epilogue explanations below
+> are investigation history, not the current diagnosis of these failures.
+
 The command interface works.  `isdn-run` can now type at it and read what
 comes back, and what comes back is the firmware's own text:
 

@@ -32,20 +32,38 @@ The readings below were taken in per-side local numbering. The translation is:
 * **right edge**, counted top to bottom: pin = `61 - N`
 * **left edge**, counted bottom to top: pin = `121 - N`
 
-**This is the one coordinate not yet confirmed.** NEC's own drawings use
-counter-clockwise from the top view, which is what the table assumes, but a
-clockwise reading is possible and it is not a small difference: clockwise
-numbers the same dot as `1`-`30` up the *left* side, which would put the
-address bus at pins `31`-`36` instead of `85`-`90` and `IS` at pin `7` instead
-of `114`. Both are given below. Confirming it needs one pin identified
-independently - a ground, or the pin that reaches the oscillator - not another
-count.
+**This is the one coordinate not yet confirmed, and the supply pin does not
+settle it.** The top-left pin is tied to DSP pin 15, which SPRU056D's Table A-4
+for the PQ package gives as `VDDD` - one of four digital-core supply pins at
+14, 15, 32 and 33, in adjacent pairs, with `IS` at 90 in the same table, so the
+package is confirmed as the 132-pin BQFP the part marking implies. But that pin
+is physically at a *corner* of the ASIC, and a corner is where a gate-array
+library puts a supply pad under either convention: counter-clockwise numbers it
+90, clockwise numbers it 31, and both are the same piece of metal. What it does
+confirm is the 30-a-side count and that the top edge starts at a corner.
+
+The direction itself is still open. NEC's own drawings use counter-clockwise
+from the top view, which is what the table assumes, but a clockwise reading is
+possible and it is not a small difference: clockwise numbers the same dot as
+`1`-`30` up the *left* side, putting the address bus at `31`-`36` instead of
+`85`-`90` and `IS` at `7` instead of `114`. Both are given below.
+
+**No measurement on the board can decide between them.** The two conventions
+number the same physical pins; nothing a meter reads changes which piece of
+metal a wire lands on. Only an NEC package drawing for this body would settle
+it, and for a custom gate array there isn't one to consult. So the numbers here
+are a convenience for talking about the part - **the edge and the count from
+the corner are the real record**, and that is what anything downstream should
+be checked against.
+
+Every bare pin number in the table below is an **ASIC** pin. DSP and CPU pins
+are named as such - they collide otherwise.
 
 ## What is connected
 
 | side / local | pin (CCW) | pin (CW) | signal |
 |---|---|---|---|
-| top 1 | 90 | 31 | power or ground, unresolved |
+| top 1 | 90 | 31 | `VDD`, shared with DSP pin 15 (`VDDD`) |
 | top 2 | 89 | 32 | DSP `A0` |
 | top 3 | 88 | 33 | DSP `A1` |
 | top 4 | 87 | 34 | DSP `A2` |
@@ -125,8 +143,9 @@ build's arrangement is not resolved here.
 Ninety-eight of the 120 pins are unread. The ones worth finding next, in the
 order they would pay:
 
-1. **A ground or the oscillator pin**, to fix the numbering direction and make
-   every number above absolute rather than conditional.
+1. **The supply and ground pins.** Four of the DSP's own supplies sit in
+   adjacent pairs; if the ASIC's do too, their spacing gives the pad-ring
+   pitch and a frame to hang the unread edges on.
 2. **The CPU's address latch and strobes** - `ALE`, `RD#`, `WR#`, and whatever
    chip select decodes the ASIC's `0x00`-`0x7f` I/O window. The window's top
    at `0x7f` is a decode somebody chose, and the pin that implements it is on
