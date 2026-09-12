@@ -60,7 +60,7 @@ counter-clockwise from a top view; they differ in where pin 1 sits. Pin 1 at
 the top-left runs `1`-`30` down the left side. Pin 1 at the **bottom** left -
 which is what the dot shows in the part's own frame - runs `1`-`30` along the
 bottom. So, under the JEDEC convention of pin 1 at the dot and numbering
-counter-clockwise viewed from above:
+counter-clockwise viewed from above - **confirmed by the owner**:
 
 | pins | edge | direction |
 |---|---|---|
@@ -75,48 +75,35 @@ The readings below were taken in per-side local numbering. The translation is:
 * **right edge**, counted top to bottom: pin = `61 - N`
 * **left edge**, counted bottom to top: pin = `121 - N`
 
-**This is the one coordinate not yet confirmed, and the supply pin does not
-settle it.** The top-left pin is tied to DSP pin 15, which SPRU056D's Table A-4
-for the PQ package gives as `VDDD` - one of four digital-core supply pins at
-14, 15, 32 and 33, in adjacent pairs, with `IS` at 90 in the same table, so the
-package is confirmed as the 132-pin BQFP the part marking implies. But that pin
-is physically at a *corner* of the ASIC, and a corner is where a gate-array
-library puts a supply pad under either convention: counter-clockwise numbers it
-90, clockwise numbers it 31, and both are the same piece of metal. What it does
-confirm is the 30-a-side count and that the top edge starts at a corner.
+**The direction is confirmed: `1`-`30` is the bottom edge.** Stated by the
+owner, who took the readings and therefore owns the frame they were recorded
+in. That retires the clockwise alternative, which would have numbered the same
+dot `1`-`30` up the *left* side, putting the address bus at `31`-`36` instead
+of `85`-`90` and `IS` at `7` instead of `114`. Everything below is in the
+counter-clockwise scheme and needs no second reading.
 
-The direction itself is still open. NEC's own drawings use counter-clockwise
-from the top view, which is what the table assumes, but a clockwise reading is
-possible and it is not a small difference: clockwise numbers the same dot as
-`1`-`30` up the *left* side, putting the address bus at `31`-`36` instead of
-`85`-`90` and `IS` at `7` instead of `114`. Both are given below.
+The bottom-edge readings agree with it independently, which is worth keeping
+because it is a check rather than an assertion. `10`-`27` land on the one edge
+that was unread, and the edge the panel was predicted to be on. Read clockwise
+they would land on pins already read as the DSP data bus - `13`, `14`, `16`,
+`17` and `18` would be `D5`, `D4`, `D2`, `D1` and `D0`, with `18` a *measured*
+pin, not an inferred one. Five collisions with a bus against a clean fit on the
+free edge is the same answer the owner gives, arrived at from readings taken
+months apart.
 
-**No measurement can decide which piece of metal is pin 1.** Reading the markings
-fixes the reference frame, which is what the two styles above needed, but it
-cannot fix the *direction*: counter-clockwise and clockwise number the same
-physical pins in that same frame, and nothing a meter reads changes which piece of
-metal a wire lands on. Only an NEC package drawing for this body would settle
-it, and for a custom gate array there isn't one to consult. So the numbers here
-are a convenience for talking about the part - **the edge and the count from
-the corner are the real record**, and that is what anything downstream should
-be checked against.
-
-**The bottom-edge readings argue for counter-clockwise, if they are absolute.**
-They were given as bare pin numbers, which this file reads as absolute in the
-same scheme as everything above. Under counter-clockwise, `10`-`27` are the
-bottom edge - the one edge that was unread, and the edge the panel was
-predicted to be on. Under clockwise, `1`-`30` runs up the *left* side, and
-those same numbers land on pins already read as the DSP data bus: `13`, `14`,
-`16`, `17` and `18` would be `D5`, `D4`, `D2`, `D1` and `D0`, with `18` a
-*measured* pin, not an inferred one. Five collisions with a bus, against a
-clean fit on the free edge, is not a coin toss.
-
-That does not contradict the paragraph above: nothing here reads the direction
-off the board. What it does is test the two schemes for self-consistency
-against readings taken at different times, and only one of them survives. It
-is still not proof, because it rests on those numbers being absolute rather
-than local to an edge the reading did not name. But it is the first evidence
-either way, and it favours the convention the table above already assumes.
+What no measurement settled, and what the confirmation is therefore doing, is
+worth being precise about. The supply pin does not settle it: the top-left pin
+is tied to DSP pin 15, which SPRU056D's Table A-4 for the PQ package gives as
+`VDDD` - one of four digital-core supply pins at 14, 15, 32 and 33, in adjacent
+pairs, with `IS` at 90 in the same table, so the package is confirmed as the
+132-pin BQFP the part marking implies. But that pin is physically at a *corner*,
+and a corner is where a gate-array library puts a supply pad under either
+convention. What it confirms is the 30-a-side count and that the top edge
+starts at a corner, not the direction. Nor could a meter have decided it:
+counter-clockwise and clockwise number the same physical pins in the same
+frame. The frame is the owner's, and **the edge and the count from the corner
+remain the durable record** - if a numbering question ever reopens, that is
+what to check against.
 
 Every bare pin number in the table below is an **ASIC** pin. DSP and CPU pins
 are named as such - they collide otherwise.
