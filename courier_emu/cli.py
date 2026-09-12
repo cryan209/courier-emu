@@ -27,8 +27,9 @@ from .images import load_image
 from . import imodem_config
 from .isdn import IsdnMachine
 from .bri import (
-    ACTIVATE_AT_INSTRUCTIONS, BEARER_SPEECH,
-    BEARER_UNRESTRICTED_64K, BriNetwork,
+    ACTIVATE_AT_INSTRUCTIONS, BEARER_UNRESTRICTED_64K,
+    CAPABILITY_AUDIO_31KHZ, CAPABILITY_SPEECH, LAW_A, LAW_MU,
+    BriNetwork, audio_bearer,
 )
 from .v120 import LLI_DEFAULT, V120Link
 from .isdn_console import (
@@ -616,14 +617,22 @@ def build_parser() -> argparse.ArgumentParser:
              "can see what the firmware does when the network goes away",
     )
     isdn_run.add_argument(
+        "--bri-law",
+        choices=("mu", "a"),
+        default="mu",
+        help="the G.711 companding law an audio or speech call offers in its "
+             "bearer capability. The I-modem takes mu-law and clears an "
+             "A-law call with cause 88 (default: mu)",
+    )
+    isdn_run.add_argument(
         "--bri-bearer",
-        choices=("data", "speech"),
+        choices=("data", "audio", "speech"),
         default="data",
-        help="the bearer capability --bri-call-at offers: unrestricted "
-             "digital at 64k, or speech. The modem keeps a directory number "
-             "for each (*P1 is the voice/ADP number, *P2 the data port), so "
-             "which one a call offers decides which side of the modem it is "
-             "for (default: data)",
+        help="the bearer capability --bri-call-at offers. 'data' is "
+             "unrestricted 64 kbit/s, the digital call V.120 and friends run "
+             "on; 'audio' is 3.1 kHz audio and 'speech' is speech, both "
+             "companded G.711, which is what a modem answers as a modem - the "
+             "B channel as a 64 kbit/s audio bearer with the datapump on it"
     )
     isdn_run.add_argument(
         "--bri-call-to",
@@ -1355,9 +1364,14 @@ def main(argv: list[str] | None = None) -> int:
                     establish=args.bri_establish, tei=args.bri_tei,
                     call_at=args.bri_call_at, call_from=args.bri_call_from,
                     call_to=args.bri_call_to,
-                    bearer=(BEARER_SPEECH
-                            if args.bri_bearer == "speech"
-                            else BEARER_UNRESTRICTED_64K),
+                    bearer=(
+                        BEARER_UNRESTRICTED_64K if args.bri_bearer == "data"
+                        else audio_bearer(
+                            CAPABILITY_SPEECH if args.bri_bearer == "speech"
+                            else CAPABILITY_AUDIO_31KHZ,
+                            LAW_A if args.bri_law == "a" else LAW_MU,
+                        )
+                    ),
                     # --line-activate names when the line comes up whether or
                     # not a peer is driving it, so it stays the control: with
                     # a peer it is the NT's activation point rather than a

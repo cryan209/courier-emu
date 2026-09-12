@@ -246,10 +246,30 @@ IE_CALLING_PARTY_NUMBER = 0x6C
 IE_LOW_LAYER_COMPATIBILITY = 0x7C
 IE_CALLED_PARTY_NUMBER = 0x70
 
-# Bearer capabilities, Q.931 section 4.5.5: the transfer-capability byte and
-# the layer-1 protocol the modem's two call types use.
-BEARER_SPEECH = bytes([0x80, 0x90, 0xA3])          # speech, G.711 A-law
+# Bearer capabilities, Q.931 section 4.5.5: the transfer-capability byte, the
+# transfer mode and rate, and the layer-1 protocol.
+CAPABILITY_SPEECH = 0x80
+CAPABILITY_AUDIO_31KHZ = 0x90
+# G.711's two companding laws, as layer-1 protocol codes. This modem takes
+# mu-law and refuses A-law outright - a 3.1 kHz call offered as A3 is cleared
+# with cause 88, the same refusal a wrong called number gets, which is what
+# made an earlier reading blame the bearer class rather than the law.
+LAW_MU = 0xA2
+LAW_A = 0xA3
+BEARER_SPEECH = bytes([CAPABILITY_SPEECH, 0x90, LAW_A])
 BEARER_UNRESTRICTED_64K = bytes([0x88, 0x90])      # unrestricted digital
+
+
+def audio_bearer(capability: int = CAPABILITY_AUDIO_31KHZ,
+                 law: int = LAW_MU) -> bytes:
+    """An analogue call across the bearer: 64 kbit/s of companded audio.
+
+    This is the one a modem answers as a modem. There is no ISDN carrier to
+    establish and no rate adaption on top: the B channel is 8000 octets per
+    second of G.711 and the datapump drives it directly, which is also what
+    puts the I-modem on the digital side of a V.90 or x2 connection.
+    """
+    return bytes([capability, 0x90, law])
 
 # Q.931 table 4-13, the ones this peer sends or has seen come back.
 CAUSE_NAMES = {

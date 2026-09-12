@@ -56,9 +56,13 @@ peer's:
   its own verdict as `CDN failure`.  That is the whole of the refusal
   [imodem-liu-state-field.md](imodem-liu-state-field.md) ended on; it is not
   the bearer capability.
-* **The bearer has to be unrestricted digital.**  `--bri-bearer speech` to the
-  same number gets `SETUP with result= FFFE` and `NO CARRIER` at the DTE.
-  `--bri-bearer data` gets `0000` and rings.
+* **The bearer has to be one the modem takes.**  `--bri-bearer data`, an
+  unrestricted 64 kbit/s call, gets `0000` and rings, and that is the call this
+  page follows.  `--bri-bearer speech` used to get `SETUP with result= FFFE`
+  and `NO CARRIER`, which was read here as the bearer class being refused.  It
+  was not: it was **A-law**.  Offered as mu-law the same modem rings on speech
+  and on 3.1 kHz audio, answers as a modem, and puts ANSam on the bearer - see
+  [imodem-audio-bearer.md](imodem-audio-bearer.md).
 
 The peer now prints the cause it is given, so neither of those has to be
 chased through a disassembler again:
