@@ -843,3 +843,60 @@ was not: opening that branch would put the modem in **fax mode**, not repair
 the result code. A non-fax modem legitimately takes `0xadc82` into the
 epilogue, so the open question is unchanged and is where it always was - why
 the epilogue answers code 3 when `[d08b]` is 0, i.e. when nothing disconnected.
+
+
+## Why the epilogue answers 3 when `[d08b]` is 0
+
+**Literally: because there is no branch for it.** `a8067` answers `0` only when
+the cause is exactly 1 *and* `[d2a1] & 0x47`. Every other combination - "no
+disconnect recorded" included - falls through `a808c` into `mov al, 3`:
+
+```
+a8067  cmp [d08b], 1 ; jne a808c
+a806e  test [d2a1], 47 ; je a808c
+a8083  xor al, al          ; 0, OK      -> jmp a8098, skipping the 3
+a808c  test [ca68], 20 ; jne a80df      ; the only other way out of a808c
+a8093  call a45c2
+a8096  mov al, 3           ; 3, NO CARRIER
+a80d3  call acf8c          ; emit AL
+```
+
+and that other way out, `[ca68]` bit 5, jumps *past* the emitter - it prints
+nothing at all, not `OK`. So cause 0 is not a case this decision handles. The
+decision is only correct where it was meant to run: after a call has ended.
+
+**And it runs after every command.** Counted: one command reaches `a8067`
+once, three commands reach it three times. The route is `adb8d call adc32`,
+and `adc32` has exactly three escapes from the teardown at `adc82`. All three
+setters are now traced, and they are all in the same module, and all three are
+gated on **`[d2c5]` bit 0 - the fax bit**:
+
+| escape | set at | gate |
+|---|---|---|
+| `[e78e]` bit 0 | `0xc824c` | the `=0`/`=1`/`=?` parser at `0xc822c` |
+| `[e78f]` bit 0 | `0xc843f` | `0xc840b  test [d2c5], 1` |
+| `[e770]` bit 2 | `0xc83d0` | `0xc83ad  test [d2c5], 1` |
+
+So the mechanism is complete: **no capability record -> fax not fitted -> every
+escape closed -> every command ends in the call-termination teardown -> cause 0
+-> result code 3.**
+
+### What that still does not explain, and what is ruled out
+
+A real non-fax Courier answers `OK` to `AT`, so one of these must be true and
+none is settled: a real unit's record has fax fitted; there is a fourth escape
+not yet found; or `[d08b]` is 1 on real hardware for a reason not seen here.
+
+Ruled out by measurement, not by argument:
+
+* **Not DTR.** The only site that records cause 1 is `0xa62ae`, in a handler
+  whose head is `0xa6279`. That handler is **never entered** - not with DTR
+  asserted throughout, not with it dropped and re-asserted, not with it
+  dropped and left down. `[d08b]` stays 0 in all three.
+* **Not the ISDN line.** `--line-activate` reaches F7 and changes nothing.
+* **Not a mis-indexed result table.** `a8083` really does load 0, and 0/1/2/3
+  as OK/CONNECT/RING/NO CARRIER is conventional.
+* **Not a command-parsing failure.** `ATI3` prints its banner, so commands
+  execute; the result code is appended afterwards.
+* **Not spontaneous.** With nothing typed, nothing is transmitted at all, so
+  the `NO CARRIER` is genuinely the command's result code.
