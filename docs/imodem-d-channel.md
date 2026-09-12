@@ -48,15 +48,17 @@ through the host interface, which is consistent with what
 | receive | `71e64`, again at `72e1e` | read DCRB, then DSR2: bit 1 says another byte waits, bit 0 says the byte just read ended the frame.  Then read DER for the frame's errors and DRCR for its length, and pass the frame up only when `DER & 0x7b` is clear. |
 | line state | `70e6f` | read LSR, take `(LSR & 7) + 2` as the interface state, and on a change dispatch through a six-entry table at `70f7e`. |
 
-The line-state decode is the useful one, because the bias gives the encoding
-away.  **The reading below is wrong in one place**, and it cost this project
-several rounds: `LSR & 7 = 6` is *not* the activated state.  See
-[LSR's state field](imodem-liu-state-field.md) - the activated value is 5,
-and everything above layer 1 depends on it.  Adding two to a three-bit field puts the range at 2..9, the table covers
-2..8 with one entry - the resting state - notifying nobody, and the entry
-reached for `LSR & 7 = 6` is the one that tells layer 2 the line came up.  That
-is I.430's F1..F8 numbered from 2, so **LSR bits 2:0 carry the F-state, biased
-by one**.
+The line-state decode is the useful one.  Adding two to a three-bit field puts
+the range at 2..9, the table covers 2..8, and one entry - the resting state -
+notifies nobody.
+
+> **Correction.**  The rest of this paragraph used to read that the entry for
+> `LSR & 7 = 6` is the one telling layer 2 the line came up, and that the
+> field is therefore I.430's F1..F8 biased by one.  **The activated value is
+> 5, not 6**, and the numbering is the chip's own rather than I.430's.  The
+> difference is the whole of layer 2: the transmit gate admits a frame only
+> when the stored byte is 7, and 6 stores 8.  See
+> [imodem-liu-state-field.md](imodem-liu-state-field.md).
 
 ## Layer 1 will not take a shortcut
 
@@ -68,8 +70,9 @@ table at `62e3f` - and only then on the event.  In F1 the event table at
 handed F7 straight out of F1 drops the event on the floor and the stored state
 never moves.  A run that does exactly that leaves `ce0:a458` at `02`.
 
-Walked in order - F2, then F6, then F7 - it reaches `08`, the firmware's number
-for F7, and `ATI12` changes its mind:
+Walked in order - F2, then F6, then F7 - `ATI12` changes its mind (the stored
+value it reaches is `07`, not the `08` this page first recorded; see the
+correction above):
 
 ```sh
 .venv/bin/python -m courier_emu isdn-run Ie030002.nac \
@@ -91,9 +94,11 @@ string, and nothing pokes `ce0:a458`.
 `courier_emu/am79c30.py` now carries the direct registers alongside the
 register file:
 
-* **LIU** - an F-state the harness sets, reported through LSR in the biased
-  encoding, raising IR bit 5 on a change.  `set_liu_state`, `activate`,
-  `deactivate`.
+* **LIU** - an F-state the harness sets, reported through LSR's state field
+  by the table in [imodem-liu-state-field.md](imodem-liu-state-field.md), and
+  the handset hook in its top two bits
+  ([imodem-isdn-front-end.md](imodem-isdn-front-end.md)).  Raises IR bit 5 on
+  a change.  `set_liu_state`, `activate`, `deactivate`, `set_hook`.
 * **DLC receive** - `deliver_frame` queues a frame; the bytes come out of DCRB
   with DSR2's byte-available and last-byte bits, DSR1's frame-end bit, DER
   clear and DRCR carrying the length.  Frame boundaries and lengths are kept
@@ -108,7 +113,12 @@ asserting, and `--line-activate` walks the S interface up.  The transmit FIFO
 is modelled as always having room: the depth is not recovered, and a deep
 buffer sends the whole frame in one pass rather than inventing a threshold.
 
-## What is still down, and why
+## What was still down, and why (superseded)
+
+*Layer 2 comes up now - see
+[imodem-liu-state-field.md](imodem-liu-state-field.md).  What follows is the
+state of things when this page was written, and the configuration work it
+describes is still needed; it simply was not the blocker.*
 
 Layer 2 does not come up, and the reason is not the D channel - the firmware
 never sends a frame.  `ATI12` says why in every line of it: the switch
