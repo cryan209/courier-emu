@@ -61,7 +61,7 @@ Thirty-two ports carry a non-zero idle value, all even, all below `0x80`:
 
 | ports | idle | what they are |
 |---|---|---|
-| `0a` `0c` `0e` | `f7` `60` `07` | unattributed |
+| `0a` `0c` `0e` | `f7` `60` `07` | unattributed - **the LED candidates**, see below |
 | `10` `12` `14` | `86` `8a` `7e` | the board latches: hook relay, NVRAM strobe, carrier-detect pair |
 | `18` `1a` `1c` `1e` | `ff` `ff` `fd` `ff` | the four that move under load |
 | `42` `46` `4a` `4e` `52` `56` | `ff` | the DSP download window, written in thousands and never read |
@@ -75,6 +75,22 @@ it ran stock 7.3.14 rather than ID_SDL 4.03. Same values across two firmware
 versions and two sessions is what identity or strapping looks like. The other
 three (`68` `6a` `70`, and also `58` and `60`) differ between the captures, so
 they are state.
+
+### The panel is driven by the ASIC, and these are where it would live
+
+The ASIC drives the front-panel LEDs (measured on the 2806;
+[asic-pinout.md](asic-pinout.md)). No port here has been attributed to them,
+and `0a`, `0c` and `0e` are the only unattributed ports with non-zero idle
+values - sparse patterns, immediately below the identified latches.
+
+This is the one port group that can be labelled **from the other end**: write a
+value, look at the front of the modem, and the bit-to-indicator map is read off
+rather than inferred. Nothing else in this file could be calibrated that way.
+
+The probe deliberately writes nothing, and the two reasons to keep it that way
+apply with force next door: `10`-`14` carry the hook relay and the NVRAM
+strobe. A walking-bit test that strays into them can take the line off hook or
+disturb the settings store.
 
 ## What moves
 

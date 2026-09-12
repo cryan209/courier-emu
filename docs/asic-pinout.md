@@ -227,6 +227,48 @@ datasheet's own "conditions of reset" returns its registers to defaults. Any
 codec state the firmware set up before a DSP reset is gone afterwards, and the
 harness does not know that.
 
+### The ASIC drives the front-panel LEDs
+
+Nothing in this repository had attributed the panel to anything. The ASIC
+drives it.
+
+That is a larger result than it sounds, because **it is the only output of this
+system a person can read without instrumentation.** Every other observation
+here has come through the ID_SDL monitor, a flash dump, a port sweep or a
+meter, and each of those needs the supervisor to be somewhere specific or the
+board to be open. The panel is live, continuous, needs no probe, and keeps
+working during the states the monitor cannot reach - the outage across a reset
+that [asic-port-map.md](asic-port-map.md) documents as a structural limit, a
+call in progress, a training sequence that never completes.
+
+It also gives the port map a calibration method it has not had. The ports in
+that file are labelled from what the firmware does with them; the LED ports
+could be labelled from the other end, by writing a value and looking at the
+front of the modem. Bit to indicator, exactly, with no inference.
+
+**The candidates are `0a`, `0c` and `0e`** - the three ports
+[asic-port-map.md](asic-port-map.md) records as carrying non-zero idle values
+and marks "unattributed", sitting immediately below the identified board
+latches at `10`, `12` and `14`. Their idle values are `f7`, `60` and `07`:
+sparse, mostly-settled patterns, which is what a panel showing one or two
+indicators on an idle on-hook modem looks like if the drive is active-low. That
+is a guess from the shape of three bytes and nothing more.
+
+Two cautions before anyone writes to them. The neighbouring latches at `10`-`14`
+carry the **hook relay and the NVRAM strobe**, so a walking pattern that
+wanders up into them can take the line off hook or disturb stored settings.
+And the monitor that can write ports is the **ID_SDL** build, which runs on the
+20.16 MHz board - while the trace establishing that the ASIC drives the LEDs
+was taken on the **2806**. That is the split this file's grading section
+describes, and here it is an opportunity rather than a problem: if writing
+`0a`/`0c`/`0e` on the 20.16 MHz board moves its panel, the two boards are
+driving their LEDs from the same ports, which is evidence towards the two
+ASICs being the same part - the question the missing marking left open.
+
+The drive pins themselves have not been traced. Around ten indicators need
+around ten pins, and the **entire bottom edge of the package is unread**, so
+that is where to look first.
+
 ### The second serial port goes to a debug header, not to a device
 
 This is the question [dsp-pin-probes.md](dsp-pin-probes.md) posed and could not
