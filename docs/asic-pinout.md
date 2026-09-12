@@ -178,7 +178,10 @@ CPU `INT0` (CPU pin 62) is **not connected**.
 | 18 | 108 | DSP `D0` |
 | 19 | 109 | DSP `INT2` |
 | 24 | 114 | DSP `IS` |
-| 29 | 119 | DSP pin 97, `X1` - the clock pin; see below |
+| 25 | 115 | DSP `R/W` (pin 92) |
+| 26 | 116 | DSP `STRB` (pin 93) |
+| 28 | 118 | a supply - DSP `VSSC`/`VDDI`, decoupled |
+| 29 | 119 | DSP `X2/CLKIN` (pin 96) - **the ASIC clocks the DSP** |
 | 30 | 120 | `GND` |
 
 The five measured data pins fall in two exact descending runs - `99`-`92` for
@@ -187,7 +190,7 @@ them are inferred, not read. **Pin 100 sits between the two groups** and is not
 part of either; a ground or supply splitting the bus halves is the obvious
 candidate and it has not been checked.
 
-Pins `110`-`113` and `115`-`118` are unread.
+Pins `91`, `110`-`113` and `117` are unread - six of the thirty.
 
 #### The ASIC is in the flash's high address path
 
@@ -542,55 +545,58 @@ RAM pin 3 back to `'573` pin 12. `A7` is a low-byte bit, the low byte comes out
 of the ASIC, and this net should land on the ASIC's top edge alongside `A0`.
 That one wants retaking.
 
-#### Pin 119 reaches the DSP's clock pins, and which one matters a lot
+#### The ASIC clocks the DSP
 
-**ASIC pin 119 goes to DSP pin 97.** SPRU056D's Table A-4 - the same table that
-gave `IS` at 90 and the `VDDD` group - puts **`X1`** there, with `X2/CLKIN` next
-door at **96**.
+**ASIC pin 119 goes to DSP pin 96, `X2/CLKIN`.** Not pin 97, `X1`, which an
+earlier reading gave and which would have been a circuit that should not exist -
+`X1` only carries anything with a crystal across it, and this board clocks from
+a can.
 
-`X1` is not an ordinary signal. On the 'C5x it is one half of the internal
-oscillator, and it only carries anything when a **crystal** is connected across
-`X1` and `X2/CLKIN`. With an external clock source the datasheet is explicit:
-the source goes to `X2/CLKIN` and **`X1` is left unconnected**. So a wire from
-`X1` to the ASIC is a circuit that should not exist on a board whose clock comes
-from a can oscillator - and [board-parts.md](board-parts.md) has that oscillator
-identified, an `ECLIPTEK EC11 40.320M`.
+`X2/CLKIN` is the DSP's external clock input. **The DSP's clock comes out of the
+ASIC.**
 
-Three readings fit, and they are not close together:
+That is a different kind of fact from the rest of this file. Every other pin
+here is a signal the firmware moves or a wire the address decode needs; this one
+sets the rate at which the DSP executes anything at all. The `ECLIPTEK EC11
+40.320M` can that [board-parts.md](board-parts.md) identifies is the board's
+one oscillator and it feeds the CPU; the DSP does not get it directly, it gets
+whatever the ASIC produces from it.
 
-* **It is pin 96, not 97.** Then the ASIC **drives the DSP's clock**, and the
-  board has one oscillator feeding the ASIC which distributes from there. That
-  is an ordinary design, it fits the single 40.320 MHz can, and an adjacent-pin
-  slip is the cheapest explanation for the reading.
-* **It is pin 97 and there is a crystal too.** The DSP would run its own
-  oscillator and `X1` would carry that oscillation out to the ASIC - the DSP
-  clocking the ASIC rather than the reverse. Possible, but it needs a crystal
-  nobody has reported and leaves the can oscillator doing something else.
-* **It is pin 97 and the pin is being driven anyway.** Some designs drive `X1`
-  as an input in crystal mode. The datasheet does not sanction it and it would
-  be worth knowing about.
+**What that opens.** The ASIC is now positioned to divide the DSP's clock, gate
+it, or stop it - and nothing in this repository has ever considered that the
+DSP's machine cycle might not be a board constant.
+[hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)
+derives the harness's timing from the oscillator and the DSP's software wait
+states, and [dsp-pin-probes.md](dsp-pin-probes.md) and the rest of the DSP-side
+work take the rate as given. None of that is *wrong* - a fixed divide is the
+likeliest thing the ASIC does here, and the firmware's own timing numbers have
+been checked against a real board - but it was being assumed rather than known,
+and it is now a property of a part with registers in it.
 
-**The clock mode pins settle it without any guessing**, and they are two more
-continuity readings on the DSP. `CLKMD1` is DSP pin **71** and `CLKMD2` is pin
-**103**, and Table 9-2 reads:
+**The number is the thing to establish.** 40.320 MHz divided by two is 20.16,
+which is the CPU's `CLKOUT`; the DSP's divide-by-2 mode would then give a 10.08
+MHz machine cycle from a 20.16 MHz input. Whether the ASIC passes 40.320 through,
+halves it, or produces something unrelated is a scope measurement at DSP pin 96
+and nothing else will answer it. `CLKMD1` (DSP pin 71) and `CLKMD2` (pin 103)
+say what the DSP then does with it - `0`/`0` or `1`/`1` both select the external
+divide-by-2, and those are meter readings.
 
-| `CLKMD1` | `CLKMD2` | mode |
-|---|---|---|
-| 0 | 0 | external divide-by-2, **internal oscillator disabled** |
-| 0 | 1 | reserved for test |
-| 1 | 0 | PLL |
-| 1 | 1 | external divide-by-2 **or internal divide-by-2 with a crystal** |
+#### The ASIC is the DSP's entire external bus interface
 
-`0`/`0` means there is no crystal, `X1` is dead, and the reading has to be pin
-96 - the ASIC drives the clock. `1`/`1` leaves the crystal reading open and
-makes the next question whether anything is soldered across 96 and 97.
+`115` is DSP `R/W` (pin 92) and `116` is DSP `STRB` (pin 93). With `IS` on 114
+and the sixteen data lines down the edge, the ASIC now has **the DSP's complete
+external bus control group**: the space select, the strobe, and the direction.
 
-This matters more than a pin. [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)
-anchors the harness's timing on the DSP's software wait states and the
-oscillator, and **[dsp-pin-probes.md](dsp-pin-probes.md) and the rest of the
-DSP-side analysis have taken the clock as a given**. If the ASIC is in the
-clock path, the part can gate or divide it, and the DSP's machine cycle becomes
-something the ASIC has a say in rather than a board constant.
+This is more than the mailbox this file had established. `IS` alone showed that
+DSP I/O writes land in the ASIC. `R/W` means the part can tell a read from a
+write, so **the DSP can read the ASIC**, not only write to it - which is what
+the polling loop the `READY` finding requires has to do, and which had no
+physical evidence until now. `STRB` gives it the timing edge to do so within the
+wait states the DSP's software generates.
+
+Put beside the clock pin, the shape of the DSP subsystem is that the ASIC
+supplies its clock and is its external bus. The SRAM pair is the only other
+thing on that bus.
 
 #### A third corner supply
 
@@ -676,6 +682,12 @@ drives the one external interrupt the DSP is listening for.
 So the CPU-DSP mailbox is a parallel port in this ASIC, written by the DSP
 through `IS` and signalled back to the DSP through `INT2`. Nothing about that
 is inferred from firmware any more.
+
+`R/W` on ASIC `115` and `STRB` on `116` complete the group and answer the
+question this section left standing. The mailbox is not write-only: the ASIC
+knows a DSP read from a DSP write and has the strobe to time it, so the polling
+loop that the `READY` finding below says the software must run has a physical
+read path to poll.
 
 ### `READY` is tied high, so every wait state is software
 
@@ -878,17 +890,19 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Fifty-seven of the 120 pins are unread. Of the sixty-three that are not,
+Fifty-four of the 120 pins are unread. Of the sixty-six that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
-two DSP data groups and now `A2`-`A6`. **The top edge is finished but for four
-pins**; the bottom is nine of thirty; the right and left edges are barely
-started. The ones worth finding next, in the order they would pay:
+two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
+and the left edge but for six**; the bottom is nine of thirty; the right edge is
+barely started, and it is the one that still holds the ASIC's own chip select.
+The ones worth finding next, in the order they would pay:
 
-1. **DSP `CLKMD1` (pin 71) and `CLKMD2` (pin 103), and DSP pin 96.** ASIC pin
-   119 is on the DSP's clock pins. The mode pins say whether the internal
-   oscillator is even enabled, and that decides whether the ASIC **drives** the
-   DSP's clock or merely hangs off it - which is the difference between the
-   machine cycle being a board constant and being something this part controls.
+1. **The frequency at DSP pin 96.** The ASIC drives the DSP's clock, and no
+   document here knows what rate it produces. A scope on that pin is the only
+   thing that answers it, and the DSP's machine cycle - which the timebase note
+   and every DSP-side analysis treat as a board constant - follows from it.
+   `CLKMD1` (DSP pin 71) and `CLKMD2` (pin 103) say what the DSP divides it by,
+   and those are meter readings.
 2. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a

@@ -159,6 +159,11 @@ does say the missing piece is one part, and which one.
 **20.16 MHz** - which is what `ATI7` reports, and the number
 [the timebase note](hardware-timebase-and-audio-path.md) needed.
 
+> That is the **CPU's** clock. The DSP does not take this can directly: its
+> `X2/CLKIN` (pin 96) comes from **ASIC pin 119**, so whatever rate the DSP runs
+> at is what the ASIC produces. See [asic-pinout.md](asic-pinout.md) - the
+> frequency has not been measured.
+
 That closes an ambiguity in the timer argument. `T0CMPA` is 25,200 and the
 80186 counts internally clocked timers at CLKOUT/4, but 25,200 lands on a round
 figure either way: 5.000 ms at CLKOUT = 20.16 MHz, or 10.000 ms if 20.16 MHz
