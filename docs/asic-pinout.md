@@ -108,6 +108,12 @@ what to check against.
 Every bare pin number in the table below is an **ASIC** pin. DSP and CPU pins
 are named as such - they collide otherwise.
 
+![The ASIC's pins as currently mapped](asic-pinout.svg)
+
+That picture is generated from `tools/draw_asic_pinout.py`, which holds the map
+as data. It is drawn rather than parsed from this file, so when a reading lands
+or is corrected, edit the table here **and** `PINS` there, then re-run the tool.
+
 ## What is connected
 
 Measured pins are marked; the rest of a bus run is **inferred** from the

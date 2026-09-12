@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 980" width="980" height="980" font-family="ui-sans-serif,Helvetica,Arial,sans-serif">
+<rect width="980" height="980" fill="#fbfaf8"/>
+<rect x="310.0" y="310.0" width="360.0" height="360.0" rx="8" fill="#ededea" stroke="#4a4a4a" stroke-width="2"/>
+<circle cx="332.0" cy="648.0" r="9" fill="none" stroke="#4a4a4a" stroke-width="2"/>
+<text x="490.0" y="464.0" text-anchor="middle" font-size="17" font-weight="600" fill="#2a2a2a">NEC USA 1-016-905</text>
+<text x="490.0" y="486.0" text-anchor="middle" font-size="12" fill="#6a6a6a">9948LV001 &#183; 120-pin QFP &#183; top view</text>
+<text x="490.0" y="510.0" text-anchor="middle" font-size="12" fill="#6a6a6a">pin 1 at the dot, counter-clockwise</text>
+<text x="490.0" y="534.0" text-anchor="middle" font-size="11" fill="#8a8a8a">Courier 2806, 25 MHz AC03 board</text>
+<rect x="313.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="325.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="337.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="349.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="361.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="373.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="385.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="397.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="409.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="421.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(424.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">10 &#183; CS</text>
+<rect x="433.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="445.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="457.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(460.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">13 &#183; AA</text>
+<rect x="469.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(472.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">14 &#183; ARQ</text>
+<rect x="481.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="493.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(496.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">16 &#183; HS</text>
+<rect x="505.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(508.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">17 &#183; SYN</text>
+<rect x="517.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(520.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">18 &#183; TR</text>
+<rect x="529.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="541.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="553.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(556.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">21 &#183; AA (2nd)</text>
+<rect x="565.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="577.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="589.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="601.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(604.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">25 &#183; RS</text>
+<rect x="613.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="625.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(628.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">27 &#183; MR</text>
+<rect x="637.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="649.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="661.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="670.0" y="661.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="649.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="637.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="625.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="613.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="601.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="589.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="577.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="565.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="553.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="541.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="529.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="517.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="505.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="493.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="481.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="469.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="476.0" font-size="11.5" fill="#1d5fa8">47 &#183; INT1 (CPU 63)</text>
+<rect x="670.0" y="457.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="445.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="433.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="421.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="409.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="397.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="404.0" font-size="11.5" fill="#1d5fa8">53 &#183; INT2/INTA0# (CPU 64)</text>
+<rect x="670.0" y="385.0" width="16.0" height="6.0" fill="#a03060"/>
+<text x="692.0" y="392.0" font-size="11.5" fill="#a03060">54 &#183; ? chip select</text>
+<rect x="670.0" y="373.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="380.0" font-size="11.5" fill="#1d5fa8">55 &#183; RD#  (CPU 36)</text>
+<rect x="670.0" y="361.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="368.0" font-size="11.5" fill="#1d5fa8">56 &#183; WR#  (CPU 37)</text>
+<rect x="670.0" y="349.0" width="16.0" height="6.0" fill="#1d5fa8"/>
+<text x="692.0" y="356.0" font-size="11.5" fill="#1d5fa8">57 &#183; ALE  (CPU 38)</text>
+<rect x="670.0" y="337.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="325.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="313.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="661.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="649.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="637.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="625.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="613.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="601.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="589.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="577.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="565.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="553.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
+<text transform="translate(556.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">70 &#183; A1 -&gt; RAM+flash</text>
+<rect x="541.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
+<text transform="translate(544.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">71 &#183; A0 -&gt; '32 (byte lane)</text>
+<rect x="529.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="517.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="505.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
+<text transform="translate(508.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">74 &#183; flash high addr</text>
+<rect x="493.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="481.0" y="294.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="469.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(472.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">77 &#183; CPU AD7</text>
+<rect x="457.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(460.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">78 &#183; CPU AD6</text>
+<rect x="445.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(448.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">79 &#183; CPU AD5</text>
+<rect x="433.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(436.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">80 &#183; CPU AD4</text>
+<rect x="421.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(424.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">81 &#183; CPU AD3</text>
+<rect x="409.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(412.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">82 &#183; CPU AD2</text>
+<rect x="397.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(400.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">83 &#183; CPU AD1</text>
+<rect x="385.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
+<text transform="translate(388.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">84 &#183; CPU AD0</text>
+<rect x="373.0" y="294.0" width="6.0" height="16.0" fill="#1f7a5a"/>
+<text transform="translate(376.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">85 &#183; DSP A5</text>
+<rect x="361.0" y="294.0" width="6.0" height="16.0" fill="#1f7a5a"/>
+<text transform="translate(364.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">86 &#183; DSP A3</text>
+<rect x="349.0" y="294.0" width="6.0" height="16.0" fill="#1f7a5a"/>
+<text transform="translate(352.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">87 &#183; DSP A2</text>
+<rect x="337.0" y="294.0" width="6.0" height="16.0" fill="#1f7a5a"/>
+<text transform="translate(340.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">88 &#183; DSP A1</text>
+<rect x="325.0" y="294.0" width="6.0" height="16.0" fill="#1f7a5a"/>
+<text transform="translate(328.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">89 &#183; DSP A0</text>
+<rect x="313.0" y="294.0" width="6.0" height="16.0" fill="#6b6b6b"/>
+<text transform="translate(316.0,286.0) rotate(-90)" font-size="11.5" fill="#6b6b6b">90 &#183; VDD / DSP VDDD</text>
+<rect x="294.0" y="313.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="325.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="332.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">92 &#183; DSP D15</text>
+<rect x="294.0" y="337.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="344.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">93 &#183; DSP D14</text>
+<rect x="294.0" y="349.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="356.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">94 &#183; DSP D13</text>
+<rect x="294.0" y="361.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="368.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">95 &#183; DSP D12</text>
+<rect x="294.0" y="373.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="380.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">96 &#183; DSP D11</text>
+<rect x="294.0" y="385.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="392.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">97 &#183; DSP D10</text>
+<rect x="294.0" y="397.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="404.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">98 &#183; DSP D9</text>
+<rect x="294.0" y="409.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="416.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">99 &#183; DSP D8</text>
+<rect x="294.0" y="421.0" width="16.0" height="6.0" fill="#a03060"/>
+<text x="288.0" y="428.0" text-anchor="end" font-size="11.5" fill="#a03060">100 &#183; ? supply</text>
+<rect x="294.0" y="433.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="440.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">101 &#183; DSP D7</text>
+<rect x="294.0" y="445.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="452.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">102 &#183; DSP D6</text>
+<rect x="294.0" y="457.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="464.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">103 &#183; DSP D5</text>
+<rect x="294.0" y="469.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="476.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">104 &#183; DSP D4</text>
+<rect x="294.0" y="481.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="488.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">105 &#183; DSP D3</text>
+<rect x="294.0" y="493.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="500.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">106 &#183; DSP D2</text>
+<rect x="294.0" y="505.0" width="16.0" height="6.0" fill="#7fb3a0"/>
+<text x="288.0" y="512.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">107 &#183; DSP D1</text>
+<rect x="294.0" y="517.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="524.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">108 &#183; DSP D0</text>
+<rect x="294.0" y="529.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="536.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">109 &#183; DSP INT2</text>
+<rect x="294.0" y="541.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="553.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="565.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="577.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="589.0" width="16.0" height="6.0" fill="#1f7a5a"/>
+<text x="288.0" y="596.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">114 &#183; DSP IS</text>
+<rect x="294.0" y="601.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="613.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="625.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="637.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="649.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="661.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<text x="490.0" y="30" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">top 61-90 &#8212; DSP address, CPU AD0-AD7 in, latched address out</text>
+<text x="490.0" y="966" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">bottom 1-30 &#8212; front panel + TR/RS</text>
+<text transform="translate(20,490.0) rotate(-90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">left 91-120 &#8212; DSP data bus, IS, INT2</text>
+<text transform="translate(964,490.0) rotate(90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">right 31-60 &#8212; CPU control</text>
+<rect x="34" y="51" width="13" height="11" fill="#1f7a5a"/>
+<text x="54" y="60" font-size="11.5" fill="#3a3a3a">DSP side, measured</text>
+<rect x="34" y="70" width="13" height="11" fill="#7fb3a0"/>
+<text x="54" y="79" font-size="11.5" fill="#3a3a3a">DSP data, inferred</text>
+<rect x="34" y="89" width="13" height="11" fill="#1d5fa8"/>
+<text x="54" y="98" font-size="11.5" fill="#3a3a3a">CPU bus, measured</text>
+<rect x="34" y="108" width="13" height="11" fill="#7a3fb0"/>
+<text x="54" y="117" font-size="11.5" fill="#3a3a3a">memory address, out</text>
+<rect x="34" y="127" width="13" height="11" fill="#b8541f"/>
+<text x="54" y="136" font-size="11.5" fill="#3a3a3a">panel / RS-232 handshake</text>
+<rect x="34" y="146" width="13" height="11" fill="#6b6b6b"/>
+<text x="54" y="155" font-size="11.5" fill="#3a3a3a">supply</text>
+<rect x="34" y="165" width="13" height="11" fill="#a03060"/>
+<text x="54" y="174" font-size="11.5" fill="#3a3a3a">read but unidentified</text>
+<rect x="34" y="184" width="13" height="11" fill="#c9c9c9"/>
+<text x="54" y="193" font-size="11.5" fill="#3a3a3a">unread (69 pins)</text>
+<text x="650" y="60" font-size="11.5" font-weight="600" fill="#3a3a3a">traced, but NOT on this package:</text>
+<text x="650" y="77" font-size="11.5" fill="#8a8a8a">RD &#8594; U22 SN75188 pin 2</text>
+<text x="650" y="94" font-size="11.5" fill="#8a8a8a">CD &#8594; U23 SN75188 pin 4</text>
+<text x="650" y="111" font-size="11.5" fill="#8a8a8a">OH &#8594; RA5W-K relay pin 9</text>
+<text x="650" y="128" font-size="11.5" fill="#8a8a8a">SD &#8594; CPU pin 7 (RXD1) + 74AHC04</text>
+<text x="650" y="145" font-size="11.5" fill="#8a8a8a">A8-A15 &#8594; the single 74VHC573</text>
+<text x="650" y="162" font-size="11.5" fill="#8a8a8a">data &#8594; flash/RAM straight onto AD0-AD15</text>
+</svg>
