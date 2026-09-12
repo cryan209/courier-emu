@@ -187,6 +187,11 @@ fields that were set:
 | 86 | voice channel TEI | `*T1=nn` | ASCII, `00` is automatic |
 | 87 | data channel TEI | `*T2=nn` | ASCII |
 
+Diffing runs was the cheap way in, and it got two of those wrong.  The whole
+block is now read off the firmware's own display instead - see
+[the block map](#the-block-map-from-the-firmwares-own-descriptor-table)
+below, which supersedes this table.
+
 Two things that method settles for free.  The firmware answers
 `*ATZ! Required*  :  Settings Have Changed` until a reset, so a session that
 changes settings has to end `AT&W`, `ATZ` before the sector is what the next
@@ -352,3 +357,74 @@ The D-channel transmit path at `0x71cb0` is never entered, and it has no direct
 callers - no far call anywhere in the image targets it, and no near call from
 any plausible segment - so it is reached through a pointer. That indirection is
 where the next look belongs.
+
+
+## The block map, from the firmware's own descriptor table
+
+Diffing a run tells you a field moved; it does not tell you how wide it is or
+what sits next to it, and two of the offsets above were wrong because of it.
+There is a better source, and it needs no runs at all: **ATI12's display is
+table-driven, and the table names each row's address.**
+
+It runs from `0xc4570` to `0xc4700`, and each row is `80 83 <label>
+<descriptor>`.  A settings row's descriptor is `01 <lo> d4` - the RAM address
+`2600:d4<lo>` that row displays.  Subtract the block's own base, `d476`:
+
+| row | descriptor | address | index | width |
+|---|---|---|---:|---:|
+| `*W` switch protocol | `01 76 d4` | `d476` | 0 | 1 |
+| `*M` bus configuration | `01 77 d4` | `d477` | 1 | 1 |
+| `*S1` voice SPID | `01 78 d4` | `d478` | 2 | 21 |
+| `*S2` data SPID | `01 8d d4` | `d48d` | 23 | 21 |
+| `*P1` voice directory number | `01 a2 d4` | `d4a2` | 44 | 21 |
+| `*P2` data directory number | `01 b7 d4` | `d4b7` | 65 | 21 |
+| `*T1` voice TEI | `01 cc d4` | `d4cc` | 86 | 2 |
+| `*T2` data TEI | `01 ce d4` | `d4ce` | 88 | 2 |
+| `*O` dialing mode | `01 d0 d4` | `d4d0` | 90 | 1 |
+
+The widths are the spacings, and the total is the check on the whole reading:
+`1 + 1 + 21 + 21 + 21 + 21 + 2 + 2 + 1 = 91`, which is the length the
+checksum at `c4ecb` covers.  A wrong offset anywhere would leave a gap or an
+overlap.  `tests/test_bri.py` asserts that tiling.
+
+So the two corrections: `*P1` is **21** bytes, not the 8 recorded above, and
+`*T1` and `*T2` are **86** and **88**, each two ASCII digits - not 86 and 87.
+A run that sets only `*T2` leaves `ff ff` at 86 and `30 30` at 88, and ATI12
+reports exactly that: `*T1  Invalid fixed TEI`, `*T2  00  Automatic TEI`.
+
+### `*O`, the dialing mode
+
+Its renderer at `0xc3304` is the whole specification in four instructions:
+
+```
+c3304  mov bl, [d4d0]
+c3308  cmp bl, '0' ; jb  c3312
+c330d  cmp bl, '1' ; jbe c3314
+c3312  mov bl, '2'              ; anything else
+c3316  sub bx, '0' ; shl bx, 1 ; add bx, 0x64b8 ; mov si, cs:[bx]
+```
+
+a three-entry table of `En-Bloc mode`, `Overlap Sending mode`, `Invalid
+Value`.  So the field is ASCII, `'0'` and `'1'` are the only valid values,
+and an unset `0xff` is why `ATI12` has always printed `Invalid Value`.
+Sealing `'0'` in makes it print `En-Bloc mode`.
+
+### The bearer capabilities are not in this block
+
+`*V1` (voice bearer: `0` Analog Telephony, `1` ISDN 3.1kHz Telephony) and
+`*V2` (data bearer: `0` Auto Detect, `1` V.120, `2` V.110, `3` Modem/Fax
+Emulation, `4` Clear Channel, `5` Auto Mode PPP, `6` X.75) are in the
+firmware's help page but not in ATI12's table, and the block above is full.
+A session that sends `AT*V1=1`, `AT*V2=3` and `AT&W` changes exactly one byte
+of the record, at **page offset `0x25f`**, from `00` to `0x10`.  Which of the
+two wrote it, and how the value is packed, is not established.
+
+### Commands only land early in a run
+
+Worth recording because it wasted several runs here: the AT interface answers
+`NO CARRIER` to everything from roughly 40,000,000 instructions into a run
+onwards, including `ATI12`, which prints its full report when sent at
+8,000,000.  So a session that needs settings to take has to send them early -
+`--send-after 6000000 --send-every 7000000` works where `--send-every
+30000000` silently does nothing.  What puts the interface into that state is
+not established.

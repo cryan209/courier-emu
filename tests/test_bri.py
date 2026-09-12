@@ -196,3 +196,26 @@ def test_the_peer_never_reaches_past_the_line():
     for step in range(0, 10 * bri.T200_INSTRUCTIONS, bri.T200_INSTRUCTIONS // 4):
         peer.service(wire, step)
     assert wire.to_modem and peer.frames_out == len(wire.to_modem)
+
+
+def test_the_isdn_block_accounts_for_itself_exactly():
+    # The field offsets come from the firmware's own ATI12 descriptor table,
+    # and the check on having read it right is that the fields tile the block
+    # with no gap and no overlap: a wrong offset anywhere breaks the total.
+    from courier_emu import imodem_config as config
+
+    fields = [
+        (config.SWITCH_PROTOCOL, 1), (config.BUS_CONFIGURATION, 1),
+        (config.VOICE_SPID, config.NUMBER_LENGTH),
+        (config.DATA_SPID, config.NUMBER_LENGTH),
+        (config.VOICE_DIRECTORY_NUMBER, config.NUMBER_LENGTH),
+        (config.DATA_DIRECTORY_NUMBER, config.NUMBER_LENGTH),
+        (config.VOICE_TEI, config.TEI_LENGTH),
+        (config.DATA_TEI, config.TEI_LENGTH),
+        (config.DIALING_MODE, 1),
+    ]
+    cursor = 0
+    for offset, length in fields:
+        assert offset == cursor, f"{offset} leaves a gap or overlaps"
+        cursor += length
+    assert cursor == config.ISDN_BLOCK_LENGTH

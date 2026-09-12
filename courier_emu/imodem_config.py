@@ -119,22 +119,40 @@ MAC_ADDRESS_LENGTH = 8
 ISDN_BLOCK = 0x1B0
 ISDN_BLOCK_LENGTH = 0x5B
 
-# Field offsets within the block, recovered the way the user suggested and the
-# only way that needs no guessing: set each one over the AT interface, let the
-# firmware write the sector itself, and diff it. Every one of these was
-# observed changing in response to its own command, and `ATI12` names it back.
+# The block's field offsets, read off the firmware's own ATI12 descriptor
+# table at 0xc4570-0xc4700 rather than diffed out of a run. Each row there is
+# `80 83 <label> <descriptor>`, and a settings row's descriptor is
+# `01 <lo> d4` - the RAM address 2600:d4<lo> the row displays. Subtracting the
+# block's own base, d476, turns each into an index:
+#
+#     *W  d476  0      *S1 d478  2      *P1 d4a2  44     *T1 d4cc  86
+#     *M  d477  1      *S2 d48d  23     *P2 d4b7  65     *T2 d4ce  88
+#                                                        *O  d4d0  90
+#
+# The spacings give the field widths, and they account for the block exactly:
+# 1 + 1 + 21 + 21 + 21 + 21 + 2 + 2 + 1 = 91, which is the checksummed length
+# at c4ecb. That total is the check on the reading - a wrong offset anywhere
+# would leave a gap or an overlap.
 SWITCH_PROTOCOL = 0           # *W, an ASCII digit '0'-'8'
 BUS_CONFIGURATION = 1         # *M, '0' point to point, '1' multipoint
-VOICE_DIRECTORY_NUMBER = 44   # *P1, ASCII, NUL terminated
-VOICE_DIRECTORY_LENGTH = 8
-# The TEI fields are at 88 and 89, not the 86 and 87 recorded when this was
-# first written: a session sending `AT*T1=0`, `AT*T2=0` and `AT&W` leaves
-# `30 30` at 88-89 and 0xff at 90, and ATI12 reads it back as `Automatic
-# TEI`. Which of the two commands wrote which byte is not separable from
-# that run, because both were sent before the save; that they are these two
-# bytes is.
-VOICE_TEI = 88                # *T1, ASCII, '0' is automatic assignment
-DATA_TEI = 89                 # *T2
+VOICE_SPID = 2                # *S1, ASCII, NUL terminated
+DATA_SPID = 23                # *S2
+VOICE_DIRECTORY_NUMBER = 44   # *P1, the ADP directory number
+DATA_DIRECTORY_NUMBER = 65    # *P2, the data port directory number
+NUMBER_LENGTH = 21            # what all four of those fields span
+VOICE_TEI = 86                # *T1, two ASCII digits, '00' is automatic
+DATA_TEI = 88                 # *T2
+TEI_LENGTH = 2
+DIALING_MODE = 90             # *O
+
+# The dialing mode's own renderer at 0xc3304 is four instructions of
+# specification: it reads d4d0, clamps anything outside '0'..'1' to '2', and
+# indexes a three-entry table. So the field is ASCII and there are exactly
+# two valid values - which is why an unset 0xff reads back as Invalid Value.
+DIALING_MODES = {
+    0: "En-Bloc mode",
+    1: "Overlap Sending mode",
+}
 
 # The switch types the firmware's own help page at 0xbf9f0 lists for *W=n.
 SWITCH_PROTOCOLS = {
@@ -251,8 +269,14 @@ def set_string(sector: bytes | bytearray, index: int, length: int,
 
 
 def set_voice_directory_number(sector: bytes | bytearray, number: str) -> bytes:
-    return set_string(sector, VOICE_DIRECTORY_NUMBER,
-                      VOICE_DIRECTORY_LENGTH, number)
+    return set_string(sector, VOICE_DIRECTORY_NUMBER, NUMBER_LENGTH, number)
+
+
+def set_dialing_mode(sector: bytes | bytearray, mode: int) -> bytes:
+    """Set `*O`. Unset, it reads back as `Invalid Value`, and ATI12 says so."""
+    if mode not in DIALING_MODES:
+        raise ValueError(f"dialing mode must be one of {sorted(DIALING_MODES)}")
+    return set_isdn_byte(sector, DIALING_MODE, ord(str(mode)))
 
 
 def set_switch_protocol(sector: bytes | bytearray, protocol: int) -> bytes:
