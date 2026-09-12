@@ -197,50 +197,55 @@ they are the highest-value pins left on the package - a CPU-to-flash path
 running through the ASIC is a structural fact about the memory map that nothing
 here has modelled.
 
-#### The address latch, and why its readings do not close
+#### The address latch, and the one transposition left in it
 
-Six readings now touch the 74VHC573, and **no assignment of them is
-consistent** under that part's standard pinout. They are recorded here as
-readings, because the disagreement is the finding.
+`ALE` is on **pin 11**, `LE` - the latch enable, which is where an address
+latch wants it. That settles the numbering frame, and it retires an earlier
+revision of this section which read `ALE` on pin 1 (`OE#`), could not make that
+work, and proposed a mirrored numbering frame to explain it. The frame was
+never wrong.
 
-| reading | the '573 pin's function | implies |
+What is left is much narrower. The readings:
+
+| reading | the '573 pin | implies |
 |---|---|---|
-| pin 1 &#8594; CPU pin 38 (`ALE`) | `OE#`, output enable | *see below* |
-| pin 2 &#8594; CPU `AD7` | `D0`, input bit 0 | `Q0` = `A7` |
-| pin 19 &#8594; RAM pin 1, flash pin 20 | `Q0`, output bit 0 | `A14` at the RAM |
-| pin 12 &#8594; flash pin 4, RAM pin 3 | `Q7`, output bit 7 | `A7` at the RAM |
-| input side &#8594; CPU `AD8` | an input | `Q`n = `A(8+n)` |
+| pin 11 &#8594; CPU pin 38 (`ALE`) | `LE` | a normal address latch |
+| pin 2 &#8594; CPU `AD7` | `D0` | `Q0` (pin 19) = `A7` |
+| input side also on CPU `AD8` | some `D`n | consistent with `D1` |
+| pin 19 &#8594; RAM pin 1, flash pin 20 | `Q0` | `A14` at the RAM |
+| pin 12 &#8594; flash pin 4, RAM pin 3 | `Q7` | `A7` at the RAM |
 
-A '573 is a flow-through latch: `D`n on pin `2+n`, `Q`n on pin `19-n`, directly
-opposite. So pin 2 and pin 19 are the *same bit*, and pin 2 on `AD7` makes pin
-19 `A7`. But pin 19 lands on RAM pin 1, which the JEDEC 28-pin 32Kx8 pinout
-calls `A14`; and pin 12, seven bits away, lands on RAM pin 3, which that same
-pinout calls `A7`. Two different latch pins cannot both be `A7`, and one bit
-cannot be seven bits from itself. The `AD8` reading disagrees with all of it.
+A '573 is flow-through - `D`n on pin `2+n`, `Q`n on pin `19-n`, directly
+opposite - so pin 2 and pin 19 are the same bit. `AD7` on pin 2 makes pin 19
+`A7`, and the reading puts `A7` on pin 12 instead, seven bits away, with pin 19
+on `A14`.
 
-**The most diagnostic of the six is `ALE` on pin 1.** Pin 1 is `OE#`. `ALE`
-belongs on **pin 11**, `LE`, which is the whole mechanism of an address latch -
-transparent while `ALE` is high, holding the address when it falls. Wiring
-`ALE` to `OE#` instead would tri-state the address bus for exactly the half of
-every bus cycle the memories need it, which is not a circuit that works. That
-reading is not a subtle error; it is off by the width of the package.
+**Transposing those two output readings makes every one of the five consistent
+at once.** Pin 19 (`Q0`) = `A7` &#8594; RAM pin 3, flash pin 4. Pin 12 (`Q7`) =
+`A14` &#8594; RAM pin 1, flash pin 20. `D0` = `AD7`, `D7` = `AD14`, and `AD8`
+sits on `D1` exactly as the earlier reading said. Nothing else has to be wrong.
 
-**So the likeliest single explanation is that the pin numbering in these
-readings is offset or mirrored**, not that five separate signals were each
-misidentified. One frame error accounts for all of it; five independent
-mistakes on one 20-pin part do not.
+**But it implies an odd slice of the bus**, and that is the reason not to just
+adopt it. `AD7`-`AD14` is neither the low byte nor the high byte. An 80C186
+multiplexes `AD0`-`AD15`, and the normal design latches `AD0`-`AD7` into
+`A0`-`A7` and `AD8`-`AD15` into `A8`-`A15`. A latch straddling the byte
+boundary at bit 7 is not a thing a board does without a reason, and no reason
+is visible. The competing explanation is that these readings are from **two
+different '573s** that were not distinguished, which would also explain a seven
+-bit jump - though the specific pin numbers do not fall out of that as cleanly.
 
-**Check the numbering frame before tracing anything else on this part.** Two
-probes settle it and neither needs a signal: **pin 10 should be GND and pin 20
-should be VCC** on a '573. If they are, the frame is right and the readings
-genuinely conflict. If they are not, the frame is wrong, every reading above
-shifts together, and they should be retaken rather than reasoned about. After
-that, **is `ALE` on pin 11?** - if it is on both 1 and 11 the part is doing
-something unusual and worth its own note.
+**One probe decides it: which CPU pin is on '573 pin 9 (`D7`)?**
 
-Nothing about the memory map should be built on this section until that is
-done. An earlier revision concluded the low address bus was shared and latched
-once; that is withdrawn, and it is not replaced with anything.
+* `AD14` - the slice is real, the transposition is the only error, and the
+  board does something worth understanding on its own.
+* `AD0` - this is the ordinary low-byte latch, `pin 2 = AD7` is the wrong
+  reading rather than the output pins, and the memory nets need retaking.
+
+Counting the '573s on the board is worth doing in the same pass, since the
+two-latch explanation stands or falls on it.
+
+Until one of those comes back, the memory map gets nothing from this section.
+The shared-low-address-bus conclusion from two revisions ago stays withdrawn.
 
 **What does not depend on any of it:** the ASIC takes `AD0`-`AD7` raw on pins
 `84`-`77` and `ALE` on pin `57`, both measured on the package itself. Those are
