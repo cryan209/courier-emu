@@ -8,6 +8,7 @@ from .nac import NacImage
 from . import am79c30
 from .am79c30 import Am79C30
 from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
+from .imodem_config import NVRAM_BASE
 from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
@@ -300,6 +301,7 @@ class IsdnMachine:
         serial_pump: "Callable[[IsdnMachine], None] | None" = None,
         line_activate: int | None = None,
         flash_overlay: tuple[int, bytes] | None = None,
+        flash_nvram: bytes | None = None,
         product_type: str = "external",
         product_modem: bool = False,
     ) -> None:
@@ -331,6 +333,11 @@ class IsdnMachine:
         # at 0xf8000, so the part's top sectors read erased - and one of them
         # is the configuration store. See docs/imodem-config-sector.md.
         self.flash_overlay = flash_overlay
+        # The part's own non-volatile store, laid over the same window before
+        # the overlay so an explicit --flash-overlay still wins. This is what
+        # makes settings survive a run: the firmware writes the configuration
+        # sector with AT&W, and the store carries those sectors back in.
+        self.flash_nvram = flash_nvram
         if product_type not in BOARD_LATCH_WIRING:
             raise ValueError(
                 "product type must be one of "
@@ -605,8 +612,12 @@ class IsdnMachine:
             if base <= FLASH_BASE
             else b""
         )
+        overlays: list[tuple[int, bytes]] = []
+        if self.flash_nvram is not None:
+            overlays.append((NVRAM_BASE, self.flash_nvram))
         if self.flash_overlay is not None:
-            where, data = self.flash_overlay
+            overlays.append(self.flash_overlay)
+        for where, data in overlays:
             uc.mem_write(where, data)
             offset = where - FLASH_BASE
             if 0 <= offset < FLASH_SIZE:

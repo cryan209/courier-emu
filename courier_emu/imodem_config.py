@@ -45,6 +45,9 @@ the *firmware* wrote verifies against `page_crc` too.
 from __future__ import annotations
 
 import struct
+from pathlib import Path
+
+from .flash_device import FLASH_BASE
 
 
 SECTOR_ADDRESS = 0xF8000     # where the part answers, cpu side
@@ -56,6 +59,46 @@ GENERATION_OFFSET = 0x02E
 TRAILER_OFFSET = 0xFFA
 CRC_OFFSET = 0xFFE
 SEED = 0x169E
+
+# The part of the flash an update does not carry, and therefore the part that
+# survives one: the Am29F400AT's three top boot sectors, CPU 0xf8000-0xfffff.
+#
+# The NAC payload ends at 0xf8000 exactly (0x40000 + 0xb8000), so everything
+# below this is the firmware image and is reloaded from the image every boot;
+# everything at or above it is the part's own non-volatile store. SA8 holds the
+# configuration record described above, and an `AT&W` run writes SA9's two
+# pages as well - the sealed pages observed at 0x7a000 and 0x7b000. SA10 is not
+# written by anything seen so far, and is carried anyway because it is on the
+# same side of the payload boundary and guessing it empty would be a claim.
+NVRAM_BASE = 0xF8000
+NVRAM_SIZE = 0x8000
+DEFAULT_NVRAM_FILE = "flashnvram.sav"
+
+
+def nvram_from_flash(contents: bytes) -> bytes:
+    """Cut the non-volatile region out of a whole flash window."""
+    offset = NVRAM_BASE - FLASH_BASE
+    region = bytes(contents[offset:offset + NVRAM_SIZE])
+    return region + b"\xff" * (NVRAM_SIZE - len(region))
+
+
+def load_nvram(path: Path | str) -> bytes | None:
+    """Read a saved store, or None if there is not one yet.
+
+    Short files are padded with erased bytes and long ones truncated, so a
+    store written by an earlier version of this harness still loads.
+    """
+    file = Path(path)
+    if not file.exists():
+        return None
+    data = file.read_bytes()[:NVRAM_SIZE]
+    return data + b"\xff" * (NVRAM_SIZE - len(data))
+
+
+def save_nvram(path: Path | str, contents: bytes) -> None:
+    """Write the non-volatile region of a flash window out."""
+    Path(path).write_bytes(nvram_from_flash(contents))
+
 
 # The unit's identity, near the front of the record. The firmware's own
 # printer names both: at cd270 it loads bx with 0xd2e6 before the literal

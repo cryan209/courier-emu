@@ -24,6 +24,7 @@ from .panel import (
     USABLE_BOARD_IDS,
 )
 from .images import load_image
+from . import imodem_config
 from .isdn import IsdnMachine
 from .isdn_console import (
     SERIAL_LINE_INSTRUCTIONS,
@@ -545,6 +546,25 @@ def build_parser() -> argparse.ArgumentParser:
              "0xf8000=config.bin. The update payload stops at 0xf8000, so "
              "the part's top sectors read erased without this - and one of "
              "them is where the modem keeps its configuration",
+    )
+    isdn_run.add_argument(
+        "--flash-nvram",
+        metavar="FILE",
+        default=imodem_config.DEFAULT_NVRAM_FILE,
+        help="the part's non-volatile store: the 32 KiB above the update "
+             f"payload, CPU {imodem_config.NVRAM_BASE:#x}-0xfffff, which is "
+             "where the firmware keeps its configuration record. Loaded over "
+             "the flash window before the run if the file exists, and written "
+             "back after it, so AT&W survives to the next boot (default: "
+             f"{imodem_config.DEFAULT_NVRAM_FILE}). --no-flash-nvram runs "
+             "against an erased store and keeps nothing",
+    )
+    isdn_run.add_argument(
+        "--no-flash-nvram",
+        dest="flash_nvram",
+        action="store_const",
+        const=None,
+        help=argparse.SUPPRESS,
     )
     isdn_run.add_argument(
         "--flash-save",
@@ -1151,6 +1171,10 @@ def main(argv: list[str] | None = None) -> int:
                         "expected ADDR=FILE"
                     )
                 overlay = (_number(where), Path(overlay_path).read_bytes())
+            nvram = (
+                imodem_config.load_nvram(args.flash_nvram)
+                if args.flash_nvram else None
+            )
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")
             transcript: list[tuple[int, str, str]] = []
@@ -1178,6 +1202,7 @@ def main(argv: list[str] | None = None) -> int:
                 product_modem=args.product_modem,
                 line_activate=args.line_activate,
                 flash_overlay=overlay,
+                flash_nvram=nvram,
                 **entry
             )
             try:
@@ -1188,6 +1213,12 @@ def main(argv: list[str] | None = None) -> int:
                     machine.mailbox.close()
             if args.flash_save:
                 Path(args.flash_save).write_bytes(bytes(machine.flash.contents))
+            if args.flash_nvram:
+                # After the run, not during: the firmware erases the sector
+                # before it rewrites it, so a store written mid-erase would
+                # be the blank the part passes through rather than a record.
+                imodem_config.save_nvram(args.flash_nvram,
+                                         bytes(machine.flash.contents))
             if transcript:
                 result["serial_session"] = [
                     {"instructions": count, "direction": direction, "text": text}
