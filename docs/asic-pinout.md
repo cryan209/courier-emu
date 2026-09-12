@@ -122,27 +122,16 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 17 | 74 | a high flash address line - read as flash pin 3 (`A17`, system `A18`) and later as flash pin 34 (`A16`, system `A17`); see below |
-| 19 | 72 | 74VHC32 pin 12 (`4A`) - an ASIC **output**: latched `A0`, the low byte lane's term in `U12`'s `WE#` |
-| 20 | 71 | system `A1` - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
+| 20 | 71 | 74VHC32 pin 12 (`4A`) - an ASIC **output**: latched `A0`, the low byte lane's term in `U12`'s `WE#` |
+| 21 | 70 | system `A1` - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
 
-Locals 15-16 (`76`-`75`), 18 (`73`) and 21-30 (`70`-`61`) are unread.
+Locals 15-16 (`76`-`75`), 18-19 (`73`-`72`) and 22-30 (`69`-`61`) are unread.
 This edge is the address side of the part: see below.
 
-> **The last three rows were renumbered.** They were read in absolute pin
-> numbers with the top edge counted from 60 rather than 61, so each was one low;
-> the owner caught the miscount and they are corrected here by +1. `74`, `72`
-> and `71` were reported as `73`, `71` and `70`. The rows above them are
-> unaffected - those came in per-side local numbering and were translated by the
-> `91 - N` rule, which does not depend on where the absolute count started.
->
-> Nothing in the layout favours one offset over the other, so the correction
-> rests on the owner's recount and not on a fit argument. Under either, `A0` and
-> `A1` land on adjacent pins in descending order with the flash's high address
-> bit two above them and a one-pin gap between - the same picture, shifted.
->
-> It does **not** resolve the flash-pin conflict below. Both of the disagreeing
-> readings named the same ASIC pin, so both shift together; the disagreement is
-> at the flash end.
+> **One row was renumbered.** The flash address pin was read with the top edge
+> miscounted from 60 rather than 61, so it is `74`, not the `73` first reported.
+> The owner confirms the miscount was confined to that reading: pins `71` and
+> `70` stand as given.
 
 ### Right edge - the CPU control group
 
@@ -259,14 +248,14 @@ previous revision proposed two latches, one per byte, with the readings taken
 across both without distinguishing them. There is no second latch to distribute
 them to.
 
-#### The ASIC latches `A0`-`A7`, and pin 71 is the proof
+#### The ASIC latches `A0`-`A7`, and pin 70 is the proof
 
 An 80C186EB multiplexes `AD0`-`AD15` and drives `A16`-`A19` separately. The
 '573 accounts for the high byte. **Nothing else identified on the board latches
 the low byte**, and the memories need it - flash and SRAM both take `A0`-`A7`
 as ordinary address inputs and neither has any idea what `ALE` is.
 
-**ASIC pin 71 goes to RAM pin 10 and flash pin 11. Both are `A0`.** That is the
+**ASIC pin 70 goes to RAM pin 10 and flash pin 11. Both are `A0`.** That is the
 low byte's first bit, driven out of this part into both memories, and it settles
 what a previous revision could only propose:
 
@@ -281,7 +270,7 @@ from the ASIC, `A8`-`A15` from the '573, `A16`-`A19` from the CPU - except
 `A17`, which is also the ASIC, on pin 74.
 
 **The outputs are on the top edge, not where the last revision guessed.** It
-predicted the unread `28`-`46` run at the bottom right; `A0` is at 71 and the flash's high
+predicted the unread `28`-`46` run at the bottom right; `A0` is at 71, `A1` at 70 and the flash's high
 address bit at 74, both on the top edge, in the run this file had already flagged as
 the neighbours of the `A17` pin. So the top edge is the address side of the
 package end to end: `AD0`-`AD7` in at locals 7-14, latched address out at
@@ -309,7 +298,7 @@ previous revision made from a partial view of it.
 
 | reading | |
 |---|---|
-| '32 pin 12 (`4A`, in) | ASIC pin 72 |
+| '32 pin 12 (`4A`, in) | ASIC pin 71 |
 | '32 pin 13 (`4B`, in) | flash pin 43, `WE#` - the board write strobe |
 | '32 pin 11 (`4Y`, out) | SRAM `U12` pin 27, `WE#` |
 | '32 pin 8 (`3Y`, out) | SRAM `U4` pin 27, `WE#` |
@@ -327,10 +316,10 @@ memory**. Steering a byte write to one lane or the other is then done exactly
 the way this board does it - a `WE#` per lane, each `OR`ed from the common
 write strobe and a lane term. That is what gate 4 and gate 3 are, one lane each.
 
-So ASIC pin 72 is the **low lane's term**, and on any 16-bit 80186 design that
+So ASIC pin 71 is the **low lane's term**, and on any 16-bit 80186 design that
 term is `A0`. The ASIC latches `A0`-`A7`; `A0` is the bit that never reaches a
 memory's address pins in a 16-bit system, because it selects the lane instead.
-Which is why pin 71, the other address output found so far, lands on the
+Which is why pin 70, the other address output found so far, lands on the
 memories' own `A0` pins - **that is system `A1`**, and the whole latched address
 is shifted by one at the parts.
 
@@ -353,7 +342,7 @@ is the CPU's write strobe unmodified, and the flash's `WE#` on pin 43 is that
 same net reaching the flash directly. The two gates are
 
 ```
-U12 WE#  =  ASIC pin 72 (A0)  OR  write strobe      - low byte lane
+U12 WE#  =  ASIC pin 71 (A0)  OR  write strobe      - low byte lane
 U4  WE#  =  CPU BHE#          OR  write strobe      - high byte lane
 ```
 
@@ -366,7 +355,7 @@ else on the board that holds it. `BHE#` arrives **raw from the CPU**, because on
 the 80C186EB it is a dedicated pin and never needed latching. Two different
 routes for the two halves of the same decision, each the only route available.
 
-That is the memory decode closed for the SRAM, and it settles ASIC pin 72 as
+That is the memory decode closed for the SRAM, and it settles ASIC pin 71 as
 latched `A0` rather than anything more interesting. Gates 1 and 2 of the '32 -
 pins 1-3 and 4-6 - are still unread.
 
@@ -378,7 +367,7 @@ finding.
 On a 16-bit bus `A0` selects the lane and never reaches a memory's address
 pins. So each part's `A`n is system `A`n+1, and the readings in this file that
 name a memory's own pin numbers have to be translated before they mean a system
-address. Pin 71 is the visible case: it lands on RAM pin 10 and flash pin 11,
+address. Pin 70 is the visible case: it lands on RAM pin 10 and flash pin 11,
 both of which those parts call `A0`, and it is **system `A1`**.
 
 **`BYTE#` is tied high**, so the flash is in word mode and the shift is
@@ -413,6 +402,25 @@ neighbours, then the part is buffering the high address rather than remapping a
 single bit of it, and the interesting reading is dead. That is the outcome this
 file has been asking after since pin 74 first turned up, and it is now one
 continuity check away.
+
+#### The memories sit on the CPU's raw `AD` bus
+
+**Flash pin 22 goes to CPU pin 20.** The Am29F400B diagram gives flash pin 22
+as `DQ11`; the 80C186EB QFP table gives CPU pin 20 as `AD11`. A data line
+straight to the matching multiplexed bus line, with nothing in between.
+
+Small, and it closes a hole. Every finding above is about *address*: the ASIC
+latching the low byte, the '573 the high, the '32 steering lanes, `LCS` and the
+high bits. None of it said how **data** reaches the memories, and the answer is
+that it does not go anywhere - the flash and the SRAM pair hang directly on
+`AD0`-`AD15`, and the parts do their own address/data separation using the
+strobes. No buffer, no transceiver, nothing to find.
+
+It also draws the boundary of what the ASIC touches. The ASIC has `AD0`-`AD7`
+only, as an **input**, for latching. The memories have all sixteen, as data. So
+the two are on the same wires for different reasons, and the ASIC's own 8-bit
+CPU port - the `0x00`-`0x7f` window - shares the bus with a 16-bit memory
+system rather than fronting it.
 
 #### The flash pin numbering is confirmed, and one old net reading is not
 
@@ -718,8 +726,8 @@ not are the inferred middles of the two DSP data runs rather than measurements.
 The bottom edge is nine pins read of thirty; the top edge is the busiest, with
 seventeen. The ones worth finding next, in the order they would pay:
 
-1. **`A2`-`A7` on the top edge.** `A0` is on pin 72 and `A1` on pin 71, so the
-   run should continue 70, 69, and down. `A2` is RAM pin 9 / flash pin 10 and
+1. **`A2`-`A7` on the top edge.** `A0` is on pin 71 and `A1` on pin 70, so the
+   run should continue 69, 68, and down. `A2` is RAM pin 9 / flash pin 10 and
    they walk down from there; finding them completes the low-byte latch. The
    `A7` net previously recorded on `'573` pin 12 belongs here and should be
    retaken.

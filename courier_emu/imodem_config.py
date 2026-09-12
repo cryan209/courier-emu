@@ -113,6 +113,15 @@ SERIAL_NUMBER_SPAN = 15
 MAC_ADDRESS = 0x020
 MAC_ADDRESS_LENGTH = 8
 
+# ATY14 is the factory configuration header immediately following the
+# absent-field mask.  The handler at 0xcd19e reads d2cc back through d2c7,
+# printing each byte as decimal.  Since the whole selected page is copied to
+# 2600:d2c6, those are page offsets 0x006 back through 0x001.  Its guard at
+# 0xcd1c6 prints only five commas when offsets 0x000..0x004 are all erased;
+# that is the familiar missing-factory-record response, not six zero values.
+ATY14_FIELDS = 0x001
+ATY14_FIELD_COUNT = 6
+
 # The ISDN settings, as loaded into 2600:d476.
 ISDN_BLOCK = 0x1B0
 ISDN_BLOCK_LENGTH = 0x5B
@@ -227,9 +236,49 @@ def seal(sector: bytes | bytearray) -> bytes:
 
 
 def read_serial_number(sector: bytes, page: int = 0) -> bytes:
-    """The 15 bytes the firmware copies to 2600:d2d7."""
+    """The twelve serial characters ATI7 prints from 2600:d2d7."""
     base = page * PAGE_SIZE + SERIAL_NUMBER
     return bytes(sector[base:base + SERIAL_NUMBER_LENGTH])
+
+
+def set_serial_number(sector: bytes | bytearray, serial: str) -> bytes:
+    """Set ATI7's fixed-width factory serial field in both pages."""
+    try:
+        encoded = serial.encode("ascii")
+    except UnicodeEncodeError:
+        raise ValueError("serial number must be ASCII") from None
+    if len(encoded) > SERIAL_NUMBER_LENGTH:
+        raise ValueError(
+            f"serial number is at most {SERIAL_NUMBER_LENGTH} characters"
+        )
+    return set_record_bytes(
+        sector, SERIAL_NUMBER, encoded.ljust(SERIAL_NUMBER_LENGTH, b" ")
+    )
+
+
+def read_aty14(sector: bytes, page: int = 0) -> tuple[int, ...] | None:
+    """Return ATY14's six values in display order, or None for `,,,,,`.
+
+    The page stores fields 1 through 6 in ascending order and the command
+    prints them in reverse.  The firmware treats an erased mask plus first
+    four fields as absent even though fields five and six are not tested.
+    """
+    base = page * PAGE_SIZE + ATY14_FIELDS
+    stored = bytes(sector[base:base + ATY14_FIELD_COUNT])
+    if sector[page * PAGE_SIZE:page * PAGE_SIZE + 5] == b"\xff" * 5:
+        return None
+    return tuple(reversed(stored))
+
+
+def set_aty14(
+    sector: bytes | bytearray, values: tuple[int, ...] | list[int]
+) -> bytes:
+    """Set the six factory fields using the order displayed by ATY14."""
+    if len(values) != ATY14_FIELD_COUNT:
+        raise ValueError(f"ATY14 requires {ATY14_FIELD_COUNT} values")
+    if any(not 0 <= value <= 0xFF for value in values):
+        raise ValueError("ATY14 values must fit in a byte")
+    return set_record_bytes(sector, ATY14_FIELDS, bytes(reversed(values)))
 
 
 def read_mac_address(sector: bytes, page: int = 0) -> bytes:

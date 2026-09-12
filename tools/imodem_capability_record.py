@@ -49,6 +49,8 @@ from courier_emu.imodem_config import (          # noqa: E402
     SECTOR_SIZE,
     page_is_sealed,
     seal,
+    set_aty14,
+    set_serial_number,
 )
 
 VERSION_OFFSET = 0xFFC
@@ -79,6 +81,25 @@ def _number(text: str) -> int:
     return int(text, 0)
 
 
+def _aty14(text: str) -> tuple[int, ...]:
+    try:
+        values = tuple(
+            int(value.strip(), 16)
+            if value.strip().lower().startswith("0x")
+            else int(value.strip(), 10)
+            for value in text.split(",")
+        )
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "ATY14 values must be six decimal or 0x-prefixed bytes"
+        ) from None
+    if len(values) != 6 or any(not 0 <= value <= 0xFF for value in values):
+        raise argparse.ArgumentTypeError(
+            "ATY14 values must be exactly six bytes in display order"
+        )
+    return values
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -87,6 +108,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="set a page byte; numbers accept 0x notation")
     parser.add_argument("--version", type=_number, default=1,
                         help="the sequence word at 0xffc (default 1)")
+    parser.add_argument(
+        "--aty14", type=_aty14, metavar="V6,V5,V4,V3,V2,V1",
+        help="set the six factory bytes in the order ATY14 displays them",
+    )
+    parser.add_argument(
+        "--serial", metavar="TEXT",
+        help="set ATI7's factory serial number (ASCII, at most 12 characters)",
+    )
     args = parser.parse_args(argv)
 
     fields: dict[int, int] = {}
@@ -97,12 +126,18 @@ def main(argv: list[str] | None = None) -> int:
         fields[_number(key)] = _number(value)
 
     sector = build(fields, version=args.version)
+    if args.aty14 is not None:
+        sector = set_aty14(sector, args.aty14)
+    if args.serial is not None:
+        sector = set_serial_number(sector, args.serial)
     with open(args.output, "wb") as handle:
         handle.write(sector)
     sealed = [page_is_sealed(sector[i * PAGE_SIZE:(i + 1) * PAGE_SIZE])
               for i in range(PAGES)]
+    additions = len(fields) + (6 if args.aty14 is not None else 0)
+    additions += 1 if args.serial is not None else 0
     print(f"wrote {args.output}: pages sealed {sealed}, "
-          f"{len(fields)} field(s) set")
+          f"{additions} field(s) set")
     return 0
 
 

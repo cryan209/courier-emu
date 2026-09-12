@@ -282,6 +282,51 @@ eight-byte field.  `00:c0:49` is USRobotics' OUI, which is also what the
 board's own barcode label carries - so a unit's real identity can be put back
 into a sector from the sticker on the board.
 
+The serial is factory identity, not a value the firmware invents.  `AT&W`
+preserves an existing serial but cannot populate an erased one.  A basic run
+against a new `flashnvram.sav` therefore leaves it blank by design.  A known
+serial can be put into a synthetic record without hand-editing offsets:
+
+```sh
+.venv/bin/python tools/imodem_capability_record.py config.bin \
+  --serial IMD012345678
+```
+
+## What `ATY14` reads
+
+The I-modem handler at `0xcd19e` reads six bytes directly from the selected
+configuration page.  The page has been copied to `2600:d2c6`, and the loop
+prints `d2cc,d2cb,d2ca,d2c9,d2c8,d2c7`: page offsets **`0x006..0x001` in
+reverse order**.  This is the same six-value, reverse-order convention used by
+the analogue Courier, although the known I-modem consumers give some fields
+I-modem-specific meanings:
+
+| page offset | ATY14 position | established consumer |
+|---|---:|---|
+| `0x001` (`d2c7`) | 6 | modulation capability bits |
+| `0x002` (`d2c8`) | 5 | grouped code, precise meaning open |
+| `0x003` (`d2c9`) | 4 | fax capability; bit 0 means fitted |
+| `0x004` (`d2ca`) | 3 | product-name ` MODEM` suffix; bit 0 |
+| `0x005` (`d2cb`) | 2 | not yet identified |
+| `0x006` (`d2cc`) | 1 | not yet identified |
+
+Before printing, the guard at `0xcd1c6` checks the absent-field mask at
+`0x000` and fields at `0x001..0x004`.  If all five bytes are `0xff`, it prints
+the literal `,,,,,`.  Thus commas mean **the factory
+header is erased**, not six zero values and not a tone-generation failure.
+`tools/imodem_capability_record.py` can encode a hardware capture in the same
+order it appeared on the terminal:
+
+```sh
+.venv/bin/python tools/imodem_capability_record.py config.bin \
+  --aty14 000,000,030,007,030,000 --serial IMD012345678
+```
+
+The example values are the analogue Courier capture already documented in
+this repository; they demonstrate the encoding only.  They are not asserted
+to be correct I-modem factory values.  Until an I-modem capture is available,
+the emulator should not silently manufacture them.
+
 
 ## The modem writes its own record: `AT&W`
 

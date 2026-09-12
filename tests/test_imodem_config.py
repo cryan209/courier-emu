@@ -140,6 +140,56 @@ def test_the_identity_fields_sit_where_the_firmware_reads_them():
         assert page_is_sealed(sealed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE])
 
 
+def test_serial_number_setter_writes_both_pages_and_pads_the_display_field():
+    from courier_emu.imodem_config import read_serial_number, set_serial_number
+
+    sealed = set_serial_number(seal(blank_sector()), "IMODEM1")
+    for page in range(2):
+        assert read_serial_number(sealed, page) == b"IMODEM1     "
+        assert page_is_sealed(
+            sealed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
+        )
+
+
+def test_serial_number_setter_rejects_non_ascii_and_overlength_values():
+    from courier_emu.imodem_config import set_serial_number
+
+    with pytest.raises(ValueError, match="ASCII"):
+        set_serial_number(
+            seal(blank_sector()),
+            "I-m\N{LATIN SMALL LETTER O WITH DIAERESIS}dem",
+        )
+    with pytest.raises(ValueError, match="at most 12"):
+        set_serial_number(seal(blank_sector()), "1234567890123")
+
+
+def test_aty14_is_the_six_reversed_factory_header_bytes():
+    from courier_emu.imodem_config import read_aty14, set_aty14
+
+    blank = seal(blank_sector())
+    assert read_aty14(blank) is None, "erased header is the firmware's `,,,,,` case"
+
+    displayed = (0, 0, 30, 7, 30, 0)
+    sealed = set_aty14(blank, displayed)
+    for page in range(2):
+        assert read_aty14(sealed, page) == displayed
+        start = page * PAGE_SIZE + 1
+        assert sealed[start:start + 6] == bytes(reversed(displayed))
+        assert page_is_sealed(
+            sealed[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
+        )
+
+
+def test_aty14_setter_validates_the_six_byte_record():
+    from courier_emu.imodem_config import set_aty14
+
+    blank = seal(blank_sector())
+    with pytest.raises(ValueError, match="requires 6"):
+        set_aty14(blank, [0] * 5)
+    with pytest.raises(ValueError, match="fit in a byte"):
+        set_aty14(blank, [0, 0, 0, 0, 0, 256])
+
+
 def test_a_record_write_that_would_hit_the_trailer_is_refused():
     from courier_emu.imodem_config import TRAILER_OFFSET, set_record_bytes
     with pytest.raises(ValueError):
