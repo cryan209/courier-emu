@@ -9,6 +9,7 @@ from . import am79c30
 from .am79c30 import Am79C30
 from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .imodem_config import NVRAM_BASE
+from .bri import BriNetwork
 from .pic import InterruptControllers
 from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
@@ -268,6 +269,7 @@ class IsdnRunResult:
     pic: dict[str, Any] = field(default_factory=dict)
     dsc: dict[str, Any] = field(default_factory=dict)
     flash: dict[str, Any] = field(default_factory=dict)
+    bri: dict[str, Any] | None = None
     mailbox: dict[str, Any] = field(default_factory=dict)
     serial: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
@@ -302,6 +304,7 @@ class IsdnMachine:
         line_activate: int | None = None,
         flash_overlay: tuple[int, bytes] | None = None,
         flash_nvram: bytes | None = None,
+        bri: BriNetwork | None = None,
         product_type: str = "external",
         product_modem: bool = False,
     ) -> None:
@@ -351,6 +354,11 @@ class IsdnMachine:
         self.product_type = product_type
         self.product_modem = product_modem
         self.line_activate = line_activate
+        # The far end of the S interface, if a run asked for one. The modem's
+        # own side is the Am79C30A and the firmware; this is the NT and the
+        # switch it talks to, and it reaches the board only through the
+        # chip's receive and transmit buffers. See courier_emu/bri.py.
+        self.bri = bri
         self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
         self.pit = ProgrammableIntervalTimer()
@@ -538,6 +546,10 @@ class IsdnMachine:
             if channel.irq is not None and channel.interrupting():
                 self.pic.raise_irq(channel.irq)
         self._advance_line()
+        if self.bri is not None:
+            # Before the interrupt check, so a frame the peer delivers in
+            # this pass raises the line in the same pass rather than the next.
+            self.bri.service(self.dsc, self.instructions)
         if self.dsc.interrupting():
             self.pic.raise_irq(DSC_IRQ)
         if self.mailbox_service and self.instructions >= self._next_mailbox_service:
@@ -820,6 +832,7 @@ class IsdnMachine:
             pic=self.pic.status(),
             dsc=self.dsc.status(),
             flash=self.flash.status_report(),
+            bri=None if self.bri is None else self.bri.status(),
             mailbox=self.mailbox.status(),
             error=self.error,
         )

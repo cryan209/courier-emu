@@ -26,6 +26,7 @@ from .panel import (
 from .images import load_image
 from . import imodem_config
 from .isdn import IsdnMachine
+from .bri import BriNetwork
 from .isdn_console import (
     SERIAL_LINE_INSTRUCTIONS,
     SERIAL_WARMUP_INSTRUCTIONS,
@@ -538,6 +539,44 @@ def build_parser() -> argparse.ArgumentParser:
              "I.430 states the way the network does. Without it the line "
              "stays in F1 and the firmware reports Physical Interface "
              "Inactive, which is what ATI12 says today",
+    )
+    isdn_run.add_argument(
+        "--bri-network",
+        action="store_true",
+        help="put an NT and a switch on the far side of the S interface: "
+             "Q.921 and Q.931, driven only through the Am79C30A's receive "
+             "and transmit buffers. Without it the D channel has nobody on "
+             "it, and a point-to-point terminal waiting for the network to "
+             "establish the data link waits forever",
+    )
+    isdn_run.add_argument(
+        "--bri-establish",
+        choices=("network", "terminal"),
+        default="network",
+        help="which end establishes the data link. A point-to-point line "
+             "has the network send SABME to the terminal's fixed TEI; a "
+             "multipoint one has the terminal establish once it has been "
+             "assigned a TEI, and the peer waits for it (default: network)",
+    )
+    isdn_run.add_argument(
+        "--bri-tei",
+        type=_number,
+        default=0,
+        help="the TEI the network addresses on a point-to-point line "
+             "(default: 0, the fixed value a point-to-point terminal uses)",
+    )
+    isdn_run.add_argument(
+        "--bri-call-at",
+        type=_number,
+        metavar="INSTRUCTIONS",
+        help="place a call at the modem at this point in the run, once the "
+             "data link is up: a Q.931 SETUP carrying a calling party number",
+    )
+    isdn_run.add_argument(
+        "--bri-call-from",
+        default="5551000",
+        help="the calling party number --bri-call-at presents "
+             "(default: 5551000)",
     )
     isdn_run.add_argument(
         "--flash-overlay",
@@ -1175,6 +1214,12 @@ def main(argv: list[str] | None = None) -> int:
                 imodem_config.load_nvram(args.flash_nvram)
                 if args.flash_nvram else None
             )
+            bri = None
+            if args.bri_network:
+                bri = BriNetwork(
+                    establish=args.bri_establish, tei=args.bri_tei,
+                    call_at=args.bri_call_at, call_from=args.bri_call_from,
+                )
             if args.terminal and args.send:
                 raise ValueError("use --terminal or --send, not both")
             transcript: list[tuple[int, str, str]] = []
@@ -1203,6 +1248,7 @@ def main(argv: list[str] | None = None) -> int:
                 line_activate=args.line_activate,
                 flash_overlay=overlay,
                 flash_nvram=nvram,
+                bri=bri,
                 **entry
             )
             try:
