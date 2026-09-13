@@ -1099,10 +1099,9 @@ The ones worth finding next, in the order they would pay:
    firmware rather than about the board.
 13. **`0xff54`, Port 1 Control**, read out of a run. It says which `P1` pins are
     generic chip selects and which are plain outputs, and the board needs bit 0
-    set for the ASIC's select with bits 2 and 5 clear for the EEPROM. Another
-    check with no hardware in it. The EEPROM's remaining pins - `CS` on CPU 52,
-    the tied `DI`/`DO` on CPU 79, and `ORG` - are
-    [below](#what-the-eeprom-is-wired-to).
+    set for the ASIC's select with bits 2 and 5 clear for the EEPROM's clock
+    and chip select. Another check with no hardware in it. The EEPROM itself is
+    [fully mapped](#what-the-eeprom-is-wired-to).
 14. **The right edge's unread block, `31`-`36`, `39`-`46` and `48`-`52`.** Twenty
     pins, the largest unread run on the package, and by elimination it is where
     the parts nobody has traced must land - the codec, the DAA behind the
@@ -1185,16 +1184,35 @@ pin. Bit 0 should be set and bits 2 and 5 clear. Nothing in `courier_emu` reads
 `0xff54`, and like `GCS0`'s limits it can be checked out of a run with no
 hardware at all.
 
-Two readings are left on the chip:
+**Pin 1 is on CPU 52.** That is the last of the three predicted nets, and the
+EEPROM's interface is now mapped end to end with every prediction confirmed:
 
-* **pin 1** to CPU **52**, the last of the predicted pair.
-* 93C66 **pins 3 and 4** joined, and on CPU **79**.
-* **Pin 6, `ORG`**: high selects x16 organisation and low x8, which decides how
-  the stored settings are laid out and is not recorded anywhere.
+| 93C66 pin | net | CPU pin | harness register |
+|---|---|---|---|
+| 1 `CS` | chip select | 52 (`P1.5`) | `0xff56` bit `0x20` |
+| 2 `SK` | clock | 57 (`P1.2`) | `0xff56` bit `0x04` |
+| 3 `DI` + 4 `DO` | one shared net | 79 (`P2.7`) | `0xff5e` / `0xff5a` bit `0x80` |
 
-The two mappings came from different firmware families - the ROM builds for the
-CPU path, the XMF supervisor for the ASIC path - so this settles the 2806 and
-says nothing about the other board.
+**Pin 6, `ORG`, reads floating - and that is a setting, not a gap.** On the
+Atmel part an unconnected `ORG` is pulled up internally and selects the **x16
+organisation**: 256 words of 16 bits, 512 bytes.
+
+Which is what `courier_emu/nvram.py` already models. `NVRAM_WORDS = 256`, with
+its comment calling the part "the 256 x 16 member of the 93C46 family (93C66)"
+- chosen because the firmware's driver reads and writes *words* and the boot
+block copies 512 bytes. Two independent routes to the same organisation, one
+from the code and one from a pin left deliberately unconnected.
+
+The one soft spot is that the internal pull-up is a property of the
+manufacturer's part, and [board-parts.md](board-parts.md) records this one only
+as "Atmel 8-pin" without the full marking. A part that required `ORG` to be
+tied would make a floating pin undefined rather than x16. The firmware evidence
+carries the conclusion either way; the pin corroborates it rather than
+establishing it alone.
+
+The two mappings this section started from came from different firmware
+families - the ROM builds for the CPU path, the XMF supervisor for the ASIC
+path - so all of this settles the 2806 and says nothing about the other board.
 
 ### Readings recorded but not yet interpreted
 
