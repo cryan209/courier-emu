@@ -14,10 +14,11 @@ artifacts/boot-2806-capture-20260913/boot_run.py \
     artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom 60000000
 ```
 
-That is `CourierMachine` with `with_dsp=True`, **`tick_ms=5`**, **`board_id=7`**
-and **`CourierNvram.idsl302_fixture()`** - the setup
-[rom-dte-path.md](rom-dte-path.md) already documents for the ROM builds. The
-board's own `ATI7`:
+**Since 2026-09-13 that needs no arguments at all** beyond the image: the tick
+is the default now (see below), `board_id` already defaulted to 7, and the
+EEPROM fixture turns out not to be needed - with and without it the profile
+differs by three bytes. The recipe recorded in the artifact passes all three
+explicitly because that is what was run. The board's own `ATI7`:
 
 ```
 USRobotics Courier V.Everything Configuration Profile...
@@ -35,8 +36,29 @@ Supervisor 7.3.14, DSP 3.0.13, 25 MHz, 512k flash, 64k RAM - the 2806 exactly
 as [board-parts.md](board-parts.md) describes it. No 25 MHz mode, no loader
 change, no paging model.
 
-`serial_text` arrives with the eighth bit set; mask to 7 bits to read it. Worth
-knowing before anyone concludes a run produced garbage.
+`serial_text` is **7 data bits and even parity**, not 8N1 - all 430 bytes of
+that profile match even parity and none match odd - so mask to seven bits to
+read it. That is the firmware's choice: `S0CON` is mode 1, eight bits on the
+wire, and the firmware puts ASCII in seven of them and parity in the eighth.
+
+It never becomes 8N1 here because the autoparity has nothing to measure. A real
+Courier learns the format from the `AT` prefix, and on the board the received
+data also goes inverted through a 74AHC04 into `T1IN` (CPU pin 78) so the
+firmware can time a bit cell - a path [asic-pinout.md](asic-pinout.md) traced
+and the harness does not model. Feeding input with bit 7 set gets no response at
+all, which is the same gap seen from the other end.
+
+## The tick is the default now
+
+`tick_ms` used to be off by default, on the grounds that supplying it changes
+call timing and which behaviour is faithful was open. **An undriven run is not a
+slower run, it is a broken one** - see the next section - so the default is now
+`SUGGESTED_TICK_MS`, 5 ms. Pass `tick_ms=0` or `--tick-ms 0` for the old
+behaviour.
+
+It remains a stand-in. What produces the real periodic edge is still not
+established, and modelling that is the actual fix; defaulting the stand-in only
+stops every long run from walking into the same wall.
 
 ## The fault that started this was a missing tick
 

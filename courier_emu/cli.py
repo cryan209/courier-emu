@@ -1023,11 +1023,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--tick-ms",
         type=_number,
         metavar="MS",
+        default=SUGGESTED_TICK_MS,
         help="drive the board's periodic edge on vector 0x0f with this period "
         "in milliseconds. The supervisor's countdown chain hangs off it, so "
-        "without it every firmware timeout waits forever and ATI10 and ATI11 "
-        f"never finish; {SUGGESTED_TICK_MS} makes them answer. Off by default "
-        "because it also changes call timing",
+        "without it every firmware timeout waits forever, ATI10 and ATI11 never "
+        "finish, and a long run stalls outright - both flash captures do, within "
+        f"0.1% of the same instruction count. Defaults to {SUGGESTED_TICK_MS}; "
+        "pass 0 for the old undriven behaviour",
     )
     run.add_argument(
         "--tick-source",

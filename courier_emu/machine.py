@@ -104,10 +104,25 @@ TICK_VECTOR = 0x0F
 # stays in the one state that vectors timer 1 at the wrapper at 0x9f19d, whose
 # near call into the body at 0x9eb73 meets that body's far return and leaves
 # for uninitialised RAM at 0x3591.
-# The period that makes the countdowns elapse at a plausible rate. It is
-# not driven by default: supplying it changes call timing, and the linked
-# pair answers OK where an undriven run reports NO CARRIER, so which of
-# those is faithful is still open.
+# The period that makes the countdowns elapse at a plausible rate, and **the
+# default since 2026-09-13**. It used to be off by default, on the grounds that
+# supplying it changes call timing and the linked pair answers OK where an
+# undriven run reports NO CARRIER - which of those is faithful was open.
+#
+# What settled it is that an undriven run is not a slower run, it is a broken
+# one. Both 512 KiB flash captures stall in the same place without a tick: the
+# 25 MHz 2806 capture faults at 5,684,093 instructions and the 20.16 MHz 4.03d
+# capture stops at 5,689,414, within 0.1% of each other, two boards and two
+# generations at the same wall. With the tick both run to a 60,000,000
+# instruction limit clean, and the 2806 prints its own ATI7. See
+# docs/running-the-25mhz-image.md.
+#
+# A board whose periodic service never runs is not a state any hardware is in,
+# so the faithful default is the one that drives it. Pass `tick_ms=0` (or
+# `--tick-ms 0`) to get the old undriven behaviour back for a comparison.
+#
+# This remains a stand-in: what produces the real edge is not established - see
+# the INT0 note below - and modelling that is the actual fix.
 SUGGESTED_TICK_MS = 5
 # The board's frame edge is the coprocessor's, far faster than the tick, and it
 # is now measured rather than stood in for. `artifacts/coop-int0-02` counted
@@ -432,7 +447,7 @@ class CourierMachine:
         code_observer: Any = None,
         parameter_sector: bytes | None = None,
         parameter_flash: ParameterFlash | None = None,
-        tick_ms: int | None = None,
+        tick_ms: int | None = SUGGESTED_TICK_MS,
         frame_hz: int | None = None,
         tick_source: str | None = None,
         console: SerialConsole | None = None,

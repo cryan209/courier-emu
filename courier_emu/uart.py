@@ -19,6 +19,25 @@ part's fixed serial types, so they are not configuration this has to recover.
 Transmit is a plain store - `mov word ptr [0xff6a], ax` at 33 sites - with no
 status poll ahead of it, so a byte is taken whenever the firmware writes one.
 
+The format on the wire is **7 data bits and even parity**, not 8N1, and that is
+the firmware's choice rather than this module's. `S0CON` is written `0x21` -
+mode 1, which is eight bits on the wire - and the firmware composes each
+character as seven bits of ASCII plus an even parity bit in bit 7. Measured:
+every one of the 430 bytes of an `ATI7` profile from the 2806 capture matches
+even parity, none matches odd. So a caller reading `serial_text` sees what looks
+like high-bit garbage and must mask to seven bits.
+
+**Why it never becomes 8N1 here is a gap, and its shape is known.** A real
+Courier learns the DTE's format from the `AT` prefix. This harness feeds the
+first character bit by bit through the ROM's own sampling loop
+(`machine.py`, the `0x9EDF9`/`0x9EE35` special case) but models nothing of the
+*timing* side: on the board the received data also reaches the CPU inverted
+through a 74AHC04 into `T1IN`, CPU pin 78, which is how the firmware measures a
+bit cell (see `docs/asic-pinout.md`). With no timer input to measure, the
+autoparity never concludes and the power-on default stands. Feeding input with
+bit 7 set produces no response at all, which is the same gap from the other
+side.
+
 What is deliberately not modelled is the error side of the status word. The
 firmware reads S0STS at 13 sites and tests it at exactly one, `and al, 0x10`
 at 0x9f03e, where a set bit skips the receive; the remaining reads discard the

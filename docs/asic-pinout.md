@@ -1693,6 +1693,8 @@ than a fact.
 
 ### The speaker is squelched in a codec register, not gated on the board
 
+> **Correction, 2026-09-13:** The MON OUT wiring and exclusive codec-register speaker-control conclusions below were not measured and are withdrawn. The exact 2806 CPU firmware has M-controlled ASIC latch operations and two conditional L paths, including mailbox tag `0x0f` for a scaled ADC copy to ASIC I/O `0x50`. On the live board, flags `0x22` disable both programmable-volume paths. See [the firmware trace and live results](2806-codec-mailbox-control.md). The historical reasoning below is retained for provenance.
+
 The speaker's gate is an open question in two other places -
 [board-verified-403.md](board-verified-403.md) records "**the speaker is not
 identified**" after the port `0x00` bit `0x40` reading was retracted, and
