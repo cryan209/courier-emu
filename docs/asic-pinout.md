@@ -249,7 +249,10 @@ nobody has looked at.
 | 12 | 102 | DSP `D6` |
 | 13-17 | 103-107 | DSP `D5`-`D1` *(inferred)* |
 | 18 | 108 | DSP `D0` |
-| 19 | 109 | DSP `INT2` |
+| 19 | 109 | DSP `INT2` (pin 39) |
+| 20 | 110 | `GND` |
+| 21 | 111 | `ADM707` pin 7 - the supervisor's `RESET` |
+| 23 | 113 | DSP `TOUT` (pin 122) - the DSP's timer output |
 | 24 | 114 | DSP `IS` |
 | 25 | 115 | DSP `R/W` (pin 92) |
 | 26 | 116 | DSP `STRB` (pin 93) |
@@ -273,7 +276,8 @@ predicting a specific pin rather than being invoked after the fact, and the
 twelve inferred data lines either side of it are the thing that convention is
 holding up.
 
-Pins `110`-`113` and `117` are unread - five of the thirty.
+Pins `112` and `117` are unread - two of the thirty, and this edge is all but
+finished.
 
 #### The ASIC is in the flash's high address path
 
@@ -1143,6 +1147,61 @@ This retires an option: the ASIC is **not** a bus arbiter, and it cannot
 throttle the DSP. A mailbox read that is not ready has to be handled in
 software, by polling, because the hardware has no way to make the DSP wait.
 
+### The DSP's timer output comes back to the ASIC
+
+Pin `113` is DSP pin 122, **`TOUT`** - the C5x's on-chip timer output. Taken
+with pin `119` driving the DSP's `CLKIN`, the clock relationship between these
+two parts runs both ways: **the ASIC clocks the DSP, and the DSP's timer
+reports back into the ASIC**.
+
+That is a periodic hardware signal arriving at the part that generates the
+CPU's interrupts, and this repository has an open question shaped exactly like
+it. [machine.py:596](../courier_emu/machine.py) describes `INT0` as "the board's
+frame edge", says "nothing on the CPU side produces that edge", and has a ROM
+run **stand in for it** the way it stands in for the tick. A periodic edge with
+no CPU-side source is what the harness has been fabricating; a DSP timer output
+wired into the interrupt-generating part is a candidate for where the real one
+comes from.
+
+**It is a candidate and not yet more than that**, and there is a specific
+obstacle: CPU `INT0` (CPU pin 62) is recorded here as **not connected**, so
+whatever this produces does not arrive on that pin. Either the edge the firmware
+services comes in on `INT1` or `INT2` - both of which are on this package - or
+the `INT0` reading is wrong, or the frame edge is not what `TOUT` carries.
+
+What would settle it is a live reading rather than a meter: **`TOUT`'s period**.
+The C5x timer is programmed by the DSP's own firmware, and if its rate matches
+the 5 ms tick the harness models, or the frame rate the mailbox runs at, the
+identification is made. A scope on DSP pin 122 answers it in one look, and it is
+the kind of evidence a stand-in should be replaced by.
+
+### The supervisor's reset reaches the ASIC
+
+Pin `111` goes to **`ADM707` pin 7**. On the MAX70x-family pinout the ADM707
+follows, pin 6 is `RESET` active-low and **pin 7 is `RESET` active-high**, so
+the ASIC takes the active-high polarity and the CPU's `RES#` is presumably the
+other one - which is the ordinary way a board with both polarities available
+splits them. Reading `ADM707` pin 6 against CPU `RES#` would confirm that half.
+
+The reset tree matters more here than it usually would, because
+[ram-probe-delivery.md](ram-probe-delivery.md) establishes that **every probe
+run on this board ends in a watchdog reset** - the 1.6 second bound, the cleared
+RAM, the restored vector, all from this part. That file also records what it
+could not find:
+
+> The `ADM707`'s `WDI` source has **not** been identified.
+
+**This reading does not identify it, but it moves the candidate.** The ASIC is
+now known to be wired to the supervisor, which makes the ASIC's own latches a
+live possibility for `WDI` rather than a speculative one - and `WDI` is `ADM707`
+**pin 8**, the pin next to the one just read. That is the cheapest outstanding
+reading in this file relative to what it would settle: a firmware that must
+periodically toggle something to stay alive, and nobody has found the something.
+
+If `WDI` turns out to come from the ASIC, the harness has a watchdog it does not
+model at all, and a probe monitor could feed it from the same ports it already
+drives.
+
 ### The DSP and the codec share one reset net
 
 DSP `RS` (pin 127) does not come from the ASIC. It goes to the codec's pin 8,
@@ -1453,10 +1512,10 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Twenty-five of the 120 pins are unread. Of the ninety-five that are not,
+Twenty-two of the 120 pins are unread. Of the ninety-eight that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
-and the left edge but for five**; the bottom edge is up to twenty-six of thirty
+and the left edge but for two**; the bottom edge is up to twenty-six of thirty
 and is tied with the right edge as the best-mapped side of the package. **The
 right edge turned out to be three groups, not two** - CPU bus control, the
 DTE's EIA-232 interface, and the telco side - and its middle is filled in.
