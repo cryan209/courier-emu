@@ -28,6 +28,36 @@ So the gap is not the clock and not a mode. **It is that the 2806's *own*
 firmware is the one image that cannot be executed**, while four of its siblings
 can.
 
+## The three generations, and which board each image is
+
+`main211` is the **newest generation** Courier, not a variant of this one. Its
+own `ATI7`, printed by the harness:
+
+```
+Options      HST,V32bis,V92        Supervisor rev  2.1.1
+Clock Freq   25 Mhz                DSP rev         2.1.1
+Flash ROM    1024k                 dates           01/10/03
+Ram          256k
+```
+
+**Twice the flash and four times the RAM**, V.92, dated 2003. `3453Bv2.1.1.xmf`
+is the same generation. So the two images that boot here are a *different board*
+that happens to share this one's clock - which lines the repository's images up
+as three generations rather than two:
+
+| generation | images | clock | flash |
+|---|---|---|---|
+| old | `IDSDL302.ROM`, the 4.03d capture | 20.16 MHz | 512 KiB |
+| **middle - this board** | `SV25.XMD`, the 2806 capture | 25.8048 MHz | 512 KiB |
+| new | `main211.xmf`, `3453Bv2.1.1.xmf` | 25.8048 MHz | 1024k, 256k RAM |
+
+[board-parts.md](board-parts.md) reaches the same split from the other
+direction - "the middle generation groups with the old one, not the new one" -
+and that is the useful part. **The 2806 is an old-generation board with a new
+clock**, so the ROM-build machinery that runs `IDSDL302` is the right machinery
+for it, and the 25 MHz builds that boot are no evidence at all that this board's
+image will.
+
 ## The 2806's own image exists here twice, and neither copy runs
 
 `SV25.XMD` **is** the 2806's firmware. Stripping its 128-byte header and running
@@ -41,21 +71,23 @@ Neither form will run:
 * **`SV25.XMD`** loads as an `XmdImage`, and `machine.run` then fails with
   `UC_ERR_WRITE_UNMAPPED` writing `image.data` at `image.load_base`. The XMD
   path is a decoder, not an execution target - nothing maps it.
-* **The raw capture** is 512 KiB ending in the 80186 reset vector, so
-  `load_image` identifies it as a `CourierRom` - the `IDSDL302` shape. But it is
-  not a ROM build; it is a **supervisor flash image**, the same generation as
-  the XMFs. Running it through the ROM model is what the fault below looks like.
+* **The raw capture** loads as a `CourierRom`, and an earlier revision of this
+  section said that was the mistake - that it is really a supervisor image being
+  run through the wrong model. **That is withdrawn.** The capture is a genuine
+  ROM-shaped flash image: it ends in the same reset stub as the 4.03d capture,
+  `fa ba a4 ff b8 00 80 ef` then a far jump into `fc00`, and it is **45.7%
+  byte-identical** to that capture - which is as close as the 4.03d capture is
+  to `IDSDL302.ROM` (45.2%). All three are the same kind of image. `CourierRom`
+  is the right identification.
 
-That is the whole of it. The two 20.16 MHz captures *are* ROM builds, so the
-same `CourierRom` path is right for them and wrong here, and the file-shape
-sniffing cannot tell the difference because both are 512 KiB images ending in a
-reset vector.
+So the container is right and the model is right, and the fault below is a
+**genuine gap** rather than a misrouted load. That is a worse answer than the
+one it replaces, and a more honest one.
 
-**The work is to give the 25 MHz supervisor an execution path** - either by
-mapping the decoded XMD the way an XMF is mapped, or by distinguishing a
-supervisor flash capture from a ROM build. `main211.xmf` and
-`3453Bv2.1.1.xmf` already prove the supervisor model runs 25 MHz code; they are
-simply not this board's code.
+**The work splits in two.** Giving `SV25.XMD` an execution path is worth doing
+on its own - it is the same bytes with a checksum, and a decoder that cannot
+run what it decodes is a gap. But it will land in the same place as the raw
+capture, because the bytes are the same bytes.
 
 ## It is not a different firmware family
 
@@ -102,9 +134,20 @@ The raw `.rom` loads and executes; the container is not the obstacle.
 **It dies in RAM, not in flash.** Linear `0xff42` is inside the first 64 KiB,
 which `LCS` selects as SRAM. So the supervisor has copied code down and jumped
 to it, and the emulator has hit something it will not decode there - the CPU
-running over data rather than over code. Which is what running a supervisor
-image through the ROM model would produce, and is the first thing to rule out
-before blaming the instruction decoder.
+running over data rather than over code.
+
+**The first suspect is the flash, and this is where the pinout work earns its
+keep.** [asic-pinout.md](asic-pinout.md) establishes that on this board the
+**ASIC holds the flash's `CE#`** and takes four of the CPU's upper address
+lines while driving three - one address bit consumed by a decision the ASIC
+makes. That is paging. The harness hands the firmware a flat 512 KiB image with
+no register behind it, so a supervisor that pages a window to copy code down
+would be copying from wherever the flat model happens to put it - and would then
+jump into exactly the kind of wrongness seen here.
+
+That is a hypothesis, not a diagnosis. What makes it the one to test first is
+that it is specific to **this** board: the old-generation 20.16 MHz images run
+fine through the same model, and nothing says their boards page anything.
 
 **It never reaches the DTE.** No serial text and the input untouched, so
 nothing about the `AT` layer has been exercised yet.
@@ -220,13 +263,14 @@ bit carries the speaker setting to the DSP, whether `&T1` reaches the codec.
 Every one of those is a question about the 25 MHz board, and every one of them
 is currently being asked of a 20.16 MHz firmware.
 
-The first step is not a port and not a clock mode. It is to load this board's
-supervisor through the supervisor model instead of the ROM model.
+The first step is not a port and not a clock mode. It is to find out what the
+supervisor copies into RAM before it jumps to `0xff42`, and whether the flash it
+reads that from is the flash the ASIC would have given it.
 
-**One caveat on target choice.** The two images that boot are `main211.xmf` and
-`3453Bv2.1.1.xmf`, and `main211` is the one this project has been told not to
-use as a behavioural reference because it is not fully modelled. That advice and
-this note pull in opposite directions - the well-modelled builds are 20.16 MHz
-ROMs and the board is 25 MHz - and that tension **is** the drift this file is
-about. It is not resolved by picking a side; it is resolved by getting the
-2806's own supervisor running.
+**And the target-choice advice survives intact.** `main211` is the newest
+generation and not a reference for this board; `IDSDL302` and the 4.03d capture
+are the right behavioural references and remain so. The 2806 being an
+old-generation board with a new clock is what makes that consistent rather than
+contradictory - it is close kin to the images already trusted here, and the
+distance to close is one board's worth of hardware, not one generation's worth
+of firmware.
