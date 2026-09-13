@@ -41,12 +41,21 @@ that profile match even parity and none match odd - so mask to seven bits to
 read it. That is the firmware's choice: `S0CON` is mode 1, eight bits on the
 wire, and the firmware puts ASCII in seven of them and parity in the eighth.
 
-It never becomes 8N1 here because the autoparity has nothing to measure. A real
-Courier learns the format from the `AT` prefix, and on the board the received
-data also goes inverted through a 74AHC04 into `T1IN` (CPU pin 78) so the
-firmware can time a bit cell - a path [asic-pinout.md](asic-pinout.md) traced
-and the harness does not model. Feeding input with bit 7 set gets no response at
-all, which is the same gap seen from the other end.
+A real board reaches the right format two ways - it **autonegotiates** from the
+`AT` prefix, and the format is **stored in the settings EEPROM** - and neither
+works here. The autonegotiation has nothing to measure: on the board the
+received data goes inverted through a 74AHC04 into `T1IN` (CPU pin 78) so the
+firmware can time a bit cell, a path [asic-pinout.md](asic-pinout.md) traced and
+the harness does not model. Feeding input with bit 7 set gets no response at
+all, which is the same gap from the other end. And no fixture carries a stored
+format: booting this capture against no NVRAM, the 302 fixture and the 403
+fixture gives 427, 430 and 473 bytes of profile, all three with the parity bit
+set.
+
+**There is no captured 93C66 image in this repository.** One would settle this
+and several other blank-fixture caveats, and the part is now fully mapped -
+`CS`/`SK` on CPU 52/57, `DI`+`DO` on CPU 79 - so reading one off a board is a
+known job rather than a search.
 
 ## The tick is the default now
 

@@ -27,16 +27,28 @@ every one of the 430 bytes of an `ATI7` profile from the 2806 capture matches
 even parity, none matches odd. So a caller reading `serial_text` sees what looks
 like high-bit garbage and must mask to seven bits.
 
-**Why it never becomes 8N1 here is a gap, and its shape is known.** A real
-Courier learns the DTE's format from the `AT` prefix. This harness feeds the
-first character bit by bit through the ROM's own sampling loop
-(`machine.py`, the `0x9EDF9`/`0x9EE35` special case) but models nothing of the
-*timing* side: on the board the received data also reaches the CPU inverted
-through a 74AHC04 into `T1IN`, CPU pin 78, which is how the firmware measures a
-bit cell (see `docs/asic-pinout.md`). With no timer input to measure, the
-autoparity never concludes and the power-on default stands. Feeding input with
-bit 7 set produces no response at all, which is the same gap from the other
-side.
+**Why it never becomes 8N1 here is a gap with two halves, and both are known.**
+The format is autonegotiated from the `AT` prefix *and* stored in the settings
+EEPROM, so a real board arrives at it either way. Neither path works here:
+
+* **Autonegotiation has nothing to measure.** This harness feeds the first
+  character bit by bit through the ROM's own sampling loop (`machine.py`, the
+  `0x9EDF9`/`0x9EE35` special case) but models nothing of the *timing* side: on
+  the board the received data also reaches the CPU inverted through a 74AHC04
+  into `T1IN`, CPU pin 78, which is how the firmware measures a bit cell (see
+  `docs/asic-pinout.md`). Feeding input with bit 7 set produces no response at
+  all, which is the same gap from the other side.
+* **The stored setting is not in any fixture.** `idsl302_fixture` seeds only
+  words 94..102 and `idsl403_fixture` little more; **no captured 93C66 image
+  exists in this repository**. Booting the 2806 capture against none, the 302
+  fixture and the 403 fixture gives 427, 430 and 473 bytes of profile and all
+  three come out with the parity bit set, so none of them carries a format.
+
+Of the two, modelling `T1IN` is the one worth doing, because a real modem has to
+reach the right format from an erased EEPROM as well. A captured EEPROM would
+fix this run and several other "blank fixture" caveats besides, and the part's
+wiring is now fully mapped (`CS`/`SK` on CPU 52/57, `DI`+`DO` on CPU 79), so
+reading one off a board is a known job.
 
 What is deliberately not modelled is the error side of the status word. The
 firmware reads S0STS at 13 sites and tests it at exactly one, `and al, 0x10`
