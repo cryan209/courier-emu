@@ -49,10 +49,11 @@ MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
 TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 # The C52's reset line, in the relocated peripheral control block. Driving it
-# low holds the coprocessor in reset; the ROM pulses it at 8e3c1/8e406 and the
-# payload at 69c08/69c4d, and `probe_transport` recovered the same bit.
+# low holds the coprocessor in reset; the ROM pulses it at 8e40c/8e418. Other
+# P1 latch bits are exercised heavily during self-test and must not reset it.
 DSP_RESET_PORT = 0xFF56
-DSP_RESET_BIT = 0x0002
+ROM_DSP_RESET_BIT = 0x0008
+PAYLOAD_DSP_RESET_BIT = 0x0002
 # How often the board's periodic service runs. Everything it does is an edge
 # the hardware samples rather than something the 80186 produces, so a period
 # models it better than a test after every instruction - a real 80186 does not
@@ -591,6 +592,9 @@ class CourierMachine:
         self._quad_modem_tick = getattr(image, "quad_role", None) == "modem"
         self._rom_tick = (supervisor_offset is None and self.emulate_interrupts
                           and not self._quad_profile)
+        self._dsp_reset_bit = (
+            ROM_DSP_RESET_BIT if self._rom_tick else PAYLOAD_DSP_RESET_BIT
+        )
         # The ROM reaches the settings EEPROM over port pins rather than
         # through board latch 0, so it needs its own front end onto the same
         # 93C66 model. This holds the data pin the driver at 0x1401 last drove.
@@ -2470,7 +2474,7 @@ class CourierMachine:
                 # codec's RESET pin, so on the board every one of these pulses
                 # resets the codec too and returns its registers to defaults.
                 # Nothing below models that - see docs/asic-pinout.md.
-                asserted = not value & DSP_RESET_BIT
+                asserted = not value & self._dsp_reset_bit
                 self.dsp_bridge.set_reset(asserted)
                 self._dsp_in_reset = asserted
             if self.uart is not None:
@@ -2625,7 +2629,10 @@ class CourierMachine:
         # than the emulation itself. Payload and diagnostic runs retain the
         # Python hook because their traces consume its per-block state.
         fast_rom_clock = bool(
-            self._rom_tick and disassembler is not None and not self._needs_code_hook()
+            self.cpu_engine != "interpreter"
+            and self._rom_tick
+            and disassembler is not None
+            and not self._needs_code_hook()
         )
         def native_service(total: int, elapsed: int) -> None:
             self.instructions = total

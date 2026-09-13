@@ -628,6 +628,31 @@ class Uc:
                             repeat == 0xF3 and equal or repeat == 0xF2 and not equal
                         ):
                             self.regs[UC_X86_REG_IP] = start_ip
+            elif opcode in (0xAE, 0xAF):
+                # SCAS compares AL/AX with ES:[DI]. Segment overrides do not
+                # affect the destination of a string instruction.
+                if not repeat or self.regs[UC_X86_REG_CX]:
+                    size = 1 if opcode == 0xAE else operand_size
+                    step = -size if self.regs[UC_X86_REG_FLAGS] & DF else size
+                    destination = self._physical(
+                        self.regs[UC_X86_REG_ES], self.regs[UC_X86_REG_DI]
+                    )
+                    left = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                    right = int.from_bytes(self.mem_read(destination, size), "little")
+                    self._alu(7, left, right, size * 8)
+                    self.regs[UC_X86_REG_DI] = (
+                        self.regs[UC_X86_REG_DI] + step
+                    ) & 0xFFFF
+                    if repeat:
+                        self.regs[UC_X86_REG_CX] = (
+                            self.regs[UC_X86_REG_CX] - 1
+                        ) & 0xFFFF
+                        equal = bool(self.regs[UC_X86_REG_FLAGS] & ZF)
+                        if self.regs[UC_X86_REG_CX] and (
+                            repeat == 0xF3 and equal
+                            or repeat == 0xF2 and not equal
+                        ):
+                            self.regs[UC_X86_REG_IP] = start_ip
             elif opcode in (0xA4, 0xA5, 0xAC, 0xAD, 0xAA, 0xAB):
                 if not repeat or self.regs[UC_X86_REG_CX]:
                     size = 1 if opcode in (0xA4, 0xAC, 0xAA) else operand_size

@@ -423,6 +423,8 @@ class CourierDspBridge:
         self.bootstrap = bytearray()
         self.active = False
         self.bootstrap_match: bool | None = None
+        self._last_bootstrap_bytes = 0
+        self._last_bootstrap_match: bool | None = None
         self.bootstraps = 0
         # A mid-call overlay transfer, which is a second download into a core
         # that is already running. Identified by content against the ROM's own
@@ -1640,6 +1642,13 @@ class CourierDspBridge:
             if self.boot_rom_enabled:
                 self._commit_rom_group(strobe)
                 self._configure_frame_interrupt()
+                # A later ROM self-test resets the C51 but deliberately keeps
+                # external program SRAM, then issues only the checksum strobe
+                # to validate and re-enter that resident. The C51 wrote the
+                # acknowledgement above; make the retained resident schedulable
+                # so it can execute the following branch to its saved entry.
+                if self.bootstraps:
+                    self.active = True
                 self.launched = True
             elif self.active and not self.launched and hasattr(self.core, "set_pc"):
                 self.core.set_pc(self.entry_word)
@@ -1703,6 +1712,8 @@ class CourierDspBridge:
                     self.bootstrap[:self.bootstrap_target_size]
                     == self.expected_bootstrap[:self.bootstrap_target_size]
                 )
+                self._last_bootstrap_bytes = len(self.bootstrap)
+                self._last_bootstrap_match = self.bootstrap_match
                 self.active = True
                 self.bootstraps += 1
                 # A modelled codec reports itself at power up, so the mailbox
@@ -2305,8 +2316,12 @@ class CourierDspBridge:
         status = BridgeStatus(
             active=self.active,
             boot_rom_enabled=self.boot_rom_enabled,
-            bootstrap_bytes=len(self.bootstrap),
-            bootstrap_match=self.bootstrap_match,
+            bootstrap_bytes=(len(self.bootstrap) or self._last_bootstrap_bytes),
+            bootstrap_match=(
+                self.bootstrap_match
+                if self.bootstrap_match is not None
+                else self._last_bootstrap_match
+            ),
             bootstraps=self.bootstraps,
             overlay_downloads=self.overlay_downloads,
             overlay_id=self.overlay_id,
