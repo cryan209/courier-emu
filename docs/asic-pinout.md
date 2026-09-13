@@ -1205,26 +1205,25 @@ its comment calling the part "the 256 x 16 member of the 93C46 family (93C66)"
 block copies 512 bytes. Two independent routes to the same organisation, one
 from the code and one from a pin left deliberately unconnected.
 
-The one soft spot is that the internal pull-up is a property of the
-manufacturer's part, and [board-parts.md](board-parts.md) records this one only
-as "Atmel 8-pin" without the full marking. A part that required `ORG` to be
-tied would make a floating pin undefined rather than x16. The firmware evidence
-carries the conclusion either way; the pin corroborates it rather than
-establishing it alone.
+That argument used to rest on an assumption, because the part was recorded only
+as "Atmel 8-pin" and the internal pull-up on `ORG` is a property of the
+manufacturer's device. **The marking is read: it is an Atmel 93C66.** So the
+pull-up is the datasheet's and a floating `ORG` is x16 by specification, not by
+inference. The firmware route and the pin route now agree on 256 x 16 with
+nothing assumed between them.
 
 **Pins 5 and 8 are ground and supply, and pin 7 floats too.** That closes the
 package: every one of the eight pins is now read rather than assumed, and the
 power pair being ordinary rules out the alternative reading of pin 6 in which
 a supply-side strap was doing the organisation select.
 
-Pin 7 floating is the expected result and it narrows the part a little. On the
-Atmel device pin 7 is `DC`, a don't-connect with no bond inside, so leaving it
-open is the only correct treatment. Some other vendors' 93C66 variants put a
-`PE` program-enable on that pin, and a part of that kind with `PE` floating
-could not be written at all - which the firmware plainly does. So the pin is
-consistent with the Atmel marking the board notes claim, and inconsistent with
-a `PE`-bearing substitute. It is weaker evidence than a package marking, but
-it points the same way as the `ORG` argument above rather than against it.
+Pin 7 floating is the expected result. On the Atmel device pin 7 is `DC`, a
+don't-connect with no bond inside, so leaving it open is the only correct
+treatment. Some other vendors' 93C66 variants put a `PE` program-enable on that
+pin, and a part of that kind with `PE` floating could not be written at all -
+which the firmware plainly does. With the marking now read that is a
+consistency check rather than an identification, but it is the one the marking
+predicts.
 
 The two mappings this section started from came from different firmware
 families - the ROM builds for the CPU path, the XMF supervisor for the ASIC
