@@ -256,6 +256,7 @@ nobody has looked at.
 | 19 | 109 | DSP `INT2` (pin 39) |
 | 20 | 110 | `GND` |
 | 21 | 111 | `ADM707` pin 7 - the supervisor's `RESET` |
+| 22 | 112 | `AC03` codec pin 14 - the ASIC's **only** line to the codec |
 | 23 | 113 | DSP `TOUT` (pin 122) - the DSP's timer output |
 | 24 | 114 | DSP `IS` |
 | 25 | 115 | DSP `R/W` (pin 92) |
@@ -280,8 +281,7 @@ predicting a specific pin rather than being invoked after the fact, and the
 twelve inferred data lines either side of it are the thing that convention is
 holding up.
 
-Pins `112` and `117` are unread - two of the thirty, and this edge is all but
-finished.
+Pin `117` is the only unread one left - one of the thirty.
 
 #### The ASIC is in the flash's high address path
 
@@ -461,15 +461,28 @@ that the ASIC owns the SRAM's decode - is excluded outright. That was the probe
 this file asked for and it came back against the claim.
 
 > **`UCS` is also on a RAM.** CPU `UCS` (pin 61) goes to **RAM pin 20**, which
-> on a 32Kx8 part is `CE#`. Both of the CPU's dedicated memory selects are
-> therefore spent on SRAM, and **neither is on the flash** - the ASIC holds the
-> flash's `CE#`.
+> on a 32Kx8 part is `CE#`. Neither of the CPU's dedicated memory selects is on
+> the flash - the ASIC holds the flash's `CE#`.
 >
-> Which RAM is not recorded, and that is the thing to pin down: "both SRAMs'
-> `CE#` on `LCS`" and "`UCS` on a RAM's `CE#`" cannot both be true of both
-> parts. One select per part, or one of the two readings covering only the pin
-> it touched, and the difference decides whether the pair is one 16-bit bank or
-> two separately addressed ones.
+> **The pair is one bank.** The two SRAMs have their `CE#` pins connected
+> together and their `OE#` pins connected together; only the write enables are
+> separate, made by the `'32` from the byte-lane terms. Selected together, read
+> together, written a byte at a time - which is exactly the 16-bit bank this
+> section's next paragraph argues for, now confirmed at the pins rather than
+> inferred from the part sizes.
+>
+> **But the select's identity is in conflict.** With one common `CE#` net, the
+> earlier reading (`LCS`, CPU pin 60) and the later one (`UCS`, CPU pin 61)
+> cannot both be right - two chip-select outputs cannot drive one net. CPU 60
+> and 61 are **adjacent pins**, and this file has now found three off-by-one
+> transcriptions on other nets, so that is the likely explanation rather than
+> anything subtle.
+>
+> **The check is one probe done twice**: RAM pin 20 against CPU 60, then against
+> CPU 61. Exactly one should answer. It matters because the 80186's `LCS` covers
+> low memory from address zero and `UCS` covers the top of the space - RAM on
+> `LCS` is the conventional arrangement, RAM on `UCS` is not, and the firmware's
+> own memory map follows from which it is.
 
 **Both SRAMs share one select and have separate write enables, which says what
 they are.** Two 32Kx8 parts enabled together, on a CPU with a 16-bit data bus,
@@ -1040,6 +1053,48 @@ That is one continuity reading from a named output pin, and it is a better
 instrument than re-probing the `SD` net, which is the reading that went wrong
 in the first place.
 
+#### The DTE is on serial channel 0, settled
+
+`U18`'s outputs have been followed, and two of them go to the CPU:
+
+| `U18` output | pin | goes to | CPU pin | what the DTE sends |
+|---|---|---|---|---|
+| `1Y` | 3 | CPU `RXD0` | 3 | `TXD` - the DTE's data |
+| `2Y` | 6 | CPU `CTS0` | 1 | `RTS` |
+| `4Y` | 11 | ASIC pin 48 | - | `DTR`, most likely |
+| `3Y` | 8 | *unread* | - | - |
+
+**The DTE's transmitted data arrives at `RXD0`.** That closes the question this
+file has been circling: the DTE link is on **serial channel 0**, and
+`courier_emu/uart.py` - whose `EbSerial` says "Serial port 0 of the 80C186EB" -
+has been right all along.
+
+The `SD` group reading, which put the DTE's data at CPU pin 7 (`P2.0/RXD1`) and
+was called "independent confirmation that the DTE runs on the CPU's own UART",
+is **wrong about the channel**. It was already doubtful - it put `SD` on CPU 63
+as well, which is `INT1` - and this is the second of its three pins to fail.
+The group should be treated as retired rather than retaken.
+
+**`CTS0` is a real pin, and the harness fabricates it.** The DTE's `RTS` comes
+through `U18` gate 2 to CPU pin 1. `uart.py` models `clear_to_send` as a
+stand-in, raising it with each delivered character, and its own comment says so:
+"the real sequence is the DTE dropping DTR on port `0x14` bit 0 and asserting
+RTS 30 to 50 ticks later ... the chain is reached by the right bit for the wrong
+reason". The wiring now says exactly where the real `RTS` lands. That is a
+concrete harness item with a known-correct target, not a guess.
+
+**The transmit path is asymmetric, and deliberately so.** Receive comes to the
+CPU directly from the receiver; transmit leaves the CPU on `TXD0` (pin 2) into
+**ASIC pin 51**, and the `RD` driver is fed from **ASIC pin 46**. So the DTE's
+data reaches the CPU untouched, and the modem's data to the DTE passes through
+the gate array. A part placed on one direction only is placed there to do
+something to it - gating the receive line during handshake or retrain is the
+obvious candidate - and no port bit has been identified for it.
+
+**`3Y` is the one output left.** Three DTE inputs are accounted for (`TXD`,
+`RTS`, and `DTR` by elimination at ASIC 48), so the fourth channel is either
+spare or carries something this file has not expected.
+
 #### The isolation barrier is found, and the ASIC is on the receiving side
 
 Pins `19` and `22` go to **optocouplers `U14` and `U16`**, pin 5 of each, and
@@ -1505,6 +1560,42 @@ Three consequences follow from the asymmetry:
   that supplies another part's clock can halt it without asserting any reset at
   all, and nothing in this repository has considered that.
 
+### The codec is the DSP's, not the ASIC's
+
+Three of the codec's pins go **straight to the DSP**:
+
+| `AC03` pin | DSP pin |
+|---|---|
+| 10 | 106 |
+| 11 | 43 |
+| 12 | 104 |
+
+Those DSP pins sit among ones this file has already identified - `TDR` on 44,
+`TFSX` on 105, `TDX` on 107 - which is the C5x's serial-port neighbourhood. So
+the codec's serial interface is wired to **the DSP's own serial port**, with no
+ASIC between them. The exact signal names want reading out of SPRU056D's Table
+A-4, the same table this file used for `IS` and the supply pins, but the shape
+does not depend on which is which.
+
+**And that contradicts a standing claim.** [board-parts.md](board-parts.md)
+argues the ASIC fronts the codec and thereby hides the AC01/AC03 difference
+from the DSP. It cannot: the DSP talks to the codec directly. Whatever explains
+the two boards running byte-identical DSP payloads across different codecs, it
+is not that the ASIC is standing between them.
+
+**The ASIC has exactly one line to the codec** - `AC03` pin 14, on ASIC pin
+`112`. One line is not an interface; it is a control or a clock. The obvious
+candidate is the codec's **master clock**, which would be of a piece with the
+ASIC already producing the DSP's `CLKIN` on pin `119` - one part generating both
+timebases in the audio path. That is a scope reading on `AC03` pin 14 and
+nothing else will settle it.
+
+If it *is* the master clock, then the ASIC sets the codec's sample rate, and
+[hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)
+derives that rate from the oscillator on the assumption that the divide is
+fixed - the same assumption the DSP clock finding already put in question, now
+in a second place.
+
 ### The DSP and the codec share one reset net
 
 DSP `RS` (pin 127) does not come from the ASIC. It goes to the codec's pin 8,
@@ -1815,10 +1906,10 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Eighteen of the 120 pins are unread. Of the hundred and two that are not,
+Seventeen of the 120 pins are unread. Of the hundred and three that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for one pin
-and the left edge but for two**; the bottom edge is up to twenty-six of thirty
+and the left edge but for one**; the bottom edge is up to twenty-six of thirty
 and is tied with the right edge as the best-mapped side of the package. **The
 right edge turned out to be three groups, not two** - CPU bus control, the
 DTE's EIA-232 interface, and the telco side - and its middle is filled in;
@@ -1906,10 +1997,11 @@ The ones worth finding next, in the order they would pay:
     `45`-`52` and the telco pins at `37`/`38`, so it is bracketed by two known
     groups rather than floating.
 
-15. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
-   of the rest reach the ASIC decides the claim in
-   [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
-   the AC01/AC03 difference from the DSP.
+15. ~~**The codec's remaining pins.**~~ Answered against the claim: the codec's
+   serial interface goes **directly to the DSP** (its pins 10, 11, 12 to DSP
+   106, 43, 104), and the ASIC has exactly one line to it, `AC03` pin 14 on ASIC
+   `112`. So the ASIC does not front the codec. What remains is **what that one
+   line carries** - a master clock is the candidate, and it is a scope reading.
 16. ~~**The EIA-232 receiver.**~~ **Answered: it is `U18`, a `DS1489AM`**,
    reached at its `4Y` output from ASIC pin 48. What remains is its other
    three channels - outputs `1Y`, `2Y`, `3Y` on pins 3, 6 and 8 - and in
@@ -1933,14 +2025,21 @@ The ones worth finding next, in the order they would pay:
 21. **CPU `RESOUT` (pin 69).** The processor's reset output, now that the reset
    chain is known to run the other way. It either goes nowhere or reaches
    something unlooked-at.
-22. **Which RAM `UCS` selects.** CPU `UCS` (pin 61) is on a RAM's pin 20,
-   `CE#`, and `LCS` is recorded as reaching **both** SRAMs' `CE#`. Those cannot
-   both be true of both parts, and the difference decides whether the pair is
-   one 16-bit bank or two separately selected ones.
-23. **`U18`'s other three outputs** - `1Y`, `2Y`, `3Y` on pins 3, 6 and 8 of the
-   `DS1489AM`. One of them carries the DTE's `TXD` to a CPU receive pin, and
-   *which* pin decides whether the DTE link is on serial channel 0 or split
-   across both. See item 16.
+22. **`LCS` or `UCS` on the SRAM bank.** The two SRAMs share one `CE#` net and
+   one `OE#` net, so the pair is a single 16-bit bank - that part is settled.
+   What is not is which CPU select drives it: pin 60 (`LCS`) and pin 61 (`UCS`)
+   are adjacent and have one reading each. Probe RAM pin 20 against both; only
+   one can answer, and the firmware's memory map follows from which.
+23. **`U18`'s output `3Y`** (pin 8) - the last of the four. `1Y` and `2Y` are
+   now read to CPU `RXD0` and `CTS0`, which settles the DTE as serial channel
+   0; `4Y` is on ASIC 48. Three DTE inputs are accounted for, so this one is
+   spare or unexpected.
+24. **What gates the transmit path.** `TXD0` goes into the ASIC and the `RD`
+   driver comes out of it, while receive reaches the CPU directly. A part on one
+   direction only is there to do something to it, and no port bit is identified.
+25. **The `SD` group, now retired rather than retaken.** Two of its three pins
+   have failed against the datasheet and the board. Where the `SD` lamp is
+   actually driven from is unknown again.
 
 ### What the EEPROM is wired to
 
