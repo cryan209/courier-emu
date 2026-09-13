@@ -1661,13 +1661,21 @@ data-conversion rate and 7.2-kHz filter bandwidth for a 10.368-MHz master clock
 input signal". Change `MCLK` and every one of those numbers moves with it.
 
 **And the frequency is already known - from the firmware, not a scope.**
+
 [ac01-codec-protocol.md](ac01-codec-protocol.md) solves it out of the codec's
 own divider registers: the DSP writes `A = 10` and `B = 20`, the datasheet's
 equations give `fs = MCLK/(2AB)`, and three independently established sample
 rates converge on **MCLK = 2.880 MHz**. Which is `40.320 / 14` exactly.
 
-So the divider inside the ASIC is **14**, and the pin reading confirms the path
-that number travels rather than supplying the number. Worth saying plainly that
+So the divider inside the ASIC is **14** - on the board whose oscillator is
+40.320 MHz. That is the 20.16 MHz unit the part list was photographed from, and
+**the 2806's own can has not been read for its marking**; a 25 MHz `CLKOUT`
+wants a different input and therefore a different divide. The 2.880 MHz is
+firmware evidence and holds either way; the 14 is provisional. See
+[running-the-25mhz-image.md](running-the-25mhz-image.md).
+
+The pin reading confirms the path that number travels rather than supplying the
+number. Worth saying plainly that
 an earlier revision of this section predicted 10.08 MHz from `40.320 / 4` on the
 grounds that it divides nicely to 8 kHz - which it does, and the board does not
 use it. The arithmetic-from-plausibility lost to arithmetic-from-the-firmware,
@@ -1780,13 +1788,13 @@ touching the DSP payload at all.
 **Two tap runs were attempted here and neither answered it**, which is worth
 recording so the next attempt starts further along. `MAIN_2.3.31.XMF` with
 `ATM0` and `ATM3` produces **no mailbox traffic at all** in nine million
-instructions, and the 2806's own flash dump does not reach a prompt under the
-harness - the raw `.rom` runs but emits no serial text, so the supported path is
-an XMF. The existing `artifacts/mailbox-tap-atdt-01/` also notes that its plain
-`AT` control run produced the same tags as its dial run, so **the traffic that
-distinguishes settings may only appear during a call**, if it appears at all.
-A useful run needs an image that reaches a dial, and the comparison wants to be
-`M0` against `M3` on the same image with everything else held.
+instructions. The 2806's own flash capture gets further than that and then
+faults - see [running-the-25mhz-image.md](running-the-25mhz-image.md), which
+records where. And the existing `artifacts/mailbox-tap-atdt-01/` notes that its
+plain `AT` control run produced the same tags as its dial run, so **the traffic
+that distinguishes settings may only appear during a call**, if it appears at
+all. A useful run needs an image that reaches a dial, and the comparison wants
+to be `M0` against `M3` on the same image with everything else held.
 
 The same search answers a second question for free. **Analog loopback is
 register 5 `DS01`-`DS00` = `00`** - the state that disables both `IN` and

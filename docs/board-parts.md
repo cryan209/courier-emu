@@ -383,10 +383,20 @@ wait-state anchor, 126,851 consecutive identical bytes, covering the payload
 and all three overlays and ending at the blank region past `0x48000`. The whole
 difference between those two images is in the supervisor, not the DSP.
 
-So the firmware does not distinguish AC01 from AC03. That is what reading 1 of
-the previous section predicts - the ASIC fronts the codec and the C52 does not
-have to know which variant is fitted - and it means an AC03 board cannot be
-identified from its DSP code.
+So the firmware does not distinguish AC01 from AC03, and it means an AC03 board
+cannot be identified from its DSP code.
+
+> **The explanation offered for that has been withdrawn.** This said the ASIC
+> fronts the codec, so the C52 need not know which variant is fitted.
+> Continuity readings since ([asic-pinout.md](asic-pinout.md)) put the codec's
+> `DOUT`, `DIN` and `FS` **straight onto DSP pins** 43, 106 and 104, with the
+> ASIC's only line to the part being `MCLK`. The DSP talks to the codec
+> directly, so nothing is fronting it.
+>
+> The simpler explanation survives and needs no ASIC: **AC01 and AC03 are the
+> same family**, with the same serial protocol and the same register map, so
+> identical DSP code drives either one. The observation stands; the reason for
+> it changes.
 
 Either way `CodecBringUp` is questionable: it runs an `SI3038.PDF` register
 sequence, and the part the DSP's own code initialises is not that one.
