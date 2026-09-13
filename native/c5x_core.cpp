@@ -144,7 +144,7 @@ void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origi
 void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin)
 {
     if (count > C5X_ROM_WORDS - origin)
-        throw std::out_of_range("boot ROM image exceeds the C52's on-chip ROM");
+        throw std::out_of_range("boot ROM image exceeds the C51's on-chip ROM");
     std::copy_n(words, count, m_rom.begin() + origin);
     m_rom_present = true;
 }
@@ -433,12 +433,14 @@ void C5xCore::consume_cycles(unsigned cycles)
 
 C5xCore::Region C5xCore::program_region(uint16_t address) const
 {
-    // Microcomputer mode puts the 4K boot ROM at the bottom of program space;
+    // Microcomputer mode puts the 8K boot ROM at the bottom of program space;
     // microprocessor mode leaves the whole space off-chip. CNF brings B0 in
-    // at the top. The C52 has no SARAM, so PMST.RAM does nothing here.
+    // at the top. The 'C51's 1K of SARAM appears at 0x2000, above the ROM,
+    // not at the 0x0800 the 9K part uses.
     if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
     if (m_st1.cnf && address >= C5X_B0_PROGRAM_FIRST) return Region::Daram;
-    if (m_pmst.ram && address >= C5X_SARAM_FIRST && address <= C5X_SARAM_LAST)
+    if (m_pmst.ram && address >= C5X_SARAM_PROGRAM_FIRST
+        && address < C5X_SARAM_PROGRAM_FIRST + C5X_SARAM_WORDS)
         return Region::Saram;
     return Region::External;
 }
@@ -454,7 +456,8 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
         return m_st1.cnf ? Region::Reserved : Region::Daram;
     if (address >= C5X_B1_FIRST && address < C5X_B1_FIRST + C5X_B1_WORDS)
         return Region::Daram;
-    if (m_pmst.ovly && address >= C5X_SARAM_FIRST && address <= C5X_SARAM_LAST)
+    if (m_pmst.ovly && address >= C5X_SARAM_DATA_FIRST
+        && address < C5X_SARAM_DATA_FIRST + C5X_SARAM_WORDS)
         return Region::Saram;
     // The board's external RAM answers both spaces. See the shared-window
     // constants in c5x_core.h.
@@ -462,7 +465,7 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
         return Region::Shared;
     // Without SARAM mapped, everything from 0x0800 up is off-chip and the two
     // gaps below it are reserved.
-    if (address >= C5X_DATA_EXTERNAL_FIRST) return Region::External;
+    if (address >= C5X_DATA_EXTERNAL_FIRST) return Region::External;  // 0x0800 up
     return Region::Reserved;
 }
 
@@ -480,7 +483,7 @@ uint16_t C5xCore::fetch(uint16_t address)
     case Region::Daram: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
     // SARAM is one memory in both spaces, so a fetch reads what data stores
     // put there - which is how the firmware's own block moves get executed.
-    case Region::Saram: ++m_map.program_saram; return m_data[address];
+    case Region::Saram: ++m_map.program_saram; return m_data[saram_data_address(address)];
     default: ++m_map.program_external; break;
     }
     return m_program[address];
@@ -495,7 +498,7 @@ void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
     case Region::Rom:
         if (m_rom_present) m_rom[address] = value;
         return;
-    case Region::Saram: m_data[address] = value; return;
+    case Region::Saram: m_data[saram_data_address(address)] = value; return;
     default: break;
     }
     m_program[address] = value;

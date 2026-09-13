@@ -223,7 +223,7 @@ class ImodemDsp(ImodemMailbox):
 
     def _start(self):
         rom = (Path(__file__).resolve().parent.parent /
-               'artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin').read_bytes()
+               'artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin').read_bytes()
         if sha256(rom).hexdigest() != ROM_SHA256:
             raise ValueError('recovered DSP mask ROM checksum mismatch')
         program = b''.join(word.to_bytes(2, 'little') for word in self.boot_words)

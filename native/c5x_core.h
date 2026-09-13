@@ -21,17 +21,19 @@ namespace courier {
 //
 // The guide's three maps, checked region by region against what follows:
 //
-//   program, MP/MC=1   0000-003F external (vectors)   0040-07FF external
-//                      0800-2BFF SARAM if PMST.RAM, else external
-//                      2C00-FDFF external
+// The board runs MP/MC=0 - PMST reads 00b0 - so the ROM window is live.
+//
+//   program, MP/MC=0   0000-1FFF on-chip ROM, 8K
+//                      2000-23FF SARAM if PMST.RAM, else external
+//                      2400-FDFF external
 //                      FE00-FFFF DARAM B0 if CNF, else external
-//   program, MP/MC=0   as above, but 0000-07FF is the on-chip ROM
+//   program, MP/MC=1   as above, but 0000-1FFF is external too
 //   data               0000-005F memory-mapped registers
 //                      0060-007F DARAM B2      0080-00FF reserved
 //                      0100-02FF DARAM B0, reserved when CNF
 //                      0300-04FF DARAM B1      0500-07FF reserved
-//                      0800-2BFF SARAM if PMST.OVLY, else external
-//                      2C00-FFFF external
+//                      0800-0BFF SARAM if PMST.OVLY, else external
+//                      0C00-FFFF external
 //
 // Two things matter for this board. The SARAM is one physical memory
 // reached from both spaces, which is the point of OVLY and why the two spaces
@@ -43,22 +45,25 @@ namespace courier {
 // a board that does not separate the two strobes rather than a trick. That is
 // the shared window declared below.
 //
-// C5X_ROM_WORDS is the one constant that does not follow the figure: a 'C50's
-// ROM is 2K, at 0x0000-0x07FF, not the 4K here. It is left at the 'C52's size
-// because nothing models the board with it - the firmware runs MP/MC=1, where
-// the window does not exist - and the probe kernels in dsp_probe.py and fsk.py
-// use microcomputer mode to host 4K synthetic drivers of their own. Shrinking
-// it would break those fixtures and model nothing.
-constexpr uint16_t C5X_ROM_WORDS = 0x1000;
+// The part is a 'C51, measured on both boards: 8K of on-chip ROM at
+// 0x0000-0x1FFF and 1K of SARAM. See artifacts/dsp-memory-test-2806. MP/MC
+// reads 0, so this window is mapped on the real board and is not the fixture
+// it used to be - artifacts/dsp-onchip-rom-20mhz-8k has its contents.
+constexpr uint16_t C5X_ROM_WORDS = 0x2000;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
 constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;
 constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
-// SARAM, for the members that have it. SPRU056D puts the 9K part's block at
-// 0x0800-0x2bff in program space when PMST.RAM is set and at the same
-// addresses in data space when PMST.OVLY is set - one physical memory seen
-// from both, which is the whole point of OVLY and why the two spaces cannot
-// be backed by separate storage here.
-constexpr uint16_t C5X_SARAM_FIRST = 0x0800, C5X_SARAM_LAST = 0x2BFF;
+// SARAM. The 9K part's block is at 0x0800-0x2bff in *both* spaces, which is
+// what this core used to assume. The 'C51 is not like that: its 1K sits at
+// program 0x2000-0x23FF and data 0x0800-0x0BFF - **one physical memory at two
+// different addresses**. Measured: writing data 0x0800 and data 0x0A00 reads
+// back from program 0x2000 and program 0x2200
+// (artifacts/dsp-memory-test-2806/sweep). So the two windows are separate
+// constants and program access translates into the data-space address, which
+// is the storage. Still one memory, still the point of OVLY.
+constexpr uint16_t C5X_SARAM_WORDS = 0x0400;
+constexpr uint16_t C5X_SARAM_DATA_FIRST = 0x0800;
+constexpr uint16_t C5X_SARAM_PROGRAM_FIRST = 0x2000;
 // CNF moves B0 out of data space and into the top of program space.
 constexpr uint16_t C5X_B0_PROGRAM_FIRST = 0xFE00;
 constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
@@ -288,7 +293,7 @@ private:
     std::array<uint16_t, 65536> m_data{};
     std::array<uint16_t, 65536> m_io{};
     std::array<uint16_t, 3> m_mailbox_output{};
-    std::array<uint16_t, 0x1000> m_rom{};
+    std::array<uint16_t, C5X_ROM_WORDS> m_rom{};
     bool m_rom_present = false;
     // PMST.MPMC is preserved by this firmware's reset code rather than
     // written, because on hardware it comes from a pin. Nothing in an image
@@ -320,6 +325,15 @@ private:
     uint16_t m_paer = 0, m_pasr = 0, m_indx = 0, m_dbmr = 0, m_arcr = 0;
     st0_t m_st0{};
     st1_t m_st1{};
+    // Program-space SARAM addresses translate into their data-space address:
+    // the 'C51 sees one physical kilo-word at program 0x2000 and data 0x0800,
+    // and m_data is where it is stored.
+    static constexpr uint16_t saram_data_address(uint16_t program_address)
+    {
+        return uint16_t(program_address - C5X_SARAM_PROGRAM_FIRST
+                        + C5X_SARAM_DATA_FIRST);
+    }
+
     pmst_t m_pmst{};
     uint16_t m_ifr = 0, m_imr = 0;
     std::array<uint16_t, 16> m_interrupt_vectors{};

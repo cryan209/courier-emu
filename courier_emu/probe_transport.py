@@ -392,12 +392,13 @@ class _EmptyDSP:
         return []
 
 
-# The on-chip ROM read off the 20.16 MHz board (docs/dsp-onchip-rom.md). The
-# harness maps a synthetic pattern by default, because it predates this capture
-# and its job is to check the chain rather than the silicon; `rom_image` puts
-# the real one under the dumper instead.
-CAPTURED_ROM = Path(__file__).resolve().parent.parent / "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin"
-ROM_CAPACITY = 4096
+# The whole 8K on-chip ROM read off the 20.16 MHz board. The harness maps a
+# synthetic pattern by default, because it predates the capture and its job is
+# to check the chain rather than the silicon; `rom_image` puts the real one
+# under the dumper instead. The 2K capture this used to point at is the same
+# bytes, and is now the first quarter of this file.
+CAPTURED_ROM = Path(__file__).resolve().parent.parent / "artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin"
+ROM_CAPACITY = 8192
 
 
 class TransportMachine:
@@ -689,7 +690,8 @@ def main() -> int:
     parser.add_argument("--rom-image", type=Path, nargs="?", const=CAPTURED_ROM,
                         help="map this file (little-endian words) as the DSP's on-chip "
                              "ROM instead of the synthetic pattern; with no path, the "
-                             "ROM read off the board in artifacts/dsp-onchip-rom-01")
+                             "ROM read off the board in "
+                             "artifacts/dsp-onchip-rom-20mhz-8k")
     parser.add_argument("--fault", choices=("reset", "checksum", "no-dsp", "tag", "uart", "stale"))
     parser.add_argument("--rom-words", type=lambda v: int(v, 0), default=ROM_DUMP_WORDS,
                         help="how many words this run reads (default 2048)")

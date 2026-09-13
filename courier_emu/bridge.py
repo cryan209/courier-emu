@@ -889,7 +889,7 @@ class CourierDspBridge:
         if not self.boot_rom_enabled:
             return
         rom = (Path(__file__).resolve().parent.parent /
-               "artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin").read_bytes()
+               "artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin").read_bytes()
         if sha256(rom).hexdigest() != "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67":
             raise ValueError("recovered DSP boot ROM checksum mismatch")
         self.core.configure_rom_codec()
