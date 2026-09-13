@@ -190,6 +190,103 @@ def test_aty14_setter_validates_the_six_byte_record():
         set_aty14(blank, [0, 0, 0, 0, 0, 256])
 
 
+def test_missing_default_nvram_gets_the_emulated_factory_identity(tmp_path):
+    from courier_emu.imodem_config import (
+        CONFIGURATION_PAGES, DEFAULT_ATY14, DEFAULT_FIELD_MASK,
+        DEFAULT_NVRAM_FILE, DEFAULT_SERIAL_NUMBER, NVRAM_SIZE, load_nvram,
+        read_aty14, read_serial_number,
+    )
+
+    data = load_nvram(tmp_path / DEFAULT_NVRAM_FILE)
+    assert data is not None
+    assert len(data) == NVRAM_SIZE
+    for page in range(CONFIGURATION_PAGES):
+        assert read_aty14(data, page) == DEFAULT_ATY14
+        assert read_serial_number(data, page) == DEFAULT_SERIAL_NUMBER.encode("ascii")
+        assert data[page * PAGE_SIZE] == DEFAULT_FIELD_MASK
+        assert page_is_sealed(
+            data[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]
+        )
+
+
+def test_erased_existing_default_nvram_is_upgraded_in_memory(tmp_path):
+    from courier_emu.imodem_config import (
+        CONFIGURATION_PAGES, DEFAULT_ATY14, DEFAULT_NVRAM_FILE, NVRAM_SIZE,
+        load_nvram, read_aty14,
+    )
+
+    path = tmp_path / DEFAULT_NVRAM_FILE
+    path.write_bytes(b"\xff" * NVRAM_SIZE)
+    data = load_nvram(path)
+    assert data is not None
+    assert all(
+        read_aty14(data, page) == DEFAULT_ATY14
+        for page in range(CONFIGURATION_PAGES)
+    )
+    assert path.read_bytes() == b"\xff" * NVRAM_SIZE
+
+
+def test_default_upgrade_seeds_newer_pages_without_replacing_settings(tmp_path):
+    from courier_emu.imodem_config import (
+        DEFAULT_ATY14, DEFAULT_NVRAM_FILE, NVRAM_SIZE, load_nvram, read_aty14,
+    )
+
+    raw = bytearray(b"\xff" * NVRAM_SIZE)
+    marker = 2 * PAGE_SIZE + ISDN_BLOCK
+    raw[marker:marker + 4] = b"keep"
+    path = tmp_path / DEFAULT_NVRAM_FILE
+    path.write_bytes(raw)
+
+    data = load_nvram(path)
+    assert data is not None
+    assert read_aty14(data, 2) == DEFAULT_ATY14
+    assert data[marker:marker + 4] == b"keep"
+    assert page_is_sealed(data[2 * PAGE_SIZE:3 * PAGE_SIZE])
+
+
+def test_default_upgrade_corrects_the_old_presence_mask_and_capabilities(tmp_path):
+    from courier_emu.imodem_config import (
+        CONFIGURATION_PAGES, DEFAULT_ATY14, DEFAULT_FIELD_MASK,
+        DEFAULT_NVRAM_FILE, DEFAULT_SERIAL_NUMBER, NVRAM_SIZE, load_nvram,
+        SERIAL_NUMBER, SERIAL_NUMBER_LENGTH,
+    )
+
+    raw = bytearray(b"\xff" * NVRAM_SIZE)
+    old_aty14 = (0, 0, 30, 7, 30, 0)
+    stored = bytes(reversed(old_aty14))
+    serial = DEFAULT_SERIAL_NUMBER.encode("ascii")
+    for page in range(CONFIGURATION_PAGES):
+        base = page * PAGE_SIZE
+        raw[base] = 0xF0
+        raw[base + 1:base + 7] = stored
+        start = base + SERIAL_NUMBER
+        raw[start:start + SERIAL_NUMBER_LENGTH] = serial
+    path = tmp_path / DEFAULT_NVRAM_FILE
+    path.write_bytes(raw)
+
+    data = load_nvram(path)
+    assert data is not None
+    assert all(
+        data[page * PAGE_SIZE] == DEFAULT_FIELD_MASK
+        for page in range(CONFIGURATION_PAGES)
+    )
+    assert all(
+        data[page * PAGE_SIZE + 1:page * PAGE_SIZE + 7]
+        == bytes(reversed(DEFAULT_ATY14))
+        for page in range(CONFIGURATION_PAGES)
+    )
+
+
+def test_an_explicit_erased_nvram_fixture_stays_erased(tmp_path):
+    from courier_emu.imodem_config import NVRAM_SIZE, load_nvram, read_aty14
+
+    path = tmp_path / "hardware-dump.bin"
+    path.write_bytes(b"\xff" * NVRAM_SIZE)
+    data = load_nvram(path)
+    assert data is not None
+    assert read_aty14(data) is None
+
+
 def test_a_record_write_that_would_hit_the_trailer_is_refused():
     from courier_emu.imodem_config import TRAILER_OFFSET, set_record_bytes
     with pytest.raises(ValueError):

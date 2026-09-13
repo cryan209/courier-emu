@@ -271,9 +271,10 @@ Undefined result was the `0x22` left by the incomplete modem-status loopback
 probe, not a missing configuration-sector field.
 
 The adjacent ATI7 options formatter reads the capability byte at `2600:e358`.
-The harness sets it to `0xe5` after the board probe, enabling every modulation
-name present in this image: `HST,V32bis,Terbo,V.FC,V34+,x2,V.90`.  V.90 has no
-capability bit in 3.0.2; the formatter appends it unconditionally.
+The selected record's byte at offset `0x001` feeds it through the five-bit
+mapping described below. Setting all five bits (`0x1f`) enables every optional
+modulation name present in this image: `HST,V32bis,Terbo,V.FC,V34+,x2,V.90`.
+V.90 has no capability bit in 3.0.2; the formatter appends it unconditionally.
 
 The serial is **twelve** characters, not the fifteen the copied span covers:
 thirteen were written and `ATI7` printed twelve.  What the remaining three
@@ -319,26 +320,27 @@ order it appeared on the terminal:
 
 ```sh
 .venv/bin/python tools/imodem_capability_record.py config.bin \
-  --aty14 000,000,030,007,030,000 --serial COURIEREMU01
+  --aty14 000,000,030,007,030,031 --serial COURIEREMU01
 ```
 
-The example values are the analogue Courier capture already documented in
-this repository.  They are not asserted to be recovered I-modem factory
-values, but they are now the practical default for the emulator: a missing or
+The first five example values come from the analogue Courier capture already
+documented in this repository.  The sixth is `31` (`0x1f`), which enables all
+five I-modem modulation capability bits.  This is the practical emulator
+default rather than a claimed factory I-modem capture: a missing or
 factory-erased `flashnvram.sav` is seeded in memory with that header and the
-synthetic serial `COURIEREMU01`.  The firmware writes the seeded record back at
-the end of the run, so subsequent boots retain it.  All four pages considered
-by the loader are seeded: seeding only SA8's first two pages is insufficient
-after `AT&W` has created newer generations in SA9.  Explicitly named NVRAM files
-are never seeded; hardware dumps and erased-state experiments therefore remain
-byte-for-byte under the caller's control.
+synthetic serial `COURIEREMU01`.  With it, the firmware's own `ATI7` formatter
+reports `HST,V32bis,Terbo,V.FC,V34+,x2,V.90`.  The firmware writes the seeded
+record back at the end of the run, so subsequent boots retain it.  All four
+pages considered by the loader are seeded: seeding only SA8's first two pages
+is insufficient after `AT&W` has created newer generations in SA9.  Explicitly
+named NVRAM files are never seeded; hardware dumps and erased-state experiments
+therefore remain byte-for-byte under the caller's control.
 
-The default absent-field mask applies only offset `0x003`, whose fax-capability
-meaning is established. It leaves the I-modem-specific modulation, grouped-code
-and product-suffix fields absent even though `ATY14` displays their stored
-analogue values. Applying all four analogue fields changes runtime behavior and
-corrupts the I-modem's `ATI7` product line, so the display values are not treated
-as recovered I-modem configuration semantics.
+The default absent-field mask applies offsets `0x001` and `0x003`, whose
+modulation and fax meanings are established. It leaves the grouped-code and
+product-suffix fields absent. Applying all four analogue fields changes runtime
+behavior and corrupts the I-modem's `ATI7` product line, so the other stored
+display values are not treated as recovered I-modem configuration semantics.
 
 
 ## The modem writes its own record: `AT&W`

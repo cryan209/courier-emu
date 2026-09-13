@@ -260,11 +260,10 @@ EXTERNAL_ATTENTION_RECEIVER = 0xF596
 # 0x08, 0x40, 0x80 and 0x20.
 #
 # The harness used to write ALL_OPTIONS here at the probe-complete hook. That
-# was dead: the firmware writes e358 again at 0xa4446, after the hook, and
-# leaves it 0x23. Sweeping the forced value over 0x00..0xe5 changes ATI7's
-# Options line not at all -- it reads `V32bis,x2,V.90` every time. The write is
-# gone rather than left looking effective; what actually drives that line has
-# not been re-established.
+# was dead: the firmware writes e358 again at 0xa4446, after the hook. The
+# factory-record capability byte is the effective source; the default 0x1f
+# value sets all five optional modulation bits, while the base x2/V.90 bits
+# survive the firmware's mask. No direct write to this address is needed.
 OPTIONS_ADDRESS = 0x2600 * 16 + 0xE358
 
 # The common command epilogue's result decision.

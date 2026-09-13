@@ -52,6 +52,10 @@ SECTOR_ADDRESS = 0xF8000     # where the part answers, cpu side
 SECTOR_SIZE = 0x2000         # SA8, the first 8 KiB boot sector
 PAGE_SIZE = 0x1000
 PAGES = SECTOR_SIZE // PAGE_SIZE
+# The loader at c532b considers four consecutive pages across SA8 and SA9.
+# SECTOR_SIZE remains the two-page SA8 unit written by the record helpers;
+# this wider count is for the persistent 32 KiB region presented at boot.
+CONFIGURATION_PAGES = 4
 
 GENERATION_OFFSET = 0x02E
 TRAILER_OFFSET = 0xFFA
@@ -72,6 +76,18 @@ NVRAM_BASE = 0xF8000
 NVRAM_SIZE = 0x8000
 DEFAULT_NVRAM_FILE = "flashnvram.sav"
 
+# A useful emulated unit needs the factory-programmed header that an update
+# image deliberately does not contain.  The first five values come from the
+# established analogue Courier record; the final 0x1f enables all five known
+# I-modem modulation bits.  The serial is intentionally synthetic and visibly
+# belongs to the emulator rather than impersonating a physical modem.
+DEFAULT_ATY14 = (0, 0, 30, 7, 30, 31)
+DEFAULT_SERIAL_NUMBER = "COURIEREMU01"
+# Apply offsets 0x001 (modulation capabilities) and 0x003 (fax), while leaving
+# the grouped-code and product-suffix fields absent. 0x1f at offset 0x001 sets
+# all five modulation bits and makes ATI7 report the complete option list.
+DEFAULT_FIELD_MASK = 0xFA
+
 
 def nvram_from_flash(contents: bytes) -> bytes:
     """Cut the non-volatile region out of a whole flash window."""
@@ -88,14 +104,91 @@ def load_nvram(path: Path | str) -> bytes | None:
     """
     file = Path(path)
     if not file.exists():
-        return None
+        return default_nvram() if file.name == DEFAULT_NVRAM_FILE else None
     data = file.read_bytes()[:NVRAM_SIZE]
-    return data + b"\xff" * (NVRAM_SIZE - len(data))
+    data += b"\xff" * (NVRAM_SIZE - len(data))
+    # The repository's original default store was already created with an
+    # erased factory header.  Upgrade that default in memory so existing
+    # checkouts gain the useful identity on their next run.  A caller naming
+    # any other store gets its bytes exactly as supplied.
+    if file.name == DEFAULT_NVRAM_FILE and _factory_header_is_erased(data):
+        return _seed_factory_header(data)
+    return data
 
 
 def save_nvram(path: Path | str, contents: bytes) -> None:
     """Write the non-volatile region of a flash window out."""
     Path(path).write_bytes(nvram_from_flash(contents))
+
+
+def _factory_header_is_erased(nvram: bytes) -> bool:
+    """Whether any selectable page needs the default factory identity."""
+    if len(nvram) < CONFIGURATION_PAGES * PAGE_SIZE:
+        return True
+    for page in range(CONFIGURATION_PAGES):
+        base = page * PAGE_SIZE
+        header_erased = nvram[base:base + 7] == b"\xff" * 7
+        serial = base + SERIAL_NUMBER
+        serial_erased = nvram[serial:serial + SERIAL_NUMBER_LENGTH] == (
+            b"\xff" * SERIAL_NUMBER_LENGTH
+        )
+        serial_is_default = (
+            nvram[serial:serial + SERIAL_NUMBER_LENGTH]
+            == DEFAULT_SERIAL_NUMBER.encode("ascii")
+        )
+        fields_are_default = (
+            nvram[base + ATY14_FIELDS:
+                  base + ATY14_FIELDS + ATY14_FIELD_COUNT]
+            == bytes(reversed(DEFAULT_ATY14))
+        )
+        factory_defaults_need_upgrade = (
+            serial_is_default
+            and (not fields_are_default or nvram[base] != DEFAULT_FIELD_MASK)
+        )
+        if header_erased or serial_erased or factory_defaults_need_upgrade:
+            return True
+    return False
+
+
+def _seed_factory_header(nvram: bytes) -> bytes:
+    """Add the emulator's default factory fields while preserving settings."""
+    out = bytearray(nvram[:NVRAM_SIZE])
+    stored_aty14 = bytes(reversed(DEFAULT_ATY14))
+    serial_value = DEFAULT_SERIAL_NUMBER.encode("ascii")
+    for page in range(CONFIGURATION_PAGES):
+        base = page * PAGE_SIZE
+        changed = False
+        if out[base:base + 7] == b"\xff" * 7:
+            out[base] = DEFAULT_FIELD_MASK
+            out[base + ATY14_FIELDS:base + ATY14_FIELDS + ATY14_FIELD_COUNT] = (
+                stored_aty14
+            )
+            changed = True
+        serial = base + SERIAL_NUMBER
+        if out[serial:serial + SERIAL_NUMBER_LENGTH] == serial_value and (
+            out[base] != DEFAULT_FIELD_MASK
+            or out[base + ATY14_FIELDS:
+                   base + ATY14_FIELDS + ATY14_FIELD_COUNT] != stored_aty14
+        ):
+            out[base] = DEFAULT_FIELD_MASK
+            out[base + ATY14_FIELDS:base + ATY14_FIELDS + ATY14_FIELD_COUNT] = (
+                stored_aty14
+            )
+            changed = True
+        if out[serial:serial + SERIAL_NUMBER_LENGTH] == (
+            b"\xff" * SERIAL_NUMBER_LENGTH
+        ):
+            out[serial:serial + SERIAL_NUMBER_LENGTH] = serial_value
+            changed = True
+        if changed:
+            page_bytes = bytes(out[base:base + PAGE_SIZE])
+            struct.pack_into("<H", out, base + CRC_OFFSET, page_crc(page_bytes))
+    return bytes(out)
+
+
+def default_nvram() -> bytes:
+    """Return the I-modem's default 32 KiB non-volatile flash region."""
+    return _seed_factory_header(b"\xff" * NVRAM_SIZE)
 
 
 # The unit's identity, near the front of the record. The firmware's own
