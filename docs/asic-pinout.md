@@ -1044,58 +1044,85 @@ The ones worth finding next, in the order they would pay:
    and every DSP-side analysis treat as a board constant - follows from it.
    `CLKMD1` (DSP pin 71) and `CLKMD2` (pin 103) say what the DSP divides it by,
    and those are meter readings.
-2. **The phone-line header's pinout**, and which of ASIC `37`/`38` is the
+2. **The left edge's last six - `91`, `110`-`113`, `117` - against the DSP
+   signals that are still missing.** The ASIC already has the DSP's data bus,
+   `IS`, `R/W`, `STRB`, `INT2` and its clock. What is not accounted for is the
+   rest of the DSP's control, and four of those would each change something:
+   **`DS` (DSP pin 89) and `PS` (91)**, the data- and program-space selects -
+   `IS` alone makes the ASIC an I/O device, and `DS` would put it in the DSP's
+   *data memory* alongside the SRAM; **`MP/MC` (DSP pin 5)**, which decides
+   whether the DSP boots from its on-chip ROM or from external memory, and
+   which [board-parts.md](board-parts.md) records as running at 1 without
+   saying who sets it; **`BIO` (130)**, the branch-on-input the firmware could
+   poll as a handshake; and **`XF` (109)**, the flag it could answer with. Six
+   pins, and the DSP subsystem is otherwise fully mapped.
+
+3. **The phone-line header's pinout**, and which of ASIC `37`/`38` is the
    hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
    names the output; watching the pair while the line rings names the input.
    The DAA module on the far side of that header is unidentified.
-3. **What is on the other side of DIP switch 1** - ground/`VCC` makes it a
+4. **What is on the other side of DIP switch 1** - ground/`VCC` makes it a
    strap on `P2.6`; the DTR net makes `P2.6` the signal and the override
    hardware. Both firmware families already mapped read this switch through
    ASIC port `0x12` bit `0x20` instead, so either answer says something.
-4. **Which DIP switch is on which strap drive**, read live through the
+5. **Which DIP switch is on which strap drive**, read live through the
    monitor rather than with a meter - drive one of `0x12`/`0x02`,
    `0x14`/`0x40`, `0x14`/`0x10`, `0x14`/`0x20` low and watch `0x14` bit `0x08`
    while flipping each switch. It also shows which switches are read by nothing.
-5. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
+6. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-6. **Flash pin 3 against CPU pin 31.** The ASIC takes system `A17` and `A18`
+7. **Flash pin 3 against CPU pin 31.** The ASIC takes system `A17` and `A18`
    in and drives one high flash address line out, so it is deciding rather than
    buffering. If flash pin 3 does **not** reach CPU pin 31, the ASIC is in
    series on `A18` and the flash's top address bit is its to set - and that
    also resolves which flash pin ASIC 74 is, without re-reading it. Flash `CE#`
    (pin 12) should be CPU `UCS` (QFP pin 61) and would finish the decode.
-7. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
+8. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
    ASIC.
-8. **`GCS0 Start` and `GCS0 Stop` at `0xff80`/`0xff82`**, read out of a run
+9. **`GCS0 Start` and `GCS0 Stop` at `0xff80`/`0xff82`**, read out of a run
    rather than off the board. Those two registers define the address range that
    selects the ASIC, and nothing in `courier_emu` looks at them.
-9. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
+10. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
    Probably a supply, and if it is, the pad-ring convention it implies helps
    predict the unread edges.
-10. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
+11. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more
    address line is on an unread edge.
-11. **What `J7` carries.** The second serial port streams continuously to that
+12. **What `J7` carries.** The second serial port streams continuously to that
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-12. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
+13. **The Atmel EEPROM's four pins**, which resolve a contradiction the harness
+    already carries. `courier_emu/panel.py` puts `nvram-strobe`, `-data-in`,
+    `-chip-select` and `-clock` on **ASIC port `0x10`** bits `0x08`-`0x40`,
+    while `machine.py` drives the same 93C66 from the **CPU** - chip select and
+    clock on `0xff56` bits `0x20`/`0x04`, data on port 2 pin 7 at `0xff5e` /
+    `0xff5a`. Two wirings for one 8-pin part. They came from different firmware
+    families, so the boards may genuinely differ, but on *this* board the
+    chip's own pins say which is real.
+14. **The right edge's unread block, `31`-`36`, `39`-`46` and `48`-`52`.** Twenty
+    pins, the largest unread run on the package, and by elimination it is where
+    the parts nobody has traced must land - the codec, the DAA behind the
+    phone-line header, and the EEPROM if it is on the ASIC at all. Not a single
+    probe but the place to sweep once the targeted ones are done.
+
+15. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-13. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
+16. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
    `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
    `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
    the part is on the board and unidentified. A 75189 next to the two 75188s
    is the thing to look for.
-14. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
+17. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-15. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
+18. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
