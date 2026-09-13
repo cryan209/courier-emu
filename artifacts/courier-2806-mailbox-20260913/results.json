@@ -1,0 +1,150 @@
+{
+  "steps": [
+    {
+      "label": "baseline",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: staged only",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: after 1e=00, before commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: after 1c=01 commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: repeated read",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "2d: staged only",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "2d: after 1e=00, before commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "2d: after 1c=01 commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "2d: repeated read",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: staged only",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: after 1e=00, before commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: after 1c=01 commit",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    },
+    {
+      "label": "07: repeated read",
+      "ports": {
+        "1C": "FD",
+        "1E": "FF",
+        "58": "31",
+        "5A": "00",
+        "5C": "00",
+        "5E": "00"
+      }
+    }
+  ],
+  "scope": "Monitor-level mailbox staging and commit with native supervisor running; query 07 and no-op 2d only.",
+  "identity": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             25 Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        03/13/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         7.3.14\r\nDSP rev                3.0.13\r\n\r\nSerial Number          22AEB36ACKND\r\n\r\nOK\r\n",
+  "final_attention": "AT\r\r\nOK\r\n"
+}

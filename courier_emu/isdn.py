@@ -610,6 +610,16 @@ class IsdnMachine:
         if self.with_dsp:
             elapsed = self.instructions - self._dsp_instructions
             self._dsp_instructions = self.instructions
+            peer = self.bri.media_peer if self.bri is not None else None
+            realtime = bool(
+                peer is not None
+                and getattr(peer, "realtime_clock", False)
+                and self.bri.call_state == "active"
+            )
+            if hasattr(self.mailbox, "pace_realtime"):
+                self.mailbox.pace_realtime(realtime)
+                if realtime:
+                    return
             if elapsed:
                 self.mailbox.step(elapsed * DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION)
 

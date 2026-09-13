@@ -18,12 +18,11 @@ That matters more here than it would for speech.  V.90 and x2 are built on
 exact codewords - the whole idea is that one end of the call is digital and
 can place them on the wire itself - and this board is that end.
 
-What this module is *not* is a pacing solution.  The emulator runs on an
-instruction budget and RTP runs on a clock, so the two disagree about how fast
-a second is.  The bridge does not pretend otherwise: it hands back exactly as
-many octets as it was given, fills what has not arrived with mu-law silence,
-and counts every octet of that fill so a run says plainly how far out of step
-it was.
+Live pacing is supplied by the I-modem DSP endpoint: while this bearer is
+active it advances the recovered 20.16 MHz digital-PCM clock from monotonic
+wall time instead of from emulated 386 throughput.  The bridge still hands
+back exactly as many octets as it was given, fills a genuine RTP underrun with
+mu-law silence, and counts every octet of that fill.
 """
 from __future__ import annotations
 
@@ -41,6 +40,10 @@ class BearerSipLine:
     `exchange(octets) -> octets` - so `BriNetwork` does not know which of them
     it is carrying.
     """
+
+    # Tells the coupled I-modem harness that this peer carries an externally
+    # clocked, live bearer. Offline byte sources retain instruction pacing.
+    realtime_clock = True
 
     def __init__(self, session: Any, *, target: str = "",
                  record: Any = None, silence: int = PCMU_SILENCE) -> None:

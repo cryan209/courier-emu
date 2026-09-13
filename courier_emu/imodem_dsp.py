@@ -1,6 +1,7 @@
 """I-modem C5x endpoint: captured bootstrap, native runtime mailbox/overlays."""
 from hashlib import sha256
 from pathlib import Path
+import time
 
 from .dsp import NativeC5x
 from .imodem_mailbox import ImodemMailbox
@@ -11,6 +12,14 @@ PP_SLOTS = 2
 # What an unconnected slot carries, and what the part clocks when the MUX has
 # nothing on that channel.
 IDLE_CODEWORD = 0xff
+
+# The ASIC clocks the I-modem's C51 and its digital PCM highway. The model uses
+# 20.16 MHz for both sides of the ratio; the PCM result is still exactly 8 kHz.
+# CPU instruction throughput is not a usable substitute for that clock during
+# a live call: Unicorn may run faster or slower than real time, while RTP
+# continues to deliver one sample every 125 us.
+DIGITAL_PCM_CLOCK_HZ = 20_160_000
+REALTIME_STEP_BATCH = 65_536
 
 ROM_SHA256 = '3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67'
 
@@ -35,12 +44,15 @@ class ImodemDsp(ImodemMailbox):
         self.pcm_tx = bytearray()
         self._pcm_cursor = 0
         self._pcm_partial = b''
+        self._realtime_origin = None
+        self.realtime_cycles = 0
 
     def close(self):
         if self.core is not None:
             self.core.close()
             self.core = None
         self.tx_ready = False
+        self._realtime_origin = None
 
     def _command(self, tag, value):
         if self.core is None:
@@ -79,6 +91,41 @@ class ImodemDsp(ImodemMailbox):
             self.error = str(exc)
             self.tx_ready = False
             raise
+
+    def pace_realtime(self, active, now=None):
+        """Advance the digital PCM clock against monotonic wall time.
+
+        The ordinary harness couples C51 progress to 386 instructions.  That
+        remains useful and deterministic for offline runs.  A live SIP bearer
+        is different: its far end has an independent 8 kHz clock, so while the
+        B channel is active we advance the modeled C51 clock at 20.16 MHz
+        directly from elapsed wall time.  This keeps both directions at one
+        codeword per 125 us without changing firmware timers elsewhere.
+        """
+        if not active or self.core is None:
+            self._realtime_origin = None
+            return
+        current_time = time.monotonic() if now is None else float(now)
+        cycles = self.core.state()['cycles']
+        if self._realtime_origin is None:
+            self._realtime_origin = (current_time, cycles)
+            return
+        origin_time, origin_cycles = self._realtime_origin
+        target = origin_cycles + int(
+            max(0.0, current_time - origin_time) * DIGITAL_PCM_CLOCK_HZ
+        )
+        while cycles < target:
+            # Every instruction consumes at least one C5x cycle.  Limiting a
+            # batch to the remaining cycle deficit prevents a large burst
+            # from running materially ahead of the RTP clock; the final few
+            # instructions close any difference caused by multi-cycle ops.
+            count = min(REALTIME_STEP_BATCH, target - cycles)
+            self.core.step(max(1, count))
+            new_cycles = self.core.state()['cycles']
+            self.realtime_cycles += new_cycles - cycles
+            cycles = new_cycles
+            self._sync()
+            self._sync_pcm()
 
     def _sync_pcm(self):
         octets = self.core.g711_tx(self._pcm_cursor)
@@ -186,12 +233,14 @@ class ImodemDsp(ImodemMailbox):
         self.core.set_mpmc_pin(0)
         self.core.set_pc(self.boot_origin)
         # The peripheral port clocks a DS0 even when its MUX is disconnected.
-        self.core.configure_digital_pcm(idle_codeword=IDLE_CODEWORD)
+        self.core.configure_digital_pcm(
+            idle_codeword=IDLE_CODEWORD, clock_hz=DIGITAL_PCM_CLOCK_HZ)
         self.core.configure_line_frame_interrupt(5, 0xffff)
         self.bootstrap_words = len(self.boot_words)
         self._reply_writes = 0
         self._pcm_cursor = 0
         self._pcm_partial = b''
+        self._realtime_origin = None
         # The bootstrap completion bus must not expose a running mailbox
         # before resident initialization clears PA7. Wait for its first IDLE,
         # rather than delivering a command that that initialization discards.
@@ -216,5 +265,6 @@ class ImodemDsp(ImodemMailbox):
                          'frames': len(self.pcm_tx) // PP_SLOTS,
                          'slots': [names.get(port) for port in slots],
                          'attached': self.dsc is not None,
+                         'realtime_cycles': self.realtime_cycles,
                          'serial': self.core.serial_state() if self.core else None}
         return result

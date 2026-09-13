@@ -95,9 +95,8 @@ def test_the_linear_path_would_not_have_been_lossless():
 
 
 def test_what_has_not_arrived_is_counted_rather_than_hidden():
-    # The emulator runs on an instruction budget and RTP runs on a clock, so
-    # they disagree about how long a second is. The bridge fills the gap with
-    # silence and says how much it filled.
+    # Network jitter can still leave a live clock edge with no RTP payload.
+    # The bridge fills that genuine underrun with silence and reports it.
     session = _RtpOnlySession()
     try:
         line = BearerSipLine(session)

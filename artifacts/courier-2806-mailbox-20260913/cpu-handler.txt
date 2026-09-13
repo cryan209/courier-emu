@@ -1,0 +1,53 @@
+Addresses below are ROM file offsets, not CPU physical addresses.
+0fde0 in al, 0x1e
+0fde2 mov ah, al
+0fde4 in al, 0x1c
+0fde6 and ax, 7
+0fde9 mov word ptr [0x285], ax
+0fdec cld 
+0fded test word ptr [0x285], 1
+0fdf3 je 0xfe25
+0fdf5 mov ax, 0x7f3f
+0fdf8 xchg word ptr [0x289], ax
+0fdfc cmp ah, 0x7f
+0fdff je 0xfe25
+0fe01 cmp ah, 0xff
+0fe04 jne 0xfe0b
+0fe06 call 0xf551
+0fe09 jmp 0xfe2a
+0fe0b push ax
+0fe0c mov al, ah
+0fe0e and ax, 0xff
+0fe11 out 0x58, al
+0fe13 mov al, ah
+0fe15 out 0x5a, al
+0fe17 pop ax
+0fe18 and ax, 0xff
+0fe1b out 0x5c, al
+0fe1d xchg ah, al
+0fe1f out 0x5e, al
+0fe21 xchg ah, al
+0fe23 jmp 0xfe2a
+0fe25 and word ptr [0x285], 0xfffe
+0fe2a test word ptr [0x285], 2
+0fe30 je 0xfe34
+0fe32 jmp 0xfdcc
+0fe34 test word ptr [0x285], 4
+0fe3a je 0xfe41
+0fe3c lcall 0x8000, 0x674
+0fe41 stc 
+0fe42 lcall 0x8f46, 0x134
+0fe47 mov ax, word ptr [0x285]
+0fe4a out 0x1c, al
+0fe4c mov al, ah
+0fe4e out 0x1e, al
+0fe50 mov ax, word ptr [0x289]
+0fe53 cmp ah, 0x7f
+0fe56 jne 0xfe60
+0fe58 call 0xfda7
+0fe5b jb 0xfe60
+0fe5d mov word ptr [0x289], ax
+0fe60 pop es
+0fe61 popaw 
+0fe62 mov word ptr [0xff02], 0x8000
+0fe68 iret 

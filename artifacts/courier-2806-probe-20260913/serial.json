@@ -1,0 +1,25 @@
+[
+  {
+    "drain": "b''"
+  },
+  {
+    "command": "AT",
+    "response": "AT\r",
+    "hex": "41540d"
+  },
+  {
+    "command": "ATI7",
+    "response": "ATI7\r",
+    "hex": "415449370d"
+  },
+  {
+    "command": "ATGLK2=8000:0000",
+    "response": "ATGLK2=8000:0000\r",
+    "hex": "4154474c4b323d383030303a303030300d"
+  },
+  {
+    "command": "AT",
+    "response": "AT\r",
+    "hex": "41540d"
+  }
+]

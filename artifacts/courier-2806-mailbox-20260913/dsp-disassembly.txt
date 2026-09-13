@@ -1,0 +1,92 @@
+839b bc00  ldp     #000
+839c be41  setc intm
+839d 7e80 23f0  calld   23f0, *
+839f bf09 ff57  lar     ar1, #ff57
+83a1 be40  clrc intm
+83a2 907d  sacl    @7d
+83a3 4f7d  bit     0, @7d
+83a4 ee00  retc    ntc
+83a5 be41  setc intm
+83a6 7e80 23f0  calld   23f0, *
+83a8 bf09 ff5e  lar     ar1, #ff5e
+83aa be40  clrc intm
+83ab 907d  sacl    @7d
+83ac be41  setc intm
+83ad 7e80 23f0  calld   23f0, *
+83af bf09 ff5f  lar     ar1, #ff5f
+83b1 be40  clrc intm
+83b2 907a  sacl    @7a
+83b3 b901  lacl    #01
+83b4 8857  samm    @57
+83b5 697d  lacl    @7d
+83b6 ba7f  sub     #7f
+83b7 ef04  retc    gt
+83b8 bf90 8480  add     #00008480
+83ba a67c  tblr    @7c
+83bb 107c  lacc    @7c
+83bc be20  bacc
+83bd bc00  ldp     #000
+83be 907d  sacl    @7d
+83bf 6978  lacl    @78
+83c0 6679  subs    @79
+83c1 8b00  nop
+83c2 e744  xc      1, lt
+83c3 b810  add     #10
+83c4 ba06  sub     #06
+83c5 ff04  retcd   gt
+83c6 697d  lacl    @7d
+83c7 be4a  clrc tc
+83c8 8e7d  sst     st0, @7d
+83c9 bc00  ldp     #000
+83ca bf08 0bd0  lar     ar0, #0bd0
+83cc 0178  lar     ar1, @78
+83cd 90a0  sacl    *+
+83ce bf44  cmpr    eq
+83cf 8b00  nop
+83d0 e500  xc      1, tc
+83d1 7c10  sbrk    #10
+83d2 8178  sar     ar1, @78
+83d3 0e7d  lst     st0, @7d
+83d4 be4b  setc tc
+83d5 ef00  ret
+83d6 bc00  ldp     #000
+83d7 1079  lacc    @79
+83d8 3078  sub     @78
+83d9 ef88  retc    eq
+83da be41  setc intm
+83db 7e80 23f0  calld   23f0, *
+83dd bf09 ff57  lar     ar1, #ff57
+83df be40  clrc intm
+83e0 907d  sacl    @7d
+83e1 4e7d  bit     1, @7d
+83e2 ee00  retc    ntc
+83e3 bf08 0bd0  lar     ar0, #0bd0
+83e5 0179  lar     ar1, @79
+83e6 4080  bit     15, *
+83e7 69a0  lacl    *+
+83e8 bfb0 7fff  and     #00007fff
+83ea 907d  sacl    @7d
+83eb 0c7d 005e  out     @7d, 005e
+83ed 987d  sach    @7d
+83ee 0c7d 005f  out     @7d, 005f
+83f0 e200 83f8  bcnd    83f8, ntc
+83f2 bf44  cmpr    eq
+83f3 8b00  nop
+83f4 e500  xc      1, tc
+83f5 7c10  sbrk    #10
+83f6 0ca0 005f  out     *+, 005f
+83f8 bf44  cmpr    eq
+83f9 8b00  nop
+83fa e500  xc      1, tc
+83fb 7c10  sbrk    #10
+83fc 8179  sar     ar1, @79
+83fd ff00  retd
+83fe b902  lacl    #02
+83ff 8857  samm    @57
+8400 ef00  ret
+84cb 7e80 83c8  calld   83c8, *
+84cd bf80 8031  lacc    #00008031
+84cf 7d80 83c8  bd      83c8, *
+84d1 bc10  ldp     #010
+84d2 1018  lacc    @18
+8222 ef00  ret

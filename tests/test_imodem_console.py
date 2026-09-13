@@ -5,6 +5,7 @@ ISR at 0xb2aa2 reached over IRQ3, and the firmware's own banner coming back
 out of the transmit holding register.
 """
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -34,6 +35,41 @@ def session():
 def received(transcript):
     return "".join(text for _, direction, text in transcript
                    if direction == "received")
+
+
+def test_live_sip_bearer_uses_wall_clock_dsp_pacing():
+    class Mailbox:
+        def __init__(self):
+            self.paced = []
+            self.stepped = []
+
+        def pace_realtime(self, active):
+            self.paced.append(active)
+
+        def step(self, count):
+            self.stepped.append(count)
+
+    machine = object.__new__(IsdnMachine)
+    machine.with_dsp = True
+    machine.instructions = 100
+    machine._dsp_instructions = 0
+    machine.mailbox = Mailbox()
+    machine.bri = SimpleNamespace(
+        call_state="active",
+        media_peer=SimpleNamespace(realtime_clock=True),
+    )
+
+    machine._advance_dsp()
+    assert machine.mailbox.paced == [True]
+    assert machine.mailbox.stepped == []
+
+    # Once SIP is no longer carrying the B channel, deterministic coupled
+    # instruction pacing resumes from the current CPU instruction count.
+    machine.instructions = 125
+    machine.bri.call_state = "null"
+    machine._advance_dsp()
+    assert machine.mailbox.paced == [True, False]
+    assert machine.mailbox.stepped == [100]
 
 
 class PumpMachine:

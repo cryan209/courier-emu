@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-13",
+  "sip_account": "6000@asterisk.net.cryan.nz",
+  "physical_courier": {
+    "device": "/dev/cu.usbserial-1140",
+    "dial_command": "ATDT6000",
+    "source_extension_seen_by_sip": "8403"
+  },
+  "sip": {
+    "registered": true,
+    "rtp_packets_received": 674,
+    "rtp_octets_received": 107840,
+    "rtp_packets_sent": 677,
+    "rtp_octets_sent": 108320
+  },
+  "bri": {
+    "called_number_mapping": "SIP 6000 -> ISDN 7349195",
+    "rtp_octets_consumed": 107143,
+    "silence_filled": 1314,
+    "octets_delivered_to_dsp_bearer": 108457,
+    "octets_emitted_by_dsp_bearer": 108457,
+    "non_idle_octets_emitted_by_dsp_bearer": 37617
+  },
+  "clock": {
+    "dsp_realtime_cycles": 273325951,
+    "dsp_clock_hz": 20160000,
+    "dsp_bearer_seconds": 13.557,
+    "received_rtp_seconds": 13.48,
+    "sent_rtp_seconds": 13.54,
+    "sent_vs_received_duration_difference_percent": 0.45
+  },
+  "audio": {
+    "caller_to_imodem_seconds": 13.393,
+    "caller_v21_980hz_magnitude": 528.6,
+    "caller_v21_1180hz_magnitude": 154.9,
+    "imodem_to_caller_seconds": 13.557,
+    "imodem_ansam_2100hz_magnitude": 1337.7,
+    "imodem_ansam_2084_95hz_sideband_ratio": 0.0817,
+    "imodem_ansam_2115_05hz_sideband_ratio": 0.0689
+  },
+  "verdict": "The live DSP bearer now tracks RTP wall time; ANSam and the caller's V.8 traffic reach the DSP bearer. Training still ended without carrier."
+}
