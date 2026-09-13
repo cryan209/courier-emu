@@ -149,12 +149,19 @@ This edge is the address side of the part: see below.
 | local | pin | signal | CPU pin |
 |---|---|---|---|
 | 1 | 60 | `GND` | - |
+| 3 | 58 | `A19` **in** | 32 |
 | 4 | 57 | `ALE` | 38 |
 | 5 | 56 | `WR#` | 37 |
 | 6 | 55 | `RD#` | 36 |
 | 7 | 54 | *unread* | - |
 | 8 | 53 | `INT2`/`INTA0#` | 64 |
-| 14 | 47 | `INT1` | - |
+| 10 | 51 | `TXD0` **in** - serial channel 0's transmit | 2 |
+| 11 | 50 | `U22` pin 10 (`3B`) | - |
+| 12 | 49 | `U22` pin 4 (`2A`) | - |
+| 13 | 48 | `U18` pin 11 | - |
+| 14 | 47 | `INT1` | 63 |
+| 15 | 46 | `U22` pin 2 (`1A`) - **the `RD` net** | - |
+| 16 | 45 | `GND` | - |
 | 23 | 38 | phone-line header pin 6 | - |
 | 24 | 37 | phone-line header pin 5 | - |
 | 30 | 31 | `GND` | - |
@@ -167,10 +174,30 @@ and the first interrupt is where it would sit.
 
 CPU `INT0` (CPU pin 62) is **not connected**.
 
+**`A19` closes the high address run, and it wraps the corner.** Pin `58` is CPU
+pin 32, `A19`. With `62` as `A17` (CPU 30) and `59` as `A18` (CPU 31), three
+consecutive CPU address lines land on `62`, `59` and `58` - consecutive ASIC
+pins **but for the corner pair `61`/`60`, which are the supplies**. A layout
+that runs a bus straight through and steps over the corner pads is the ordinary
+thing to see, and it is a check on two separate claims at once: the
+counter-clockwise numbering that puts `62` and `59` two pins apart, and the
+pad-ring convention that says why.
+
+CPU `INT1` is **CPU pin 63**, which this table had left blank. That matters
+beyond bookkeeping - see [the `SD` reading](#readings-recorded-but-not-yet-interpreted),
+where CPU pin 63 is also recorded as carrying `SD`. Two signals cannot share
+it, and `INT1` is now read from both ends.
+
 **The lower half of this edge is not CPU at all.** `37` and `38` go to the
 **phone-line header**, pins 5 and 6. The CPU control group sits at locals 4-14;
 these are at 23 and 24, well down the edge, with eight unread pins between. So
 the right edge is two groups, not one, and the second is the telco side.
+
+> **Three groups, as it turned out.** `45`-`51` have since been read and they
+> are the **EIA-232 side** - three of `U22`'s driver inputs, an unidentified
+> `U18`, and the CPU's `TXD0`. So this edge runs CPU bus control at the top,
+> the DTE interface in the middle, and the telco at the bottom. See
+> [the DTE interface](#the-dte-interface-is-on-this-edge-and-rd-comes-out-of-the-asic).
 
 That is the first pin on this package to reach the line interface, and it does
 not arrive without a firmware counterpart waiting for it. Two line signals are
@@ -727,6 +754,86 @@ pin nothing else claims - so it fits, but it is the one entry here worth a
 second continuity reading, because a single stray pin is also what a
 transcription slip looks like.
 
+#### The DTE interface is on this edge, and `RD` comes out of the ASIC
+
+`45`-`51` fill the gap the right edge had in the middle, and they are the
+RS-232 side:
+
+| ASIC pin | goes to | what it is |
+|---|---|---|
+| 51 | CPU pin 2 | `TXD0` - serial channel 0's transmit, **into** the ASIC |
+| 50 | `U22` pin 10 | driver input `3B` |
+| 49 | `U22` pin 4 | driver input `2A` |
+| 48 | `U18` pin 11 | an unidentified part - see below |
+| 46 | `U22` pin 2 | driver input `1A` - **the `RD` net** |
+
+**`RD` is an ASIC output.** `U22` pin 2 is where `RD` was traced, and pin `46`
+is the other end of it. That is the second time this has happened - `CD` went
+the same way - and it was [predicted the last
+time](#cd-is-on-the-asic-after-all): "`U22` pin 2 is `1A`, an input, and
+something has to drive it."
+
+So the list of lamps not on the ASIC is down to **two**, `SD` and `OH`, and
+both of those trace to something that is not a line driver. Every modem-to-DTE
+signal that leaves through a 75188 leaves through the ASIC.
+
+**Six driver inputs, three on each part.** `U22` gates 1, 2, 3 and `U23` gates
+1, 2, 3, with gate 4 unused on both. The modem-to-DTE set is `RD`, `CD`, `CTS`,
+`DSR` and `RI` - five signals for six gates, so either one more signal is
+crossing than this file has named or one gate is spare.
+
+#### `TXD0` goes into the ASIC, and that unsettles which channel is the DTE's
+
+Pin `51` is the CPU's **serial channel 0 transmit**, arriving at the ASIC. Put
+it beside pin `46` driving the `RD` net and the shape is hard to miss: the
+modem-to-DTE data path would run **CPU `TXD0` -> ASIC -> `U22` gate 1 -> EIA**,
+with the ASIC in the middle of it.
+
+That is a problem for something this file already concluded. The `SD` reading
+put CPU pin 7 at `P2.0/RXD1` and called it "independent confirmation that the
+DTE runs on the CPU's own UART rather than through the ASIC" - channel **1**.
+Channel 1 receiving and channel 0 transmitting is not how a UART is used.
+
+**The `SD` reading is the weaker of the two, and it was already in doubt.** It
+recorded `SD` on CPU pins 4, 7 and 63 as a group, and CPU 63 is `INT1`, which
+pin `47` now confirms from the ASIC end. A group reading with one member known
+wrong is a group reading to retake. If CPU pin 7 is not `SD`, the channel-1
+conclusion goes with it and **channel 0 is the DTE's** - which is what
+`courier_emu/uart.py` models, its `EbSerial` docstring saying "Serial port 0 of
+the 80C186EB" outright.
+
+Two checks settle it without ambiguity:
+
+* **Re-probe `SD` pin by pin** rather than as a group, and find where the DTE's
+  transmitted data actually lands.
+* **Find `RXD0` and `TXD1` on the CPU** and see which has anything on it. A
+  dead `TXD1` makes channel 1 half-used or unused and closes the question.
+
+What the ASIC is doing in the middle of the transmit path is a separate
+question and a real one. A gate array that merely passed the byte through would
+be a waste of two pins; one that can **gate or steer** it is not, and muting the
+DTE's receive line during connect or handshaking is exactly the kind of thing
+a modem needs to do. If there is a port bit behind it, it is not identified.
+
+#### `U18` is unidentified, and the receiver is what it ought to be
+
+Pin `48` goes to **`U18` pin 11**, and `U18` appears nowhere else in this
+repository - not in [board-parts.md](board-parts.md), not in any earlier
+reading.
+
+There is an obvious candidate. This file's open items include **the EIA-232
+receiver**: `U22` and `U23` are drivers only, something has to shift the DTE's
+`TXD`, `DTR` and `RTS` down to logic levels, and the expected part is a **75189**
+sitting next to the two 75188s. On a 75189, **pin 11 is `4Y`** - a receiver
+**output**, TTL side. An output feeding an ASIC input is exactly the direction
+required, and it would mean the ASIC reads one of the DTE's handshake lines
+directly, which this file has already argued it must: `TR` follows `DTR` and
+`RS` follows `RTS`, and both lamps are on the package.
+
+**It is a hypothesis and it is cheap to kill.** Read `U18`'s marking. If it is
+a 75189, its pins 1-3, 4-6, 8-10 and 12-13 are three more receiver channels to
+trace, and the missing half of the DTE interface arrives in one go.
+
 #### The isolation barrier is found, and the ASIC is on the receiving side
 
 Pins `19` and `22` go to **optocouplers `U14` and `U16`**, pin 5 of each, and
@@ -814,25 +921,35 @@ stopped at a part rather than at the package, so `RD`'s in particular deserves
 the same suspicion `CD`'s has just been relieved of - `U22` pin 2 is `1A`, an
 input, and something has to drive it.
 
-#### Pin 15 is ground, and Talk/Data is the reading that did not survive
+#### Pin 15 is Talk/Data, and the ground reading was the button being pressed
 
-Pin `15` was reported as the front panel's **Talk/Data** switch. It reads to
-**ground**, and the two are not compatible.
+Pin `15` was reported as the front panel's **Talk/Data** switch, then read as
+**ground**, and this file resolved that in favour of ground - on the grounds
+that the switch commons here are grounded, so a probe from a ground pin to a
+switch terminal reads through and reports a connection that is not wiring.
 
-The ground reading is the one to keep, and the reason is the mechanism the
-section below establishes: **the switch commons on this board are grounded**, so
-a probe from any ground pin to a switch terminal reads through the closed
-contact and reports a connection that is not wiring. Pin 15 sitting in the
-middle of the panel run made Talk/Data look plausible, but "free pin in a
-plausible neighbourhood" is not evidence, and a ground pin is what the package
-has at that position.
+**The tie-break was to press the button and watch for a level change, and the
+pin changes.** So pin `15` is Talk/Data, and the ground reading was the
+artifact: the button was pressed, or its contact closed, and the pin was tied
+to ground through it.
 
-So Talk/Data is **not located**. It has to go somewhere - the firmware acts on
-it - and the way to find it is the way that survives this failure mode: hold the
-button and look for a pin whose level *changes*, rather than probing for
-continuity to a terminal that is grounded either way.
+That is the same mechanism as [switch 3 on pin
+118](#switch-3-is-on-pin-118-and-it-was-the-supply-reading-that-was-the-artifact)
+and it is now the second pin this board has disguised as a ground. The rule
+that came out of that case held up here, but it is worth sharpening, because
+this file applied it and still got the answer backwards for a turn:
 
-Pin `24` is also `GND`, read in the same pass and with nothing contesting it.
+> A continuity reading to ground on this board is **not** evidence that a pin is
+> a ground. It is evidence that a pin is grounded *at that moment*. The only
+> readings that distinguish them are the ones taken with the switch moved.
+
+`24` is also read as `GND` in the same pass, with no switch known near it and
+nothing contesting it - but it was taken the same way, and it has not been
+re-read with the panel's switches moved.
+
+Talk/Data being on the ASIC rather than the CPU is worth noting on its own. It
+is not a configuration strap like the DIP bank: it is a user action the firmware
+has to act on promptly, and the ASIC sees it directly.
 
 #### Switch 3 is on pin 118, and it was the supply reading that was the artifact
 
@@ -925,12 +1042,20 @@ where a gate-array library would put it.
 
 Four lamps were traced and are **not** on the ASIC:
 
-| lamp | lands on |
-|---|---|
-| `RD` | `U22`, an SN75188, pin 2 - driver 1's TTL-side input |
-| `CD` | `U23`, an SN75188, pin 4 - driver 2's TTL-side input |
-| `OH` | the RA5W-K relay, pin 9 |
-| `SD` | CPU pins 4, 7 and 63, and 74AHC04 pin 11 (inverter 5 in); AHC04 pin 10 (inverter 5 out) goes to CPU pin 78 |
+| lamp | lands on | since |
+|---|---|---|
+| `RD` | `U22`, an SN75188, pin 2 - driver 1's TTL-side input | **ASIC pin 46 is the other end** - it is on the ASIC |
+| `CD` | `U23`, an SN75188, pin 4 - driver 2's TTL-side input | **ASIC pin 9 is the other end** - it is on the ASIC |
+| `OH` | the RA5W-K relay, pin 9 | stands |
+| `SD` | CPU pins 4, 7 and 63, and 74AHC04 pin 11 (inverter 5 in); AHC04 pin 10 (inverter 5 out) goes to CPU pin 78 | CPU 63 is `INT1`; the group wants retaking |
+
+**Two of those four did not survive.** Both were traces that stopped at a line
+driver's input, and in both cases the ASIC turned out to be on the other end of
+the net. The pattern is worth naming, because it produced the same wrong
+conclusion twice: **a trace that terminates at a part's input pin has found one
+end of a net, not the whole of it**, and "not on the ASIC" was a claim about
+where the probe stopped. `OH` is the only one of the four that is safe, because
+a relay coil is a terminus rather than an input.
 
 
 ## What this settles
@@ -1303,13 +1428,13 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Thirty-two of the 120 pins are unread. Of the eighty-eight that are not,
+Twenty-five of the 120 pins are unread. Of the ninety-five that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
 and the left edge but for five**; the bottom edge is up to twenty-six of thirty
-and is now the best-mapped side of the package; the right edge has two
-groups started and eight pins unread between them, and it still holds the
-ASIC's own chip select.
+and is tied with the right edge as the best-mapped side of the package. **The
+right edge turned out to be three groups, not two** - CPU bus control, the
+DTE's EIA-232 interface, and the telco side - and its middle is filled in.
 
 **All eight corner pins are read and all eight are supplies**, which is the
 convention this file has been leaning on for its inferred runs, now checked at
@@ -1392,11 +1517,13 @@ The ones worth finding next, in the order they would pay:
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-16. **The EIA-232 receiver.** `U22` and `U23` are drivers only. The DTE's
-   `TXD`, `DTR` and `RTS` arrive at EIA levels and something shifts them down;
-   `DTR` demonstrably reaches port `0x12` and `RTS` reaches ASIC pin 25, so
-   the part is on the board and unidentified. A 75189 next to the two 75188s
-   is the thing to look for.
+16. **The EIA-232 receiver - and `U18` is the candidate.** `U22` and `U23` are
+   drivers only. The DTE's `TXD`, `DTR` and `RTS` arrive at EIA levels and
+   something shifts them down; `DTR` demonstrably reaches port `0x12` and `RTS`
+   reaches ASIC pin 25, so the part is on the board and unidentified. **ASIC
+   pin 48 goes to `U18` pin 11**, a part not otherwise recorded anywhere - and
+   pin 11 on a 75189 is `4Y`, a receiver output. **Read `U18`'s marking**;
+   this item may already be answered.
 17. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
 18. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
@@ -1527,6 +1654,15 @@ Two of the three are still unexplained. Pin 4 is `P2.5/BCLK0` and pin 63 is
 `INT1` - and `INT1` is separately recorded as reaching ASIC pin 47, so either
 one of those readings is wrong or this net is not what it appears. That wants
 `SD` re-probed pin by pin rather than as a group.
+
+> **`INT1` is now read from both ends** - ASIC pin `47` to CPU pin `63` - so the
+> conflict resolves against the `SD` group. That puts the rest of the group in
+> doubt, **including CPU pin 7**, and the `P2.0/RXD1` conclusion above rests on
+> exactly that pin. With `TXD0` found on ASIC pin `51`, the channel this DTE
+> runs on is genuinely open again; see [`TXD0` goes into the
+> ASIC](#txd0-goes-into-the-asic-and-that-unsettles-which-channel-is-the-dtes).
+> Retaking this group pin by pin is now the highest-value meter reading left in
+> the file.
 
 **A second `RS` is noted as reaching codec pin 13.** On the AC01's FN package
 pin 13 is `SCLK`, the serial shift clock, which is not a reset of anything and
