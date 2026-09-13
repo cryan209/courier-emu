@@ -156,8 +156,18 @@ at their defaults. So this is a single AC01, not a chain.
 Register 6 DS05 puts the part in free-run mode (datasheet 2.15.4): the external
 shift clock and frame sync **control only the data transfer**, while the ADC
 and DAC conversion timing comes from the A and B registers off MCLK. Combined
-with registers 7 and 8 being untouched, the topology is: the ASIC supplies
-SCLK and FS and moves words, and the codec clocks its own converters.
+with registers 7 and 8 being untouched, the topology is: something outside the
+codec supplies SCLK and FS and moves words, and the codec clocks its own
+converters.
+
+> **That "something" is the DSP, not the ASIC.** An earlier revision said the
+> ASIC supplies SCLK and FS. Continuity readings since
+> ([asic-pinout.md](asic-pinout.md)) put the codec's `DOUT`, `DIN` and `FS` -
+> FN pins 11, 10 and 12 - on **DSP pins 43, 106 and 104**, each one pin from
+> its TDM counterpart. The ASIC has exactly one line to the codec and it is
+> `MCLK` (pin 14, from ASIC 112). So the ASIC clocks the converters' timebase
+> and the DSP runs the serial port, which is the same division of labour this
+> section describes with the parts the other way round.
 
 That is the concrete version of the claim in
 [board-parts.md](board-parts.md) that "the ASIC fronts the codec" - it is true
@@ -342,6 +352,21 @@ application guide (`slaa006.pdf`) wires it `DOUT -> DR`, `DIN -> DX`,
 port's pins pulled to COM through 100 kOhm and unused. The firmware agrees on
 both counts: it drives `DRR`/`DXR`/`SPC` at `0x20`-`0x22`, and it configures
 `TSPC` once at `0x808a` and never touches the TDM port again.
+
+> **The board agrees too, on three of the five.** `DOUT`, `DIN` and `FS` are
+> read onto DSP pins 43, 106 and 104 - the app guide's wiring, confirmed by
+> continuity rather than inferred from the firmware. `SCLK` (FN pin 13) has a
+> reading that calls it a reset net, which is almost certainly a mislabel and
+> now has a predicted destination to be checked against.
+>
+> **`RESET <- XF` does not hold.** The codec's `RESET` (FN pin 8) is on the
+> **shared reset net** that also reaches DSP `RS` (pin 127) and **CPU pin 58**,
+> `P1.1` - the bit `courier_emu` already drives as `DSP_RESET_PORT`. So the
+> codec is reset by the supervisor along with the DSP, not by the DSP's `XF`.
+> That settles this section's closing speculation - "very likely how the codec
+> is kept quiet during the download, but it has not been established here" - in
+> the negative. Whatever keeps it quiet during a download, it is not `XF`
+> holding `RESET`, because `RESET` is not on `XF`.
 
 The ROM boot loader's *serial* path is on that same port - it is receive-only,
 never writing `DXR` or polling `XRDY`:

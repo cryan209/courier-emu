@@ -1660,25 +1660,29 @@ reference point is explicit: after reset the part gives "a 16-kHz
 data-conversion rate and 7.2-kHz filter bandwidth for a 10.368-MHz master clock
 input signal". Change `MCLK` and every one of those numbers moves with it.
 
-**A prediction worth recording before the scope goes on it.** The board's
-oscillator is 40.320 MHz; divided by four that is **10.08 MHz**, and 10.08 MHz
-is an unusually convenient audio clock - it divides by 1260 to exactly 8 kHz,
-by 3150 to 3200 Hz and by 4200 to 2400 Hz, which are the symbol rates a modem
-of this era actually uses. A part that has to hit those rates from a 40.320 MHz
-can, through a divider that this board puts inside the ASIC, would be designed
-around exactly that. If `MCLK` measures 10.08 MHz, the audio timebase is
-settled end to end.
+**And the frequency is already known - from the firmware, not a scope.**
+[ac01-codec-protocol.md](ac01-codec-protocol.md) solves it out of the codec's
+own divider registers: the DSP writes `A = 10` and `B = 20`, the datasheet's
+equations give `fs = MCLK/(2AB)`, and three independently established sample
+rates converge on **MCLK = 2.880 MHz**. Which is `40.320 / 14` exactly.
 
-`M/S` (pin 18) is the other half of it: master makes the codec generate `SCLK`
-and `FS` from `MCLK`, slave makes it take them. It is a meter reading, and it
-decides whether the ASIC's clock sets the sample rate directly or only feeds a
-divider the DSP drives.
+So the divider inside the ASIC is **14**, and the pin reading confirms the path
+that number travels rather than supplying the number. Worth saying plainly that
+an earlier revision of this section predicted 10.08 MHz from `40.320 / 4` on the
+grounds that it divides nicely to 8 kHz - which it does, and the board does not
+use it. The arithmetic-from-plausibility lost to arithmetic-from-the-firmware,
+as it should.
 
-This bears on [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md),
-which derives the audio timing from the oscillator on the assumption that the
-divides are fixed. They may well be; the point is that they are now known to be
-**inside a part with registers**, in the second place that assumption has been
-put in question.
+`M/S` (pin 18) is the piece still unread. The firmware puts the part in free-run
+mode, where `SCLK` and `FS` only move data and the converters run off `MCLK`, so
+the DSP is expected to be driving the serial clocks and the codec to be the
+**slave** - `M/S` low. One meter reading confirms or breaks that.
+
+This still bears on [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md):
+the sample rate is over-determined and safe, but the divide that produces
+`MCLK` is now known to sit **inside a part with registers**, which is the second
+place that "the divides are fixed" has been shown to be an assumption rather
+than a fact.
 
 ### The speaker is squelched in a codec register, not gated on the board
 
@@ -1746,15 +1750,29 @@ so was the prediction that it would turn up on an unread ASIC pin. The useful
 part of that reasoning survives: the gate is not on the CPU, and the port sweep
 was right to find nothing.
 
-**A literal table of the four values is not in the flash image.** A register-4
-write is a 16-bit word with `DS12` set and the register address in
-`DS14`-`DS10`, so the four monitor settings are `0x1000`, `0x1010`, `0x1020` and
-`0x1030` with the other gain fields clear. Searching
-`artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom` for those words
-in either byte order finds no window containing three of them - so the values
-are computed, or they live in the DSP payload after the overlay is expanded, or
-in the DSP's on-chip ROM. **That is a negative result worth keeping**: it rules
-out the easiest place to look.
+**The bring-up writes register 4 once, and writes squelch.**
+[ac01-codec-protocol.md](ac01-codec-protocol.md) has the six-word reset
+sequence decoded from the DSP's own code, and the fourth word is `0409`:
+monitor **squelch**, analog input +6 dB, analog output 0 dB. So the part comes
+up with the speaker off and stays that way unless something writes register 4
+again.
+
+**That is the question this reduces to, and it is a code search rather than a
+probe.** Either a call overlay rewrites register 4 when `M` and `L` say so - in
+which case the mailbox carries the setting and the diff below will show it - or
+nothing ever does, and the speaker is not on `MON OUT` after all. The six-word
+sequence is written once at reset and
+[ac01-codec-protocol.md](ac01-codec-protocol.md) records no second writer, but
+it was not looking for one.
+
+The same search answers a second question for free. **Analog loopback is
+register 5 `DS01`-`DS00` = `00`** - the state that disables both `IN` and
+`AUXIN` and loops the DAC back to the ADC. The bring-up writes `0505`, which is
+`IN+`/`IN-` and no loopback. `AT&T1` is *local analog loopback*, and
+[asic-port-map.md](asic-port-map.md) already uses `&T1`/`&T8` to make the board
+observable. If `&T1` is implemented in this part, there is a `0504` somewhere;
+if there isn't, the loopback is done in the DSP's own arithmetic and the codec
+never hears about it.
 
 **The probe that would close it needs no hardware.** `ATM0` and `ATM2` differ
 in one thing, and it now has a predicted shape: a mailbox message carrying the
@@ -2293,14 +2311,20 @@ The ones worth finding next, in the order they would pay:
    actually driven from is unknown again.
 26. ~~**What gates the speaker.**~~ Answered: nothing on the board does. The
    speaker is on the codec's `MON OUT`, whose gain - **squelch, 0, -8, -18 dB** -
-   is register 4 bits `DS05`-`DS04`, written by the DSP over `DIN`. Four states
-   for a command set with four. What remains is **how `M`/`L` reach the DSP**,
-   which is a mailbox diff across `ATM0`/`ATM2` and needs no hardware, and the
-   small amplifier between `MON OUT` and the speaker.
-27. **The codec's `M/S` (pin 18) and the frequency at `MCLK` (pin 14).**
-   Together they say whether the ASIC's clock sets the sample rate. 10.08 MHz
-   is the predicted value.
-28. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
+   is register 4 bits `DS05`-`DS04`, written over `DIN`. Four states for a
+   command set with four. What remains is **who writes register 4 a second
+   time**: the reset bring-up writes squelch and nothing else is known to write
+   it. A mailbox diff across `ATM0`/`ATM2` and a search of the DSP payload for a
+   second register-4 write settle it, and neither needs hardware.
+27. **Whether `&T1` is the codec's analog loopback.** Register 5 `DS01`-`DS00`
+   = `00` is analog loopback; the bring-up writes `0505`, which is not. A `0504`
+   in the payload would tie the `AT` diagnostic to a hardware mode; its absence
+   would say the loopback is arithmetic in the DSP.
+28. **The codec's `M/S` (pin 18).** The firmware's free-run configuration
+   implies the codec is the slave and the DSP drives `SCLK`/`FS`. `MCLK` itself
+   needs no reading: it is 2.880 MHz, solved from the divider registers and
+   three sample rates, and `40.320 / 2.880` is exactly 14.
+29. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
    is unconnected and the CPU's channel 1 is unused. Probe its pads against the
    three unread bottom-edge pins. See
    [the footprint](#an-unpopulated-four-switch-footprint-and-a-hypothesis-that-died-well).
