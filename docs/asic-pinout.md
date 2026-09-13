@@ -1835,6 +1835,67 @@ straps; switch 1 is a fifth, on the CPU; a Courier's DIP bank has ten
 positions. The bottom-edge reading supplies the missing eight directly, and the
 four straps go back to being what `panel.py` calls them.
 
+### An unpopulated four-switch footprint, and four spare parts of a serial port
+
+The owner reports **room on the board for a second DIP bank of four**,
+unpopulated, near the serial connector - and suggests it might select between
+the CPU's two serial channels.
+
+It is speculation, and this section is marked as such. But it is speculation
+with an unusual amount of unspent hardware sitting next to it, because the DTE
+interface has now been mapped and **a complete second EIA port's worth of parts
+is unused**:
+
+| spare | where |
+|---|---|
+| a receiver channel | `U18`'s `3Y` (pin 8) - `1Y`, `2Y` and `4Y` are all placed |
+| a driver gate | `U22` gate 4 (`4A`/`4B`, pins 13/12) |
+| another driver gate | `U23` gate 4, likewise |
+| a whole UART | the CPU's **channel 1** - `P2.0/RXD1` (CPU 7) and `P2.1/TXD1` (CPU 8) |
+
+A second serial port needs one driver and one receiver. There are two of the
+first and one of the second, on parts already fitted, with an unused UART behind
+them and an unpopulated switch footprint beside them.
+
+**`TXD1` is the single most informative probe.** CPU pin 8 is not recorded as
+going anywhere. If it reaches either 75188's gate 4, the alternate path is
+physically present and the only question left is what selects it. If it goes
+nowhere, channel 1 is dead on this board and the footprint is something else.
+
+**The firmware side argues the same way, from absence.** `courier_emu/panel.py`
+names **eight** option switches the supervisor reads, and the board has **ten**
+positions wired - so two of the ten already move no bit the firmware looks at. A
+further four would need four more input bits and there is no sign of any. That
+is not evidence against the footprint; it is evidence about what *kind* of bank
+it would be. **A bank that reroutes a signal needs no port bit at all**, which
+is exactly the shape of the owner's suggestion, and it is the shape that would
+leave no trace in the image for anyone to have found.
+
+There is a competing reading worth stating, because it is cheap and it fits
+just as well arithmetically: **the bottom edge has exactly four unread pins** -
+`23`, `26`, `28` and `29` - on the same edge as the other nine switches. Four
+pads and four free pins on the switch edge is a coincidence that deserves one
+probe before the more interesting story is adopted.
+
+**The probes, in order:**
+
+1. **The footprint's pads.** Against the four unread bottom-edge pins first;
+   against the `RXD0`/`RXD1` and driver-input nets second. One of those answers
+   it outright. Expect the bank's common to be grounded, as the populated one's
+   is.
+2. **CPU pin 8, `TXD1`**, as above.
+3. **CPU pin 7, `RXD1`.** The retired `SD` group put *something* on that pin.
+   That reading's channel conclusion was wrong, but a net touching pin 7 may
+   still be real - and the DTE's data reaching **both** receive pins is precisely
+   what a selectable arrangement looks like from the wrong end.
+
+**One caution about what "debug interface" would mean here.** This file already
+has a header that streams continuously and that nobody has characterised - `J7`,
+below - and that one is the **DSP's** serial port, not the CPU's. If the board
+has a factory diagnostic path, `J7` is the candidate already in hand, and it
+needs a capture rather than a meter. A second CPU-side port would be a different
+thing again.
+
 ### The second serial port goes to a debug header, not to a device
 
 This is the question [dsp-pin-probes.md](dsp-pin-probes.md) posed and could not
@@ -2040,6 +2101,10 @@ The ones worth finding next, in the order they would pay:
 25. **The `SD` group, now retired rather than retaken.** Two of its three pins
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
+26. **The unpopulated four-switch footprint**, and whether the board carries a
+   second serial path. `TXD1` (CPU pin 8) is the decisive probe; the four unread
+   bottom-edge pins are the competing explanation. See
+   [the footprint](#an-unpopulated-four-switch-footprint-and-four-spare-parts-of-a-serial-port).
 
 ### What the EEPROM is wired to
 
