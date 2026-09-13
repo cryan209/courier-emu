@@ -23,7 +23,7 @@ not in frame, so nothing here says what is on it.
 | `SN75188` x2, `U22` and `U23` | the **EIA-232 line drivers**, TTL in / EIA out, modem-to-DTE only; `RD` is traced to `U22` pin 2 and `CD` to `U23` pin 4 |
 | `74AHC04` | inverter; one gate sits in the `SD` path, see [asic-pinout.md](asic-pinout.md) |
 | `RA5W-K` | the **hook relay**. The `OH` lamp is on its pin 9, which is why `OH` is the one panel line not on the ASIC |
-| Atmel 8-pin | serial EEPROM, the NVRAM the settings cache comes from |
+| Atmel 8-pin | serial EEPROM, the NVRAM the settings cache comes from. On the 2806 it is the **CPU's**, not the ASIC's: `SK` (pin 2) is on CPU pin 57, `P1.2` - see [asic-pinout.md](asic-pinout.md) |
 
 ## The DSP's RAM is 32K words, and that is its program space
 

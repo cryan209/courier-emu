@@ -1097,9 +1097,12 @@ The ones worth finding next, in the order they would pay:
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-13. **The Atmel EEPROM's pins**, which resolve a contradiction the harness
-    already carries - and the CPU path is now specific enough to predict, so
-    see [below](#what-the-eeprom-should-be-wired-to-if-the-harness-is-right).
+13. **`0xff54`, Port 1 Control**, read out of a run. It says which `P1` pins are
+    generic chip selects and which are plain outputs, and the board needs bit 0
+    set for the ASIC's select with bits 2 and 5 clear for the EEPROM. Another
+    check with no hardware in it. The EEPROM's remaining pins - `CS` on CPU 52,
+    the tied `DI`/`DO` on CPU 79, and `ORG` - are
+    [below](#what-the-eeprom-is-wired-to).
 14. **The right edge's unread block, `31`-`36`, `39`-`46` and `48`-`52`.** Twenty
     pins, the largest unread run on the package, and by elimination it is where
     the parts nobody has traced must land - the codec, the DAA behind the
@@ -1121,7 +1124,7 @@ The ones worth finding next, in the order they would pay:
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
 
-### What the EEPROM should be wired to, if the harness is right
+### What the EEPROM is wired to
 
 Two parts of `courier_emu` disagree about how the Atmel serial EEPROM is
 reached. `panel.py` puts `nvram-strobe`, `-data-in`, `-chip-select` and
@@ -1147,20 +1150,40 @@ through a series resistor so the chip's output does not fight the CPU's drive.
 That is not a thing that happens by accident, and finding it would confirm the
 CPU path outright.
 
-So the readings that settle it:
+**93C66 pin 2 is on CPU pin 57.** Confirmed on the board, and it is the clock
+row of that table exactly. So on the 2806 the EEPROM is the **CPU's**, reached
+through `P1LTCH`, and `machine.py`'s model is the one that describes this
+hardware. `panel.py`'s `nvram-*` bits on ASIC port `0x10` belong to the XMF
+supervisor's board and should not be assumed here.
 
-* 93C66 **pin 2** to CPU **57**, and **pin 1** to CPU **52**.
+That also completes the CPU's chip-select allocation, which had been guessed at
+piecemeal:
+
+| CPU select | goes to |
+|---|---|
+| `GCS0` (pin 59) | the ASIC |
+| `LCS` (pin 60) | both SRAMs' `CE#` |
+| `UCS` (pin 61) | the flash's `CE#` - predicted, not yet read |
+| `P1.2/GCS2` (pin 57) | **not a select** - EEPROM clock, driven as GPIO |
+| `P1.5/GCS5` (pin 52) | **not a select** - EEPROM chip select, driven as GPIO |
+
+Two of the generic selects are spent as ordinary output pins, which is a choice
+the firmware has to make explicitly: **Port 1 Control at PCB offset `54H` -
+`0xff54`** - is the register that enables or disables the `GCS` function per
+pin. Bit 0 should be set and bits 2 and 5 clear. Nothing in `courier_emu` reads
+`0xff54`, and like `GCS0`'s limits it can be checked out of a run with no
+hardware at all.
+
+The rest of the chip is still worth a meter:
+
+* **pin 1** to CPU **52**, the other half of the predicted pair.
 * 93C66 **pins 3 and 4** joined, and on CPU **79**.
-* If instead any of them land on the **ASIC**, `panel.py`'s port `0x10` mapping
-  is this board's truth and `machine.py`'s is the other family's.
-* **Pin 6, `ORG`**, while the meter is out: high selects x16 organisation and
-  low x8, which decides how the stored settings are laid out and is not
-  recorded anywhere.
+* **Pin 6, `ORG`**: high selects x16 organisation and low x8, which decides how
+  the stored settings are laid out and is not recorded anywhere.
 
-Note that these two mappings came from different firmware families - the ROM
-builds for the CPU path, the XMF supervisor for the ASIC path - so the honest
-possibility is that both are right about their own board and this reading only
-settles the 2806.
+The two mappings came from different firmware families - the ROM builds for the
+CPU path, the XMF supervisor for the ASIC path - so this settles the 2806 and
+says nothing about the other board.
 
 ### Readings recorded but not yet interpreted
 
