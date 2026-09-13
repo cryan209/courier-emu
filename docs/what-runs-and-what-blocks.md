@@ -41,6 +41,43 @@ is a static-analysis question against the supervisor, not an unanswerable one
 about an undocumented part. `0x847a`'s path through data `0x039e` and `bacc` is
 the one shaped like "start this task".
 
+## Where the DSP actually is
+
+Sampling the program counter over 60,000 instructions after the download:
+
+```text
+  0x0022-0x0023     3.7%     ROM interrupt dispatch
+  0x80d0-0x80e1    31.6%     the resident's main loop
+  0x80e4-0x80f1    22.3%       ...and its indirect dispatch through @1a/@1b
+  0x8138-0x8139     5.6%
+  0x8189-0x8197     0.6%     the codec ISR, receive half
+  0x819e-0x81aa     0.5%     the codec ISR, transmit half
+  0x81b7-0x81ca    35.4%     a dispatched handler
+```
+
+Eleven regions, 102 distinct addresses, out of a 27,710-word resident. The DSP is
+**healthy and idle**: it runs its main loop, dispatches through the handler cells
+at `@1a`/`@1b`, and services the codec every frame. It is not stuck, not crashed
+and not in a wait. It has simply never been asked to do anything. Its only
+external reads are I/O `0x51` - 106 reads in 60,000 instructions.
+
+The steady-state loop is `0x80d0 → 0x80f1 → 0x80d0`, and it reaches the
+block-level work at `0x80c8` only through the `cmpr eq` branch below. That block
+is where all four of the polls live:
+
+```text
+80c6  call 8223
+80c8  call 839b     ; the host mailbox poll
+80ca  call 83d6
+80cc  call 847a
+80ce  call 80f8
+```
+
+Forcing `ARCR` to a value `AR7` reaches (`0x0bd0` or `0x0bde`) makes the block run
+and lifts the DSP from 103 distinct program addresses to 159. **That is a
+diagnostic, not a fix** - nothing on the board writes it by hand, and the
+mechanism that does is the `@10` reload below.
+
 ## The mailbox dispatch itself works
 
 Handing the resident one message and diffing the executed addresses:
