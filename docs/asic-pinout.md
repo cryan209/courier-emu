@@ -1835,7 +1835,7 @@ The ones worth finding next, in the order they would pay:
    and every DSP-side analysis treat as a board constant - follows from it.
    `CLKMD1` (DSP pin 71) and `CLKMD2` (pin 103) say what the DSP divides it by,
    and those are meter readings.
-2. **The left edge's last six - `91`, `110`-`113`, `117` - against the DSP
+2. **The left edge's last two - `112` and `117` - against the DSP
    signals that are still missing.** The ASIC already has the DSP's data bus,
    `IS`, `R/W`, `STRB`, `INT2` and its clock. What is not accounted for is the
    rest of the DSP's control, and four of those would each change something:
@@ -1845,8 +1845,9 @@ The ones worth finding next, in the order they would pay:
    whether the DSP boots from its on-chip ROM or from external memory, and
    which [board-parts.md](board-parts.md) records as running at 1 without
    saying who sets it; **`BIO` (130)**, the branch-on-input the firmware could
-   poll as a handshake; and **`XF` (109)**, the flag it could answer with. Six
-   pins, and the DSP subsystem is otherwise fully mapped.
+   poll as a handshake; and **`XF` (109)**, the flag it could answer with. Two
+   pins for four candidate signals, so at most half of them are there - and the
+   DSP subsystem is otherwise fully mapped.
 
 3. **The phone-line header's pinout**, and which of ASIC `37`/`38` is the
    hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
@@ -1864,16 +1865,18 @@ The ones worth finding next, in the order they would pay:
    through the monitor rather than with a meter: flip each switch in turn and
    watch which port bit moves. It also shows which switches are read by
    nothing.
-6. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
-   edge that holds everything else the ASIC does with the CPU bus. Two of them
-   sit between the flash address pin and the latched run, which is where a
-   second high address line would be if the part takes more than `A17`.
-7. **Flash pin 3 against CPU pin 31.** The ASIC takes system `A17` and `A18`
-   in and drives one high flash address line out, so it is deciding rather than
-   buffering. If flash pin 3 does **not** reach CPU pin 31, the ASIC is in
-   series on `A18` and the flash's top address bit is its to set - and that
-   also resolves which flash pin ASIC 74 is, without re-reading it. Flash `CE#`
-   (pin 12) should be CPU `UCS` (QFP pin 61) and would finish the decode.
+6. **Top-edge pin `72`** - the last one on that edge. Three of the four have
+   been read and all three went to the flash (`73`, `75`, `76`), so `72` is
+   most likely a fourth flash line. The address arithmetic no longer needs it,
+   `A16` having turned up on pin `63`, so this is completeness rather than a
+   question with something riding on it.
+7. ~~**Flash pin 3 against CPU pin 31.**~~ Answered, and more decisively than
+   the item expected: the ASIC takes CPU `A16`-`A19` in and drives the flash's
+   `A15`, `A16`, `A17` and `CE#` out. Flash `CE#` is **not** `UCS`. What
+   replaces this item is **the paging register**: the ASIC consumes one address
+   bit and something must choose what it substitutes. Nothing in
+   `courier_emu` pages the flash, and no port bit has been identified as doing
+   it - this is now the largest unmodelled behaviour on the board.
 8. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
@@ -1895,11 +1898,13 @@ The ones worth finding next, in the order they would pay:
     set for the ASIC's select with bits 2 and 5 clear for the EEPROM's clock
     and chip select. Another check with no hardware in it. The EEPROM itself is
     [fully mapped](#what-the-eeprom-is-wired-to).
-14. **The right edge's unread block, `31`-`36`, `39`-`46` and `48`-`52`.** Twenty
-    pins, the largest unread run on the package, and by elimination it is where
-    the parts nobody has traced must land - the codec, the DAA behind the
-    phone-line header, and the EEPROM if it is on the ASIC at all. Not a single
-    probe but the place to sweep once the targeted ones are done.
+14. **The right edge's unread block, `32`-`36` and `39`-`44`.** Eleven pins,
+    still the largest unread run on the package, and by elimination it is where
+    the parts nobody has traced must land - the codec, and the DAA behind the
+    phone-line header. Not a single probe but the place to sweep once the
+    targeted ones are done. It sits directly between the DTE interface at
+    `45`-`52` and the telco pins at `37`/`38`, so it is bracketed by two known
+    groups rather than floating.
 
 15. **The codec's remaining pins.** `RESET` is shared with the DSP. Whether any
    of the rest reach the ASIC decides the claim in
@@ -1912,9 +1917,30 @@ The ones worth finding next, in the order they would pay:
    serial-channel question.
 17. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
-18. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
-   but not followed; `INT4` has not been found. With `INT0` unconnected and
-   `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
+18. **CPU `INT3` and `INT4`.** `INT3` was recorded on CPU pin 75, which
+   [Table 7](#table-7-in-full-so-nobody-has-to-fetch-it-again) gives as
+   `T0OUT`; `INT3` is pin **65** and `INT4` is **66**. Neither has been
+   followed. With `INT0` unconnected and `INT1`/`INT2` on the ASIC, these are
+   what remain of the interrupt map - and if `T0OUT` really is on that net, a
+   timer output going somewhere is a finding in itself.
+19. **What else is on CPU pin 68.** The ASIC drives `RESIN` through a 1k
+   resistor, which is the arrangement used when something else must be able to
+   override it. A button, a header or a pull-down there is a reset path this
+   file has not recorded; nothing there makes `R1` plain damping.
+20. **What level ASIC pin `52` takes while the ASIC is itself in reset.**
+   If it does not hold low, the CPU is released before the ASIC is ready and
+   the boot chain describes the steady state rather than power-on.
+21. **CPU `RESOUT` (pin 69).** The processor's reset output, now that the reset
+   chain is known to run the other way. It either goes nowhere or reaches
+   something unlooked-at.
+22. **Which RAM `UCS` selects.** CPU `UCS` (pin 61) is on a RAM's pin 20,
+   `CE#`, and `LCS` is recorded as reaching **both** SRAMs' `CE#`. Those cannot
+   both be true of both parts, and the difference decides whether the pair is
+   one 16-bit bank or two separately selected ones.
+23. **`U18`'s other three outputs** - `1Y`, `2Y`, `3Y` on pins 3, 6 and 8 of the
+   `DS1489AM`. One of them carries the DTE's `TXD` to a CPU receive pin, and
+   *which* pin decides whether the DTE link is on serial channel 0 or split
+   across both. See item 16.
 
 ### What the EEPROM is wired to
 
