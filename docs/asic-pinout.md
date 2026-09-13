@@ -1680,7 +1680,7 @@ divides are fixed. They may well be; the point is that they are now known to be
 **inside a part with registers**, in the second place that assumption has been
 put in question.
 
-### The speaker: probably not an opto, and probably not a port bit either
+### The speaker is squelched in a codec register, not gated on the board
 
 The speaker's gate is an open question in two other places -
 [board-verified-403.md](board-verified-403.md) records "**the speaker is not
@@ -1702,68 +1702,78 @@ sits on the modem side and already has the received signal *digitally* - it is
 the part the DSP demodulates from. There is nothing to isolate: the audio the
 speaker wants is already on the logic side of the barrier.
 
-**The codec has an output made for this, and it changes the answer.** `MON
-OUT` is pin 1 of the FN package, and the datasheet describes it as "the monitor
-output allows monitoring of analog input and is a high-impedance output". A
-call-progress speaker wants precisely the analog **input** - dial tone,
-ringback, the far end's answer tone are all received audio - so `MON OUT` is
-the pin the part provides for the job.
+**The codec has an output made for this, and the datasheet closes the
+question.** `MON OUT` is pin 1 of the FN package - "the monitor output allows
+monitoring of analog input and is a high-impedance output". A call-progress
+speaker wants exactly the analog **input**: dial tone, ringback and the far
+end's answer tone are all received audio. The owner confirms the board uses it
+that way, with `OUT+`/`OUT-` (pins 3 and 4) going to the line as the DAC's
+output.
 
-Two things follow, and the second is the useful one.
+**And the gain control is a codec register.** Register 4, the amplifier
+gain-select register, carries the monitor output's gain in bits `DS05`-`DS04`:
 
-**It cannot drive a speaker.** A high-impedance output needs an amplifier
-between it and a coil, so there is a part between the codec and the speaker
-that this file has not identified.
+| `DS05` `DS04` | monitor output |
+|---|---|
+| `0 0` | **squelch** - and the reset default |
+| `0 1` | 0 dB |
+| `1 0` | -8 dB |
+| `1 1` | -18 dB |
 
-**And if the speaker is on `MON OUT`, the gate cannot be software.** `MON OUT`
-is an analog monitor of the input path; it has no mute register and the DSP
-cannot decline to produce it, because the DSP does not produce it at all. So
-the gate has to be **hardware** - an amplifier enable, an analog switch, a
-transistor - and something has to drive that gate.
+**Off, and three volumes.** That is the `AT` command set in hardware: `M0` is
+the squelch state and `L1`/`L2`/`L3` are the three gains. A part offering
+exactly four monitor states to a modem whose speaker command offers exactly
+four is not a coincidence.
 
-That reverses the reasoning this section started with. It also makes a
-prediction: since the port sweep did not find the gate on the CPU, **the line
-that controls it should be an ASIC pin**, and the unread ones are
-`32`-`36`, `39`-`44` on the right edge - the block this file already predicts
-is where the codec and the DAA must land - plus `23`, `26`, `28`, `72` and
-`117`.
+So **there is no board-level gate to find.** The speaker is switched by a
+serial word the codec receives on `DIN` - which means it is switched by **the
+DSP**, since `DIN` is on DSP pin 106 with no ASIC in between. That is why the
+port sweep found nothing on the CPU: the supervisor never touches it. The `M`
+and `L` settings must travel from the `AT` parser through the **mailbox** to the
+DSP, and the DSP writes register 4.
 
-**The alternative is `OUT+`/`OUT-`** (pins 3 and 4), the DAC's power amplifier,
-which the datasheet says "can drive transformer hybrids or high-impedance loads
-directly". Those normally face the DAA as the transmit path. If the speaker
-hangs off them instead or as well, then the DSP *is* producing the audio and a
-software mute is back on the table.
+Two smaller things fall out of the same table. The reset default is
+**squelch**, so the speaker is off until something programs it on - which
+matches the board's behaviour of not being on whenever the line is, without
+needing any gate at all. And because the analog input gain (`DS03`-`DS02`) and
+the analog output gain (`DS01`-`DS00`) live in the same register, a write that
+changes the speaker volume also rewrites the line levels, so the firmware has
+to hold all three together.
 
-**And there is negative evidence pointing the same way.** If a CPU port bit
-gated the speaker, the port sweep that named the lamps should have found it.
-Instead, the two candidate bits were driven deliberately, slowly enough to hear
-individual clicks, on hook and off, and **produced no sound**. That is a
-reasonable argument that the supervisor does not hold the gate at all - which
-fits the `M` setting reaching the audio path the long way round, through the
-mailbox to the DSP.
+This corrects the reasoning above twice over. `MON OUT` **does** have a mute -
+squelch is one - so the argument that the gate must be hardware was wrong, and
+so was the prediction that it would turn up on an unread ASIC pin. The useful
+part of that reasoning survives: the gate is not on the CPU, and the port sweep
+was right to find nothing.
 
-**The cheapest probe needs no hardware.** `ATM0` and `ATM2` differ in exactly
-one thing, and if the difference is a mailbox message then a dial under each
-setting with the mailbox tap running - the fixture in
-`artifacts/mailbox-tap-atdt-01/` - shows it as a diff. If nothing in the
-mailbox changes, the supervisor is gating it locally after all and the port
-sweep missed the bit.
+**A literal table of the four values is not in the flash image.** A register-4
+write is a 16-bit word with `DS12` set and the register address in
+`DS14`-`DS10`, so the four monitor settings are `0x1000`, `0x1010`, `0x1020` and
+`0x1030` with the other gain fields clear. Searching
+`artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom` for those words
+in either byte order finds no window containing three of them - so the values
+are computed, or they live in the DSP payload after the overlay is expanded, or
+in the DSP's on-chip ROM. **That is a negative result worth keeping**: it rules
+out the easiest place to look.
 
-**The physical check is now sharper than "trace the speaker".** Three codec
-pins decide between the two readings above:
+**The probe that would close it needs no hardware.** `ATM0` and `ATM2` differ
+in one thing, and it now has a predicted shape: a mailbox message carrying the
+speaker setting to the DSP. A dial under each setting with the mailbox tap
+running - the fixture in `artifacts/mailbox-tap-atdt-01/` - shows it as a diff.
+The `L` settings should move the same message, which is a second check on
+whatever it turns out to be.
 
-* **`MON OUT` (pin 1)** - if anything is on it, that is the monitor path and
-  the gate is hardware.
-* **`OUT+`/`OUT-` (pins 3, 4)** - where they go says whether the DAC output is
-  spoken for entirely by the DAA.
+**What is left on the board side is small.** `MON OUT` is high-impedance, so
+something amplifies it between the codec and the speaker, and that part is not
+identified - but it no longer has to be a gate, and it may be nothing more than
+a transistor and a resistor.
 
-Then follow whichever one leaves the codec towards the speaker, and read the
-enable of the part it arrives at. That names the gate, and it does not require
-guessing which port bit to drive - which is how the last answer went wrong.
-
-`PWR DWN` (pin 2) is worth reading in the same pass and is probably not the
-gate: powering the codec down would take the datapump with it, not just the
-speaker.
+**And there is a harness item with a known target.** `panel.py` says outright
+that modelling the speaker "is what would let the `M` and `L` settings be
+checked". The model needed is now specific: a register-4 field in a codec model,
+written from the DSP's `DIN` stream, with squelch as the reset value. Nothing
+about it requires knowing which board line does anything, because no board line
+does.
 
 ### The DSP and the codec share one reset net
 
@@ -2281,13 +2291,12 @@ The ones worth finding next, in the order they would pay:
 25. **The `SD` group, now retired rather than retaken.** Two of its three pins
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
-26. **What gates the speaker.** Not an optocoupler. The codec's `MON OUT`
-   (pin 1) is the output made for call-progress monitoring, and if the speaker
-   is on it the gate is **hardware** and most likely an ASIC pin, since the port
-   sweep did not find it on the CPU. Read codec pins 1, 3 and 4, then follow
-   whichever reaches the speaker and read the enable of the part it lands on.
-   The mailbox diff across `ATM0`/`ATM2` is still worth running and needs no
-   hardware.
+26. ~~**What gates the speaker.**~~ Answered: nothing on the board does. The
+   speaker is on the codec's `MON OUT`, whose gain - **squelch, 0, -8, -18 dB** -
+   is register 4 bits `DS05`-`DS04`, written by the DSP over `DIN`. Four states
+   for a command set with four. What remains is **how `M`/`L` reach the DSP**,
+   which is a mailbox diff across `ATM0`/`ATM2` and needs no hardware, and the
+   small amplifier between `MON OUT` and the speaker.
 27. **The codec's `M/S` (pin 18) and the frequency at `MCLK` (pin 14).**
    Together they say whether the ASIC's clock sets the sample rate. 10.08 MHz
    is the predicted value.
