@@ -177,6 +177,50 @@ ACTIVE_LOW: frozenset[tuple[int, int]] = frozenset(
     {(0x10, 0x04), (0x14, 0x01), (0x14, 0x80)}
 )
 
+# The nine-step self test sweep above is also the front panel's lamp list, so
+# it is the one place the board names its own indicators. Restating it as a
+# table lets a run report which lamps are lit rather than which latch bits are
+# low - index 1 is left out because it is the front-panel button, not a lamp.
+#
+# Polarity: the sweep releases a port by writing 0xff and drives a lamp by
+# pulling its bit low, so the 0x12 and 0x14 lamps are active low - CS
+# corroborates this by dropping when the port is released. OH is the exception
+# and is measured the other way: 0xdf lights it and pulls the relay in, 0xde
+# releases both, so it is active high on port 0x10 bit 0x01.
+#
+# `evidence` records how each one was pinned down, since four are measured by
+# driving the bit and watching the board and the rest follow from the release
+# order Scott read off it.
+@dataclass(frozen=True)
+class Led:
+    name: str
+    port: int
+    mask: int
+    active_low: bool
+    evidence: str
+
+
+FRONT_PANEL_LEDS: tuple[Led, ...] = (
+    Led("HS", 0x12, 0x10, True, "release order, self-test index 0"),
+    Led("AA", 0x14, 0x10, True, "measured: driven on the board"),
+    Led("CD", 0x14, 0x01, True, "measured: three blinks on bit 0x01"),
+    Led("OH", 0x10, 0x01, False, "measured: 0xdf lights it and pulls the relay in"),
+    Led("MR", 0x12, 0x02, True, "release order, self-test index 5"),
+    Led("CS", 0x14, 0x02, True, "measured: drops when the port is released"),
+    Led("SYN", 0x14, 0x80, True, "measured: six blinks on bit 0x80"),
+    Led("ARQ", 0x14, 0x20, True, "release order, self-test index 8; ARQ/FAX"),
+)
+
+# Per lamp, so a transition can be found without scanning the table on every
+# panel write.
+_LEDS_BY_PORT: dict[int, tuple[Led, ...]] = {
+    port: tuple(led for led in FRONT_PANEL_LEDS if led.port == port)
+    for port in {led.port for led in FRONT_PANEL_LEDS}
+}
+
+MAX_LED_TRANSITIONS = 64
+
+
 # The hook relay, named out of the table above so `off_hook` can read the bit
 # straight from its latch.
 #
@@ -400,6 +444,7 @@ class CourierPanel:
     truncated: bool = False
     board_id: int | None = None
     dip_closed: frozenset[str] = DEFAULT_DIP_CLOSED
+    led_transitions: dict[str, list[tuple[int, bool]]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.board_id is not None and not 0 <= self.board_id <= 15:
@@ -474,12 +519,71 @@ class CourierPanel:
         changed = 0xFF if previous is None else previous ^ value
         if not changed:
             return
+        for led in _LEDS_BY_PORT.get(port, ()):
+            if not changed & led.mask:
+                continue
+            history = self.led_transitions.setdefault(led.name, [])
+            if len(history) < MAX_LED_TRANSITIONS:
+                history.append((instruction, self.led_lit(led) is True))
         if len(self.events) < MAX_PANEL_EVENTS:
             self.events.append(
                 PanelEvent(instruction, port, value, changed, pc, initial=previous is None)
             )
         else:
             self.truncated = True
+
+    def led_lit(self, led: Led) -> bool | None:
+        """Whether one lamp is lit, or None if its latch was never written."""
+        value = self.latches.get(led.port)
+        if value is None:
+            return None
+        level = bool(value & led.mask)
+        return not level if led.active_low else level
+
+    def leds(self) -> dict[str, str]:
+        """Current state of every named front-panel lamp."""
+        return {
+            led.name: {None: "unknown", True: "on", False: "off"}[self.led_lit(led)]
+            for led in FRONT_PANEL_LEDS
+        }
+
+    def led_diagnostic(self) -> dict[str, Any]:
+        """Per lamp: its state now, its latch bit, and how it has moved.
+
+        The transition list is what makes this a diagnostic rather than a
+        snapshot - a lamp that blinked during the self test and went out again
+        reads as "off" now, and the count is the only thing that shows it ever
+        worked.
+        """
+        report: dict[str, Any] = {}
+        for led in FRONT_PANEL_LEDS:
+            transitions = self.led_transitions.get(led.name, [])
+            report[led.name] = {
+                "state": {None: "unknown", True: "on", False: "off"}[self.led_lit(led)],
+                "latch": f"{led.port:#04x}",
+                "bit": f"{led.mask:#04x}",
+                "active_low": led.active_low,
+                "evidence": led.evidence,
+                "transitions": len(transitions),
+                "first_lit": next(
+                    (instruction for instruction, lit in transitions if lit), None
+                ),
+                "last_change": transitions[-1][0] if transitions else None,
+            }
+        return report
+
+    def format_leds(self) -> str:
+        """One line of lamps: a lit one in capitals, an unlit one dimmed to dots."""
+        parts = []
+        for led in FRONT_PANEL_LEDS:
+            lit = self.led_lit(led)
+            if lit is None:
+                parts.append("?" * len(led.name))
+            elif lit:
+                parts.append(led.name)
+            else:
+                parts.append("." * len(led.name))
+        return " ".join(parts)
 
     def signals(self) -> dict[str, bool]:
         """Return the asserted state of every named output line."""
@@ -510,6 +614,9 @@ class CourierPanel:
             "latches": {f"{port:#04x}": value for port, value in sorted(self.latches.items())},
             "writes": {f"{port:#04x}": count for port, count in sorted(self.writes.items())},
             "signals": self.signals(),
+            "leds": self.leds(),
+            "led_panel": self.format_leds(),
+            "led_diagnostic": self.led_diagnostic(),
             "off_hook": self.off_hook,
             "board_id": self.board_id,
             "board_capability": self.board_capability,

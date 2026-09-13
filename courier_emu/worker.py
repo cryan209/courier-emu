@@ -76,7 +76,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
     parser.add_argument("--instructions", type=_number, required=True)
-    parser.add_argument("--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn")
+    parser.add_argument("--cpu-engine", choices=("interpreter", "unicorn"), default="interpreter")
     parser.add_argument("--port", action="append", default=[])
     parser.add_argument("--runtime-port", action="append", default=[])
     parser.add_argument("--uart-port", action="append", type=_number, default=[])

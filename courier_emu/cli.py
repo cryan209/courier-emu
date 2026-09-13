@@ -17,6 +17,7 @@ from .exchange import EXCHANGE_OUTCOMES
 from .line import MAX_SOCKET_PATH
 from .panel import (
     BOARD_CAPABILITY,
+    FRONT_PANEL_LEDS,
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
     DIP_PRESETS,
@@ -119,6 +120,35 @@ def instruction_limit(args: argparse.Namespace) -> int:
     return DEFAULT_RUN_INSTRUCTIONS
 
 
+def _print_leds(result: dict) -> None:
+    """Write the front-panel lamp diagnostic beside the report.
+
+    It goes to stderr because stdout is either the JSON report or, in terminal
+    mode, the serial stream.
+    """
+    panel = result.get("panel") or {}
+    diagnostic = panel.get("led_diagnostic")
+    if not diagnostic:
+        return
+    print(panel.get("led_panel", ""), file=sys.stderr)
+    # Lamp order, not the report's alphabetical key order: the worker returns
+    # its JSON sorted, and the panel reads as a panel only in the order the
+    # board sweeps them.
+    for led in FRONT_PANEL_LEDS:
+        entry = diagnostic.get(led.name)
+        if entry is None:
+            continue
+        name = led.name
+        first = entry["first_lit"]
+        print(
+            f"  {name:<4} {entry['state']:<7} latch {entry['latch']} bit {entry['bit']}"
+            f" changes={entry['transitions']}"
+            + (f" first-lit@{first}" if first is not None else "")
+            + f"  ({entry['evidence']})",
+            file=sys.stderr,
+        )
+
+
 def _print_json(value: object) -> None:
     print(json.dumps(value, indent=2, sort_keys=True))
 
@@ -164,7 +194,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         "--instructions",
         str(instruction_limit(args)),
     ]
-    if args.cpu_engine != "unicorn":
+    if args.cpu_engine != "interpreter":
         command.extend(("--cpu-engine", args.cpu_engine))
     for assignment in args.port:
         command.extend(("--port", assignment))
@@ -334,6 +364,8 @@ def _run_isolated(args: argparse.Namespace) -> int:
         result.pop("io_events", None)
         result.pop("mmio_events", None)
         result.pop("last_addresses", None)
+    if getattr(args, "leds", False):
+        _print_leds(result)
     _print_json(result)
     return 0
 
@@ -461,7 +493,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="execute the ISDN Courier 386 payload with its PC-AT peripherals",
     )
     isdn_run.add_argument(
-        "--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn",
+        "--cpu-engine", choices=("interpreter", "unicorn"), default="interpreter",
         help="x86 execution backend (interpreter uses the 386EX profile)",
     )
     isdn_run.add_argument("image")
@@ -832,8 +864,13 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="execute the 80186 application entry")
     run.add_argument("image")
     run.add_argument(
-        "--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn",
+        "--cpu-engine", choices=("interpreter", "unicorn"), default="interpreter",
         help="x86 execution backend (interpreter uses the 80186EB profile)",
+    )
+    run.add_argument(
+        "--leds",
+        action="store_true",
+        help="report the front-panel lamps (state, latch bit, and transitions) on stderr",
     )
     run.add_argument(
         "--instructions",
@@ -1540,6 +1577,8 @@ def main(argv: list[str] | None = None) -> int:
                     {"instructions": count, "direction": direction, "text": text}
                     for count, direction, text in transcript
                 ]
+            if args.leds:
+                _print_leds(result)
             if args.terminal and args.report:
                 # stdout is the serial stream in this mode, so an explicitly
                 # requested report goes beside it rather than into it.

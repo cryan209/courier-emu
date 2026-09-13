@@ -413,7 +413,7 @@ class TransportMachine:
     """
     def __init__(self, diagnostic: Diagnostic, *, rom_mapped: bool = True,
                  fault: str | None = None, rom_image: bytes | None = None,
-                 cpu_engine: str = "unicorn"):
+                 cpu_engine: str = "interpreter"):
         if cpu_engine == "unicorn":
             import unicorn as uc
             from unicorn import x86_const as r
@@ -791,9 +791,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--cpu-engine", choices=("unicorn", "interpreter"),
-                        default="unicorn",
-                        help="80188 execution backend (default: unicorn)")
+    parser.add_argument("--cpu-engine", choices=("interpreter", "unicorn"),
+                        default="interpreter",
+                        help="80188 execution backend (default: interpreter)")
     parser.add_argument("--instructions", type=lambda v: int(v, 0), default=2_000_000,
                         help="maximum CPU instructions (default: 2000000)")
     parser.add_argument("--capture", type=Path, help="validate a saved CDRP1 serial frame")

@@ -460,7 +460,7 @@ class CourierMachine:
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
         mem_watch: tuple[int, int] | None = None,
-        cpu_engine: str = "unicorn",
+        cpu_engine: str = "interpreter",
     ) -> None:
         if cpu_engine not in ("unicorn", "interpreter"):
             raise ValueError(f"unknown x86 engine {cpu_engine!r}")

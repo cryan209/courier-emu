@@ -353,7 +353,7 @@ class IsdnMachine:
         offhook_at: int | None = None,
         product_type: str = "external",
         product_modem: bool = False,
-        cpu_engine: str = "unicorn",
+        cpu_engine: str = "interpreter",
         code_observer: "Callable[[int], None] | None" = None,
     ) -> None:
         if cpu_engine not in ("unicorn", "interpreter"):
