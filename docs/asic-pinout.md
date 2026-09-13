@@ -919,6 +919,7 @@ carries the DIP bank as well, interleaved with them.
 | 24 | 24 | `GND` |
 | 25 | 25 | `RS` lamp |
 | 27 | 27 | `MR` lamp |
+| 29 | 29 | phone-line header pin 12 |
 | 30 | 30 | `VCC` |
 
 Bottom-edge local numbering and absolute numbering are the same thing, so
@@ -1094,6 +1095,34 @@ obvious candidate - and no port bit has been identified for it.
 **`3Y` is the one output left.** Three DTE inputs are accounted for (`TXD`,
 `RTS`, and `DTR` by elimination at ASIC 48), so the fourth channel is either
 spare or carries something this file has not expected.
+
+#### The phone-line header reaches this edge too, and it has at least 12 pins
+
+Pin `29` goes to **phone-line header pin 12**. Two things follow, and the
+second is the larger.
+
+**The header is not a two-wire connection.** This file had two ASIC pins on it,
+`37` and `38`, at header pins 5 and 6, and reasoned from there that the header
+was "far likelier to be a **DAA module interface** carrying logic-level signals
+than the line itself". A header with at least **twelve** positions settles that
+argument: nothing about tip and ring needs twelve pins. It is a module
+interface, and the module on the far side of it is still unidentified.
+
+**And the telco side is not confined to the right edge.** That edge was
+described as three groups with the phone line at the bottom of it; the line
+interface in fact reaches **both** edges - `37` and `38` on the right, `29`
+here, and the two optocouplers on `19` and `22` also here. Five line-side pins,
+spread across two edges, which is what a module interface with a dozen
+conductors would look like rather than an afterthought in a corner.
+
+It also makes the [pairing offered for `37` and `38`](#right-edge---the-cpu-control-group)
+weaker again. That pairing rested on there being exactly two line-side pins for
+the two line-side signals with ports - ring sense and the hook relay. There are
+now five, and the guess has no arithmetic left behind it.
+
+**The header's own pinout is the reading that would organise all of this**, and
+it has been an open item since the first two pins landed on it. Twelve
+positions, three of them now known to reach the ASIC.
 
 #### The isolation barrier is found, and the ASIC is on the receiving side
 
@@ -1871,11 +1900,13 @@ it would be. **A bank that reroutes a signal needs no port bit at all**, which
 is exactly the shape of the owner's suggestion, and it is the shape that would
 leave no trace in the image for anyone to have found.
 
-There is a competing reading worth stating, because it is cheap and it fits
-just as well arithmetically: **the bottom edge has exactly four unread pins** -
-`23`, `26`, `28` and `29` - on the same edge as the other nine switches. Four
-pads and four free pins on the switch edge is a coincidence that deserves one
-probe before the more interesting story is adopted.
+There was a competing reading here, and it has since lost its arithmetic. It
+ran: the bottom edge has exactly four unread pins on the same edge as the other
+nine switches, so four pads and four free pins is a coincidence worth probing
+first. **Pin `29` has since been read - it is the phone-line header** - so the
+edge has three free pins, not four, and the neat fit is gone. The reading is
+still worth one probe, since `23`, `26` and `28` are free and on the right edge
+of the package for switches, but it no longer competes on elegance.
 
 **The probes, in order:**
 
@@ -1967,7 +1998,7 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Seventeen of the 120 pins are unread. Of the hundred and three that are not,
+Sixteen of the 120 pins are unread. Of the hundred and four that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for one pin
 and the left edge but for one**; the bottom edge is up to twenty-six of thirty
@@ -2001,10 +2032,14 @@ The ones worth finding next, in the order they would pay:
    pins for four candidate signals, so at most half of them are there - and the
    DSP subsystem is otherwise fully mapped.
 
-3. **The phone-line header's pinout**, and which of ASIC `37`/`38` is the
-   hook relay drive and which the ring sense. Continuity to the `RA5W-K`'s coil
-   names the output; watching the pair while the line rings names the input.
-   The DAA module on the far side of that header is unidentified.
+3. **The phone-line header's pinout.** It has at least **twelve** positions and
+   three ASIC pins on it - `37`, `38` and `29` - which makes it a DAA module
+   interface rather than a line connection, and makes the old guess that `37`
+   and `38` are the hook drive and the ring sense unsupported. Continuity to the
+   `RA5W-K`'s coil still names the hook output; watching the pins while the line
+   rings still names the ring input. The module on the far side is unidentified,
+   and with two optocouplers and three header pins now on the package this is
+   the largest unmapped subsystem left.
 4. **What is on the other side of DIP switch 1** - ground/`VCC` makes it a
    strap on `P2.6`; the DTR net makes `P2.6` the signal and the override
    hardware. Both firmware families already mapped read this switch through
@@ -2102,8 +2137,8 @@ The ones worth finding next, in the order they would pay:
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
 26. **The unpopulated four-switch footprint**, and whether the board carries a
-   second serial path. `TXD1` (CPU pin 8) is the decisive probe; the four unread
-   bottom-edge pins are the competing explanation. See
+   second serial path. `TXD1` (CPU pin 8) is the decisive probe; the three
+   unread bottom-edge pins are the competing explanation. See
    [the footprint](#an-unpopulated-four-switch-footprint-and-four-spare-parts-of-a-serial-port).
 
 ### What the EEPROM is wired to
