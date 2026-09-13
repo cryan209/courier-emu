@@ -641,23 +641,36 @@ thing on that bus.
 `120` is `GND`. That is the bottom-left corner - the last pin of the left edge,
 adjacent to pin 1 at the index dot. With `90` at the top left and `61`/`60` at
 the top right, three of the four corners are now known to be supplies, which is
-the pad-ring convention holding up everywhere it has been checked.
+the pad-ring convention holding up everywhere it has been checked. **The fourth
+has since been read as well**: pins `1` and `30` are both `VCC`, so the bottom
+edge is bracketed by supplies like every other.
 
-### Bottom edge - the panel and the two handshake lines
+### Bottom edge - the panel, the DIP switches and the two handshake lines
 
-Read after the edges above, and it is where the lamps were predicted to be.
+Read after the edges above, and it is where the lamps were predicted to be. It
+carries the DIP bank as well, interleaved with them.
 
 | local | pin | signal |
 |---|---|---|
+| 1 | 1 | `VCC` |
+| 2 | 2 | DIP switch **2** |
+| 3 | 3 | DIP switch **5** |
+| 4 | 4 | DIP switch **4** |
+| 5 | 5 | DIP switch **10** |
+| 6 | 6 | DIP switch **9** |
+| 7 | 7 | DIP switch **8** |
+| 8 | 8 | DIP switch **7** |
 | 10 | 10 | `CS` lamp |
 | 13 | 13 | `AA` lamp |
 | 14 | 14 | `ARQ` lamp |
 | 16 | 16 | `HS` lamp |
 | 17 | 17 | `SYN` lamp |
 | 18 | 18 | `TR` lamp |
+| 20 | 20 | DIP switch **6** |
 | 21 | 21 | `AA` lamp, **second pin** |
 | 25 | 25 | `RS` lamp |
 | 27 | 27 | `MR` lamp |
+| 30 | 30 | `VCC` |
 
 Bottom-edge local numbering and absolute numbering are the same thing, so
 these need no translation.
@@ -667,6 +680,67 @@ not self-explanatory. Nothing in the firmware writes `AA` twice - it is one bit,
 `0x14` bit `0x10`. Two pins on one net is either a doubled drive for lamp
 current, a sense return, or one of the two being a different `AA`-labelled net
 that the reading merged. It has not been resolved.
+
+#### Eight DIP switches, one pin each
+
+The switches share the edge with the lamps and do not collide with them:
+
+| ASIC pin | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 20 |
+|---|---|---|---|---|---|---|---|---|
+| DIP switch | 2 | 5 | 4 | 10 | 9 | 8 | 7 | 6 |
+
+**Switch 3 is the one not found**, and switch 1 is on the CPU, so nine of the
+bank's ten positions now have a home. Pins `5`-`8` are a clean descending run -
+switches 10, 9, 8, 7 - which is the sort of pattern that says the readings are
+right. The rest is scrambled relative to pin order, so whatever port bit the
+firmware reads a switch in is not going to be positional, and that mapping has
+to come from the firmware rather than from this table.
+
+**Pin 20 is the odd one.** It sits away from the group, in among the lamps, on a
+pin nothing else claims - so it fits, but it is the one entry here worth a
+second continuity reading, because a single stray pin is also what a
+transcription slip looks like.
+
+#### That retires the scanned matrix for these switches
+
+The previous section had the DIP bank as **a matrix the firmware scans**, taken
+from `panel.py`'s `id-strap-drive-a`..`d` and `id-strap-sense` on ASIC ports
+`0x12`/`0x14`, and it used the scan's shared return to explain why metering the
+switches misbehaved. Eight switches on eight dedicated pins is not a matrix.
+Four drive lines exist to save pins, and this part spent the pins.
+
+Which is the better outcome, because the matrix reading never closed: four
+drives and one sense read four straps, and a Courier's DIP bank has ten
+positions. **The resolution is that those were never these switches.**
+`panel.py` names them `id-strap-*` and they are read once at boot - they are the
+board-ID straps, a separate physical thing that this file had folded into the
+DIP bank because both were unread. The scan is still real; it is just not what
+the user flips.
+
+Two consequences follow. The **arithmetic now closes** - ten switches, one on
+the CPU, eight on the ASIC, one still to find - with no need to postulate extra
+sense lines or switches read by nobody. And the **meter advice was wrong for
+the wrong reason**: these pins are individually wired, so a probe on one should
+read cleanly. If they still misbehave, that is a shared common rail on the
+switch bank, not a scan, and it is the bank's common terminal that wants
+tracing next.
+
+The `panel.py` strap scan is from the **XMF supervisor**, which is the other
+board's firmware, so none of this touches whether that board matrixes its own
+switches. It settles the 2806 only.
+
+#### The corners are supplies on this edge too
+
+`1` and `30` are `VCC`. With `120` (`GND`) and `61`/`60` already read, and `90`
+carrying `VDD`, **every one of the four corners is now known to sit between
+supply pins** - only `31` and `91` are unread, and each is the far flank of a
+corner whose near flank is a supply.
+
+That is the pad-ring convention holding everywhere it has been checked, and it
+is a quiet check on the numbering rather than a finding in itself: a corner
+landing on a supply is what the [orientation](#orientation-and-pin-numbering)
+section predicted, and pin `1` being one of them puts a supply at the index dot
+where a gate-array library would put it.
 
 Four lamps were traced and are **not** on the ASIC:
 
@@ -920,6 +994,14 @@ line off the ASIC, which nothing else suggests.
 
 #### The rest of them are a scanned matrix, which is why the meter misbehaves
 
+> **Superseded by the bottom-edge reading.** Eight of the switches are now
+> found on eight dedicated ASIC pins, so they are not a matrix and the meter
+> has a simpler excuse. The scan below is real but reads the **board-ID
+> straps**, which are a different physical thing. See
+> [Eight DIP switches, one pin each](#eight-dip-switches-one-pin-each). The
+> section is kept because the strap-scan table is still the record of that
+> mechanism.
+
 The other switches read oddly with a meter, and there is a specific reason to
 expect that: **the firmware scans them**, and a scan needs a shared return.
 
@@ -953,12 +1035,11 @@ changes the sense bit is on that drive line. Four passes name four switches
 without a meter touching anything, and it reads through whatever resistors and
 diodes are making the meter lie.
 
-**The arithmetic does not close yet.** Four drives and one sense read four
-straps; switch 1 is a fifth, on the CPU. A Courier's DIP bank has more positions
-than that, so either there are further sense lines not yet found in the
-firmware, or some switches are not read by either part - strapped options that
-only change hardware behaviour. The live scan above would show which, since a
-switch that moves no readable bit is in the second group.
+**The arithmetic does not close yet** - and the reason turned out to be that
+the two groups were being counted as one. Four drives and one sense read four
+straps; switch 1 is a fifth, on the CPU; a Courier's DIP bank has ten
+positions. The bottom-edge reading supplies the missing eight directly, and the
+four straps go back to being what `panel.py` calls them.
 
 ### The second serial port goes to a debug header, not to a device
 
@@ -1031,11 +1112,13 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Fifty-one of the 120 pins are unread. Of the sixty-nine that are not,
+Forty-one of the 120 pins are unread. Of the seventy-nine that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
-and the left edge but for six**; the bottom is nine of thirty; the right edge has two groups started and eight
-pins unread between them, and it still holds the ASIC's own chip select.
+and the left edge but for six**; the bottom is nineteen of thirty, ten of them
+landed in one pass with the DIP bank and its two corner supplies; the right
+edge has two groups started and eight pins unread between them, and it still
+holds the ASIC's own chip select.
 The ones worth finding next, in the order they would pay:
 
 1. **The frequency at DSP pin 96.** The ASIC drives the DSP's clock, and no
@@ -1065,10 +1148,14 @@ The ones worth finding next, in the order they would pay:
    strap on `P2.6`; the DTR net makes `P2.6` the signal and the override
    hardware. Both firmware families already mapped read this switch through
    ASIC port `0x12` bit `0x20` instead, so either answer says something.
-5. **Which DIP switch is on which strap drive**, read live through the
-   monitor rather than with a meter - drive one of `0x12`/`0x02`,
-   `0x14`/`0x40`, `0x14`/`0x10`, `0x14`/`0x20` low and watch `0x14` bit `0x08`
-   while flipping each switch. It also shows which switches are read by nothing.
+5. ~~**Which DIP switch is on which strap drive**~~ - answered by the
+   bottom-edge reading, which puts eight switches on eight dedicated pins and
+   the strap drives back on the board-ID straps. What remains is **which port
+   bit each of those eight pins appears in**, and **where DIP switch 3 goes**.
+   The original item's method still applies to both, and it is still live
+   through the monitor rather than with a meter: flip each switch in turn and
+   watch which port bit moves. It also shows which switches are read by
+   nothing.
 6. **Top-edge pins `76`, `75`, `73` and `72`** - the four left unread on the
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
