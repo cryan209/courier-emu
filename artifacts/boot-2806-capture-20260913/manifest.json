@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "image": "artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom",
+  "command": "ATI7",
+  "instructions": 60000000,
+  "settings": {"tick_ms": 5, "board_id": 7, "nvram": "CourierNvram.idsl302_fixture()", "with_dsp": true},
+  "finding": "The 2806's own flash capture boots under the existing ROM path and prints its configuration profile: supervisor 7.3.14, DSP 3.0.13, Clock Freq 25 Mhz, Flash ROM 512k, Ram 64k. No 25 MHz mode, loader change or paging model was needed.",
+  "supersedes": "The UC_ERR_INSN_INVALID at 5,684,093 instructions reported earlier was an artifact of running with no tick. The 20.16 MHz 4.03d capture stops at 5,689,414 under the same conditions, so it is not board-specific.",
+  "serial_note": "serial_text arrives with the eighth bit set; ati7.txt is masked to 7 bits."
+}

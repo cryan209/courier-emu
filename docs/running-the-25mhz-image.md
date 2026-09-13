@@ -1,276 +1,135 @@
-# The board we have mapped is not the board the emulator runs
+# The 2806's own firmware runs, and always could
 
-Every pin reading in [asic-pinout.md](asic-pinout.md) is from the **25 MHz
-Courier 2806**, the AC03 board. This note began by asserting that every
-behavioural target here is a 20.16 MHz image, and **that was wrong** - checking
-the timer constant in each one says the opposite:
+This file was started to work out what it would take to run the 25 MHz Courier
+2806's firmware - the board every pin reading in
+[asic-pinout.md](asic-pinout.md) comes from. It went through three wrong
+premises before the answer turned out to be **nothing**. The image runs today,
+on the machinery already here, and the wrong turns are kept below because each
+was reached by a plausible route.
 
-| image | `T0CMPA` | clock | runs? |
+## It runs
+
+```
+artifacts/boot-2806-capture-20260913/boot_run.py \
+    artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom 60000000
+```
+
+That is `CourierMachine` with `with_dsp=True`, **`tick_ms=5`**, **`board_id=7`**
+and **`CourierNvram.idsl302_fixture()`** - the setup
+[rom-dte-path.md](rom-dte-path.md) already documents for the ROM builds. The
+board's own `ATI7`:
+
+```
+USRobotics Courier V.Everything Configuration Profile...
+
+Product type           US/Canada External
+Options                HST,V32bis,Terbo,VFC,V34+,x2,V90
+Clock Freq             25 Mhz
+Flash ROM              512k
+Ram                    64k
+Supervisor rev         7.3.14
+DSP rev                3.0.13
+```
+
+Supervisor 7.3.14, DSP 3.0.13, 25 MHz, 512k flash, 64k RAM - the 2806 exactly
+as [board-parts.md](board-parts.md) describes it. No 25 MHz mode, no loader
+change, no paging model.
+
+`serial_text` arrives with the eighth bit set; mask to 7 bits to read it. Worth
+knowing before anyone concludes a run produced garbage.
+
+## The fault that started this was a missing tick
+
+Running the same image under `artifacts/mailbox-tap-atdt-01/tap_run.py` dies:
+`UC_ERR_INSN_INVALID` at **5,684,093** instructions, at `0x2e3:0xd112`, linear
+`0xff42` - in RAM rather than flash. That looked like a board-specific gap, and
+this file argued at length that it was one.
+
+**It is not.** `tap_run.py` does not pass `tick_ms`, and
+[machine.py](../courier_emu/machine.py) says plainly that the tick "is not
+driven by default". Run the **20.16 MHz 4.03d capture** the same way and it
+stops at **5,689,414** instructions - within 0.1% of the same place. Two boards,
+two generations, the same wall. Supply `tick_ms=5` and both run to a
+60,000,000-instruction limit with no error at all.
+
+So the fault was the harness starving the firmware of its timebase, and the
+address it died at was wherever that happens to strand it.
+
+## The wrong turns, and what settled each
+
+Kept because the routes were reasonable and the corrections came from evidence
+rather than from re-reading.
+
+**"Every behavioural target here is a 20.16 MHz image."** Wrong: `T0CMPA`
+(`0xff32`) shows the ROM builds are 20.16 MHz (`6270`) and **every XMF
+supervisor is 25.8048 MHz** (`7e00`). `courier_emu/daa.py` already said so in a
+comment. Settled by reading the constant out of eight images.
+
+**"The capture is a supervisor image misrouted through the ROM model."**
+Wrong: it ends in the same reset stub as the 4.03d capture - `fa ba a4 ff b8 00
+80 ef` then a far jump into `fc00` - and is 45.7% byte-identical to it, as close
+as that capture is to `IDSDL302.ROM` (45.2%). `CourierRom` is the right
+identification. Settled by comparing the three images.
+
+**"The gap is board-specific, and the flash paging is the suspect."** Wrong,
+and the reason is the useful part. **The ASIC is the same part across the old
+and middle generations**, so a board-specific explanation for a fault only this
+board's image showed was suspect from the start - and the 4.03d capture failing
+at the same instruction count confirms it. Settled by running the other capture
+under the same conditions.
+
+The paging finding itself stands - the ASIC does hold the flash's `CE#` and does
+consume one of the CPU's upper address lines - it simply is not what broke this
+run, and boot evidently does not exercise it.
+
+## What this leaves
+
+Not a porting problem. Two narrower ones:
+
+* **Nothing in the repository had run this image.** The target guidance points
+  at `IDSDL302` and the 4.03d capture, both 20.16 MHz, while the pin readings
+  are all from the 2806. That gap was real; it closes with an invocation rather
+  than with code.
+* **`SV25.XMD` still cannot execute.** It decodes to this capture byte for byte
+  but for the four checksum bytes at `0x77ffc..0x77fff` - verified here - and
+  `machine.run` fails mapping an `XmdImage` (`UC_ERR_WRITE_UNMAPPED`). A decoder
+  that cannot run what it decodes is a real gap, but a convenience one: the
+  bytes are already runnable in their captured form.
+
+## The three generations
+
+| generation | images | clock | flash / RAM |
 |---|---|---|---|
-| `IDSDL302.ROM` | `6270` | 20.16 MHz | ROM-build path |
-| 4.03d flash capture | `6270` | 20.16 MHz | ROM-build path |
-| `main211.xmf` | `7e00` | **25.8048 MHz** | **boots**; `ATI7` says `25 Mhz` |
-| `3453Bv2.1.1.xmf` | `7e00` | **25.8048 MHz** | **boots**; `ATI7` says `25 Mhz` |
-| `main2205.XMF` | `7e00` | 25.8048 MHz | reaches the main loop, no output |
-| `2_3_33.XMF` | `7e00` | 25.8048 MHz | no output |
-| `MAIN_2.3.31.XMF` | `7e00` | 25.8048 MHz | faults (`software-interrupt`) |
-| `SV25.XMD` | `7e00` | 25.8048 MHz | **not executable** - see below |
-| 2806 flash capture | `7e00` | 25.8048 MHz | loads as a ROM build, faults |
+| old | `IDSDL302.ROM`, the 4.03d capture | 20.16 MHz | 512k / 64k |
+| **middle - this board** | the 2806 capture, `SV25.XMD` | 25.8048 MHz | 512k / 64k |
+| new | `main211.xmf`, `3453Bv2.1.1.xmf` | 25.8048 MHz | 1024k / 256k |
 
-**The ROM builds are the 20.16 MHz ones; every XMF supervisor is a 25 MHz
-build.** Two of them boot to a prompt and report `Clock Freq 25 Mhz` from the
-firmware's own `ATI7`. `courier_emu/daa.py` already says as much in a comment -
-"main211 is the 25.8048 MHz build (its Timer 0 max count is `0x7e00`, which only
-lands on 5 ms at that clock)" - so the repository knew, in one place, and the
-rest of it did not.
+`main211` is the **newest** generation - V.92, rev 2.1.1, dated 2003 - not a
+variant of this board. [board-parts.md](board-parts.md) reaches the same split
+from the firmware side: "the middle generation groups with the old one, not the
+new one". The shared ASIC is the hardware saying it too, and the practical
+clincher is that **one recipe boots both**.
 
-So the gap is not the clock and not a mode. **It is that the 2806's *own*
-firmware is the one image that cannot be executed**, while four of its siblings
-can.
+So preferring 302/403 as behavioural references costs nothing here. This board
+is old-generation kin with a faster clock, and its own image answers to the same
+machinery.
 
-## The three generations, and which board each image is
+## The clock, which is settled
 
-`main211` is the **newest generation** Courier, not a variant of this one. Its
-own `ATI7`, printed by the harness:
+`CLKOUT` is **25.8048 MHz** and the crystal is **51.6096 MHz**, from firmware
+alone and confirmed twice over:
 
-```
-Options      HST,V32bis,V92        Supervisor rev  2.1.1
-Clock Freq   25 Mhz                DSP rev         2.1.1
-Flash ROM    1024k                 dates           01/10/03
-Ram          256k
-```
+* `T0CMPA` is `0x7e00` = 32,256 against the 20.16 MHz builds' 25,200. The ratio
+  is 1.28 exactly, and 32,256 at `CLKOUT/4` is a 5.000 ms tick.
+* The baud divisors are 167 and 335 against 130 and 258. Through
+  `baud = CLKOUT / (8 x (N+1))`, 25.8048 MHz gives **exactly** 19200 and 9600;
+  a round 25 MHz misses both by 3.1%, which no 8N1 link tolerates.
 
-**Twice the flash and four times the RAM**, V.92, dated 2003. `3453Bv2.1.1.xmf`
-is the same generation. So the two images that boot here are a *different board*
-that happens to share this one's clock - which lines the repository's images up
-as three generations rather than two:
+`51,609,600 / 19,200 = 2688` exactly - the crystal was chosen to make the UART
+divide perfectly, which the 20.16 MHz board's 0.19% and 1.35% errors do not. The
+CPU crystal is marked `R0936391`, a house part number that gives no frequency.
 
-| generation | images | clock | flash |
-|---|---|---|---|
-| old | `IDSDL302.ROM`, the 4.03d capture | 20.16 MHz | 512 KiB |
-| **middle - this board** | `SV25.XMD`, the 2806 capture | 25.8048 MHz | 512 KiB |
-| new | `main211.xmf`, `3453Bv2.1.1.xmf` | 25.8048 MHz | 1024k, 256k RAM |
-
-[board-parts.md](board-parts.md) reaches the same split from the other
-direction - "the middle generation groups with the old one, not the new one" -
-and that is the useful part. **The 2806 is an old-generation board with a new
-clock**, so the ROM-build machinery that runs `IDSDL302` is the right machinery
-for it, and the 25 MHz builds that boot are no evidence at all that this board's
-image will.
-
-## The 2806's own image exists here twice, and neither copy runs
-
-`SV25.XMD` **is** the 2806's firmware. Stripping its 128-byte header and running
-`recovery.decode_payload` over the body reproduces the board's flash capture
-byte for byte except at `0x77ffc..0x77fff` - the four checksum bytes, exactly as
-[sv25-recovery.md](sv25-recovery.md) documents. Verified here, not taken on
-trust.
-
-Neither form will run:
-
-* **`SV25.XMD`** loads as an `XmdImage`, and `machine.run` then fails with
-  `UC_ERR_WRITE_UNMAPPED` writing `image.data` at `image.load_base`. The XMD
-  path is a decoder, not an execution target - nothing maps it.
-* **The raw capture** loads as a `CourierRom`, and an earlier revision of this
-  section said that was the mistake - that it is really a supervisor image being
-  run through the wrong model. **That is withdrawn.** The capture is a genuine
-  ROM-shaped flash image: it ends in the same reset stub as the 4.03d capture,
-  `fa ba a4 ff b8 00 80 ef` then a far jump into `fc00`, and it is **45.7%
-  byte-identical** to that capture - which is as close as the 4.03d capture is
-  to `IDSDL302.ROM` (45.2%). All three are the same kind of image. `CourierRom`
-  is the right identification.
-
-So the container is right and the model is right, and the fault below is a
-**genuine gap** rather than a misrouted load. That is a worse answer than the
-one it replaces, and a more honest one.
-
-**The work splits in two.** Giving `SV25.XMD` an execution path is worth doing
-on its own - it is the same bytes with a checksum, and a decoder that cannot
-run what it decodes is a gap. But it will land in the same place as the raw
-capture, because the bytes are the same bytes.
-
-## It is not a different firmware family
-
-The repository already establishes the two things that would otherwise make
-this hard:
-
-* **Stock 7.3.14 runs on both boards** - the 20.16 MHz AC01 board and the
-  25 MHz AC03 board - and its **DSP payload is byte-identical between them**,
-  126,851 consecutive identical bytes covering the payload and all three
-  overlays. The whole difference is in the supervisor.
-* **The 25 MHz image is in hand and verified.** `sv25-recovery.md`'s decode
-  matches a 512 KiB capture of a 25 MHz board in **every byte but the four
-  checksum bytes** at `0x77ffc..0x77fff`.
-
-So this is not a port to an unknown firmware. It is the same supervisor
-generation, on a board whose differences are configuration rather than code.
-
-## Where it actually stops, measured
-
-Running the 2806's own flash capture under the mailbox-tap harness:
-
-```
-.venv/bin/python artifacts/mailbox-tap-atdt-01/tap_run.py \
-    artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom 60000000 \
-    <outdir> ATI7
-```
-
-| | |
-|---|---|
-| instructions executed | **5,684,093** |
-| status | `emulation-error` |
-| error | `Invalid instruction (UC_ERR_INSN_INVALID)` |
-| `CS:IP` at the fault | `0x2e3:0xd112` - linear **`0xff42`** |
-| DSP activity before it | 1 mailbox message, 435 line-transmit samples |
-| serial text | none; the input is untouched |
-
-Three things that says, and the first is the encouraging one.
-
-**It runs.** Five and a half million instructions of real execution, the panel
-loop pulsing, timer interrupts taken, and the DSP started - a mailbox message
-and line-transmit samples mean the download and the codec path both got going.
-The raw `.rom` loads and executes; the container is not the obstacle.
-
-**It dies in RAM, not in flash.** Linear `0xff42` is inside the first 64 KiB,
-which `LCS` selects as SRAM. So the supervisor has copied code down and jumped
-to it, and the emulator has hit something it will not decode there - the CPU
-running over data rather than over code.
-
-**The first suspect is the flash, and this is where the pinout work earns its
-keep.** [asic-pinout.md](asic-pinout.md) establishes that on this board the
-**ASIC holds the flash's `CE#`** and takes four of the CPU's upper address
-lines while driving three - one address bit consumed by a decision the ASIC
-makes. That is paging. The harness hands the firmware a flat 512 KiB image with
-no register behind it, so a supervisor that pages a window to copy code down
-would be copying from wherever the flat model happens to put it - and would then
-jump into exactly the kind of wrongness seen here.
-
-That is a hypothesis, not a diagnosis. What makes it the one to test first is
-that it is specific to **this** board: the old-generation 20.16 MHz images run
-fine through the same model, and nothing says their boards page anything.
-
-**It never reaches the DTE.** No serial text and the input untouched, so
-nothing about the `AT` layer has been exercised yet.
-
-An earlier note in [asic-pinout.md](asic-pinout.md) said this image "runs but
-emits no serial text, so the supported path is an XMF". That was
-under-diagnosed - it has a specific fault at a specific address, and chasing it
-is a normal debugging job rather than a porting project.
-
-## There are two clock domains, and they split where the images do
-
-**The ASIC runs from the same crystal on both boards.** The 25 MHz crystal is
-the **CPU's alone** - reported by the owner, and it reorganises the whole
-question. The board has two clock domains:
-
-| domain | source | what hangs off it |
-|---|---|---|
-| audio | the shared `40.320 MHz` can, into the **ASIC** | the DSP's `CLKIN` (ASIC pin 119) and the codec's `MCLK` (ASIC pin 112) |
-| supervisor | the 2806's own crystal | the CPU's `CLKOUT`, and everything timed from it |
-
-That retires a caveat added here a moment ago. The ASIC's divider to the
-codec - `40.320 / 2.880 = 14` - is **not** provisional and is not about the
-other board: the ASIC's input is the same can either way, so the codec's `MCLK`
-is 2.880 MHz on both. The `ECLIPTEK EC11 40.320M` identified from the 20.16 MHz
-unit's photograph is the right part for this board too.
-
-**And it explains the thing that was otherwise a coincidence.** The DSP payload
-is byte-identical across the two boards while the supervisors differ. That is
-exactly what two clock domains predict: the DSP and the codec see an unchanged
-timebase, so DSP code has nothing to adjust, while every constant derived from
-`CLKOUT` lives on the supervisor's side.
-
-### The supervisor's timer constant is the difference, measured
-
-`0xff32` is `T0CMPA` in the 186EB's peripheral control block. Both images write
-it at two early sites, at the same offsets, surrounded by identical code:
-
-| site | 20.16 MHz `403` capture | 25 MHz `2806` capture |
-|---|---|---|
-| `0x2be` | `6270` = **25,200** | `7e00` = **32,256** |
-| `0x8d0` / `0x8c9` | `6270` | `7e00` |
-
-Every other `0xff32` immediate in the neighbourhood - `1e8a`, `fb80`, `06f6`,
-`39b8` - is the same in both. So this is an isolated, deliberate difference, and
-it is the shape "the whole difference is in the supervisor" predicts.
-
-**32,256 / 25,200 = 1.28 exactly.** [board-parts.md](board-parts.md) establishes
-that 25,200 is a 5.000 ms tick with the timer counting at `CLKOUT/4` and
-`CLKOUT` at 20.16 MHz. If the 2806 keeps the same 5 ms tick - and a supervisor
-that shares this much code almost certainly does - then
-
-```
-CLKOUT = 20.16 x 1.28 = 25.8048 MHz
-```
-
-and the CPU crystal is twice that, **51.6096 MHz**. The alternative is that the
-crystal is a round 50 MHz, `CLKOUT` is 25.000 MHz, and the tick is 5.161 ms -
-which no one would choose on purpose when the compare value is theirs to pick.
-`ATI7` reporting "25 Mhz" is consistent with either; it is a rounded figure.
-**The baud registers settle it independently, below.**
-
-### The marking does not say, but the baud divisors do
-
-The 2806's CPU crystal is marked **`R0936391`**. That is a house part number,
-not a frequency - a custom-ordered part, which is itself consistent with an
-unusual value - so the marking does not settle it.
-
-**The images do.** `0xff60` is Serial 0's baud register and `0xff70` is Serial
-1's. Both captures write both, at the same two offsets, and the values differ:
-
-| register | offset | 20.16 MHz `403` | 25 MHz `2806` | divisor (low 15 bits) |
-|---|---|---|---|---|
-| Serial 0 baud | `0x34a` | `8082` | `80a7` | 130 -> **167** |
-| Serial 1 baud | `0x33a` | `8102` | `814f` | 258 -> **335** |
-
-The 186EB's generator gives `baud = CLKOUT / (8 x (N + 1))`. Put the two
-candidate clocks through the 25 MHz build's divisors:
-
-| `CLKOUT` | Serial 0 (N=167) | Serial 1 (N=335) |
-|---|---|---|
-| **25.8048 MHz** | **19200.0** | **9600.0** |
-| 25.000 MHz | 18601 (-3.1%) | 9301 (-3.1%) |
-
-**25.8048 MHz gives two standard rates exactly.** A round 25 MHz misses both by
-3.1%, which is outside what an 8N1 UART tolerates over ten bit times - nobody
-ships that. So the clock is 25.8048 MHz and the crystal is twice it,
-**51.6096 MHz**, which agrees with the timer constant's 1.28 ratio from an
-entirely separate register.
-
-And the crystal turns out to be chosen for exactly this:
-
-```
-51,609,600 / 19,200 = 2688 exactly
-```
-
-Which also explains something about the older board. At 20.16 MHz the same
-formula gives its divisors **19236.6** and **9729.7** - 0.19% and 1.35% off
-19200 and 9600, usable but not exact. The 25 MHz design picks a clock where the
-UART divides perfectly, and takes an odd-looking crystal frequency to get it.
-The two serial channels are exactly an octave apart, 168 and 336, which is the
-same choice showing twice.
-
-So the CPU domain is settled from the firmware alone: **`CLKOUT` = 25.8048 MHz,
-crystal 51.6096 MHz, tick 5.000 ms** - the timer and the two baud generators all
-agreeing, and no scope needed.
-
-## Why this is worth doing
-
-Not for its own sake. The pinout work has produced a set of claims that are
-checkable only against a running machine on the right board - what the ASIC
-does with the address bit it consumes, whether the flash is paged, which port
-bit carries the speaker setting to the DSP, whether `&T1` reaches the codec.
-Every one of those is a question about the 25 MHz board, and every one of them
-is currently being asked of a 20.16 MHz firmware.
-
-The first step is not a port and not a clock mode. It is to find out what the
-supervisor copies into RAM before it jumps to `0xff42`, and whether the flash it
-reads that from is the flash the ASIC would have given it.
-
-**And the target-choice advice survives intact.** `main211` is the newest
-generation and not a reference for this board; `IDSDL302` and the 4.03d capture
-are the right behavioural references and remain so. The 2806 being an
-old-generation board with a new clock is what makes that consistent rather than
-contradictory - it is close kin to the images already trusted here, and the
-distance to close is one board's worth of hardware, not one generation's worth
-of firmware.
+**This is the CPU's domain only.** The ASIC runs from the shared 40.320 MHz can
+on both boards, so the DSP's clock and the codec's `MCLK` are board-independent
+- which is why the DSP payload is byte-identical across the two while the
+supervisors differ.
