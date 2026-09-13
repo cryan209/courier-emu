@@ -21,6 +21,7 @@ mkdir -p artifacts/imodem-inbound-sip-live
 .venv/bin/python -m courier_emu isdn-run Ie030002.nac --with-dsp \
     --terminal --report --no-flash-nvram \
     --bri-network --bri-establish terminal \
+    --bri-call-to 7349195 \
     --bri-sip asterisk.net.cryan.nz --bri-sip-username 6000 \
     --bri-sip-register --bri-sip-local-port 5062 \
     --bri-sip-record artifacts/imodem-inbound-sip-live/caller-to-imodem.g711 \

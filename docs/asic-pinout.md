@@ -158,6 +158,7 @@ This edge is the address side of the part: see below.
 | 6 | 55 | `RD#` | 36 |
 | 7 | 54 | *unread* | - |
 | 8 | 53 | `INT2`/`INTA0#` | 64 |
+| 9 | 52 | `RESIN` **out** - through `R1`, 1k | 68 |
 | 10 | 51 | `TXD0` **in** - serial channel 0's transmit | 2 |
 | 11 | 50 | `U22` pin 10 (`3B`) | - |
 | 12 | 49 | `U22` pin 4 (`2A`) | - |
@@ -1418,13 +1419,13 @@ The 1.6 s coincidence is worth keeping in view: it is why nobody looked further.
 ### What resets what
 
 The pieces are scattered across this file, and the question is worth one table.
-**Three parts are reset three different ways, and the supervisor reaches only
-one of them.**
+**Three parts are reset three different ways, and each is held until the part it
+depends on is ready.** The supervisor reaches only the first of them.
 
 | part | reset source | how |
 |---|---|---|
 | the **ASIC** | `ADM707` pin 7 | active-high power-good reset, into ASIC pin `111` |
-| the **CPU** | **unread - and not the `ADM707`'s pin 6** | see below |
+| the **CPU** | the **ASIC**, pin `52` | through `R1` (1k) into `RESIN`, CPU pin 68 - *not* the `ADM707`, whose pin 6 is unconnected |
 | the **DSP** and the **codec** | the **CPU**, in software | `P1LTCH` (`0xff56`) bit 1 = `P1.1` = **CPU pin 58**, one net to DSP `RS` (pin 127) and the `AC03` codec |
 
 **The DSP's reset is confirmed at both ends.** The harness drives
@@ -1436,45 +1437,58 @@ is confirmed from the CPU end as well as the DSP end. Model recovered from
 firmware, predicted onto a pin, read on the board - the same three-step the
 EEPROM went through.
 
-**The CPU's reset is now a genuine hole.** `ADM707` pin 6 - the active-low
-`RESET` this file assumed went to the CPU's `RES#` - **is not connected**. So
-the supervisor's only output in use is the active-high one, and it goes to the
-ASIC.
+**The CPU is reset by the ASIC.** CPU pin 68, `RESIN`, goes to **`R1`** - a
+1k resistor, marked `102` - and from there to **ASIC pin 52**. The `ADM707`'s
+pin 6, the active-low `RESET` this file had assumed went to the CPU, **is not
+connected** at all.
 
-That leaves one candidate standing, and it is not a weak one: **the ASIC resets
-the CPU.** The part is already the flash's memory controller; a CPU released
-before its memory controller is a CPU fetching from a device that is not there.
-Deriving `RES#` from its own power-on reset is exactly what such a part is for.
+That was the proposed answer and it was proposed as the only candidate left,
+which is a weaker kind of reasoning than a reading. It is now a reading. The
+pin it landed on was in the predicted group as well: pin `52` was one of the
+twelve unread right-edge pins named as where such a line would be, sitting with
+the rest of the CPU control group.
 
-If that is right the boot order is a chain, and every link of it is either read
-or the only remaining possibility:
+**So the reset tree is closed**, and the boot order is not an inference any
+more:
 
-1. Rails come up; the `ADM707` releases the **ASIC** (pin 7 → ASIC 111).
-2. The ASIC, now in a known state with the flash selectable, releases the
-   **CPU**.
+1. Rails come up; the `ADM707` releases the **ASIC** (its pin 7 → ASIC `111`).
+2. The ASIC releases the **CPU** (ASIC `52` → `R1` → CPU `68`).
 3. The CPU's firmware releases the **DSP** and the codec (`0xff56` bit 1 → CPU
-   58).
+   `58`).
 
-**The reading that would confirm it** is the CPU's reset pin traced back to an
-ASIC pin. **That pin is CPU 68, `RESIN`** ([Table 7](#table-7-in-full-so-nobody-has-to-fetch-it-again)),
-and the right edge has twelve unread pins - `52`, `44`-`39` and `36`-`32` -
-sitting below the CPU control group, which is where such a pin would be.
+Each part is held until the part it depends on is ready, and the ASIC - which
+holds the flash's `CE#` and so decides whether the CPU's first instruction
+fetch can succeed at all - is first out of reset by construction. The two
+findings explain each other.
 
-**`RESOUT` (CPU pin 69) is worth probing in the same pass.** It is the
-processor's reset *output*, asserted while it is held in reset, and the
-conventional use of it is to reset the board's peripherals. If `RESOUT` is what
-reaches the ASIC, the chain runs the other way from the one proposed above -
-and the `ADM707` would then have to reach the CPU by some route not yet found,
-since its pin 6 is unconnected. Two probes, `68` and `69`, and the direction of
-the whole chain falls out.
+**The 1k series resistor is worth a second look.** A gate array driving a
+processor's reset through a resistor rather than directly is doing one of two
+things:
 
-**A second thing points the same way.** `UCS` is on a RAM, not the flash, so
-**no CPU chip select reaches the boot device**. At reset an 80186 fetches from
-`FFFF0` with `UCS` active - and on this board that fetch can only succeed if the
-ASIC is already asserting the flash's `CE#` for it. The ASIC therefore has to
-come up in a defined state *before* the first instruction fetch, which is both
-why it has a power-good reset of its own and why it is the natural place for the
-CPU's to come from.
+* **Damping**, which is unremarkable and needs no further thought.
+* **Making the node overridable.** With 1k in series, anything pulling `RESIN`
+  low *at the CPU end* - a reset button, a debug or ICE header, a pull-down -
+  wins against the ASIC without contention. That is the standard way to let a
+  second source assert reset on a line a chip is already driving.
+
+The discriminating check is simply **what else is on CPU pin 68**. If the answer
+is nothing, it is damping. If there is a header or a button, the board has a
+reset path this file has not recorded - and one that would work with the ASIC
+held in whatever state it is in.
+
+**`RESOUT` (CPU pin 69) is still unaccounted for.** It is the processor's reset
+*output*, asserted while the CPU is held in reset, and the conventional use of
+it is to reset the board's peripherals. With the chain now closed in the other
+direction, `RESOUT` either goes nowhere or reaches something this file has not
+looked at. One probe, while the meter is on that corner of the package.
+
+**What the ASIC does with that pin out of its own reset is the open question.**
+Its reset comes from the `ADM707`; nothing establishes what level pin `52`
+takes while the ASIC is itself being reset. If it floats or goes high, the CPU
+is released immediately rather than held, and the sequencing above is a
+description of the steady state rather than of power-on. A pull-down at the CPU
+end would settle that too, which is another reason to look at pin 68's
+neighbourhood.
 
 Three consequences follow from the asymmetry:
 
@@ -1801,13 +1815,14 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Nineteen of the 120 pins are unread. Of the hundred and one that are not,
+Eighteen of the 120 pins are unread. Of the hundred and two that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for one pin
 and the left edge but for two**; the bottom edge is up to twenty-six of thirty
 and is tied with the right edge as the best-mapped side of the package. **The
 right edge turned out to be three groups, not two** - CPU bus control, the
-DTE's EIA-232 interface, and the telco side - and its middle is filled in.
+DTE's EIA-232 interface, and the telco side - and its middle is filled in;
+eleven unread pins remain on it, `44`-`39` and `36`-`32`.
 
 **All eight corner pins are read and all eight are supplies**, which is the
 convention this file has been leaning on for its inferred runs, now checked at
