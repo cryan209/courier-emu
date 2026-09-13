@@ -346,7 +346,7 @@ before the reset landed.
 | flash | physical `80000..fffff` | 524,288 bytes, `f3a8b013…`, 2,048 pages read twice, zero retries, 1,107.8 s |
 | RAM | `0000..feff` | two passes, 65,280 bytes, 139.44 s, differing at 44 addresses |
 | upper window | `10000..1ffff` | two passes, 65,536 bytes, 144.79 s, differing at 17 bytes |
-| DSP on-chip ROM | program `0000..07ff` | 2048 words, in two halves, `artifacts/dsp-onchip-rom-01/` |
+| DSP on-chip ROM | program `0000..07ff` | 2048 words, in two halves, `artifacts/dsp-onchip-rom-01/` - **possibly only a quarter of it, see below** |
 
 All read-only: `AT`, `ATI7` and `ATGLK2=` only. Each has an offline audit
 re-parsing the saved responses against the stored blocks and hashes.
@@ -372,6 +372,55 @@ Settings 1..6:  0, 30, 7, 30, 0, 0
 
 All three redundant copies agree. Setting 3 is `7`, whose bit 0 satisfies the
 serial-output enable condition traced in the firmware.
+
+### The ROM dump may be a quarter of the ROM
+
+The capture is **2048 words, program `0x0000`-`0x07FF`** - two halves at origin 0
+and 1024, `ROM_DUMP_WORDS = 0x0800`. Whether that is the whole ROM depends on a
+part number nobody has read, and the answer is not close:
+
+| | SARAM | **ROM** | serial | package | dump covers |
+|---|---|---|---|---|---|
+| 'C50 / 'LC50 | 9K | **2K** | 2 | 132-pin BQFP, **PQ** | **all of it** |
+| 'C51 / 'LC51 | 1K | **8K** | 2 | BQFP **PQ** / TQFP PZ | **a quarter** |
+| 'C52 | none | 4K | 1 | **PJ** | half - but excluded, see [board.md](board.md#which-dsp-a-c50-possibly-a-c51---not-a-c52) |
+
+(SPRU056D Table 1-1, read from the PDF in `docs/`.)
+
+The original plan in this file was "read program `0000..0fff`, 4096 words" on the
+'C52 assumption, and the capture took 2048. **That was never reconciled**, so the
+dump has been short of its own stated target throughout.
+
+**The package marking excludes the 'C52 independently.**
+`TI DSP 16-912 (C) US ROBOTICS D17140PQ` - `PQ` is the 132-pin BQFP suffix that
+'C50/'LC50/'C51/'LC51 carry and the 'C52 (PJ) does not. The pin work already
+leaned on Table A-4's *PQ* pinout to place `VDDD` and `IS`.
+
+**Two things lean 'C50, neither conclusive.** 302's `calld 0x23f0` needs SARAM
+past a 'C51's `0x0BFF`; and the dump's own buffer is at data `0x1000`
+(`ROM_DUMP_BUFFER`), outside a 'C51's 1K SARAM, and the dump worked - 1307
+distinct values and a plausible reset vector `0000: b 0670`.
+
+**The discriminating test is a stability test, not a plausibility test.** Both
+parts would return something code-like from `0x0800`; only one returns the *same*
+thing twice:
+
+```sh
+.venv/bin/python -m courier_emu.probe_transport --reference IDSDL302.ROM \
+    --rom-dump --rom-origin 0x0800 --rom-words 0x0800 --output /tmp/rom-0800
+```
+
+Run it twice with the resident running in between.
+
+* **'C50** - `0x0800`+ is SARAM, the firmware's live scratch. The two reads
+  should **differ**.
+* **'C51** - `0x0800`-`0x1FFF` is ROM. The two reads should be **byte-identical**.
+
+**Move `ROM_DUMP_BUFFER` off `0x1000` first**: it sits inside the range this run
+reads, so the dump would overwrite its own buffer. And note the standing caveat -
+**`MP/MC` has never been read directly.** What argues the ROM is mapped at all is
+that program `0x0000` holds a vector table rather than the kernel's own first
+words.
 
 > **Mind which artifact directory you cite.** The top-level `dsp-rom-half0/`,
 > `dsp-rom-half1/`, `dsp-rom-dump-v*`, `dsp-rom-transport-v*` and

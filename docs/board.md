@@ -1288,8 +1288,29 @@ continuously from the idle task.
 > covers the ring at `0x0bd0` and the prologue's clears. What is excluded on every
 > build is the 'C52.
 
-None of this comes from a part marking: the board photo shows only
-`TI DSP 16-912 (C) US ROBOTICS D17140PQ`, a custom USR number.
+**4. The package suffix says the same.** `TI DSP 16-912 (C) US ROBOTICS
+**D17140PQ**` - `PQ` is TI's 132-pin BQFP suffix, carried by 'C50, 'LC50, 'C51
+and 'LC51. The 'C52 is **PJ** and the 'C53 is not a PQ part either. The pin work
+above already leaned on SPRU056D Table A-4's *PQ* pinout to place `VDDD` and
+`IS`, so this was in the evidence unremarked. The rest of the marking is a custom
+USR number and says nothing.
+
+### The ROM size is the practical consequence, and it is not small
+
+Table 1-1's ROM column decides whether the on-chip ROM has been fully captured:
+
+| | SARAM | **ROM** | dump of `0x0000`-`0x07FF` covers |
+|---|---|---|---|
+| 'C50 / 'LC50 | 9K | **2K** | **all of it** |
+| 'C51 / 'LC51 | 1K | **8K** | **a quarter** |
+| 'C52 | none | 4K | half - excluded above |
+
+`artifacts/dsp-onchip-rom-01/` is 2048 words, two halves at origin 0 and 1024. On
+a 'C50 that is the whole ROM, and the 2K tiling exactly up to where the 9K SARAM
+starts at `0x0800` is part of why the 'C50 fits. **On a 'C51 three quarters of it
+has never been read.** [probing.md](probing.md#the-rom-dump-may-be-a-quarter-of-the-rom)
+has the test that separates them - a stability test at `0x0800`, since both parts
+would return something code-like there and only one returns the same thing twice.
 
 ### What that means for the core
 
