@@ -22,7 +22,7 @@ mkdir -p artifacts/imodem-inbound-sip-live
     --terminal --report --no-flash-nvram \
     --bri-network --bri-establish terminal \
     --bri-sip asterisk.net.cryan.nz --bri-sip-username 6000 \
-    --bri-sip-local-port 5062 \
+    --bri-sip-register --bri-sip-local-port 5062 \
     --bri-sip-record artifacts/imodem-inbound-sip-live/caller-to-imodem.g711 \
     --bri-tx-g711 artifacts/imodem-inbound-sip-live/imodem-to-caller.g711
 ```

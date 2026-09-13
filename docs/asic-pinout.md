@@ -343,6 +343,47 @@ The one miss is `INT3`. It is on QFP **65**, not 75; 75 is `T0OUT`. That
 reading should be retaken - it is a loose end in the interrupt map, and now it
 is a loose end with a predicted answer.
 
+#### Table 7 in full, so nobody has to fetch it again
+
+The table was being consulted and not carried. Every CPU pin number in this
+file is checkable against it without leaving the repository:
+
+| pin | name | pin | name | pin | name | pin | name |
+|---|---|---|---|---|---|---|---|
+| 1 | `CTS0` | 21 | `AD4` | 41 | `S1` | 61 | `UCS` |
+| 2 | `TXD0` | 22 | `AD12` | 42 | `S0` | 62 | `INT0` |
+| 3 | `RXD0` | 23 | `AD5` | 43 | `DEN` | 63 | `INT1` |
+| 4 | `P2.5/BCLK0` | 24 | `AD13` | 44 | `HLDA` | 64 | `INT2/INTA0` |
+| 5 | `P2.3/SINT1` | 25 | `AD6` | 45 | `HOLD` | 65 | `INT3/INTA1` |
+| 6 | `P2.4/CTS1` | 26 | `AD14` | 46 | `TEST` | 66 | `INT4` |
+| 7 | `P2.0/RXD1` | 27 | `AD7` | 47 | `LOCK` | 67 | `PDTMR` |
+| 8 | `P2.1/TXD1` | 28 | `AD15` | 48 | `NMI` | 68 | **`RESIN`** |
+| 9 | `P2.2/BCLK1` | 29 | `A16` | 49 | `READY` | 69 | **`RESOUT`** |
+| 10 | `AD0` | 30 | `A17` | 50 | `P1.7/GCS7` | 70 | `OSCOUT` |
+| 11 | `AD8` | 31 | `A18` | 51 | `P1.6/GCS6` | 71 | `CLKIN` |
+| 12 | `VSS` | 32 | `A19/ONCE` | 52 | `P1.5/GCS5` | 72 | `VCC` |
+| 13 | `VCC` | 33 | `VSS` | 53 | `VSS` | 73 | `VSS` |
+| 14 | `VSS` | 34 | `VCC` | 54 | `VCC` | 74 | `CLKOUT` |
+| 15 | `AD1` | 35 | `VSS` | 55 | `P1.4/GCS4` | 75 | `T0OUT` |
+| 16 | `AD9` | 36 | `RD` | 56 | `P1.3/GCS3` | 76 | `T0IN` |
+| 17 | `AD2` | 37 | `WR` | 57 | `P1.2/GCS2` | 77 | `T1OUT` |
+| 18 | `AD10` | 38 | `ALE` | 58 | `P1.1/GCS1` | 78 | `T1IN` |
+| 19 | `AD3` | 39 | `BHE/RFSH` | 59 | `P1.0/GCS0` | 79 | `P2.7` |
+| 20 | `AD11` | 40 | `S2` | 60 | `LCS` | 80 | `P2.6` |
+
+Source: Intel `80C186EB/80C188EB, 80L186EB/80L188EB` datasheet, Table 7, "QFP
+Package Location with Pin Names". Names in the 188EB's parentheses are dropped.
+
+**Every CPU pin this file records now checks out against it**, `INT3` above
+excepted - including the ones read since the table was first consulted: `2` as
+`TXD0`, `28` as `AD15`, `29` as `A16`, `58` as `P1.1/GCS1` (the DSP's reset,
+which the harness's `0xff56` bit 1 predicted before anyone probed it), `60`/`61`
+as `LCS`/`UCS`, and `63` as `INT1` - the reading that decided the `SD` group
+conflict.
+
+**And it answers the reset question directly: `RESIN` is CPU pin 68**, with
+`RESOUT` next door on 69.
+
 #### There is one '573, and it latches the high byte
 
 `'573` pin 9 is `D7`, and CPU pin 11 is `AD8`. So `AD8` is on this latch's
@@ -726,6 +767,11 @@ ends are now known.
 **Flash pin 22 goes to CPU pin 20.** The Am29F400B diagram gives flash pin 22
 as `DQ11`; the 80C186EB QFP table gives CPU pin 20 as `AD11`. A data line
 straight to the matching multiplexed bus line, with nothing in between.
+
+**And flash pin 31 goes to CPU pin 28** - `DQ15`/`A-1` to `AD15`, the top of the
+bus. `A-1` is the byte-mode address line and is `DQ15` in word mode, which is
+what `BYTE#` tied high selects. Two data lines now read this way, one from each
+byte, so it is a pattern rather than a single observation.
 
 Small, and it closes a hole. Every finding above is about *address*: the ASIC
 latching the low byte, the '573 the high, the '32 steering lanes, `LCS` and the
@@ -1233,6 +1279,13 @@ either bus.
 > recorded on pin 63, which made "appear nowhere" untrue and forced this
 > paragraph to be qualified. Pin 63 is CPU pin **29**, `A16` - an address line,
 > not a data line. The sentence above stands as written.
+>
+> **And `AD15` is now accounted for elsewhere**: CPU pin 28 goes to **flash pin
+> 31**, `DQ15`/`A-1`, which in word mode is `DQ15`. So it behaves like every
+> other line of the high byte - straight onto a memory, nowhere near the ASIC -
+> and it is the second flash data line read directly onto its matching `AD`
+> pin, after `DQ11` on CPU 20. The memories hang on the raw multiplexed bus,
+> confirmed at both ends of the byte.
 
 The 16-bit half of that is a DSP-side finding and transfers to both boards.
 The 8-bit half is CPU-side and does not.
@@ -1402,10 +1455,18 @@ or the only remaining possibility:
 3. The CPU's firmware releases the **DSP** and the codec (`0xff56` bit 1 → CPU
    58).
 
-**The reading that would confirm it** is the CPU's `RES#` pin traced back to an
-ASIC pin - and the right edge has twelve unread pins, `52`, `44`-`39` and
-`36`-`32`, sitting below the CPU control group, which is where such a pin would
-be.
+**The reading that would confirm it** is the CPU's reset pin traced back to an
+ASIC pin. **That pin is CPU 68, `RESIN`** ([Table 7](#table-7-in-full-so-nobody-has-to-fetch-it-again)),
+and the right edge has twelve unread pins - `52`, `44`-`39` and `36`-`32` -
+sitting below the CPU control group, which is where such a pin would be.
+
+**`RESOUT` (CPU pin 69) is worth probing in the same pass.** It is the
+processor's reset *output*, asserted while it is held in reset, and the
+conventional use of it is to reset the board's peripherals. If `RESOUT` is what
+reaches the ASIC, the chain runs the other way from the one proposed above -
+and the `ADM707` would then have to reach the CPU by some route not yet found,
+since its pin 6 is unconnected. Two probes, `68` and `69`, and the direction of
+the whole chain falls out.
 
 **A second thing points the same way.** `UCS` is on a RAM, not the flash, so
 **no CPU chip select reaches the boot device**. At reset an 80186 fetches from
