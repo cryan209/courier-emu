@@ -22,16 +22,20 @@
 <text transform="translate(388.0,694.0) rotate(90)" font-size="11.5" fill="#2f7fb8">7 &#183; DIP switch 8</text>
 <rect x="397.0" y="670.0" width="6.0" height="16.0" fill="#2f7fb8"/>
 <text transform="translate(400.0,694.0) rotate(90)" font-size="11.5" fill="#2f7fb8">8 &#183; DIP switch 7</text>
-<rect x="409.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="409.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(412.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">9 &#183; U23 2A - CD driver</text>
 <rect x="421.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(424.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">10 &#183; CS</text>
-<rect x="433.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
-<rect x="445.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="433.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(436.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">11 &#183; U23 3B</text>
+<rect x="445.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
+<text transform="translate(448.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">12 &#183; U23 1A</text>
 <rect x="457.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(460.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">13 &#183; AA</text>
 <rect x="469.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(472.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">14 &#183; ARQ</text>
-<rect x="481.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="481.0" y="670.0" width="6.0" height="16.0" fill="#2f7fb8"/>
+<text transform="translate(484.0,694.0) rotate(90)" font-size="11.5" fill="#2f7fb8">15 &#183; Talk/Data switch (reported)</text>
 <rect x="493.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(496.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">16 &#183; HS</text>
 <rect x="505.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
@@ -55,7 +59,8 @@
 <rect x="649.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
 <rect x="661.0" y="670.0" width="6.0" height="16.0" fill="#6b6b6b"/>
 <text transform="translate(664.0,694.0) rotate(90)" font-size="11.5" fill="#6b6b6b">30 &#183; VCC</text>
-<rect x="670.0" y="661.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="670.0" y="661.0" width="16.0" height="6.0" fill="#6b6b6b"/>
+<text x="692.0" y="668.0" font-size="11.5" fill="#6b6b6b">31 &#183; GND</text>
 <rect x="670.0" y="649.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="637.0" width="16.0" height="6.0" fill="#c9c9c9"/>
 <rect x="670.0" y="625.0" width="16.0" height="6.0" fill="#c9c9c9"/>
@@ -151,7 +156,8 @@
 <text transform="translate(328.0,286.0) rotate(-90)" font-size="11.5" fill="#1f7a5a">89 &#183; DSP A0</text>
 <rect x="313.0" y="294.0" width="6.0" height="16.0" fill="#6b6b6b"/>
 <text transform="translate(316.0,286.0) rotate(-90)" font-size="11.5" fill="#6b6b6b">90 &#183; VDD / DSP VDDD</text>
-<rect x="294.0" y="313.0" width="16.0" height="6.0" fill="#c9c9c9"/>
+<rect x="294.0" y="313.0" width="16.0" height="6.0" fill="#6b6b6b"/>
+<text x="288.0" y="320.0" text-anchor="end" font-size="11.5" fill="#6b6b6b">91 &#183; GND</text>
 <rect x="294.0" y="325.0" width="16.0" height="6.0" fill="#1f7a5a"/>
 <text x="288.0" y="332.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">92 &#183; DSP D15</text>
 <rect x="294.0" y="337.0" width="16.0" height="6.0" fill="#7fb3a0"/>
@@ -168,8 +174,8 @@
 <text x="288.0" y="404.0" text-anchor="end" font-size="11.5" fill="#7fb3a0">98 &#183; DSP D9</text>
 <rect x="294.0" y="409.0" width="16.0" height="6.0" fill="#1f7a5a"/>
 <text x="288.0" y="416.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">99 &#183; DSP D8</text>
-<rect x="294.0" y="421.0" width="16.0" height="6.0" fill="#a03060"/>
-<text x="288.0" y="428.0" text-anchor="end" font-size="11.5" fill="#a03060">100 &#183; ? supply</text>
+<rect x="294.0" y="421.0" width="16.0" height="6.0" fill="#6b6b6b"/>
+<text x="288.0" y="428.0" text-anchor="end" font-size="11.5" fill="#6b6b6b">100 &#183; GND</text>
 <rect x="294.0" y="433.0" width="16.0" height="6.0" fill="#1f7a5a"/>
 <text x="288.0" y="440.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">101 &#183; DSP D7</text>
 <rect x="294.0" y="445.0" width="16.0" height="6.0" fill="#1f7a5a"/>
@@ -227,10 +233,8 @@
 <text x="54" y="193" font-size="11.5" fill="#3a3a3a">phone-line header</text>
 <rect x="34" y="203" width="13" height="11" fill="#6b6b6b"/>
 <text x="54" y="212" font-size="11.5" fill="#3a3a3a">supply</text>
-<rect x="34" y="222" width="13" height="11" fill="#a03060"/>
-<text x="54" y="231" font-size="11.5" fill="#3a3a3a">read but unidentified</text>
-<rect x="34" y="241" width="13" height="11" fill="#c9c9c9"/>
-<text x="54" y="250" font-size="11.5" fill="#3a3a3a">unread (41 pins)</text>
+<rect x="34" y="222" width="13" height="11" fill="#c9c9c9"/>
+<text x="54" y="231" font-size="11.5" fill="#3a3a3a">unread (35 pins)</text>
 <text x="650" y="60" font-size="11.5" font-weight="600" fill="#3a3a3a">traced, but NOT on this package:</text>
 <text x="650" y="77" font-size="11.5" fill="#8a8a8a">RD &#8594; U22 SN75188 pin 2</text>
 <text x="650" y="94" font-size="11.5" fill="#8a8a8a">CD &#8594; U23 SN75188 pin 4</text>

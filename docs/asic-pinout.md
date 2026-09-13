@@ -157,6 +157,7 @@ This edge is the address side of the part: see below.
 | 14 | 47 | `INT1` | - |
 | 23 | 38 | phone-line header pin 6 | - |
 | 24 | 37 | phone-line header pin 5 | - |
+| 30 | 31 | `GND` | - |
 
 `ALE`, `WR#` and `RD#` land adjacent, which makes this edge the CPU-side bus
 control group and gives **pin 54 as the prime suspect for the chip select**
@@ -209,7 +210,7 @@ nobody has looked at.
 | 2 | 92 | DSP `D15` |
 | 3-8 | 93-98 | DSP `D14`-`D9` *(inferred)* |
 | 9 | 99 | DSP `D8` |
-| 10 | 100 | *unread* - see below |
+| 10 | 100 | `GND` - **the bus-splitting pin, and it is a ground** |
 | 11 | 101 | DSP `D7` |
 | 12 | 102 | DSP `D6` |
 | 13-17 | 103-107 | DSP `D5`-`D1` *(inferred)* |
@@ -218,17 +219,27 @@ nobody has looked at.
 | 24 | 114 | DSP `IS` |
 | 25 | 115 | DSP `R/W` (pin 92) |
 | 26 | 116 | DSP `STRB` (pin 93) |
-| 28 | 118 | a supply - DSP `VSSC`/`VDDI`, decoupled |
+| 28 | 118 | a supply - DSP `VSSC`/`VDDI`, decoupled; **also reads as DIP switch 3**, see below |
 | 29 | 119 | DSP `X2/CLKIN` (pin 96) - **the ASIC clocks the DSP** |
 | 30 | 120 | `GND` |
+
+Local 1 is **pin 91**, and it is `GND` - the other flank of the top-left
+corner.
 
 The five measured data pins fall in two exact descending runs - `99`-`92` for
 `D8`-`D15` and `101`-`108` for `D7`-`D0` - so the twelve unread ones between
 them are inferred, not read. **Pin 100 sits between the two groups** and is not
-part of either; a ground or supply splitting the bus halves is the obvious
-candidate and it has not been checked.
+part of either; a ground or supply splitting the bus halves was the obvious
+candidate.
 
-Pins `91`, `110`-`113` and `117` are unread - six of the thirty.
+**It is a ground.** That was a prediction made from the shape of the bus alone -
+two descending runs with one pin between them - and probing it returned the
+predicted answer. It is a small thing, but it is the pad-ring convention
+predicting a specific pin rather than being invoked after the fact, and the
+twelve inferred data lines either side of it are the thing that convention is
+holding up.
+
+Pins `110`-`113` and `117` are unread - five of the thirty.
 
 #### The ASIC is in the flash's high address path
 
@@ -660,9 +671,13 @@ carries the DIP bank as well, interleaved with them.
 | 6 | 6 | DIP switch **9** |
 | 7 | 7 | DIP switch **8** |
 | 8 | 8 | DIP switch **7** |
+| 9 | 9 | `U23` pin 4 (`2A`) - the `CD` driver's input |
 | 10 | 10 | `CS` lamp |
+| 11 | 11 | `U23` pin 10 (`3B`) |
+| 12 | 12 | `U23` pin 2 (`1A`) |
 | 13 | 13 | `AA` lamp |
 | 14 | 14 | `ARQ` lamp |
+| 15 | 15 | the **Talk/Data** switch - reported, not yet firm |
 | 16 | 16 | `HS` lamp |
 | 17 | 17 | `SYN` lamp |
 | 18 | 18 | `TR` lamp |
@@ -701,6 +716,99 @@ pin nothing else claims - so it fits, but it is the one entry here worth a
 second continuity reading, because a single stray pin is also what a
 transcription slip looks like.
 
+#### Three of `U23`'s four drivers are fed from the ASIC
+
+Pins `9`, `11` and `12` land on the TTL-side inputs of `U23`, one of the two
+SN75188 line drivers:
+
+| ASIC pin | `U23` pin | driver input |
+|---|---|---|
+| 9 | 4 | `2A` |
+| 11 | 10 | `3B` |
+| 12 | 2 | `1A` |
+
+Those three `U23` pin numbers are exactly `1A`, `2A` and `3B` on the standard
+75188 pinout, which is a check on the part identification as much as on the
+wiring: the numbers were read off the board and the names fall out of the
+datasheet without having to be forced.
+
+**`U23` pin 4 is where `CD` was already traced**, and that changes the standing
+conclusion about it - see below. The other two are **unassigned modem-to-DTE
+outputs**, and the candidates are short: of the signals a modem drives toward
+the DTE, `RD` is on `U22`, `CD` is now accounted for, and what remains is
+`CTS`, `DSR` and `RI`. Two gates, three candidates, so one of those three is
+either on `U22` or not driven at all.
+
+One detail worth carrying: on a 1488/75188, gates 2 and 3 have **two** inputs
+each, `A` and `B`, and the ASIC is on `3B`. Whatever is on `3A` is not the ASIC
+- it may be tied to an enable level, or it may be a second source gating that
+output. That pin is worth reading before the gate is assigned a signal.
+
+#### `CD` is on the ASIC after all
+
+This file lists `CD` among four lamps that are **not** on the ASIC, on the
+strength of the trace landing at `U23` pin 4. Pin `9` now sits on the other end
+of that same net.
+
+So the reading was right and the conclusion drawn from it was too strong. The
+trace had found the transceiver end of a net whose other end is the package;
+"not on the ASIC" was a statement about which end the probe stopped at. **The
+ASIC drives carrier detect out to the DTE through `U23` gate 2, and the lamp is
+tapped at the driver's input**, which is exactly what the firmware side
+predicted - `0x10` bit 0 holding the latch - and is now closed at both ends.
+
+That leaves the not-on-the-ASIC list at three: `RD` on `U22`, `SD` on the
+74AHC04 between CPU pins, and `OH` on the relay. Each of those is a trace that
+stopped at a part rather than at the package, so `RD`'s in particular deserves
+the same suspicion `CD`'s has just been relieved of - `U22` pin 2 is `1A`, an
+input, and something has to drive it.
+
+#### Talk/Data is reported on pin 15
+
+Pin `15` is the front panel's **Talk/Data** switch. It is recorded as reported
+rather than confirmed, but it fits without strain: `15` is a free pin in the
+middle of the panel run, and Talk/Data is a momentary the firmware has to read
+whenever the user might press it, which makes it panel-edge traffic like the
+lamps around it.
+
+It is not the same kind of thing as the DIP bank. A DIP switch is a
+configuration strap read at need; Talk/Data is a user action the firmware acts
+on immediately, and if it is on this pin then the ASIC sees it directly rather
+than through the CPU.
+
+#### Switch 3 lands on a supply pin, which is probably the bank telling on itself
+
+**DIP switch 3 reads to pin 118** - and `118` is already recorded as a supply,
+tied into the DSP's `VSSC`/`VDDI` decoupling. Both cannot be true as wiring. A
+gate array does not route a front-panel switch onto a power pad, and a switch
+on the left edge among the DSP's strobes, when the other eight are together on
+the bottom edge, is out of character for the layout.
+
+**The likely explanation is the one that also fixes the meter.** If the DIP
+bank's common terminal is **ground**, then a closed switch is a short to ground,
+and a continuity probe from any *ground pin* to that switch reads through. Pin
+118 would then be answering the question "are you connected to switch 3" with a
+truthful yes that means "switch 3 is closed and I am ground", not "switch 3 is
+my signal". Every ground pin on the package would answer the same way - and
+`31`, `91`, `100` and `120` are all grounds that could be probed to check.
+
+Two tests separate them, and both are cheap:
+
+* **Flip switch 3 and re-probe.** A real signal pin keeps its continuity in one
+  switch position and loses it in the other, at the pin. A ground pin reading
+  through a closed contact goes open when the switch opens and never comes
+  back, and **every other ground pin does the same thing at the same time**.
+* **Probe 118 against the other nine switches.** If it reads to more than one,
+  it is ground and the bank's common is grounded.
+
+Until that is done, **switch 3's pin is unestablished** and the bottom-edge
+eight should be treated as the DIP bank's whole presence on the ASIC. The same
+failure mode does not obviously threaten those eight - they are contiguous, on
+the edge the panel is on, and one switch each - but it is worth knowing that a
+grounded common would make *any* ground pin look like a switch, which is the
+strongest argument yet for tracing that common terminal before taking more
+switch readings.
+
 #### That retires the scanned matrix for these switches
 
 The previous section had the DIP bank as **a matrix the firmware scans**, taken
@@ -733,8 +841,18 @@ switches. It settles the 2806 only.
 
 `1` and `30` are `VCC`. With `120` (`GND`) and `61`/`60` already read, and `90`
 carrying `VDD`, **every one of the four corners is now known to sit between
-supply pins** - only `31` and `91` are unread, and each is the far flank of a
-corner whose near flank is a supply.
+supply pins**.
+
+**And now all eight corner pins are read**: `31` and `91` are both `GND`, which
+were the two left. Every corner of this package is a supply pair, with no
+exceptions and nothing inferred:
+
+| corner | pins |
+|---|---|
+| bottom left | `120` `GND`, `1` `VCC` |
+| bottom right | `30` `VCC`, `31` `GND` |
+| top right | `60` `GND`, `61` `VCC` |
+| top left | `90` `VDD`, `91` `GND` |
 
 That is the pad-ring convention holding everywhere it has been checked, and it
 is a quiet check on the numbering rather than a finding in itself: a corner
@@ -920,6 +1038,11 @@ out to the DTE through that driver, and the lamp is tapped at the driver's
 input. Consistent with the ASIC holding the latch; it just means the trace
 landed on the transceiver end of the net rather than the ASIC end.
 
+> **Confirmed from the ASIC end since.** `U23` pin 4 is on **ASIC pin 9**, so
+> the net is closed at both ends and `CD` is an ASIC output after all. The
+> table below still lists it as not on the ASIC; that line is superseded by
+> [`CD` is on the ASIC after all](#cd-is-on-the-asic-after-all).
+
 **`CS` is on the ASIC**, pin 10 - an output to the DTE with no established
 port, which is one of the three this section asked about. `DSR` and `RI` are
 still unaccounted for.
@@ -930,6 +1053,11 @@ write - is that the three lamps now have three *different* mechanisms, not one.
 `AA` is a latch bit the firmware writes. `CS` is an ASIC pin with no port
 behind it. `RD` is not in the ASIC at all and follows the 75188's input. A
 model that makes the panel "follow the serial signals" has to do it per lamp.
+
+> That third mechanism is now the only one of its kind. `CD`, which looked like
+> another instance of it, turned out to be an ASIC output traced from the far
+> end - so `RD` is alone in not reaching the package, and worth re-probing from
+> `U22` pin 2 back toward it before the distinction is relied on.
 
 ### The DIP switches are read two different ways, and only one is the ASIC
 
@@ -1112,13 +1240,17 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Forty-one of the 120 pins are unread. Of the seventy-nine that are not,
+Thirty-five of the 120 pins are unread. Of the eighty-five that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
-and the left edge but for six**; the bottom is nineteen of thirty, ten of them
-landed in one pass with the DIP bank and its two corner supplies; the right
-edge has two groups started and eight pins unread between them, and it still
-holds the ASIC's own chip select.
+and the left edge but for five**; the bottom edge is up to twenty-three of
+thirty and is now the best-mapped side of the package; the right edge has two
+groups started and eight pins unread between them, and it still holds the
+ASIC's own chip select.
+
+**All eight corner pins are read and all eight are supplies**, which is the
+convention this file has been leaning on for its inferred runs, now checked at
+every corner rather than assumed at three.
 The ones worth finding next, in the order they would pay:
 
 1. **The frequency at DSP pin 96.** The ASIC drives the DSP's clock, and no
@@ -1173,9 +1305,7 @@ The ones worth finding next, in the order they would pay:
 9. **`GCS0 Start` and `GCS0 Stop` at `0xff80`/`0xff82`**, read out of a run
    rather than off the board. Those two registers define the address range that
    selects the ASIC, and nothing in `courier_emu` looks at them.
-10. **ASIC pin 100** - the gap splitting the DSP data bus into its two halves.
-   Probably a supply, and if it is, the pad-ring convention it implies helps
-   predict the unread edges.
+10. ~~**ASIC pin 100**~~ - read as `GND`, which is what the bus shape predicted.
 11. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** Still the
    hole in the address decode: the firmware writes port `0x60`, which needs
    `A6`, and six lines with a gap at `A4` cannot produce it. At least one more

@@ -46,7 +46,7 @@ setp(38, 'phone header pin 6', 'tel')
 setp(37, 'phone header pin 5', 'tel')
 setp(92,'DSP D15','dsp')
 for i,n in enumerate(range(93,99)): setp(n,'DSP D%d'%(14-i),'dspi')
-setp(99,'DSP D8','dsp'); setp(100,'? supply','sus')
+setp(99,'DSP D8','dsp'); setp(100,'GND','pwr')
 setp(101,'DSP D7','dsp'); setp(102,'DSP D6','dsp')
 for i,n in enumerate(range(103,108)): setp(n,'DSP D%d'%(5-i),'dspi')
 setp(108, 'DSP D0', 'dsp')
@@ -57,7 +57,9 @@ setp(116, 'DSP STRB', 'dsp')
 setp(118, 'supply (decoupled)', 'pwr')
 setp(119, 'DSP X2/CLKIN - clock out', 'dsp')
 setp(120, 'GND', 'pwr')
-setp(1,'VCC','pwr'); setp(30,'VCC','pwr')
+setp(1,'VCC','pwr'); setp(30,'VCC','pwr'); setp(31,'GND','pwr'); setp(91,'GND','pwr')
+setp(9,"U23 2A - CD driver",'pan'); setp(11,"U23 3B",'pan'); setp(12,"U23 1A",'pan')
+setp(15,'Talk/Data switch (reported)','dip')
 for n,sw in [(2,2),(3,5),(4,4),(5,10),(6,9),(7,8),(8,7),(20,6)]: setp(n,'DIP switch %d'%sw,'dip')
 for n,l in [(10,'CS'),(13,'AA'),(14,'ARQ'),(16,'HS'),(17,'SYN'),(18,'TR'),(21,'AA (2nd)'),(25,'RS'),(27,'MR')]: setp(n,l,'pan')
 COL={'dsp':'#1f7a5a','dspi':'#7fb3a0','cpu':'#1d5fa8','mem':'#7a3fb0','memi':'#b28ad6','pan':'#b8541f','dip':'#2f7fb8','tel':'#8a6b1f','pwr':'#6b6b6b','sus':'#a03060','un':'#c9c9c9'}
@@ -96,6 +98,7 @@ a(f'<text transform="translate(20,{cy}) rotate(-90)" text-anchor="middle" font-s
 a(f'<text transform="translate({W-16},{cy}) rotate(90)" text-anchor="middle" font-size="12.5" font-weight="600" fill="#555">right 31-60 &#8212; CPU control</text>')
 lx,ly=34,60
 items=[('dsp','DSP side, measured'),('dspi','DSP data, inferred'),('cpu','CPU bus, measured'),('mem','memory address, out'),('memi','address, inferred'),('pan','panel / RS-232 handshake'),('dip','DIP switch'),('tel','phone-line header'),('pwr','supply'),('sus','read but unidentified'),('un','unread (%d pins)'%(120-len(PINS)))]
+items=[(k,t) for k,t in items if k in ('un',) or any(c==k for _,c in PINS.values())]
 for i,(k,t) in enumerate(items):
     yy=ly+i*19
     a(f'<rect x="{lx}" y="{yy-9}" width="13" height="11" fill="{COL[k]}"/>')
