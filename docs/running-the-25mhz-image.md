@@ -67,28 +67,62 @@ emits no serial text, so the supported path is an XMF". That was
 under-diagnosed - it has a specific fault at a specific address, and chasing it
 is a normal debugging job rather than a porting project.
 
-## What is likely to differ, and what has simply gone stale
+## There are two clock domains, and they split where the images do
 
-**The oscillator is the one to check first, and it is a live example of the
-staleness problem.** [board-parts.md](board-parts.md) identifies the master
-oscillator as an `ECLIPTEK EC11 40.320M`, and 40.320/2 = 20.16 MHz is the
-`CLKOUT` that `ATI7` reports on that unit. But that part list was "identified
-from a photograph of the user's **20.16 MHz** Courier", and the 2806's own can
-**has not been read for its marking**. A 25 MHz `CLKOUT` wants a 50 MHz input,
-which is a different part.
+**The ASIC runs from the same crystal on both boards.** The 25 MHz crystal is
+the **CPU's alone** - reported by the owner, and it reorganises the whole
+question. The board has two clock domains:
 
-That matters beyond the CPU, because the ASIC divides the same oscillator down
-to the codec's `MCLK`. [ac01-codec-protocol.md](ac01-codec-protocol.md) solves
-`MCLK = 2.880 MHz` from the codec's divider registers and three sample rates -
-which is firmware evidence and holds on whichever board runs that firmware - and
-then observes that `40.320 / 2.880 = 14` exactly. **The 2.880 MHz stands; the
-divide of 14 is about the 20.16 MHz board** until the 2806's can is read. If
-this board's oscillator is 50 MHz-something, the ASIC's divider is a different
-number here, and the codec's sample rate is only preserved if the ASIC makes it
-so.
+| domain | source | what hangs off it |
+|---|---|---|
+| audio | the shared `40.320 MHz` can, into the **ASIC** | the DSP's `CLKIN` (ASIC pin 119) and the codec's `MCLK` (ASIC pin 112) |
+| supervisor | the 2806's own crystal | the CPU's `CLKOUT`, and everything timed from it |
 
-So: **read the marking on the 2806's oscillator.** It is the cheapest reading
-left in the file and three separate pieces of arithmetic hang off it.
+That retires a caveat added here a moment ago. The ASIC's divider to the
+codec - `40.320 / 2.880 = 14` - is **not** provisional and is not about the
+other board: the ASIC's input is the same can either way, so the codec's `MCLK`
+is 2.880 MHz on both. The `ECLIPTEK EC11 40.320M` identified from the 20.16 MHz
+unit's photograph is the right part for this board too.
+
+**And it explains the thing that was otherwise a coincidence.** The DSP payload
+is byte-identical across the two boards while the supervisors differ. That is
+exactly what two clock domains predict: the DSP and the codec see an unchanged
+timebase, so DSP code has nothing to adjust, while every constant derived from
+`CLKOUT` lives on the supervisor's side.
+
+### The supervisor's timer constant is the difference, measured
+
+`0xff32` is `T0CMPA` in the 186EB's peripheral control block. Both images write
+it at two early sites, at the same offsets, surrounded by identical code:
+
+| site | 20.16 MHz `403` capture | 25 MHz `2806` capture |
+|---|---|---|
+| `0x2be` | `6270` = **25,200** | `7e00` = **32,256** |
+| `0x8d0` / `0x8c9` | `6270` | `7e00` |
+
+Every other `0xff32` immediate in the neighbourhood - `1e8a`, `fb80`, `06f6`,
+`39b8` - is the same in both. So this is an isolated, deliberate difference, and
+it is the shape "the whole difference is in the supervisor" predicts.
+
+**32,256 / 25,200 = 1.28 exactly.** [board-parts.md](board-parts.md) establishes
+that 25,200 is a 5.000 ms tick with the timer counting at `CLKOUT/4` and
+`CLKOUT` at 20.16 MHz. If the 2806 keeps the same 5 ms tick - and a supervisor
+that shares this much code almost certainly does - then
+
+```
+CLKOUT = 20.16 x 1.28 = 25.8048 MHz
+```
+
+and the CPU crystal is twice that, **51.6096 MHz**. The alternative is that the
+crystal is a round 50 MHz, `CLKOUT` is 25.000 MHz, and the tick is 5.161 ms -
+which no one would choose on purpose when the compare value is theirs to pick.
+`ATI7` reporting "25 Mhz" is consistent with either; it is a rounded figure.
+
+**Read the marking on the 2806's CPU crystal.** It decides between an exact
+5 ms tick and a rounded clock, and the harness's timing constants follow from
+it. This is a much narrower question than the one asked here before the two
+domains were separated - it touches the CPU's timers and nothing in the audio
+path.
 
 ## Why this is worth doing
 

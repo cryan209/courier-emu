@@ -1667,15 +1667,14 @@ own divider registers: the DSP writes `A = 10` and `B = 20`, the datasheet's
 equations give `fs = MCLK/(2AB)`, and three independently established sample
 rates converge on **MCLK = 2.880 MHz**. Which is `40.320 / 14` exactly.
 
-So the divider inside the ASIC is **14** - on the board whose oscillator is
-40.320 MHz. That is the 20.16 MHz unit the part list was photographed from, and
-**the 2806's own can has not been read for its marking**; a 25 MHz `CLKOUT`
-wants a different input and therefore a different divide. The 2.880 MHz is
-firmware evidence and holds either way; the 14 is provisional. See
-[running-the-25mhz-image.md](running-the-25mhz-image.md).
+So the divider inside the ASIC is **14**, and the pin reading confirms the path
+that number travels rather than supplying the number.
 
-The pin reading confirms the path that number travels rather than supplying the
-number. Worth saying plainly that
+That holds on both boards. The 2806's 25 MHz crystal is the **CPU's alone** -
+the ASIC runs from the same `40.320 MHz` can either way - so the codec's `MCLK`
+and the DSP's clock are board-independent, which is why the DSP payload can be
+byte-identical across the two while the supervisors differ. See
+[running-the-25mhz-image.md](running-the-25mhz-image.md). Worth saying plainly that
 an earlier revision of this section predicted 10.08 MHz from `40.320 / 4` on the
 grounds that it divides nicely to 8 kHz - which it does, and the board does not
 use it. The arithmetic-from-plausibility lost to arithmetic-from-the-firmware,
