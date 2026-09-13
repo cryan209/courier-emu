@@ -1234,7 +1234,7 @@ wired to the pin. The positive evidence that DSP reset is elsewhere is
 an ASIC latch; that covers reset specifically and does not exclude some other
 DSP-related strap or enable.
 
-## Which DSP: a 'C50, possibly a 'C51 - not a 'C52
+## Which DSP: a 'C51, measured
 
 The core models a 'C52. **It is not one**, and the firmware says so three ways.
 
@@ -1295,22 +1295,53 @@ above already leaned on SPRU056D Table A-4's *PQ* pinout to place `VDDD` and
 `IS`, so this was in the evidence unremarked. The rest of the marking is a custom
 USR number and says nothing.
 
-### The ROM size is the practical consequence, and it is not small
+### It is a 'C51, and the 2K dump was a quarter of the ROM
 
-Table 1-1's ROM column decides whether the on-chip ROM has been fully captured:
+**Measured 2026-09-13** on the 25 MHz board, not inferred:
+[artifacts/dsp-memory-test-2806](../artifacts/dsp-memory-test-2806/README.md).
+Write two patterns through data space, read the same addresses back through
+program space. SARAM seen from both spaces is one physical memory and must
+follow the write; ROM cannot.
 
-| | SARAM | **ROM** | dump of `0x0000`-`0x07FF` covers |
-|---|---|---|---|
-| 'C50 / 'LC50 | 9K | **2K** | **all of it** |
-| 'C51 / 'LC51 | 1K | **8K** | **a quarter** |
-| 'C52 | none | 4K | half - excluded above |
+| address | data write lands | program space follows |
+|---|---|---|
+| `0x0800` | yes | **no** |
+| `0x1800` | yes | **no** |
+| `0x2400` | yes | **yes** |
 
-`artifacts/dsp-onchip-rom-01/` is 2048 words, two halves at origin 0 and 1024. On
-a 'C50 that is the whole ROM, and the 2K tiling exactly up to where the 9K SARAM
-starts at `0x0800` is part of why the 'C50 fits. **On a 'C51 three quarters of it
-has never been read.** [probing.md](probing.md#the-rom-dump-may-be-a-quarter-of-the-rom)
-has the test that separates them - a stability test at `0x0800`, since both parts
-would return something code-like there and only one returns the same thing twice.
+With `MP/MC=0` and `PMST.RAM=1` a 'C50 maps 9K of SARAM into program space over
+`0x0800`-`0x2BFF`, so all three would follow. The observed split is the 'C51
+map: **8K of on-chip ROM at `0x0000`-`0x1FFF`** winning over SARAM in program
+space, and writable memory above it.
+
+| | SARAM | **ROM** | serial | verdict |
+|---|---|---|---|---|
+| 'C50 / 'LC50 | 9K | 2K | 2 | excluded by the write-readback |
+| **'C51 / 'LC51** | **1K** | **8K** | 2 | **the part** |
+| 'C52 | none | 4K | 1 | excluded by the `PQ` suffix and by SARAM use |
+
+The full 8K is read - `artifacts/dsp-onchip-rom-2806/c5x-onchip-rom-8k.bin` -
+and is mostly unprogrammed: 1920 words of boot code at `0x0000`-`0x077F`, a
+128-word mailbox block the mask carries twice at `0x0F80` and `0x1F80`, and 6016
+words of a 32-word `FFFF`/`0000` array pattern. `0x0780`-`0x07FF` is that same
+pattern, so the old 2K capture did not stop at a boundary - it ran off the end of
+the programmed part.
+
+### MP/MC is 0, and this file said 1
+
+`PMST` sampled on the board reads `00b0`: `IPTR` 0, `AVIS` 1, `OVLY` 1, `RAM` 1,
+**`MP/MC` 0**. Microcomputer mode. The caveat that `MP/MC` had never been read
+directly is discharged, and the answer is the opposite of the assumption carried
+below and in [board-parts.md](board-parts.md) - that the firmware runs MP/MC=1
+and the on-chip ROM window therefore does not exist. It exists, and it is 8K.
+
+`RAM` and `OVLY` also read as **already set on entry**, before the `opl @07,
+#0030` every kernel in `dsp_probe.py` executes. That instruction has never been
+changing anything.
+
+**The memory-map rows below have not been reworked for this.** They were written
+against MP/MC=1 and a 2K ROM, and both are now known wrong; what is measured is
+the table above.
 
 ### What that means for the core
 

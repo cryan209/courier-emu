@@ -1,4 +1,4 @@
-# The 25 MHz board's DSP carries the same mask, and the C50/C51 test does not work
+# The 25 MHz board's DSP carries the same mask, and the ROM is 8K
 
 Taken after the 2806 was reflashed from stock 7.3.14/3.0.13 to ID_SDL v4.03d
 (`artifacts/xmodem-program-id25-403`), which is what put `ATGLK2W` on this board
@@ -20,34 +20,43 @@ That test says: read `0x0800` twice, and on a 'C50 the two reads should
 scratch. Run here, twice, the two reads are byte-identical - which the test
 would score as 'C51.
 
-**It is not a 'C51 result, it is a broken test.** The probe *resets the DSP* and
-downloads its own kernel to program `0x8000`. After that reset `PMST` is at its
-reset defaults, `RAM=0` and `OVLY=0`, so the 9K SARAM is not mapped into program
-space **on either part**, and the firmware's scratch that the test wanted to
-observe is gone before the first word is read. The premise needed the firmware
-to still be running underneath, and a takeover probe is exactly the thing that
-guarantees it is not.
+It is not a 'C51 result, it is a broken test. The probe *resets the DSP* and
+takes it over, so the firmware whose scratch the test wanted to watch is not
+running by the time the first word is read. Neither part can produce a moving
+read under this probe, so identical reads mean nothing either way.
 
-What `0x0800`-`0x0BFF` actually returns is not memory at all: **two distinct
-values in 1024 words, a 32-word period of 16 x `FFFF` then 16 x `0000`**, stable
-across two runs. The same square wave is already present in the ROM dump from
-`0x0780` to `0x07FF` and runs straight through the `0x0800` boundary without a
-seam - so those last 128 words of the "ROM" are not ROM content either. Real
-content in the dump ends at `0x077b`, on a self-loop `b 0779`.
+> An earlier revision of this file blamed `PMST` coming up at its reset
+> defaults. That was wrong, and `artifacts/dsp-memory-test-2806` shows why:
+> `PMST` reads `00b0` on this board, `RAM` and `OVLY` **already set**, before
+> the `opl @07, #0030` every kernel here executes. The reset-defaults story was
+> read off the manual instead of the part.
 
-## The loose end at 0x1F90
+The test that does work is a write-readback, and it is in
+[artifacts/dsp-memory-test-2806](../dsp-memory-test-2806/README.md). **The part
+is a 'C51: 8K of on-chip ROM at `0x0000`-`0x1FFF`.** So this directory's
+`0x0000`-`0x07FF` capture was indeed a quarter of the ROM, and the rest is now
+here too.
 
-Reading `0x1C00`-`0x1FFF` - chosen because it is the last kilo-word of where a
-'C51's 8K ROM would end, and clear of the dump buffer at data `0x1000` - gives
-the same square wave for 909 of 1024 words, and then **112 words of
-kernel-shaped code at `0x1F90`-`0x1FFF`**. It is not in the on-chip ROM dump and
-it is not the kernel this probe delivers, but it shares that kernel's second
-through fourth words (`bc00 5d07 0030`) and ends `7980 1fa2`, a self-loop.
+## The whole 8K, and it is mostly unprogrammed
 
-Do not read a part number off this until it is explained. Something being
-resident there argues the region is writable and therefore not ROM, which would
-exclude the 'C51 - but the same observation is equally consistent with the read
-not landing where it claims to.
+`c5x-onchip-rom-8k.bin`, 8192 words, `sha256 70db9861…`, assembled from the six
+1K windows in this directory. Only three regions hold anything:
+
+| | words | |
+|---|---|---|
+| `0000`-`077F` | 1920 | the vector table, the boot loaders, ending `077a: b 0779` |
+| `0F80`-`0FFF` | 128 | a mailbox handshake block |
+| `1F80`-`1FFF` | 128 | **byte-identical to the `0F80` block** |
+
+Everything else - 6016 words - is a **32-word period of 16 x `FFFF` then 16 x
+`0000`**, which is what unprogrammed mask cells read as here. The same pattern
+runs from `0x0780` through `0x07FF`, which is why the 2K capture looked like it
+ended in padding: those last 128 words are unprogrammed ROM, not a boundary.
+
+The two 128-word blocks being identical, one per 4K half, with the code in both
+branching to `1fa2` - an address only the upper copy occupies - says the block
+is placed at the end of each 4K page by the mask, and the upper one is the live
+copy.
 
 ## Reproducing
 

@@ -16,6 +16,7 @@ import struct
 
 from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
                         build_rom_dump_probe, build_boot_word_probe,
+                        build_memory_test_probe, MEMORY_TEST_SAMPLES,
                         build_io_alias_probe, build_port_fold_probe,
                         BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES,
                         IO_ALIAS_MAGIC, IO_ALIAS_PORT, IO_ALIAS_SAMPLES,
@@ -126,6 +127,7 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      relocated_layout: bool = False,
                      rom_words: int = ROM_DUMP_WORDS,
                      rom_origin: int = 0,
+                     memory_test: bool = False,
                      boot_word: bool = False,
                      boot_word_address: int = BOOT_WORD_ADDRESS,
                      boot_word_samples: int = BOOT_WORD_SAMPLES,
@@ -155,6 +157,7 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     # the dump be taken in pieces that do fit.
     chosen = [name for name, on in (("--rom-dump", rom_dump),
                                     ("--boot-word", boot_word),
+                                    ("--memory-test", memory_test),
                                     ("--io-alias", io_alias),
                                     ("--port-fold", port_fold),
                                     ("--ndx", ndx)) if on]
@@ -172,6 +175,11 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     elif io_alias:
         probe = build_io_alias_probe(io_alias_magic, io_alias_port)
         count = IO_ALIAS_SAMPLES
+    elif memory_test:
+        # Seventeen words, so the watchdog window that truncated the ROM dump
+        # is not a concern.
+        probe = build_memory_test_probe()
+        count = MEMORY_TEST_SAMPLES
     elif boot_word:
         # Sixteen words print well inside the watchdog window that truncated
         # the ROM dump, so this one needs no windowing.
@@ -185,8 +193,9 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
         count = 0x38
     # The relocated layout is the one that fits the surveyed-free RAM on the
     # board; the default is kept only because existing artifacts record it.
-    relocate = rom_dump or boot_word or io_alias or port_fold or ndx or relocated_layout
-    compact = rom_dump or boot_word or io_alias or port_fold or ndx
+    relocate = (rom_dump or boot_word or memory_test or io_alias or port_fold
+                or ndx or relocated_layout)
+    compact = rom_dump or boot_word or memory_test or io_alias or port_fold or ndx
     entry = ROM_DUMP_ENTRY if relocate else ENTRY
     routines_at = ROM_DUMP_ROUTINES if relocate else ROUTINES
     kernel_at = ROM_DUMP_KERNEL if relocate else KERNEL
@@ -685,6 +694,12 @@ def main() -> int:
                         help="load at 0x3000/0x3400/0x4000 instead of the default "
                              "0x2000/0x2400/0x3000, which straddles RAM the board "
                              "survey found in use (implied by --rom-dump)")
+    parser.add_argument("--memory-test", action="store_true",
+                        help="write two patterns through data space and read "
+                             "them back through program space at 0x0800, "
+                             "0x1800 and 0x2400, and sample PMST - including "
+                             "MP/MC - before and after. Separates a 'C50's 9K "
+                             "SARAM from a 'C51's 8K on-chip ROM")
     parser.add_argument("--boot-word", action="store_true",
                         help="read the DSP's boot-mode word at data 0xffff "
                              "instead of dumping the ROM (docs/dsp-boot-transport.md)")
@@ -743,6 +758,7 @@ def main() -> int:
             parser.error("--rom-image maps on-chip ROM, which --external-fixture unmaps")
         rom_image = args.rom_image.read_bytes() if args.rom_image else None
         diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump,
+                                      memory_test=args.memory_test,
                                       boot_word=args.boot_word,
                                       boot_word_address=args.boot_word_address,
                                       boot_word_samples=args.boot_word_samples,

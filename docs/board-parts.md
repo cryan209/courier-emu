@@ -86,9 +86,14 @@ ignored" and therefore mirrors. That is **Table 8-15, address ranges during
 external DMA**, and applies to a DMA master reaching the SARAM - not to the
 CPU's own program and data addressing, which is the two tables above.
 
-So the DSP is a **TMS320C50 or LC50**, not the `'C52` the core models. That is
-inferred from the firmware's memory use against the guide's tables, not from
-the part marking, which is a custom USR number.
+> **Superseded 2026-09-13.** The DSP is a **'C51**, measured rather than
+> inferred: a write through data space is not visible through program space at
+> `0x0800` or `0x1800` but is at `0x2400`, which is 8K of on-chip ROM over
+> `0x0000`-`0x1FFF`, not 9K of SARAM. `MP/MC` reads 0, not the 1 assumed below.
+> See [board.md](board.md#which-dsp-a-c51-measured) and
+> [artifacts/dsp-memory-test-2806](../artifacts/dsp-memory-test-2806/README.md).
+> The SARAM-range reasoning below is left as the route that was taken; `calld
+> 0x23f0` needs `0x2400` to be executable, which it is, and not the 9K part.
 
 ### The guide's figures, checked against the core region by region
 

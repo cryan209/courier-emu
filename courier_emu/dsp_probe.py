@@ -138,6 +138,78 @@ def build_boot_word_probe(address: int = BOOT_WORD_ADDRESS,
     return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
 
 
+# Is the memory above the on-chip ROM writable? The 'C50/'C51 question.
+#
+# The stability test docs/probing.md proposed - read 0x0800 twice and see
+# whether the firmware's live scratch moves - cannot work, because the probe
+# resets the DSP and takes it over, so there is no firmware running underneath
+# to move anything. What separates the parts without needing the firmware alive
+# is whether the region accepts a write:
+#
+#   'C50  9K SARAM at 0x0800-0x2BFF, mapped into program space by PMST.RAM and
+#         into data space by PMST.OVLY - one physical memory, so a write through
+#         data space must read back through program space.
+#   'C51  8K on-chip ROM at 0x0000-0x1FFF in microcomputer mode, and only 1K of
+#         SARAM. A write cannot change what program space returns.
+#
+# Each address is sampled five times: program space as found, then the data
+# read-back and the program read-back after each of two patterns. Two patterns
+# rather than one so that a region which merely returns a constant cannot pass
+# by coincidence.
+#
+# PMST itself is sampled twice, before and after the RAM|OVLY write every kernel
+# here does. Its bit 3 is MP/MC, which no probe has ever read directly - the
+# standing caveat on every ROM reading in this repository.
+MEMORY_TEST_ADDRESSES = (0x0800, 0x1800, 0x2400)
+MEMORY_TEST_PATTERNS = (0xA55A, 0x5AA5)
+MEMORY_TEST_SAMPLES = 2 + 5 * len(MEMORY_TEST_ADDRESSES)
+
+
+def build_memory_test_probe(addresses=MEMORY_TEST_ADDRESSES,
+                            patterns=MEMORY_TEST_PATTERNS) -> "RomProbe":
+    """A kernel that writes through data space and reads back through program.
+
+    ar2 walks the outbound buffer throughout and ar3 addresses whatever is
+    under test, so the only ARP changes are the pair around each write. `tblr
+    *+` lands its word straight in the buffer, which is why the program-space
+    reads need no separate store.
+    """
+    if len(patterns) != 2:
+        raise ValueError("the test writes exactly two patterns")
+
+    words = [0xBE41, 0xBC00]                       # setc intm ; ldp #000
+    words += [0x8B8A, 0xBF0A, ROM_DUMP_BUFFER]     # mar *, ar2 ; lar ar2, #buffer
+    words += [0x6907, 0x90A0]                      # lacl @07 ; sacl *+   PMST as found
+    words += [0x5D07, 0x0030]                      # opl @07, #0030  RAM|OVLY
+    words += [0x6907, 0x90A0]                      # lacl @07 ; sacl *+   PMST after
+
+    for address in addresses:
+        # Program space as found, before anything is written.
+        words += [0xBF80, address & 0xFFFF, 0xA6A0]        # lacc #addr ; tblr *+
+        words += [0xBF0B, address & 0xFFFF]                # lar ar3, #addr
+        for pattern in patterns:
+            words += [0x8B8B]                              # mar *, ar3
+            words += [0xAE80, pattern & 0xFFFF]            # splk #pattern, *
+            words += [0x6980]                              # lacl *
+            words += [0x8B8A, 0x90A0]                      # mar *, ar2 ; sacl *+
+            words += [0xBF80, address & 0xFFFF, 0xA6A0]    # lacc #addr ; tblr *+
+
+    samples = 2 + 5 * len(addresses)
+    words += [0xAE7C, ROM_DUMP_TAG_BASE, 0xBF09, ROM_DUMP_BUFFER]
+    poll = ORIGIN + len(words)
+    words += [0xBF0A, 0xFF57, 0x8B8A, 0x1080, 0x0880, 0x8B89,
+              0x907D, 0x4E7D, 0xE200, poll]
+    words += [0x0C7C, 0x005E, 0x0CA0, 0x005F, 0xB902, 0x8857,
+              0x697C, 0xB801, 0x907C,
+              0xBFA0, (ROM_DUMP_TAG_BASE + samples) & 0xFFFF,
+              0xE308, poll]
+    halt = ORIGIN + len(words)
+    words += [0x7980, halt]                        # b self
+    while len(words) % 8:
+        words.append(0x8B00)
+    return RomProbe(tuple(words), ORIGIN + ROM_DUMP_BUFFER, halt)
+
+
 # Does an I/O bus cycle on this board land in the DSP's own RAM?
 #
 # SUPERSEDED as a question, kept as an instrument. This was written when a board

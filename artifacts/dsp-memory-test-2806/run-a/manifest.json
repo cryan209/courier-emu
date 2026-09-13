@@ -1,0 +1,4692 @@
+{
+  "status": "complete",
+  "error": null,
+  "capture_error": null,
+  "instructions": 7875,
+  "dsp_steps": 346,
+  "hardware_tested": false,
+  "uploadable_sdl_image": false,
+  "rom_mapped_fixture": true,
+  "fault": null,
+  "rom_image_sha256": null,
+  "serial_text": "CDRP1 START\r\nCDRP1 DATA 0011\r\n00000030AA34A55AAA345AA5AA340000A55AA55A5AA55AA50000A55AA55A5AA55AA5\r\nSUM:FEC7\r\nCDRP1 DONE\r\n",
+  "capture": {
+    "status": "rom-dump-captured",
+    "word_count": 17,
+    "words": [
+      0,
+      48,
+      43572,
+      42330,
+      43572,
+      23205,
+      43572,
+      0,
+      42330,
+      42330,
+      23205,
+      23205,
+      0,
+      42330,
+      42330,
+      23205,
+      23205
+    ],
+    "rom_sha256": "32700ede416b302e35aaf9f1d0f88583108c470c469aab549724ea73746d2244",
+    "distinct_values": 5,
+    "capture_sha256": "7df9e1e3162b63cef218824952136952a9fad8f740f696f665c1a37a5796265b"
+  },
+  "sample_matches_fixture": false,
+  "rom_matches_fixture": false,
+  "download_matches_kernel": true,
+  "download_checksum_matches": true,
+  "dsp_launched": true,
+  "packets": 17,
+  "acks": 17,
+  "events": [
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2070,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2086,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2102,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2118,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2134,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2150,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2166,
+      "address": 65386,
+      "size": 2,
+      "value": 83
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2182,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2198,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2214,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2230,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2246,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 2262,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "io-write",
+      "pc": 13376,
+      "instruction": 2280,
+      "port": 64,
+      "size": 1,
+      "value": 248
+    },
+    {
+      "kind": "io-write",
+      "pc": 13383,
+      "instruction": 2284,
+      "port": 66,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13393,
+      "instruction": 2289,
+      "address": 65366,
+      "size": 2,
+      "value": 217
+    },
+    {
+      "kind": "dsp-reset",
+      "pc": 13393,
+      "instruction": 2289,
+      "requested_origin": 65528
+    },
+    {
+      "kind": "io-write",
+      "pc": 13402,
+      "instruction": 2292,
+      "port": 24,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13408,
+      "instruction": 2295,
+      "port": 26,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13414,
+      "instruction": 2298,
+      "port": 28,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13421,
+      "instruction": 2302,
+      "port": 30,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13430,
+      "instruction": 2806,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13436,
+      "instruction": 2807,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13442,
+      "instruction": 2808,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13462,
+      "instruction": 2815,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13466,
+      "instruction": 2818,
+      "address": 65366,
+      "size": 2,
+      "value": 211
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13477,
+      "instruction": 2827,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "io-write",
+      "pc": 13514,
+      "instruction": 2843,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "bootstrap-ready",
+      "pc": 13514,
+      "instruction": 2843,
+      "requested_origin": 65528
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2849,
+      "port": 64,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2853,
+      "port": 66,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2858,
+      "port": 68,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2862,
+      "port": 70,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2867,
+      "port": 72,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2871,
+      "port": 74,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2876,
+      "port": 76,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2880,
+      "port": 78,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2885,
+      "port": 80,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2889,
+      "port": 82,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2894,
+      "port": 84,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2898,
+      "port": 86,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2903,
+      "port": 88,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2907,
+      "port": 90,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13328,
+      "instruction": 2912,
+      "port": 92,
+      "size": 1,
+      "value": 131
+    },
+    {
+      "kind": "io-write",
+      "pc": 13335,
+      "instruction": 2916,
+      "port": 94,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13346,
+      "instruction": 2922,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13358,
+      "instruction": 2927,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "io-write",
+      "pc": 13376,
+      "instruction": 2939,
+      "port": 64,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13383,
+      "instruction": 2943,
+      "port": 66,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13393,
+      "instruction": 2948,
+      "address": 65366,
+      "size": 2,
+      "value": 217
+    },
+    {
+      "kind": "dsp-reset",
+      "pc": 13393,
+      "instruction": 2948,
+      "requested_origin": 32768
+    },
+    {
+      "kind": "io-write",
+      "pc": 13402,
+      "instruction": 2951,
+      "port": 24,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13408,
+      "instruction": 2954,
+      "port": 26,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13414,
+      "instruction": 2957,
+      "port": 28,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13421,
+      "instruction": 2961,
+      "port": 30,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13430,
+      "instruction": 3465,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13436,
+      "instruction": 3466,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13442,
+      "instruction": 3467,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13462,
+      "instruction": 3474,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13466,
+      "instruction": 3477,
+      "address": 65366,
+      "size": 2,
+      "value": 211
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13477,
+      "instruction": 3486,
+      "address": 65366,
+      "size": 2,
+      "value": 219
+    },
+    {
+      "kind": "io-write",
+      "pc": 13514,
+      "instruction": 3502,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "bootstrap-ready",
+      "pc": 13514,
+      "instruction": 3502,
+      "requested_origin": 32768
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13591,
+      "instruction": 3864,
+      "address": 65350,
+      "size": 2,
+      "value": 49152
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13597,
+      "instruction": 3865,
+      "address": 65346,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13603,
+      "instruction": 3866,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 3884,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 3889,
+      "port": 64,
+      "size": 1,
+      "value": 65
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 3891,
+      "port": 66,
+      "size": 1,
+      "value": 190
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 3893,
+      "port": 68,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 3895,
+      "port": 70,
+      "size": 1,
+      "value": 188
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 3897,
+      "port": 72,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 3899,
+      "port": 74,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 3901,
+      "port": 76,
+      "size": 1,
+      "value": 10
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 3903,
+      "port": 78,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 3905,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 3911,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3915,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3919,
+      "port": 82,
+      "size": 1,
+      "value": 16
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3925,
+      "port": 84,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3929,
+      "port": 86,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3935,
+      "port": 88,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3939,
+      "port": 90,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3945,
+      "port": 92,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3949,
+      "port": 94,
+      "size": 1,
+      "value": 93
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 3955,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 3963,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 3968,
+      "port": 64,
+      "size": 1,
+      "value": 48
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 3970,
+      "port": 66,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 3972,
+      "port": 68,
+      "size": 1,
+      "value": 7
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 3974,
+      "port": 70,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 3976,
+      "port": 72,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 3978,
+      "port": 74,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 3980,
+      "port": 76,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 3982,
+      "port": 78,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 3984,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 3990,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 3994,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 3998,
+      "port": 82,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4004,
+      "port": 84,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4008,
+      "port": 86,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4014,
+      "port": 88,
+      "size": 1,
+      "value": 11
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4018,
+      "port": 90,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4024,
+      "port": 92,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4028,
+      "port": 94,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4034,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4042,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4047,
+      "port": 64,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4049,
+      "port": 66,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4051,
+      "port": 68,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4053,
+      "port": 70,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4055,
+      "port": 72,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4057,
+      "port": 74,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4059,
+      "port": 76,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4061,
+      "port": 78,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4063,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4069,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4073,
+      "port": 80,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4077,
+      "port": 82,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4083,
+      "port": 84,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4087,
+      "port": 86,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4093,
+      "port": 88,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4097,
+      "port": 90,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4103,
+      "port": 92,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4107,
+      "port": 94,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4113,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4121,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4126,
+      "port": 64,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4128,
+      "port": 66,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4130,
+      "port": 68,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4132,
+      "port": 70,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4134,
+      "port": 72,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4136,
+      "port": 74,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4138,
+      "port": 76,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4140,
+      "port": 78,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4142,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4148,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4152,
+      "port": 80,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4156,
+      "port": 82,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4162,
+      "port": 84,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4166,
+      "port": 86,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4172,
+      "port": 88,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4176,
+      "port": 90,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4182,
+      "port": 92,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4186,
+      "port": 94,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4192,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4200,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4205,
+      "port": 64,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4207,
+      "port": 66,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4209,
+      "port": 68,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4211,
+      "port": 70,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4213,
+      "port": 72,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4215,
+      "port": 74,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4217,
+      "port": 76,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4219,
+      "port": 78,
+      "size": 1,
+      "value": 24
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4221,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4227,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4231,
+      "port": 80,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4235,
+      "port": 82,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4241,
+      "port": 84,
+      "size": 1,
+      "value": 11
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4245,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4251,
+      "port": 88,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4255,
+      "port": 90,
+      "size": 1,
+      "value": 24
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4261,
+      "port": 92,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4265,
+      "port": 94,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4271,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4279,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4284,
+      "port": 64,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4286,
+      "port": 66,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4288,
+      "port": 68,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4290,
+      "port": 70,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4292,
+      "port": 72,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4294,
+      "port": 74,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4296,
+      "port": 76,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4298,
+      "port": 78,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4300,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4306,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4310,
+      "port": 80,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4314,
+      "port": 82,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4320,
+      "port": 84,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4324,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4330,
+      "port": 88,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4334,
+      "port": 90,
+      "size": 1,
+      "value": 24
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4340,
+      "port": 92,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4344,
+      "port": 94,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4350,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4358,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4363,
+      "port": 64,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4365,
+      "port": 66,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4367,
+      "port": 68,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4369,
+      "port": 70,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4371,
+      "port": 72,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4373,
+      "port": 74,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4375,
+      "port": 76,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4377,
+      "port": 78,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4379,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4385,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4389,
+      "port": 80,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4393,
+      "port": 82,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4399,
+      "port": 84,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4403,
+      "port": 86,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4409,
+      "port": 88,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4413,
+      "port": 90,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4419,
+      "port": 92,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4423,
+      "port": 94,
+      "size": 1,
+      "value": 24
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4429,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4437,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4442,
+      "port": 64,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4444,
+      "port": 66,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4446,
+      "port": 68,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4448,
+      "port": 70,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4450,
+      "port": 72,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4452,
+      "port": 74,
+      "size": 1,
+      "value": 36
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4454,
+      "port": 76,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4456,
+      "port": 78,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4458,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4464,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4468,
+      "port": 80,
+      "size": 1,
+      "value": 11
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4472,
+      "port": 82,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4478,
+      "port": 84,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4482,
+      "port": 86,
+      "size": 1,
+      "value": 36
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4488,
+      "port": 88,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4492,
+      "port": 90,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4498,
+      "port": 92,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4502,
+      "port": 94,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4508,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4516,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4521,
+      "port": 64,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4523,
+      "port": 66,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4525,
+      "port": 68,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4527,
+      "port": 70,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4529,
+      "port": 72,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4531,
+      "port": 74,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4533,
+      "port": 76,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4535,
+      "port": 78,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4537,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4543,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4547,
+      "port": 80,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4551,
+      "port": 82,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4557,
+      "port": 84,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4561,
+      "port": 86,
+      "size": 1,
+      "value": 36
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4567,
+      "port": 88,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4571,
+      "port": 90,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4577,
+      "port": 92,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4581,
+      "port": 94,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4587,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4595,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4600,
+      "port": 64,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4602,
+      "port": 66,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4604,
+      "port": 68,
+      "size": 1,
+      "value": 165
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4606,
+      "port": 70,
+      "size": 1,
+      "value": 90
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4608,
+      "port": 72,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4610,
+      "port": 74,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4612,
+      "port": 76,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4614,
+      "port": 78,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4616,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4622,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4626,
+      "port": 80,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4630,
+      "port": 82,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4636,
+      "port": 84,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4640,
+      "port": 86,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4646,
+      "port": 88,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4650,
+      "port": 90,
+      "size": 1,
+      "value": 36
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4656,
+      "port": 92,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4660,
+      "port": 94,
+      "size": 1,
+      "value": 166
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4666,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4674,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4679,
+      "port": 64,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4681,
+      "port": 66,
+      "size": 1,
+      "value": 174
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4683,
+      "port": 68,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4685,
+      "port": 70,
+      "size": 1,
+      "value": 82
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4687,
+      "port": 72,
+      "size": 1,
+      "value": 9
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4689,
+      "port": 74,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4691,
+      "port": 76,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4693,
+      "port": 78,
+      "size": 1,
+      "value": 16
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4695,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4701,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4705,
+      "port": 80,
+      "size": 1,
+      "value": 10
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4709,
+      "port": 82,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4715,
+      "port": 84,
+      "size": 1,
+      "value": 87
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4719,
+      "port": 86,
+      "size": 1,
+      "value": 255
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4725,
+      "port": 88,
+      "size": 1,
+      "value": 138
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4729,
+      "port": 90,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4735,
+      "port": 92,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4739,
+      "port": 94,
+      "size": 1,
+      "value": 16
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4745,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4753,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4758,
+      "port": 64,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4760,
+      "port": 66,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4762,
+      "port": 68,
+      "size": 1,
+      "value": 137
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4764,
+      "port": 70,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4766,
+      "port": 72,
+      "size": 1,
+      "value": 125
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4768,
+      "port": 74,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4770,
+      "port": 76,
+      "size": 1,
+      "value": 125
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4772,
+      "port": 78,
+      "size": 1,
+      "value": 78
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4774,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4780,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4784,
+      "port": 80,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4788,
+      "port": 82,
+      "size": 1,
+      "value": 226
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4794,
+      "port": 84,
+      "size": 1,
+      "value": 84
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4798,
+      "port": 86,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4804,
+      "port": 88,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4808,
+      "port": 90,
+      "size": 1,
+      "value": 12
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4814,
+      "port": 92,
+      "size": 1,
+      "value": 94
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4818,
+      "port": 94,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4824,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4832,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4837,
+      "port": 64,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4839,
+      "port": 66,
+      "size": 1,
+      "value": 12
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4841,
+      "port": 68,
+      "size": 1,
+      "value": 95
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4843,
+      "port": 70,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4845,
+      "port": 72,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4847,
+      "port": 74,
+      "size": 1,
+      "value": 185
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4849,
+      "port": 76,
+      "size": 1,
+      "value": 87
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4851,
+      "port": 78,
+      "size": 1,
+      "value": 136
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4853,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4859,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4863,
+      "port": 80,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4867,
+      "port": 82,
+      "size": 1,
+      "value": 105
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4873,
+      "port": 84,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4877,
+      "port": 86,
+      "size": 1,
+      "value": 184
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4883,
+      "port": 88,
+      "size": 1,
+      "value": 124
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4887,
+      "port": 90,
+      "size": 1,
+      "value": 144
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4893,
+      "port": 92,
+      "size": 1,
+      "value": 160
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4897,
+      "port": 94,
+      "size": 1,
+      "value": 191
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4903,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13655,
+      "instruction": 4911,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13671,
+      "instruction": 4916,
+      "port": 64,
+      "size": 1,
+      "value": 17
+    },
+    {
+      "kind": "io-write",
+      "pc": 13675,
+      "instruction": 4918,
+      "port": 66,
+      "size": 1,
+      "value": 82
+    },
+    {
+      "kind": "io-write",
+      "pc": 13679,
+      "instruction": 4920,
+      "port": 68,
+      "size": 1,
+      "value": 8
+    },
+    {
+      "kind": "io-write",
+      "pc": 13683,
+      "instruction": 4922,
+      "port": 70,
+      "size": 1,
+      "value": 227
+    },
+    {
+      "kind": "io-write",
+      "pc": 13687,
+      "instruction": 4924,
+      "port": 72,
+      "size": 1,
+      "value": 84
+    },
+    {
+      "kind": "io-write",
+      "pc": 13691,
+      "instruction": 4926,
+      "port": 74,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13695,
+      "instruction": 4928,
+      "port": 76,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13699,
+      "instruction": 4930,
+      "port": 78,
+      "size": 1,
+      "value": 121
+    },
+    {
+      "kind": "io-write",
+      "pc": 13703,
+      "instruction": 4932,
+      "port": 24,
+      "size": 1,
+      "value": 1
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13724,
+      "instruction": 4938,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4942,
+      "port": 80,
+      "size": 1,
+      "value": 107
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4946,
+      "port": 82,
+      "size": 1,
+      "value": 128
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4952,
+      "port": 84,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4956,
+      "port": 86,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4962,
+      "port": 88,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4966,
+      "port": 90,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13739,
+      "instruction": 4972,
+      "port": 92,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13746,
+      "instruction": 4976,
+      "port": 94,
+      "size": 1,
+      "value": 139
+    },
+    {
+      "kind": "io-write",
+      "pc": 13758,
+      "instruction": 4982,
+      "port": 24,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 13782,
+      "instruction": 4992,
+      "address": 65344,
+      "size": 2,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 13794,
+      "instruction": 4995,
+      "port": 64,
+      "size": 1,
+      "value": 64
+    },
+    {
+      "kind": "io-write",
+      "pc": 13801,
+      "instruction": 4999,
+      "port": 66,
+      "size": 1,
+      "value": 164
+    },
+    {
+      "kind": "io-write",
+      "pc": 13807,
+      "instruction": 5003,
+      "port": 24,
+      "size": 1,
+      "value": 4
+    },
+    {
+      "kind": "download-checksum",
+      "pc": 13807,
+      "instruction": 5003,
+      "supplied": 42048,
+      "computed": 42048,
+      "accepted": true,
+      "bytes": 224
+    },
+    {
+      "kind": "modeled-dsp-launch",
+      "pc": 13807,
+      "instruction": 5003,
+      "origin": 32768,
+      "assumption": "boot ROM accepts checksum/end strobe and starts requested origin"
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5024,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20992
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5024,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5024,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5024,
+      "tag": 20992,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5039,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5039,
+      "tag": 20992
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5041,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5047,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20993
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5047,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 48
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5047,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5047,
+      "tag": 20993,
+      "value": 48
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5062,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5062,
+      "tag": 20993
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5064,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5070,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20994
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5070,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 43572
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5070,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5070,
+      "tag": 20994,
+      "value": 43572
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5085,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5085,
+      "tag": 20994
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5087,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5093,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20995
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5093,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5093,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5093,
+      "tag": 20995,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5108,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5108,
+      "tag": 20995
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5110,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5116,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20996
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5116,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 43572
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5116,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5116,
+      "tag": 20996,
+      "value": 43572
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5131,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5131,
+      "tag": 20996
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5133,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5139,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20997
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5139,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5139,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5139,
+      "tag": 20997,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5154,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5154,
+      "tag": 20997
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5156,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5162,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20998
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5162,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 43572
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5162,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5162,
+      "tag": 20998,
+      "value": 43572
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5177,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5177,
+      "tag": 20998
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5179,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5185,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 20999
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5185,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5185,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5185,
+      "tag": 20999,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5200,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5200,
+      "tag": 20999
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5202,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5208,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21000
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5208,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5208,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5208,
+      "tag": 21000,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5223,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5223,
+      "tag": 21000
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5225,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5231,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21001
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5231,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5231,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5231,
+      "tag": 21001,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5246,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5246,
+      "tag": 21001
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5248,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5254,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21002
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5254,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5254,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5254,
+      "tag": 21002,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5269,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5269,
+      "tag": 21002
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5271,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5277,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21003
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5277,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5277,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5277,
+      "tag": 21003,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5292,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5292,
+      "tag": 21003
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5294,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5300,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21004
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5300,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5300,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5300,
+      "tag": 21004,
+      "value": 0
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5315,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5315,
+      "tag": 21004
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5317,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5323,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21005
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5323,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5323,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5323,
+      "tag": 21005,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5338,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5338,
+      "tag": 21005
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5340,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5346,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21006
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5346,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 42330
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5346,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5346,
+      "tag": 21006,
+      "value": 42330
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5361,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5361,
+      "tag": 21006
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5363,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5369,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21007
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5369,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5369,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5369,
+      "tag": 21007,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5384,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5384,
+      "tag": 21007
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5386,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5392,
+      "dsp_pc": 32863,
+      "port": 94,
+      "value": 21008
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5392,
+      "dsp_pc": 32865,
+      "port": 95,
+      "value": 23205
+    },
+    {
+      "kind": "dsp-io-write",
+      "pc": 12361,
+      "instruction": 5392,
+      "dsp_pc": 32867,
+      "port": 87,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-publish",
+      "pc": 12361,
+      "instruction": 5392,
+      "tag": 21008,
+      "value": 23205
+    },
+    {
+      "kind": "io-write",
+      "pc": 12403,
+      "instruction": 5407,
+      "port": 28,
+      "size": 1,
+      "value": 2
+    },
+    {
+      "kind": "mailbox-ack",
+      "pc": 12403,
+      "instruction": 5407,
+      "tag": 21008
+    },
+    {
+      "kind": "io-write",
+      "pc": 12407,
+      "instruction": 5409,
+      "port": 30,
+      "size": 1,
+      "value": 0
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5427,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5443,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5459,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5475,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5491,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5507,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5523,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5539,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5555,
+      "address": 65386,
+      "size": 2,
+      "value": 84
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5571,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5587,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5603,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5619,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5635,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5651,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5667,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5683,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5719,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5741,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5763,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5785,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5822,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5844,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5866,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5888,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5925,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5947,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5969,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 5991,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6028,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6050,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6072,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6094,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6131,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6153,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6175,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6197,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6234,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6256,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6278,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6300,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6337,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6359,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6381,
+      "address": 65386,
+      "size": 2,
+      "value": 51
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6403,
+      "address": 65386,
+      "size": 2,
+      "value": 52
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6440,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6462,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6484,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6506,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6543,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6565,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6587,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6609,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6646,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6668,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6690,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6712,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6749,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6771,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6793,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6815,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6852,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6874,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6896,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6918,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6955,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6977,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 6999,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7021,
+      "address": 65386,
+      "size": 2,
+      "value": 48
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7058,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7080,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7102,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7124,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7161,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7183,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7205,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7227,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7264,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7286,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7308,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7330,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7367,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7389,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7411,
+      "address": 65386,
+      "size": 2,
+      "value": 65
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7433,
+      "address": 65386,
+      "size": 2,
+      "value": 53
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7456,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7469,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7487,
+      "address": 65386,
+      "size": 2,
+      "value": 83
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7503,
+      "address": 65386,
+      "size": 2,
+      "value": 85
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7519,
+      "address": 65386,
+      "size": 2,
+      "value": 77
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7535,
+      "address": 65386,
+      "size": 2,
+      "value": 58
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7568,
+      "address": 65386,
+      "size": 2,
+      "value": 70
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7590,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7612,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7634,
+      "address": 65386,
+      "size": 2,
+      "value": 55
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7655,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7668,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7686,
+      "address": 65386,
+      "size": 2,
+      "value": 67
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7702,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7718,
+      "address": 65386,
+      "size": 2,
+      "value": 82
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7734,
+      "address": 65386,
+      "size": 2,
+      "value": 80
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7750,
+      "address": 65386,
+      "size": 2,
+      "value": 49
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7766,
+      "address": 65386,
+      "size": 2,
+      "value": 32
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7782,
+      "address": 65386,
+      "size": 2,
+      "value": 68
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7798,
+      "address": 65386,
+      "size": 2,
+      "value": 79
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7814,
+      "address": 65386,
+      "size": 2,
+      "value": 78
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7830,
+      "address": 65386,
+      "size": 2,
+      "value": 69
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7846,
+      "address": 65386,
+      "size": 2,
+      "value": 13
+    },
+    {
+      "kind": "mmio-write",
+      "pc": 12579,
+      "instruction": 7862,
+      "address": 65386,
+      "size": 2,
+      "value": 10
+    }
+  ],
+  "io_read_counts": {
+    "0x18": 34,
+    "0x1a": 2,
+    "0x1c": 20,
+    "0x1e": 2,
+    "0x58": 17,
+    "0x5a": 17,
+    "0x5c": 17,
+    "0x5e": 17
+  },
+  "source_file_unchanged": true,
+  "flash_array_unchanged": true,
+  "assumptions": [
+    "Entry is 0000:2000 with PCB already at ff00, initialized DTE UART, RAM and chip selects.",
+    "All result words travel through actual DSP mailbox instructions and actual supervisor IN/UART stores.",
+    "ASIC latch/status cross-wiring is inferred from paired firmware routines, not measured on hardware.",
+    "Boot-ROM reset acknowledgements, checksum acceptance and jump to the requested 8000 are modeled.",
+    "DSP scheduling is driven by supervisor polling; not cycle accurate. UART is immediately ready.",
+    "ROM contents are synthetic; optional C5x ROM protection is not modeled.",
+    "RAM loading mechanism and a compatible flashable SDL container are not implemented."
+  ],
+  "load_map": {
+    "entry": "0000:3000",
+    "ram_image_base": 12288,
+    "ram_image_bytes": 4320,
+    "copied_routines": 13312,
+    "kernel_source": 16384,
+    "result_buffer": 32768,
+    "status_byte": 32804,
+    "words_expected": 17,
+    "labels": {
+      "entry": 12288,
+      "next_word": 12358,
+      "rx_wait": 12361,
+      "rx_ready": 12379,
+      "print_word": 12434,
+      "reset_error": 12476,
+      "download_error": 12490,
+      "mailbox_error": 12504,
+      "tag_error": 12518,
+      "puts": 12532,
+      "puts_end": 12546,
+      "putc": 12547,
+      "tx_wait": 12552,
+      "tx_ready": 12577,
+      "hex": 12585,
+      "digit": 12594,
+      "decimal": 12613,
+      "digit_out": 12615,
+      "newline": 12629,
+      "halt": 12640,
+      "start_text": 12645,
+      "data_text": 12659,
+      "sum_text": 12677,
+      "done_text": 12682,
+      "reset_text": 12695,
+      "download_text": 12713,
+      "mailbox_text": 12734,
+      "tag_text": 12754
+    },
+    "reference_sha256": "49f4182cc961aef983ff43468b7b7e55c03205c9dba80e9689fe20aa6ff2ccc5",
+    "ram_image_sha256": "6d778107e05865bf73d1f2ae617c567964bcc53d6979df50d11c68e6da5e1285"
+  }
+}

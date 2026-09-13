@@ -1,0 +1,26 @@
+{
+  "status": "rom-dump-captured",
+  "word_count": 17,
+  "words": [
+    176,
+    176,
+    65535,
+    42330,
+    65535,
+    23205,
+    65535,
+    65535,
+    42330,
+    65535,
+    23205,
+    65535,
+    43870,
+    42330,
+    42330,
+    23205,
+    23205
+  ],
+  "rom_sha256": "1ec5344e020dee9987823f0064eacdf0ec5da8b36a572cf43a5b1db5ceb67fa1",
+  "distinct_values": 5,
+  "capture_sha256": "b7f06aabaab6498fcfb96f59249601e95a3103eebe417d87a6604a7a92131ea2"
+}

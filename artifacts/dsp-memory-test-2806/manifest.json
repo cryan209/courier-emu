@@ -1,0 +1,48 @@
+{
+  "what": "The 'C50/'C51 discriminator: write through the DSP's data space, read back through program space, and sample PMST",
+  "board": "25 MHz Courier V.Everything 2806, serial 22AEB36ACKND, ID_SDL v4.03d, supervisor 7.4.16, DSP 3.1.2",
+  "date": "2026-09-13",
+  "kernel": "courier_emu.dsp_probe.build_memory_test_probe, via probe_transport --memory-test",
+  "runs": [
+    "run-a",
+    "run-b"
+  ],
+  "reproduces": true,
+  "words": [
+    "00b0",
+    "00b0",
+    "ffff",
+    "a55a",
+    "ffff",
+    "5aa5",
+    "ffff",
+    "ffff",
+    "a55a",
+    "ffff",
+    "5aa5",
+    "ffff",
+    "ab5e",
+    "a55a",
+    "a55a",
+    "5aa5",
+    "5aa5"
+  ],
+  "pmst": {
+    "raw": "00b0",
+    "IPTR": 0,
+    "AVIS": 1,
+    "OVLY": 1,
+    "RAM": 1,
+    "MPMC": 0,
+    "NDX": 0,
+    "TRM": 0,
+    "BRAF": 0
+  },
+  "result": {
+    "0x0800": "data write lands (a55a, 5aa5 read back); program space returns ffff both times - not the same memory",
+    "0x1800": "same - program space unaffected by the write",
+    "0x2400": "program space follows the write exactly (a55a then 5aa5) - writable memory"
+  },
+  "conclusion": "MP/MC=0 and PMST.RAM=1, so on a 'C50 the 9K SARAM would be mapped into program space over 0x0800-0x2BFF and both 0x0800 and 0x1800 would follow the write. They do not, and 0x2400 does. That is the 'C51 map: 8K on-chip ROM at 0x0000-0x1FFF winning over SARAM in program space, with writable memory above it.",
+  "offline_control": "the emulator fixture, which maps a 4K ROM at 0x0000-0x0fff and SARAM above, produces the opposite split at 0x0800 vs 0x1800/0x2400 - so the instrument shows both signatures"
+}

@@ -373,54 +373,72 @@ Settings 1..6:  0, 30, 7, 30, 0, 0
 All three redundant copies agree. Setting 3 is `7`, whose bit 0 satisfies the
 serial-output enable condition traced in the firmware.
 
-### The ROM dump may be a quarter of the ROM
+### The ROM dump was a quarter of the ROM. The part is a 'C51
 
-The capture is **2048 words, program `0x0000`-`0x07FF`** - two halves at origin 0
-and 1024, `ROM_DUMP_WORDS = 0x0800`. Whether that is the whole ROM depends on a
-part number nobody has read, and the answer is not close:
+**Settled 2026-09-13**, on the 25 MHz board, by `probe_transport --memory-test`:
+[artifacts/dsp-memory-test-2806](../artifacts/dsp-memory-test-2806/README.md).
 
-| | SARAM | **ROM** | serial | package | dump covers |
+| | SARAM | **ROM** | serial | package | the 2K dump covered |
 |---|---|---|---|---|---|
-| 'C50 / 'LC50 | 9K | **2K** | 2 | 132-pin BQFP, **PQ** | **all of it** |
-| 'C51 / 'LC51 | 1K | **8K** | 2 | BQFP **PQ** / TQFP PZ | **a quarter** |
-| 'C52 | none | 4K | 1 | **PJ** | half - but excluded, see [board.md](board.md#which-dsp-a-c50-possibly-a-c51---not-a-c52) |
+| 'C50 / 'LC50 | 9K | 2K | 2 | 132-pin BQFP, **PQ** | all of it - **excluded** |
+| **'C51 / 'LC51** | **1K** | **8K** | 2 | BQFP **PQ** / TQFP PZ | **a quarter** |
+| 'C52 | none | 4K | 1 | **PJ** | excluded on the package suffix |
 
-(SPRU056D Table 1-1, read from the PDF in `docs/`.)
+(SPRU056D Table 1-1.) The full 8K is now read:
+`artifacts/dsp-onchip-rom-2806/c5x-onchip-rom-8k.bin`, and it is mostly
+unprogrammed - 1920 words of boot code at `0x0000`-`0x077F`, a 128-word mailbox
+block that the mask carries twice at `0x0F80` and `0x1F80`, and 6016 words of a
+32-word `FFFF`/`0000` array pattern. That pattern is also what `0x0780`-`0x07FF`
+holds, so the 2K capture did not end at a boundary; it ran off the end of the
+programmed part of a much larger ROM.
 
-The original plan in this file was "read program `0000..0fff`, 4096 words" on the
-'C52 assumption, and the capture took 2048. **That was never reconciled**, so the
-dump has been short of its own stated target throughout.
+**`MP/MC` has been read.** `PMST` bit 3, sampled by the same kernel: `PMST` =
+`00b0`, so `MP/MC` = 0, microcomputer mode, on-chip ROM mapped at program
+`0x0000`. The standing caveat on every ROM reading here is discharged. The same
+sample shows `RAM` and `OVLY` **already set on entry**, so the `opl @07, #0030`
+that every kernel in `dsp_probe.py` executes has never been changing anything.
 
-**The package marking excludes the 'C52 independently.**
-`TI DSP 16-912 (C) US ROBOTICS D17140PQ` - `PQ` is the 132-pin BQFP suffix that
-'C50/'LC50/'C51/'LC51 carry and the 'C52 (PJ) does not. The pin work already
-leaned on Table A-4's *PQ* pinout to place `VDDD` and `IS`.
+#### The stability test that used to be recommended here does not work
 
-**Two things lean 'C50, neither conclusive.** 302's `calld 0x23f0` needs SARAM
-past a 'C51's `0x0BFF`; and the dump's own buffer is at data `0x1000`
-(`ROM_DUMP_BUFFER`), outside a 'C51's 1K SARAM, and the dump worked - 1307
-distinct values and a plausible reset vector `0000: b 0670`.
+It said: read `0x0800` twice, and a 'C50 should **differ** because that is the
+firmware's live SARAM scratch, while a 'C51 should be **byte-identical** ROM.
 
-**The discriminating test is a stability test, not a plausibility test.** Both
-parts would return something code-like from `0x0800`; only one returns the *same*
-thing twice:
+Run on the board, twice, the reads are byte-identical - and that is not a 'C51
+result, it is a broken test. **The probe resets the DSP and takes it over**, so
+the firmware whose scratch was supposed to move is not running by the time the
+first word is read. Neither part can produce a moving read, and the test scores
+every part as 'C51. What `0x0800` actually returns is not memory at all: two
+distinct values in 1024 words, the same `FFFF`/`0000` array pattern.
+
+#### What replaced it: write through data space, read back through program
+
+SARAM seen from both spaces is one physical memory, so a write through data
+space must read back through program space; ROM cannot. Two patterns per
+address, so a region returning a constant cannot pass by coincidence.
 
 ```sh
 .venv/bin/python -m courier_emu.probe_transport --reference IDSDL302.ROM \
-    --rom-dump --rom-origin 0x0800 --rom-words 0x0800 --output /tmp/rom-0800
+    --memory-test --output artifacts/dsp-memory-test-2806/run-a
+.venv/bin/python artifacts/dsp-onchip-rom-2806/run-board.py \
+    artifacts/dsp-memory-test-2806/run-a /dev/cu.usbserial-FT4TQOFT
 ```
 
-Run it twice with the resident running in between.
+With `MP/MC=0` and `RAM=1`, a 'C50 would map 9K of SARAM into program space over
+`0x0800`-`0x2BFF` and every one of those addresses would follow the write.
+`0x0800` and `0x1800` ignore it and `0x2400` follows it - the 'C51 map, 8K of
+ROM winning over SARAM in program space with writable memory above it.
 
-* **'C50** - `0x0800`+ is SARAM, the firmware's live scratch. The two reads
-  should **differ**.
-* **'C51** - `0x0800`-`0x1FFF` is ROM. The two reads should be **byte-identical**.
+Run offline the same kernel reports the opposite split, because the emulator
+fixture maps a 4K ROM at `0x0000`-`0x0FFF`, so a null result would have shown.
 
-**Move `ROM_DUMP_BUFFER` off `0x1000` first**: it sits inside the range this run
-reads, so the dump would overwrite its own buffer. And note the standing caveat -
-**`MP/MC` has never been read directly.** What argues the ROM is mapped at all is
-that program `0x0000` holds a vector table rather than the kernel's own first
-words.
+#### What this overturns
+
+Two arguments previously leaned 'C50 and both are answered. 302's `calld
+0x23f0` needs executable memory past a 'C51's on-chip ROM, and `0x2400` is
+writable, so it has it. The dump buffer at data `0x1000` is outside a 'C51's 1K
+SARAM and the dump still worked - because data `0x1000` is external data memory
+on this board, a different memory from program `0x1000`, which is why reading
+program `0x1000`-`0x13FF` never collided with the buffer either.
 
 > **Mind which artifact directory you cite.** The top-level `dsp-rom-half0/`,
 > `dsp-rom-half1/`, `dsp-rom-dump-v*`, `dsp-rom-transport-v*` and

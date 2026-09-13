@@ -602,16 +602,21 @@ The non-destructive discriminator, if a scope goes on the board: photograph the
 marking; **observe `MP/MC` at DSP reset** (low maps the internal ROM, high maps
 external - sampled only at reset, while the `PMST` bit can change later); and
 watch `PS`, `STRB` and enough address lines during reset. An external program
-fetch at address zero supports `MP/MC = 1`.
+fetch at address zero supports `MP/MC = 1`. **Measured since: `PMST`
+reads `00b0`, so `MP/MC` is 0** - microcomputer mode. See board.md.
 
 ## Which DSP
 
-**Not a 'C52**, which is what `native/c5x_core.h` models. The firmware's prologue
-maps SARAM a 'C52 does not have, 302's dispatcher `calld`s `0x23f0` which only the
-9K part covers, and the build sets up a TDM serial port a 'C52 does not have. It
-is a **'C50, possibly a 'C51** for builds that do not reach `0x23f0`. The
-argument, the Table 1-1 comparison and what it means for the core's memory map
-are in [board.md](board.md#which-dsp-a-c50-possibly-a-c51---not-a-c52).
+**A 'C51**, measured 2026-09-13 by writing through the DSP's data space and
+reading back through program space: `0x0800` and `0x1800` ignore the write and
+`0x2400` follows it, which is 8K of on-chip ROM over `0x0000`-`0x1FFF` with
+writable memory above, not a 'C50's 9K SARAM. `native/c5x_core.h` models a 'C52,
+which was already excluded. See
+[artifacts/dsp-memory-test-2806](../artifacts/dsp-memory-test-2806/README.md)
+and [board.md](board.md#which-dsp-a-c51-measured).
+
+`calld 0x23f0` was read here as needing the 9K part. It does not: `0x2400` is
+writable on this board, which is all that call requires.
 
 ## What this does not establish
 
