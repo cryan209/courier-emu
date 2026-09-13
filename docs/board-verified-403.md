@@ -55,7 +55,7 @@ instructions:
 |---|---|---|---|---|---|
 | 0 | `0x12`/`0x10` | HS | 5 | `0x12`/`0x02` | MR |
 | 1 | `0x14`/`0x40` | *no lamp - the button* | 6 | `0x14`/`0x02` | **CS** |
-| 2 | `0x14`/`0x10` | *unknown* | 7 | `0x14`/`0x80` | **SYN** |
+| 2 | `0x14`/`0x10` | **AA** | 7 | `0x14`/`0x80` | **SYN** |
 | 3 | `0x14`/`0x01` | **CD** | 8 | `0x14`/`0x20` | ARQ/FAX |
 | 4 | `0x10`/`0x01` | OH, and the relay | | | |
 
@@ -67,7 +67,11 @@ port is released, so it is driven from this latch and idles low.
 The remaining five come from the release order read off the board, and the
 alignment checks itself: exactly one of the nine steps was never seen to do
 anything, and it falls on `0x14` bit `0x40`, the button, which has no lamp.
-Nothing had to be assumed about where the silent step was. Index 4 reads as a
+Nothing had to be assumed about where the silent step was.
+
+    bit 0x01 (0xff <-> 0xfe)   CD blinks alone
+    bit 0x10 (0xff <-> 0xef)   AA blinks alone
+    bit 0x80 (0xff <-> 0x7f)   SYN blinks alone Index 4 reads as a
 lamp *lighting* mid-sweep rather than going out, in both the board's sequence and
 the emulated run, which is what identifies OH and the relay as one line.
 
@@ -87,6 +91,31 @@ stage is a lamp *test* - the firmware takes over lines it otherwise leaves to th
 hardware, precisely so every lamp can be seen. That is what makes the sweep
 usable for naming them, and why the naming cannot be turned around into "the
 supervisor controls this lamp".
+
+### Two bits conflict with dsp-rom-probe, on this same board
+
+[dsp-rom-probe.md](dsp-rom-probe.md) has its own single-bit strobe table, taken
+on this unit (`/dev/cu.usbserial-21210`, serial `0009540034268322`). It lists the
+same nine self-test entries in the same order, and five attributions agree
+exactly - CD on `0x14` bit 0, CS on bit 1, ARQ on bit 5, SYN on bit 7, MR on
+`0x12` bit 1. **Two do not:**
+
+| bit | dsp-rom-probe | this file |
+|---|---|---|
+| `0x14` bit 6 (`0x40`) | HS lamp, observed | *no lamp* - the front-panel button |
+| `0x12` bit 4 (`0x10`) | analog path, audible pop | HS lamp |
+
+Both sides are user-reported panel observations, so neither transcript
+arbitrates. What tips it is firmware: `0x877cd` gates the self test on port
+`0x14` bit `0x40` **reading low**, and `0x87e34` then spins while it is still
+low - that is an input being released, which a lamp drive is not. And the sweep
+here saw nothing at all happen on that step.
+
+**Settled by re-strobing the two bits one at a time**, watching the panel and
+listening: `0x14` bit 6 from a rest state of `0xff`, and `0x12` bit 4 from its
+shadow. If bit 6 lights nothing and `0x12` bit 4 lights HS, this file is right
+and dsp-rom-probe's two rows shift. Until then neither attribution should be
+built on.
 
 ## The hook
 
@@ -336,7 +365,6 @@ be true, but it is unchecked on 302/403.
   for the `&C` setting, and those are measured as two different lamps, CD and SYN.
 - **What port `0x10` bit `0x04` is.** Asserted on every dial, nothing visible or
   audible when driven directly, on hook or off.
-- **What lamp is on `0x14` bit `0x10`** (index 2, `id-strap-drive-c`).
 - **Which line is the speaker**, and what the 2806's board-type flags at RAM
   `0x0693` physically gate.
 - **Feeding the resident before the overlay.** The gate is `m_call_tdm_active` at

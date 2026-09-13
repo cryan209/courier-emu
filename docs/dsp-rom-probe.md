@@ -1305,6 +1305,17 @@ transcripts. Port `0x14` is active low: `0` lights the indicator.
 | `0x10` | 0 | CD line to the DTE | `0x92b1`/`0x9380` set on connect, `0x93a2`/`0x93d9`/`0x96a7` clear on teardown, all gated on `[0x5b4] & 2`; `0x0b45` clears on timer expiry |
 | `0x10` | 3, 5, 6 | serial EEPROM bit-bang | `0x1490`..`0x15a5` |
 
+> **Two rows here conflict with [board-verified-403.md](board-verified-403.md),
+> which strobed the same bits on this same unit.** That file's sweep puts **no
+> lamp** on `0x14` bit 6 and identifies it as the front-panel button - which the
+> firmware supports, since `0x877cd` gates the self test on that bit *reading
+> low* and `0x87e34` spins while it stays low, which is an input being released.
+> It puts **HS** on `0x12` bit 4, where the row above records an audible pop.
+> Five other attributions agree exactly between the two. Both sides are
+> user-reported panel observations, so neither transcript arbitrates; re-strobing
+> those two bits one at a time, watching and listening, settles it. Until then
+> neither attribution should be built on.
+
 Port `0x14` bit 0 driving the CD *lamp* while port `0x10` bit 0 drives the CD
 *line* is consistent: `&C` controls the line, the lamp follows carrier. The
 panel indicators with no latch bit — RD, SD, TR, RS — are the ones expected to
