@@ -127,7 +127,9 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      relocated_layout: bool = False,
                      rom_words: int = ROM_DUMP_WORDS,
                      rom_origin: int = 0,
+                     via_saram: bool = False,
                      memory_test: bool = False,
+                     memory_test_addresses=None,
                      boot_word: bool = False,
                      boot_word_address: int = BOOT_WORD_ADDRESS,
                      boot_word_samples: int = BOOT_WORD_SAMPLES,
@@ -178,15 +180,17 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     elif memory_test:
         # Seventeen words, so the watchdog window that truncated the ROM dump
         # is not a concern.
-        probe = build_memory_test_probe()
-        count = MEMORY_TEST_SAMPLES
+        addresses = memory_test_addresses or MEMORY_TEST_ADDRESSES
+        probe = build_memory_test_probe(addresses)
+        count = 2 + 5 * len(addresses)
     elif boot_word:
         # Sixteen words print well inside the watchdog window that truncated
         # the ROM dump, so this one needs no windowing.
         probe = build_boot_word_probe(boot_word_address, boot_word_samples)
         count = boot_word_samples
     elif rom_dump:
-        probe = build_rom_dump_probe(rom_words, origin=rom_origin)
+        probe = build_rom_dump_probe(rom_words, origin=rom_origin,
+                                     via_saram=via_saram)
         count = rom_words
     else:
         probe = build_probe(mailbox=True)
@@ -694,12 +698,23 @@ def main() -> int:
                         help="load at 0x3000/0x3400/0x4000 instead of the default "
                              "0x2000/0x2400/0x3000, which straddles RAM the board "
                              "survey found in use (implied by --rom-dump)")
+    parser.add_argument("--via-saram", action="store_true",
+                        help="stage the read loop into on-chip SARAM and call "
+                             "it there, instead of running it off-chip at "
+                             "0x8000. TI's program-memory protection blocks "
+                             "off-chip code from reading on-chip program "
+                             "memory and does not name SARAM, so this is the "
+                             "read that protection cannot suppress")
     parser.add_argument("--memory-test", action="store_true",
                         help="write two patterns through data space and read "
                              "them back through program space at 0x0800, "
                              "0x1800 and 0x2400, and sample PMST - including "
                              "MP/MC - before and after. Separates a 'C50's 9K "
                              "SARAM from a 'C51's 8K on-chip ROM")
+    parser.add_argument("--memory-test-addresses",
+                        type=lambda v: tuple(int(x, 0) for x in v.split(",")),
+                        help="comma-separated addresses for --memory-test "
+                             "instead of the default three")
     parser.add_argument("--boot-word", action="store_true",
                         help="read the DSP's boot-mode word at data 0xffff "
                              "instead of dumping the ROM (docs/dsp-boot-transport.md)")
@@ -758,7 +773,9 @@ def main() -> int:
             parser.error("--rom-image maps on-chip ROM, which --external-fixture unmaps")
         rom_image = args.rom_image.read_bytes() if args.rom_image else None
         diagnostic = build_diagnostic(args.reference, rom_dump=args.rom_dump,
+                                      via_saram=args.via_saram,
                                       memory_test=args.memory_test,
+                                      memory_test_addresses=args.memory_test_addresses,
                                       boot_word=args.boot_word,
                                       boot_word_address=args.boot_word_address,
                                       boot_word_samples=args.boot_word_samples,

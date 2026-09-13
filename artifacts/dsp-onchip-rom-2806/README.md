@@ -58,6 +58,50 @@ branching to `1fa2` - an address only the upper copy occupies - says the block
 is placed at the end of each 4K page by the mask, and the upper one is the live
 copy.
 
+## Is it really unprogrammed, or is protection hiding it?
+
+TI's program-memory protection blocks instructions fetched from **off-chip
+memory** from reading on-chip program memory, and does not name SARAM. Every
+read above ran from a kernel at program `0x8000`, which is off-chip - exactly
+the configuration protection suppresses. So the empty regions had to be re-read
+from code executing on-chip before "unprogrammed" could be claimed.
+
+`--via-saram` stages the read loop into SARAM with `bldp` and calls it there.
+That path existed already and was recorded as having "returned nothing", but its
+gadget address was `0x0900`, chosen when the part was believed to be a 'C50 with
+9K of SARAM from `0x0800`. On the real part `0x0900` is **on-chip ROM**, so the
+gadget was never written and the call ran ROM. `ROM_DUMP_GADGET` is now `0x2000`,
+which is where the sweep found the SARAM.
+
+| window | read from SARAM vs. read from `0x8000` |
+|---|---|
+| `0x0000`-`0x03FF` | **identical** - 975 distinct values, the vector table |
+| `0x0C00`-`0x0FFF` | **identical** - the array pattern, and the `0x0F80` block |
+
+The `0x0000` window is the positive control: it proves the staged loop really
+executed and really read, because a gadget that failed to land would have hung
+on garbage rather than returning the vector table. The `0x0C00` window is the
+question, and protection is not hiding anything there.
+
+**And the empty span is mapped, not absent.** If `0x0800`-`0x1FFF` were simply
+undecoded, nothing would answer anywhere in it - but `0x0F80` and `0x1F80` return
+stable, coherent code. The ROM decodes across the whole 8K and is sparsely
+programmed.
+
+## The memory map, measured
+
+From `artifacts/dsp-memory-test-2806/sweep`, 21 addresses:
+
+| program | |
+|---|---|
+| `0000`-`1FFF` | 8K on-chip ROM. Writes through data space never appear. `0x0400` reads `3cc4`, real ROM content, as the control |
+| `2000`-`23FF` | **1K SARAM** - a write to data `0x0800` comes back from program `0x2000`, and data `0x0A00` from program `0x2200` |
+| `2400`- | external RAM, the same memory in both spaces |
+
+Data space: SARAM at `0x0800`-`0x0BFF`, external above. Note the buffer at data
+`0x1000` is external data memory, a different memory from program `0x1000`, which
+is why reading program `0x1000`-`0x13FF` never collided with it.
+
 ## Reproducing
 
 ```sh

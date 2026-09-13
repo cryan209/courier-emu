@@ -27,7 +27,13 @@ COMPLETE = 0xD00E
 # which microcomputer mode maps and which docs/dsp-map-302.md argues the part
 # is executing at reset.
 ROM_DUMP_WORDS = 0x0800
-ROM_DUMP_GADGET = 0x0900      # inside SARAM, 0x0800-0x2bff under PMST.RAM
+# Program 0x2000-0x23ff is where the 'C51's 1K of SARAM appears - measured, by
+# writing data 0x0800 and seeing it come back from program 0x2000
+# (artifacts/dsp-memory-test-2806/sweep). This was 0x0900 while the part was
+# believed to be a 'C50 with 9K of SARAM from 0x0800; on the real part that
+# address is on-chip ROM, so the staged gadget was never written and the call
+# ran ROM instead. That is why via_saram "returned nothing".
+ROM_DUMP_GADGET = 0x2000
 ROM_DUMP_BUFFER = 0x1000      # the same SARAM seen through data space, PMST.OVLY
 ROM_DUMP_TAG_BASE = 0x5200
 # The status latch's send-window bit. `BIT dma, code` tests bit 15 - code, so
