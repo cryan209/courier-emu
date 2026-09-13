@@ -1143,12 +1143,23 @@ into pins through the QFP table:
 | `0xff56` bit `0x20` | `P1.5/GCS5` | **52** | 1, `CS` |
 | `0xff5e`/`0xff5a` bit `0x80` | `P2.7` | **79** | 3 and 4, `DI`/`DO` |
 
-**The data line is the distinctive one.** `machine.py` drives and samples the
-*same* CPU pin, so on the board the 93C66's `DI` and `DO` must be **tied
-together** - separate pins on the chip, one net going to CPU pin 79, probably
-through a series resistor so the chip's output does not fight the CPU's drive.
-That is not a thing that happens by accident, and finding it would confirm the
-CPU path outright.
+**The data line was the distinctive one, and it is confirmed. 93C66 pins 3 and
+4 are joined and go to CPU pin 79.** `DI` and `DO` are separate pins on the
+chip; one net carrying both is not something that happens by accident, and it
+is exactly what `machine.py` assumes when it drives `P2LTCH` and then samples
+`P2PIN` for the same bit.
+
+That is worth stating plainly because of where the harness's model came from.
+It was **recovered from the ROM's driver** - inferred from the sequence of
+register writes, with the shared pin read off the code rather than the board.
+The board now says the same thing. A model derived from firmware and confirmed
+by continuity is on much firmer footing than one that was only ever consistent
+with the firmware.
+
+The 93C66's `DO` is high-impedance until a read is in progress, so tying the
+two is safe provided the CPU turns its pin around first - which is precisely
+the `P2DIR` dance the driver performs. Whether the board also fits a series
+resistor in that net is not established and does not change the model.
 
 **93C66 pin 2 is on CPU pin 57.** Confirmed on the board, and it is the clock
 row of that table exactly. So on the 2806 the EEPROM is the **CPU's**, reached
@@ -1174,9 +1185,9 @@ pin. Bit 0 should be set and bits 2 and 5 clear. Nothing in `courier_emu` reads
 `0xff54`, and like `GCS0`'s limits it can be checked out of a run with no
 hardware at all.
 
-The rest of the chip is still worth a meter:
+Two readings are left on the chip:
 
-* **pin 1** to CPU **52**, the other half of the predicted pair.
+* **pin 1** to CPU **52**, the last of the predicted pair.
 * 93C66 **pins 3 and 4** joined, and on CPU **79**.
 * **Pin 6, `ORG`**: high selects x16 organisation and low x8, which decides how
   the stored settings are laid out and is not recorded anywhere.
