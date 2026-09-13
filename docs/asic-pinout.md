@@ -808,6 +808,10 @@ Two checks settle it without ambiguity:
   transmitted data actually lands.
 * **Find `RXD0` and `TXD1` on the CPU** and see which has anything on it. A
   dead `TXD1` makes channel 1 half-used or unused and closes the question.
+* **Better: follow `U18`'s other three outputs.** The receiver is now
+  identified and one of its channels carries the DTE's `TXD` to whichever CPU
+  pin actually receives it. See [`U18` is the missing
+  receiver](#u18-is-the-missing-receiver-a-ds1489am).
 
 What the ASIC is doing in the middle of the transmit path is a separate
 question and a real one. A gate array that merely passed the byte through would
@@ -815,24 +819,42 @@ be a waste of two pins; one that can **gate or steer** it is not, and muting the
 DTE's receive line during connect or handshaking is exactly the kind of thing
 a modem needs to do. If there is a port bit behind it, it is not identified.
 
-#### `U18` is unidentified, and the receiver is what it ought to be
+#### `U18` is the missing receiver: a `DS1489AM`
 
-Pin `48` goes to **`U18` pin 11**, and `U18` appears nowhere else in this
-repository - not in [board-parts.md](board-parts.md), not in any earlier
-reading.
+Pin `48` goes to **`U18` pin 11**, and `U18` appeared nowhere else in this
+repository. The prediction made from that one pin was that it would be the
+**EIA-232 receiver** this file has had open for as long as it has had the
+drivers - `U22` and `U23` are drivers only, and something has to shift the
+DTE's `TXD`, `DTR` and `RTS` down to logic levels.
 
-There is an obvious candidate. This file's open items include **the EIA-232
-receiver**: `U22` and `U23` are drivers only, something has to shift the DTE's
-`TXD`, `DTR` and `RTS` down to logic levels, and the expected part is a **75189**
-sitting next to the two 75188s. On a 75189, **pin 11 is `4Y`** - a receiver
-**output**, TTL side. An output feeding an ASIC input is exactly the direction
-required, and it would mean the ASIC reads one of the DTE's handshake lines
-directly, which this file has already argued it must: `TR` follows `DTR` and
-`RS` follows `RTS`, and both lamps are on the package.
+**The marking is read: `DS1489AM`.** That is the Dallas/National quad line
+receiver, the 1489 of the 1488/1489 pair, in the `M` small-outline package -
+functionally the 75189 the open item named. The pin is `4Y`, a receiver
+**output** on the TTL side, feeding an ASIC input, which is the direction the
+prediction required.
 
-**It is a hypothesis and it is cheap to kill.** Read `U18`'s marking. If it is
-a 75189, its pins 1-3, 4-6, 8-10 and 12-13 are three more receiver channels to
-trace, and the missing half of the DTE interface arrives in one go.
+So the DTE interface is complete as parts: **two 75188s driving out, one 1489A
+receiving in, and the ASIC on both sides of it.** The 1488/1489 pair this file
+guessed at from the first transceiver question is the pair the board has, found
+one half at a time and years apart in the reading.
+
+**Three more receiver channels are worth tracing immediately**, and one of them
+settles a live question. On a 1489A the outputs are pins 3, 6, 8 and 11
+(`1Y`-`4Y`); `48` has `4Y`. The DTE sends three things - `TXD`, `DTR` and
+`RTS` - so three of the four channels are in use. `DTR` and `RTS` should land
+on the ASIC, which is what the `TR` and `RS` lamps imply. **`TXD` should land
+on a CPU receive pin**, and *which* pin it lands on answers the channel
+question directly:
+
+* **CPU pin 7** (`P2.0/RXD1`) would confirm the `SD` group reading and leave
+  channel 1 receiving while channel 0 transmits into the ASIC - the awkward
+  split above.
+* **`RXD0`** would retire the `SD` group's pin 7 entry, put the whole DTE link
+  on channel 0, and agree with `courier_emu/uart.py`.
+
+That is one continuity reading from a named output pin, and it is a better
+instrument than re-probing the `SD` net, which is the reading that went wrong
+in the first place.
 
 #### The isolation barrier is found, and the ASIC is on the receiving side
 
@@ -1206,6 +1228,9 @@ out, so it carries the modem-to-DTE direction and nothing else; **the matching
 receiver has not been found**, and something has to convert the DTE's `TXD`,
 `DTR` and `RTS` down to logic levels. Finding it is the remaining part of this.
 
+> **Found: `U18`, a `DS1489AM`** - the 1489 half of the pair, reached from ASIC
+> pin 48. See [`U18` is the missing receiver](#u18-is-the-missing-receiver-a-ds1489am).
+
 **`TR` and `RS` are on the ASIC**, pins 18 and 25. That is the hypothesis above
 confirmed on its own terms: `TR` follows the DTE's `DTR`, which port `0x12` bit
 `0x40` already reads, and `RS` follows `RTS`, which has no port at all. The ASIC
@@ -1517,13 +1542,11 @@ The ones worth finding next, in the order they would pay:
    of the rest reach the ASIC decides the claim in
    [board-parts.md](board-parts.md) that the ASIC fronts the codec and hides
    the AC01/AC03 difference from the DSP.
-16. **The EIA-232 receiver - and `U18` is the candidate.** `U22` and `U23` are
-   drivers only. The DTE's `TXD`, `DTR` and `RTS` arrive at EIA levels and
-   something shifts them down; `DTR` demonstrably reaches port `0x12` and `RTS`
-   reaches ASIC pin 25, so the part is on the board and unidentified. **ASIC
-   pin 48 goes to `U18` pin 11**, a part not otherwise recorded anywhere - and
-   pin 11 on a 75189 is `4Y`, a receiver output. **Read `U18`'s marking**;
-   this item may already be answered.
+16. ~~**The EIA-232 receiver.**~~ **Answered: it is `U18`, a `DS1489AM`**,
+   reached at its `4Y` output from ASIC pin 48. What remains is its other
+   three channels - outputs `1Y`, `2Y`, `3Y` on pins 3, 6 and 8 - and in
+   particular which CPU pin the DTE's `TXD` arrives at, which decides the
+   serial-channel question.
 17. **Why `AA` is on two ASIC pins**, 13 and 21, when the firmware drives one
    bit. Cheap to settle with a continuity check between the two.
 18. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU

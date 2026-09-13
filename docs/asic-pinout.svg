@@ -86,7 +86,7 @@
 <rect x="670.0" y="469.0" width="16.0" height="6.0" fill="#1d5fa8"/>
 <text x="692.0" y="476.0" font-size="11.5" fill="#1d5fa8">47 &#183; INT1 (CPU 63)</text>
 <rect x="670.0" y="457.0" width="16.0" height="6.0" fill="#b8541f"/>
-<text x="692.0" y="464.0" font-size="11.5" fill="#b8541f">48 &#183; U18 p11 (receiver?)</text>
+<text x="692.0" y="464.0" font-size="11.5" fill="#b8541f">48 &#183; DS1489A U18 4Y</text>
 <rect x="670.0" y="445.0" width="16.0" height="6.0" fill="#b8541f"/>
 <text x="692.0" y="452.0" font-size="11.5" fill="#b8541f">49 &#183; U22 2A</text>
 <rect x="670.0" y="433.0" width="16.0" height="6.0" fill="#b8541f"/>
