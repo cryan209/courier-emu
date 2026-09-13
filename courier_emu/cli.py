@@ -660,9 +660,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="put a SIP call at the far end of the B channel. The bearer is "
              "G.711 at 8 kHz and so is RTP's PCMU payload, so the octets pass "
              "through untouched - no resampling and no companding conversion, "
-             "which is what a V.90 or x2 datapump needs",
+             "which is what a V.90 or x2 datapump needs. With no outbound "
+             "call in progress, an INVITE from this peer is offered to the "
+             "I-modem as an incoming audio call",
     )
     isdn_run.add_argument("--bri-sip-username", default="courier")
+    isdn_run.add_argument(
+        "--bri-sip-register", action="store_true",
+        help="register the local SIP contact before listening for inbound calls",
+    )
     isdn_run.add_argument(
         "--bri-sip-password-env",
         default="COURIER_SIP_PASSWORD",
@@ -675,7 +681,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NUMBER",
         help="the number to INVITE once the ISDN call is up",
     )
-    isdn_run.add_argument("--bri-sip-local-port", type=_number, default=0)
+    isdn_run.add_argument(
+        "--bri-sip-local-port", type=_number, default=0,
+        help="local UDP port for outbound signalling and inbound INVITEs "
+             "(default: ephemeral)",
+    )
     isdn_run.add_argument(
         "--bri-sip-record",
         metavar="FILE",
@@ -1425,14 +1435,17 @@ def main(argv: list[str] | None = None) -> int:
                             "--bri-sip and --bri-v120 are two different far "
                             "ends for one B channel; use one"
                         )
-                    bri.media_peer = BearerSipLine(
-                        SipSession(SipConfig(
+                    sip_session = SipSession(SipConfig(
                             server=args.bri_sip,
                             username=args.bri_sip_username,
                             password=os.environ.get(
                                 args.bri_sip_password_env, ""),
                             local_port=args.bri_sip_local_port,
-                        )),
+                        ))
+                    if args.bri_sip_register:
+                        sip_session.register()
+                    bri.media_peer = BearerSipLine(
+                        sip_session,
                         target=args.bri_sip_target or "",
                         record=(open(args.bri_sip_record, "wb")
                                 if args.bri_sip_record else None),
@@ -1496,6 +1509,9 @@ def main(argv: list[str] | None = None) -> int:
             finally:
                 if args.with_dsp:
                     machine.mailbox.close()
+                if bri is not None and bri.media_peer is not None \
+                        and hasattr(bri.media_peer, "close"):
+                    bri.media_peer.close()
             if args.flash_save:
                 Path(args.flash_save).write_bytes(bytes(machine.flash.contents))
             if args.bri_tx_g711:

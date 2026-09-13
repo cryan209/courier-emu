@@ -31,6 +31,38 @@ class Wire:
         self.activated = state == bri.F7_ACTIVATED
 
 
+class InboundSipPeer:
+    def __init__(self):
+        self.polled = 0
+        self.rang = 0
+        self.started = 0
+        self.ended = False
+
+    def poll(self):
+        self.polled += 1
+
+    def incoming_call(self):
+        return "8406", "7349195"
+
+    def remote_ended(self):
+        return self.ended
+
+    def ring(self):
+        self.rang += 1
+
+    def start(self):
+        self.started += 1
+
+    def exchange(self, octets):
+        return b"\xff" * len(octets)
+
+    def stop(self):
+        pass
+
+    def status(self):
+        return {}
+
+
 def test_crc_free_frame_encoding_round_trips():
     frame = bri.u_frame(0, 0, bri.U_SABME, command=True, pf=True)
     assert frame == bytes([0x02, 0x01, 0x7F])
@@ -189,6 +221,60 @@ def test_a_call_the_network_places_reaches_the_modem_as_setup():
     assert message.message_type == bri.SETUP
     assert message.number(bri.IE_CALLING_PARTY_NUMBER) == "5551000"
     assert message.number(bri.IE_CALLED_PARTY_NUMBER) == "5551212"
+
+
+def test_an_inbound_sip_call_places_an_audio_call_and_tracks_alerting():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None)
+    peer.state = bri.MULTIPLE_FRAME
+    sip = InboundSipPeer()
+    peer.media_peer = sip
+
+    peer.service(wire, 0)
+    setup_frame = bri.decode(wire.to_modem[-1], from_user=False)
+    setup = bri.decode_q931(setup_frame.info)
+    assert setup.message_type == bri.SETUP
+    assert setup.number(bri.IE_CALLING_PARTY_NUMBER) == "8406"
+    assert setup.number(bri.IE_CALLED_PARTY_NUMBER) == "7349195"
+    assert setup.elements[bri.IE_BEARER_CAPABILITY] == bri.audio_bearer()
+    assert sip.polled == 1
+
+    alerting = bri.q931_message(bri.ALERTING, 1, True)
+    wire.from_modem.append(bri.i_frame(0, 0, ns=0, nr=1, pf=False,
+                                       info=alerting))
+    peer.service(wire, 1000)
+    assert peer.call_state == "delivered"
+    assert sip.rang == 1
+
+
+def test_an_explicit_bri_number_maps_a_sip_extension_to_the_terminal():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None, call_to="7349195")
+    peer.state = bri.MULTIPLE_FRAME
+    peer.media_peer = InboundSipPeer()
+    peer.service(wire, 0)
+    setup = bri.decode_q931(bri.decode(wire.to_modem[-1], from_user=False).info)
+    assert setup.number(bri.IE_CALLED_PARTY_NUMBER) == "7349195"
+
+
+def test_sip_bye_clears_the_bri_call():
+    wire = Wire()
+    peer = bri.BriNetwork(activate_at=None)
+    peer.state = bri.MULTIPLE_FRAME
+    peer.call_reference = 7
+    peer.call_state = "active"
+    peer._call_originated_by_network = True
+    sip = InboundSipPeer()
+    sip.ended = True
+    peer.media_peer = sip
+
+    peer.service(wire, 0)
+    messages = [bri.decode_q931(bri.decode(frame, from_user=False).info)
+                for frame in wire.to_modem
+                if bri.decode(frame, from_user=False).kind == "I"]
+    assert messages[-1].message_type == bri.DISCONNECT
+    assert messages[-1].cause_value == bri.CAUSE_NORMAL_CLEARING
+    assert peer.call_state == "release-request"
 
 
 def test_the_nt_walks_the_line_up_rather_than_jumping_it():

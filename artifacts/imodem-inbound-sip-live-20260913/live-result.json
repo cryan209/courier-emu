@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-13",
+  "sip_account": "6000@asterisk.net.cryan.nz",
+  "sip_local_port": 5062,
+  "physical_courier": {
+    "device": "/dev/cu.usbserial-1140",
+    "product": "New Zealand External",
+    "flash_revision": "V5.4.5",
+    "dial_command": "ATDT6000",
+    "source_extension_seen_by_sip": "8403",
+    "final_result": "NO CARRIER"
+  },
+  "sip": {
+    "registered": true,
+    "flow": [
+      "REGISTER",
+      "401 Unauthorized",
+      "authenticated REGISTER",
+      "200 OK",
+      "INVITE",
+      "100 Trying",
+      "180 Ringing",
+      "200 OK with SDP",
+      "ACK",
+      "BYE",
+      "200 OK"
+    ],
+    "rtp_packets_received": 1487,
+    "rtp_octets_received": 237920,
+    "rtp_packets_sent": 674,
+    "rtp_octets_sent": 107840
+  },
+  "bri": {
+    "called_number_mapping": "SIP 6000 -> ISDN 7349195",
+    "events": [
+      "SETUP from 8403",
+      "ALERTING",
+      "CONNECT",
+      "DISCONNECT cause 16 normal call clearing",
+      "RELEASE_COMPLETE"
+    ],
+    "media_channel": 1,
+    "routed_frames": 107393,
+    "rtp_octets_consumed": 107681,
+    "silence_filled": 190,
+    "octets_delivered_to_dsp_bearer": 107871,
+    "octets_emitted_by_dsp_bearer": 107871,
+    "non_idle_octets_emitted_by_dsp_bearer": 101805
+  },
+  "audio": {
+    "caller_to_imodem_seconds": 13.46,
+    "caller_calling_tone_1300hz_magnitude": 1642.1,
+    "caller_v21_980hz_magnitude": 34.0,
+    "caller_v21_1180hz_magnitude": 89.0,
+    "imodem_to_caller_seconds": 13.484,
+    "imodem_ansam_2100hz_magnitude": 1337.5,
+    "imodem_ansam_2084_95hz_sideband_ratio": 0.0915,
+    "imodem_ansam_2115_05hz_sideband_ratio": 0.0736
+  },
+  "verdict": "Inbound SIP, Q.931 supervision, and bidirectional RTP completed. The I-modem's ANSam reached the outgoing DSP bearer and the physical Courier's calling/V.8 waveform reached the incoming DSP bearer. Training did not complete; the physical Courier ended with NO CARRIER."
+}

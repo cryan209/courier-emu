@@ -506,6 +506,7 @@ class BriNetwork:
     _t303_expiry: int | None = None
     _setup_retransmissions: int = 0
     _setup: bytes = b""
+    _call_originated_by_network: bool = False
     call_reference: int | None = None
     call_state: str = "null"
     events: list[tuple[int, str]] = field(default_factory=list)
@@ -543,6 +544,10 @@ class BriNetwork:
         """One pass: take what the modem sent, answer it, and run the timers."""
         self.instructions = instructions
         self._sink = dsc.deliver_frame
+        if self.media_peer is not None and hasattr(self.media_peer, "poll"):
+            # SIP must be serviced before there is a bearer: an inbound
+            # INVITE is what causes the network to offer the BRI call.
+            self.media_peer.poll()
         self._line(dsc)
         if not dsc.activated:
             return
@@ -552,6 +557,18 @@ class BriNetwork:
         for frame in dsc.take_sent():
             self.frames_in += 1
             self._receive(frame)
+        if self.call_state not in ("null", "release-request") \
+                and self.media_peer is not None \
+                and hasattr(self.media_peer, "remote_ended") \
+                and self.media_peer.remote_ended():
+            self._note("the SIP peer cleared the call: sending DISCONNECT")
+            if self.call_reference is not None:
+                self._send_layer3(self.tei, q931_message(
+                    DISCONNECT, self.call_reference,
+                    self._call_originated_by_network,
+                    cause(CAUSE_NORMAL_CLEARING),
+                ))
+                self.call_state = "release-request"
         self._timers()
         self._service_media(dsc)
 
@@ -873,6 +890,25 @@ class BriNetwork:
             self._establish()
         if self._t200_expiry is not None and self.instructions >= self._t200_expiry:
             self._t200()
+        if not self._call_placed and self.call_state == "null" \
+                and self.media_peer is not None \
+                and hasattr(self.media_peer, "incoming_call"):
+            incoming = self.media_peer.incoming_call()
+            if incoming is not None:
+                incoming_from, incoming_to = incoming
+                self.call_from = incoming_from or self.call_from
+                # A PBX extension and the ISDN terminal's directory number
+                # need not be the same. An explicit --bri-call-to maps between
+                # them; otherwise the SIP Request-URI user is passed through.
+                if not self.call_to:
+                    self.call_to = incoming_to
+                # PCMU over RTP is a mu-law audio service. Offer that fact to
+                # the I-modem rather than the CLI's data-bearer default.
+                self.bearer = audio_bearer(CAPABILITY_AUDIO_31KHZ, LAW_MU)
+                self._note(
+                    f"inbound SIP call from {self.call_from or '(unknown)'}"
+                )
+                self._place_call()
         if (self.call_at is not None and not self._call_placed
                 and self.instructions >= self.call_at):
             self._place_call()
@@ -908,6 +944,7 @@ class BriNetwork:
 
     def _place_call(self) -> None:
         self._call_placed = True
+        self._call_originated_by_network = True
         self.call_reference = 1
         self.call_state = "call-present"
         self.media_channel = 1
@@ -989,6 +1026,7 @@ class BriNetwork:
             # The modem is placing a call. Take the number it dialled, accept
             # the channel, and walk the call up the way a switch does.
             self.call_reference = reference
+            self._call_originated_by_network = False
             channel = message.elements.get(IE_CHANNEL_IDENTIFICATION, b"")
             requested_channel = channel[0] & 3 if channel else 1
             self.media_channel = requested_channel if requested_channel in (1, 2) else 1
@@ -1032,6 +1070,9 @@ class BriNetwork:
             return
         if message.message_type in (ALERTING, CALL_PROCEEDING):
             self.call_state = "delivered"
+            if message.message_type == ALERTING and self.media_peer is not None \
+                    and hasattr(self.media_peer, "ring"):
+                self.media_peer.ring()
             return
         if message.message_type == DISCONNECT:
             self.call_state = "release-request"

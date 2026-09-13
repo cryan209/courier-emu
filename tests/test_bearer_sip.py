@@ -106,3 +106,45 @@ def test_what_has_not_arrived_is_counted_rather_than_hidden():
         assert line.status()["octets"]["silence_filled"] == 100
     finally:
         session.socket.close()
+
+
+class _InboundSession:
+    def __init__(self):
+        self.direction = "inbound"
+        self.state = "incoming"
+        self.incoming_from = "8406"
+        self.incoming_to = "7349195"
+        self.codewords = False
+        self.answered = 0
+        self.rang = 0
+
+    def set_codewords(self, enabled=True):
+        self.codewords = enabled
+
+    def poll(self):
+        pass
+
+    def ring_incoming(self):
+        self.rang += 1
+        self.state = "ringing"
+
+    def answer_incoming(self):
+        self.answered += 1
+        self.state = "connected"
+
+    def reject_incoming(self):
+        self.state = "failed"
+
+    def status(self):
+        return {"state": self.state}
+
+
+def test_inbound_bearer_maps_alerting_and_connect_to_sip():
+    session = _InboundSession()
+    line = BearerSipLine(session)
+    assert line.incoming_call() == ("8406", "7349195")
+    line.ring()
+    assert session.rang == 1
+    line.start()
+    assert session.answered == 1
+    assert session.state == "connected"

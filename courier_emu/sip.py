@@ -251,6 +251,12 @@ class SipSession:
         self.target_uri = ""
         self.to_header = ""
         self.remote_target = ""
+        self.direction = ""
+        self.incoming_from = ""
+        self.incoming_to = ""
+        self._incoming_headers: dict[str, str] = {}
+        self._incoming_response = b""
+        self._incoming_ringing = False
         self.state = "idle"
         self.last_status = 0
         self.error = ""
@@ -261,6 +267,10 @@ class SipSession:
         self._invite_sent_at = 0.0
         self._retransmit_after = 0.5
         self._auth_attempted = False
+        self.registered = False
+        self._register_call_id = f"{random.getrandbits(64):016x}@{self.local_ip}"
+        self._register_cseq = 0
+        self._register_auth_attempted = False
         self._tx_audio: deque[int] = deque(maxlen=PCMU_RATE * 2)
         # Codeword mode: the B channel's own G.711 octets, in and out, with no
         # conversion at either end. set_codewords() turns it on.
@@ -274,6 +284,8 @@ class SipSession:
         self._next_rtp_at = 0.0
         self.rtp_packets_sent = 0
         self.rtp_packets_received = 0
+        self.rtp_octets_sent = 0
+        self.rtp_octets_received = 0
         self.closed = False
 
     def _target(self, number: str) -> str:
@@ -291,6 +303,12 @@ class SipSession:
         self.call_id = f"{random.getrandbits(64):016x}@{self.local_ip}"
         self.from_tag = f"{random.getrandbits(32):08x}"
         self.number = number
+        self.direction = "outbound"
+        self.incoming_from = ""
+        self.incoming_to = ""
+        self._incoming_headers = {}
+        self._incoming_response = b""
+        self._incoming_ringing = False
         self.remote_target = ""
         self.target_uri = self._target(number)
         if not self.target_uri.lower().startswith("sip:"):
@@ -330,11 +348,20 @@ class SipSession:
         self.branch = branch or f"z9hG4bK{random.getrandbits(48):012x}"
         if cseq is None:
             cseq = self.cseq
+        if self.direction == "inbound":
+            from_header = self.to_header
+            to_header = self._incoming_headers.get("from", "")
+        else:
+            from_header = (
+                f'"{self.config.display_name}" '
+                f'<sip:{self.config.username}@{self.server_host}>;tag={self.from_tag}'
+            )
+            to_header = self.to_header
         headers = [
             f"Via: SIP/2.0/UDP {self.local_ip}:{self.local_port};branch={self.branch};rport",
             "Max-Forwards: 70",
-            f"From: \"{self.config.display_name}\" <sip:{self.config.username}@{self.server_host}>;tag={self.from_tag}",
-            f"To: {self.to_header}",
+            f"From: {from_header}",
+            f"To: {to_header}",
             f"Call-ID: {self.call_id}",
             f"CSeq: {cseq} {method}",
             f"Contact: <sip:{self.config.username}@{self.local_ip}:{self.local_port}>",
@@ -369,7 +396,9 @@ class SipSession:
         self.socket.send(message)
         self.events.append(f"tx ACK cseq={self.cseq}")
 
-    def _authorization(self, challenge: str, method: str = "INVITE") -> str:
+    def _authorization(
+        self, challenge: str, method: str = "INVITE", uri: str | None = None
+    ) -> str:
         values = _digest_parameters(challenge)
         realm = values.get("realm", "")
         nonce = values.get("nonce", "")
@@ -378,13 +407,14 @@ class SipSession:
             raise ValueError("unsupported or incomplete SIP Digest challenge")
         username = self.config.username
         ha1 = md5(f"{username}:{realm}:{self.config.password}".encode()).hexdigest()
-        ha2 = md5(f"{method}:{self.target_uri}".encode()).hexdigest()
+        digest_uri = uri or self.target_uri
+        ha2 = md5(f"{method}:{digest_uri}".encode()).hexdigest()
         qop = "auth" if "auth" in values.get("qop", "").lower().split(",") else ""
         parts = [
             f'username="{username}"',
             f'realm="{realm}"',
             f'nonce="{nonce}"',
-            f'uri="{self.target_uri}"',
+            f'uri="{digest_uri}"',
         ]
         if qop:
             nc = "00000001"
@@ -395,6 +425,53 @@ class SipSession:
             response = md5(f"{ha1}:{nonce}:{ha2}".encode()).hexdigest()
         parts.extend((f'response="{response}"', "algorithm=MD5"))
         return "Digest " + ", ".join(parts)
+
+    def register(self, authorization: str = "") -> None:
+        """Register this UDP contact with the configured SIP server."""
+        self._register_cseq += 1
+        uri = f"sip:{self.server_host}"
+        branch = f"z9hG4bK{random.getrandbits(48):012x}"
+        identity = f"<sip:{self.config.username}@{self.server_host}>"
+        lines = [
+            f"REGISTER {uri} SIP/2.0",
+            f"Via: SIP/2.0/UDP {self.local_ip}:{self.local_port};branch={branch};rport",
+            "Max-Forwards: 70",
+            f"From: {identity};tag={self.from_tag}",
+            f"To: {identity}",
+            f"Call-ID: {self._register_call_id}",
+            f"CSeq: {self._register_cseq} REGISTER",
+            f"Contact: <sip:{self.config.username}@{self.local_ip}:{self.local_port}>",
+            "Expires: 300",
+            "User-Agent: courier-emu/0.1",
+        ]
+        if authorization:
+            lines.append(f"Authorization: {authorization}")
+        lines.append("Content-Length: 0")
+        self.socket.send(("\r\n".join(lines) + "\r\n\r\n").encode("ascii"))
+        self.events.append(f"tx REGISTER cseq={self._register_cseq}")
+
+    def _handle_register_response(
+        self, status: int, headers: dict[str, str]
+    ) -> None:
+        self.events.append(f"rx REGISTER {status}")
+        if status == 401 and not self._register_auth_attempted:
+            try:
+                authorization = self._authorization(
+                    headers.get("www-authenticate", ""),
+                    method="REGISTER",
+                    uri=f"sip:{self.server_host}",
+                )
+            except ValueError as exc:
+                self.error = str(exc)
+                return
+            self._register_auth_attempted = True
+            self.register(authorization)
+            return
+        if 200 <= status < 300:
+            self.registered = True
+            return
+        if status >= 300:
+            self.error = f"REGISTER failed with SIP {status}"
 
     def _parse_sdp(self, body: bytes, source_host: str) -> None:
         host = source_host
@@ -412,6 +489,84 @@ class SipSession:
             self.remote_rtp = (host, port)
         elif port:
             raise ValueError("SIP peer did not accept PCMU payload 0")
+        else:
+            raise ValueError("SIP peer did not offer an audio RTP port")
+
+    @staticmethod
+    def _header_user(value: str) -> str:
+        match = re.search(r"sips?:([^@;>]+)", value, re.IGNORECASE)
+        return match.group(1) if match else ""
+
+    def _response(
+        self,
+        status: int,
+        reason: str,
+        headers: dict[str, str],
+        *,
+        body: bytes = b"",
+        tagged: bool = True,
+    ) -> bytes:
+        to_header = headers.get("to", "")
+        if tagged and not re.search(r"(?:^|;)\s*tag=", to_header, re.IGNORECASE):
+            to_header += f";tag={self.from_tag}"
+        lines = [
+            f"SIP/2.0 {status} {reason}",
+            f"Via: {headers.get('via', '')}",
+            f"From: {headers.get('from', '')}",
+            f"To: {to_header}",
+            f"Call-ID: {headers.get('call-id', '')}",
+            f"CSeq: {headers.get('cseq', '')}",
+        ]
+        if status >= 180:
+            lines.append(
+                f"Contact: <sip:{self.config.username}@{self.local_ip}:{self.local_port}>"
+            )
+        if body:
+            lines.append("Content-Type: application/sdp")
+        lines.append(f"Content-Length: {len(body)}")
+        return ("\r\n".join(lines) + "\r\n\r\n").encode("ascii", "replace") + body
+
+    def _send_response(self, response: bytes, event: str) -> None:
+        try:
+            self.socket.send(response)
+        except OSError:
+            return
+        if event:
+            self.events.append(event)
+
+    def ring_incoming(self) -> None:
+        """Tell an inbound caller that the ISDN terminal is alerting."""
+        if self.direction != "inbound" or self.state != "incoming":
+            return
+        response = self._response(180, "Ringing", self._incoming_headers)
+        self._incoming_response = response
+        self._incoming_ringing = True
+        self.state = "ringing"
+        self._send_response(response, "tx 180")
+
+    def answer_incoming(self) -> None:
+        """Accept an inbound call once the ISDN terminal has connected it."""
+        if self.direction != "inbound" or self.state not in ("incoming", "ringing"):
+            return
+        response = self._response(
+            200, "OK", self._incoming_headers, body=self._sdp()
+        )
+        self._incoming_response = response
+        self.state = "connected"
+        self._next_rtp_at = time.monotonic()
+        self._send_response(response, "tx 200")
+
+    def reject_incoming(
+        self, status: int = 480, reason: str = "Temporarily Unavailable"
+    ) -> None:
+        if self.direction != "inbound" or self.state not in ("incoming", "ringing"):
+            return
+        response = self._response(status, reason, self._incoming_headers)
+        self._incoming_response = response
+        self.state = "failed"
+        self.last_status = status
+        self.error = f"SIP/2.0 {status} {reason}"
+        self._send_response(response, f"tx {status}")
 
     def _handle_response(self, data: bytes, source: tuple[str, int]) -> None:
         head, _, body = data.partition(b"\r\n\r\n")
@@ -421,6 +576,13 @@ class SipSession:
             return
         status = int(fields[1])
         headers = _header_map(lines[1:])
+        cseq = headers.get("cseq", "").split()
+        if len(cseq) > 1 and cseq[1].upper() == "REGISTER":
+            self._handle_register_response(status, headers)
+            return
+        if len(cseq) > 1 and cseq[1].upper() in ("BYE", "CANCEL"):
+            self.events.append(f"rx {status} {cseq[1].upper()}")
+            return
         self.last_status = status
         self.events.append(f"rx {status}")
         if status < 200:
@@ -469,16 +631,110 @@ class SipSession:
         self.state = "failed"
         self.error = lines[0]
 
-    def _handle_request(self, data: bytes, _source: tuple[str, int]) -> None:
-        head, _, _body = data.partition(b"\r\n\r\n")
+    def _handle_request(self, data: bytes, source: tuple[str, int]) -> None:
+        head, _, body = data.partition(b"\r\n\r\n")
         lines = head.decode("latin-1", "replace").split("\r\n")
         fields = lines[0].split()
         if not fields:
             return
         method = fields[0].upper()
+        headers = _header_map(lines[1:])
+
+        if method in ("OPTIONS", "NOTIFY"):
+            # Asterisk qualifies registered contacts with OPTIONS and sends an
+            # unsolicited message-summary NOTIFY immediately after REGISTER.
+            # Ignoring either makes it retransmit; ignoring OPTIONS also marks
+            # the contact unavailable, so subsequent calls never get INVITEd.
+            self._send_response(self._response(200, "OK", headers), "")
+            return
+
+        if method == "INVITE":
+            # UDP retransmissions of the same server transaction get the last
+            # response again. They must not create a second BRI call or a new
+            # To tag.
+            if (
+                self.direction == "inbound"
+                and headers.get("call-id") == self.call_id
+                and headers.get("cseq") == self._incoming_headers.get("cseq")
+            ):
+                if self._incoming_response:
+                    self._send_response(self._incoming_response, "tx response retransmit")
+                return
+            if self.state not in ("idle", "closed", "failed"):
+                self._send_response(
+                    self._response(486, "Busy Here", headers), "tx 486"
+                )
+                return
+            try:
+                self._parse_sdp(body, source[0])
+            except (ValueError, OSError):
+                self._send_response(
+                    self._response(488, "Not Acceptable Here", headers), "tx 488"
+                )
+                return
+            self.direction = "inbound"
+            self.from_tag = f"{random.getrandbits(32):08x}"
+            self.call_id = headers.get("call-id", self.call_id)
+            self._incoming_headers = headers
+            self.incoming_from = self._header_user(headers.get("from", ""))
+            self.incoming_to = self._header_user(headers.get("to", ""))
+            self.number = self.incoming_from
+            self.target_uri = fields[1] if len(fields) > 1 else ""
+            self.to_header = headers.get("to", "")
+            if not re.search(r"(?:^|;)\s*tag=", self.to_header, re.IGNORECASE):
+                self.to_header += f";tag={self.from_tag}"
+            contact = headers.get("contact", "")
+            match = re.search(r"<([^>]+)>", contact) or re.search(
+                r"(sips?:\S+)", contact
+            )
+            self.remote_target = (
+                match.group(1).split(";")[0] if match else
+                f"sip:{self.incoming_from or self.config.username}"
+                f"@{source[0]}:{source[1]}"
+            )
+            # The two dialog directions have independent CSeq spaces. The
+            # remote INVITE's value stays in its headers; our first in-dialog
+            # request starts the local sequence at one.
+            self.cseq = 0
+            self.state = "incoming"
+            self.error = ""
+            trying = self._response(100, "Trying", headers, tagged=False)
+            self._incoming_response = trying
+            self._incoming_ringing = False
+            self.events.append(
+                f"rx INVITE from {self.incoming_from or '(unknown)'}"
+            )
+            self._send_response(trying, "tx 100")
+            return
+
+        if method == "ACK":
+            if (
+                self.direction == "inbound"
+                and headers.get("call-id") == self.call_id
+                and self.state == "connected"
+            ):
+                self.events.append("rx ACK")
+            return
+
+        if method == "CANCEL":
+            self._send_response(self._response(200, "OK", headers), "tx 200 CANCEL")
+            if self.direction == "inbound" and self.state in ("incoming", "ringing"):
+                self._send_response(
+                    self._response(487, "Request Terminated", self._incoming_headers),
+                    "tx 487 INVITE",
+                )
+                self.state = "closed"
+                self.events.append("rx CANCEL")
+            return
+
         if method != "BYE":
             return
-        headers = _header_map(lines[1:])
+        if headers.get("call-id") != self.call_id:
+            self._send_response(
+                self._response(481, "Call/Transaction Does Not Exist", headers),
+                "tx 481",
+            )
+            return
         response = (
             "SIP/2.0 200 OK\r\n"
             f"Via: {headers.get('via', '')}\r\n"
@@ -523,6 +779,7 @@ class SipSession:
                 self._rx_audio.extend(ulaw_to_linear(value)
                                       for value in packet[12:])
             self.rtp_packets_received += 1
+            self.rtp_octets_received += len(packet) - 12
         now = time.monotonic()
         # Only an INVITE that has drawn no response at all is retransmitted.
         # RFC 3261 stops timer A on the first provisional, and retransmitting
@@ -595,6 +852,7 @@ class SipSession:
             ) & 0xFFFFFFFF
             self._next_rtp_at += RTP_PACKET_SAMPLES / PCMU_RATE
             self.rtp_packets_sent += 1
+            self.rtp_octets_sent += len(payload)
 
     def receive_audio(self) -> list[int]:
         result = list(self._rx_audio)
@@ -606,7 +864,11 @@ class SipSession:
         value.pop("password", None)
         value.update(
             state=self.state,
+            direction=self.direction,
+            registered=self.registered,
             number=self.number,
+            incoming_from=self.incoming_from,
+            incoming_to=self.incoming_to,
             target=self.target_uri,
             last_status=self.last_status,
             error=self.error,
@@ -615,6 +877,8 @@ class SipSession:
             remote_rtp=(f"{self.remote_rtp[0]}:{self.remote_rtp[1]}" if self.remote_rtp else ""),
             rtp_packets_sent=self.rtp_packets_sent,
             rtp_packets_received=self.rtp_packets_received,
+            rtp_octets_sent=self.rtp_octets_sent,
+            rtp_octets_received=self.rtp_octets_received,
             events=list(self.events),
         )
         return value
@@ -644,10 +908,16 @@ class SipSession:
         except OSError:
             pass
         self.state = "idle"
+        self.direction = ""
         self.remote_target = ""
         self.remote_rtp = None
+        self._incoming_headers = {}
+        self._incoming_response = b""
+        self._incoming_ringing = False
         self._tx_audio.clear()
         self._rx_audio.clear()
+        self._tx_codewords.clear()
+        self._rx_codewords.clear()
 
     def close(self) -> None:
         if self.closed:

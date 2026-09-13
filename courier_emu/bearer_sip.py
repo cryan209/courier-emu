@@ -51,8 +51,10 @@ class BearerSipLine:
         self.record = record
         self.silence = silence
         self.started = False
+        self.alerted = False
         self.octets_in = 0
         self.octets_out = 0
+        self.octets_from_rtp = 0
         self.underrun = 0
         self.events: list[str] = []
 
@@ -77,12 +79,37 @@ class BearerSipLine:
             self.session.start_call(self.target)
             self.events.append(f"INVITE to {self.target}")
         else:
-            # No target means the session was handed over already in a call,
-            # which is how an answered inbound leg arrives.
-            self.events.append("using the session's existing call")
+            # For an inbound leg, CONNECT from the I-modem is the point at
+            # which the SIP caller gets its 200 OK and our SDP.
+            self.session.answer_incoming()
+            self.events.append("the I-modem answered: accepting the inbound INVITE")
+
+    def poll(self) -> None:
+        """Service SIP signalling even while no B channel is active."""
+        self.session.poll()
+
+    def incoming_call(self) -> tuple[str, str] | None:
+        if self.target or self.session.direction != "inbound":
+            return None
+        if self.session.state not in ("incoming", "ringing"):
+            return None
+        return self.session.incoming_from, self.session.incoming_to
+
+    def remote_ended(self) -> bool:
+        """Whether SIP CANCEL/BYE requires clearing the BRI call."""
+        return self.session.state == "closed"
+
+    def ring(self) -> None:
+        """Mirror Q.931 ALERTING to the SIP caller."""
+        if self.alerted:
+            return
+        self.alerted = True
+        self.session.ring_incoming()
+        self.events.append("the I-modem is alerting: sending 180 Ringing")
 
     def stop(self) -> None:
         if not self.started:
+            self.session.reject_incoming()
             return
         self.started = False
         self.session.hangup()
@@ -96,6 +123,7 @@ class BearerSipLine:
         self.session.send_pcmu(octets)
         self.session.poll()
         received = self.session.receive_pcmu(len(octets))
+        self.octets_from_rtp += len(received)
         if self.record is not None and received:
             self.record.write(received)
         if len(received) < len(octets):
@@ -114,6 +142,13 @@ class BearerSipLine:
             "dialled": self.dialled,
             "target": self.target,
             "octets": {"to_rtp": self.octets_in, "from_rtp": self.octets_out,
+                       "received_from_rtp": self.octets_from_rtp,
                        "silence_filled": self.underrun},
             "events": list(self.events),
         }
+
+    def close(self) -> None:
+        self.session.close()
+        if self.record is not None:
+            self.record.close()
+            self.record = None
