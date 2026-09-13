@@ -268,6 +268,20 @@ class Uc:
             for hook in tuple(self.hooks):
                 if hook.kind & (UC_HOOK_CODE | UC_HOOK_BLOCK) and self._range(hook, physical):
                     hook.callback(self, physical, 1, hook.user)
+            if not self.running:
+                break
+            if self._physical(
+                self.regs[UC_X86_REG_CS], self.regs[UC_X86_REG_IP]
+            ) != physical:
+                # A peripheral hook injected an interrupt or otherwise
+                # redirected execution. Restart dispatch at the new CS:IP so
+                # its first instruction receives its own hook/accounting edge.
+                # Unicorn charges this dispatch edge against emu_start's
+                # count even though the redirected instruction itself runs on
+                # the following edge. Match that scheduling contract.
+                retired += 1
+                self.retired += 1
+                continue
             segment_override = None
             operand_size = 2
             repeat = 0
@@ -293,6 +307,26 @@ class Uc:
                     self._set_reg8(0, result) if size == 1 else self.reg_write(UC_X86_REG_AX, result)
             elif 0x50 <= opcode <= 0x57: self._push(self.regs[opcode - 0x50], operand_size)
             elif 0x58 <= opcode <= 0x5F: self.reg_write(opcode - 0x58, self._pop(operand_size))
+            elif opcode == 0x68: self._push(self._fetch(operand_size), operand_size)
+            elif opcode == 0x6A: self._push(self._fetch(1, signed=True) & ((1 << bits) - 1), operand_size)
+            elif opcode == 0x60:
+                original_sp = self.regs[UC_X86_REG_SP]
+                for register in (UC_X86_REG_AX, UC_X86_REG_CX, UC_X86_REG_DX, UC_X86_REG_BX): self._push(self.regs[register], operand_size)
+                self._push(original_sp, operand_size)
+                for register in (UC_X86_REG_BP, UC_X86_REG_SI, UC_X86_REG_DI): self._push(self.regs[register], operand_size)
+            elif opcode == 0x61:
+                for register in (UC_X86_REG_DI, UC_X86_REG_SI, UC_X86_REG_BP): self.reg_write(register, self._pop(operand_size))
+                self._pop(operand_size)
+                for register in (UC_X86_REG_BX, UC_X86_REG_DX, UC_X86_REG_CX, UC_X86_REG_AX): self.reg_write(register, self._pop(operand_size))
+            elif opcode in (0x69, 0x6B):
+                modrm = self._fetch8(); register = (modrm >> 3) & 7
+                read, _ = self._operand(modrm, operand_size, segment_override)
+                left = read(); left = left - (1 << bits) if left & (1 << (bits - 1)) else left
+                immediate = self._fetch(1, signed=True) if opcode == 0x6B else self._fetch(operand_size, signed=True)
+                product = left * immediate; result = product & ((1 << bits) - 1)
+                self.reg_write(register, result)
+                overflow = product != (result - (1 << bits) if result & (1 << (bits - 1)) else result)
+                self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~(CF | OF) | ((CF | OF) if overflow else 0)
             elif opcode in (0x06, 0x0E, 0x16, 0x1E):
                 self._push(self.regs[{0x06: UC_X86_REG_ES, 0x0E: UC_X86_REG_CS, 0x16: UC_X86_REG_SS, 0x1E: UC_X86_REG_DS}[opcode]])
             elif opcode in (0x07, 0x17, 0x1F):
@@ -312,11 +346,23 @@ class Uc:
             elif opcode in (0xC6, 0xC7):
                 modrm = self._fetch8(); size = 1 if opcode == 0xC6 else operand_size
                 _, write = self._operand(modrm, size, segment_override); write(self._fetch(size))
+            elif opcode == 0x8F:
+                modrm = self._fetch8()
+                if (modrm >> 3) & 7: raise UcError("unsupported 8F group")
+                _, write = self._operand(modrm, operand_size, segment_override)
+                write(self._pop(operand_size))
             elif opcode in (0x8C, 0x8E):
                 modrm = self._fetch8(); seg = (modrm >> 3) & 3; read, write = self._operand(modrm, 2, segment_override)
                 segment_reg = (UC_X86_REG_ES, UC_X86_REG_CS, UC_X86_REG_SS, UC_X86_REG_DS)[seg]
                 if opcode == 0x8C: write(self.regs[segment_reg])
                 else: self.reg_write(segment_reg, read())
+            elif opcode in (0xC4, 0xC5):
+                modrm = self._fetch8(); reg = (modrm >> 3) & 7
+                if modrm >> 6 == 3: raise UcError("LES/LDS requires memory operand")
+                address = self._ea(modrm >> 6, modrm & 7, segment_override)
+                self.reg_write(reg, int.from_bytes(self.mem_read(address, operand_size), "little"))
+                segment = int.from_bytes(self.mem_read(address + operand_size, 2), "little")
+                self.reg_write(UC_X86_REG_ES if opcode == 0xC4 else UC_X86_REG_DS, segment)
             elif opcode == 0x8D:
                 modrm = self._fetch8(); reg = (modrm >> 3) & 7
                 if modrm >> 6 == 3: raise UcError("LEA requires memory operand")
@@ -369,6 +415,16 @@ class Uc:
                         self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
                     high = product >> bits
                     self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | ((CF | OF) if high else 0)
+                elif operation == 5:
+                    accumulator = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                    signed_acc = accumulator - (1 << bits) if accumulator & (1 << (bits - 1)) else accumulator
+                    signed_value = value - (1 << bits) if value & (1 << (bits - 1)) else value
+                    product = signed_acc * signed_value
+                    if size == 1: self.reg_write(UC_X86_REG_AX, product)
+                    else: self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
+                    truncated = product & mask
+                    fits = product == (truncated - (1 << bits) if truncated & (1 << (bits - 1)) else truncated)
+                    self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | (0 if fits else CF | OF)
                 elif operation == 6:
                     dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
                     if value == 0: raise UcError("division by zero")
@@ -376,24 +432,47 @@ class Uc:
                     if quotient > mask: raise UcError("division overflow")
                     if size == 1: self.reg_write(UC_X86_REG_AX, quotient | remainder << 8)
                     else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
+                elif operation == 7:
+                    raw_dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
+                    dividend_bits = bits * 2
+                    dividend = raw_dividend - (1 << dividend_bits) if raw_dividend & (1 << (dividend_bits - 1)) else raw_dividend
+                    divisor = value - (1 << bits) if value & (1 << (bits - 1)) else value
+                    if divisor == 0: raise UcError("division by zero")
+                    quotient = abs(dividend) // abs(divisor)
+                    if (dividend < 0) != (divisor < 0): quotient = -quotient
+                    remainder = dividend - quotient * divisor
+                    minimum, maximum = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+                    if not minimum <= quotient <= maximum: raise UcError("division overflow")
+                    if size == 1: self.reg_write(UC_X86_REG_AX, (quotient & 0xFF) | ((remainder & 0xFF) << 8))
+                    else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
                 else: raise UcError(f"unsupported F{6 if size == 1 else 7:x} group /{operation}")
             elif opcode == 0xFF:
                 modrm = self._fetch8(); operation = (modrm >> 3) & 7
-                read, write = self._operand(modrm, operand_size, segment_override)
-                value = read()
-                if operation in (0, 1):
-                    old_cf = self.regs[UC_X86_REG_FLAGS] & CF
-                    write(self._alu(0 if operation == 0 else 5, value, 1, bits))
-                    self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
-                elif operation == 2:
-                    self._push(self.regs[UC_X86_REG_IP], operand_size)
-                    self.regs[UC_X86_REG_IP] = value & 0xFFFF
-                elif operation == 4:
-                    self.regs[UC_X86_REG_IP] = value & 0xFFFF
-                elif operation == 6:
-                    self._push(value, operand_size)
+                if operation in (3, 5):
+                    if modrm >> 6 == 3: raise UcError("far call/jump requires memory operand")
+                    address = self._ea(modrm >> 6, modrm & 7, segment_override)
+                    value = int.from_bytes(self.mem_read(address, operand_size), "little")
+                    segment = int.from_bytes(self.mem_read(address + operand_size, 2), "little")
+                    if operation == 3:
+                        self._push(self.regs[UC_X86_REG_CS])
+                        self._push(self.regs[UC_X86_REG_IP], operand_size)
+                    self.regs[UC_X86_REG_CS], self.regs[UC_X86_REG_IP] = segment, value & 0xFFFF
                 else:
-                    raise UcError(f"unsupported FF group /{operation}")
+                    read, write = self._operand(modrm, operand_size, segment_override)
+                    value = read()
+                    if operation in (0, 1):
+                        old_cf = self.regs[UC_X86_REG_FLAGS] & CF
+                        write(self._alu(0 if operation == 0 else 5, value, 1, bits))
+                        self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
+                    elif operation == 2:
+                        self._push(self.regs[UC_X86_REG_IP], operand_size)
+                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
+                    elif operation == 4:
+                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
+                    elif operation == 6:
+                        self._push(value, operand_size)
+                    else:
+                        raise UcError(f"unsupported FF group /{operation}")
             elif opcode == 0xFE:
                 modrm = self._fetch8(); operation = (modrm >> 3) & 7
                 if operation not in (0, 1): raise UcError(f"unsupported FE group /{operation}")
@@ -417,6 +496,16 @@ class Uc:
                         amount = shift_count % bits
                         result = ((value >> amount) | (value << (bits - amount))) & mask
                         carry = (result >> (bits - 1)) & 1
+                    elif operation == 2:
+                        result = value
+                        carry = 1 if self.regs[UC_X86_REG_FLAGS] & CF else 0
+                        for _ in range(shift_count % (bits + 1)):
+                            result, carry = ((result << 1) | carry) & mask, (result >> (bits - 1)) & 1
+                    elif operation == 3:
+                        result = value
+                        carry = 1 if self.regs[UC_X86_REG_FLAGS] & CF else 0
+                        for _ in range(shift_count % (bits + 1)):
+                            result, carry = (result >> 1) | (carry << (bits - 1)), result & 1
                     elif operation in (4, 6):
                         carry = (value >> (bits - shift_count)) & 1 if shift_count <= bits else 0
                         result = value << shift_count
@@ -428,7 +517,7 @@ class Uc:
                         signed = value - (1 << bits) if value & (1 << (bits - 1)) else value
                         result = signed >> shift_count
                     else:
-                        raise UcError(f"rotate-through-carry operation /{operation} not implemented")
+                        raise UcError(f"shift operation /{operation} not implemented")
                     write(result)
                     if operation >= 4:
                         self._logic_flags(result, bits)
@@ -449,6 +538,15 @@ class Uc:
             elif 0x90 <= opcode <= 0x97:
                 register = opcode - 0x90
                 self.regs[UC_X86_REG_AX], self.regs[register] = self.regs[register], self.regs[UC_X86_REG_AX]
+            elif opcode == 0x98:
+                if operand_size == 2:
+                    self.reg_write(UC_X86_REG_AX, self._reg8(0) | (0xFF00 if self._reg8(0) & 0x80 else 0))
+                else:
+                    ax = self.regs[UC_X86_REG_AX] & 0xFFFF
+                    self.reg_write(UC_X86_REG_AX, ax | (0xFFFF0000 if ax & 0x8000 else 0))
+            elif opcode == 0x99:
+                sign = self.regs[UC_X86_REG_AX] & (1 << (bits - 1))
+                self.reg_write(UC_X86_REG_DX, (1 << bits) - 1 if sign else 0)
             elif opcode == 0x9C: self._push(self.regs[UC_X86_REG_FLAGS])
             elif opcode == 0x9D: self.reg_write(UC_X86_REG_FLAGS, self._pop() | 2)
             elif opcode in (0xA8, 0xA9):
@@ -466,25 +564,29 @@ class Uc:
                     value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
                     self.mem_write(address, value.to_bytes(size, "little"))
             elif opcode in (0xA4, 0xA5, 0xAC, 0xAD, 0xAA, 0xAB):
-                size = 1 if opcode in (0xA4, 0xAC, 0xAA) else operand_size
-                step = -size if self.regs[UC_X86_REG_FLAGS] & DF else size
-                source_segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
-                if opcode in (0xA4, 0xA5, 0xAC, 0xAD):
-                    source = self._physical(source_segment, self.regs[UC_X86_REG_SI])
-                    value = int.from_bytes(self.mem_read(source, size), "little")
-                    self.regs[UC_X86_REG_SI] = (self.regs[UC_X86_REG_SI] + step) & 0xFFFF
-                else:
-                    value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
-                if opcode in (0xA4, 0xA5, 0xAA, 0xAB):
-                    destination = self._physical(self.regs[UC_X86_REG_ES], self.regs[UC_X86_REG_DI])
-                    self.mem_write(destination, value.to_bytes(size, "little"))
-                    self.regs[UC_X86_REG_DI] = (self.regs[UC_X86_REG_DI] + step) & 0xFFFF
-                else:
-                    if size == 1: self._set_reg8(0, value)
-                    else: self.reg_write(UC_X86_REG_AX, value)
-                if repeat:
-                    self.regs[UC_X86_REG_CX] = (self.regs[UC_X86_REG_CX] - 1) & 0xFFFF
-                    if self.regs[UC_X86_REG_CX]: self.regs[UC_X86_REG_IP] = start_ip
+                if not repeat or self.regs[UC_X86_REG_CX]:
+                    size = 1 if opcode in (0xA4, 0xAC, 0xAA) else operand_size
+                    step = -size if self.regs[UC_X86_REG_FLAGS] & DF else size
+                    source_segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
+                    if opcode in (0xA4, 0xA5, 0xAC, 0xAD):
+                        source = self._physical(source_segment, self.regs[UC_X86_REG_SI])
+                        value = int.from_bytes(self.mem_read(source, size), "little")
+                        self.regs[UC_X86_REG_SI] = (self.regs[UC_X86_REG_SI] + step) & 0xFFFF
+                    else:
+                        value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                    if opcode in (0xA4, 0xA5, 0xAA, 0xAB):
+                        destination = self._physical(self.regs[UC_X86_REG_ES], self.regs[UC_X86_REG_DI])
+                        self.mem_write(destination, value.to_bytes(size, "little"))
+                        self.regs[UC_X86_REG_DI] = (self.regs[UC_X86_REG_DI] + step) & 0xFFFF
+                    else:
+                        if size == 1: self._set_reg8(0, value)
+                        else: self.reg_write(UC_X86_REG_AX, value)
+                    if repeat:
+                        self.regs[UC_X86_REG_CX] = (self.regs[UC_X86_REG_CX] - 1) & 0xFFFF
+                        # Re-enter once with CX zero. This performs no memory
+                        # operation but matches the boundary at which Unicorn
+                        # retires a REP instruction and advances past it.
+                        self.regs[UC_X86_REG_IP] = start_ip
             elif opcode == 0xFA: self.regs[UC_X86_REG_FLAGS] &= ~IF
             elif opcode == 0xFB: self.regs[UC_X86_REG_FLAGS] |= IF
             elif opcode == 0xF8: self.regs[UC_X86_REG_FLAGS] &= ~CF
@@ -494,11 +596,40 @@ class Uc:
             elif opcode == 0xFD: self.regs[UC_X86_REG_FLAGS] |= DF
             elif opcode == 0xE8:
                 displacement = self._fetch(operand_size, signed=True); self._push(self.regs[UC_X86_REG_IP], operand_size); self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
-            elif opcode == 0xE9: self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + self._fetch(operand_size, signed=True)) & 0xFFFF
-            elif opcode == 0xEB: self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + self._fetch(1, signed=True)) & 0xFFFF
+            elif opcode == 0x9A:
+                offset = self._fetch(operand_size)
+                segment = self._fetch(2)
+                self._push(self.regs[UC_X86_REG_CS])
+                self._push(self.regs[UC_X86_REG_IP], operand_size)
+                self.regs[UC_X86_REG_CS] = segment
+                self.regs[UC_X86_REG_IP] = offset & 0xFFFF
+            elif opcode == 0xEA:
+                offset = self._fetch(operand_size)
+                segment = self._fetch(2)
+                self.regs[UC_X86_REG_CS] = segment
+                self.regs[UC_X86_REG_IP] = offset & 0xFFFF
+            elif opcode == 0xE9:
+                displacement = self._fetch(operand_size, signed=True)
+                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
+            elif opcode == 0xEB:
+                displacement = self._fetch(1, signed=True)
+                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
             elif opcode in (0xC3, 0xC2):
                 self.regs[UC_X86_REG_IP] = self._pop(operand_size)
                 if opcode == 0xC2: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
+            elif opcode == 0xC9:
+                self.regs[UC_X86_REG_SP] = self.regs[UC_X86_REG_BP] & 0xFFFF
+                self.reg_write(UC_X86_REG_BP, self._pop(operand_size))
+            elif opcode == 0xC8:
+                allocation, nesting = self._fetch(2), self._fetch8() & 0x1F
+                self._push(self.regs[UC_X86_REG_BP], operand_size)
+                frame = self.regs[UC_X86_REG_SP]
+                for _ in range(1, nesting):
+                    self.regs[UC_X86_REG_BP] = (self.regs[UC_X86_REG_BP] - operand_size) & 0xFFFF
+                    self._push(int.from_bytes(self.mem_read(self._physical(self.regs[UC_X86_REG_SS], self.regs[UC_X86_REG_BP]), operand_size), "little"), operand_size)
+                if nesting: self._push(frame, operand_size)
+                self.regs[UC_X86_REG_BP] = frame
+                self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] - allocation) & 0xFFFF
             elif opcode in (0xCB, 0xCA):
                 self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop()
                 if opcode == 0xCA: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF

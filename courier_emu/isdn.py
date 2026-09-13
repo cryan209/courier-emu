@@ -354,10 +354,12 @@ class IsdnMachine:
         product_type: str = "external",
         product_modem: bool = False,
         cpu_engine: str = "unicorn",
+        code_observer: "Callable[[int], None] | None" = None,
     ) -> None:
         if cpu_engine not in ("unicorn", "interpreter"):
             raise ValueError(f"unknown x86 engine {cpu_engine!r}")
         self.cpu_engine = cpu_engine
+        self._code_observer = code_observer
         self.image = image
         self.entry_segment = entry_segment
         self.entry_offset = entry_offset
@@ -809,6 +811,8 @@ class IsdnMachine:
 
         def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             self.instructions += 1
+            if self._code_observer is not None:
+                self._code_observer(address)
             if flash_dirty[0]:
                 apply_flash()
             if address == PRODUCT_TYPE_PROBE_COMPLETE:
