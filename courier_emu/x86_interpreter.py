@@ -609,6 +609,25 @@ class Uc:
                 segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
                 address = self._physical(segment, self.regs[UC_X86_REG_BX] + self._reg8(0))
                 self._set_reg8(0, self.mem_read(address, 1)[0])
+            elif opcode in (0xA6, 0xA7):
+                if not repeat or self.regs[UC_X86_REG_CX]:
+                    size = 1 if opcode == 0xA6 else operand_size
+                    step = -size if self.regs[UC_X86_REG_FLAGS] & DF else size
+                    source_segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
+                    source = self._physical(source_segment, self.regs[UC_X86_REG_SI])
+                    destination = self._physical(self.regs[UC_X86_REG_ES], self.regs[UC_X86_REG_DI])
+                    left = int.from_bytes(self.mem_read(source, size), "little")
+                    right = int.from_bytes(self.mem_read(destination, size), "little")
+                    self._alu(7, left, right, size * 8)
+                    self.regs[UC_X86_REG_SI] = (self.regs[UC_X86_REG_SI] + step) & 0xFFFF
+                    self.regs[UC_X86_REG_DI] = (self.regs[UC_X86_REG_DI] + step) & 0xFFFF
+                    if repeat:
+                        self.regs[UC_X86_REG_CX] = (self.regs[UC_X86_REG_CX] - 1) & 0xFFFF
+                        equal = bool(self.regs[UC_X86_REG_FLAGS] & ZF)
+                        if self.regs[UC_X86_REG_CX] and (
+                            repeat == 0xF3 and equal or repeat == 0xF2 and not equal
+                        ):
+                            self.regs[UC_X86_REG_IP] = start_ip
             elif opcode in (0xA4, 0xA5, 0xAC, 0xAD, 0xAA, 0xAB):
                 if not repeat or self.regs[UC_X86_REG_CX]:
                     size = 1 if opcode in (0xA4, 0xAC, 0xAA) else operand_size
