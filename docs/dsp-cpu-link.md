@@ -606,37 +606,12 @@ fetch at address zero supports `MP/MC = 1`.
 
 ## Which DSP
 
-**Not a C2x.** A 1200-word census finds `splk` (98), `samm` (71), `lamm` (31),
-`bsar` (32), `bd` (32), `calld` (31), `retd` (36), `retcd` (108), `lacc16` (21),
-`bcnd` (48), `bldd` (13), `smmr` (19), `lmmr` (2) and `apl`/`opl`/`xpl` (14) -
-none with a C2x encoding. A TMS320C25 cannot run this program.
-
-**And probably not a C52 either, which the model assumes.** `c5x_core.h` has the
-part with 4K of program ROM, three DARAM blocks and **no SARAM**, making
-`PMST.RAM` and `PMST.OVLY` don't-cares, with everything from `0x0800` up
-`External`. The firmware disagrees - its prologue is
-
-```text
-8014  apl @07, #07f8      ; keep bits 3-10
-      opl @07, #00b0      ; set bits 4, 5 and 7
-```
-
-and on a C5x bit 4 is **RAM** and bit 5 is **OVLY**, the two bits that map
-on-chip SARAM into program space. A build sets them only on a part that has SARAM
-to map; bit 7 is IPTR's LSB, putting the vector table at `0x0080`, which likewise
-needs on-chip memory there. The prologue's block clears cover `0x0100-0x04ff`,
-`0x0800-0x08ff` and `0x0b80-0x0bff`, the 302 mailbox ring is at `0x0bd0`, and
-302's dispatcher and resume poll both `calld 0x23f0` - beyond what a 3K SARAM
-part would cover. (403 puts the same helper in-bank at `0x80e8`, so only the
-older build needs it.)
-
-**The correction to make is the memory map rather than the part number**: SARAM
-mapped by `PMST.RAM`/`OVLY` instead of stubbed, and program space above the DARAM
-writable and persistent across `0x0800`-`0xffff`. That has not been made or
-tested. None of it comes from a marking - the board photo shows only
-`TI DSP 16-912 (C) US ROBOTICS D17140PQ`. The C50, C51, C52 and C53 share the
-instruction set and differ in on-chip memory, so the program cannot choose
-between them.
+**Not a 'C52**, which is what `native/c5x_core.h` models. The firmware's prologue
+maps SARAM a 'C52 does not have, 302's dispatcher `calld`s `0x23f0` which only the
+9K part covers, and the build sets up a TDM serial port a 'C52 does not have. It
+is a **'C50, possibly a 'C51** for builds that do not reach `0x23f0`. The
+argument, the Table 1-1 comparison and what it means for the core's memory map
+are in [board.md](board.md#which-dsp-a-c50-possibly-a-c51---not-a-c52).
 
 ## What this does not establish
 
