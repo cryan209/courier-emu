@@ -1,0 +1,9 @@
+{
+  "status": "complete",
+  "image": "artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom",
+  "command": "ATI7",
+  "instructions": 60000000,
+  "nvram": "CourierNvram.idsl302_fixture()",
+  "finding": "The 2806's boot reads 243 of the 93C66's 256 words and writes one. Order: word 0x00 read, and because it is blank the firmware write-enables, writes 0x0000 and write-disables; then words 0x5e..0x66 (94..102), the datapump block already documented; then a linear sweep 0x00..0xf2. Words 0xf3..0xff are never touched.",
+  "not_reproduced": "AT&W answers OK and programs nothing. idsdl-extended-registers.md records AT&W programming words 0x00-0x22, measured on the 302 image with a persistent --nvram file; that was retried here on IDSDL302.ROM through the same CLI route, and on the 2806 capture with ATE0&W, ATS0=3&W and AT&F&W, and every run wrote only the boot-time word 0."
+}
