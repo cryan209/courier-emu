@@ -1,16 +1,15 @@
-# What gates the datapump dispatch on IDSDL302
+# The datapump gate in 302 addresses
 
 **Everything here is 302 and 403.** `main211.xmf` is not fully modelled and its
 runs are not evidence about this board.
 
-Both board images now dial: the supervisor sends the digits, the DSP puts DTMF
-on the line, the modelled exchange decodes `6245` and the far end answers. What
-does not happen is the datapump ever starting, so the line goes quiet after
-ringback and the answering modem times out.
+**The arming question is answered in
+[datapump-gate-403-addresses.md](datapump-gate-403-addresses.md)**: an answered
+call arms the datapump from the DSP with one message, `0047:0007`, and `&L1` or
+`&T1` arm it by command. This document keeps the 302 static reading of the same
+structures, and two 302 findings that belong nowhere else.
 
-The chain that stops it ends at one test.
-
-## The gate
+## The gate, read statically on 302
 
 `0x8b84f` is a discriminator returning not-equal if any one of three flags is
 set:
@@ -21,12 +20,11 @@ set:
 8b85d  test byte [0x685], 1
 ```
 
-All three are zero in every run, so it returns equal, and that single fact
-explains both symptoms:
+All three are zero in every run this project has made, so it returns equal, and
+that gates two things at once.
 
-**No overlay is downloaded.** The overlay id `[0xe3c]` is assigned at
-`0x8bbaa`-`0x8bc4d`, and that whole block is skipped when the discriminator
-returns equal:
+**The overlay id.** `[0xe3c]` is assigned at `0x8bbaa`-`0x8bc4d`, and the whole
+block is skipped when the discriminator returns equal:
 
 ```text
 8bbaa  call 8b863           ; CF gate
@@ -37,14 +35,12 @@ returns equal:
 8bbc7  jmp  8bc52           ; equal -> skip every [0xe3c] assignment
 ```
 
-`[0xe3c]` stays zero, so the post-dial sequencer's gate at `0x8b5ca` never
-calls the loader at `0x8e5da`, and the run reports `bootstraps: 1` - the
-resident bank and nothing else. The loader itself is the transport the bridge
-already models (`out 0x1e, 4` then poll bit 2); it is simply never entered.
-[dsp-overlays.md](dsp-overlays.md) has the map: overlays 6, 7 and 8 in flash,
-loaded to C52 program `9d00`, `b000` and `dc00`.
+`[0xe3c]` stays zero, so the post-dial sequencer's gate at `0x8b5ca` never calls
+the loader at `0x8e5da` and the run reports `bootstraps: 1`. The loader is the
+transport the bridge already models (`out 0x1e, 4` then poll bit 2); it is simply
+never entered on a dial.
 
-**No `0x10` dispatch is sent.** Same discriminator at the dispatch site:
+**The `0x10` dispatch.** Same discriminator at the dispatch site:
 
 ```text
 8bee8  mov   ax, 5a
@@ -56,10 +52,10 @@ loaded to C52 program `9d00`, `b000` and `dc00`.
 ```
 
 [datapump-slots.md](datapump-slots.md) has the nine-slot table that mailbox
-commands `10` and `11` select. Neither appears in any run. `mov ax, 10` is
-never executed; the run emits `0017:704d` from the equal branch one site over.
+commands `10` and `11` select. `mov ax, 10` is never executed on a dial; the run
+emits `0017:704d` from the equal branch one site over.
 
-Measured with `--trace-pc` across a full dial:
+Measured with `--trace-pc` across a full 302 dial:
 
 | watch | hits |
 |---|---|
@@ -69,61 +65,35 @@ Measured with `--trace-pc` across a full dial:
 | `send-10` `8bef5` | **0** |
 | loader gate `8b5ca` | 1 |
 | `call-loader` `8b5d1` | **0** |
-| overlay loader `8e5da`, `out 0x1e` `8e603`, poll `8e61c` | 0 |
 
-## What would set the three flags
-
-Only one has a reachable setter anywhere in the image. `[0x685] |= 1` happens
-at exactly one place, `0x876c5`, reached from `0x876b1` when `[0x33e] & 4 == 0`
-(the run has `033e: 2`, so that branch would be taken).
-
-`0x876b1` is entry 1 of a nine-stub far-call thunk table at `0x875d8`, reached
-only from an indexed jump at `0xa6ad7`:
-
-```text
-a6ad7  jmp word ptr cs:[bx + 0x1dbe]     ; bx = 2 * AL, CS = a4d2
-```
-
-| AL | thunk | handler |
-|---|---|---|
-| 0 | `875d8` | `875f8` |
-| **1** | **`875dc`** | **`876b1` - sets `[0x685] |= 1`** |
-| 2 | - | `stc`/`ret`, rejected |
-| 3 | `875e0` | `876d5` |
-| 4-8 | `875e4`-`875f4` | `876f2`, `876f9`, `87700`, `87715`, `87738` |
+Flag C is the only one with a setter: `[0x685] |= 1` at `0x876c5`, reached from
+`0x876b1` when `[0x33e] & 4 == 0` (the run has `033e: 2`). `0x876b1` is entry 1
+of a nine-stub thunk table at `0x875d8`, reached from the indexed jump at
+`0xa6ad7` (`jmp word ptr cs:[bx + 0x1dbe]`, `bx = 2 * AL`, CS `a4d2`), whose
+table sits at `0xa6ade` and rejects `AL = 2`. `[0x5a5]` bit 0 has no setter
+anywhere in the image, only `and [0x5a5], 0xfe` at `882db` and `8982e`; there is
+no `or [0xa96], 2` either.
 
 `AL` is **not a call-progress event code.** The router's entry at `0xa6a6c`
-begins `lcall 8000:9cbc`, and `0x89cbc` is a decimal ASCII string parser
-(`lodsb`, `sub al, 0x30`, `mov ah, 0xa`, `mul ah`, accumulate). So `AL` is a
-number parsed out of a command string, and `0xa6a6c` is one of a table of
-command handlers whose offsets sit at `0xa6615`-`0xa6631`.
+begins `lcall 8000:9cbc`, a decimal ASCII parser (`lodsb`, `sub al, 0x30`,
+`mov ah, 0xa`, `mul ah`, accumulate), so `AL` is a number taken from a command
+string - which is the reading the 403 work confirmed when it identified the
+table as the ampersand family and entry 19 as `&T`.
 
-The router is never entered at all: `a6ad7`, `a6a7a`, `876b1` and `876c5` all
-take zero hits across a dial.
+The cells read off the running 4.03d board with `ATGLK2=`, as found, after `ATZ`,
+and while an inbound call was offered with `S0=0`, are identical at all three
+samples:
 
-Of the other two flags, `[0x5a5]` bit 0 has **no setter anywhere in the image**
-(only `and [0x5a5], 0xfe` at `882db` and `8982e` clear it), and there is no
-`or [0xa96], 2` either.
+| `685` | `5cd` | `33e` | `5a5` | `a96` | `e3c` | `5fa` | `600` | `ea7` |
+|---|---|---|---|---|---|---|---|---|
+| `ff` | `e0` | `11` | `08` | `00` | `00` | `00` | `00` | `00` |
 
-## Still open
+**These addresses are 302-derived and the board runs 7.4.16.** The comparison
+only holds if the data layout is unchanged between builds, which is not
+established - the 403 addresses are in the other document, and the board reads
+taken *at* them are all zero.
 
-**Which command sets those flags, and what issues it on a real board.** The
-handler table at `0xa6615` is never indexed by any `jmp cs:[bx+...]` in the
-image, and no far pointer targets `a4d2:1d4c`.
-
-The cells were read off the running 4.03d board with `ATGLK2=`, as found, after
-`ATZ`, and while an inbound call was being offered with `S0=0`:
-
-| sample | `685` | `5cd` | `33e` | `5a5` | `a96` | `e3c` | `5fa` | `600` | `ea7` |
-|---|---|---|---|---|---|---|---|---|---|
-| all three | `ff` | `e0` | `11` | `08` | `00` | `00` | `00` | `00` | `00` |
-
-Identical at all three, so they are not call-progress state and a reset does not
-move them. **These addresses are 302-derived and the board runs 7.4.16**, so the
-comparison only holds if the data layout is unchanged between builds, which is
-not established. Treat the table as a board reading, not as a diff.
-
-## The supervisor's real dispatcher
+## The supervisor's real dispatcher, and a bridge assumption it retires
 
 `0x8f564` is `call word ptr [0x298]` - an indirect call through the current
 state handler with a selector in AL. Across a whole dial it runs three times:
