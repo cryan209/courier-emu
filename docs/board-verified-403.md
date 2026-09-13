@@ -121,7 +121,7 @@ neither programmable path was active.
 **What the physical speaker circuit is remains unidentified**, and the earlier
 reasoning that put it on the codec's `MON OUT` with register 4 as its volume was
 withdrawn as unmeasured - see the correction at
-[asic-pinout.md](asic-pinout.md#the-speaker-is-squelched-in-a-codec-register-not-gated-on-the-board).
+[asic-pinout.md](asic-pinout.md#the-speaker-is-not-on-the-board-side).
 `ATM` is settable now, so a dial under each `M` setting with the panel watched is
 still the probe worth running.
 
