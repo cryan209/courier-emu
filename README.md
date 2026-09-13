@@ -169,7 +169,6 @@ repository, installs the project into it, and from then on just starts the CLI.
 ```sh
 ./courier info main211.xmf
 ./courier extract main211.xmf extracted/main211
-make test
 ```
 
 It uses `uv` when that is on `PATH` and falls back to `venv` plus `pip`
@@ -177,7 +176,7 @@ otherwise. `PYTHON=<interpreter>` chooses the interpreter it builds the
 environment from (3.10 or later), `COURIER_EMU_VENV=<path>` moves the
 environment, and `make clean-venv` discards it. `./courier` may be run from any
 directory. If you would rather manage the environment yourself, install the
-project with `pip install -e '.[execute,disasm,dev]'` and use
+project with `pip install -e '.[execute,disasm]'` and use
 `python3 -m courier_emu` in place of `./courier` everywhere below.
 
 Execution uses Unicorn's 16-bit x86 core and runs in an isolated child process:
@@ -645,9 +644,8 @@ produces a `0xb8000` image at `0x40000` that is byte-for-byte identical to the
 XOR-decoded XMP payload, and the 82,879 bytes the NAC never paints are precisely
 the bytes that read as erased flash in the XMP. Two independently encoded
 containers reaching the same image is the strongest check available on both
-decodes. It was asserted by `tests/test_nac.py` until the suite was cut back to
-the thirty tests that pin hardware- and format-established facts; re-check it
-with `nac-info` against the XMP decode rather than expecting a test to.
+decodes. Re-check it with `nac-info` against the XMP decode when validating a
+new image.
 
 What is not recovered: the two trailing bytes `e4 a0`. They are not a byte sum of
 the record stream and match none of the common CRC-16s (CCITT-FALSE, XMODEM, ARC,
@@ -1115,9 +1113,10 @@ own, running against the modeled line:
 tone duration and the interdigit gap all count on the supervisor's countdown
 chain, and unpaced the harness has to stand in for every one of them, which is
 the arrangement the exchange exists to replace. The line detector is modeled
-here rather than executed, because its firmware is in the missing ASIC/customer
-ROM: it answers the `0x7c` poll with a low-band reading while the loop carries
-tone, and the supervisor counts its own five hits.
+here rather than executed because the native core does not yet run the
+recovered DSP detector path end to end. The fallback answers the `0x7c` poll
+with a low-band reading while the loop carries tone, and the supervisor counts
+its own five hits.
 
 **Nothing renders the digits.** `dsp_bridge.exchange.dialed` - what the line
 actually heard - stays empty while `ATDT5551212` is dialed. This was recorded

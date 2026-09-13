@@ -133,9 +133,11 @@ checksum. Unlike the analog board's directly measured `P1.1` net, the I-Modem
 ASIC output pin and physical reset-net routing have not yet been established by
 continuity, so the software command is firm while its final pin remains open.
 
-## Remaining electrical question
+## Service-path wake signal
 
-The exact ASIC signal used to enter the ROM service trampoline, and its C51
-interrupt identity, still need to be tied to a measured pin or captured event.
-That uncertainty does not change the data path: the CPU and C51 instruction
-streams independently agree on the four-word windows and 1/2/4 handshake.
+The physical wake signal is the reset net already identified above: 80C186EB
+`P1.1` (CPU pin 58) drives C51 `RS` (pin 127). Its falling edge resets the C51;
+release starts the C51 mask ROM, whose reset setup installs and reaches the
+service-loader path. This is not a separate, unidentified ASIC interrupt pin.
+The CPU and C51 instruction streams independently establish the subsequent
+four-word windows and 1/2/4 handshake.

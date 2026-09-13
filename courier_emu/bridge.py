@@ -678,9 +678,10 @@ class CourierDspBridge:
     def _observe_carrier_audio(self) -> None:
         """Detect the answer carrier in the real peer waveform.
 
-        The resident C50 overlay supplies the line datapump, but the native
-        core does not yet implement its carrier detector.  The recovered
-        answer waveform is centred near 1.875 kHz at the 9.6 kHz codec rate;
+        The resident C50 overlay supplies the line datapump and contains the
+        carrier detector, but the native core does not yet execute that DSP
+        path far enough to publish its result. The bridge fallback observes
+        the recovered answer waveform centred near 1.875 kHz at the 9.6 kHz codec rate;
         accept that component (and the nominal 2.1 kHz ANSam component) only
         after a full 100 ms frame and only on an originating call.
         """
@@ -855,12 +856,12 @@ class CourierDspBridge:
         self._call_resume_pending = False
 
     def _maybe_start_answer_engine(self) -> None:
-        """Let the ASIC start the native datapump for a qualified answer.
+        """Start the native datapump fallback for a qualified answer.
 
         main211's supervisor emits the originate register block itself, but
-        its incoming-ring consumer is in the missing ASIC/customer-ROM side
-        of this board. The physical result of that transition is the same
-        atomic call-register publication used by originate: the resident
+        the recovered DSP answer path that initiates this transition is not
+        yet executed end to end by the native core. The resulting transition is
+        the same atomic call-register publication used by originate: the resident
         overlay is entered on the next frame boundary. This deliberately
         does not report a result code or carrier; those remain firmware-owned.
         """

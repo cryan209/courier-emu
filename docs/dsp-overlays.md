@@ -187,7 +187,7 @@ chain from the request to `out 0x1e, 4`.
 This does not yet claim a completed call. It claims that the datapump image
 now reaches the C52, which no run before it did.
 
-### Remaining transport limit
+### Transport wake signal
 
 The recovered mask ROM now installs the resident and the running resident
 installs flash overlays; neither path directly publishes program memory. The
@@ -195,10 +195,10 @@ ASIC acknowledges the first half-block when it has latched it, then withholds
 the second-half ready bit until the C51 has consumed the complete block and
 written `0300`.
 
-The remaining electrical uncertainty is which physical ASIC signal wakes the
-C51 service path. The model uses the status latch observed by the firmware;
-its data and acknowledgement behavior is independently visible from both
-processors.
+The C51 service path is woken through the board's reset net: 80C186EB `P1.1`
+(CPU pin 58) drives C51 `RS` (pin 127). Reset release enters the mask-ROM path;
+the model then uses the status latch observed by the firmware. Its data and
+acknowledgement behavior is independently visible from both processors.
 
 One defect this also caught: the first version of the publish set
 `_call_overlay_active`, which belongs to main211's in-resident call overlay -

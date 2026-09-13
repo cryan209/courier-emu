@@ -3409,9 +3409,10 @@ advances the active handler to `0xc61c` while retaining pattern `0x0303` in the
 state block. Reinvoking the dispatcher without the mask-ROM frame service only
 toggles state word `[0x03ca]` between zero and one and leaves `0xc61c` active.
 The slot interpretation is therefore no longer the ambiguous part: the missing
-step is the ROM/ASIC scheduler that drives the `0x81cc` control interrupt,
-publishes bit 8 in `[0x039f]`, and resumes the V.8 callback once per audio slot.
-It is not another table selector.
+emulator step is in the DSP control path that drives the `0x81cc` control
+interrupt, publishes bit 8 in `[0x039f]`, and resumes the V.8 callback once per
+audio slot. It is not another table selector or evidence that the initiating
+behavior belongs to the ASIC.
 
 ## C52 call-overlay publication and recovered service slot
 
