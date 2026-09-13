@@ -117,12 +117,52 @@ and the CPU crystal is twice that, **51.6096 MHz**. The alternative is that the
 crystal is a round 50 MHz, `CLKOUT` is 25.000 MHz, and the tick is 5.161 ms -
 which no one would choose on purpose when the compare value is theirs to pick.
 `ATI7` reporting "25 Mhz" is consistent with either; it is a rounded figure.
+**The baud registers settle it independently, below.**
 
-**Read the marking on the 2806's CPU crystal.** It decides between an exact
-5 ms tick and a rounded clock, and the harness's timing constants follow from
-it. This is a much narrower question than the one asked here before the two
-domains were separated - it touches the CPU's timers and nothing in the audio
-path.
+### The marking does not say, but the baud divisors do
+
+The 2806's CPU crystal is marked **`R0936391`**. That is a house part number,
+not a frequency - a custom-ordered part, which is itself consistent with an
+unusual value - so the marking does not settle it.
+
+**The images do.** `0xff60` is Serial 0's baud register and `0xff70` is Serial
+1's. Both captures write both, at the same two offsets, and the values differ:
+
+| register | offset | 20.16 MHz `403` | 25 MHz `2806` | divisor (low 15 bits) |
+|---|---|---|---|---|
+| Serial 0 baud | `0x34a` | `8082` | `80a7` | 130 -> **167** |
+| Serial 1 baud | `0x33a` | `8102` | `814f` | 258 -> **335** |
+
+The 186EB's generator gives `baud = CLKOUT / (8 x (N + 1))`. Put the two
+candidate clocks through the 25 MHz build's divisors:
+
+| `CLKOUT` | Serial 0 (N=167) | Serial 1 (N=335) |
+|---|---|---|
+| **25.8048 MHz** | **19200.0** | **9600.0** |
+| 25.000 MHz | 18601 (-3.1%) | 9301 (-3.1%) |
+
+**25.8048 MHz gives two standard rates exactly.** A round 25 MHz misses both by
+3.1%, which is outside what an 8N1 UART tolerates over ten bit times - nobody
+ships that. So the clock is 25.8048 MHz and the crystal is twice it,
+**51.6096 MHz**, which agrees with the timer constant's 1.28 ratio from an
+entirely separate register.
+
+And the crystal turns out to be chosen for exactly this:
+
+```
+51,609,600 / 19,200 = 2688 exactly
+```
+
+Which also explains something about the older board. At 20.16 MHz the same
+formula gives its divisors **19236.6** and **9729.7** - 0.19% and 1.35% off
+19200 and 9600, usable but not exact. The 25 MHz design picks a clock where the
+UART divides perfectly, and takes an odd-looking crystal frequency to get it.
+The two serial channels are exactly an octave apart, 168 and 336, which is the
+same choice showing twice.
+
+So the CPU domain is settled from the firmware alone: **`CLKOUT` = 25.8048 MHz,
+crystal 51.6096 MHz, tick 5.000 ms** - the timer and the two baud generators all
+agreeing, and no scope needed.
 
 ## Why this is worth doing
 
