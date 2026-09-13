@@ -62,7 +62,7 @@ The original outbound scenario is unchanged: supplying `--bri-sip-target` (or
 letting the modem's dialled digits populate it) still makes `BearerSipLine`
 call `SipSession.start_call()` and use the existing authenticated INVITE flow.
 
-During a live SIP B channel, the C52 digital-PCM peripheral is paced from
+During a live SIP B channel, the C50/LC50 digital-PCM peripheral is paced from
 monotonic wall time at its recovered 20.16 MHz clock. This is deliberately
 scoped to the live bearer: offline instruction-budget runs and their firmware
 timers keep their deterministic instruction coupling. A focused regression

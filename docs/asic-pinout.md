@@ -1634,6 +1634,56 @@ derives that rate from the oscillator on the assumption that the divide is
 fixed - the same assumption the DSP clock finding already put in question, now
 in a second place.
 
+### The speaker: probably not an opto, and probably not a port bit either
+
+The speaker's gate is an open question in two other places -
+[board-verified-403.md](board-verified-403.md) records "**the speaker is not
+identified**" after the port `0x00` bit `0x40` reading was retracted, and
+`courier_emu/panel.py` carries the retraction with the observation that "the
+speaker is not on whenever the line is, so something gates it and that gate is
+unfound". The optocouplers found on this package make it worth asking whether
+the gate is one of them.
+
+**The two optos on the board are not it.** `U14` and `U16` are `H11B2`s, a
+photodarlington part, and the ASIC is on their **transistor** side - it
+receives through them. A darlington opto is slow and non-linear; it is the
+right part for ring detect and loop-current sense and the wrong part for
+anything carrying audio, in either direction.
+
+**A third opto is unlikely on principle.** An opto crosses an isolation
+barrier, and monitor audio does not need to cross one on this board. The codec
+sits on the modem side and already has the received signal *digitally* - it is
+the part the DSP demodulates from. There is nothing to isolate: the audio the
+speaker wants is already on the logic side of the barrier.
+
+**The likelier arrangement is the codec's own analog output.** The AC0x has a
+differential analog out, and a small amplifier between that and the speaker is
+the ordinary design. If that is the path, then the gate is most naturally
+either the codec's output mute/gain registers - which the **DSP** writes over
+the serial port this file has just traced as direct - or the DSP simply not
+producing the samples.
+
+**And there is negative evidence pointing the same way.** If a CPU port bit
+gated the speaker, the port sweep that named the lamps should have found it.
+Instead, the two candidate bits were driven deliberately, slowly enough to hear
+individual clicks, on hook and off, and **produced no sound**. That is a
+reasonable argument that the supervisor does not hold the gate at all - which
+fits the `M` setting reaching the audio path the long way round, through the
+mailbox to the DSP.
+
+**The cheapest probe needs no hardware.** `ATM0` and `ATM2` differ in exactly
+one thing, and if the difference is a mailbox message then a dial under each
+setting with the mailbox tap running - the fixture in
+`artifacts/mailbox-tap-atdt-01/` - shows it as a diff. If nothing in the
+mailbox changes, the supervisor is gating it locally after all and the port
+sweep missed the bit.
+
+**The physical check is the speaker's own two wires**, traced back to whatever
+drives them. If they arrive at a small amplifier, its enable pin names the
+gate; if they arrive from the codec's output pins through a transistor, the
+transistor's base does. Either answers it in one probe, and neither requires
+guessing which port bit to drive.
+
 ### The DSP and the codec share one reset net
 
 DSP `RS` (pin 127) does not come from the ASIC. It goes to the codec's pin 8,
@@ -2150,7 +2200,13 @@ The ones worth finding next, in the order they would pay:
 25. **The `SD` group, now retired rather than retaken.** Two of its three pins
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
-26. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
+26. **What gates the speaker.** Not an optocoupler, on the argument in
+   [the speaker](#the-speaker-probably-not-an-opto-and-probably-not-a-port-bit-either);
+   most likely the codec's analog output, gated by the DSP or by the codec's
+   own registers. Two probes, one of them needing no hardware: diff the mailbox
+   traffic across `ATM0`/`ATM2`, and trace the speaker's wires back to whatever
+   drives them.
+27. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
    is unconnected and the CPU's channel 1 is unused. Probe its pads against the
    three unread bottom-edge pins. See
    [the footprint](#an-unpopulated-four-switch-footprint-and-a-hypothesis-that-died-well).
