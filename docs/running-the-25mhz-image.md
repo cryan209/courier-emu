@@ -1,14 +1,61 @@
 # The board we have mapped is not the board the emulator runs
 
 Every pin reading in [asic-pinout.md](asic-pinout.md) is from the **25 MHz
-Courier 2806**, the AC03 board. Every behavioural target in this repository is a
-**20.16 MHz** image - `IDSDL302.ROM`, the 4.03d capture, the XMFs the harness
-loads. The hardware model and the firmware target have drifted apart, and the
-consequence is that the pinout work cannot currently be checked against a
-running machine: it describes a board the emulator does not execute.
+Courier 2806**, the AC03 board. This note began by asserting that every
+behavioural target here is a 20.16 MHz image, and **that was wrong** - checking
+the timer constant in each one says the opposite:
 
-This note records what that would take, because the answer appears to be *not
-much*.
+| image | `T0CMPA` | clock | runs? |
+|---|---|---|---|
+| `IDSDL302.ROM` | `6270` | 20.16 MHz | ROM-build path |
+| 4.03d flash capture | `6270` | 20.16 MHz | ROM-build path |
+| `main211.xmf` | `7e00` | **25.8048 MHz** | **boots**; `ATI7` says `25 Mhz` |
+| `3453Bv2.1.1.xmf` | `7e00` | **25.8048 MHz** | **boots**; `ATI7` says `25 Mhz` |
+| `main2205.XMF` | `7e00` | 25.8048 MHz | reaches the main loop, no output |
+| `2_3_33.XMF` | `7e00` | 25.8048 MHz | no output |
+| `MAIN_2.3.31.XMF` | `7e00` | 25.8048 MHz | faults (`software-interrupt`) |
+| `SV25.XMD` | `7e00` | 25.8048 MHz | **not executable** - see below |
+| 2806 flash capture | `7e00` | 25.8048 MHz | loads as a ROM build, faults |
+
+**The ROM builds are the 20.16 MHz ones; every XMF supervisor is a 25 MHz
+build.** Two of them boot to a prompt and report `Clock Freq 25 Mhz` from the
+firmware's own `ATI7`. `courier_emu/daa.py` already says as much in a comment -
+"main211 is the 25.8048 MHz build (its Timer 0 max count is `0x7e00`, which only
+lands on 5 ms at that clock)" - so the repository knew, in one place, and the
+rest of it did not.
+
+So the gap is not the clock and not a mode. **It is that the 2806's *own*
+firmware is the one image that cannot be executed**, while four of its siblings
+can.
+
+## The 2806's own image exists here twice, and neither copy runs
+
+`SV25.XMD` **is** the 2806's firmware. Stripping its 128-byte header and running
+`recovery.decode_payload` over the body reproduces the board's flash capture
+byte for byte except at `0x77ffc..0x77fff` - the four checksum bytes, exactly as
+[sv25-recovery.md](sv25-recovery.md) documents. Verified here, not taken on
+trust.
+
+Neither form will run:
+
+* **`SV25.XMD`** loads as an `XmdImage`, and `machine.run` then fails with
+  `UC_ERR_WRITE_UNMAPPED` writing `image.data` at `image.load_base`. The XMD
+  path is a decoder, not an execution target - nothing maps it.
+* **The raw capture** is 512 KiB ending in the 80186 reset vector, so
+  `load_image` identifies it as a `CourierRom` - the `IDSDL302` shape. But it is
+  not a ROM build; it is a **supervisor flash image**, the same generation as
+  the XMFs. Running it through the ROM model is what the fault below looks like.
+
+That is the whole of it. The two 20.16 MHz captures *are* ROM builds, so the
+same `CourierRom` path is right for them and wrong here, and the file-shape
+sniffing cannot tell the difference because both are 512 KiB images ending in a
+reset vector.
+
+**The work is to give the 25 MHz supervisor an execution path** - either by
+mapping the decoded XMD the way an XMF is mapped, or by distinguishing a
+supervisor flash capture from a ROM build. `main211.xmf` and
+`3453Bv2.1.1.xmf` already prove the supervisor model runs 25 MHz code; they are
+simply not this board's code.
 
 ## It is not a different firmware family
 
@@ -54,10 +101,10 @@ The raw `.rom` loads and executes; the container is not the obstacle.
 
 **It dies in RAM, not in flash.** Linear `0xff42` is inside the first 64 KiB,
 which `LCS` selects as SRAM. So the supervisor has copied code down and jumped
-to it, and the emulator has hit something it will not decode there. That is
-consistent with either an 80186 instruction the harness's Unicorn setup does not
-implement, or - more likely - a RAM image that is not what the firmware thinks
-it wrote, so the CPU is running over data.
+to it, and the emulator has hit something it will not decode there - the CPU
+running over data rather than over code. Which is what running a supervisor
+image through the ROM model would produce, and is the first thing to rule out
+before blaming the instruction decoder.
 
 **It never reaches the DTE.** No serial text and the input untouched, so
 nothing about the `AT` layer has been exercised yet.
@@ -173,5 +220,13 @@ bit carries the speaker setting to the DSP, whether `&T1` reaches the codec.
 Every one of those is a question about the 25 MHz board, and every one of them
 is currently being asked of a 20.16 MHz firmware.
 
-The first step is not a port. It is to find out why the CPU is executing
-something it should not at linear `0xff42`.
+The first step is not a port and not a clock mode. It is to load this board's
+supervisor through the supervisor model instead of the ROM model.
+
+**One caveat on target choice.** The two images that boot are `main211.xmf` and
+`3453Bv2.1.1.xmf`, and `main211` is the one this project has been told not to
+use as a behavioural reference because it is not fully modelled. That advice and
+this note pull in opposite directions - the well-modelled builds are 20.16 MHz
+ROMs and the board is 25 MHz - and that tension **is** the drift this file is
+about. It is not resolved by picking a side; it is resolved by getting the
+2806's own supervisor running.
