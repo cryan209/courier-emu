@@ -13,13 +13,45 @@ and one of them was being modelled wrong.
 | Intel **TE28F400** and AMD **AM29F400AT** | *two* 4 Mbit flash parts, side by side |
 | LGS **GM76C8128ALLFW70** x2 | 128K x 8 SRAM each - 256 KiB paired |
 | ISSI **IS61C256AH-12** x2 | 32K x 8 SRAM - the DSP's |
-| USR **DSP EBS-64A56DW** | the DSP, custom-marked |
-| Altera **EPM7032LC44** (`USR 19457`) | the glue - the board latches the firmware reaches at ports `0x10`-`0x1e` and `0x100` |
+| USR **DSP EBS-64A56DW** (`D17140PQ`, `16-912`) | the DSP, custom-marked |
+| NEC **USA 1-016-905** (`9612KVA09`), U15 | **the ASIC** - the same USR part number as the analogue Courier's `1-016-905 9948LV001`, a different lot and date code (week 12 1996 against week 48 1999). Pinned out from the analogue board in [asic-pinout.md](asic-pinout.md) |
+| Altera **EPM7032LC44-15T** (`USR 19457`, `D9546`) | a 44-pin CPLD, fitted **alongside** the ASIC - see below |
+| ECLIPTEK **40.320M** | the ASIC's oscillator, the same part and frequency as both analogue boards carry ([board-parts.md](board-parts.md)) |
+| ECLIPTEK **50.000M** | the 386EX's own oscillator, halved to the `KU80386EX25`'s 25 MHz |
+| **74VHC573**, **74VHC245**, **ACT16245** | address latch and bus buffers |
 | Sipex **SP503CP** | the DTE transceiver |
 
 plus an **AT&T** part marked `T 7256 ML2` (date code `9613S`), and the line
 section: a Valor **ST15069** transformer module, a Takamisawa **RY5W-K**
 relay, a CP Clare **LH1502** solid-state relay and an **XCA111E** optocoupler.
+
+## The ASIC and the CPLD are both fitted, and which does what is open
+
+This file previously listed the Altera alone and attributed the board latches
+to it.  The photograph the table is read from did not cover U15, and the NEC
+ASIC is there.  So the latch bank at ports `0x10`-`0x1e` is **not** established
+as the CPLD's, and the reading that the I-modem is an ASIC-less design was an
+artefact of a partial photo.
+
+Two firmware details now read differently.  The board-init sweep at `40509`
+writes `0x0c` = `0x60` and `0x14` = `0xf5`, and both are the analogue board's
+own values for those latches - `asic_ports.IDLE` for `0x0c`, and the restore
+shadow in [board.md](board.md)'s port `0x14` bit 2 probe for the other.  Two
+latches agreeing across two product lines is what shared silicon looks like,
+and it is more than the shared signal-id convention
+[imodem-d-channel.md](imodem-d-channel.md) already records.
+
+What does **not** fit the ASIC is that the same sweep writes ports `0x03` and
+`0x07`.  On the analogue board every odd port in `0x00`-`0x7f` reads `0x00`,
+all 64 of them ([asic-port-map.md](asic-port-map.md)).  A split - the ASIC on
+the even latches, the CPLD decoding the odd ports and `0x100` - would explain
+both that and the board-revision flag at `[c8f1]` bit 2 switching the lamps
+between `0x100` and the older latches.  That is an inference and nothing in
+the image states it.  Tracing which device drives `0x100` settles it.
+
+The ASIC is **not** the memory controller here, whatever else it does: the
+flash sits on the 386EX's own `CS4` and `UCS` (below), where on the analogue
+board the ASIC holds flash `CE#` and folds `A17`-`A19`.
 
 ## The AT&T part is the NT, and the board is the integrated-NT variant
 
