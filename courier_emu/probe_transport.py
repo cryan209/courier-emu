@@ -35,7 +35,7 @@ KERNEL = 0x3000
 RESULT = 0x4000
 SUM = RESULT + 112
 STATUS = SUM + 2
-# The ROM dump needs 4096 bytes rather than 112, so it is put well clear of the
+# The C51 ROM dump needs 16384 bytes rather than 112, so it is put well clear of the
 # monitor, the relocated routines and the kernel, and below the stack the
 # monitor sets at 0xeff0.
 ROM_DUMP_RESULT = 0x8000
@@ -145,8 +145,8 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
                      ndx: bool = False) -> Diagnostic:
     """Build the RAM monitor and the DSP kernel it delivers.
 
-    With `rom_dump` the DSP kernel is the full on-chip ROM reader rather than
-    the 56-word sample probe: 2048 words instead of 56, which moves the result
+    With `rom_dump` the DSP kernel is the full C51 on-chip ROM reader rather than
+    the 56-word sample probe: 8192 words instead of 56, which moves the result
     buffer and every count baked into the monitor. Everything else - the
     relocated launch and download routines, the mailbox collection, the
     serial frame - is the same path.
@@ -155,7 +155,7 @@ def build_diagnostic(reference_path: str | Path, *, rom_dump: bool = False,
     if reference.digest != REFERENCE_DIGEST:
         raise ValueError("unsupported reference ROM: exact IDSDL302 profile required")
     # The board's watchdog resets a halted monitor after about a second and a
-    # half, and printing the whole 2048 words does not fit inside that: the run
+    # half, and printing the whole 8192 words does not fit inside that: the run
     # that found this got 491 words out and was cut off mid-line. A window lets
     # the dump be taken in pieces that do fit.
     chosen = [name for name, on in (("--rom-dump", rom_dump),
@@ -344,7 +344,7 @@ def parse_capture(data: bytes) -> dict:
         raise ValueError("capture is not ASCII") from exc
     lines = text.splitlines()
     # The frame declares its own length, so one parser serves the 56-word
-    # sample probe and the 2048-word ROM dump.
+    # sample probe and the 8192-word C51 ROM dump.
     if len(lines) < 4 or lines[0] != "CDRP1 START" or lines[-1] != "CDRP1 DONE":
         raise ValueError("incomplete, repeated or failed diagnostic frame")
     header = re.fullmatch(r"CDRP1 DATA ([0-9A-F]{4})", lines[1])
@@ -408,13 +408,20 @@ class TransportMachine:
     -> CPU UART store. No emulator data-buffer reads feed the serial output.
 
     `rom_image` replaces the synthetic on-chip ROM with a supplied one, padded
-    with zeros to the 4096 words the core maps; `rom_matches_fixture` then
+    with zeros to the 8192 words the C51 maps; `rom_matches_fixture` then
     checks the dump against that image.
     """
     def __init__(self, diagnostic: Diagnostic, *, rom_mapped: bool = True,
-                 fault: str | None = None, rom_image: bytes | None = None):
-        import unicorn as uc
-        from unicorn import x86_const as r
+                 fault: str | None = None, rom_image: bytes | None = None,
+                 cpu_engine: str = "unicorn"):
+        if cpu_engine == "unicorn":
+            import unicorn as uc
+            from unicorn import x86_const as r
+        elif cpu_engine == "interpreter":
+            from . import x86_interpreter as uc
+            r = uc
+        else:
+            raise ValueError(f"unknown CPU engine {cpu_engine!r}")
         from .dsp import NativeC5x
         from .timers import TimerBlock
         if fault not in (None, "reset", "checksum", "no-dsp", "tag", "uart", "stale"):
@@ -422,17 +429,24 @@ class TransportMachine:
         self.diagnostic, self.fault, self.uc, self.r = diagnostic, fault, uc, r
         # The DSP's budget has to cover its send loop, which is per word, plus
         # the ROM dump's own `rpt`-driven block read. 10000 was sized for the
-        # 56-word probe and is not enough for 2048.
+        # 56-word probe and is not enough for 8192.
         self.dsp_step_limit = 10_000 + 40 * diagnostic.count
         self.cpu = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_16)
         self.cpu.mem_map(0, 0x10000)
-        self.cpu.mem_map(0x80000, 0x80000, uc.UC_PROT_READ | uc.UC_PROT_EXEC)
+        flash_permissions = uc.UC_PROT_READ | uc.UC_PROT_EXEC
+        if cpu_engine == "interpreter":
+            # Unicorn permits host initialization writes through a read-only
+            # mapping. The small interpreter applies mapping permissions to
+            # its public mem_write API, so keep this harness's flash writable.
+            flash_permissions |= uc.UC_PROT_WRITE
+        self.cpu.mem_map(0x80000, 0x80000, flash_permissions)
         self.cpu.mem_write(0x80000, diagnostic.reference.data)
         self.cpu.mem_write(diagnostic.entry, diagnostic.ram)
         self.cpu.mem_write(0xFF56, b"\xdb\0")
         self.cpu.reg_write(r.UC_X86_REG_CS, 0)
         self.cpu.reg_write(r.UC_X86_REG_IP, diagnostic.entry)
-        self.cpu.reg_write(r.UC_X86_REG_EFLAGS, 2)
+        flags_register = getattr(r, "UC_X86_REG_EFLAGS", r.UC_X86_REG_FLAGS)
+        self.cpu.reg_write(flags_register, 2)
         self.core = NativeC5x(_EmptyDSP())
         if rom_image is None:
             self.fixture = tuple((0x1234 + i * 0x193) & 0xFFFF
@@ -440,14 +454,17 @@ class TransportMachine:
             self.rom_image_sha256 = None
         else:
             if not rom_image or len(rom_image) % 2 or len(rom_image) > 2 * ROM_CAPACITY:
-                raise ValueError("ROM image must be 1 to 4096 little-endian words")
+                raise ValueError("ROM image must be 1 to 8192 little-endian words")
             words = struct.unpack(f"<{len(rom_image) // 2}H", rom_image)
             self.fixture = words + (0,) * (ROM_CAPACITY - len(words))
             self.rom_image_sha256 = sha256(rom_image).hexdigest()
         self.external_fixture = tuple((0xA55A ^ i * 0x101) & 0xFFFF for i in range(32))
         self.core.load_rom(struct.pack(f"<{ROM_CAPACITY}H", *self.fixture))
-        self.core.load_program(struct.pack("<32H", *self.external_fixture), 0)
         self.core.set_mpmc_pin(0 if rom_mapped else 1)
+        if not rom_mapped:
+            # Negative control: MP/MC high maps external program memory at 0.
+            self.core.load_program(struct.pack("<32H", *self.external_fixture), 0)
+        self.core.reset()
         self.core.set_io(0x57, 2)
         self.rom_mapped = rom_mapped
         # These polls test for failure, not a requested delay. Fast mode would
@@ -463,6 +480,7 @@ class TransportMachine:
         self.checksum_ok = False
         self.launched = False
         self.active = False
+        self.loader_started = False
         self.pending: tuple[int, int] | None = None
         self.tag_latch = self.data_latch = 0
         self.dsp_cursor = 0
@@ -520,8 +538,72 @@ class TransportMachine:
                 self.pending = None
                 self.captured.clear()
                 self.boot_status = 3
+                self.loader_started = False
+                self.core.reset()
                 self._event("dsp-reset", requested_origin=self.origin)
             self.gpio = value
+
+    def _begin_boot(self) -> None:
+        """Let the C51 ROM take reset and NMI into its resident loader."""
+        if self.fault == "no-dsp":
+            return
+        self.core.set_mpmc_pin(0 if self.rom_mapped else 1)
+        self.core.reset()
+        for _ in range(64):
+            self.core.step(1)
+            self.dsp_steps += 1
+        self.core.set_io(0x58, self.origin or 0)
+        self.core.nmi()
+        for _ in range(4096):
+            self.core.step(1)
+            self.dsp_steps += 1
+            pc = self.core.state()["pc"]
+            if pc in (0x0638, 0x0639, 0x063B):
+                self.loader_started = True
+                self._event("c51-loader-ready", dsp_pc=pc)
+                return
+        raise RuntimeError("C51 ROM loader did not reach its ASIC poll")
+
+    def _commit_boot_group(self, strobe: int) -> None:
+        """Present an ASIC window and wait for the ROM's acknowledgement."""
+        if not self.loader_started:
+            raise RuntimeError("DSP download strobe without running C51 ROM loader")
+        before = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+        if strobe in (1, 2):
+            dsp_base = 0x58 + 4 * (strobe - 1)
+            start = 0 if strobe == 1 else 8
+            for index in range(4):
+                offset = start + 2 * index
+                word = self.window[offset] | (self.window[offset + 1] << 8)
+                self.core.set_io(dsp_base + index, word)
+        elif strobe == 4:
+            # The checksum replaces the first CPU-side window word before the
+            # final strobe. Publish that lane too; the ROM reads and decides.
+            checksum = self.window[0] | (self.window[1] << 8)
+            if self.fault == "checksum":
+                checksum ^= 1
+            self.core.set_io(0x58, checksum)
+        self.core.set_io(0x56, strobe)
+        for _ in range(4096):
+            self.core.step(1)
+            self.dsp_steps += 1
+            writes = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+            if writes > before:
+                return
+        raise RuntimeError(f"C51 ROM loader did not acknowledge strobe {strobe}")
+
+    def _observe_launch(self) -> bool:
+        """Wait for the ROM to branch to the downloaded entry without forcing it."""
+        origin = self.origin or ORIGIN
+        for _ in range(4096):
+            if self.core.state()["pc"] == origin:
+                self.core.configure_host_mailbox()
+                self.active = self.launched = True
+                self._event("c51-rom-launch", origin=origin)
+                return True
+            self.core.step(1)
+            self.dsp_steps += 1
+        return False
 
     def _pump(self):
         if not self.active or self.pending is not None:
@@ -592,37 +674,51 @@ class TransportMachine:
         self._event("io-write", port=port, size=size, value=value)
         if 0x40 <= port <= 0x5E and port % 2 == 0:
             self.window[(port - 0x40) // 2] = value & 0xFF
+        if port == 0x18 and value == 0xFF and self.origin == 0x8000:
+            # The reset routine issues the boot request while the completion
+            # bus is still floating. It must reach the C51 before the later
+            # 0x1c acknowledgement releases the CPU-side reset handshake.
+            self._begin_boot()
+            self.boot_status = 0xFF
+            self.resetting = True
+            self._event("c51-boot-request", requested_origin=self.origin)
+            return
         if self.resetting:
             if port == 0x1C and value == 2:
                 self.resetting = False
+                if self.launched:
+                    self.core.set_io(0x57, self.core.io(0x57) | 2)
                 self._event("bootstrap-ready", requested_origin=self.origin)
             return
         if port == 0x18 and self.origin == 0x8000:
             if value in (1, 2):
                 start = 0 if value == 1 else 8
                 self.captured.extend(self.window[start:start + 8])
+                self._commit_boot_group(value)
+                self.boot_status = 3
             elif value == 4:
                 supplied = int.from_bytes(self.window[:2], "little")
                 actual = sum(struct.unpack(f"<{len(self.captured) // 2}H", self.captured)) & 0xFFFF
-                self.checksum_ok = supplied == actual and self.fault != "checksum"
+                self.checksum_ok = supplied == actual
                 self._event("download-checksum", supplied=supplied, computed=actual,
-                            accepted=self.checksum_ok, bytes=len(self.captured))
-                self.boot_status = 4 if self.checksum_ok else 0
-                if self.checksum_ok and self.fault != "no-dsp":
-                    if bytes(self.captured) != self.diagnostic.probe.payload:
-                        raise RuntimeError("downloaded bytes do not match the probe")
-                    self.core.load_program(bytes(self.captured), self.origin)
-                    self.core.set_pc(self.origin)
-                    self.active = self.launched = True
-                    self._event("modeled-dsp-launch", origin=self.origin,
-                                assumption="boot ROM accepts checksum/end strobe and starts requested origin")
+                            accepted_by_host_check=self.checksum_ok,
+                            bytes=len(self.captured))
+                self._commit_boot_group(value)
+                launched = self._observe_launch()
+                if not launched and self.fault != "checksum":
+                    raise RuntimeError("C51 ROM did not launch the downloaded DSP kernel")
+                self.boot_status = 7 if launched else 0
+                # This diagnostic's copied downloader returns directly to its
+                # mailbox loop; unlike the I-Modem chassis protocol it has no
+                # separate completion-bus acknowledgement after strobe 4.
+                self.core.set_io(0x57, self.core.io(0x57) | 2)
         if port == 0x1C and value == 2 and self.pending is not None:
             self._event("mailbox-ack", tag=self.pending[0])
             self.pending = None
             self.acks += 1
             self.core.set_io(0x57, 2)
 
-    def run(self, instructions: int = 1_000_000) -> dict:
+    def run(self, instructions: int = 2_000_000) -> dict:
         if instructions <= 0 or self.started:
             raise ValueError("use a fresh machine with a positive instruction budget")
         self.started = True
@@ -644,6 +740,14 @@ class TransportMachine:
                     capture_error = str(exc)
                     status = "invalid-capture"
             expected = list(self.fixture[:32] if self.rom_mapped else self.external_fixture)
+            downloaded_words = struct.unpack(
+                f"<{len(self.diagnostic.probe.payload) // 2}H",
+                self.diagnostic.probe.payload,
+            )
+            resident_matches = self.launched and all(
+                self.core.program((self.origin or ORIGIN) + index) == word
+                for index, word in enumerate(downloaded_words)
+            )
             return {"status": status, "error": self.error, "capture_error": capture_error,
                     "instructions": self.instructions, "dsp_steps": self.dsp_steps,
                     "hardware_tested": False, "uploadable_sdl_image": False,
@@ -662,7 +766,9 @@ class TransportMachine:
                             self.diagnostic.rom_origin:
                             self.diagnostic.rom_origin + decoded["word_count"]]),
                     "download_matches_kernel": bytes(self.captured) == self.diagnostic.probe.payload,
+                    "dsp_program_matches_kernel": resident_matches,
                     "download_checksum_matches": self.checksum_ok, "dsp_launched": self.launched,
+                    "dsp_memory_map": self.core.memory_map(),
                     "packets": self.packets, "acks": self.acks, "events": self.events,
                     "io_read_counts": {hex(p): n for p, n in sorted(self.read_counts.items())},
                     "source_file_unchanged": self.diagnostic.reference.path.read_bytes() == self.diagnostic.reference.data,
@@ -671,11 +777,11 @@ class TransportMachine:
                         "Entry is 0000:2000 with PCB already at ff00, initialized DTE UART, RAM and chip selects.",
                         "All result words travel through actual DSP mailbox instructions and actual supervisor IN/UART stores.",
                         "ASIC latch/status cross-wiring is inferred from paired firmware routines, not measured on hardware.",
-                        "Boot-ROM reset acknowledgements, checksum acceptance and jump to the requested 8000 are modeled.",
+                        "The C51 executes the captured reset/NMI loader, acknowledges each transfer strobe, and branches to 8000 itself.",
                         "DSP scheduling is driven by supervisor polling; not cycle accurate. UART is immediately ready.",
-                        ("ROM contents are the supplied image; optional C5x ROM protection is not modeled."
+                        ("ROM contents are the supplied image; optional C51 ROM protection is not modeled."
                          if self.rom_image_sha256 else
-                         "ROM contents are synthetic; optional C5x ROM protection is not modeled."),
+                         "ROM contents are synthetic; optional C51 ROM protection is not modeled."),
                         "RAM loading mechanism and a compatible flashable SDL container are not implemented."]}
         finally:
             self.core.close()
@@ -685,6 +791,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--cpu-engine", choices=("unicorn", "interpreter"),
+                        default="unicorn",
+                        help="80188 execution backend (default: unicorn)")
+    parser.add_argument("--instructions", type=lambda v: int(v, 0), default=2_000_000,
+                        help="maximum CPU instructions (default: 2000000)")
     parser.add_argument("--capture", type=Path, help="validate a saved CDRP1 serial frame")
     parser.add_argument("--external-fixture", action="store_true")
     parser.add_argument("--rom-image", type=Path, nargs="?", const=CAPTURED_ROM,
@@ -752,7 +863,7 @@ def main() -> int:
                              "itself on which polarity carries the 'C2x side "
                              "effect (docs/what-runs-and-what-blocks.md)")
     parser.add_argument("--rom-dump", action="store_true",
-                        help="carry the full 2048-word on-chip ROM reader instead of "
+                        help="carry the full 8192-word C51 on-chip ROM reader instead of "
                              "the 56-word sample probe")
     args = parser.parse_args()
     try:
@@ -795,7 +906,8 @@ def main() -> int:
                                      rom_words=args.rom_words,
                                      rom_origin=args.rom_origin)
         result = TransportMachine(diagnostic, rom_mapped=not args.external_fixture,
-                                  fault=args.fault, rom_image=rom_image).run()
+                                  fault=args.fault, rom_image=rom_image,
+                                  cpu_engine=args.cpu_engine).run(args.instructions)
         args.output.mkdir(parents=True)
         (args.output / "diagnostic-ram.bin").write_bytes(diagnostic.ram)
         (args.output / "probe-c5x.bin").write_bytes(diagnostic.probe.payload)

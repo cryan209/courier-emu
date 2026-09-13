@@ -23,10 +23,10 @@ MAPPING_HEADER = (0xC052, 2, 0, MAPPING_SAMPLE_WORDS, 0, 8,
                   MAPPING_SAMPLE_WORDS, 0)
 COMPLETE = 0xD00E
 
-# The full on-chip ROM dump. A 'C50 carries 2K words at program 0000..07ff,
-# which microcomputer mode maps and which docs/dsp-map-302.md argues the part
-# is executing at reset.
-ROM_DUMP_WORDS = 0x0800
+# The full on-chip ROM dump. The measured part is a C51 with 8K words at
+# program 0000..1fff; microcomputer mode maps that ROM at reset. Earlier code
+# stopped at 0x07ff because the part had been misidentified as a C50.
+ROM_DUMP_WORDS = 0x2000
 # Program 0x2000-0x23ff is where the 'C51's 1K of SARAM appears - measured, by
 # writing data 0x0800 and seeing it come back from program 0x2000
 # (artifacts/dsp-memory-test-2806/sweep). This was 0x0900 while the part was

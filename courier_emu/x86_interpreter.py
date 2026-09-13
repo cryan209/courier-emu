@@ -547,6 +547,45 @@ class Uc:
             elif opcode == 0x99:
                 sign = self.regs[UC_X86_REG_AX] & (1 << (bits - 1))
                 self.reg_write(UC_X86_REG_DX, (1 << bits) - 1 if sign else 0)
+            elif opcode == 0x27:
+                # DAA adjusts the result of an earlier packed-BCD addition.
+                # Both correction decisions use the original AL/CF, while AF
+                # reflects the low-digit correction and SZP describe new AL.
+                old_al = self._reg8(0)
+                old_cf = bool(self.regs[UC_X86_REG_FLAGS] & CF)
+                al = old_al
+                adjust_low = (al & 0x0F) > 9 or bool(self.regs[UC_X86_REG_FLAGS] & AF)
+                if adjust_low:
+                    al = (al + 0x06) & 0xFF
+                adjust_high = old_al > 0x99 or old_cf
+                if adjust_high:
+                    al = (al + 0x60) & 0xFF
+                self._set_reg8(0, al)
+                flags = self.regs[UC_X86_REG_FLAGS] & ~(CF | PF | AF | ZF | SF)
+                if adjust_high: flags |= CF
+                if adjust_low: flags |= AF
+                if al == 0: flags |= ZF
+                if al & 0x80: flags |= SF
+                if self._parity(al): flags |= PF
+                self.regs[UC_X86_REG_FLAGS] = flags | 2
+            elif opcode in (0xD4, 0xD5):
+                # AAM/AAD carry an explicit radix byte (normally ten).  Their
+                # defined flags are SZP from the resulting AL; leave the
+                # architecturally undefined arithmetic flags untouched.
+                base = self._fetch8()
+                al, ah = self._reg8(0), self._reg8(4)
+                if opcode == 0xD4:
+                    if base == 0:
+                        raise UcError("AAM division by zero")
+                    self.reg_write(UC_X86_REG_AX, (al // base) << 8 | (al % base))
+                else:
+                    self.reg_write(UC_X86_REG_AX, (al + ah * base) & 0xFF)
+                al = self._reg8(0)
+                flags = self.regs[UC_X86_REG_FLAGS] & ~(PF | ZF | SF)
+                if al == 0: flags |= ZF
+                if al & 0x80: flags |= SF
+                if self._parity(al): flags |= PF
+                self.regs[UC_X86_REG_FLAGS] = flags | 2
             elif opcode == 0x9C: self._push(self.regs[UC_X86_REG_FLAGS])
             elif opcode == 0x9D: self.reg_write(UC_X86_REG_FLAGS, self._pop() | 2)
             elif opcode in (0xA8, 0xA9):
@@ -563,6 +602,13 @@ class Uc:
                 else:
                     value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
                     self.mem_write(address, value.to_bytes(size, "little"))
+            elif opcode == 0xD7:
+                # XLAT replaces AL with the byte at DS:[BX + unsigned AL].
+                # A segment override changes DS, while operand-size prefixes
+                # do not affect the byte lookup.
+                segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
+                address = self._physical(segment, self.regs[UC_X86_REG_BX] + self._reg8(0))
+                self._set_reg8(0, self.mem_read(address, 1)[0])
             elif opcode in (0xA4, 0xA5, 0xAC, 0xAD, 0xAA, 0xAB):
                 if not repeat or self.regs[UC_X86_REG_CX]:
                     size = 1 if opcode in (0xA4, 0xAC, 0xAA) else operand_size
