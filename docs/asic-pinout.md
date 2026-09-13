@@ -114,6 +114,15 @@ That picture is generated from `tools/draw_asic_pinout.py`, which holds the map
 as data. It is drawn rather than parsed from this file, so when a reading lands
 or is corrected, edit the table here **and** `PINS` there, then re-run the tool.
 
+**There is a second picture for the other question.** The pin tables answer
+"what is on ASIC pin N"; they cannot answer "what talks to what", because each
+of them only sees one package. [board-map.svg](board-map.svg) draws the parts
+and the nets between them, from `tools/draw_board_map.py` and on the same terms
+- the map is data in the tool, every net on it is a continuity reading, and it
+is kept current the same way.
+
+![The board's parts and the nets between them](board-map.svg)
+
 ## What is connected
 
 Measured pins are marked; the rest of a bus run is **inferred** from the
@@ -1864,7 +1873,7 @@ straps; switch 1 is a fifth, on the CPU; a Courier's DIP bank has ten
 positions. The bottom-edge reading supplies the missing eight directly, and the
 four straps go back to being what `panel.py` calls them.
 
-### An unpopulated four-switch footprint, and four spare parts of a serial port
+### An unpopulated four-switch footprint, and a hypothesis that died well
 
 The owner reports **room on the board for a second DIP bank of four**,
 unpopulated, near the serial connector - and suggests it might select between
@@ -1880,16 +1889,28 @@ is unused**:
 | a receiver channel | `U18`'s `3Y` (pin 8) - `1Y`, `2Y` and `4Y` are all placed |
 | a driver gate | `U22` gate 4 (`4A`/`4B`, pins 13/12) |
 | another driver gate | `U23` gate 4, likewise |
-| a whole UART | the CPU's **channel 1** - `P2.0/RXD1` (CPU 7) and `P2.1/TXD1` (CPU 8) |
+| a whole UART | the CPU's **channel 1** - `P2.0/RXD1` (CPU 7) and `P2.1/TXD1` (CPU 8) - **unused: `TXD1` is not connected** |
 
 A second serial port needs one driver and one receiver. There are two of the
 first and one of the second, on parts already fitted, with an unused UART behind
 them and an unpopulated switch footprint beside them.
 
-**`TXD1` is the single most informative probe.** CPU pin 8 is not recorded as
-going anywhere. If it reaches either 75188's gate 4, the alternate path is
-physically present and the only question left is what selects it. If it goes
-nowhere, channel 1 is dead on this board and the footprint is something else.
+**`TXD1` was the single most informative probe, and the answer is no.** CPU pin
+8 **is not connected**. A UART channel whose transmit pin goes nowhere is not a
+port, so **the CPU's serial channel 1 is unused on this board** and there is no
+second serial path for a switch to select between. The suggestion is dead, and
+it was worth killing this way round - one probe, against a specific prediction,
+rather than accumulating circumstantial spares.
+
+What that leaves is a coincidence rather than a mechanism: the spare receiver
+channel, the two spare driver gates and the unused UART are all real, and none
+of them are wired to each other. Spare gates on a quad part are ordinary; an
+unused on-chip UART is ordinary; the footprint is something else.
+
+**It also finishes the `SD` group.** That reading put a net on CPU pin 7,
+`P2.0/RXD1` - the receive half of the channel that has just been shown to have
+no transmit half. Whatever is or is not on pin 7, it is not a serial port, and
+the group's third pin has now failed with the other two.
 
 **The firmware side argues the same way, from absence.** `courier_emu/panel.py`
 names **eight** option switches the supervisor reads, and the board has **ten**
@@ -1908,17 +1929,10 @@ edge has three free pins, not four, and the neat fit is gone. The reading is
 still worth one probe, since `23`, `26` and `28` are free and on the right edge
 of the package for switches, but it no longer competes on elegance.
 
-**The probes, in order:**
-
-1. **The footprint's pads.** Against the four unread bottom-edge pins first;
-   against the `RXD0`/`RXD1` and driver-input nets second. One of those answers
-   it outright. Expect the bank's common to be grounded, as the populated one's
-   is.
-2. **CPU pin 8, `TXD1`**, as above.
-3. **CPU pin 7, `RXD1`.** The retired `SD` group put *something* on that pin.
-   That reading's channel conclusion was wrong, but a net touching pin 7 may
-   still be real - and the DTE's data reaching **both** receive pins is precisely
-   what a selectable arrangement looks like from the wrong end.
+**What is left to probe** is the footprint's own pads - against the three unread
+bottom-edge pins, which would make it more straps, and against ground, since the
+populated bank's common is grounded. The serial-selection reading no longer
+needs testing.
 
 **One caution about what "debug interface" would mean here.** This file already
 has a header that streams continuously and that nobody has characterised - `J7`,
@@ -2136,10 +2150,10 @@ The ones worth finding next, in the order they would pay:
 25. **The `SD` group, now retired rather than retaken.** Two of its three pins
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
-26. **The unpopulated four-switch footprint**, and whether the board carries a
-   second serial path. `TXD1` (CPU pin 8) is the decisive probe; the three
-   unread bottom-edge pins are the competing explanation. See
-   [the footprint](#an-unpopulated-four-switch-footprint-and-four-spare-parts-of-a-serial-port).
+26. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
+   is unconnected and the CPU's channel 1 is unused. Probe its pads against the
+   three unread bottom-edge pins. See
+   [the footprint](#an-unpopulated-four-switch-footprint-and-a-hypothesis-that-died-well).
 
 ### What the EEPROM is wired to
 

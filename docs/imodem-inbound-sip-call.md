@@ -62,6 +62,13 @@ The original outbound scenario is unchanged: supplying `--bri-sip-target` (or
 letting the modem's dialled digits populate it) still makes `BearerSipLine`
 call `SipSession.start_call()` and use the existing authenticated INVITE flow.
 
+During a live SIP B channel, the C52 digital-PCM peripheral is paced from
+monotonic wall time at its recovered 20.16 MHz clock. This is deliberately
+scoped to the live bearer: offline instruction-budget runs and their firmware
+timers keep their deterministic instruction coupling. A focused regression
+checks that 100 ms produces 800 bearer frames and that leaving the call starts
+a fresh clock epoch rather than catching up idle time.
+
 ## Live result, 2026-09-13
 
 Extension 6000 was registered on local UDP 5062 and a physical Courier on
@@ -82,3 +89,18 @@ bearer. Both modems nevertheless ended `NO CARRIER`; transport is established,
 but training did not complete. The machine-readable result, PCAP, raw G.711,
 WAV files, and spectral report are in
 `artifacts/imodem-inbound-sip-live-20260913/`.
+
+## Pacing retest, 2026-09-13
+
+The same physical Courier and `6000/6000` Asterisk account were used after the
+wall-clock correction. The connected leg received 107,840 RTP octets and sent
+108,320: 13.480 and 13.540 seconds respectively, a 0.45% duration difference.
+The BRI bridge clocked 108,457 frames (13.557 seconds) and filled 1,314 frames
+of genuine startup/network underrun. This replaces the earlier run's 13.48
+seconds of transmitted bearer during a 29.74-second call.
+
+The new caller capture contains V.21 energy at 980 and 1180 Hz. The I-modem
+capture again has a strong 2100 Hz ANSam carrier and sideband-to-carrier ratios
+of 0.0817 at 2084.95 Hz and 0.0689 at 2115.05 Hz. The physical call still did
+not train to carrier, but the DSP bearer and RTP clock now agree; the evidence
+is in `artifacts/imodem-inbound-sip-paced-20260913/`.

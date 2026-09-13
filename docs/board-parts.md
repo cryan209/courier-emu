@@ -1,5 +1,10 @@
 # What is actually on the board
 
+> **[board-map.svg](board-map.svg)** draws these parts and the nets between
+> them, from `tools/draw_board_map.py`. Every net on it is a continuity
+> reading; [asic-pinout.md](asic-pinout.md) carries the pin tables and the
+> reasoning behind each one.
+
 Identified from a photograph of the user's 20.16 MHz Courier (the unit running
 ID_SDL 4.03d, supervisor 7.4.16 / DSP 3.1.2), with each claim checked against
 the firmware where the firmware can check it.

@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1120" width="1680" height="1120" font-family="ui-sans-serif,Helvetica,Arial,sans-serif">
+<rect width="1680" height="1120" fill="#fbfaf8"/>
+<text x="40" y="52" font-size="20" font-weight="600" fill="#2a2a2a">Courier 2806 - what talks to what</text>
+<text x="40" y="76" font-size="12" fill="#6a6a6a">Every net drawn here is a continuity reading.</text>
+<text x="40" y="94" font-size="12" fill="#6a6a6a">Numbers are ASIC pins unless labelled otherwise.</text>
+<polyline points="280,240 440,240 440,276 600,276" fill="none" stroke="#a03060" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="311" y="225" width="98" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="360" y="236" text-anchor="middle" font-size="10" fill="#a03060">RESET  p7 -> 111</text>
+<polyline points="600,314 460,314 460,415 320,415" fill="none" stroke="#a03060" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="467" y="299" width="126" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="530" y="310" text-anchor="middle" font-size="10" fill="#a03060">RESIN  52 -> R1 -> 68</text>
+<polyline points="320,435 460,435 460,352 600,352" fill="none" stroke="#a03060" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="313" y="420" width="154" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="431" text-anchor="middle" font-size="10" fill="#a03060">P1.1 58 -> DSP+codec reset</text>
+<polyline points="280,330 200,330 200,400" fill="none" stroke="#1f7a5a" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="208" y="315" width="64" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="240" y="326" text-anchor="middle" font-size="10" fill="#1f7a5a">40.320 MHz</text>
+<polyline points="870,314 1035,314 1035,355 1200,355" fill="none" stroke="#1f7a5a" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="904" y="299" width="98" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="952" y="310" text-anchor="middle" font-size="10" fill="#1f7a5a">CLKIN  119 -> 96</text>
+<polyline points="870,800 1035,800 1035,763 1200,763" fill="none" stroke="#1f7a5a" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="878" y="785" width="148" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="952" y="796" text-anchor="middle" font-size="10" fill="#1f7a5a">112 -> AC03 p14  (clock?)</text>
+<polyline points="1200,380 1035,380 1035,378 870,378" fill="none" stroke="#1f7a5a" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="1069" y="365" width="98" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="1118" y="376" text-anchor="middle" font-size="10" fill="#1f7a5a">TOUT  122 -> 113</text>
+<polyline points="320,475 460,475 460,429 600,429" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="324" y="460" width="131" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="471" text-anchor="middle" font-size="10" fill="#1d5fa8">AD0-AD7, ALE, RD#, WR#</text>
+<polyline points="320,495 460,495 460,468 600,468" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="350" y="480" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="491" text-anchor="middle" font-size="10" fill="#1d5fa8">GCS0 59 -> 54</text>
+<polyline points="320,515 460,515 460,506 600,506" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="324" y="500" width="131" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="511" text-anchor="middle" font-size="10" fill="#1d5fa8">A16-A19 -> 63 62 59 58</text>
+<polyline points="320,535 460,535 460,544 600,544" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="358" y="520" width="64" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="531" text-anchor="middle" font-size="10" fill="#1d5fa8">INT1, INT2</text>
+<polyline points="320,555 460,555 460,583 600,583" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="352" y="540" width="75" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="390" y="551" text-anchor="middle" font-size="10" fill="#b8541f">TXD0 2 -> 51</text>
+<polyline points="140,650 140,675 140,675 140,700" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="144" y="654" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="148" y="666" font-size="10" fill="#1d5fa8">AD0-AD15 data</text>
+<polyline points="229,650 229,725 229,725 229,800" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="233" y="680" width="103" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="237" y="692" font-size="10" fill="#1d5fa8">LCS or UCS + data</text>
+<polyline points="320,638 475,638 475,626" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="352" y="622" width="92" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="398" y="634" text-anchor="middle" font-size="10" fill="#8a4bbf">CS / SK / DI+DO</text>
+<polyline points="400,833 360,833 360,833 320,833" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="359" y="818" width="42" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="380" y="829" text-anchor="middle" font-size="10" fill="#1d5fa8">A8-A15</text>
+<polyline points="600,711 460,711 460,720 320,720" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="490" y="696" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="530" y="707" text-anchor="middle" font-size="10" fill="#8a4bbf">A0-A7 latched</text>
+<polyline points="600,749 460,749 460,741 320,741" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="478" y="734" width="103" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="530" y="745" text-anchor="middle" font-size="10" fill="#8a4bbf">A15 A16 A17 + CE#</text>
+<polyline points="870,442 1035,442 1035,415 1200,415" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="932" y="427" width="42" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="952" y="438" text-anchor="middle" font-size="10" fill="#1d5fa8">D0-D15</text>
+<polyline points="870,493 1035,493 1035,445 1200,445" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="895" y="478" width="114" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="952" y="489" text-anchor="middle" font-size="10" fill="#1d5fa8">IS, R/W, STRB, INT2</text>
+<polyline points="1272,580 1272,605 1272,605 1272,630" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="1276" y="584" width="70" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="1280" y="596" font-size="10" fill="#1d5fa8">program bus</text>
+<polyline points="1440,568 1480,568 1480,753 1440,753" fill="none" stroke="#1f7a5a" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="1484" y="652" width="120" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="1488" y="664" font-size="10" fill="#1f7a5a">serial port (direct)</text>
+<polyline points="1440,530 1560,530 1560,860 1440,860" fill="none" stroke="#a03060" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="1564" y="687" width="75" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="1568" y="699" font-size="10" fill="#a03060">TDX/TDR/TFSX</text>
+<polyline points="694,250 694,233 656,233 656,216" fill="none" stroke="#8a6b1f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="643" y="218" width="64" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="675" y="229" text-anchor="middle" font-size="10" fill="#8a6b1f">37, 38, 29</text>
+<polyline points="789,250 789,233 1045,233 1045,216" fill="none" stroke="#8a6b1f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="863" y="218" width="109" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="917" y="229" text-anchor="middle" font-size="10" fill="#8a6b1f">19, 22  (receives)</text>
+<polyline points="705,84 705,117 705,117 705,150" fill="none" stroke="#8a6b1f" stroke-width="1.6" stroke-opacity="0.75"/>
+<polyline points="420,183 632,183 632,250" fill="none" stroke="#8a6b1f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="480" y="168" width="92" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="526" y="179" text-anchor="middle" font-size="10" fill="#8a6b1f">OH lamp on coil</text>
+<polyline points="654,890 654,925 430,925 430,960" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="485" y="910" width="114" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="542" y="921" text-anchor="middle" font-size="10" fill="#b8541f">lamps, Talk/Data 15</text>
+<polyline points="627,890 627,925 230,925 230,960" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="388" y="910" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="428" y="921" text-anchor="middle" font-size="10" fill="#b8541f">switches 2-10</text>
+<polyline points="80,638 20,638 20,993 80,993" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="24" y="807" width="53" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="28" y="819" font-size="10" fill="#b8541f">switch 1</text>
+<polyline points="713,890 713,925 585,925 585,960" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="623" y="910" width="53" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="649" y="921" text-anchor="middle" font-size="10" fill="#b8541f">46 49 50</text>
+<polyline points="748,890 748,925 745,925 745,960" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="752" y="900" width="47" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="756" y="912" font-size="10" fill="#b8541f">9 11 12</text>
+<polyline points="784,890 784,925 879,925 879,960" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="810" y="910" width="42" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="831" y="921" text-anchor="middle" font-size="10" fill="#b8541f">48  4Y</text>
+<polyline points="938,960 938,916 296,916 296,650" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="585" y="901" width="64" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="617" y="912" text-anchor="middle" font-size="10" fill="#b8541f">RXD0, CTS0</text>
+<polyline points="585,1026 585,1026 1029,1026 1029,1026" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<polyline points="745,1026 745,1026 1067,1026 1067,1026" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<polyline points="905,1026 905,1026 1124,1026 1124,1026" fill="none" stroke="#b8541f" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="540" y="40" width="330" height="44" rx="6" fill="#fbe9ef" stroke="#a03060" stroke-width="1.8"/>
+<text x="705.0" y="64" text-anchor="middle" font-size="13" font-weight="600" fill="#a03060">the DAA module</text>
+<text x="705.0" y="81" text-anchor="middle" font-size="10.5" fill="#5a5a5a">unidentified, off-board</text>
+<rect x="250" y="150" width="170" height="66" rx="6" fill="#f7f2e2" stroke="#8a6b1f" stroke-width="1.8"/>
+<text x="335.0" y="174" text-anchor="middle" font-size="13" font-weight="600" fill="#8a6b1f">RA5W-K</text>
+<text x="335.0" y="191" text-anchor="middle" font-size="10.5" fill="#5a5a5a">hook relay</text>
+<rect x="540" y="150" width="330" height="66" rx="6" fill="#f7f2e2" stroke="#8a6b1f" stroke-width="1.8"/>
+<text x="705.0" y="174" text-anchor="middle" font-size="13" font-weight="600" fill="#8a6b1f">phone-line header</text>
+<text x="705.0" y="191" text-anchor="middle" font-size="10.5" fill="#5a5a5a">12+ pins - DAA module</text>
+<rect x="940" y="150" width="210" height="66" rx="6" fill="#f7f2e2" stroke="#8a6b1f" stroke-width="1.8"/>
+<text x="1045.0" y="174" text-anchor="middle" font-size="13" font-weight="600" fill="#8a6b1f">U14 / U16</text>
+<text x="1045.0" y="191" text-anchor="middle" font-size="10.5" fill="#5a5a5a">H11B2 optocouplers</text>
+<rect x="80" y="210" width="200" height="60" rx="6" fill="#eeeeee" stroke="#6b6b6b" stroke-width="1.8"/>
+<text x="180.0" y="234" text-anchor="middle" font-size="13" font-weight="600" fill="#6b6b6b">ADM707</text>
+<text x="180.0" y="251" text-anchor="middle" font-size="10.5" fill="#5a5a5a">power-good reset</text>
+<rect x="80" y="300" width="200" height="60" rx="6" fill="#eeeeee" stroke="#6b6b6b" stroke-width="1.8"/>
+<text x="180.0" y="324" text-anchor="middle" font-size="13" font-weight="600" fill="#6b6b6b">ECLIPTEK EC11</text>
+<text x="180.0" y="341" text-anchor="middle" font-size="10.5" fill="#5a5a5a">40.320 MHz</text>
+<rect x="80" y="400" width="240" height="250" rx="6" fill="#e8effa" stroke="#1d5fa8" stroke-width="1.8"/>
+<text x="200.0" y="424" text-anchor="middle" font-size="13" font-weight="600" fill="#1d5fa8">80C186EB</text>
+<text x="200.0" y="441" text-anchor="middle" font-size="10.5" fill="#5a5a5a">supervisor CPU, 80-lead QFP</text>
+<rect x="380" y="560" width="190" height="66" rx="6" fill="#f2eafb" stroke="#8a4bbf" stroke-width="1.8"/>
+<text x="475.0" y="584" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4bbf">Atmel 93C66</text>
+<text x="475.0" y="601" text-anchor="middle" font-size="10.5" fill="#5a5a5a">settings EEPROM, 256x16</text>
+<rect x="80" y="700" width="240" height="66" rx="6" fill="#f2eafb" stroke="#8a4bbf" stroke-width="1.8"/>
+<text x="200.0" y="724" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4bbf">PA28F400</text>
+<text x="200.0" y="741" text-anchor="middle" font-size="10.5" fill="#5a5a5a">512 KiB boot flash</text>
+<rect x="80" y="800" width="240" height="66" rx="6" fill="#f2eafb" stroke="#8a4bbf" stroke-width="1.8"/>
+<text x="200.0" y="824" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4bbf">SRAM x2</text>
+<text x="200.0" y="841" text-anchor="middle" font-size="10.5" fill="#5a5a5a">one 16-bit bank</text>
+<rect x="400" y="800" width="180" height="66" rx="6" fill="#f2eafb" stroke="#8a4bbf" stroke-width="1.8"/>
+<text x="490.0" y="824" text-anchor="middle" font-size="13" font-weight="600" fill="#8a4bbf">'573 + '32</text>
+<text x="490.0" y="841" text-anchor="middle" font-size="10.5" fill="#5a5a5a">high-byte latch, lane gates</text>
+<rect x="600" y="250" width="270" height="640" rx="6" fill="#f0e8fa" stroke="#7a3fb0" stroke-width="1.8"/>
+<text x="735.0" y="274" text-anchor="middle" font-size="13" font-weight="600" fill="#7a3fb0">NEC USA 1-016-905</text>
+<text x="735.0" y="291" text-anchor="middle" font-size="10.5" fill="#5a5a5a">the ASIC - 120-pin QFP</text>
+<rect x="1200" y="330" width="240" height="250" rx="6" fill="#e6f3ee" stroke="#1f7a5a" stroke-width="1.8"/>
+<text x="1320.0" y="354" text-anchor="middle" font-size="13" font-weight="600" fill="#1f7a5a">TMS320C5x</text>
+<text x="1320.0" y="371" text-anchor="middle" font-size="10.5" fill="#5a5a5a">datapump DSP</text>
+<rect x="1200" y="630" width="240" height="66" rx="6" fill="#e6f3ee" stroke="#1f7a5a" stroke-width="1.8"/>
+<text x="1320.0" y="654" text-anchor="middle" font-size="13" font-weight="600" fill="#1f7a5a">CY7C199 x2</text>
+<text x="1320.0" y="671" text-anchor="middle" font-size="10.5" fill="#5a5a5a">32K words, DSP program</text>
+<rect x="1200" y="730" width="240" height="66" rx="6" fill="#e6f3ee" stroke="#1f7a5a" stroke-width="1.8"/>
+<text x="1320.0" y="754" text-anchor="middle" font-size="13" font-weight="600" fill="#1f7a5a">TLC320AC03</text>
+<text x="1320.0" y="771" text-anchor="middle" font-size="10.5" fill="#5a5a5a">codec</text>
+<rect x="1200" y="830" width="240" height="60" rx="6" fill="#fbe9ef" stroke="#a03060" stroke-width="1.8"/>
+<text x="1320.0" y="854" text-anchor="middle" font-size="13" font-weight="600" fill="#a03060">J7</text>
+<text x="1320.0" y="871" text-anchor="middle" font-size="10.5" fill="#5a5a5a">DSP serial - uncharacterised</text>
+<rect x="80" y="960" width="200" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="180.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">DIP bank</text>
+<text x="180.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">10 switches</text>
+<rect x="280" y="960" width="200" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="380.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">front panel</text>
+<text x="380.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">lamps + Talk/Data</text>
+<rect x="520" y="960" width="130" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="585.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">U22</text>
+<text x="585.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">75188 driver</text>
+<rect x="680" y="960" width="130" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="745.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">U23</text>
+<text x="745.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">75188 driver</text>
+<rect x="840" y="960" width="130" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="905.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">U18</text>
+<text x="905.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">DS1489A receiver</text>
+<rect x="1010" y="960" width="190" height="66" rx="6" fill="#fbeee6" stroke="#b8541f" stroke-width="1.8"/>
+<text x="1105.0" y="984" text-anchor="middle" font-size="13" font-weight="600" fill="#b8541f">EIA-232</text>
+<text x="1105.0" y="1001" text-anchor="middle" font-size="10.5" fill="#5a5a5a">to the DTE</text>
+<line x1="600" y1="1058" x2="622" y2="1058" stroke="#a03060" stroke-width="3"/>
+<text x="628" y="1062" font-size="11" fill="#4a4a4a">reset</text>
+<line x1="750" y1="1058" x2="772" y2="1058" stroke="#1f7a5a" stroke-width="3"/>
+<text x="778" y="1062" font-size="11" fill="#4a4a4a">clock</text>
+<line x1="900" y1="1058" x2="922" y2="1058" stroke="#1d5fa8" stroke-width="3"/>
+<text x="928" y="1062" font-size="11" fill="#4a4a4a">bus / address</text>
+<line x1="1050" y1="1058" x2="1072" y2="1058" stroke="#8a4bbf" stroke-width="3"/>
+<text x="1078" y="1062" font-size="11" fill="#4a4a4a">memory</text>
+<line x1="600" y1="1078" x2="622" y2="1078" stroke="#b8541f" stroke-width="3"/>
+<text x="628" y="1082" font-size="11" fill="#4a4a4a">DTE side</text>
+<line x1="750" y1="1078" x2="772" y2="1078" stroke="#8a6b1f" stroke-width="3"/>
+<text x="778" y="1082" font-size="11" fill="#4a4a4a">telco side</text>
+<line x1="900" y1="1078" x2="922" y2="1078" stroke="#b8541f" stroke-width="3"/>
+<text x="928" y="1082" font-size="11" fill="#4a4a4a">panel</text>
+<line x1="1050" y1="1078" x2="1072" y2="1078" stroke="#a03060" stroke-width="3"/>
+<text x="1078" y="1082" font-size="11" fill="#4a4a4a">unidentified</text>
+</svg>
