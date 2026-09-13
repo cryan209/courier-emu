@@ -34,22 +34,25 @@
 <text transform="translate(460.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">13 &#183; AA</text>
 <rect x="469.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(472.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">14 &#183; ARQ</text>
-<rect x="481.0" y="670.0" width="6.0" height="16.0" fill="#2f7fb8"/>
-<text transform="translate(484.0,694.0) rotate(90)" font-size="11.5" fill="#2f7fb8">15 &#183; Talk/Data switch (reported)</text>
+<rect x="481.0" y="670.0" width="6.0" height="16.0" fill="#6b6b6b"/>
+<text transform="translate(484.0,694.0) rotate(90)" font-size="11.5" fill="#6b6b6b">15 &#183; GND</text>
 <rect x="493.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(496.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">16 &#183; HS</text>
 <rect x="505.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(508.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">17 &#183; SYN</text>
 <rect x="517.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(520.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">18 &#183; TR</text>
-<rect x="529.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="529.0" y="670.0" width="6.0" height="16.0" fill="#8a6b1f"/>
+<text transform="translate(532.0,694.0) rotate(90)" font-size="11.5" fill="#8a6b1f">19 &#183; opto U14 p5 (line side)</text>
 <rect x="541.0" y="670.0" width="6.0" height="16.0" fill="#2f7fb8"/>
 <text transform="translate(544.0,694.0) rotate(90)" font-size="11.5" fill="#2f7fb8">20 &#183; DIP switch 6</text>
 <rect x="553.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(556.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">21 &#183; AA (2nd)</text>
-<rect x="565.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="565.0" y="670.0" width="6.0" height="16.0" fill="#8a6b1f"/>
+<text transform="translate(568.0,694.0) rotate(90)" font-size="11.5" fill="#8a6b1f">22 &#183; opto U16 p5 (line side)</text>
 <rect x="577.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
-<rect x="589.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
+<rect x="589.0" y="670.0" width="6.0" height="16.0" fill="#6b6b6b"/>
+<text transform="translate(592.0,694.0) rotate(90)" font-size="11.5" fill="#6b6b6b">24 &#183; GND</text>
 <rect x="601.0" y="670.0" width="6.0" height="16.0" fill="#b8541f"/>
 <text transform="translate(604.0,694.0) rotate(90)" font-size="11.5" fill="#b8541f">25 &#183; RS</text>
 <rect x="613.0" y="670.0" width="6.0" height="16.0" fill="#c9c9c9"/>
@@ -205,8 +208,8 @@
 <rect x="294.0" y="613.0" width="16.0" height="6.0" fill="#1f7a5a"/>
 <text x="288.0" y="620.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">116 &#183; DSP STRB</text>
 <rect x="294.0" y="625.0" width="16.0" height="6.0" fill="#c9c9c9"/>
-<rect x="294.0" y="637.0" width="16.0" height="6.0" fill="#6b6b6b"/>
-<text x="288.0" y="644.0" text-anchor="end" font-size="11.5" fill="#6b6b6b">118 &#183; supply (decoupled)</text>
+<rect x="294.0" y="637.0" width="16.0" height="6.0" fill="#2f7fb8"/>
+<text x="288.0" y="644.0" text-anchor="end" font-size="11.5" fill="#2f7fb8">118 &#183; DIP switch 3</text>
 <rect x="294.0" y="649.0" width="16.0" height="6.0" fill="#1f7a5a"/>
 <text x="288.0" y="656.0" text-anchor="end" font-size="11.5" fill="#1f7a5a">119 &#183; DSP X2/CLKIN - clock out</text>
 <rect x="294.0" y="661.0" width="16.0" height="6.0" fill="#6b6b6b"/>
@@ -234,7 +237,7 @@
 <rect x="34" y="203" width="13" height="11" fill="#6b6b6b"/>
 <text x="54" y="212" font-size="11.5" fill="#3a3a3a">supply</text>
 <rect x="34" y="222" width="13" height="11" fill="#c9c9c9"/>
-<text x="54" y="231" font-size="11.5" fill="#3a3a3a">unread (35 pins)</text>
+<text x="54" y="231" font-size="11.5" fill="#3a3a3a">unread (32 pins)</text>
 <text x="650" y="60" font-size="11.5" font-weight="600" fill="#3a3a3a">traced, but NOT on this package:</text>
 <text x="650" y="77" font-size="11.5" fill="#8a8a8a">RD &#8594; U22 SN75188 pin 2</text>
 <text x="650" y="94" font-size="11.5" fill="#8a8a8a">CD &#8594; U23 SN75188 pin 4</text>

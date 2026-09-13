@@ -188,6 +188,12 @@ line-side pins on the package. The obvious pairing is that these are those two,
 but **nothing here establishes which pin is which, or that the pairing is right
 at all** - a header carries whatever the board put on it.
 
+> **And the pairing has since got worse, not better.** Two optocouplers are now
+> found on ASIC pins `19` and `22`, so there are four line-side pins, not two,
+> and ring sense has a better home than a header pin - crossing the isolation
+> barrier is what an opto is for. See
+> [the isolation barrier](#the-isolation-barrier-is-found-and-the-asic-is-on-the-receiving-side).
+
 **What to read next is the header itself.** Its pinout is unknown and it is
 cheap: pins 1-6 against ground, the relay coil, and the `RA5W-K`. Two specific
 checks would settle the pairing - continuity from ASIC `37` or `38` to the
@@ -197,7 +203,8 @@ state when the line rings is the ring sense.
 **One thing the header is probably not is bare tip and ring.** A digital gate
 array cannot sit on a telephone line; there has to be a transformer or an opto
 between, and the header is far likelier to be a **DAA module interface carrying
-logic-level signals** than the line itself. [board-parts.md](board-parts.md)
+logic-level signals** than the line itself. **The optos predicted here have
+since been found** - `U14` and `U16`, on pins `19` and `22`. [board-parts.md](board-parts.md)
 says outright that "the DAA/line section is" outside the photograph it was
 compiled from, so that module is unidentified, and identifying it is the same
 outstanding item as the EIA-232 receiver - a part everyone knows is there that
@@ -219,7 +226,7 @@ nobody has looked at.
 | 24 | 114 | DSP `IS` |
 | 25 | 115 | DSP `R/W` (pin 92) |
 | 26 | 116 | DSP `STRB` (pin 93) |
-| 28 | 118 | a supply - DSP `VSSC`/`VDDI`, decoupled; **also reads as DIP switch 3**, see below |
+| 28 | 118 | **DIP switch 3** - previously read as a supply; see [below](#switch-3-is-on-pin-118-and-it-was-the-supply-reading-that-was-the-artifact) |
 | 29 | 119 | DSP `X2/CLKIN` (pin 96) - **the ASIC clocks the DSP** |
 | 30 | 120 | `GND` |
 
@@ -677,12 +684,15 @@ carries the DIP bank as well, interleaved with them.
 | 12 | 12 | `U23` pin 2 (`1A`) |
 | 13 | 13 | `AA` lamp |
 | 14 | 14 | `ARQ` lamp |
-| 15 | 15 | the **Talk/Data** switch - reported, not yet firm |
+| 15 | 15 | `GND` |
 | 16 | 16 | `HS` lamp |
 | 17 | 17 | `SYN` lamp |
 | 18 | 18 | `TR` lamp |
+| 19 | 19 | optocoupler `U14` pin 5 - the line-side barrier |
 | 20 | 20 | DIP switch **6** |
 | 21 | 21 | `AA` lamp, **second pin** |
+| 22 | 22 | optocoupler `U16` pin 5 - the line-side barrier |
+| 24 | 24 | `GND` |
 | 25 | 25 | `RS` lamp |
 | 27 | 27 | `MR` lamp |
 | 30 | 30 | `VCC` |
@@ -704,8 +714,9 @@ The switches share the edge with the lamps and do not collide with them:
 |---|---|---|---|---|---|---|---|---|
 | DIP switch | 2 | 5 | 4 | 10 | 9 | 8 | 7 | 6 |
 
-**Switch 3 is the one not found**, and switch 1 is on the CPU, so nine of the
-bank's ten positions now have a home. Pins `5`-`8` are a clean descending run -
+**Switch 3 is the one not found** on this edge, and switch 1 is on the CPU, so
+nine of the bank's ten positions had a home at this point; switch 3 turned up
+on pin `118` and closed the bank out. Pins `5`-`8` are a clean descending run -
 switches 10, 9, 8, 7 - which is the sort of pattern that says the readings are
 right. The rest is scrambled relative to pin order, so whatever port bit the
 firmware reads a switch in is not going to be positional, and that mapping has
@@ -715,6 +726,46 @@ to come from the firmware rather than from this table.
 pin nothing else claims - so it fits, but it is the one entry here worth a
 second continuity reading, because a single stray pin is also what a
 transcription slip looks like.
+
+#### The isolation barrier is found, and the ASIC is on the receiving side
+
+Pins `19` and `22` go to **optocouplers `U14` and `U16`**, pin 5 of each, and
+the parts are `H11B2` - a photodarlington opto, LED in, transistor out.
+
+That is the part the [right edge](#right-edge---the-cpu-control-group) predicted
+without being able to name it: "a digital gate array cannot sit on a telephone
+line; there has to be a transformer or an opto between". There are two optos,
+and both land on this package.
+
+**The direction is settled even though the exact terminal is not.** On a 6-pin
+`H11B2` the LED is pins 1 and 2 and the transistor is pins 4, 5 and 6. Pin 5 is
+on the transistor side, so **the ASIC is on the output side of both barriers -
+it is receiving, not driving**. Which of collector, base or emitter it sits on
+changes how the pin is biased, not who is talking to whom, and reading pins 4
+and 6 of each part would finish it.
+
+Two isolated inputs from the line is a specific and familiar shape: **ring
+detect and loop-current/line-in-use sense** are what a modem of this era brings
+across the barrier as logic. The firmware side already has one of them named -
+**ring sense, port `0x14` bit 1**, which
+[daa-line-interface-2016mhz.md](daa-line-interface-2016mhz.md) has the cadence
+machine sampling from a 5 ms ticker. One of `19` and `22` is very likely that
+bit's physical origin.
+
+**This weakens the pairing offered for pins `37` and `38`.** That section had
+the phone-line header's two pins standing in for ring sense and the hook relay,
+on the grounds that those were the only two line-side signals with ports and
+these were the only two line-side pins. There are now **four** line-side pins,
+and ring sense has a better candidate than a header pin - an opto is what ring
+detect actually crosses. The header pair is still line-side; what it carries is
+back to being open.
+
+The optos also give the DAA section its first firm foothold.
+[board-parts.md](board-parts.md) records that the DAA and line section was
+outside the photograph it was compiled from, so nothing there was identified.
+`U14` and `U16` are now two named parts in it with known connections, and the
+**LED sides of both** - pins 1 and 2 - are the thread to pull to reach whatever
+is on the far side of the barrier.
 
 #### Three of `U23`'s four drivers are fed from the ASIC
 
@@ -763,51 +814,63 @@ stopped at a part rather than at the package, so `RD`'s in particular deserves
 the same suspicion `CD`'s has just been relieved of - `U22` pin 2 is `1A`, an
 input, and something has to drive it.
 
-#### Talk/Data is reported on pin 15
+#### Pin 15 is ground, and Talk/Data is the reading that did not survive
 
-Pin `15` is the front panel's **Talk/Data** switch. It is recorded as reported
-rather than confirmed, but it fits without strain: `15` is a free pin in the
-middle of the panel run, and Talk/Data is a momentary the firmware has to read
-whenever the user might press it, which makes it panel-edge traffic like the
-lamps around it.
+Pin `15` was reported as the front panel's **Talk/Data** switch. It reads to
+**ground**, and the two are not compatible.
 
-It is not the same kind of thing as the DIP bank. A DIP switch is a
-configuration strap read at need; Talk/Data is a user action the firmware acts
-on immediately, and if it is on this pin then the ASIC sees it directly rather
-than through the CPU.
+The ground reading is the one to keep, and the reason is the mechanism the
+section below establishes: **the switch commons on this board are grounded**, so
+a probe from any ground pin to a switch terminal reads through the closed
+contact and reports a connection that is not wiring. Pin 15 sitting in the
+middle of the panel run made Talk/Data look plausible, but "free pin in a
+plausible neighbourhood" is not evidence, and a ground pin is what the package
+has at that position.
 
-#### Switch 3 lands on a supply pin, which is probably the bank telling on itself
+So Talk/Data is **not located**. It has to go somewhere - the firmware acts on
+it - and the way to find it is the way that survives this failure mode: hold the
+button and look for a pin whose level *changes*, rather than probing for
+continuity to a terminal that is grounded either way.
 
-**DIP switch 3 reads to pin 118** - and `118` is already recorded as a supply,
-tied into the DSP's `VSSC`/`VDDI` decoupling. Both cannot be true as wiring. A
-gate array does not route a front-panel switch onto a power pad, and a switch
-on the left edge among the DSP's strobes, when the other eight are together on
-the bottom edge, is out of character for the layout.
+Pin `24` is also `GND`, read in the same pass and with nothing contesting it.
 
-**The likely explanation is the one that also fixes the meter.** If the DIP
-bank's common terminal is **ground**, then a closed switch is a short to ground,
-and a continuity probe from any *ground pin* to that switch reads through. Pin
-118 would then be answering the question "are you connected to switch 3" with a
-truthful yes that means "switch 3 is closed and I am ground", not "switch 3 is
-my signal". Every ground pin on the package would answer the same way - and
-`31`, `91`, `100` and `120` are all grounds that could be probed to check.
+#### Switch 3 is on pin 118, and it was the supply reading that was the artifact
 
-Two tests separate them, and both are cheap:
+**DIP switch 3 is on pin 118**, confirmed by flipping it: the pin read grounded
+with the switch closed and open with it open. That is a switch, and it settles
+a conflict the readings had put on this pin, because `118` was previously
+recorded as a **supply** - "DSP `VSSC`/`VDDI`, decoupled".
 
-* **Flip switch 3 and re-probe.** A real signal pin keeps its continuity in one
-  switch position and loses it in the other, at the pin. A ground pin reading
-  through a closed contact goes open when the switch opens and never comes
-  back, and **every other ground pin does the same thing at the same time**.
-* **Probe 118 against the other nine switches.** If it reads to more than one,
-  it is ground and the bank's common is grounded.
+The predicted failure mode was a grounded switch common making ground pins look
+like switches. **It ran the other way.** Switch 3 was closed when the earlier
+pass was taken, so pin 118 was tied to ground through it, and a pin that reads
+to ground and sits near the DSP's decoupling is exactly what gets written down
+as a supply. The artifact manufactured a *power pin*, not a switch.
 
-Until that is done, **switch 3's pin is unestablished** and the bottom-edge
-eight should be treated as the DIP bank's whole presence on the ASIC. The same
-failure mode does not obviously threaten those eight - they are contiguous, on
-the edge the panel is on, and one switch each - but it is worth knowing that a
-grounded common would make *any* ground pin look like a switch, which is the
-strongest argument yet for tracing that common terminal before taking more
-switch readings.
+That is worth stating plainly because it is the more dangerous direction. A
+switch reading on a supply pin is obviously wrong and gets challenged - this
+file challenged it. A supply reading on a switch pin looks like the pad-ring
+convention holding up, agrees with everything around it, and gets believed. **It
+sat in the left-edge table unquestioned.**
+
+Two consequences for the rest of the map:
+
+* **The bank's common is grounded**, now demonstrated rather than hypothesised.
+  Any continuity reading on this board that terminates at a switch terminal or
+  at ground is suspect until the switch is flipped. That includes pin 15 above,
+  and it is the standing rule for readings still to be taken.
+* **Grounds near switches want re-reading with the switches open.** `31`, `91`,
+  `100`, `120` and `24` are recorded as grounds. `100` and `120` are corroborated
+  by position and by the bus shape that predicted them, and the corner pins are
+  safe for the same reason. The ones without that corroboration are only as good
+  as the switch positions at the time.
+
+Switch 3 being on the **left edge**, alone, when the other eight are together on
+the bottom, remains odd for a layout - but it is now a measurement rather than
+an inference, and the odd thing is the board's, not the reading's.
+
+**The DIP bank is complete.** Ten positions: switch 1 on CPU pin 80, switches
+2 and 4-10 on ASIC bottom-edge pins, switch 3 on ASIC pin 118.
 
 #### That retires the scanned matrix for these switches
 
@@ -826,7 +889,7 @@ DIP bank because both were unread. The scan is still real; it is just not what
 the user flips.
 
 Two consequences follow. The **arithmetic now closes** - ten switches, one on
-the CPU, eight on the ASIC, one still to find - with no need to postulate extra
+the CPU, nine on the ASIC - with no need to postulate extra
 sense lines or switches read by nobody. And the **meter advice was wrong for
 the wrong reason**: these pins are individually wired, so a probe on one should
 read cleanly. If they still misbehave, that is a shared common rail on the
@@ -1240,11 +1303,11 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Thirty-five of the 120 pins are unread. Of the eighty-five that are not,
+Thirty-two of the 120 pins are unread. Of the eighty-eight that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
-and the left edge but for five**; the bottom edge is up to twenty-three of
-thirty and is now the best-mapped side of the package; the right edge has two
+and the left edge but for five**; the bottom edge is up to twenty-six of thirty
+and is now the best-mapped side of the package; the right edge has two
 groups started and eight pins unread between them, and it still holds the
 ASIC's own chip select.
 
