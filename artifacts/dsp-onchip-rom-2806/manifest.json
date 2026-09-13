@@ -1,0 +1,37 @@
+{
+  "what": "TMS320C5x on-chip ROM read from the DSP of the 25 MHz Courier 2806, plus three windows above it",
+  "board": "25 MHz Courier V.Everything 2806, serial 22AEB36ACKND, reflashed to ID_SDL v4.03d on 2026-09-13 (artifacts/xmodem-program-id25-403); supervisor 7.4.16, DSP 3.1.2",
+  "date": "2026-09-13",
+  "device": "/dev/cu.usbserial-FT4TQOFT at 115200",
+  "method": "same as artifacts/dsp-onchip-rom-01 - probe_transport --rom-dump delivered to supervisor RAM at 0x3000 with ATGLK2W, armed through timer 0, read with RPT/TBLR from a kernel at program 0x8000, returned through the DSP mailbox. run-board.py in this directory is the runner.",
+  "windows": {
+    "0x0000-0x07FF": {
+      "dirs": [
+        "half0",
+        "half1"
+      ],
+      "words": 2048,
+      "sha256": "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67",
+      "identical_to_20mhz_board": true
+    },
+    "0x0800-0x0BFF": {
+      "dirs": [
+        "at0800-a",
+        "at0800-b"
+      ],
+      "words": 1024,
+      "result": "two runs byte-identical; two distinct values, a 32-word period of 16 x FFFF then 16 x 0000"
+    },
+    "0x1C00-0x1FFF": {
+      "dirs": [
+        "at1c00"
+      ],
+      "words": 1024,
+      "result": "the same 32-word square wave except 0x1F90-0x1FFF, which holds 112 words of kernel-shaped code - unexplained, see README"
+    }
+  },
+  "caveats": [
+    "MP/MC was still not read directly.",
+    "The 0x0800 stability test does not discriminate 'C50 from 'C51 the way docs/probing.md predicted. See README.md."
+  ]
+}

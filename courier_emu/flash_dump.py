@@ -54,6 +54,15 @@ TARGETS = {
         bytes.fromhex("BD 0B 00 E9 93 0F 0D 0A".replace(" ", "")),
         bytes.fromhex("FA BA A4 FF B8 00 80 EF EA BF 1B 00 FC 07 00 00".replace(" ", "")),
     ),
+    # The same 25 MHz board after IDSDL 4.03d was installed over AT~X!
+    # (2026-09-13, artifacts/xmodem-program-id25-403). The application anchor is
+    # ID25D403's own - the decoded ID25_403.XMD starts with this - while the
+    # reset vector is still the 2806's stock fc00:1bbf, because the updater does
+    # not erase the boot block. Same reasoning as the 20.16 MHz 4.03 entry.
+    ("7.4.16", "3.1.2", "25"): (
+        bytes.fromhex("BD 0B 00 E9 AD 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA BF 1B 00 FC 07 00 00".replace(" ", "")),
+    ),
 }
 TERMINAL = re.compile(rb"(?:^|[\r\n])(OK|ERROR)[\r\n]+$")
 
