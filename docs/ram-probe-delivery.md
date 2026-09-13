@@ -272,6 +272,22 @@ supervisor (see [board-parts.md](board-parts.md)) has a **1.6 second** watchdog,
 which matches the observed bound, and the firmware's reboot path clears RAM and
 rebuilds the IVT.
 
+> **The watchdog half of that is withdrawn.** The owner reports the `ADM707` is
+> used on this board **only as a power-good reset**, and
+> [asic-pinout.md](asic-pinout.md) finds its pin 7 going to the ASIC with no
+> `WDI` source anywhere. So the part's watchdog is not what ends these runs.
+>
+> **The observations and the reboot path stand** - they were measured, and the
+> after-state is what a firmware reboot leaves. What is withdrawn is the
+> *trigger*: something bounds these runs at about a second and a half and it has
+> not been identified. The 1.6 s match was a datasheet number agreeing with a
+> measurement, which is a good clue and was taken for a proof.
+>
+> The leading candidate is now a **software** failsafe in the supervisor - it
+> would notice timer 0's vector hijacked, needs no hardware, and fits a firmware
+> that rebuilds its own IVT. If that is right, the cooperative route below is
+> not a way of living with the bound but the way of removing it.
+
 Consequences worth having:
 
 * **Restoring the vector and `T0CON` by hand after a run is unnecessary.** It is
@@ -292,7 +308,10 @@ The obvious way to get more than 1.5 seconds is to feed the watchdog from the
 monitor. **That is the worse of the two options available**, for a reason and a
 risk:
 
-* The `ADM707`'s `WDI` source has **not** been identified. `P1LTCH` (`0xff56`)
+* The `ADM707`'s `WDI` source has **not** been identified. *(And will not be:
+  the part is a power-good reset here, with its watchdog unused. Feeding it is
+  not an option because there is nothing to feed - which removes this option
+  rather than settling it.)* `P1LTCH` (`0xff56`)
   is not obviously it - the firmware's 76 accesses to it are the NVRAM bit-bang
   (bit 2 clock, bit 5), a bit-6 pair around the DSP download, and bit 3, the DSP
   reset line. There is no `xor`, `not`, or any other toggle of that latch

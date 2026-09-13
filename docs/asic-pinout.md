@@ -127,7 +127,10 @@ measured ends being contiguous and in order, and is marked so.
 | 2-5 | 89-86 | DSP `A0` `A1` `A2` `A3` |
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
-| 17 | 74 | a high flash address line - read as flash pin 3 (`A17`, system `A18`) and later as flash pin 34 (`A16`, system `A17`); see below |
+| 16 | 75 | flash pin 12 |
+| 17 | 74 | flash pin 34 (`A16`, system `A17`) - **the conflict resolved**, see below |
+| 18 | 73 | flash pin 3 (`A17`, system `A18`) |
+| 15 | 76 | flash pin 35 |
 | 20 | 71 | latched `A0` **out** - 74VHC32 pin 12 (`4A`), the low byte lane's term in `U12`'s `WE#` |
 | 21 | 70 | latched `A1` **out** - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
 | 22-26 | 69-65 | latched `A2`-`A6` **out** *(inferred)* |
@@ -281,7 +284,9 @@ finished.
 
 #### The ASIC is in the flash's high address path
 
-Pin 73 goes to the flash's `A17`, and that is not a line the CPU should need
+Pin 73 goes to the flash's `A17` - its pin 3, confirmed since, and see
+[the flash pin conflict](#the-flash-pin-conflict-was-two-pins-all-along) for
+what that did to the neighbouring reading. It is not a line the CPU should need
 help with. The part is a **PA28F400**, 4 Mbit, and the 2806 dump
 (`artifacts/courier-2806-25mhz-flash-20260912/courier-board.rom`) is 524,288
 bytes - the whole device, with no second bank hiding behind it. So `A17` here
@@ -555,6 +560,55 @@ substituting for it conditionally. **That is the flash pin 3 / pin 34 conflict
 again**, and it now decides something bigger than which bit: it decides whether
 there is a shift.
 
+#### The flash pin conflict was two pins all along
+
+**`73` goes to flash pin 3 and `74` to flash pin 34.** Both readings were right;
+what was wrong was that they had been written down against the same ASIC pin.
+The conflict this file has carried for several sections - "read as flash pin 3
+and later as flash pin 34" - was a **miscount of one**, the same failure the
+top edge has already produced once and corrected.
+
+So the ASIC drives **both** of the flash's top address lines:
+
+| ASIC pin | flash pin | flash's name | system address |
+|---|---|---|---|
+| 73 | 3 | `A17` | `A18` |
+| 74 | 34 | `A16` | `A17` |
+
+And the input side is now equally clear. CPU `A17`, `A18` and `A19` arrive on
+ASIC `62`, `59` and `58`. **Three high address lines in, two out** - and the two
+out are the flash's, shifted by one because `BYTE#` is tied high and the part is
+in word mode.
+
+That settles the question the section above could not: **there is a shift, and
+there is a fold.** A part that takes three address lines and emits two is not
+buffering and not substituting - it is *deciding*, with one bit of the CPU's
+address space disappearing into the decision. Whatever `A19` selects between, it
+selects it here.
+
+This is the strongest form the remapping claim has taken. It began as an
+inference from one anomalous pin, gained its input side, and now has both ends
+counted: three in, two out, with the arithmetic itself carrying the conclusion.
+
+**What `75` and `76` are is the next thing to name.** They go to flash pins 12
+and 35, and this file does not carry the Am29F400B connection diagram - only the
+three anchors [board-parts.md](board-parts.md) checked against it (`A17`/`A7`/`A0`
+on pins 3/4/11). Those two pin numbers want looking up, and the answer matters
+in a specific way:
+
+* If either is an **address** line, the ASIC's involvement in the flash's
+  addressing is wider than the top two bits and the fold above is a corner of
+  something bigger.
+* If either is `CE#`, **the ASIC selects the flash** - and this file's
+  chip-select table predicts CPU `UCS` (CPU pin 61) does that, "predicted, not
+  yet read". That prediction would be wrong.
+* If either is `OE#` or `WE#`, the ASIC is in the flash's control path as well
+  as its address path, which would make the part's role in a firmware write -
+  the thing that flashes a new supervisor - something nobody has modelled.
+
+Four of the ASIC's top-edge pins now go to the flash. Whatever this part is
+doing to the boot device, it is not a detail.
+
 #### `AD15` on pin 63, which the width-converter claim did not expect
 
 **Pin 63 is CPU pin 28, `AD15`.**
@@ -574,6 +628,10 @@ this sort of assortment. That is a reading, not a finding.
 **The remaining unread pins on this edge are `76`, `75`, `73` and `72`** - four
 of thirty. Whatever else the ASIC watches on the CPU bus is in there, and the
 edge is otherwise accounted for end to end.
+
+> **Three of those four are now read, and all three go to the flash** - `73` to
+> its pin 3, `75` to its pin 12, `76` to its pin 35. Only `72` is left. See
+> [the flash pin conflict](#the-flash-pin-conflict-was-two-pins-all-along).
 
 #### The corners are supplies, which corroborates the numbering
 
@@ -1183,6 +1241,11 @@ the ASIC takes the active-high polarity and the CPU's `RES#` is presumably the
 other one - which is the ordinary way a board with both polarities available
 splits them. Reading `ADM707` pin 6 against CPU `RES#` would confirm that half.
 
+**The part is a power-good reset and nothing else here** - reported by the
+owner, and it is the whole of the supervisor's role on this board. So this pin
+is the ASIC being held in reset until the rails come up, which is unremarkable
+in itself and consequential only for what it retires below.
+
 The reset tree matters more here than it usually would, because
 [ram-probe-delivery.md](ram-probe-delivery.md) establishes that **every probe
 run on this board ends in a watchdog reset** - the 1.6 second bound, the cleared
@@ -1191,16 +1254,36 @@ could not find:
 
 > The `ADM707`'s `WDI` source has **not** been identified.
 
-**This reading does not identify it, but it moves the candidate.** The ASIC is
-now known to be wired to the supervisor, which makes the ASIC's own latches a
-live possibility for `WDI` rather than a speculative one - and `WDI` is `ADM707`
-**pin 8**, the pin next to the one just read. That is the cheapest outstanding
-reading in this file relative to what it would settle: a firmware that must
-periodically toggle something to stay alive, and nobody has found the something.
+**And the answer, from the owner, is that there is no `WDI` source to find:**
+the `ADM707` is used **only as a power-good reset** on this board. That closes
+the search - but it opens something larger, because the watchdog was carrying an
+explanation.
 
-If `WDI` turns out to come from the ASIC, the harness has a watchdog it does not
-model at all, and a probe monitor could feed it from the same ports it already
-drives.
+[ram-probe-delivery.md](ram-probe-delivery.md) attributes an observed ~1.5 s
+bound on every probe run to "the board's `ADM707` supervisor" and its "**1.6
+second** watchdog, which matches the observed bound". The bound is real and
+measured - cleared RAM, a restored vector, `AT` answering again. **The mechanism
+offered for it is not, if the part's watchdog is unused.** A datasheet number
+that matches an observation is a good clue and a bad proof, and this is the case
+where it was the second.
+
+What still stands and what does not:
+
+* **The observations stand.** They were measured on the board, repeatedly.
+* **The firmware's reboot path stands** - that file also establishes it clears
+  RAM and rebuilds the IVT, which is what the after-state looks like.
+* **The trigger is now unattributed.** Something ends those runs at about a
+  second and a half, and it is not this part's watchdog.
+
+The candidates worth weighing are a **software** failsafe in the supervisor
+noticing that timer 0's vector has been hijacked, which needs no hardware at
+all and fits a firmware that rebuilds its own IVT; or the **ASIC**, which is in
+the reset tree and has timers of its own reaching it now. The way to tell them
+apart is that a software reboot can be disarmed by cooperating with the
+firmware, which is the route that file already recommends for other reasons -
+and it would no longer be a workaround but the actual fix.
+
+The 1.6 s coincidence is worth keeping in view: it is why nobody looked further.
 
 ### The DSP and the codec share one reset net
 
@@ -1512,9 +1595,9 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Twenty-two of the 120 pins are unread. Of the ninety-eight that are not,
+Nineteen of the 120 pins are unread. Of the hundred and one that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
-two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
+two DSP data groups and `A2`-`A6`. **The top edge is finished but for one pin
 and the left edge but for two**; the bottom edge is up to twenty-six of thirty
 and is tied with the right edge as the best-mapped side of the package. **The
 right edge turned out to be three groups, not two** - CPU bus control, the
