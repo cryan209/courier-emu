@@ -1097,14 +1097,9 @@ The ones worth finding next, in the order they would pay:
    header and nothing knows what is in it. This needs a capture, not a meter,
    and it is the one item here that could produce new information about the
    firmware rather than about the board.
-13. **The Atmel EEPROM's four pins**, which resolve a contradiction the harness
-    already carries. `courier_emu/panel.py` puts `nvram-strobe`, `-data-in`,
-    `-chip-select` and `-clock` on **ASIC port `0x10`** bits `0x08`-`0x40`,
-    while `machine.py` drives the same 93C66 from the **CPU** - chip select and
-    clock on `0xff56` bits `0x20`/`0x04`, data on port 2 pin 7 at `0xff5e` /
-    `0xff5a`. Two wirings for one 8-pin part. They came from different firmware
-    families, so the boards may genuinely differ, but on *this* board the
-    chip's own pins say which is real.
+13. **The Atmel EEPROM's pins**, which resolve a contradiction the harness
+    already carries - and the CPU path is now specific enough to predict, so
+    see [below](#what-the-eeprom-should-be-wired-to-if-the-harness-is-right).
 14. **The right edge's unread block, `31`-`36`, `39`-`46` and `48`-`52`.** Twenty
     pins, the largest unread run on the package, and by elimination it is where
     the parts nobody has traced must land - the codec, the DAA behind the
@@ -1125,6 +1120,47 @@ The ones worth finding next, in the order they would pay:
 18. **CPU `INT3` (CPU pin 75) and `INT4`.** `INT3` has been located on the CPU
    but not followed; `INT4` has not been found. With `INT0` unconnected and
    `INT1`/`INT2` on the ASIC, these are what remain of the interrupt map.
+
+### What the EEPROM should be wired to, if the harness is right
+
+Two parts of `courier_emu` disagree about how the Atmel serial EEPROM is
+reached. `panel.py` puts `nvram-strobe`, `-data-in`, `-chip-select` and
+`-clock` on **ASIC port `0x10`**, bits `0x08`-`0x40`. `machine.py` drives the
+same 93C66 from the **CPU**, and its addresses can be resolved to pins.
+
+The 80C186EB's Peripheral Control Block puts **Port 1 Latch at offset `56H`**
+and the Port 2 registers at `58H`/`5AH`/`5EH` - so with the block at `0xff00`,
+`machine.py`'s `0xff56` is `P1LTCH` and its `0xff5e`/`0xff5a` are `P2LTCH` and
+`P2PIN`, which is what its own comments say in register terms. Turning the bits
+into pins through the QFP table:
+
+| harness bit | port pin | CPU QFP pin | 93C66 pin |
+|---|---|---|---|
+| `0xff56` bit `0x04` | `P1.2/GCS2` | **57** | 2, `SK` - clock |
+| `0xff56` bit `0x20` | `P1.5/GCS5` | **52** | 1, `CS` |
+| `0xff5e`/`0xff5a` bit `0x80` | `P2.7` | **79** | 3 and 4, `DI`/`DO` |
+
+**The data line is the distinctive one.** `machine.py` drives and samples the
+*same* CPU pin, so on the board the 93C66's `DI` and `DO` must be **tied
+together** - separate pins on the chip, one net going to CPU pin 79, probably
+through a series resistor so the chip's output does not fight the CPU's drive.
+That is not a thing that happens by accident, and finding it would confirm the
+CPU path outright.
+
+So the readings that settle it:
+
+* 93C66 **pin 2** to CPU **57**, and **pin 1** to CPU **52**.
+* 93C66 **pins 3 and 4** joined, and on CPU **79**.
+* If instead any of them land on the **ASIC**, `panel.py`'s port `0x10` mapping
+  is this board's truth and `machine.py`'s is the other family's.
+* **Pin 6, `ORG`**, while the meter is out: high selects x16 organisation and
+  low x8, which decides how the stored settings are laid out and is not
+  recorded anywhere.
+
+Note that these two mappings came from different firmware families - the ROM
+builds for the CPU path, the XMF supervisor for the ASIC path - so the honest
+possibility is that both are right about their own board and this reading only
+settles the 2806.
 
 ### Readings recorded but not yet interpreted
 
