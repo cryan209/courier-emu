@@ -1,0 +1,117 @@
+80ad lacc    #0000010a
+80af call    8149, *
+80b1 lacc    #00000214
+80b3 call    8149, *
+80b5 lacc    #00000300
+80b7 call    8149, *
+80b9 lacc    #00000409
+80bb call    8149, *
+80bd lacc    #00000505
+80bf call    8149, *
+80c1 lacc    #00000620
+80c3 call    8149, *
+
+8149 samm    @6c
+814a lacl    #03
+814b samm    @6b
+814c idle
+814d lamm    @6b
+814e bcnd    814c, neq
+8150 ret
+8151 sacl    @7d
+8152 add     @7d, 2
+8153 add     #0000816b
+8155 tblr    @7d
+8156 add     #01
+8157 tblr    @7e
+8158 out     @7d, 0068
+815a out     @7e, 0069
+815c add     #01
+815d tblr    @7d
+815e add     #01
+815f tblr    @7e
+8160 out     @7d, 006b
+8162 out     @7e, 006c
+8164 add     #01
+8165 tblr    @7f
+8166 lacl    @7f
+8167 samm    @6c
+8168 lacl    #03
+8169 samm    @6b
+816a ret
+
+81af lamm    @6c
+81b0 samm    @21
+81b1 lacl    #00
+81b2 samm    @6b
+81b3 lacc    #00008189
+81b5 samm    @65
+81b6 rete
+
+8da5 call    8dd5, *
+8da7 lacc    #000080e6
+8da9 rpt     #02
+8daa push
+8dab ldp     #007
+8dac bit     14, @1f
+8dad bcnd    8db6, ntc
+8daf lar     ar1, #fff4
+8db1 bit     1, *
+8db2 ldp     #007
+8db3 xc      2, ntc
+8db4 apl     @1f, #bf3f
+8db6 lar     ar1, #fff4
+8db8 apl     *, #fffd
+8dba call    8e4c, *
+8dbc lacc    #00000409
+8dbe call    8149, *
+8dc0 ldp     #000
+8dc1 apl     @6f, #0103
+8dc3 opl     @6f, #0050
+8dc5 splk    @6e, #03c0
+8dc7 bit     1, @6f
+8dc8 ldp     #007
+8dc9 splk    @4b, #999b
+8dcb bcnd    8dd1, tc
+8dcd call    8df3, *
+8dcf b       8f2f, *
+8dd1 call    8e0f, *
+8dd3 b       9009, *
+8dd5 lacl    #06
+8dd6 call    83c8, *
+8dd8 ldp     #006
+8dd9 lacc    @37
+8dda add     #01
+8ddb sacl    @37
+8ddc ret
+8ddd splk    @6f, #0040
+8ddf splk    @6d, #8f14
+8de1 splk    @6e, #01e0
+8de3 call    8e59, *
+8de5 splk    @4b, #99a3
+8de7 b       8df3, *
+8de9 splk    @6f, #0040
+8deb splk    @6d, #8e84
+8ded splk    @6e, #01e0
+8def call    8e40, *
+8df1 splk    @4b, #99a3
+8df3 splk    @0b, #43bc
+8df5 splk    @44, #2000
+8df7 b       8e13, *
+8df9 splk    @6f, #0043
+8dfb splk    @6d, #8fd5
+8dfd splk    @6e, #01e0
+8dff call    8e59, *
+8e01 splk    @4b, #99a3
+8e03 b       8e0f, *
+8e05 splk    @6f, #0043
+8e07 splk    @6d, #8f3e
+8e09 splk    @6e, #03c0
+8e0b call    8e40, *
+8e0d splk    @4b, #99a3
+8e0f splk    @0b, #4c00
+8e11 splk    @44, #4000
+8e13 lacl    #04
+8e14 call    8151, *
+8e16 call    9941, *
+8e18 splk    @1b, #9787

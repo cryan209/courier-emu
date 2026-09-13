@@ -1,0 +1,1263 @@
+00509 cmp bp, 0
+0050c jne 0x530
+0050e call 0x951
+00511 call 0xffffe319
+00514 call 0x8e5
+00517 test byte ptr [0x693], 0x40
+0051c je 0x524
+0051e mov bp, 0
+00521 jmp 0xf99
+00524 test byte ptr [0x693], 0xc0
+00529 jne 0x530
+0052b or byte ptr [0x89d], 4
+00530 call 0x1df6
+00533 call 0x1f81
+00536 call 0x108a
+00539 mov word ptr [0x138], 0x2c30
+0053f mov word ptr [0xb7c], 0xb4a9
+00545 xor ax, ax
+00547 call 0xffff9252
+0054a call 0xffffbfcc
+0054d mov ax, 0x8482
+
+021c8 and byte ptr [bx + si + 0x5aa], 0xa2
+021cd inc byte ptr [bp + di]
+021cf ret 
+021d0 call 0x21d8
+021d3 retf 
+021d4 call 0x21df
+021d7 retf 
+021d8 mov ax, 0x108
+021db call 0x2799
+021de ret 
+021df mov byte ptr [0xdbc], 2
+021e4 lcall 0x9f74, 0x6f9
+021e9 mov ax, 0x108
+021ec call 0x27c3
+021ef ret 
+021f0 mov ax, 0x108
+021f3 call 0x27c3
+021f6 mov ax, word ptr [0x31d]
+021f9 jmp 0x2799
+021fc call 0x2200
+021ff retf 
+02200 cmp byte ptr [0x5f3], 1
+02205 jbe 0x220d
+02207 or word ptr [0xff64], 0x40
+0220c ret 
+
+0237b call 0x2399
+0237e retf 
+0237f call 0x23ab
+02382 retf 
+02383 call 0x238b
+02386 retf 
+02387 call 0x23bb
+0238a retf 
+0238b test byte ptr [0x313], 8
+02390 je 0x2399
+02392 cmp byte ptr [0x606], 0
+02397 jne 0x23ab
+02399 mov ax, 0x10a
+0239c call 0x27c3
+0239f cmp byte ptr [0x5fc], 4
+023a4 jne 0x23bb
+023a6 call 0x22e9
+023a9 jmp 0x23bb
+023ab mov ax, 0x10a
+023ae call 0x2799
+023b1 cmp byte ptr [0x5fc], 4
+023b6 jne 0x23bb
+023b8 call 0x2306
+023bb cmp byte ptr [0x5f3], 0
+023c0 jne 0x23d1
+
+024b9 mov byte ptr [0x4df], al
+024bc mov byte ptr [0xaef], al
+024bf cmp byte ptr [0x5e8], al
+024c3 je 0x24c8
+024c5 call 0x262f
+024c8 call 0x224c
+024cb call 0x5647
+024ce cmp byte ptr [0xb8a], 0
+024d3 je 0x24db
+024d5 mov ax, 0x100a
+024d8 jmp 0x2799
+024db mov ax, 0x100a
+024de jmp 0x27c3
+024e1 mov byte ptr [0xb8a], 1
+024e6 cmp byte ptr [0x595], 0
+024eb je 0x24d5
+024ed mov byte ptr [0xb8a], 0
+024f2 jmp 0x24db
+024f4 mov ax, 0x100a
+024f7 call 0x2778
+024fa je 0x24d5
+024fc jmp 0x24db
+
+0261f js 0x2622
+02621 mov ax, 0x4009
+02624 jmp 0x27c3
+02627 call 0x262f
+0262a retf 
+0262b call 0x2641
+0262e retf 
+0262f call 0x8320
+02632 jb 0x264c
+02634 mov ax, 0x1009
+02637 jmp 0x27c3
+0263a cmp byte ptr [0x5e8], 2
+0263f je 0x264c
+02641 call 0x8320
+02644 jb 0x264c
+02646 mov ax, 0x1009
+02649 jmp 0x2799
+0264c ret 
+0264d call 0x2651
+02650 retf 
+02651 test byte ptr [0x5c8], 0x80
+02656 je 0x2689
+02658 call 0x2690
+0265b mov al, 0xc8
+0265d mul byte ptr [0x59b]
+02661 mov word ptr [0x58f], ax
+
+02634 mov ax, 0x1009
+02637 jmp 0x27c3
+0263a cmp byte ptr [0x5e8], 2
+0263f je 0x264c
+02641 call 0x8320
+02644 jb 0x264c
+02646 mov ax, 0x1009
+02649 jmp 0x2799
+0264c ret 
+0264d call 0x2651
+02650 retf 
+02651 test byte ptr [0x5c8], 0x80
+02656 je 0x2689
+02658 call 0x2690
+0265b mov al, 0xc8
+0265d mul byte ptr [0x59b]
+02661 mov word ptr [0x58f], ax
+02664 and byte ptr [0x31c], 0xfe
+02669 cmp word ptr [0x58f], 0
+0266e je 0x2689
+02670 test byte ptr [0x32c], 0x80
+02675 jne 0x2683
+02677 test byte ptr [0x31c], 1
+
+0268e or word ptr [bx + di], ax
+02690 mov ax, word ptr [0x31d]
+02693 jmp 0x27c3
+02696 call 0x269e
+02699 retf 
+0269a call 0x26ac
+0269d retf 
+0269e cmp byte ptr [0xdfd], 0
+026a3 je 0x26cb
+026a5 mov ax, 0x809
+026a8 call 0x27c3
+026ab ret 
+026ac cmp byte ptr [0xdfd], 0
+026b1 je 0x26cb
+026b3 mov ax, 0x809
+026b6 call 0x27f9
+026b9 jne 0x26c5
+026bb mov al, byte ptr [0xe2c]
+026be or al, al
+026c0 je 0x26c5
+026c2 call 0xa52
+026c5 mov ax, 0x809
+026c8 call 0x2799
+026cb ret 
+026cc call 0x26d0
+026cf retf 
+026d0 push si
+026d1 push cx
+026d2 mov si, 0x271a
+
+04895 mov word ptr [0x34c], ax
+04898 mov word ptr [0x358], ax
+0489b sti 
+0489c ret 
+0489d call 0x48a5
+048a0 retf 
+048a1 call 0x487a
+048a4 retf 
+048a5 cli 
+048a6 xor ax, ax
+048a8 mov word ptr [0x393], ax
+048ab mov ax, 0x2c00
+048ae mov word ptr [0x35a], ax
+048b1 mov word ptr [0x35c], ax
+048b4 sti 
+048b5 ret 
+048b6 cli 
+048b7 mov ax, 0xa000
+048ba mov word ptr [0xcb8], ax
+048bd mov word ptr [0xcba], ax
+048c0 xor al, al
+048c2 mov byte ptr [0xcbc], al
+048c5 sti 
+048c6 ret 
+048c7 mov di, 0x404
+048ca mov cx, 0x10
+048cd mov ax, 0xcfff
+048d0 mov dx, 1
+048d3 stosw word ptr es:[di], ax
+048d4 xchg dx, ax
+048d5 stosw word ptr es:[di], ax
+048d6 xchg dx, ax
+048d7 loop 0x48d3
+048d9 ret 
+
+074a2 jne 0x74a6
+074a4 jmp 0x74fb
+074a6 call 0x2375
+074a9 mov al, byte ptr [0x5e8]
+074ac and al, 3
+074ae jp 0x74b3
+074b0 call 0x262f
+074b3 call 0x21d8
+074b6 call 0xa4c
+074b9 call 0x8320
+074bc jb 0x74c4
+074be call 0x2690
+074c1 call 0xa4c
+074c4 cmp byte ptr [0x5f3], 0
+074c9 jne 0x74ce
+074cb call 0x223a
+074ce cli 
+074cf call 0x6f6
+074d2 mov ax, 0x32
+074d5 call 0xa65
+074d8 call 0x16ea
+074db sti 
+074dc xor ax, ax
+074de mov byte ptr [0x32c], al
+074e1 mov word ptr [0x132], ax
+074e4 mov word ptr [0x3fc], ax
+074e7 mov word ptr [0xb6a], ax
+
+07571 mov byte ptr [0x4df], al
+07574 push si
+07575 push bx
+07576 pop es
+07577 sti 
+07578 retf 
+07579 call 0x7581
+0757c retf 
+0757d call 0x7586
+07580 retf 
+07581 mov byte ptr [0x4df], 3
+07586 push ax
+07587 mov byte ptr [0xb8b], 0
+0758c call 0x7501
+0758f pop ax
+07590 cmp byte ptr [0x5f1], 6
+07595 jl 0x7599
+07597 jmp 0x75a6
+07599 test byte ptr [0xdc6], 4
+0759e jne 0x75a3
+075a0 call 0x9e60
+075a3 call 0x2298
+075a6 xor al, al
+075a8 mov byte ptr [0x33e], 1
+075ad cmp byte ptr [0x5f1], 6
+075b2 jl 0x75b9
+075b4 or byte ptr [0x32c], 0x80
+075b9 stc 
+
+09d69 cmp al, 0x39
+09d6b ja 0x9d6f
+09d6d clc 
+09d6e ret 
+09d6f stc 
+09d70 ret 
+09d71 call 0x9d79
+09d74 retf 
+09d75 call 0x9d7b
+09d78 retf 
+09d79 inc si
+09d7a dec cx
+09d7b xor dx, dx
+09d7d jcxz 0x9da2
+09d7f lodsb al, byte ptr [si]
+09d80 dec cx
+09d81 cmp al, 0x41
+09d83 jb 0x9d92
+09d85 cmp al, 0x46
+09d87 ja 0x9d92
+09d89 sub al, 0x37
+09d8b shl dx, 4
+09d8e add dl, al
+09d90 jmp 0x9d7d
+09d92 call 0x9d65
+09d95 jb 0x9da0
+09d97 sub al, 0x30
+09d99 shl dx, 4
+09d9c add dl, al
+09d9e jmp 0x9d7d
+09da0 dec si
+09da1 inc cx
+09da2 mov ax, dx
+09da4 clc 
+09da5 ret 
+09da6 call 0x9dae
+09da9 retf 
+09daa call 0x9dae
+09dad retf 
+09dae push cx
+09daf xchg dx, ax
+
+09d9e jmp 0x9d7d
+09da0 dec si
+09da1 inc cx
+09da2 mov ax, dx
+09da4 clc 
+09da5 ret 
+09da6 call 0x9dae
+09da9 retf 
+09daa call 0x9dae
+09dad retf 
+09dae push cx
+09daf xchg dx, ax
+09db0 mov cx, 4
+09db3 rol dx, 4
+09db6 mov al, dl
+09db8 call 0x9df6
+09dbb loop 0x9db3
+09dbd pop cx
+09dbe ret 
+09dbf call 0x9dc3
+09dc2 retf 
+09dc3 push cx
+09dc4 xchg dx, ax
+09dc5 mov dh, 0
+09dc7 mov cx, 2
+09dca rol dl, 4
+09dcd mov al, dl
+09dcf call 0x9df6
+09dd2 loop 0x9dca
+09dd4 pop cx
+09dd5 ret 
+09dd6 call 0x9ded
+09dd9 retf 
+09dda call 0x9dde
+09ddd retf 
+09dde push dx
+09ddf mov dl, 0x64
+09de1 mov ah, 0
+09de3 div dl
+09de5 pop dx
+09de6 push ax
+
+0b588 add bp, cx
+0b58a mov dh, 0
+0b58c push cx
+0b58d call 0xbe76
+0b590 call 0xbe98
+0b593 call 0xbeed
+0b596 call word ptr [0xbe1]
+0b59a pop cx
+0b59b test byte ptr [0xbd7], 0x1c
+0b5a0 je 0xb57c
+0b5a2 loop 0xb57f
+0b5a4 lcall 0x9f74, 0x19aa
+0b5a9 test byte ptr [0xe88], 4
+0b5ae jne 0xb5c3
+0b5b0 mov byte ptr [0x3bde], 8
+0b5b5 mov word ptr [0x26a], 0x9a36
+0b5bb lcall 0xa25d, 0x1d74
+0b5c0 jmp 0x9264
+0b5c3 ljmp 0xa110:0xf28
+0b5c8 call 0x12493
+0b5cb call 0xb96d
+0b5ce call 0x84ec
+
+0b608 cmp word ptr [bx + si], cx
+0b60a call 0xb86c
+0b60d call 0xb8b3
+0b610 call 0xbf18
+0b613 mov word ptr [0xbe1], 0xe106
+0b619 call 0xe1d1
+0b61c jb 0xb627
+0b61e mov word ptr [0xbe1], 0xe11b
+0b624 call 0xbf35
+0b627 mov al, 0x82
+0b629 lcall 0x8f46, 0x134
+0b62e call 0xb912
+0b631 jb 0xb642
+0b633 test byte ptr [0x33f], 8
+0b638 je 0xb63f
+0b63a lcall 0x8000, 0x7316
+0b63f jmp 0x13543
+0b642 pushf 
+0b643 test byte ptr [0xe88], 4
+0b648 je 0xb654
+0b64a mov byte ptr [0xdbc], 4
+
+0c3bc stosb byte ptr es:[di], al
+0c3bd mov al, byte ptr [bx]
+0c3bf inc bx
+0c3c0 stosb byte ptr es:[di], al
+0c3c1 mov cx, 4
+0c3c4 call 0xc3cc
+0c3c7 pop si
+0c3c8 pop dx
+0c3c9 pop cx
+0c3ca pop bx
+0c3cb ret 
+0c3cc mov al, byte ptr [bx]
+0c3ce inc bx
+0c3cf mov ah, al
+0c3d1 ror al, 4
+0c3d4 and ax, 0xf0f
+0c3d7 add ax, 0x3030
+0c3da mov dh, ah
+0c3dc stosb byte ptr es:[di], al
+0c3dd xchg dh, al
+0c3df stosb byte ptr es:[di], al
+0c3e0 loop 0xc3cc
+0c3e2 ret 
+0c3e3 push ax
+0c3e4 call 0xc2c1
+0c3e7 mov al, 0x87
+0c3e9 stosb byte ptr es:[di], al
+0c3ea mov ax, word ptr [0xcae]
+0c3ed stosb byte ptr es:[di], al
+0c3ee mov al, ah
+0c3f0 stosb byte ptr es:[di], al
+0c3f1 mov al, byte ptr [0xc97]
+0c3f4 shl al, 1
+0c3f6 stosb byte ptr es:[di], al
+0c3f7 mov al, byte ptr [0xc9a]
+0c3fa mov byte ptr [0xc94], al
+0c3fd shl al, 1
+0c3ff or al, byte ptr [0xcb0]
+0c403 stosb byte ptr es:[di], al
+0c404 pop ax
+
+0c80d mov byte ptr [bp + di], dl
+0c80f jb 0xc814
+0c811 mov ax, 0x1388
+0c814 shr ax, 5
+0c817 mov bx, ax
+0c819 shr ax, 1
+0c81b add bx, ax
+0c81d shr ax, 1
+0c81f add ax, bx
+0c821 inc ax
+0c822 pop bx
+0c823 mov byte ptr [bx + 0xc58], al
+0c827 pop ax
+0c828 mov byte ptr [bx + 0x371], 0x82
+0c82d stc 
+0c82e ret 
+0c82f cli 
+0c830 inc byte ptr [0xc68]
+0c834 mov byte ptr [bx + 0xc58], 3
+0c839 sti 
+0c83a push bx
+0c83b xor bh, bh
+0c83d mov bl, al
+0c83f mov al, byte ptr cs:[bx - 0x379c]
+0c844 jmp 0xc7f6
+0c846 add byte ptr [si], al
+0c848 add ax, word ptr [bp + si]
+0c84a add word ptr [bx + di], ax
+0c84c add word ptr [bx + di], ax
+0c84e add word ptr [bx + si], ax
+0c850 add byte ptr [bx + si], al
+0c852 add byte ptr [bx + si], al
+0c854 add byte ptr [bx + si], al
+
+0cfa8 pushf 
+0cfaa or al, 0x80
+0cfac call 0x14ea8
+0cfaf shr al, 5
+0cfb2 and ax, 6
+0cfb5 mov di, ax
+0cfb7 call 0x14ea8
+0cfba jb 0xcfc0
+0cfbc or al, al
+0cfbe jne 0xcfc3
+0cfc0 mov al, byte ptr [0x5aa]
+0cfc3 jmp word ptr cs:[di - 0x31c9]
+0cfc8 xor al, byte ptr [0xc9d]
+0cfcc jns 0xcfe9
+0cfce xor byte ptr [0xc9d], 0x80
+0cfd3 call 0xc1e9
+0cfd6 mov al, 0
+0cfd8 xchg byte ptr [0x4d8], al
+0cfdc shr al, 5
+0cfdf and ax, 6
+0cfe2 mov di, ax
+0cfe4 jmp word ptr cs:[di - 0x3183]
+0cfe9 ret 
+0cfea call 0xcbdd
+0cfed ret 
+
+0cfd5 mov al, 0
+0cfd8 xchg byte ptr [0x4d8], al
+0cfdc shr al, 5
+0cfdf and ax, 6
+0cfe2 mov di, ax
+0cfe4 jmp word ptr cs:[di - 0x3183]
+0cfe9 ret 
+0cfea call 0xcbdd
+0cfed ret 
+0cfee test byte ptr [0x4ed], 1
+0cff3 je 0xd002
+0cff5 cmp byte ptr [0x4ee], 0
+0cffa je 0xd002
+0cffc mov byte ptr [0xcc1], 1
+0d001 ret 
+0d002 jmp 0xc262
+0d005 ret 
+0d006 call 0xc1ff
+0d009 ret 
+0d00a call 0xc1ff
+0d00d mov byte ptr [0xc93], 0
+0d012 ret 
+0d013 out dx, al
+0d014 iret 
+0d015 int3 
+0d017 int3 
+0d019 sub ah, cl
+0d01b sub ah, cl
+
+0da39 add byte ptr [si], dh
+0da3b jae 0xda66
+0da3d sub ax, 0x3000
+0da40 shr ax, 1
+0da42 add ax, 3
+0da45 jmp 0xda79
+0da47 push ax
+0da48 mov ax, 2
+0da4b call 0xda79
+0da4e inc byte ptr [0xcd7]
+0da52 mov ax, word ptr [0xcce]
+0da55 shl ax, 1
+0da57 cmp ax, word ptr [0xcab]
+0da5b jb 0xda60
+0da5d mov ax, word ptr [0xcab]
+0da60 mov word ptr [0xcce], ax
+0da63 pop ax
+0da64 jmp 0xda73
+0da66 sub ax, 0x3400
+0da69 xor dx, dx
+0da6b mov di, 5
+0da6e div di
+0da70 add ax, 0x103
+0da73 cmp ax, word ptr [0xcce]
+0da77 jae 0xda47
+0da79 cld 
+0da7a mov dx, ax
+0da7c mov al, byte ptr [0xcd5]
+
+0e60b cmp al, 0xe
+0e60d and al, 0x7f
+0e60f cmp al, 6
+0e611 jne 0xe61b
+0e613 call 0xe61b
+0e616 mov byte ptr [0xe3c], 8
+0e61b push es
+0e61c mov al, byte ptr [0xe3c]
+0e61f and ax, 0xf
+0e622 mov bl, 6
+0e624 mul bl
+0e626 mov bx, 0xe741
+0e629 add bx, ax
+0e62b mov ax, word ptr cs:[bx + 4]
+0e62f mov bx, ax
+0e631 mov al, 4
+0e633 out 0x1e, al
+0e635 mov ax, 2
+0e638 lcall 0x8f46, 0x224
+0e63d mov byte ptr [0xe3b], 0xc8
+0e642 test byte ptr [0xe3b], 0xff
+0e647 jne 0xe64c
+0e649 jmp 0xe73a
+0e64c in al, 0x1e
+0e64e and al, 4
+0e650 cmp al, 4
+0e652 jne 0xe642
+
+0f2f6 xor byte ptr [si], ch
+0f2f8 xor word ptr [bx + di], bp
+0f2fa or ax, 0xa
+0f2fd retf 
+0f2fe call 0x9e06
+0f301 or ax, 0x300a
+0f304 or ax, 0xa
+0f307 retf 
+0f308 call 0x9e06
+0f30b or ax, 0x280a
+0f30e xor word ptr [di], bp
+0f310 xor ax, 0xd29
+0f313 or al, byte ptr [bx + si]
+0f315 retf 
+0f316 call 0x9e06
+0f319 or ax, 0x280a
+0f31c xor byte ptr [di], ch
+0f31e xor ax, 0xd29
+0f321 or al, byte ptr [bx + si]
+0f323 retf 
+0f324 call 0x9e06
+0f327 or ax, 0x280a
+0f32a xor byte ptr [di], ch
+0f32c xor ch, byte ptr [bx + di]
+0f32e sub al, 0x28
+0f330 xor byte ptr [di], ch
+0f332 xor ch, byte ptr [bx + di]
+0f334 or ax, 0xa
+0f337 retf 
+0f338 call 0x9e06
+0f33b or ax, 0x280a
+
+0f425 push ax
+0f426 and byte ptr [bp + si + 0x65], dh
+0f429 jbe 0xf42b
+0f42b retf 
+0f42c push ax
+0f42d call 0x9e35
+0f430 pop ax
+0f431 retf 
+0f432 call 0x7501
+0f435 call 0x123ab
+0f438 cmp byte ptr [0x4df], 1
+0f43d jne 0xf445
+0f43f call 0x12ad2
+0f442 call 0x1108a
+0f445 retf 
+0f446 call 0x1263a
+0f449 retf 
+0f44a call 0x12217
+0f44d retf 
+0f44e call 0x123fb
+0f451 retf 
+
+0fc97 les di, ptr [bx + si + 0x7f0f]
+0fc9b mov word ptr [0x289], ax
+0fc9e ret 
+0fc9f call 0xfda7
+0fca2 jae 0xfca7
+0fca4 mov ax, 0x7f3f
+0fca7 mov word ptr [0x289], ax
+0fcaa ret 
+0fcab cmp byte ptr [0x59f], 0xff
+0fcb0 je 0xfcc6
+0fcb2 test word ptr [0x292], 0xffff
+0fcb8 jne 0xfcc6
+0fcba cmp byte ptr [0x13e], 0
+0fcbf jne 0xfcc6
+0fcc1 call 0x12060
+0fcc4 or al, bl
+0fcc6 mov al, byte ptr [0x32c]
+0fcc9 and al, 0x43
+0fccb cmp al, 0x43
+0fccd jne 0xfcd5
+0fccf mov word ptr [0x298], 0x443
+0fcd5 ret 
+0fcd6 mov word ptr [0x292], 0
+
+10527 push ss
+10528 mov cx, 0xc303
+1052b mov dx, word ptr [0x3b7]
+1052f call 0x10537
+10532 mov word ptr [0x3b7], dx
+10536 ret 
+10537 push bx
+10538 xor al, dh
+1053a mov bh, al
+1053c jp 0x1053f
+1053e stc 
+1053f mov bl, 0
+10541 rcr bx, 1
+10543 sar bh, 1
+10545 rcl bh, 1
+10547 lahf 
+10548 xor bh, al
+1054a sahf 
+1054b rcr bx, 1
+1054d sar bx, 1
+1054f rol bx, 1
+10551 xor dl, bl
+10553 mov dh, bh
+10555 xchg dh, dl
+10557 pop bx
+10558 ret 
+10559 test byte ptr [0x33e], 4
+1055e je 0x10589
+10560 test byte ptr [0x5a5], 4
+10565 jne 0x10589
+10567 test byte ptr [0x685], 8
+1056c jne 0x10589
+
+1272b cmp byte ptr [di], al
+1272d add word ptr [bp + di + 0x3a16], ax
+12731 add ax, 0xe800
+12734 add ax, 0x80d0
+12737 push cs
+12738 sub al, 3
+1273a and byte ptr [bx + si + 0x2c26], al
+1273e add di, word ptr [si + 0x6c7]
+12742 cmp al, byte ptr [bx + di]
+12744 push sp
+12745 add di, ax
+12747 push es
+12748 cwde 
+12749 add cl, byte ptr [bx + di]
+1274b xor di, cx
+1274d ret 
+1274e jbe 0x12752
+12750 add bp, word ptr [di]
+12752 and word ptr [0x405], ax
+12756 or word ptr [bp + si + 0x6633], 0x34
+1275b outsw dx, word ptr [si]
+1275c xor al, 0xf
+1275e aaa 
+1275f and word ptr [di], si
+12761 xchg bx, ax
+12762 xor al, 0x9a
+12764 add bh, bl
+12766 add al, byte ptr [si - 0x44f9]
+1276a div word ptr [bp + si]
+1276c mov cx, 9
+1276f mov di, 0x32ee
+
+1397d or cl, dl
+1397f call 0x13f85
+13982 mov ax, 0xd108
+13985 call 0x16b8d
+13988 add dh, dh
+1398a push es
+1398b aas 
+1398c add cx, word ptr [bx + si]
+1398e je 0x13993
+13990 add ax, 0x32
+13993 cmp ax, 0x12c
+13996 jbe 0x1399b
+13998 mov ax, 0x12c
+1399b mov word ptr [0x13a], ax
+1399e mov word ptr [0x298], 0x44eb
+139a4 popf 
+139a5 test byte ptr [0x33f], 2
+139aa jne 0x139d4
+139ac test byte ptr [0x33f], 4
+139b1 jne 0x139d4
+139b3 test byte ptr [0x33f], 8
+139b8 jne 0x139d4
+139ba mov ax, 0x49
+139bd mov bx, 0x8885
+139c0 call 0xf6b8
+139c3 mov ax, 0x4a00
+
+16338 mov byte ptr [0xe8f7], cl
+1633c cmp word ptr [bp + di + 0x573], bx
+16340 call 0x16748
+16343 mov al, 0x7e
+16345 cmp al, 0x7e
+16347 je 0x16363
+16349 cmp al, 0x10
+1634b jne 0x16355
+1634d mov word ptr [0x3b1], 0x6f05
+16353 stc 
+16354 ret 
+16355 call 0x16762
+16358 or byte ptr [0xe88], 8
+1635d mov word ptr [0x3b1], 0x6f2d
+16363 clc 
+16364 ret 
+16365 call 0xfe77
+16368 jae 0x16377
+1636a mov al, 0x10
+1636c call 0x16762
+1636f mov word ptr [0x3b1], 0x6f83
+16375 jmp 0x163d6
+16377 cmp al, 3
+16379 jne 0x16394
+1637b mov byte ptr [0xe8d], 0
+
+165d0 jno 0x165bd
+165d2 aaa 
+165d3 call 0x16726
+165d6 jae 0x1660a
+165d8 call 0x165e0
+165db call 0x16726
+165de jae 0x1660a
+165e0 xor ch, ch
+165e2 mov cl, byte ptr [0x3bc]
+165e6 test byte ptr [0xe88], 1
+165eb jne 0x165fc
+165ed shr al, 1
+165ef push ax
+165f0 mov al, 0
+165f2 rcl al, 1
+165f4 call 0x15fd7
+165f7 pop ax
+165f8 loop 0x165ed
+165fa jmp 0x1660a
+165fc shr al, 1
+165fe push ax
+165ff mov al, 0
+16601 rcl al, 1
+16603 call word ptr [0xea0]
+16607 pop ax
+16608 loop 0x165fc
+1660a ret 
+1660b cmp al, 0x83
+1660d jne 0x16612
+1660f jmp 0xfbe4
+16612 mov ax, word ptr [0x35c]
+16615 cmp ax, word ptr [0x35a]
+
+1670b insb byte ptr es:[di], dx
+1670c jmp 0x16725
+1670e call 0x16726
+16711 jae 0x16725
+16713 call 0x1671b
+16716 call 0x16726
+16719 jae 0x16725
+1671b mov cl, byte ptr [0x3bc]
+1671f mov ch, 0
+16721 call word ptr [0x3b3]
+16725 ret 
+16726 call word ptr [0x27d]
+1672a jae 0x16747
+1672c add dx, 2
+1672f in al, dx
+16730 mov ah, al
+16732 sub dx, 2
+16735 in al, dx
+16736 xchg bx, ax
+16737 out 0x18, al
+16739 xchg al, ah
+1673b out 0x1a, al
+1673d xchg al, ah
+1673f xchg bx, ax
+16740 mov cl, byte ptr [0x3bc]
+16744 mov ch, 0
+16746 stc 
+16747 ret 
+16748 cmp word ptr [0xe99], 0
+1674d clc 
+1674e jne 0x16761
+
+16a8c mov byte ptr [0x20eb], al
+16a8f call 0x16f89
+16a92 jae 0x16aaf
+16a94 call 0x16a9c
+16a97 call 0x16f89
+16a9a jae 0x16aaf
+16a9c xor ch, ch
+16a9e mov cl, byte ptr [0x3bc]
+16aa2 shr al, 1
+16aa4 push ax
+16aa5 mov al, 0
+16aa7 rcl al, 1
+16aa9 call 0x16ed3
+16aac pop ax
+16aad loop 0x16aa2
+16aaf ret 
+16ab0 jb 0x16adb
+16ab2 cmp al, 0x76
+16ab4 je 0x16ad6
+16ab6 cmp al, 0x83
+16ab8 je 0x16ad1
+16aba cmp byte ptr [0x3424], 0
+16abf je 0x16ac8
+16ac1 test byte ptr [0x3bde], 8
+16ac6 je 0x16adb
+16ac8 mov ax, word ptr [0x35c]
+16acb cmp ax, word ptr [0x35a]
+16acf jne 0x16adb
+16ad1 call 0x16fac
+
+1b51e je 0x1b525
+1b520 mov al, byte ptr [0x65f]
+1b523 jmp 0x1b528
+1b525 mov al, byte ptr [0x5e8]
+1b528 jmp 0x1b4c1
+1b52a call 0x1bc40
+1b52d jae 0x1b530
+1b52f ret 
+1b530 test byte ptr [0x694], 4
+1b535 je 0x1b544
+1b537 test word ptr [0x272], 4
+1b53d je 0x1b544
+1b53f mov al, byte ptr [0x671]
+1b542 jmp 0x1b547
+1b544 mov al, byte ptr [0x5fa]
+1b547 jmp 0x1b4c1
+1b54a call 0x1bc9c
+1b54d jae 0x1b550
+1b54f ret 
+1b550 mov al, byte ptr [0x5fb]
+1b553 jmp 0x1b4c1
+1b556 call 0x1bc8c
+1b559 jae 0x1b55c
+1b55b ret 
+1b55c mov al, byte ptr [0x5ec]
+1b55f jmp 0x1b4c1
+1b562 call 0x1bcb8
+1b565 ret 
+
+1bc51 ret 
+1bc52 test byte ptr [0x693], 0x48
+1bc57 jne 0x1bc50
+1bc59 call 0x1a761
+1bc5c and byte ptr [0x58], 0xf8
+1bc61 ret 
+1bc62 clc 
+1bc63 ret 
+1bc64 test byte ptr [0x693], 0x40
+1bc69 jne 0x1bc50
+1bc6b call 0x1a761
+1bc6e add byte ptr [bp + di], 0xf8
+1bc72 ret 
+1bc73 call 0x1a761
+1bc76 and byte ptr [0x43], 0xf8
+1bc7b ret 
+1bc7c call 0x1a761
+1bc7f and byte ptr [0x44], 0xc3
+1bc84 call 0x1a761
+1bc87 and byte ptr [0x54], 0xc3
+1bc8c cmp byte ptr [0xe16], 1
+1bc91 je 0x1bc50
+1bc93 call 0x1a761
+
+1bd51 push ax
+1bd52 test byte ptr [0x33f], 0xc
+1bd57 je 0x1bd63
+1bd59 call 0x1a761
+1bd5c dec si
+1bd5d dec di
+1bd5e dec si
+1bd5f inc bp
+1bd60 add bl, ch
+1bd62 or sp, word ptr [bx + di + 0x8a4]
+1bd66 mov bx, 0x6c8f
+1bd69 lcall 0x8000, 0x8140
+1bd6e call 0x1a761
+1bd71 das 
+1bd72 add byte ptr [bx + di + 0x8a6], ah
+1bd76 mov bx, 0x6c8f
+1bd79 lcall 0x8000, 0x8140
+1bd7e clc 
+1bd7f pop ax
+1bd80 ret 
+1bd81 push ax
+1bd82 test byte ptr [0x33f], 0xc
+1bd87 je 0x1bd93
+1bd89 call 0x1a761
+1bd8c cmp byte ptr [bx + si], dh
+1bd8e xor byte ptr [bx + si], dh
+1bd90 add bl, ch
+1bd92 or sp, word ptr [bx + di + 0x8a8]
+1bd96 mov bx, 0x6c8f
+
+1c23d and ah, ch
+1c23f sub al, 0
+1c241 mov ax, word ptr [0x304]
+1c244 shr ax, 5
+1c247 and ax, 0x1f
+1c24a mov bx, 0x6c8f
+1c24d lcall 0x8000, 0x8140
+1c252 test word ptr [0x304], 0x10
+1c258 je 0x1c261
+1c25a call 0x1a761
+1c25d pop cx
+1c25e add bl, ch
+1c260 add ax, 0xfde8
+1c263 in al, 0x4e
+1c265 add al, ch
+1c267 clc 
+1c268 in al, 0x2c
+1c26a add byte ptr [bx + di + 0x306], ah
+1c26e shr ax, 6
+1c271 and ax, 0x3ff
+1c274 mov bx, 0x6cab
+1c277 lcall 0x8000, 0x8140
+1c27c call 0x1a761
+1c27f sub al, 0
+1c281 mov ax, word ptr [0x306]
+
+1fdc2 mov al, 0xd
+1fdc4 mov ax, word ptr [0xdb1]
+1fdc7 mov word ptr [0x88c2], ax
+1fdca call 0x1fdd2
+1fdcd pop ax
+1fdce mov byte ptr [0xdb0], al
+1fdd1 ret 
+1fdd2 mov dx, ax
+1fdd4 mov cx, 4
+1fdd7 mov bl, 1
+1fdd9 rol dx, 4
+1fddc mov ax, dx
+1fdde call 0x1fb87
+1fde1 loop 0x1fdd9
+1fde3 ret 
+1fde4 xor dx, dx
+1fde6 mov cx, 4
+1fde9 mov bl, 0
+1fdeb shl dx, 4
+1fdee call 0x1fb87
+1fdf1 xor ah, ah
+1fdf3 and ax, 0xf
+1fdf6 or dx, ax
+1fdf8 loop 0x1fdeb
+1fdfa mov ax, dx
+1fdfc ret 
+1fdfd test byte ptr [0x5bd], 2
+1fe02 jne 0x1fe37
+1fe04 mov bl, byte ptr [0xe13]
+1fe08 xor bh, bh
+
+225c8 mov bx, word ptr [si]
+225ca retf 
+
+23dd1 mov cx, bx
+23dd4 push cx
+23dd5 push si
+23dd6 mov dx, 0x3130
+23dd9 call 0x242e1
+23ddc jae 0x23de1
+23dde jmp 0x23e7c
+23de1 call 0x242e1
+23de4 jb 0x23dde
+23de6 test al, 1
+23de8 je 0x23def
+23dea or byte ptr [0x3815], 1
+23def mov ah, dl
+23df1 test al, 0x40
+23df3 je 0x23df7
+23df5 mov ah, dh
+23df7 mov byte ptr [0x37f2], ah
+23dfb mov ah, dl
+23dfd test al, 0x80
+23dff je 0x23e03
+23e01 mov ah, dh
+23e03 mov byte ptr [0x37fa], ah
+23e07 and ax, 0x3c
+23e0a shr ax, 2
+23e0d mov bx, ax
+23e0f mov al, byte ptr cs:[bx + 0x18b7]
+23e14 mov byte ptr [0x37f4], al
+23e17 call 0x242e1
+
+26419 je 0x26420
+2641b mov byte ptr [0x65f], al
+2641e jmp 0x2643a
+26420 mov byte ptr [0x5e8], al
+26423 cmp al, 2
+26425 je 0x2642e
+26427 lcall 0x8000, 0x262b
+2642c clc 
+2642d ret 
+2642e test byte ptr [0x33e], 4
+26433 je 0x2643a
+26435 lcall 0x8000, 0x2627
+2643a clc 
+2643b ret 
+2643c test byte ptr [0x685], 0xa
+26441 jne 0x263f5
+26443 test byte ptr [0x694], 4
+26448 je 0x2645e
+2644a test word ptr [0x272], 4
+26450 je 0x2645e
+26452 lcall 0x8000, 0x2ca2
+26457 or byte ptr [0x592], 0x80
+2645c clc 
+2645d ret 
+
+26784 cmp cl, byte ptr [bp + si]
+26786 add byte ptr [bx + si - 0x3c08], al
+2678a stc 
+2678b ret 
+2678c call 0x26794
+2678f retf 
+26790 call 0x267ae
+26793 retf 
+26794 mov bx, 0x744
+26797 lcall 0x8000, 0x9e41
+2679c call 0x27aa6
+2679f push bx
+267a0 jb 0x2680c
+267a3 popaw 
+267a4 insb byte ptr es:[di], dx
+267a5 and byte ptr [bp + 0x75], cl
+267a8 insw word ptr es:[di], dx
+267a9 bound sp, dword ptr [di + 0x72]
+267ac and byte ptr [bx + si], al
+267ae mov bx, 0x891
+267b1 mov al, byte ptr [bx]
+267b3 cmp al, 0xff
+267b5 jne 0x267dd
+267b7 mov bx, 0x744
+267ba mov ax, 3
+267bd call 0x26804
+267c0 mov al, byte ptr [bx]
+267c2 inc bx
+267c3 lcall 0x8000, 0x1613
+267c8 mov al, byte ptr [bx]
+267ca inc bx
+
+27a3a and byte ptr [bx + si + 0x67e], 0xa2
+27a3f lcall 0x5e8, 0xa00a
+27a44 cmp al, 2
+27a46 je 0x27a4f
+27a48 lcall 0x8000, 0x262b
+27a4d jmp 0x27a54
+27a4f lcall 0x8000, 0x2627
+27a54 popaw 
+27a55 ret 
+27a56 call 0x27a5a
+27a59 retf 
+27a5a push si
+27a5b push di
+27a5c pushf 
+27a5d cld 
+27a5e mov si, 0x595
+27a61 mov di, 0x60c
+27a64 mov cx, 0x77
+27a67 repe cmpsb byte ptr [si], byte ptr es:[di]
+27a69 popf 
+27a6a pop di
+27a6b pop si
+27a6c or cx, cx
+27a6e je 0x27a72
+27a70 stc 
+27a71 ret 
+27a72 clc 
+27a73 ret 
+27a74 test word ptr [0x272], 4
+27a7a je 0x27a87
+27a7c test word ptr [0x272], 0x800
+
+27fa9 add al, ch
+27fab cmp al, byte ptr [bx + si]
+27fad mov bh, 0
+27faf mov bl, 0
+27fb1 call 0x27fb9
+27fb4 call 0x27fe7
+27fb7 jmp 0x2800d
+27fb9 and bh, 3
+27fbc or bh, 4
+27fbf rol bx, 4
+27fc2 mov cx, 0xc
+27fc5 and al, 0xef
+27fc7 test bh, 0x80
+27fca je 0x27fce
+27fcc or al, 0x10
+27fce rol bx, 1
+27fd0 out 0x10, al
+27fd2 call 0x27ffa
+27fd5 loop 0x27fc5
+27fd7 and al, 0xef
+27fd9 or al, 0x20
+27fdb out 0x10, al
+27fdd ret 
+27fde mov al, 0x79
+27fe0 out 0xe, al
+27fe2 mov al, 0x20
+27fe4 out 0x10, al
+27fe6 ret 
+27fe7 nop 
+27fe8 nop 
+27fe9 and al, 0xdf
+27feb out 0x10, al
+27fed nop 
+27fee nop 
+27fef nop 
+27ff0 nop 
+27ff1 nop 
+
+7c4d8 add al, ch
+7c4da cmp al, byte ptr [bx + si]
+7c4dc mov bh, 0
+7c4de mov bl, 0
+7c4e0 call 0x7c4e8
+7c4e3 call 0x7c516
+7c4e6 jmp 0x7c53c
+7c4e8 and bh, 3
+7c4eb or bh, 4
+7c4ee rol bx, 4
+7c4f1 mov cx, 0xc
+7c4f4 and al, 0xef
+7c4f6 test bh, 0x80
+7c4f9 je 0x7c4fd
+7c4fb or al, 0x10
+7c4fd rol bx, 1
+7c4ff out 0x10, al
+7c501 call 0x7c529
+7c504 loop 0x7c4f4
+7c506 and al, 0xef
+7c508 or al, 0x20
+7c50a out 0x10, al
+7c50c ret 
+7c50d mov al, 0x79
+7c50f out 0xe, al
+7c511 mov al, 0x20
+7c513 out 0x10, al
+7c515 ret 
+7c516 nop 
+7c517 nop 
+7c518 and al, 0xdf
+7c51a out 0x10, al
+7c51c nop 
+7c51d nop 
+7c51e nop 
+7c51f nop 
+7c520 nop 
+
+7cbe1 add word ptr [bx + si], dx
+7cbe3 je 0x7cc05
+7cbe5 mov si, 0xc8
+7cbe8 call 0x7d1d3
+7cbeb jae 0x7cbf0
+7cbed jmp 0x7cb46
+7cbf0 mov byte ptr cs:[0x153], al
+7cbf4 mov si, 0xc8
+7cbf7 call 0x7d1d3
+7cbfa jae 0x7cbff
+7cbfc jmp 0x7cb46
+7cbff mov byte ptr cs:[0x154], al
+7cc03 jmp 0x7cc10
+7cc05 mov si, 0xc8
+7cc08 call 0x7d1d3
+7cc0b jae 0x7cc10
+7cc0d jmp 0x7cb46
+7cc10 test byte ptr cs:[0x124], 0x10
+7cc16 je 0x7cc3b
+7cc18 mov ax, 0
+7cc1b call 0x7cce2
+7cc1e call 0x7cce2
+7cc21 mov ax, word ptr cs:[0x151]
+7cc25 cmp ah, byte ptr cs:[0x153]
+
+7cf02 mov word ptr [0x145], ax
+7cf05 call 0x7c412
+7cf08 xchg al, ah
+7cf0a call 0x7c412
+7cf0d clc 
+7cf0e jmp 0x7cf3a
+7cf10 call 0x7cf7d
+7cf13 jae 0x7cf35
+7cf15 xor dh, dh
+7cf17 mov word ptr cs:[0x109], dx
+7cf1c pushaw 
+7cf1d call 0x7c61b
+7cf20 popaw 
+7cf21 jb 0x7cf7b
+7cf23 cmp word ptr cs:[0x106], 1
+7cf29 jne 0x7cf30
+7cf2b call 0x7d4de
+7cf2e jmp 0x7cf35
+7cf30 mov word ptr es:[di], 0xff
+7cf35 call 0x7d401
+7cf38 jb 0x7cf7b
+7cf3a inc word ptr cs:[0x1d9]
+7cf3f inc word ptr cs:[0x1d9]
+7cf44 cmp word ptr cs:[0x1d9], 0

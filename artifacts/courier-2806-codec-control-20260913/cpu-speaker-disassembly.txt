@@ -1,0 +1,151 @@
+Addresses are ROM file offsets.
+025f4 call 0x25f8
+025f7 retf 
+025f8 test byte ptr [0x693], 6
+025fd je 0x2600
+025ff ret 
+02600 mov al, byte ptr [0x5e7]
+02603 push ax
+02604 test al, 1
+02606 je 0x2610
+02608 mov ax, 0x2009
+0260b call 0x2799
+0260e jmp 0x2616
+02610 mov ax, 0x2009
+02613 call 0x27c3
+02616 pop ax
+02617 test al, 2
+02619 je 0x2621
+0261b mov ax, 0x4009
+0261e jmp 0x2799
+02621 mov ax, 0x4009
+02624 jmp 0x27c3
+02627 call 0x262f
+0262a retf 
+0262b call 0x2641
+0262e retf 
+0262f call 0x8320
+02632 jb 0x264c
+02634 mov ax, 0x1009
+02637 jmp 0x27c3
+0263a cmp byte ptr [0x5e8], 2
+0263f je 0x264c
+02641 call 0x8320
+02644 jb 0x264c
+02646 mov ax, 0x1009
+02649 jmp 0x2799
+0264c ret 
+
+02799 test al, 8
+0279b je 0x27c2
+0279d push bx
+0279e push dx
+0279f pushf 
+027a0 mov bl, al
+027a2 and bx, 3
+027a5 shl bx, 1
+027a7 add bx, 0x27ef
+027ab mov dx, word ptr cs:[bx]
+027ae mov bl, al
+027b0 and bx, 3
+027b3 cli 
+027b4 mov al, byte ptr [bx + 0x30e]
+027b8 or al, ah
+027ba mov byte ptr [bx + 0x30e], al
+027be out dx, al
+027bf popf 
+027c0 pop dx
+027c1 pop bx
+027c2 ret 
+027c3 test al, 8
+027c5 je 0x27c2
+027c7 push bx
+027c8 push dx
+027c9 pushf 
+027ca mov bl, al
+027cc and bx, 3
+027cf shl bx, 1
+027d1 add bx, 0x27ef
+027d5 mov dx, word ptr cs:[bx]
+027d8 mov bl, al
+027da and bx, 3
+027dd not ah
+027df cli 
+027e0 mov al, byte ptr [bx + 0x30e]
+027e4 and al, ah
+027e6 mov byte ptr [bx + 0x30e], al
+027ea out dx, al
+027eb popf 
+027ec pop dx
+027ed pop bx
+027ee ret 
+
+08320 test byte ptr [0x693], 2
+08325 jne 0x8330
+08327 test byte ptr [0x693], 4
+0832c je 0x8330
+0832e stc 
+0832f ret 
+08330 clc 
+08331 ret 
+
+263c4 lcall 0x8000, 0x9cec
+263c9 jb 0x263f5
+263cb cmp al, 4
+263cd jae 0x263f5
+263cf call 0x27963
+263d2 test byte ptr [0x694], 4
+263d7 je 0x263e6
+263d9 test word ptr [0x272], 4
+263df je 0x263e6
+263e1 mov byte ptr [0x65e], al
+263e4 jmp 0x263f3
+263e6 mov byte ptr [0x5e7], al
+263e9 lcall 0x8000, 0x25f4
+263ee lcall 0x8000, 0x732
+263f3 clc 
+263f4 ret 
+263f5 stc 
+263f6 ret 
+263f7 lcall 0x8000, 0x9cec
+263fc jb 0x263f5
+263fe cmp al, 4
+26400 jae 0x263f5
+26402 lcall 0x8000, 0x831c
+26407 jb 0x2643a
+26409 call 0x27963
+2640c test byte ptr [0x694], 4
+26411 je 0x26420
+26413 test word ptr [0x272], 4
+26419 je 0x26420
+2641b mov byte ptr [0x65f], al
+2641e jmp 0x2643a
+26420 mov byte ptr [0x5e8], al
+26423 cmp al, 2
+26425 je 0x2642e
+26427 lcall 0x8000, 0x262b
+2642c clc 
+2642d ret 
+2642e test byte ptr [0x33e], 4
+26433 je 0x2643a
+26435 lcall 0x8000, 0x2627
+2643a clc 
+2643b ret 
+Port table at 27ef: 0010 0012 0014 0012.
+
+Volume mailbox routine:
+00732 xor bx, bx
+00734 mov bl, byte ptr [0x5e7]
+00738 shl bx, 1
+0073a mov ax, word ptr cs:[bx + 0x75c]
+0073f mov bx, ax
+00741 test byte ptr [0x693], 8
+00746 jne 0x74a
+00748 xor bx, bx
+0074a test byte ptr [0x14b], 1
+0074f je 0x753
+00751 xor bx, bx
+00753 mov ax, 0xf
+00756 lcall 0x8f46, 0x224
+0075b retf 
+Gain table: 0200 0600 0e00 3f00
