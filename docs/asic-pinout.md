@@ -1759,11 +1759,34 @@ again.
 
 **That is the question this reduces to, and it is a code search rather than a
 probe.** Either a call overlay rewrites register 4 when `M` and `L` say so - in
-which case the mailbox carries the setting and the diff below will show it - or
-nothing ever does, and the speaker is not on `MON OUT` after all. The six-word
-sequence is written once at reset and
-[ac01-codec-protocol.md](ac01-codec-protocol.md) records no second writer, but
-it was not looking for one.
+which case the mailbox carries the setting - or nothing ever does, and the
+speaker is not on `MON OUT` after all. The six-word sequence is written once at
+reset and [ac01-codec-protocol.md](ac01-codec-protocol.md) records no second
+writer, but it was not looking for one.
+
+**And the search should start on the supervisor's side, not the DSP's.** The
+register write itself is in the DSP, in an overlay that has to be expanded
+before it can be read - the hard place to look. But **the mailbox is a shared
+interface**: both sides have to agree on the tag and the argument, so whatever
+carries the `M` and `L` settings across is spelled out in the supervisor image
+too, in code this repository has already mapped. `mailbox_tap`'s own
+description gives the anchors - messages are built by the routine at file
+`0xf678` in the 7.4.16 capture, three words into a 24-word ring, and the tag is
+the DSP's dispatch index with anything above `0x7f` rejected. Finding where the
+`AT` parser's `M` and `L` values reach that routine is a static read of a part
+of the firmware that is already understood, and it names the tag without
+touching the DSP payload at all.
+
+**Two tap runs were attempted here and neither answered it**, which is worth
+recording so the next attempt starts further along. `MAIN_2.3.31.XMF` with
+`ATM0` and `ATM3` produces **no mailbox traffic at all** in nine million
+instructions, and the 2806's own flash dump does not reach a prompt under the
+harness - the raw `.rom` runs but emits no serial text, so the supported path is
+an XMF. The existing `artifacts/mailbox-tap-atdt-01/` also notes that its plain
+`AT` control run produced the same tags as its dial run, so **the traffic that
+distinguishes settings may only appear during a call**, if it appears at all.
+A useful run needs an image that reaches a dial, and the comparison wants to be
+`M0` against `M3` on the same image with everything else held.
 
 The same search answers a second question for free. **Analog loopback is
 register 5 `DS01`-`DS00` = `00`** - the state that disables both `IN` and
