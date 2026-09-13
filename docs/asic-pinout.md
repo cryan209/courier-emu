@@ -1600,20 +1600,42 @@ Three consequences follow from the asymmetry:
 
 ### The codec is the DSP's, not the ASIC's
 
-Three of the codec's pins go **straight to the DSP**:
+Three of the codec's pins go **straight to the DSP**, and the FN package's
+terminal table names all of them:
 
-| `AC03` pin | DSP pin |
-|---|---|
-| 10 | 106 |
-| 11 | 43 |
-| 12 | 104 |
+| `AC03` pin | name | direction | DSP pin |
+|---|---|---|---|
+| 11 | `DOUT` | out of the codec - ADC results | 43 |
+| 10 | `DIN` | into the codec - DAC data and commands | 106 |
+| 12 | `FS` | frame sync | 104 |
 
-Those DSP pins sit among ones this file has already identified - `TDR` on 44,
-`TFSX` on 105, `TDX` on 107 - which is the C5x's serial-port neighbourhood. So
-the codec's serial interface is wired to **the DSP's own serial port**, with no
-ASIC between them. The exact signal names want reading out of SPRU056D's Table
-A-4, the same table this file used for `IS` and the supply pins, but the shape
-does not depend on which is which.
+Those DSP pins sit **immediately beside** ones this file already identified -
+`TDR` on 44, `TFSX` on 105, `TDX` on 107. Each codec line lands one pin away
+from its TDM-port counterpart, which is what the C5x's two serial ports look
+like interleaved on the package. Three readings each landing next to their
+predicted neighbour is a strong check on all of them at once.
+
+So the codec's serial interface is wired to **the DSP's own serial port**, with
+no ASIC between them.
+
+#### The codec's terminal assignments, FN package
+
+Carried here for the same reason as the CPU's Table 7 - the file was reasoning
+about this part's pins without holding its pinout.
+
+| pin | name | pin | name | pin | name | pin | name |
+|---|---|---|---|---|---|---|---|
+| 1 | `MON OUT` | 8 | `RESET` | 15 | `FC0` | 22 | `ADC GND` |
+| 2 | `PWR DWN` | 9 | `DGTL VDD` | 16 | `FC1` | 23 | `ADC VMID` |
+| 3 | `OUT+` | 10 | `DIN` | 17 | `FSD` | 24 | `ADC VDD` |
+| 4 | `OUT-` | 11 | `DOUT` | 18 | `M/S` | 25 | `IN-` |
+| 5 | `DAC VDD` | 12 | `FS` | 19 | `EOC` | 26 | `IN+` |
+| 6 | `DAC VMID` | 13 | `SCLK` | 20 | `DGTL GND` | 27 | `AUX IN-` |
+| 7 | `DAC GND` | 14 | **`MCLK`** | 21 | `SUBS` | 28 | `AUX IN+` |
+
+Source: TI `TLC320AC01C` data manual, SLAS057D, terminal functions. `RESET` on
+8 and `SCLK` on 13 are the two this file had already quoted, and both check
+out.
 
 **And that contradicts a standing claim.** [board-parts.md](board-parts.md)
 argues the ASIC fronts the codec and thereby hides the AC01/AC03 difference
@@ -1621,18 +1643,42 @@ from the DSP. It cannot: the DSP talks to the codec directly. Whatever explains
 the two boards running byte-identical DSP payloads across different codecs, it
 is not that the ASIC is standing between them.
 
-**The ASIC has exactly one line to the codec** - `AC03` pin 14, on ASIC pin
-`112`. One line is not an interface; it is a control or a clock. The obvious
-candidate is the codec's **master clock**, which would be of a piece with the
-ASIC already producing the DSP's `CLKIN` on pin `119` - one part generating both
-timebases in the audio path. That is a scope reading on `AC03` pin 14 and
-nothing else will settle it.
+#### The ASIC's one line to the codec is `MCLK`
 
-If it *is* the master clock, then the ASIC sets the codec's sample rate, and
-[hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)
-derives that rate from the oscillator on the assumption that the divide is
-fixed - the same assumption the DSP clock finding already put in question, now
-in a second place.
+**`AC03` pin 14 is `MCLK`** - "the master-clock input drives all the key logic
+signals of the AIC". It is on ASIC pin `112`, and it was guessed to be a clock
+from the fact that a single line cannot be an interface. The datasheet settles
+it.
+
+So **the ASIC generates both timebases in the audio path**: the DSP's `CLKIN`
+on pin `119` and the codec's `MCLK` on pin `112`, from the board's one
+oscillator. Nothing else on the board is in a position to set either rate.
+
+That is more consequential for the codec than for the DSP, because `MCLK` is
+what the codec's conversion rate is *divided from*. The datasheet's own
+reference point is explicit: after reset the part gives "a 16-kHz
+data-conversion rate and 7.2-kHz filter bandwidth for a 10.368-MHz master clock
+input signal". Change `MCLK` and every one of those numbers moves with it.
+
+**A prediction worth recording before the scope goes on it.** The board's
+oscillator is 40.320 MHz; divided by four that is **10.08 MHz**, and 10.08 MHz
+is an unusually convenient audio clock - it divides by 1260 to exactly 8 kHz,
+by 3150 to 3200 Hz and by 4200 to 2400 Hz, which are the symbol rates a modem
+of this era actually uses. A part that has to hit those rates from a 40.320 MHz
+can, through a divider that this board puts inside the ASIC, would be designed
+around exactly that. If `MCLK` measures 10.08 MHz, the audio timebase is
+settled end to end.
+
+`M/S` (pin 18) is the other half of it: master makes the codec generate `SCLK`
+and `FS` from `MCLK`, slave makes it take them. It is a meter reading, and it
+decides whether the ASIC's clock sets the sample rate directly or only feeds a
+divider the DSP drives.
+
+This bears on [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md),
+which derives the audio timing from the oscillator on the assumption that the
+divides are fixed. They may well be; the point is that they are now known to be
+**inside a part with registers**, in the second place that assumption has been
+put in question.
 
 ### The speaker: probably not an opto, and probably not a port bit either
 
@@ -1656,12 +1702,37 @@ sits on the modem side and already has the received signal *digitally* - it is
 the part the DSP demodulates from. There is nothing to isolate: the audio the
 speaker wants is already on the logic side of the barrier.
 
-**The likelier arrangement is the codec's own analog output.** The AC0x has a
-differential analog out, and a small amplifier between that and the speaker is
-the ordinary design. If that is the path, then the gate is most naturally
-either the codec's output mute/gain registers - which the **DSP** writes over
-the serial port this file has just traced as direct - or the DSP simply not
-producing the samples.
+**The codec has an output made for this, and it changes the answer.** `MON
+OUT` is pin 1 of the FN package, and the datasheet describes it as "the monitor
+output allows monitoring of analog input and is a high-impedance output". A
+call-progress speaker wants precisely the analog **input** - dial tone,
+ringback, the far end's answer tone are all received audio - so `MON OUT` is
+the pin the part provides for the job.
+
+Two things follow, and the second is the useful one.
+
+**It cannot drive a speaker.** A high-impedance output needs an amplifier
+between it and a coil, so there is a part between the codec and the speaker
+that this file has not identified.
+
+**And if the speaker is on `MON OUT`, the gate cannot be software.** `MON OUT`
+is an analog monitor of the input path; it has no mute register and the DSP
+cannot decline to produce it, because the DSP does not produce it at all. So
+the gate has to be **hardware** - an amplifier enable, an analog switch, a
+transistor - and something has to drive that gate.
+
+That reverses the reasoning this section started with. It also makes a
+prediction: since the port sweep did not find the gate on the CPU, **the line
+that controls it should be an ASIC pin**, and the unread ones are
+`32`-`36`, `39`-`44` on the right edge - the block this file already predicts
+is where the codec and the DAA must land - plus `23`, `26`, `28`, `72` and
+`117`.
+
+**The alternative is `OUT+`/`OUT-`** (pins 3 and 4), the DAC's power amplifier,
+which the datasheet says "can drive transformer hybrids or high-impedance loads
+directly". Those normally face the DAA as the transmit path. If the speaker
+hangs off them instead or as well, then the DSP *is* producing the audio and a
+software mute is back on the table.
 
 **And there is negative evidence pointing the same way.** If a CPU port bit
 gated the speaker, the port sweep that named the lamps should have found it.
@@ -1678,11 +1749,21 @@ setting with the mailbox tap running - the fixture in
 mailbox changes, the supervisor is gating it locally after all and the port
 sweep missed the bit.
 
-**The physical check is the speaker's own two wires**, traced back to whatever
-drives them. If they arrive at a small amplifier, its enable pin names the
-gate; if they arrive from the codec's output pins through a transistor, the
-transistor's base does. Either answers it in one probe, and neither requires
-guessing which port bit to drive.
+**The physical check is now sharper than "trace the speaker".** Three codec
+pins decide between the two readings above:
+
+* **`MON OUT` (pin 1)** - if anything is on it, that is the monitor path and
+  the gate is hardware.
+* **`OUT+`/`OUT-` (pins 3, 4)** - where they go says whether the DAC output is
+  spoken for entirely by the DAA.
+
+Then follow whichever one leaves the codec towards the speaker, and read the
+enable of the part it arrives at. That names the gate, and it does not require
+guessing which port bit to drive - which is how the last answer went wrong.
+
+`PWR DWN` (pin 2) is worth reading in the same pass and is probably not the
+gate: powering the codec down would take the datapump with it, not just the
+speaker.
 
 ### The DSP and the codec share one reset net
 
@@ -2200,13 +2281,17 @@ The ones worth finding next, in the order they would pay:
 25. **The `SD` group, now retired rather than retaken.** Two of its three pins
    have failed against the datasheet and the board. Where the `SD` lamp is
    actually driven from is unknown again.
-26. **What gates the speaker.** Not an optocoupler, on the argument in
-   [the speaker](#the-speaker-probably-not-an-opto-and-probably-not-a-port-bit-either);
-   most likely the codec's analog output, gated by the DSP or by the codec's
-   own registers. Two probes, one of them needing no hardware: diff the mailbox
-   traffic across `ATM0`/`ATM2`, and trace the speaker's wires back to whatever
-   drives them.
-27. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
+26. **What gates the speaker.** Not an optocoupler. The codec's `MON OUT`
+   (pin 1) is the output made for call-progress monitoring, and if the speaker
+   is on it the gate is **hardware** and most likely an ASIC pin, since the port
+   sweep did not find it on the CPU. Read codec pins 1, 3 and 4, then follow
+   whichever reaches the speaker and read the enable of the part it lands on.
+   The mailbox diff across `ATM0`/`ATM2` is still worth running and needs no
+   hardware.
+27. **The codec's `M/S` (pin 18) and the frequency at `MCLK` (pin 14).**
+   Together they say whether the ASIC's clock sets the sample rate. 10.08 MHz
+   is the predicted value.
+28. **The unpopulated four-switch footprint.** Not a serial selector - `TXD1`
    is unconnected and the CPU's channel 1 is unused. Probe its pads against the
    three unread bottom-edge pins. See
    [the footprint](#an-unpopulated-four-switch-footprint-and-a-hypothesis-that-died-well).
@@ -2351,3 +2436,10 @@ would normally come from the DSP's `CLKX`. Either the signal is misnamed in the
 notes, or the AC03's pinout differs from the AC01's, or it is a genuinely
 different net from the DSP `RS` above. It is recorded here rather than
 interpreted because guessing which would put a wrong wire in the map.
+
+> **The datasheet confirms pin 13 is `SCLK`** and adds what it should be wired
+> to: with `M/S` high the codec generates `SCLK` by dividing `MCLK` by four and
+> drives it out; with `M/S` low it receives it. Either way pin 13 belongs on the
+> DSP's shift clock, beside the three serial lines on DSP 43, 104 and 106. A
+> reset net there is almost certainly a mislabel, and the pin has a predicted
+> destination to check it against.

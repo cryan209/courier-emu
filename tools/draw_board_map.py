@@ -68,7 +68,7 @@ EDGES: list[tuple] = [
     # clocks
     (("osc", "r", 0.5), ("cpu", "t", 0.5), "40.320 MHz", "clk"),
     (("asic", "r", 0.10), ("dsp", "l", 0.10), "CLKIN  119 -> 96", "clk"),
-    (("asic", "r", 0.86), ("codec", "l", 0.5), "112 -> AC03 p14  (clock?)", "clk"),
+    (("asic", "r", 0.86), ("codec", "l", 0.5), "112 -> MCLK", "clk"),
     (("dsp", "l", 0.20), ("asic", "r", 0.20), "TOUT  122 -> 113", "clk"),
     # CPU <-> ASIC
     (("cpu", "r", 0.30), ("asic", "l", 0.28), "AD0-AD7, ALE, RD#, WR#", "bus"),
@@ -88,7 +88,7 @@ EDGES: list[tuple] = [
     (("asic", "r", 0.30), ("dsp", "l", 0.34), "D0-D15", "bus"),
     (("asic", "r", 0.38), ("dsp", "l", 0.46), "IS, R/W, STRB, INT2", "bus"),
     (("dsp", "b", 0.30), ("dspram", "t", 0.30), "program bus", "bus"),
-    (("dsp", "r", 0.95), ("codec", "r", 0.35), "serial port (direct)", "dsp", 1480),
+    (("dsp", "r", 0.95), ("codec", "r", 0.35), "DOUT/DIN/FS - direct", "dsp", 1480),
     (("dsp", "r", 0.80), ("j7", "r", 0.5), "TDX/TDR/TFSX", "unk", 1560),
     # telco
     (("asic", "t", 0.35), ("header", "b", 0.35), "37, 38, 29", "tel"),
