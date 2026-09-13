@@ -114,8 +114,8 @@
 <text transform="translate(664.0,286.0) rotate(-90)" font-size="11.5" fill="#6b6b6b">61 &#183; VCC</text>
 <rect x="649.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
 <text transform="translate(652.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">62 &#183; CPU A17 (CPU 30)</text>
-<rect x="637.0" y="294.0" width="6.0" height="16.0" fill="#1d5fa8"/>
-<text transform="translate(640.0,286.0) rotate(-90)" font-size="11.5" fill="#1d5fa8">63 &#183; CPU AD15 (CPU 28)</text>
+<rect x="637.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
+<text transform="translate(640.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">63 &#183; CPU A16 (CPU 29)</text>
 <rect x="625.0" y="294.0" width="6.0" height="16.0" fill="#7a3fb0"/>
 <text transform="translate(628.0,286.0) rotate(-90)" font-size="11.5" fill="#7a3fb0">64 &#183; A7 -&gt; RAM pin 4</text>
 <rect x="613.0" y="294.0" width="6.0" height="16.0" fill="#b28ad6"/>

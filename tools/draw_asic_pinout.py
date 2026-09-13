@@ -34,7 +34,7 @@ setp(70, 'A1 -&gt; RAM+flash', 'mem')
 for i, n in enumerate(range(69, 64, -1)):
     setp(n, 'A%d' % (2 + i), 'memi')
 setp(64, 'A7 -&gt; RAM pin 4', 'mem')
-setp(63, 'CPU AD15 (CPU 28)', 'cpu')
+setp(63, 'CPU A16 (CPU 29)', 'mem')
 setp(62, 'CPU A17 (CPU 30)', 'mem')
 setp(61, 'VCC', 'pwr')
 setp(60, 'GND', 'pwr')
