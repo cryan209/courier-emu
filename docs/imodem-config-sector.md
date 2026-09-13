@@ -333,6 +333,13 @@ after `AT&W` has created newer generations in SA9.  Explicitly named NVRAM files
 are never seeded; hardware dumps and erased-state experiments therefore remain
 byte-for-byte under the caller's control.
 
+The default absent-field mask applies only offset `0x003`, whose fax-capability
+meaning is established. It leaves the I-modem-specific modulation, grouped-code
+and product-suffix fields absent even though `ATY14` displays their stored
+analogue values. Applying all four analogue fields changes runtime behavior and
+corrupts the I-modem's `ATI7` product line, so the display values are not treated
+as recovered I-modem configuration semantics.
+
 
 ## The modem writes its own record: `AT&W`
 

@@ -1031,7 +1031,7 @@ board difference. Doing it on one leaves it where it is.
 
 ## What is still unknown
 
-Fifty-two of the 120 pins are unread. Of the sixty-eight that are not,
+Fifty-one of the 120 pins are unread. Of the sixty-nine that are not,
 seventeen are inferred middles of a measured run rather than measurements - the
 two DSP data groups and `A2`-`A6`. **The top edge is finished but for four pins
 and the left edge but for six**; the bottom is nine of thirty; the right edge has two groups started and eight
@@ -1060,14 +1060,12 @@ The ones worth finding next, in the order they would pay:
    edge that holds everything else the ASIC does with the CPU bus. Two of them
    sit between the flash address pin and the latched run, which is where a
    second high address line would be if the part takes more than `A17`.
-6. **Flash pins 3 and 34, both ends.** ASIC pin 74 has been read as each of
-   them and can only be one. With `A17` now known to go *into* the ASIC on pin
-   62, this decides whether the part shifts the address it remaps or leaves it
-   in place. Whichever lands on a direct CPU output - pin 31
-   (`A18`) or pin 30 (`A17`) - is the one the ASIC does not drive. If both
-   reach the ASIC, it is buffering the high address rather than remapping a
-   bit, and the interesting reading is dead. Flash `CE#` (pin 12) should be CPU
-   `UCS` (QFP pin 61) and would finish the decode.
+6. **Flash pin 3 against CPU pin 31.** The ASIC takes system `A17` and `A18`
+   in and drives one high flash address line out, so it is deciding rather than
+   buffering. If flash pin 3 does **not** reach CPU pin 31, the ASIC is in
+   series on `A18` and the flash's top address bit is its to set - and that
+   also resolves which flash pin ASIC 74 is, without re-reading it. Flash `CE#`
+   (pin 12) should be CPU `UCS` (QFP pin 61) and would finish the decode.
 7. **The `A7` net at flash pin 4 and RAM pin 3**, recorded as running to
    `'573` pin 12. The '573 latches `A8`-`A15` and cannot carry `A7`; the ASIC
    drives system `A7` from pin 64. That reading should be retaken toward the
