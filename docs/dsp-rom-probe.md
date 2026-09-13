@@ -424,6 +424,66 @@ wired to the pin. The positive evidence that DSP reset is elsewhere is
 an ASIC latch; that covers reset specifically and does not exclude some other
 DSP-related strap or enable.
 
+## The mailbox, from the host's side
+
+**A tag is a command index, not an address.** It selects one of 121 handlers
+from a jump table at program `8401`, and anything above `0x7f` never reaches the
+table. So the `host_write(address, value)` shape the native core models is
+**wrong**, and the plan of writing DSP data `03e6` through the mailbox was never
+going to work with or without a commit edge. That - not a missing strobe - is
+why `dsp-mailbox-write-01` and the queue runs saw nothing.
+
+**The host interface is not in the datapump's `8000+` image, and it is not mask
+ROM either.** The accessor at `23f0` is installed into low program memory at boot
+by the `bldp` at `80a7` and recovers as `lacc * ; lamm * ; ret`. The message
+cells are `ff57`, `ff5e` and `ff5f` in high data space. **The datapump contains
+no `IN` instruction at all**; everything the host sends arrives through this
+installed helper.
+
+**The wire format.** An outbound message is a 16-bit tag word on `58`/`5a` and a
+16-bit value on `5c`/`5e`, low byte at the lower port. The compact path at
+`0fddb` sends a one-byte tag and a one-byte value, zeroing the two high lanes;
+the variant at `12cbb` sends two full words out of a ring at `029e..02cd`, so
+both halves really are 16 bits wide.
+
+**Reads and writes are separate latches.** The interrupt writes `58`/`5a` for
+outbound and reads the same addresses for inbound, and a hardware attempt read
+back `58`/`5a` unchanged after writing them. So an `ATGLK2I` of these ports
+observes the **board's** side, not the host's - which is what a readback wants.
+
+**Bit 0 of `0x1c` is a standing request, and answering it is the commit.** The
+interrupt ends by writing the status word back to `1c` and `1e`; only the path
+that had nothing to send clears bit 0 first, so writing that bit back **set** is
+what says a word was placed in the window. An idle unit reads `1c` as `fd` on
+every poll - bit 0 permanently asserted - because the supervisor in command mode
+never has traffic and never answers. A host driving these ports through
+`ATGLK2O` has to supply that edge itself.
+
+**Twelve tags are unimplemented** - `4c`, `5b`-`5d`, `64`-`6b`. Their table entry
+is zero, so `bacc` would take the DSP to program word `0000`. **Nothing should
+ever send them.**
+
+### No host-writable cell yields a program read of the mask ROM
+
+The host's writable set was swept against the handlers that use it. The clamps
+hold: tag `39` admits `0..5`, tag `41` admits `0..12`, and `LAMM` zero-extends -
+TI documents it and `op_lamm` in `native/c5x_ops.ipp` implements it that way - so
+a large host word cannot come out negative and slip past the `retc geq`.
+
+And the one read that *is* a program read is not a data read. `c551` is a
+six-entry table of routine addresses, `ca5b ca68 ca75 ca82 ca8f ca9c`, and
+`tblr @4d` fetches a jump target that the following code arms. **The word never
+travels back to the host**, so even the twelve addresses tag `41` reaches are not
+observable. The intersection of "host-writable" and "reads program memory" is a
+single six-entry jump table behind a clamp.
+
+**One hazard falls out of it.** Tag `41`'s bound of thirteen is looser than the
+six-entry table it indexes, so indices `6..12` fetch the following instruction
+words as routine addresses. Entry six is `7a80`, below the downloaded base but
+outside the C52's `0000..0fff` ROM window - an uncontrolled jump into program
+memory whose installed contents are not established. **Never send tag `41` with a
+value above five.**
+
 ## The DSP's streamers, enumerated and count-verified
 
 Following the jump table at program `8401` through each handler settles which

@@ -239,6 +239,116 @@ supply. They are set by command, or not at all.
 [Capture](../artifacts/datapump-gate-403-cells/cells.json),
 [script](../artifacts/datapump-gate-403-cells/read-cells.py).
 
+## What the board itself shows
+
+**The supervisor's state pointer moves, and the router is never installed.**
+Sampled continuously across an `ATDT9099;` dial - command mode, line seized, no
+handshake - fifteen samples over 29 s:
+
+| phase | `[0x0192]` | `[0x03ff]` | gate cells |
+|---|---|---|---|
+| idle, x2 | `0110` | `0000` | all zero |
+| off-hook, x13 over 20 s | **`5742`** | `0000` | all zero |
+| after release | `0110` | `0000` | all zero |
+
+That is the first direct observation of the board's supervisor state machine and
+it gives the emulator a baseline: **a 403 dial should reach `5742` and return to
+`0110`.** `[0x03ff]` stays `0000` throughout, so the router is never installed on
+this path, consistent with the gate cells never moving.
+
+> The capture labelled each pointer with a linear address computed as
+> `a4e2:value`, on the strength of the installers writing `a4e2` offsets. That
+> holds for the idle state - `a4e20 + 0110 = a4f30` disassembles as real code -
+> but **not** for `5742`, whose implied `aa562` is garbage. The segment varies
+> with the state; read the linear column as a hypothesis per row. The observed
+> values and transitions are unaffected.
+
+**`&L1` alone is inert.** Sampled for 20 s with the setting live:
+
+| | `[0x04f2]` | `[0x0d28]` | `[0x0192]` |
+|---|---|---|---|
+| before | `00` | `00` | `0110` |
+| `&L1` live, x11 over 20 s | **`01`** | `00` | **`0110`** |
+| after `&L0` | `00` | `00` | `0110` |
+
+The command takes and stays taken, and nothing else moves - `[0x0192]` never
+leaves the idle state. That is not a contradiction of the emulator: `&L1`
+selects leased-line mode, it does not start a connection. Both emulator runs
+included a connection attempt (`ATDT6245` in one, the hotline exchange answering
+in the other), and **the overlay id is written during a connection attempt**, in
+leased-line mode as much as in a normal call.
+
+Which is the wall every bench route here reaches: the cells move only inside the
+window the DTE cannot read, because a connection attempt takes the serial port
+out of command mode and `+++` aborts rather than escapes. During a real call the
+seven gate cells read `00` at every sample - idle, off-hook, dialling, ringing
+over 6 s, and after release.
+
+### The hand-armed tone works end to end, and the ear was the instrument
+
+Three eight-digit `ATG` commands, in command mode, with no call and no dial
+sequencer, put the firmware's own DTMF on a live line: **the operator heard a
+DTMF tone held for about ten seconds**, the length of the armed window, stopping
+when tag `16` was sent. So the resident arms tag `13` perfectly well outside a
+call, the oscillator runs, and the tone reaches the line.
+
+**A hazard worth stating plainly:** arming a tone off-hook on a connected line
+puts real signal on a real loop. The window ends only when tag `16` is sent.
+
+### Query 62 cannot observe the transmitter
+
+`62` sums squares of `0900..098f`, which looked like a receive-energy reading
+that might serve as a transmit-side observable. It is **pinned**:
+
+| point | query 62 |
+|---|---|
+| on-hook baseline | `0069:0015` |
+| off-hook, dial tone, x3 | `0069:0015` |
+| off-hook, tone armed, x4 | `0069:0015` |
+| off-hook, after tag 16 | `0069:0015` |
+
+Dial tone is a large known signal in the receive path and query 62 does not move
+for it, nor for a tone loud enough to hear. It is not an energy detector that
+happens to be quiet on hook; it returns `0015` unconditionally.
+
+**That has a consequence for [mailbox-312-comparison.md](mailbox-312-comparison.md)**,
+which records the emulator reproducing `0069:0015` as a match against the board
+and treats resolving an earlier `0012` discrepancy as a result about
+initialization. Matching an unconditional constant confirms the mailbox transport
+and the dispatcher and carries **no** information about the handler's sample
+arithmetic. That file's hedge is right and understates it.
+
+### No tag returns transmit-side state
+
+Sweeping all 128 entries of the 3.1.2 dispatcher table at program `0x83e9`. The
+reply convention had to be established first, and it is not the obvious one:
+handlers do **not** call the sender at `0x83bf`; they enqueue by calling or
+delayed-branching to `0x83b1`, the tail of `0x83a6`, with the value in ACC - so
+on a delayed branch the value is loaded in the delay slots *after* the branch.
+That routine pushes into a ring masked by `ar0 = ff60` with head and tail at data
+`0x78`/`0x79`, and `0x83bf` drains it, masks `0x7fff` and writes to ports `0x5e`
+and `0x5f`.
+
+Twenty tags reply: `07 14 23 24 28 29 2e 2f 32 33 34 3b 3d 4b 55 59 5a 5f 62 7f`.
+Every one returns either a constant tag word paired with a status cell, or a
+value computed from receive-side analysis. **None replies with a value read from
+the transmit block** - not the `0390` work pointer, `0392` gain, `039a` callback,
+`03c0`/`03c1` phases, `03c7` mixer accumulator, `03f1..03f5`, the transmit slots
+of the buffer at `0bc0..0bde`, or `DXR`. Handlers that *touch* transmit cells are
+common - `13`, `1a`, `1b`, `16` and the overlay-resident tags at `20..25`, `2e`,
+`2f`, `32..34` all write them - but they are setters, not readers.
+
+So the transmit-side read this project wanted **does not exist as a tag in this
+image**, and no experiment can be built on one. An earlier pass reported tag `01`
+and then `55`/`59`/`5a` as candidates; both were artefacts - the first followed a
+jump into the main loop and inherited its references, the second misread
+`bit 1, @1f` (a status word at `039f` with twenty-five writers) as the replied
+value, when those handlers reply with the constants `#06` and `#04`.
+
+[Sweep](../artifacts/dispatcher-tag-sweep-312/sweep.py),
+[table](../artifacts/dispatcher-tag-sweep-312/replying-tags.json),
+[tone capture](../artifacts/atg-tone-offhook-403/tone.json).
+
 ## What remains
 
 Two stand-ins under the working download, both recorded in
@@ -262,6 +372,13 @@ immediate load of its address. This firmware dispatches through RAM function
 pointers; the search was too narrow both times. Reproducing a negative on a
 second image made it look like a property of the firmware rather than of the
 method.
+
+**Reading the `0xa669b` table as the bare AT letters.** Its entries were first
+identified positionally as `L`, `N` and `T` on the strength of what each handler
+writes. Tested on the board, the ordinary letters do not reach it - there is no
+`ATL` and no `ATN` on this firmware, and `AT$` is HELP. The table is the
+**ampersand** family, which is what makes entries 11, 13 and 19 `&L`, `&N` and
+`&T`. The positional reading was right and the family was wrong.
 
 **Reading `ATN` as the arming command.** The 403 `7b`/`7c` consumers reach a
 rate-index request through operation `0054`, not any of these flags. The shared

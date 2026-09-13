@@ -916,7 +916,7 @@ which nothing in the harness consumes.
 
 The real 3.1.2 hears dial tone and its board proceeds. The emulated 3.1.2, given
 a known tone through the codec's serial port with everything else held identical,
-[says exactly what it says to silence](board-verified-403.md#a-known-tone-in-front-of-the-resident-it-does-not-react-at-all)
+[says exactly what it says to silence](board-verified-403.md#answered-the-tone-was-wrong-and-the-resident-does-detect)
 - 134 messages, the same three tags, the same `drr_reads`.
 
 Both ends of the supervisor's side are now accounted for: it sends what the

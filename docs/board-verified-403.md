@@ -309,23 +309,128 @@ run identical to before the fix - same DAA, same seizure, same exchange timing,
 same 134 DSP-originated messages. Only `codec_rx_consumed` moved, by exactly the
 11,305 replayed.
 
-### What is left
+### Answered: the tone was wrong, and the resident does detect
 
-Nothing turns "the C52 heard 350 + 440 Hz" into the thing the supervisor's
-originate path waits on. One end is built: `_collect_dsp_messages` reads the
-core's mailbox holding pair after each DSP quantum and turns a rising write count
-on the word cell into an inbound message. It collects real traffic - 389 messages
-on a 302 dial, 378 on a 403 dial under `ATX0`. On the failing dial the resident
-sends only 28, all `0008:0000` about 70 ms apart, a heartbeat rather than a
-report, and `runtime_inbound_delivered` stays empty on **every** path including
-the `ATX1` calls that connect and answer. So the supervisor consumes no
-DSP-originated message at all yet; the working call is carried by the bridge's own
-overlay logic. The pop needs the supervisor to read the tag lanes and write `0x1c`
-with bit 1 clear, and it never does.
+The resident was never deaf and never needed arming. It was being shown a tone
+its detector does not answer.
 
-Whether that is because tag `0x08` is not what it waits for, or because the
-handshake needs more than the queue, is not settled. The board's `0x5c` pulse is
-the shape the path has to produce.
+The control was exact - the same run twice, the same 11,305 replayed words at
+the same instruction, carrying dial tone in one and zeros in the other - and it
+looked like a dead end: `codec_rx_peak` 7,878 against 0, and **every other
+number identical**, including the tag histogram. 209,162 `DRR` reads, 134
+messages, the same three tags, whether it heard dial tone or silence.
+
+Then the tone became a parameter. The exchange was presenting
+`DIAL_TONE = (350, 440)` - **North American precise dial tone** - to a unit
+whose own `ATI7` says `Product type Russia (ex. US/Canada) External`, plugged
+into a loop carrying a single continuous 400 Hz.
+
+| `--exchange-dial-tone` | codec peak | tag histogram |
+|---|---|---|
+| `us` 350+440 | 7,878 | `0000` x71, `0002` x62, `0003` x1 |
+| `nz` 400 | 3,909 | `0000` x71, `0002` x61, `0003` x1, **`0042` x1** |
+| `eu` 425 | 4,000 | `0000` x71, `0002` x59, `0003` x1, **`0042` x3** |
+| `eu` 425, double level | 8,000 | `0000` x71, `0002` x53, `0003` x5, **`0042` x4, `0043` x1** |
+
+**`0x0002` and `0x0003` become `0x0042` and `0x0043`** - the same low bits with
+`0x40` added, and `0x40` appears **only** for a continuous single tone, never
+for 350+440. So tag `0x08` is a status word the resident sends continuously, and
+**bit `0x40` in it is the dial-tone report**.
+
+So the mailbox consume path is now the right thing to build, and for the first
+time what it would carry is identified rather than assumed: `0x0008` with bit
+`0x40` set, on the DSP-to-CPU direction whose 20 ms cadence the board already
+gave us, and which `runtime_inbound_delivered` shows nothing consumes.
+
+One end of that is built. `_collect_dsp_messages` reads the core's mailbox
+holding pair after each DSP quantum and turns a rising write count on the word
+cell into an inbound message - 389 messages on a 302 dial, 378 on a 403 dial
+under `ATX0`. The other end is not: the supervisor never reads the tag lanes and
+writes `0x1c` with bit 1 clear, so nothing is ever popped.
+
+Still open, and now narrow:
+
+* **The report is sparse** - a handful over more than a second of tone, where the
+  board's own reply cadence is 20 ms. Whether the supervisor needs it sustained,
+  and why the emulated resident only asserts it intermittently, is unmeasured.
+* **The level model is wrong in a way that matters.** Real dial tone is specified
+  at a level, not per component, so `TONE_LEVEL` should apply to the composite.
+  That is why `us` reads 7,878 and `nz` 3,909 for tones that on a real loop would
+  be the same loudness. Any sweep to confirm the detector's centre frequency is
+  confounded until this is fixed.
+
+## Where the retune is: the DSP, not the country record
+
+The image carries a country table at file offset `0x1fd20` (physical `0x9fd20`),
+24 entries of **121 bytes**, each beginning with a 16-byte name padded with `!`
+then a country code byte:
+
+| code | country | code | country | code | country |
+|---|---|---|---|---|---|
+| 0 | US/Canada | 39 | Italy | 49 | Germany |
+| 81 | Japan | 64 | **New Zealand** | 0 | International |
+| 102 | Finland | 42 | Czech/Slovakia | 43 | Austria |
+| 46 | Sweden | 32 | Belgium | 97 | Ireland |
+| 44 | UK | 45 | Denmark | 34 | Spain |
+| 47 | Norway | 61 | Australia | 95 | Portugal |
+| 41 | Switzerland | 33 | France | 82 | South Korea |
+| 31 | Netherlands | 27 | South Africa | 88 | Taiwan |
+
+Mostly ITU dialling codes, with USR's own numbering for a few. **There is no
+Russia entry**; `ATI7`'s `Product type Russia (ex. US/Canada) External` comes
+from a different string at `0x49980`, so the product type is not the country
+record. The Russian build's own additions elsewhere are Caller ID features
+(`RussianCID`, `+S61`), not a country. The per-country payload is dense - some
+60 of the 105 bytes after the name differ between US/Canada, UK, New Zealand and
+Australia - but nothing in it is a literal frequency, so the tone the detector
+expects is a coefficient or an index, and the fields are not decoded.
+
+**And the country table is not where the retune happened.** Diffing the two
+captures of *this same board* - `courier-board-21210-capture-01`, stock 7.3.14 /
+DSP 3.0.13, product type `US/Canada External`, against `-403`, ID_SDL 4.03d,
+7.4.16 / DSP 3.1.2 - the table was rewritten wholesale: stride 110 → 121 bytes,
+20 → 24 entries, every record changed at `+20`, `+21`, `+53`, `+54` and gaining a
+common 11-byte tail. Beyond that format change:
+
+    US/Canada        0 further bytes changed
+    Ireland          1
+    New Zealand      2
+    South Africa     8
+    Australia       10
+    Germany         12
+    ...
+    Italy           41
+    Netherlands     45
+    Austria         57
+
+**US/Canada is the only record with no country-specific edit at all.**
+
+The retune is in the DSP, whose revision changed 3.0.13 → 3.1.2. Running each
+firmware against the same exchange and counting the resident's `0x40` reports:
+
+| firmware | DSP | `us` 350+440 | `nz` 400 | `eu` 425 |
+|---|---|---|---|---|
+| stock 7.3.14 | 3.0.13 | **3** | - | - |
+| ID_SDL 4.03d | 3.1.2 | **0** | 1 | **3** |
+
+Three reports for the matching tone in each, none for the mismatched one. **The
+stock DSP answers North American dial tone and the ID_SDL DSP does not**; the
+ID_SDL DSP answers a single continuous tone near 400-425 Hz. The country record
+did not have to change because the retune is in the resident.
+
+Which explains the board on the bench: a US/Canada unit whose detector now
+expects a Russian-style continuous tone, sitting on a New Zealand loop carrying a
+solid 400 Hz - close enough that it finds dial tone, which it would not have done
+on 350+440 after the flash.
+
+**What the harness should do.** The faithful default depends on which image is
+running: `IDSDL302.ROM` and the 4.03d capture want a continuous tone (`eu` 425 is
+the ITU-T E.180 tone the Russian build is presumably tuned to and produces the
+most reports), and the stock 7.3.14 capture wants `us` 350+440. Neither is
+currently the default for its own image - `--exchange-dial-tone` defaults to `us`
+for everything. Tying the default to the image's DSP revision is the obvious fix
+and is **not** made yet, because the level model above is still wrong and would
+confound any confirming sweep.
 
 ## XMF-only logic
 
