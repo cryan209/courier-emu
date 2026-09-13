@@ -146,7 +146,7 @@ LANE_INIT_VALUE = 0x0083
 # The recovered on-chip mask ROM, shared with the 302/403 path in bridge.py.
 from .bridge import C50_ROM_FRAME_IRQ as ROM_FRAME_IRQ  # noqa: E402
 
-ROM_SHA256 = "3e30fb31ac87fc9d0b8a85da245511ef3caa4e83249f56b5852d9d0829e93f67"
+ROM_SHA256 = "d57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9"
 
 # Both processors run from the board's 20.16 MHz clock, so the C5x advances at
 # the 80186's cycles-per-instruction, exactly as bridge.py derives it for the

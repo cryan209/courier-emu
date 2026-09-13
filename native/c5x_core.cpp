@@ -143,7 +143,7 @@ void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origi
 
 void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin)
 {
-    if (count > C5X_ROM_WORDS - origin)
+    if (origin > C5X_ROM_WORDS || count > std::size_t(C5X_ROM_WORDS - origin))
         throw std::out_of_range("boot ROM image exceeds the C51's on-chip ROM");
     std::copy_n(words, count, m_rom.begin() + origin);
     m_rom_present = true;
@@ -394,7 +394,16 @@ uint16_t C5xCore::io_output(uint16_t port) const
     return (m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60
         ? m_mailbox_output[port - 0x5e] : m_io[port];
 }
-uint16_t C5xCore::program(uint16_t address) const { return m_program[address]; }
+uint16_t C5xCore::program(uint16_t address) const
+{
+    // Inspect the mapped bus view without changing execution counters.
+    switch (program_region(address)) {
+    case Region::Rom: return m_rom_present ? m_rom[address] : m_program[address];
+    case Region::Saram: return m_data[saram_data_address(address)];
+    case Region::Daram: return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
+    default: return m_program[address];
+    }
+}
 // These reach the same storage the running program does, so a cell staged
 // from the harness lands where the firmware's own read will find it. Without
 // the region check, a value seeded into the shared window would go to the data
@@ -434,7 +443,7 @@ void C5xCore::consume_cycles(unsigned cycles)
 C5xCore::Region C5xCore::program_region(uint16_t address) const
 {
     // Microcomputer mode puts the 8K boot ROM at the bottom of program space;
-    // microprocessor mode leaves the whole space off-chip. CNF brings B0 in
+    // microprocessor mode exposes external memory in that window. CNF brings B0 in
     // at the top. The 'C51's 1K of SARAM appears at 0x2000, above the ROM,
     // not at the 0x0800 the 9K part uses.
     if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
@@ -496,7 +505,7 @@ void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
 {
     switch (program_region(address)) {
     case Region::Rom:
-        if (m_rom_present) m_rom[address] = value;
+        // Mask ROM ignores guest writes, including TBLW and BLPD.
         return;
     case Region::Saram: m_data[saram_data_address(address)] = value; return;
     default: break;

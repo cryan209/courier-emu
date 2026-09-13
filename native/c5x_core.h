@@ -14,10 +14,8 @@
 
 namespace courier {
 
-// TMS320C50 on-chip memory, from the C5x User's Guide (SPRU056D) figures for
-// program space in both MP/MC modes and for local data memory. The board's
-// part is a 'C50 or 'LC50 - 1056 words of DARAM, 9K of SARAM, 2K of ROM - not
-// the 'C52 this core was first written against. See docs/board-parts.md.
+// TMS320C51 on-chip memory: 1056 words of DARAM, 1K of SARAM and 8K of ROM.
+// The map is confirmed by the board probes in artifacts/dsp-memory-test-2806.
 //
 // The guide's three maps, checked region by region against what follows:
 //
@@ -38,8 +36,8 @@ namespace courier {
 // Two things matter for this board. The SARAM is one physical memory
 // reached from both spaces, which is the point of OVLY and why the two spaces
 // cannot be backed by separate storage there. And **the whole top of data
-// space is external** - there is nothing on-chip above 0x2BFF in data space,
-// and nothing on-chip above 0x2BFF in program space either with CNF clear, as
+// space is external** - data space is external from 0x0C00 upward,
+// and program space from 0x2400 upward with CNF clear, as
 // this firmware runs it. So an external address in 0x8000-0xFEFF is an
 // ordinary off-chip bus cycle in either space, and one RAM answering both is
 // a board that does not separate the two strobes rather than a trick. That is
