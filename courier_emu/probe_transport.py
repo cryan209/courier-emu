@@ -17,6 +17,7 @@ import struct
 from .dsp_probe import (ROM_DUMP_WORDS, RomProbe, build_probe,
                         build_rom_dump_probe, build_boot_word_probe,
                         build_memory_test_probe, MEMORY_TEST_SAMPLES,
+                        MEMORY_TEST_ADDRESSES,
                         build_io_alias_probe, build_port_fold_probe,
                         BOOT_WORD_ADDRESS, BOOT_WORD_SAMPLES,
                         IO_ALIAS_MAGIC, IO_ALIAS_PORT, IO_ALIAS_SAMPLES,

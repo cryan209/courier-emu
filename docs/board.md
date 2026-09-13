@@ -1322,8 +1322,9 @@ space, and writable memory above it.
 
 The full 8K is read - `artifacts/dsp-onchip-rom-2806/c5x-onchip-rom-8k.bin` -
 and is mostly unprogrammed: 1920 words of boot code at `0x0000`-`0x077F`, a
-128-word mailbox block the mask carries twice at `0x0F80` and `0x1F80`, and 6016
-words of a 32-word `FFFF`/`0000` array pattern. `0x0780`-`0x07FF` is that same
+128-word mailbox block at `0x1F80`, and 6144 words of a 32-word `FFFF`/`0000`
+array pattern. The 20.16 MHz board's part has since been read in full too and
+agrees byte for byte wherever the ROM is programmed. `0x0780`-`0x07FF` is that same
 pattern, so the old 2K capture did not stop at a boundary - it ran off the end of
 the programmed part.
 

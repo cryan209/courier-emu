@@ -53,10 +53,12 @@ Everything else - 6016 words - is a **32-word period of 16 x `FFFF` then 16 x
 runs from `0x0780` through `0x07FF`, which is why the 2K capture looked like it
 ended in padding: those last 128 words are unprogrammed ROM, not a boundary.
 
-The two 128-word blocks being identical, one per 4K half, with the code in both
-branching to `1fa2` - an address only the upper copy occupies - says the block
-is placed at the end of each 4K page by the mask, and the upper one is the live
-copy.
+> **Corrected.** This file first read the two identical 128-word blocks as the
+> mask placing one at the end of each 4K page. It does not: the 20.16 MHz board's
+> part returns **pure array pattern** at `0x0F80` and the same block at `0x1F80`,
+> in both read paths. The mask carries the block once, at `0x1F80`; this part
+> also answers with it from `0x0F80` and the other does not. See
+> [dsp-onchip-rom-20mhz-8k](../dsp-onchip-rom-20mhz-8k/README.md).
 
 ## Is it really unprogrammed, or is protection hiding it?
 

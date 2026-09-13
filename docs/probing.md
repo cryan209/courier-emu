@@ -387,8 +387,13 @@ serial-output enable condition traced in the firmware.
 (SPRU056D Table 1-1.) The full 8K is now read:
 `artifacts/dsp-onchip-rom-2806/c5x-onchip-rom-8k.bin`, and it is mostly
 unprogrammed - 1920 words of boot code at `0x0000`-`0x077F`, a 128-word mailbox
-block that the mask carries twice at `0x0F80` and `0x1F80`, and 6016 words of a
-32-word `FFFF`/`0000` array pattern. That pattern is also what `0x0780`-`0x07FF`
+block at `0x1F80`, and 6144 words of a 32-word `FFFF`/`0000` array pattern.
+Both boards have now been read in full
+([20.16 MHz](../artifacts/dsp-onchip-rom-20mhz-8k/README.md)) and the programmed
+ROM is byte-identical on the two parts. The 25 MHz part additionally answers with
+a copy of the `0x1F80` block from `0x0F80`, in both read paths, where the
+20.16 MHz part returns pattern - a difference between the parts, unexplained,
+and the only difference in 8192 words. That pattern is also what `0x0780`-`0x07FF`
 holds, so the 2K capture did not end at a boundary; it ran off the end of the
 programmed part of a much larger ROM.
 
