@@ -114,10 +114,14 @@ class RomBootTests(unittest.TestCase):
         self.assertEqual(bridge.checksum_submits, 2)
         received = bytes(bridge.bootstrap[:bridge.bootstrap_target_size])
         self.assertEqual(received, rom.data[0x29080:0x368FC])
+        installed = b"".join(
+            bridge.core.program(bridge.entry_word + index).to_bytes(2, "little")
+            for index in range(len(received) // 2)
+        )
+        self.assertEqual(installed, received)
 
 
 
 
 if __name__ == "__main__":
     unittest.main()
-

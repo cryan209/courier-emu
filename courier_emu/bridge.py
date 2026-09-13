@@ -435,6 +435,7 @@ class CourierDspBridge:
         self.overlay_id: int | None = None
         self.overlay_heads: list[str] = []
         self.overlay_match: bool | None = None
+        self._overlay_status = 0x07
         self.transfer_commands = 0
         self.mailbox_commands = 0
         self.mailbox_windows: Counter[str] = Counter()
@@ -946,8 +947,15 @@ class CourierDspBridge:
         before = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
         if strobe in self._windows:
             window = self._windows[strobe]
+            # The CPU sees two byte-wide banks at 40..4e and 50..5e.  On the
+            # C51 side those are one contiguous eight-word ASIC register file:
+            # the ROM loader sets AR6 to 58 once, then its first four-word
+            # BLDP leaves it at 5c for group 2.  Publishing both groups at 58
+            # silently replaces bank 1 and leaves every second program block
+            # at the ASIC's all-ones reset value.
+            dsp_base = 0x58 + 4 * (strobe - self.transfer.first_strobe)
             for index in range(0, 8, 2):
-                self.core.set_io(0x58 + index // 2,
+                self.core.set_io(dsp_base + index // 2,
                                  window[index] | (window[index + 1] << 8))
         self.core.set_io(0x56, strobe)
         for _ in range(4096):
@@ -1361,8 +1369,8 @@ class CourierDspBridge:
         data = getattr(self.image, "data", b"")
         return bytes(data[overlay.offset:overlay.end])
 
-    def _accumulate_overlay(self, half: bytes) -> None:
-        """Collect a mid-call overlay transfer and publish it when complete.
+    def _accumulate_overlay(self, half: bytes, *, group_committed: bool) -> None:
+        """Collect and verify a mid-call overlay transferred by the C51.
 
         Which overlay this is comes from matching the opening bytes against the
         ROM's overlay table, not from any state the bridge invents: the table
@@ -1387,21 +1395,63 @@ class CourierDspBridge:
                 self._overlay_buffer = bytearray()
                 return
         target = self._overlay_target
-        if len(self._overlay_buffer) < target.length:
+        # A payload may end after the first two words of its padded final
+        # block. Do not verify it until strobe 2 has made the C51 install the
+        # whole four-word ASIC group.
+        if len(self._overlay_buffer) < target.length or not group_committed:
             return
         image = bytes(self._overlay_buffer[:target.length])
         self.overlay_match = image == self._overlay_payload(target)
         self.overlay_id = target.index
-        if self.overlay_match and hasattr(self.core, "load_program"):
-            # Publish it, but do not touch _call_overlay_active: that flag
-            # belongs to main211's in-resident call overlay, a different
-            # mechanism found by signature in _find_call_overlay. This is a
-            # flash overlay the supervisor downloads, and it reports itself
-            # through overlay_downloads / overlay_id / overlay_match.
-            self.core.load_program(image, target.entry_word)
+        if self.overlay_match:
+            # The bytes have already reached program RAM through the resident
+            # loader's BLDP instructions.  Reading them back here verifies the
+            # modeled transport; it must never be the operation that publishes
+            # the overlay.
+            words = (target.length + 1) // 2
+            installed = b"".join(
+                self.core.program(target.entry_word + index).to_bytes(2, "little")
+                for index in range(words)
+            )[:target.length]
+            self.overlay_match = installed == image
+        if self.overlay_match:
             self.overlay_downloads += 1
         self._overlay_buffer = bytearray()
         self._overlay_target = None
+
+    def _commit_overlay_group(self, block: bytes) -> None:
+        """Expose four words to the resident loader and await its real ACK."""
+        if len(block) != 8:
+            raise ValueError("overlay ASIC block must contain four words")
+        destination = self.core.data(0xFF62)
+        for index in range(4):
+            first = index * 2
+            self.core.set_io(0x58 + index,
+                             block[first] | (block[first + 1] << 8))
+        # Bit 9 is the ASIC's four-word-ready event. The resident clears it by
+        # writing 0300 only after all four BLDP operations have completed.
+        self.core.set_io(HOST_STATUS_CELL,
+                         self.core.io(HOST_STATUS_CELL) | 0x0200)
+        self._overlay_status &= ~0x02
+        for _ in range(20_000):
+            self.core.step(1)
+            # The idle/status paths also write 0300 to this latch. The loader
+            # alone advances ff62 after its four BLDPs, which is stronger (and
+            # portable across resident revisions) than accepting any status
+            # write as the acknowledgement.
+            if self.core.data(0xFF62) == (destination + 4) & 0xFFFF:
+                # ff62 is written in the branch delay slot just before the
+                # loader returns to its idle/poll loop. Do not advertise the
+                # next bank yet: an idle-path 0300 write in that short tail can
+                # otherwise clear a newly raised 0200 before it is consumed.
+                # The caller may have interrupted ordinary resident work and
+                # need not return to an IDLE instruction immediately. A small
+                # tail is enough to retire the branch, INTR and status poll;
+                # the next 0200 event is raised only after it has elapsed.
+                self.core.step(32)
+                self._overlay_status |= 0x02
+                return
+        raise RuntimeError("C51 resident loader did not acknowledge overlay block")
 
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
@@ -1449,7 +1499,8 @@ class CourierDspBridge:
 
     def handles(self, port: int) -> bool:
         return (
-            port in (0x1C, self.transfer.command_port, *DSP_RUNTIME_PORTS)
+            port in (0x1C, DSP_COMMAND_PORT, self.transfer.command_port,
+                     *DSP_RUNTIME_PORTS)
             or port in self._lanes
         )
 
@@ -1561,6 +1612,7 @@ class CourierDspBridge:
             if strobe == self.transfer_start_command:
                 self._overlay_target = None
                 self._overlay_buffer = bytearray()
+                self._overlay_status = 0x07
             elif self.active and strobe in self._windows:
                 # Measured framing: each acknowledgement commits four bytes -
                 # a half-block - into alternating halves of the first window,
@@ -1570,7 +1622,9 @@ class CourierDspBridge:
                 window = self._windows[self.transfer.first_strobe]
                 half = bytes(window[0:4] if strobe == self.transfer.first_strobe
                              else window[4:8])
-                self._accumulate_overlay(half)
+                if strobe == 2 and self.boot_rom_enabled:
+                    self._commit_overlay_group(bytes(window))
+                self._accumulate_overlay(half, group_committed=strobe == 2)
             return
         if port != self.transfer.command_port or size != 1:
             return
@@ -1699,6 +1753,12 @@ class CourierDspBridge:
             self._publish_window()
 
     def read(self, port: int, size: int) -> int | None:
+        if (
+            port == DSP_COMMAND_PORT
+            and self.transfer.command_port != DSP_COMMAND_PORT
+            and self.active
+        ):
+            return self._overlay_status & ((1 << (size * 8)) - 1)
         if port == 0x1C:
             if self._completion_probe:
                 return (1 << (size * 8)) - 1
@@ -1727,18 +1787,11 @@ class CourierDspBridge:
                 status |= 4
             return status
         if port == self.transfer.command_port:
-            # The downloader polls this port for ready and acceptance bits
-            # between groups, and the overlay loader at 0x8e6c2 polls the same
-            # port for bits 1 and 2 before each half-block. All-ones answers
-            # both, so a transfer never waits.
-            #
-            # These are the ASIC's handshake lines, not the DSP boot ROM's:
-            # that ROM is recovered and loaded (_configure_boot_rom, read off
-            # the board in docs/dsp-onchip-rom.md), and the resident bootstrap
-            # really does run through it via queue_codec_boot. An earlier
-            # comment here said the boot ROM was unavailable, which is stale.
-            # What is still synthesized is the ASIC's readiness, and with it
-            # any back-pressure the DSP would apply to a download.
+            # The reset-time downloader polls the ASIC's resident-transfer
+            # status here. Its C51 acknowledgements are consumed synchronously
+            # by _commit_rom_group, so the CPU sees both holding banks free.
+            # Runtime overlay status is the separate 0x1e case above and does
+            # withhold its second-bank bit until the resident writes 0300.
             return (1 << (size * 8)) - 1
         if port in (0x58, 0x5A) and (
             self.boot_rom_enabled and self._runtime_mode

@@ -158,12 +158,13 @@ third way.
 
 ### What it does now
 
-`_accumulate_overlay` takes half-blocks, identifies the overlay by matching
-its opening eight bytes against **this ROM's own overlay table**, verifies the
-completed image against the ROM's copy, and publishes it with
-`core.load_program(image, entry_word)` only on a match. Nothing about the
-payload, its length or its load address is chosen by the bridge; an
-unrecognised transfer is dropped rather than published.
+`_accumulate_overlay` takes half-blocks and identifies the overlay by matching
+its opening eight bytes against **this ROM's own overlay table**. The ASIC then
+publishes each complete four-word block at DSP registers `58..5b` and raises
+status bit `0200`. The resident routine at `811b..8138` performs the four
+`BLDP` writes, advances the destination in `ff62`, and acknowledges with
+`0300`. Only after those writes does the bridge compare program RAM with the
+ROM payload. Nothing calls `core.load_program` on this path.
 
 Measured on a two-instance link, A originating and B answering:
 
@@ -186,34 +187,18 @@ chain from the request to `out 0x1e, 4`.
 This does not yet claim a completed call. It claims that the datapump image
 now reaches the C52, which no run before it did.
 
-### What the bridge still stands in for
+### Remaining transport limit
 
-Two honest limits on the section above, both surfaced by asking where the
-boot ROM is in this.
+The recovered mask ROM now installs the resident and the running resident
+installs flash overlays; neither path directly publishes program memory. The
+ASIC acknowledges the first half-block when it has latched it, then withholds
+the second-half ready bit until the C51 has consumed the complete block and
+written `0300`.
 
-**The boot ROM is not missing.** `artifacts/dsp-onchip-rom-01/c5x-onchip-rom.bin`
-was read off the board and `_configure_boot_rom` loads it, and the resident
-bootstrap genuinely runs through it: the bridge hands the payload to
-`queue_codec_boot`, so the recovered ROM's own loader installs the resident
-and the entry is its work rather than the bridge's. A comment on the `0x1e`
-read claiming the boot ROM was unavailable was stale and has been corrected.
-
-**The overlay does not get the same treatment.** The bridge publishes it with
-`core.load_program(image, entry_word)`, writing program space directly. That
-places the right bytes at the right address, verified against the ROM, but it
-bypasses whatever code on the C52 receives an overlay while the resident is
-already running - which is not the boot ROM's loader, since that ran at
-bootstrap and jumped to `0x8000`. What receives it is not identified here.
-
-**And the handshake is synthesized.** Reads of `0x1e` return all-ones, so the
-loader's polls at `0x8e6c2` and `0x8e6f1` for bits 1 and 2 always pass and a
-transfer never waits. Nothing models the back-pressure a real ASIC would
-apply between half-blocks.
-
-Neither of these invalidates the measurement - the image arrives complete and
-matches - but they mark the transport as modelled at the port level rather
-than as the DSP's own participation in it. If the C52 turns out not to run the
-overlay correctly, these are the two places to look before anything else.
+The remaining electrical uncertainty is which physical ASIC signal wakes the
+C51 service path. The model uses the status latch observed by the firmware;
+its data and acknowledgement behavior is independently visible from both
+processors.
 
 One defect this also caught: the first version of the publish set
 `_call_overlay_active`, which belongs to main211's in-resident call overlay -

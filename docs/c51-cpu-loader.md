@@ -76,9 +76,9 @@ ASIC status cell `@56`.
 
 For status bit/group 1 it takes four words beginning at `@58` and executes a
 four-word `BLDP *+` transfer. It writes `1` to `@56` to acknowledge and advances
-the program pointer by four. Group 2 repeats the same operation and acknowledges
-with `2`. Completion writes `4` to `@56` and branches through the entry saved in
-`@7d`.
+the program pointer by four. The indirect source pointer advances too, so group
+2 consumes the second ASIC bank at `@5c..@5f`, then acknowledges with `2`.
+Completion writes `4` to `@56` and branches through the entry saved in `@7d`.
 
 This is an exact structural match for the CPU routine: four-word banks,
 statuses 1 and 2, completion 4, and a destination supplied before reset. It is

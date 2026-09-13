@@ -139,3 +139,73 @@ def test_booted_firmware_roundtrip_and_independent_holding_registers():
         assert bridge._runtime_inbound_delivered['0031:0000'] == 2
     finally:
         bridge.core.close()
+
+
+def test_resident_c51_installs_overlay_words_through_the_asic():
+    """The runtime downloader must execute BLDP, not call load_program."""
+    from courier_emu.bridge import CourierDspBridge
+    from courier_emu.images import load_image
+
+    bridge = CourierDspBridge(load_image(
+        ROOT / 'artifacts/courier-board-21210-capture-403/courier-board.rom'))
+    try:
+        payload = bridge.expected_bootstrap
+        for offset in range(0, len(payload), 8):
+            strobe, ports = bridge.transfer.windows[(offset // 8) % 2]
+            for port, byte in zip(range(ports, ports + 16, 2),
+                                  payload[offset:offset + 8].ljust(8, b'\xff')):
+                bridge.write(port, 1, byte)
+            bridge.write(bridge.transfer.command_port, 1, strobe)
+        bridge.write(bridge.transfer.command_port, 1,
+                     bridge.transfer.checksum_strobe)
+        bridge.core.step(1_500_000)
+        bridge._runtime_mode = True
+        bridge.write(0x1C, 1, 6)
+
+        target = next(row for row in bridge.image.dsp_overlays if row.index == 7)
+        image = bridge.image.data[target.offset:target.end]
+        for port, value in zip((0x58, 0x5A, 0x5C, 0x5E),
+                               (2, 0, target.entry_word & 0xff,
+                                target.entry_word >> 8)):
+            bridge.write(port, 1, value)
+        bridge.write(0x1C, 1, 1)
+        bridge.core.step(10_000)
+        assert bridge.core.data(0xff62) == target.entry_word
+
+        bridge.write(0x1E, 1, 4)
+        block = image[:8]
+        for port, byte in zip(range(0x40, 0x50, 2), block):
+            bridge.write(port, 1, byte)
+        bridge.write(0x1E, 1, 1)
+        assert bridge.read(0x1E, 1) & 1
+        bridge.write(0x1E, 1, 2)
+        assert bridge.read(0x1E, 1) & 2
+
+        installed = b''.join(
+            bridge.core.program(target.entry_word + index).to_bytes(2, 'little')
+            for index in range(4)
+        )
+        assert installed == block
+        # The 0300 acknowledgement precedes the branch delay slot that writes
+        # the advanced destination back to ff62.
+        bridge.core.step(8)
+        assert bridge.core.data(0xff62) == target.entry_word + 4
+        assert not bridge.core.io(0x57) & 0x0200
+
+        for offset in range(8, len(image), 8):
+            block = image[offset:offset + 8].ljust(8, b'\xff')
+            for port, byte in zip(range(0x40, 0x50, 2), block):
+                bridge.write(port, 1, byte)
+            bridge.write(0x1E, 1, 1)
+            bridge.write(0x1E, 1, 2)
+        bridge.write(0x1E, 1, 4)
+        installed = b''.join(
+            bridge.core.program(target.entry_word + index).to_bytes(2, 'little')
+            for index in range((len(image) + 1) // 2)
+        )[:len(image)]
+        assert installed == image
+        assert bridge.overlay_downloads == 1
+        assert bridge.overlay_id == 7
+        assert bridge.overlay_match is True
+    finally:
+        bridge.core.close()

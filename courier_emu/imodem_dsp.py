@@ -252,8 +252,12 @@ class ImodemDsp(ImodemMailbox):
             raise RuntimeError('DSP download strobe without ASIC reset command')
         before = self.core.io_port_stats([0x56])['0x56']['writes']
         if base is not None:
+            # The two CPU-facing windows form one contiguous DSP-side ASIC
+            # bank.  The mask-ROM loader consumes 58..5b for strobe 1 and,
+            # without rewinding AR6, 5c..5f for strobe 2.
+            dsp_base = 0x58 + 4 * (strobe - 1)
             for index in range(4):
-                self.core.set_io(0x58 + index, self._word(base + 4*index))
+                self.core.set_io(dsp_base + index, self._word(base + 4*index))
         self.core.set_io(0x56, strobe)
         for _ in range(4096):
             self.core.step(1)
