@@ -127,10 +127,10 @@ measured ends being contiguous and in order, and is marked so.
 | 2-5 | 89-86 | DSP `A0` `A1` `A2` `A3` |
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
-| 16 | 75 | flash pin 12 |
+| 16 | 75 | flash pin 12, `CE#` - **the ASIC selects the flash** |
 | 17 | 74 | flash pin 34 (`A16`, system `A17`) - **the conflict resolved**, see below |
 | 18 | 73 | flash pin 3 (`A17`, system `A18`) |
-| 15 | 76 | flash pin 35 |
+| 15 | 76 | flash pin 35, `A15` (system `A16`) |
 | 20 | 71 | latched `A0` **out** - 74VHC32 pin 12 (`4A`), the low byte lane's term in `U12`'s `WE#` |
 | 21 | 70 | latched `A1` **out** - RAM pin 10 and flash pin 11, which are those parts' own `A0` |
 | 22-26 | 69-65 | latched `A2`-`A6` **out** *(inferred)* |
@@ -590,24 +590,72 @@ This is the strongest form the remapping claim has taken. It began as an
 inference from one anomalous pin, gained its input side, and now has both ends
 counted: three in, two out, with the arithmetic itself carrying the conclusion.
 
-**What `75` and `76` are is the next thing to name.** They go to flash pins 12
-and 35, and this file does not carry the Am29F400B connection diagram - only the
-three anchors [board-parts.md](board-parts.md) checked against it (`A17`/`A7`/`A0`
-on pins 3/4/11). Those two pin numbers want looking up, and the answer matters
-in a specific way:
+#### The ASIC selects the flash, and `UCS` does not
 
-* If either is an **address** line, the ASIC's involvement in the flash's
-  addressing is wider than the top two bits and the fold above is a corner of
-  something bigger.
-* If either is `CE#`, **the ASIC selects the flash** - and this file's
-  chip-select table predicts CPU `UCS` (CPU pin 61) does that, "predicted, not
-  yet read". That prediction would be wrong.
-* If either is `OE#` or `WE#`, the ASIC is in the flash's control path as well
-  as its address path, which would make the part's role in a firmware write -
-  the thing that flashes a new supervisor - something nobody has modelled.
+**Flash pin 12 is `CE#`, and it comes from ASIC pin 75.** Of the three
+possibilities the previous paragraph weighed, this is the consequential one.
 
-Four of the ASIC's top-edge pins now go to the flash. Whatever this part is
-doing to the boot device, it is not a detail.
+This file's chip-select table has CPU `UCS` (CPU pin 61) driving the flash's
+`CE#` - "predicted, not yet read". **That prediction is wrong.** `UCS` is the
+80186's upper chip select, the one that is active at reset and fetches the first
+instruction, and on this board it does not reach the boot device. The ASIC does.
+
+**Flash pin 35 is `A15`**, system `A16`, so the address side is wider than the
+top two bits as well. Collecting what the ASIC drives into the flash:
+
+| flash pin | flash's name | system address | from ASIC pin |
+|---|---|---|---|
+| 11 | `A0` | `A1` | 70 |
+| ... | `A1`-`A6` | `A2`-`A7` | 69-65 *(inferred)* |
+| 4 | `A7` | `A8` | 64 |
+| 35 | `A15` | `A16` | 76 |
+| 34 | `A16` | `A17` | 74 |
+| 3 | `A17` | `A18` | 73 |
+| 12 | `CE#` | - | 75 |
+
+So the ASIC supplies the flash's **bottom eight address lines, its top three,
+and its chip select**. The `74VHC573` supplies the middle - `A8`-`A15` latched
+from `AD8`-`AD15`, which are the flash's `A7`-`A14`. Between the two parts the
+flash's entire address bus is accounted for, and only one of them can also
+decide when the device is selected.
+
+**That is not a bus buffer. That is a memory controller.**
+
+#### The fold, recounted - and a prediction for pin 72
+
+With `A15` known, the output side is system `A16`, `A17`, `A18`. The input side
+is CPU `A17`, `A18`, `A19`, on ASIC `62`, `59` and `58`.
+
+Three in and three out, but **offset by one**, which is the wrong shape: the
+part is driving a system `A16` it has no `A16` to drive it from.
+
+**The likely resolution is pin 72** - the single remaining unread pin on the top
+edge, sitting immediately beside `73`, `74`, `75` and `76`, all four of which
+are the flash's. **Prediction: pin 72 is CPU `A16`** (CPU pin 29, if the QFP
+table runs on from `A17` at 30). That makes the count four in and three out, one
+bit consumed by the decision, and it puts a contiguous group of five flash-facing
+pins on the edge instead of four and an oddity.
+
+If pin 72 is *not* CPU `A16`, then the offset is real and the ASIC genuinely
+shifts the flash's address by one - which would mean the device sees half of
+each of the CPU's upper 128 KiB regions, and the firmware's own view of its
+address space would need re-deriving. That is a much larger claim and it should
+not be adopted until pin 72 is read.
+
+**Either way the shape is now clear.** The ASIC takes the CPU's top address
+lines, emits fewer of them, and holds the flash's chip select - which is
+**paging**: a 512 KiB device reached through a smaller window, with the ASIC
+choosing which part of the device is behind it. That is the ordinary reason a
+1990s board puts a gate array between a CPU and its boot flash, and it is
+consistent with everything else on this edge.
+
+It also means the harness's flat 512 KiB flash image is a simplification of
+something with a register behind it. Nothing in `courier_emu` pages anything,
+and if the supervisor switches banks to reach its upper half, it is currently
+getting away with it because the emulator hands it the whole device at once.
+
+Four - probably five - of the ASIC's top-edge pins go to the flash. Whatever
+this part is doing to the boot device, it is not a detail.
 
 #### `AD15` on pin 63, which the width-converter claim did not expect
 
@@ -1285,6 +1333,48 @@ and it would no longer be a workaround but the actual fix.
 
 The 1.6 s coincidence is worth keeping in view: it is why nobody looked further.
 
+### What resets what
+
+The pieces are scattered across this file, and the question is worth one table.
+**Three parts are reset three different ways, and only one of them is reset by
+the supervisor.**
+
+| part | reset source | how |
+|---|---|---|
+| the **ASIC** | `ADM707` pin 7 | active-high power-good reset, into ASIC pin `111` |
+| the **CPU** | `ADM707` pin 6, presumed | the active-low half of the same part - **not read** |
+| the **DSP** and the **codec** | the **CPU**, in software | `P1LTCH` (`0xff56`) bit 1, one net to DSP `RS` (pin 127) and codec pin 8 |
+
+**The CPU's own reset is the unread one.** The ADM707 has both polarities
+available, the ASIC takes the active-high one, and the ordinary way to use such
+a part is to send the active-low one to the processor's `RES#`. That is an
+inference, not a reading, and it is a one-probe item: `ADM707` pin 6 against the
+CPU's `RES#` pin.
+
+**The DSP is not reset by hardware at all.** Nothing from the supervisor reaches
+it. It is held or released by a CPU port-1 latch bit that the firmware drives -
+the ROM pulses it at `8e3c1`/`8e406` and the payload at `69c08`/`69c4d`, and
+`courier_emu` models it as `DSP_RESET_PORT`/`DSP_RESET_BIT`
+([machine.py:54](../courier_emu/machine.py)). Bit 1 is `P1.1`; with `P1.0`
+(`GCS0`) on CPU pin 59 and `P1.2` on 57, **CPU pin 58** is where that lands, and
+it is not otherwise claimed - worth confirming against the QFP table rather than
+the arithmetic.
+
+Three consequences follow from that asymmetry:
+
+* **The CPU necessarily runs first.** Whatever state the DSP comes up in, only
+  the CPU can take it out of reset, so the boot order is not a firmware choice -
+  it is what the wiring permits.
+* **What holds the DSP at power-on is a real question.** The 80186EB's port pins
+  come out of reset in their chip-select function rather than as driven GPIO, so
+  the level on that net during the first microseconds depends on `P1CON`'s
+  default and on whatever pull the board fits. If it floats high, the DSP is
+  *released* before the CPU has loaded anything into its RAM.
+* **There are two ways to stop the DSP, not one.** This net is the documented
+  one; the other is the clock, which comes out of the ASIC (pin `119`). A part
+  that supplies another part's clock can halt it without asserting any reset at
+  all, and nothing in this repository has considered that.
+
 ### The DSP and the codec share one reset net
 
 DSP `RS` (pin 127) does not come from the ASIC. It goes to the codec's pin 8,
@@ -1745,7 +1835,7 @@ piecemeal:
 |---|---|
 | `GCS0` (pin 59) | the ASIC |
 | `LCS` (pin 60) | both SRAMs' `CE#` |
-| `UCS` (pin 61) | the flash's `CE#` - predicted, not yet read |
+| `UCS` (pin 61) | ~~the flash's `CE#`~~ - **wrong**: flash `CE#` comes from ASIC pin 75. Where `UCS` goes, if anywhere, is unread |
 | `P1.2/GCS2` (pin 57) | **not a select** - EEPROM clock, driven as GPIO |
 | `P1.5/GCS5` (pin 52) | **not a select** - EEPROM chip select, driven as GPIO |
 
