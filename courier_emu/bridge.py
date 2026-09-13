@@ -386,6 +386,9 @@ class CourierDspBridge:
         self.core = NativeC5x(image)
         self._configure_boot_rom()
         self._configure_frame_interrupt()
+        self._reset_asserted = True
+        self._loader_started = False
+        self._download_destination = image.dsp_program_segments()[0][0]
         if dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
             # A third C50 trace window, for a handler the two compiled-in
             # ranges do not cover.
@@ -898,8 +901,61 @@ class CourierDspBridge:
         origin, resident = self.image.dsp_program_segments()[0]
         # The boot loader must write the resident, not execute a preloaded copy.
         self.core.load_program(bytes(len(resident)), origin)
-        self.core.host_write(0xFFFF, 4)  # ASIC's 16-bit serial boot strap.
         self.core.set_pc(0)
+
+    def set_reset(self, asserted: bool) -> None:
+        """Drive the shared C51/codec reset net at its real board level."""
+        asserted = bool(asserted)
+        if asserted:
+            window = self._windows[self.transfer.first_strobe]
+            self._download_destination = window[0] | (window[1] << 8)
+        if asserted and not self._reset_asserted:
+            self.float_runtime_bus()
+            self.core.reset()
+            self._configure_frame_interrupt()
+            self._loader_started = False
+            self.launched = False
+            self.active = False
+            self.bootstrap = bytearray()
+            self.bootstrap_match = None
+        self._reset_asserted = asserted
+
+    def _start_rom_loader(self) -> None:
+        if not self.boot_rom_enabled or self._loader_started:
+            return
+        # Standalone bridge users have no 80186 latch; their first transfer
+        # edge implies the reset release that the complete machine models.
+        if self._reset_asserted:
+            self.set_reset(False)
+        for _ in range(32):
+            if self.core.io(0x6A) == 0x0610:
+                break
+            self.core.step(1)
+        self.core.set_io(0x58, self._download_destination)
+        self.core.nmi()
+        for _ in range(4096):
+            if self.core.state()["pc"] in (0x0638, 0x0639, 0x063B):
+                break
+            self.core.step(1)
+        else:
+            raise RuntimeError("C51 ROM loader did not reach its ASIC poll")
+        self._loader_started = True
+
+    def _commit_rom_group(self, strobe: int) -> None:
+        self._start_rom_loader()
+        before = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+        if strobe in self._windows:
+            window = self._windows[strobe]
+            for index in range(0, 8, 2):
+                self.core.set_io(0x58 + index // 2,
+                                 window[index] | (window[index + 1] << 8))
+        self.core.set_io(0x56, strobe)
+        for _ in range(4096):
+            self.core.step(1)
+            writes = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+            if writes > before:
+                return
+        raise RuntimeError(f"C51 ROM loader did not acknowledge strobe {strobe}")
 
     def _configure_frame_interrupt(self) -> None:
         if self.boot_rom_enabled:
@@ -1526,23 +1582,23 @@ class CourierDspBridge:
             # The ASIC accepts the supervisor's transfer and serializes its
             # destination, length and program for the DSP's mask-ROM loader.
             self.checksum_submits += 1
-            if self.active and not self.launched and hasattr(self.core, "set_pc"):
-                if self.boot_rom_enabled:
-                    payload = self.bootstrap[:self.bootstrap_target_size]
-                    words = [int.from_bytes(payload[i:i + 2], "little")
-                             for i in range(0, len(payload), 2)]
-                    # One trailing word clocks the loader's final comparison.
-                    self.core.queue_codec_boot([self.entry_word, len(words), *words, 0])
-                else:
-                    self.core.set_pc(self.entry_word)
+            if self.boot_rom_enabled:
+                self._commit_rom_group(strobe)
+                self._configure_frame_interrupt()
+                self.launched = True
+            elif self.active and not self.launched and hasattr(self.core, "set_pc"):
+                self.core.set_pc(self.entry_word)
                 self.launched = True
             return
         if strobe not in self._windows:
             return
         window = self._windows[strobe]
+        if self.boot_rom_enabled:
+            self._commit_rom_group(strobe)
         if (
             strobe == self.transfer.first_strobe
             and self.active
+            and not self.boot_rom_enabled
             and bytes(window) == self.expected_bootstrap[:8]
         ):
             # The supervisor re-enters its DSP download routine for a line

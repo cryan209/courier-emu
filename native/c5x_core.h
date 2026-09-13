@@ -226,6 +226,7 @@ public:
     uint16_t data(uint16_t address) const;
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
+    void nmi();
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
     void configure_rom_codec(bool enabled);
     void set_codec_mclk(uint32_t hz);
@@ -291,6 +292,9 @@ private:
     std::array<uint16_t, 65536> m_data{};
     std::array<uint16_t, 65536> m_io{};
     std::array<uint16_t, 3> m_mailbox_output{};
+    // CPU-facing ASIC inputs and DSP-facing outputs are separate holding
+    // registers even where they share a C51 port number.
+    std::array<uint16_t, 16> m_asic_output{};
     std::array<uint16_t, C5X_ROM_WORDS> m_rom{};
     bool m_rom_present = false;
     // PMST.MPMC is preserved by this firmware's reset code rather than

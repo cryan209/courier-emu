@@ -1,4 +1,16 @@
-# The DSP's boot ROM has two transports, and the board uses neither
+# The DSP's boot ROM has two generic boot transports
+
+> **Superseded for the Courier CPU download path, 2026-09-14.** Complete
+> comparison of the captured 80186 downloader with the ROM code identifies the
+> board protocol as the separate mask-ROM service loader at `0610`, using
+> four-word ASIC holding registers and `BLDP`. The same ASIC transport is used
+> later by the downloaded resident's overlay loader. See
+> [The 80186/C51 download architecture](c51-cpu-loader.md).
+>
+> The serial and `XF`/`BIO` loaders documented below are real ROM facilities,
+> but neither matches the supervisor's four-word 1/2/4 protocol. In particular,
+> the later inference that the ASIC writes program RAM directly while the DSP
+> is held in reset is withdrawn.
 
 > **Measured, but weaker than first stated.** The board's ASIC presents
 > **`0x0083`** at DSP data `0xffff` *while the modem is running normally*, long

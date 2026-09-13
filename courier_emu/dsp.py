@@ -180,6 +180,7 @@ class NativeC5x:
         lib = self.library
         lib.courier_c5x_create.restype = ctypes.c_void_p
         lib.courier_c5x_destroy.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_reset.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_load_program.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
             ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
@@ -266,6 +267,8 @@ class NativeC5x:
         lib.courier_c5x_get_data_write_count.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_data_write_count.restype = ctypes.c_uint64
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+        lib.courier_c5x_nmi.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_nmi.restype = None
         lib.courier_c5x_configure_line_frame_interrupt.argtypes = [
             ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint16
         ]
@@ -329,6 +332,10 @@ class NativeC5x:
         if getattr(self, "_handle", None):
             self.library.courier_c5x_destroy(self._handle)
             self._handle = None
+
+    def reset(self) -> None:
+        """Assert the C5x reset input without replacing its attached memory."""
+        self.library.courier_c5x_reset(self.handle)
 
     def step(self, count: int) -> None:
         error = ctypes.create_string_buffer(512)
@@ -496,6 +503,9 @@ class NativeC5x:
 
     def interrupt(self, irq: int) -> None:
         self.library.courier_c5x_interrupt(self.handle, irq)
+
+    def nmi(self) -> None:
+        self.library.courier_c5x_nmi(self.handle)
 
     def configure_line_frame_interrupt(self, irq: int, vector: int) -> None:
         self.library.courier_c5x_configure_line_frame_interrupt(

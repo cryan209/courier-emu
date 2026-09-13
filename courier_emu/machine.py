@@ -2424,8 +2424,7 @@ class CourierMachine:
                 # resets the codec too and returns its registers to defaults.
                 # Nothing below models that - see docs/asic-pinout.md.
                 asserted = not value & DSP_RESET_BIT
-                if asserted and not self._dsp_in_reset:
-                    self.dsp_bridge.float_runtime_bus()
+                self.dsp_bridge.set_reset(asserted)
                 self._dsp_in_reset = asserted
             if self.uart is not None:
                 sent = self.uart.write(address, size, value)

@@ -1,5 +1,12 @@
 # The DSP takes four images, not one
 
+> **Transport correction, 2026-09-14.** The overlay is consumed by the
+> downloaded C51 loader at `811b..8138`, which reads the ASIC holding registers
+> and performs the program-memory `BLDP` writes itself. It uses the same
+> physical ASIC register bridge as the mask-ROM resident loader at `0610`.
+> Direct `core.load_program` publication is an emulator shortcut, not the board
+> mechanism. See [The 80186/C51 download architecture](c51-cpu-loader.md).
+
 The supervisor downloads a resident C52 bank at boot. It can also send three
 further images, and the resident bank is simply one row of the same table that
 names them. This records the mechanism, the map, and what it does and does not

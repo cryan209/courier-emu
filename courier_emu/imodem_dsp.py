@@ -46,6 +46,7 @@ class ImodemDsp(ImodemMailbox):
         self._pcm_partial = b''
         self._realtime_origin = None
         self.realtime_cycles = 0
+        self._loader_started = False
 
     def close(self):
         if self.core is not None:
@@ -176,20 +177,21 @@ class ImodemDsp(ImodemMailbox):
             self.lanes[port] = value & 0xff
         if port == 0x18:
             if value & 0xff == 0xff:
-                self.close()
                 self.boot_origin = self._word(0x40)
                 self.boot_words = []
+                self._begin_boot()
                 self.boot_status = 0xff
                 self.reset_status = True
                 self.rx = None
                 self.host_pending = False
             elif value in (1, 2):
                 base = 0x40 if value == 1 else 0x50
-                self.boot_words.extend(self._word(base + 4*i) for i in range(4))
+                self._commit_boot_group(value, base)
+                self.bootstrap_words += 4
                 self.boot_status = 3
             elif value == 4:
-                if self.boot_origin == 0x8000 and self.boot_words and self.core is None:
-                    self._start()
+                self._commit_boot_group(value, None)
+                self._finish_boot()
                 self.boot_status = 7
                 self.reset_status = True  # completion bus, released by CPU bit-1 ACK
             return
@@ -221,22 +223,51 @@ class ImodemDsp(ImodemMailbox):
     def _word(self, port):
         return self.lanes.get(port, 0) | (self.lanes.get(port+2, 0) << 8)
 
-    def _start(self):
+    def _begin_boot(self):
+        self.close()
         rom = (Path(__file__).resolve().parent.parent /
                'artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin').read_bytes()
         if sha256(rom).hexdigest() != ROM_SHA256:
             raise ValueError('recovered DSP mask ROM checksum mismatch')
-        program = b''.join(word.to_bytes(2, 'little') for word in self.boot_words)
-        self.core = NativeC5x.from_program(self.boot_origin, program)
-        self.core.configure_host_mailbox()
+        self.core = NativeC5x.from_program(0, b'')
+        self.core.configure_rom_codec()
         self.core.load_rom(rom)
         self.core.set_mpmc_pin(0)
-        self.core.set_pc(self.boot_origin)
+        self.core.reset()
+        for _ in range(64):
+            self.core.step(1)
+        self.core.set_io(0x58, self.boot_origin)
+        self.core.nmi()
+        for _ in range(4096):
+            if self.core.state()['pc'] in (0x0638, 0x0639, 0x063b):
+                break
+            self.core.step(1)
+        else:
+            raise RuntimeError('C51 ROM loader did not reach its ASIC poll')
+        self.bootstrap_words = 0
+        self._loader_started = True
+
+    def _commit_boot_group(self, strobe, base):
+        if self.core is None or not self._loader_started:
+            raise RuntimeError('DSP download strobe without ASIC reset command')
+        before = self.core.io_port_stats([0x56])['0x56']['writes']
+        if base is not None:
+            for index in range(4):
+                self.core.set_io(0x58 + index, self._word(base + 4*index))
+        self.core.set_io(0x56, strobe)
+        for _ in range(4096):
+            self.core.step(1)
+            if self.core.io_port_stats([0x56])['0x56']['writes'] > before:
+                return
+        raise RuntimeError(f'C51 ROM loader did not acknowledge strobe {strobe}')
+
+    def _finish_boot(self):
+        self.core.configure_rom_codec(False)
+        self.core.configure_host_mailbox()
         # The peripheral port clocks a DS0 even when its MUX is disconnected.
         self.core.configure_digital_pcm(
             idle_codeword=IDLE_CODEWORD, clock_hz=DIGITAL_PCM_CLOCK_HZ)
         self.core.configure_line_frame_interrupt(5, 0xffff)
-        self.bootstrap_words = len(self.boot_words)
         self._reply_writes = 0
         self._pcm_cursor = 0
         self._pcm_partial = b''

@@ -27,6 +27,11 @@ void *courier_c5x_create()
 
 void courier_c5x_destroy(void *handle) { delete static_cast<C5xCore *>(handle); }
 
+void courier_c5x_reset(void *handle)
+{
+    if (handle) static_cast<C5xCore *>(handle)->reset();
+}
+
 int courier_c5x_load_program(
     void *handle, uint16_t origin, const uint8_t *bytes, std::size_t byte_count,
     char *error, std::size_t error_size)
@@ -260,6 +265,11 @@ uint64_t courier_c5x_get_data_write_count(void *handle, uint16_t address)
 void courier_c5x_interrupt(void *handle, unsigned irq)
 {
     if (handle) static_cast<C5xCore *>(handle)->interrupt(irq);
+}
+
+void courier_c5x_nmi(void *handle)
+{
+    if (handle) static_cast<C5xCore *>(handle)->nmi();
 }
 
 void courier_c5x_configure_line_frame_interrupt(void *handle, unsigned irq, uint16_t vector)

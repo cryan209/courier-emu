@@ -108,6 +108,7 @@ void C5xCore::reset()
     m_step_cycles = 0;
     m_io.fill(0xffff);
     m_mailbox_output.fill(0);
+    m_asic_output.fill(0xffff);
     m_io_events.clear();
     m_data_events.clear();
     m_data_write_counts.fill(0);
@@ -391,6 +392,8 @@ void C5xCore::set_v8_answering(bool enabled)
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::io_output(uint16_t port) const
 {
+    if (m_rom_codec && port >= 0x50 && port <= 0x5f)
+        return m_asic_output[port - 0x50];
     return (m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60
         ? m_mailbox_output[port - 0x5e] : m_io[port];
 }
@@ -583,7 +586,9 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // to invent download-ready bit 9; with NDX working the firmware then
         // consumed nonexistent download words indefinitely.
         m_io[port] &= uint16_t(~value);
-    else if ((m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60)
+    else if (m_rom_codec && port >= 0x50 && port <= 0x5f)
+        m_asic_output[port - 0x50] = value;
+    else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
         // The CPU and DSP each own a holding register. A DSP reply must not
         // overwrite an incoming CPU word, or vice versa.
         m_mailbox_output[port - 0x5e] = value;
@@ -851,6 +856,19 @@ void C5xCore::interrupt(unsigned irq)
         m_idle = false;
     }
     check_interrupts();
+}
+
+void C5xCore::nmi()
+{
+    // The 'C51's NMI vector is the fixed slot at 0x0024.  Unlike the maskable
+    // inputs it is accepted regardless of IMR/INTM.  The Courier ASIC uses
+    // this entry after releasing reset; the mask ROM dispatches it through
+    // @6a to its resident-download service at 0x0610.
+    PUSH_STACK(m_pc);
+    m_st0.intm = 1;
+    save_interrupt_context();
+    m_pc = 0x0024;
+    m_idle = false;
 }
 
 void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
