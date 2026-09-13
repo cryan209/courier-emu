@@ -1192,6 +1192,8 @@ EEPROM's interface is now mapped end to end with every prediction confirmed:
 | 1 `CS` | chip select | 52 (`P1.5`) | `0xff56` bit `0x20` |
 | 2 `SK` | clock | 57 (`P1.2`) | `0xff56` bit `0x04` |
 | 3 `DI` + 4 `DO` | one shared net | 79 (`P2.7`) | `0xff5e` / `0xff5a` bit `0x80` |
+| 5 `GND` | ground | - | - |
+| 8 `VCC` | supply | - | - |
 
 **Pin 6, `ORG`, reads floating - and that is a setting, not a gap.** On the
 Atmel part an unconnected `ORG` is pulled up internally and selects the **x16
@@ -1209,6 +1211,20 @@ as "Atmel 8-pin" without the full marking. A part that required `ORG` to be
 tied would make a floating pin undefined rather than x16. The firmware evidence
 carries the conclusion either way; the pin corroborates it rather than
 establishing it alone.
+
+**Pins 5 and 8 are ground and supply, and pin 7 floats too.** That closes the
+package: every one of the eight pins is now read rather than assumed, and the
+power pair being ordinary rules out the alternative reading of pin 6 in which
+a supply-side strap was doing the organisation select.
+
+Pin 7 floating is the expected result and it narrows the part a little. On the
+Atmel device pin 7 is `DC`, a don't-connect with no bond inside, so leaving it
+open is the only correct treatment. Some other vendors' 93C66 variants put a
+`PE` program-enable on that pin, and a part of that kind with `PE` floating
+could not be written at all - which the firmware plainly does. So the pin is
+consistent with the Atmel marking the board notes claim, and inconsistent with
+a `PE`-bearing substitute. It is weaker evidence than a package marking, but
+it points the same way as the `ORG` argument above rather than against it.
 
 The two mappings this section started from came from different firmware
 families - the ROM builds for the CPU path, the XMF supervisor for the ASIC
