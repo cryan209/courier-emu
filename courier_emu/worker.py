@@ -76,6 +76,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
     parser.add_argument("--instructions", type=_number, required=True)
+    parser.add_argument("--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn")
     parser.add_argument("--port", action="append", default=[])
     parser.add_argument("--runtime-port", action="append", default=[])
     parser.add_argument("--uart-port", action="append", type=_number, default=[])
@@ -263,6 +264,7 @@ def main() -> int:
         force_online=args.force_online,
         dsp_batch=args.dsp_batch,
         console=console,
+        cpu_engine=args.cpu_engine,
     )
     if console is not None:
         # Detaching the terminal closes its end of the channel, which the

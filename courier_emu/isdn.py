@@ -353,7 +353,11 @@ class IsdnMachine:
         offhook_at: int | None = None,
         product_type: str = "external",
         product_modem: bool = False,
+        cpu_engine: str = "unicorn",
     ) -> None:
+        if cpu_engine not in ("unicorn", "interpreter"):
+            raise ValueError(f"unknown x86 engine {cpu_engine!r}")
+        self.cpu_engine = cpu_engine
         self.image = image
         self.entry_segment = entry_segment
         self.entry_offset = entry_offset
@@ -672,7 +676,36 @@ class IsdnMachine:
     # -- execution ---------------------------------------------------------
 
     def run(self, instructions: int) -> IsdnRunResult:
+        if self.cpu_engine == "interpreter":
+            from . import x86_interpreter as _backend
+
+            UC_ARCH_X86 = _backend.UC_ARCH_X86
+            UC_HOOK_CODE = _backend.UC_HOOK_CODE
+            UC_HOOK_INSN = _backend.UC_HOOK_INSN
+            UC_HOOK_INTR = _backend.UC_HOOK_INTR
+            UC_HOOK_MEM_INVALID = _backend.UC_HOOK_MEM_INVALID
+            UC_HOOK_MEM_WRITE = _backend.UC_HOOK_MEM_WRITE
+            UC_MODE_16 = _backend.UC_MODE_16
+            UcError = _backend.UcError
+            Uc = lambda arch, mode: _backend.Uc(arch, mode, profile="386ex")
+            UC_X86_INS_IN = _backend.UC_X86_INS_IN
+            UC_X86_INS_OUT = _backend.UC_X86_INS_OUT
+            UC_X86_REG_AX = _backend.UC_X86_REG_AX
+            UC_X86_REG_BX = _backend.UC_X86_REG_BX
+            UC_X86_REG_CS = _backend.UC_X86_REG_CS
+            UC_X86_REG_CX = _backend.UC_X86_REG_CX
+            UC_X86_REG_DI = _backend.UC_X86_REG_DI
+            UC_X86_REG_DS = _backend.UC_X86_REG_DS
+            UC_X86_REG_DX = _backend.UC_X86_REG_DX
+            UC_X86_REG_ES = _backend.UC_X86_REG_ES
+            UC_X86_REG_FLAGS = _backend.UC_X86_REG_FLAGS
+            UC_X86_REG_IP = _backend.UC_X86_REG_IP
+            UC_X86_REG_SI = _backend.UC_X86_REG_SI
+            UC_X86_REG_SP = _backend.UC_X86_REG_SP
+            UC_X86_REG_SS = _backend.UC_X86_REG_SS
         try:
+            if self.cpu_engine == "interpreter":
+                raise ImportError
             from unicorn import (
                 UC_ARCH_X86,
                 UC_HOOK_CODE,
@@ -702,10 +735,11 @@ class IsdnMachine:
                 UC_X86_REG_SS,
             )
         except ImportError as exc:  # pragma: no cover - exercised by the CLI
-            raise RuntimeError(
-                "executing the ISDN image needs Unicorn; install with "
-                "`pip install '.[execute]'`"
-            ) from exc
+            if self.cpu_engine != "interpreter":
+                raise RuntimeError(
+                    "executing the ISDN image needs Unicorn; install with "
+                    "`pip install '.[execute]'`"
+                ) from exc
 
         base, flat = self._flat_image()
         uc = Uc(UC_ARCH_X86, UC_MODE_16)

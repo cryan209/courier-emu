@@ -164,6 +164,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         "--instructions",
         str(instruction_limit(args)),
     ]
+    if args.cpu_engine != "unicorn":
+        command.extend(("--cpu-engine", args.cpu_engine))
     for assignment in args.port:
         command.extend(("--port", assignment))
     for assignment in args.runtime_port:
@@ -457,6 +459,10 @@ def build_parser() -> argparse.ArgumentParser:
     isdn_run = subparsers.add_parser(
         "isdn-run",
         help="execute the ISDN Courier 386 payload with its PC-AT peripherals",
+    )
+    isdn_run.add_argument(
+        "--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn",
+        help="x86 execution backend (interpreter uses the 386EX profile)",
     )
     isdn_run.add_argument("image")
     isdn_run.add_argument(
@@ -826,6 +832,10 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="execute the 80186 application entry")
     run.add_argument("image")
     run.add_argument(
+        "--cpu-engine", choices=("unicorn", "interpreter"), default="unicorn",
+        help="x86 execution backend (interpreter uses the 80186EB profile)",
+    )
+    run.add_argument(
         "--instructions",
         type=_number,
         default=None,
@@ -1028,7 +1038,7 @@ def build_parser() -> argparse.ArgumentParser:
         "in milliseconds. The supervisor's countdown chain hangs off it, so "
         "without it every firmware timeout waits forever, ATI10 and ATI11 never "
         "finish, and a long run stalls outright - both flash captures do, within "
-        f"0.1% of the same instruction count. Defaults to {SUGGESTED_TICK_MS}; "
+        f"0.1%% of the same instruction count. Defaults to {SUGGESTED_TICK_MS}; "
         "pass 0 for the old undriven behaviour",
     )
     run.add_argument(
@@ -1503,6 +1513,7 @@ def main(argv: list[str] | None = None) -> int:
                 bri=bri,
                 dipswitches=dipswitches,
                 offhook_at=args.offhook_at,
+                cpu_engine=args.cpu_engine,
                 **entry
             )
             try:

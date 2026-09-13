@@ -171,6 +171,21 @@ repository, installs the project into it, and from then on just starts the CLI.
 ./courier extract main211.xmf extracted/main211
 ```
 
+CPU execution is selectable. Unicorn remains the mature backend; the pure
+Python interpreter uses an 80186EB profile for analog Courier images and a
+386EX profile for I-Modem images:
+
+```sh
+./courier run main211.xmf --cpu-engine interpreter --instructions 1000 --summary
+./courier isdn-run Ie030002.nac --cpu-engine interpreter --instructions 10000 --report
+```
+
+The interpreter shares the existing peripheral, interrupt, flash and I/O
+models and requires no executable-memory/JIT permission. Its 386EX path boots
+through the current 10,000-instruction bring-up probe; instruction coverage is
+still incomplete, and unsupported instructions stop with their opcode,
+selected CPU profile and physical address rather than being guessed.
+
 It uses `uv` when that is on `PATH` and falls back to `venv` plus `pip`
 otherwise. `PYTHON=<interpreter>` chooses the interpreter it builds the
 environment from (3.10 or later), `COURIER_EMU_VENV=<path>` moves the

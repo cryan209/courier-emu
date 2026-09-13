@@ -459,7 +459,11 @@ class CourierMachine:
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
         mem_watch: tuple[int, int] | None = None,
+        cpu_engine: str = "unicorn",
     ) -> None:
+        if cpu_engine not in ("unicorn", "interpreter"):
+            raise ValueError(f"unknown x86 engine {cpu_engine!r}")
+        self.cpu_engine = cpu_engine
         self.image = image
         self.quad_terminal = QuadTerminal() if quad_terminal else None
         if self.quad_terminal is not None:
@@ -834,7 +838,10 @@ class CourierMachine:
         Memory is deliberately not included: in the chassis harness the channel
         memory is the shared surface and its owner moves it between machines.
         """
-        from unicorn import x86_const as _x86
+        if self.cpu_engine == "interpreter":
+            from . import x86_interpreter as _x86
+        else:
+            from unicorn import x86_const as _x86
         registers = {name: self.uc.reg_read(getattr(_x86, f"UC_X86_REG_{name}"))
                      for name in _RESUME_REGISTER_NAMES}
         return {"registers": registers, "instructions": self.instructions,
@@ -846,7 +853,41 @@ class CourierMachine:
         self._resume_state = state
 
     def run(self, instruction_limit: int = 250_000) -> RunResult:
+        if self.cpu_engine == "interpreter":
+            from . import x86_interpreter as _backend
+
+            UC_ARCH_X86 = _backend.UC_ARCH_X86
+            UC_HOOK_BLOCK = _backend.UC_HOOK_BLOCK
+            UC_HOOK_CODE = _backend.UC_HOOK_CODE
+            UC_HOOK_INSN = _backend.UC_HOOK_INSN
+            UC_HOOK_INTR = _backend.UC_HOOK_INTR
+            UC_HOOK_MEM_READ = _backend.UC_HOOK_MEM_READ
+            UC_HOOK_MEM_WRITE = _backend.UC_HOOK_MEM_WRITE
+            UC_MODE_16 = _backend.UC_MODE_16
+            UcError = _backend.UcError
+            Uc = lambda arch, mode: _backend.Uc(arch, mode, profile="186eb")
+            UC_X86_INS_IN = _backend.UC_X86_INS_IN
+            UC_X86_INS_OUT = _backend.UC_X86_INS_OUT
+            UC_X86_REG_AX = _backend.UC_X86_REG_AX
+            UC_X86_REG_BP = _backend.UC_X86_REG_BP
+            UC_X86_REG_BX = _backend.UC_X86_REG_BX
+            UC_X86_REG_CS = _backend.UC_X86_REG_CS
+            UC_X86_REG_CX = _backend.UC_X86_REG_CX
+            UC_X86_REG_DI = _backend.UC_X86_REG_DI
+            UC_X86_REG_DS = _backend.UC_X86_REG_DS
+            UC_X86_REG_DX = _backend.UC_X86_REG_DX
+            UC_X86_REG_ES = _backend.UC_X86_REG_ES
+            UC_X86_REG_FLAGS = _backend.UC_X86_REG_FLAGS
+            UC_X86_REG_IP = _backend.UC_X86_REG_IP
+            UC_X86_REG_SI = _backend.UC_X86_REG_SI
+            UC_X86_REG_SP = _backend.UC_X86_REG_SP
+            UC_X86_REG_SS = _backend.UC_X86_REG_SS
+            self._x86_const = _backend
+        else:
+            self._x86_const = None
         try:
+            if self.cpu_engine == "interpreter":
+                raise ImportError
             from unicorn import (
                 UC_ARCH_X86,
                 UC_HOOK_BLOCK,
@@ -878,9 +919,15 @@ class CourierMachine:
                 UC_X86_REG_SS,
             )
         except ImportError as exc:
-            raise RuntimeError(
-                "execution needs Unicorn: install with `python -m pip install '.[execute]'`"
-            ) from exc
+            if self.cpu_engine == "interpreter":
+                exc = None
+            else:
+                raise RuntimeError(
+                    "execution needs Unicorn: install with `python -m pip install '.[execute]'`"
+                ) from exc
+        if self.cpu_engine == "unicorn":
+            from unicorn import x86_const as _native_x86
+            self._x86_const = _native_x86
 
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
         # Diagnostics that need to read emulated RAM (a console script sampling
@@ -2594,7 +2641,13 @@ class CourierMachine:
             )
             if fast_rom_clock else None
         )
-        if disassembler is not None and not fast_rom_clock:
+        if self.cpu_engine == "interpreter":
+            # The interpreter already crosses Python once per instruction and
+            # has no native basic-block clock to optimize around. Its exact
+            # code hook is the scheduler clock; treating each decoded opcode
+            # as a synthetic one-byte block undercounts prefixed/string work.
+            uc.hook_add(UC_HOOK_CODE, on_code_counting)
+        elif disassembler is not None and not fast_rom_clock:
             uc.hook_add(UC_HOOK_BLOCK, on_block)
         elif disassembler is None:
             uc.hook_add(UC_HOOK_CODE, on_code_counting)
@@ -2615,6 +2668,7 @@ class CourierMachine:
         error: str | None = None
         try:
             begin = self.image.entry_physical
+            interpreter_instruction_base = self.instructions
             if self._resume_state is not None:
                 # Turn-taking: this machine ran before, yielded, and is being
                 # handed back. run() always builds a fresh Uc, so the previous
@@ -2624,7 +2678,7 @@ class CourierMachine:
                 # with; only the processor state belongs here.
                 state = self._resume_state
                 self._resume_state = None
-                from unicorn import x86_const as _x86
+                _x86 = self._x86_const
                 for name, value in state["registers"].items():
                     uc.reg_write(getattr(_x86, f"UC_X86_REG_{name}"), value)
                 self.instructions = state["instructions"]
@@ -2638,6 +2692,8 @@ class CourierMachine:
                 uc.emu_start(begin, 0, count=instruction_limit - self.instructions)
                 if native_clock is not None:
                     self.instructions = native_clock.instructions
+                elif self.cpu_engine == "interpreter":
+                    self.instructions = interpreter_instruction_base + uc.retired
                 # Unicorn returns after HLT. The Quad modem's scheduler uses
                 # STI/HLT between events; clocks and peripherals continue while
                 # its CPU sleeps. Advance the same bounded simulation clock,
