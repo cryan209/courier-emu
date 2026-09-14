@@ -16,12 +16,13 @@ from .pit import ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .imodem_mailbox import ImodemMailbox
 from .sio import (
+    EVEN,
+    FRAMING_NAMES,
+    PC_AT_UART_CLOCK_HZ,
     RX_INSTRUCTIONS_PER_BYTE,
     TERMINAL_PRESENT,
     UART_CLOCK_HIGH_RATES_HZ,
     UART_CLOCK_LOW_RATES_HZ,
-    EVEN,
-    FRAMING_NAMES,
     SerialChannel,
     framing_of,
     received,
@@ -154,9 +155,41 @@ UART_CLOCK_SELECT_BIT = 0x02
 # the PC-AT line, not from the UART's own interrupt. The external unit keeps
 # SIO0 on IRQ3 and does not have this part at all, which is why it is only
 # installed for the enclosure that has it.
+# The card needs both lines, and they are two different sources. IRQ0 is the
+# one above, servicing the command port. IRQ10 is the board's own periodic
+# tick, which is the same board and the same line as in the external
+# enclosure: the handler the firmware installs on each vector is identical in
+# the two cases - 0x20 reaches the serial service at 0xb2f1a and 0x2a reaches
+# the system tick at 0xa4690 - so an internal card that gets only IRQ0 has a
+# serviced command port and no time base at all, and every delay the firmware
+# takes spins forever at 0xa45df. Driving both from the one modelled counter
+# is the harness standing two periodic sources on the one it has; the rates
+# are not separately recovered.
 INTERNAL_UART_BASE = 0x80
 INTERNAL_UART_IRQ = 0
 INTERNAL_TICK_IRQ = 0
+INTERNAL_COUNTER_IRQ = {0: (INTERNAL_TICK_IRQ, 10)}
+
+# How the host has the card's port set up before anything is typed at it.
+#
+# The firmware does not pick this and is not told it: the attention receiver
+# at 0xb2b4b reads the divisor latch and the LCR out of the part when it sees
+# the A, looks the divisor up in its own eleven-entry table at 0xb2be4, stores
+# the index as the rate and takes the frame from the LCR bits. An attention
+# whose divisor is not in that table, or whose LCR says fewer than seven data
+# bits, is rejected outright - which is what the firmware's own power-on
+# values for this part are, divisor 8 and LCR 0, written at 0xb2a74. So the
+# port must be opened from the host side first, and this is what a PC driver
+# opens a modem card at: 57600, eight bits, no parity.
+#
+# 57600 rather than 9600 for a second reason, and this one is the harness's:
+# the command task re-arms the receiver about every 54,000 instructions, and a
+# re-arm mid-line resets the attention state and drops the rest of the command.
+# A five-character line at 57600 is inside that window and one at 9600 is not.
+# Whether the real window is that short depends on the board tick rate, which
+# is not recovered - see DEFAULT_COUNTER_IRQ.
+HOST_DTE_DIVISOR = 2
+HOST_DTE_LCR = 0x03
 
 # The Am79C30's interrupt line. Vector 0x2e is slave IRQ14 - the slave's ICW2
 # is 0x28 - and it reads back 4030:02f8, a stub that far-calls 71d7:000f. That
@@ -212,7 +245,7 @@ DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
 # counter is what raises it. The harness drives IRQ10 from counter 0 because
 # that is the periodic source it has; which device is physically wired to that
 # line is not recovered, and neither is the counter-to-line routing in general.
-DEFAULT_COUNTER_IRQ = {0: 10}
+DEFAULT_COUNTER_IRQ = {0: (10,)}
 
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_IO_EVENTS = 256
@@ -380,7 +413,12 @@ class IsdnMachine:
         self.entry_offset = entry_offset
         self.board_status = board_status
         self.port_values = dict(port_values or {})
-        self.counter_irq = dict(DEFAULT_COUNTER_IRQ if counter_irq is None else counter_irq)
+        self.counter_irq = {
+            index: (lines,) if isinstance(lines, int) else tuple(lines)
+            for index, lines in (
+                DEFAULT_COUNTER_IRQ if counter_irq is None else counter_irq
+            ).items()
+        }
         self.max_io_events = max_io_events
         # Counting every executed address costs about a third of the run: it
         # is a dict update per instruction, inside a callback the emulator
@@ -493,12 +531,14 @@ class IsdnMachine:
             self.channels[INTERNAL_UART_BASE] = SerialChannel(
                 INTERNAL_UART_BASE, irq=INTERNAL_UART_IRQ,
                 signals=serial_signals, max_bytes=MAX_SERIAL_BYTES,
-                pace=serial_pace, input_clock_hz=UART_CLOCK_HIGH_RATES_HZ,
+                pace=serial_pace, input_clock_hz=PC_AT_UART_CLOCK_HZ,
             )
             if counter_irq is None:
                 # The tick is what services this part, so it has to reach the
-                # line the handler sits on.
-                self.counter_irq = {0: INTERNAL_TICK_IRQ}
+                # line that handler sits on - as well as the one the board's
+                # own tick sits on.
+                self.counter_irq = dict(INTERNAL_COUNTER_IRQ)
+        self._dte_opened = False
         self.serial_pump = serial_pump
         self.machine: Any = None
         self.download = bytearray()
@@ -533,7 +573,14 @@ class IsdnMachine:
     def send_serial(self, data: bytes | bytearray | str,
                     base: int | None = None) -> int:
         """Queue bytes on a channel as if a terminal had typed them."""
-        return self.channels[base or self.command_base].feed(data)
+        channel = self.channels[base or self.command_base]
+        if channel.base == INTERNAL_UART_BASE and not self._dte_opened:
+            # A host opens the port before it types at it. Doing it here
+            # rather than at reset is the order that matters: the firmware
+            # writes its own defaults over this part during startup.
+            self._dte_opened = True
+            channel.host_open(HOST_DTE_DIVISOR, HOST_DTE_LCR)
+        return channel.feed(data)
 
     def dte_framing(self) -> int:
         """The framing the firmware is transmitting in, as it decides it.
@@ -691,13 +738,12 @@ class IsdnMachine:
             self._next_mailbox_service = self.instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
         for counter in self.pit.counters:
-            irq = self.counter_irq.get(counter.index)
             wraps = counter.take_wraps(self.pit.ticks(self.instructions))
             if not wraps:
                 continue
             self.timer_ticks += wraps
-            if irq is not None:
-                self.pic.raise_irq(irq)
+            for line in self.counter_irq.get(counter.index, ()):
+                self.pic.raise_irq(line)
 
     def _advance_line(self) -> None:
         """Walk the S interface up, one state per step, once the run reaches it."""

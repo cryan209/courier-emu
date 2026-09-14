@@ -149,15 +149,48 @@ seven data bits and a parity bit for three of the four, and eight data bits
 for 8N1 and for an internal unit, whose data must not be masked.
 
 The internal card moves the AT interface to its own part at `0x80`, so its
-side of a session is in `serial_internal` rather than `serial_a`.
+side of a session is in `serial_internal` rather than `serial_a`.  Two more
+things that card needs, both of which it was missing:
 
-**This firmware does not autobaud the AT.**  A Courier of this era is expected
-to take its DTE framing from the `AT` prefix, and the detector is there - the
-attention receiver at `0xb3596` masks each byte with `and al,0x5f`, which
-strips the parity bit and the case together - but it only *accepts* any
-framing, it does not adopt it.  Typing `AT` in 7E1, 7O1, 7M1, 7S1 and 8N1 all
-produce the same answer, in 7E1, and leave `2600:d1dc` at `3`.  Whatever sets
-that cell, an `AT` typed at the port is not it.
+* **Both periodic lines.**  The handlers the firmware installs are the same in
+  either enclosure - vector `0x20` reaches the serial service at `0xb2f1a`,
+  vector `0x2a` the system tick at `0xa4690` - and the card needs both: IRQ0
+  services its command port, IRQ10 is the board's own tick.  Driven on IRQ0
+  alone it has a serviced port and no time base, and every delay it takes
+  spins forever at `0xa45df`, which is 93% of the instructions in such a run.
+* **A DTE rate fast enough to beat the re-arm.**  The command task re-arms the
+  receiver about every 54,000 instructions, and a re-arm between two
+  characters resets the attention state and drops the rest of the line.  At
+  57600 a five-character command is inside that window; at 9600 it is not, and
+  the `CR` arrives after a re-arm and is never collected.  Whether the real
+  window is that short depends on the board tick rate, which is not recovered.
+
+**The external unit does not autobaud the AT; the internal card does.**  A
+Courier of this era is expected to take its DTE format from the `AT` prefix.
+On the external unit's receiver at `0xb3596` that does not happen: it masks
+each byte with `and al,0x5f`, which strips the parity bit and the case
+together, so it *accepts* any framing but adopts none.  Typing `AT` in 7E1,
+7O1, 7M1, 7S1 and 8N1 all produce the same answer, in 7E1, and leave
+`2600:d1dc` at `3`.
+
+The internal card's receiver at `0xb2b0d` does adopt it, and does it the way a
+card can rather than the way a cable would.  On the `A` it reads the part
+itself: it sets DLAB, reads the divisor latch, looks the divisor up in an
+eleven-entry table at `0xb2be4` - `1 2 3 6 12 24 48 96 192 384`, the PC-AT
+divisors from 115200 down to 300 - and stores the index as the rate at
+`2600:d1db`.  It then takes the frame from the LCR it read: fewer than seven
+data bits (`bh & 2` clear) rejects the attention outright, and otherwise
+`2600:d1dc` is set from the parity bits.  An attention whose divisor is not in
+that table is rejected the same way.
+
+That is the autobaud, and what it measures is the host, not the line: an
+internal card's UART is the PC's own serial port, and the host's driver is
+what programmed it.  The firmware's own power-on values for the part -
+divisor 8 and LCR 0, written at `0xb2a74` - are not in the table and do not
+have seven data bits, so a card nobody has opened rejects every `AT` it is
+sent.  `SerialChannel.host_open` is that driver: the harness opens the card at
+57600 8N1 before it types, and the firmware then reports `PARITY=N WORDLEN=8`
+because that is what it read.
 
 Receive is the same technique in reverse - the firmware takes eight bits and
 masks the top one rather than checking it - so parity on the way in is not

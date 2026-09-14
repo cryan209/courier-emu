@@ -123,6 +123,11 @@ RX_INSTRUCTIONS_PER_BYTE = 20000
 # is established by the table, not by the part number.)
 UART_CLOCK_HIGH_RATES_HZ = 3_686_400   # 38400..230400, clock-select bit clear
 UART_CLOCK_LOW_RATES_HZ = 12_345_600   # 300..19200, clock-select bit set
+# The internal card's part is a 16550 on the host's ISA bus, not the 386EX's
+# own SIO, so it runs on the PC-AT reference clock. The firmware's own rate
+# table - eleven divisors at 0xb2be4, 1 2 3 6 12 24 48 96 192 384 - is that
+# clock's: 115200 down to 300.
+PC_AT_UART_CLOCK_HZ = 1_843_200
 
 # The instruction clock, from the firmware's own description of its board:
 # ATI7 prints "Clock Freq 20.16Mhz". At roughly one instruction per clock this
@@ -256,6 +261,21 @@ class SerialChannel:
         self._sent = 0
 
     # -- host side ---------------------------------------------------------
+
+    def host_open(self, divisor: int, lcr: int) -> None:
+        """Program the part from the host's side of the bus.
+
+        An internal card's UART is the PC's own serial port, and it is the
+        host's driver that sets the rate and the frame on it. The firmware
+        does not choose them and is not told them: its attention receiver
+        reads the divisor latch and the LCR straight out of the part when it
+        sees the A, and adopts what it finds. So the port has to have been
+        opened before anything is typed at it, exactly as a driver would,
+        or the receiver reads the firmware's own power-on defaults and
+        rejects every attention it is sent.
+        """
+        self.divisor = divisor
+        self.lcr = lcr
 
     def feed(self, data: bytes | bytearray | str) -> int:
         """Queue bytes as if a terminal had typed them. Returns the count."""
