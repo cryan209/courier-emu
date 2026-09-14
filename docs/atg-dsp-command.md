@@ -138,3 +138,38 @@ the supervisor is not established; one occurrence, not repeated.
 [Online capture](../artifacts/leased-pair/dsp-queue-online.json),
 [prefix comparison](../artifacts/leased-pair/dsp-lk2-prefixed.json), and the
 [refusals before the prefix was known](../artifacts/leased-pair/dsp-online.json).
+
+## Idle and online on one board, the same afternoon
+
+Measured 2026-09-15 on the 4.03d board, by then on `/dev/cu.usbserial-FT4TQOFT`,
+with DTR held for the whole run so the hook state never moved underneath it.
+The port block was read with `ATGLK2B0050` and the queue with `ATGLK2R0190`.
+
+Idle, after `ATH0`, the reply path behaves as the board did on 2026-09-09:
+
+| after | port `0x58` | port `0x5c` | tail = head |
+|---|---|---|---|
+| - | `44` | `00` | `019e` |
+| `ATG00070000` | `31` | `00` | `01a4` |
+| `ATG00620000` | `69` | `15` | `01aa` |
+| `ATG00070000` | `31` | `00` | `01b0` |
+
+Tag `0031:0000` and `0069:0015` reproduce exactly, the alternation shows each
+reply is fresh rather than a stale holding register, and the ring carries both
+frames - `ff00 0007 0000` and `ff00 0062 0000` - six bytes per request, drained
+each time.
+
+Online, on the same board minutes earlier, the request path is identical and the
+reply path is not. Pointers stepped `01b6` to `01bc` with the frame in the ring,
+while ports `0x50` through `0x7f` came back byte-identical before and after, and
+identical again across three samples seconds apart. Two ports separate the
+states outright: `0x58` reads `20` during a call against `44` idle, and `0x60`
+reads `61` during a call against `0a` idle. So a queued request is delivered
+mid-call but its reply is not published to the holding registers.
+
+Read these as 16-bit latches, low byte at the even address: every odd byte in
+the block reads `00`.
+
+[Idle A/B](../artifacts/leased-pair/dsp-403-idle.json),
+[online sweep](../artifacts/leased-pair/dsp-403-online-sweep.json),
+[repeated online samples](../artifacts/leased-pair/dsp-403-port-timeseries.json).
