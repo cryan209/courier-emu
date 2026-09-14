@@ -22,6 +22,17 @@ the modem idle and on hook. `IDLE` is a starting state, not a specification -
 four ports move under load, and everything here was sampled with the loop on
 hook and no call, so a constant in this table is only constant across the
 states that were reachable without taking the line.
+
+A 2026-09-15 session took the same board into a 33600 V.34 call on a
+leased-line pair and read the block in both states, which settles what two of
+these entries are (`artifacts/leased-pair/`, and the closing sections of
+`docs/atg-dsp-command.md`). `0x58` is not a constant at all: it latches the tag
+of the last message the DSP published, so it reads `0x31` after query 07,
+`0x69` after query 62, `0x44` once a call has ended - the status completion the
+runtime table already carries under that tag - and `0x20` while a call is up.
+`0x60` reads `0x0a` idle against `0x61` during a call. `ONLINE` holds what the
+block reads with a call up; the entries it does not mention were byte-identical
+in both states.
 """
 from __future__ import annotations
 
@@ -44,6 +55,31 @@ IDLE: dict[int, int] = {
 DECODE_LIMIT = 0x80
 DEFAULT = 0x00
 
+# Measured with the board connected at 33600/33600 V.34+, command mode reached
+# with +++ so the call stayed up underneath. Everything outside this map read
+# the same as `IDLE` in both states.
+ONLINE: dict[int, int] = {
+    0x58: 0x20, 0x5C: 0x0E, 0x60: 0x61,
+    0x64: 0x38, 0x66: 0x09, 0x68: 0x8D, 0x6A: 0xA7, 0x6C: 0xE8, 0x6E: 0x80,
+    0x70: 0xFF, 0x72: 0xFF, 0x74: 0x97, 0x76: 0x51, 0x78: 0x51,
+    0x7A: 0x06, 0x7C: 0x4F, 0x7E: 0xB6,
+}
+
+# The same block with the loop on hook after a call, which is the state the
+# idle A/B was measured in. It differs from `IDLE` above, captured on a board
+# that had not carried a call, in exactly the two latches.
+AFTER_CALL: dict[int, int] = {0x58: 0x44, 0x5C: 0x00, 0x60: 0x0A}
+
+# What the mailbox publishes for a host query, by call state. Idle, a queued
+# request is answered and the tag latch takes the reply - 07 answers 0x31 with
+# data 0x0000, 62 answers 0x69 with 0x0015, and the two alternate, so each
+# reply is fresh rather than a held register. During a call the request is
+# still delivered - the supervisor's ring drains and its pointers advance six
+# bytes - while the latches do not move at all, across a queued request and
+# three samples seconds apart. Delivery and reply are separate mechanisms.
+QUERY_REPLIES: dict[int, tuple[int, int]] = {0x07: (0x31, 0x0000), 0x62: (0x69, 0x0015)}
+REPLY_PUBLISHED_DURING_CALL = False
+
 # The four that moved between idle and `AT&T8` analogue loopback. 0x1c and
 # 0x1e are the mailbox status pair and both move on bit 2, which is the bit the
 # supervisor's mailbox interrupt acknowledges. 0x18 also varied *within* the
@@ -63,8 +99,25 @@ UNDER_LOAD: dict[int, tuple[int, ...]] = {
 STABLE_ACROSS_CAPTURES = (0x64, 0x66, 0x6C, 0x72, 0x74, 0x76, 0x78, 0x7A, 0x7C, 0x7E)
 
 
-def idle_value(port: int, size: int = 1) -> int:
-    """What the board returns for `port` with the modem idle and on hook.
+def state_map(state: str = "idle") -> dict[int, int]:
+    """The port -> value map for one measured state.
+
+    `idle` is the on-hook capture of a board that had carried no call,
+    `after_call` the same board on hook once a call had ended, and `online` a
+    live 33600 V.34 connection. The two later states are `IDLE` with the
+    latches that actually moved laid over it.
+    """
+    if state == "idle":
+        return dict(IDLE)
+    if state == "after_call":
+        return {**IDLE, **AFTER_CALL}
+    if state == "online":
+        return {**IDLE, **ONLINE}
+    raise ValueError(f"unknown port state {state!r}")
+
+
+def idle_value(port: int, size: int = 1, state: str = "idle") -> int:
+    """What the board returns for `port` in one of the measured states.
 
     Above the decode limit the bus reads back the address on an even port and
     zero on an odd one; that is the absence of a device, and reproducing it is
@@ -73,13 +126,25 @@ def idle_value(port: int, size: int = 1) -> int:
     if port >= DECODE_LIMIT:
         low = port & 0xFF if not port & 1 else 0x00
     else:
-        low = IDLE.get(port, DEFAULT) if not port & 1 else 0x00
+        low = state_map(state).get(port, DEFAULT) if not port & 1 else 0x00
     if size == 1:
         return low
-    high = idle_value(port + 1, 1)
+    high = idle_value(port + 1, 1, state)
     return low | (high << 8)
 
 
-def seed(size_aware: bool = False) -> dict[int, int]:
+def query_reply(tag: int, online: bool) -> tuple[int, int] | None:
+    """The tag and data a host mailbox query publishes, or None for nothing.
+
+    A call withholds every reply, not just the two measured ones: the request
+    is delivered either way, so a caller that needs the delivery still queues
+    it and simply gets no completion back.
+    """
+    if online and not REPLY_PUBLISHED_DURING_CALL:
+        return None
+    return QUERY_REPLIES.get(tag & 0xFF)
+
+
+def seed(size_aware: bool = False, state: str = "idle") -> dict[int, int]:
     """The decoded space as a `port -> value` map, for seeding `port_values`."""
-    return {port: idle_value(port) for port in range(0, DECODE_LIMIT)}
+    return {port: idle_value(port, 1, state) for port in range(0, DECODE_LIMIT)}

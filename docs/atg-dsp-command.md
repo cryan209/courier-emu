@@ -173,3 +173,13 @@ the block reads `00`.
 [Idle A/B](../artifacts/leased-pair/dsp-403-idle.json),
 [online sweep](../artifacts/leased-pair/dsp-403-online-sweep.json),
 [repeated online samples](../artifacts/leased-pair/dsp-403-port-timeseries.json).
+
+Both states are replayed through a booted DSP by `courier_emu.mailbox_compare`.
+The idle capture matches step for step, alternation included
+([capture](../artifacts/leased-pair/g-idle-capture.json),
+[report](../artifacts/leased-pair/g-idle-emulated.json)). The online one does
+not, and cannot yet: the harness carries no call, so it publishes `0031` where
+the board holds its `0020` latch
+([capture](../artifacts/leased-pair/g-online-capture.json),
+[report](../artifacts/leased-pair/g-online-emulated.json)). The measured values
+for both states are in `courier_emu.asic_ports`.

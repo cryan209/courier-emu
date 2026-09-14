@@ -155,6 +155,36 @@ def compare_booted_g_capture(rom, capture):
         bridge.core.close()
 
 
+def compare_online_g_capture(rom, capture):
+    """Replay a capture taken with a call up, and say what the call changes.
+
+    Hardware measured this on the 4.03d board on 2026-09-15: the supervisor's
+    ring drained and its pointers advanced six bytes per request, while ports
+    0x58-0x5e did not move at all. The mechanism behind that is not known -
+    whether the DSP's sender is owned by the datapump, or the supervisor never
+    services the completion - so this compares rather than models. A booted
+    core here carries no call, so it is expected to publish the reply the idle
+    board publishes; the report states both, and `divergence` names it.
+    """
+    if not capture.get('call_active'):
+        raise ValueError('capture is not marked call_active')
+    report = compare_booted_g_capture(rom, capture)
+    before = capture['before']['ports']
+    latch = [int(before[lo], 16) | int(before[hi], 16) << 8
+             for lo, hi in (('58', '5A'), ('5C', '5E'))]
+    delivered = capture['steps'][-1]['queue_head'] - capture['before']['queue_head']
+    for step in report['steps']:
+        step['hardware_latch_moved'] = step['hardware'] != latch
+        step['emulated_latch_moved'] = step['emulated'] != latch
+        step['divergence'] = (step['emulated_latch_moved']
+                              and not step['hardware_latch_moved'])
+    report['hardware_bytes_queued'] = delivered
+    report['hardware_request_delivered'] = delivered > 0
+    report['scope'] += ('; call state is not modelled, so a published reply here '
+                        'is the divergence from a board that withholds it')
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--rom', type=Path, required=True)

@@ -1,0 +1,55 @@
+{
+ "started_utc": "2026-09-15",
+ "hardware_tested": true,
+ "device": "/dev/cu.usbserial-FT4TQOFT",
+ "note": "4.03d board, online in a 33600 V.34 call reached with +++; command mode only",
+ "call_active": true,
+ "before": {
+  "ports": {
+   "50": "00",
+   "51": "00",
+   "52": "FF",
+   "53": "00",
+   "54": "00",
+   "55": "00",
+   "56": "FF",
+   "57": "00",
+   "58": "20",
+   "59": "00",
+   "5A": "00",
+   "5B": "00",
+   "5C": "0E",
+   "5D": "00",
+   "5E": "00",
+   "5F": "00"
+  },
+  "queue_tail": 438,
+  "queue_head": 438
+ },
+ "steps": [
+  {
+   "command": "ATG00070000",
+   "response": "ATG00070000\\r\\r\nOK\\r\n",
+   "ports": {
+    "50": "00",
+    "51": "00",
+    "52": "FF",
+    "53": "00",
+    "54": "00",
+    "55": "00",
+    "56": "FF",
+    "57": "00",
+    "58": "20",
+    "59": "00",
+    "5A": "00",
+    "5B": "00",
+    "5C": "0E",
+    "5D": "00",
+    "5E": "00",
+    "5F": "00"
+   },
+   "queue_tail": 444,
+   "queue_head": 444
+  }
+ ]
+}

@@ -1,0 +1,25 @@
+{
+  "rom_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "scope": "Real DSP boot, resident initialization and bridge mailbox; supervisor parser, UART, live audio and interrupt timing excluded; call state is not modelled, so a published reply here is the divergence from a board that withholds it",
+  "steps": [
+    {
+      "command": "ATG00070000",
+      "hardware": [
+        32,
+        14
+      ],
+      "emulated": [
+        49,
+        0
+      ],
+      "matches": false,
+      "new_reply": true,
+      "request_consumed": true,
+      "hardware_latch_moved": false,
+      "emulated_latch_moved": true,
+      "divergence": true
+    }
+  ],
+  "hardware_bytes_queued": 6,
+  "hardware_request_delivered": true
+}
