@@ -152,37 +152,37 @@ CPU_INSTRUCTIONS_PER_SECOND = 20_160_000
 # eight bits and masks the top one off, so the parity a terminal sends is
 # accepted and discarded rather than checked.
 
-# The framings this firmware transmits in, as its own routine at 0xa5047
-# chooses between them. That routine returns without touching the byte when
-# the product-type cell's Internal bit is set - an internal unit passes eight
-# data bits - and otherwise masks the byte to seven data bits, computes even
-# parity into bit 7, and then adjusts bit 7 for the parity its configuration
-# selects. These numbers are the values that setting takes, which is why they
-# are not in an order anyone would choose: SPACE and MARK are the branches it
-# tests first, ODD is the one it tests next, and every other value leaves the
-# even parity it has already computed. See docs/imodem-at-interface.md.
-SPACE, MARK, ODD, EVEN = 0, 1, 2, 3
-EIGHT_BIT = -1
+# The DTE format is one two-bit configuration field, and the firmware derives
+# both halves of the format from it. Its own ATI4 formatter is what names the
+# values: the parity letter comes out of 0xc385d, which answers N for zero, M
+# for one, O for two and E for three, and the word length comes out of 0xc3888,
+# which answers 8 for zero and 7 for everything else. So there is no space
+# parity here and no eight-bit-with-parity; zero is 8N1 and the rest are seven
+# data bits with that parity above them.
+#
+# The transmitter at 0xa5047 agrees, and adds one case the field cannot
+# express: it returns without touching the byte at all when the product-type
+# cell's Internal bit is set, so an internal unit passes eight data bits
+# whatever the field says. Otherwise it masks to seven bits, computes even
+# parity into bit 7, and then adjusts bit 7 for mark, odd or none.
+# See docs/imodem-at-interface.md.
+NONE, MARK, ODD, EVEN = 0, 1, 2, 3
 
-FRAMING_NAMES = {
-    EIGHT_BIT: "8N1", SPACE: "7S1", MARK: "7M1", ODD: "7O1", EVEN: "7E1",
-}
+FRAMING_NAMES = {NONE: "8N1", MARK: "7M1", ODD: "7O1", EVEN: "7E1"}
 
 
 def framing_of(setting: int, internal: bool) -> int:
     """The framing the firmware's two cells select, as it reads them."""
     if internal:
-        return EIGHT_BIT
-    return setting if setting in (SPACE, MARK, ODD) else EVEN
+        return NONE
+    return setting if setting in (NONE, MARK, ODD) else EVEN
 
 
 def framed(value: int, framing: int = EVEN) -> int:
     """One byte as this framing puts it on the wire, bit 7 included."""
-    if framing == EIGHT_BIT:
+    if framing == NONE:
         return value & 0xFF
     value &= 0x7F
-    if framing == SPACE:
-        return value
     if framing == MARK:
         return value | 0x80
     even = value | (0x80 if bin(value).count("1") % 2 else 0)
@@ -192,15 +192,14 @@ def framed(value: int, framing: int = EVEN) -> int:
 def received(data: bytes | bytearray, framing: int = EVEN) -> bytes:
     """What a terminal set to this framing takes off the wire.
 
-    Four of the five framings carry the data in the low seven bits and a
-    parity or fill bit above it, which the receiver drops; the eight-bit one
-    has no such bit and every bit is data. Reading a seven-bit frame whole
-    leaves bit 7 set on half the characters, which looks exactly like line
-    corruption; masking an eight-bit frame destroys real data. Which one it
-    is comes from the firmware, not from an assumption here - see
-    `IsdnMachine.dte_framing`.
+    Three of the four framings carry the data in the low seven bits and a
+    parity bit above it, which the receiver drops; 8N1 has no such bit and
+    every bit is data. Reading a seven-bit frame whole leaves bit 7 set on
+    half the characters, which looks exactly like line corruption; masking an
+    eight-bit frame destroys real data. Which one it is comes from the
+    firmware, not from an assumption here - see `IsdnMachine.dte_framing`.
     """
-    if framing == EIGHT_BIT:
+    if framing == NONE:
         return bytes(data)
     return bytes(byte & 0x7F for byte in data)
 

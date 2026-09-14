@@ -122,17 +122,34 @@ the same two rather than guessing:
 * `2600:d2c3` is the board probe's product-type verdict.  Its Internal bit
   (`0x08`) makes the routine return before it touches the byte at all, so an
   internal unit transmits eight data bits and no parity.
-* `2600:d1dc` selects the parity for everything else: `0` space, `1` mark, `2`
-  odd, and any other value the even parity the routine has already computed.
-  It is not a constant and not a detection - it is the eleventh field of the
+* `2600:d1dc` is the whole format for everything else, in one two-bit field.
+  The firmware's own `ATI4` formatter names its values, and takes both halves
+  of the format from it: the parity letter at `0xc385d` answers `N` `M` `O`
+  `E` for `0` `1` `2` `3`, and the word length at `0xc3888` answers `8` for
+  `0` and `7` for the rest.  So `0` is 8N1 - no parity and eight data bits -
+  and there is no space parity and no eight-bit-with-parity on this firmware.
+  It is not a constant and not a detection: it is the eleventh field of the
   settings block at `2600:d1d2`, which the shift-and-mask loop at `0xaba49`
   unpacks from the packed configuration at `2600:d513` during startup.  It
-  comes up at `3`, which is why `ATI4` says `PARITY=E`.
+  comes up at `3`, which is why `ATI4` says `PARITY=E WORDLEN=7`.
+
+  Held at each value, the firmware states the format itself and the wire
+  agrees with it:
+
+  | `d1dc` | `ATI4` | on the wire | harness reads |
+  | --- | --- | --- | --- |
+  | 0 | `PARITY=N WORDLEN=8` | no parity bit | 8N1 |
+  | 1 | `PARITY=M WORDLEN=7` | bit 7 always set | 7M1 |
+  | 2 | `PARITY=O WORDLEN=7` | odd parity | 7O1 |
+  | 3 | `PARITY=E WORDLEN=7` | even parity | 7E1 |
 
 `IsdnMachine.dte_framing` reads both, live, and the report names the result in
 `dte_framing`.  The console and the report then read and type in that framing:
-seven data bits and a parity bit for four of the five, and eight data bits for
-an internal unit, whose data must not be masked.
+seven data bits and a parity bit for three of the four, and eight data bits
+for 8N1 and for an internal unit, whose data must not be masked.
+
+The internal card moves the AT interface to its own part at `0x80`, so its
+side of a session is in `serial_internal` rather than `serial_a`.
 
 **This firmware does not autobaud the AT.**  A Courier of this era is expected
 to take its DTE framing from the `AT` prefix, and the detector is there - the

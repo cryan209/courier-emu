@@ -245,13 +245,14 @@ PRODUCT_TYPE_MODES = {
     "internal": 0x08,
     "rackmount": 0x04,
 }
-# The DTE framing is a configuration field, not something the firmware works
+# The DTE format is a configuration field, not something the firmware works
 # out from the AT it is typed. The settings block at 2600:d1d2 is unpacked
 # from the packed configuration at 2600:d513 by the shift-and-mask loop at
-# 0xaba49, and the eleventh field of it is the parity mode. The transmitter at
-# 0xa5047 reads exactly this cell, and the product-type cell above, to decide
-# what to put in bit 7 - so reading the same two is how the harness knows the
-# framing rather than assuming one. ATI4 reports what they say in words.
+# 0xaba49, and the eleventh field of it is the whole format: parity and word
+# length both. The transmitter at 0xa5047 reads exactly this cell, and the
+# product-type cell above, to decide what to put in bit 7 - so reading the
+# same two is how the harness knows the framing rather than assuming one, and
+# ATI4 reports what they say in words. See courier_emu/sio.py for the values.
 PARITY_MODE_ADDRESS = 0x2600 * 16 + 0xD1DC
 PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
 PRODUCT_MODEM_SUFFIX = 0x01
@@ -315,6 +316,7 @@ class IsdnRunResult:
     dte_framing: str = ""
     serial_a: str = ""
     serial_b: str = ""
+    serial_internal: str = ""
     download_bytes: int = 0
     io_summary: dict[str, int] = field(default_factory=dict)
     unmodelled_ports: list[str] = field(default_factory=list)
@@ -1007,6 +1009,13 @@ class IsdnMachine:
             dte_framing=FRAMING_NAMES[framing],
             serial_a=received(self.channels[UART_A_BASE].tx, framing).decode("ascii", "replace"),
             serial_b=received(self.channels[UART_B_BASE].tx, framing).decode("ascii", "replace"),
+            # The internal card moves the AT interface to its own part, so
+            # without this the one port an internal run talks on is the one
+            # port the report does not show.
+            serial_internal=(
+                received(self.channels[INTERNAL_UART_BASE].tx, framing).decode("ascii", "replace")
+                if INTERNAL_UART_BASE in self.channels else ""
+            ),
             serial={
                 name: self.channels[base].status()
                 for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE),
