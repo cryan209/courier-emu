@@ -29,6 +29,8 @@ the flag's business, not ours, so both are asserted.
 from __future__ import annotations
 
 from collections import deque
+
+from .pit import INSTRUCTIONS_PER_SECOND
 from typing import Any
 
 # Register offsets from the channel base, with DLAB clear.
@@ -129,17 +131,22 @@ UART_CLOCK_LOW_RATES_HZ = 12_345_600   # 300..19200, clock-select bit set
 # clock's: 115200 down to 300.
 PC_AT_UART_CLOCK_HZ = 1_843_200
 
-# The instruction clock, from the firmware's own description of its board:
-# ATI7 prints "Clock Freq 20.16Mhz". At roughly one instruction per clock this
-# puts a 9600-baud character at about 21,000 instructions, which is within 5%
-# of the 20,000 that was verified empirically against this firmware long
-# before the clock was recovered -- two independent routes to the same number.
+# The instruction clock, which is pit.py's now rather than a second opinion.
 #
-# Note that pit.INSTRUCTIONS_PER_SECOND still carries the older 2,500,000
-# assumption for the 8254 ratio. That figure is documented there as a stated
-# assumption rather than a measurement; reconciling the two is a separate
-# change with a much wider blast radius, and is not made here.
-CPU_INSTRUCTIONS_PER_SECOND = 20_160_000
+# This used to read ATI7's "Clock Freq 20.16Mhz" as the CPU's and put the CPU
+# at 20,160,000 instructions a second. The board carries two oscillators and
+# that is the other one: the 40.320M that clocks the ASIC and the DSP, halved,
+# where the 386EX has its own 50.000M halved to 25 MHz
+# (docs/imodem-board-map.md). Twenty million instructions a second off a
+# 25 MHz 386 would be 1.24 cycles each.
+#
+# What that figure bought was a 9600-baud character at about 21,000
+# instructions, which had been checked against this firmware and works. It
+# still does, because what the firmware sees is the ratio of a character to
+# the timer tick, and the tick was being measured against a different clock
+# again - 2,500,000 - so a character was 0.84 ticks where it should be 0.104.
+# One clock for both puts that right.
+CPU_INSTRUCTIONS_PER_SECOND = INSTRUCTIONS_PER_SECOND
 
 # The link the firmware comes up in is 7E1: start, seven data bits, even
 # parity, stop. It produces that frame from a transmitter it has programmed

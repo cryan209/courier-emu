@@ -13,7 +13,7 @@ names - so commands can be typed at the firmware and its replies read back:
 Type AT commands normally and press Return; press Ctrl-] to exit. Terminal
 mode runs until detached and does not print the diagnostic JSON report unless
 `--report` is also supplied. During interaction the guest clock is paced to
-the timer model's 2.5 million instructions per second, so the modem continues
+the timer model's 5 million instructions per second, so the modem continues
 running without racing hours ahead of the terminal. See
 [the AT interface](docs/imodem-at-interface.md) for the `ATI0`-`ATI30` sweep,
 and [I-modem terminal framing](docs/imodem-terminal-framing.md) for how the

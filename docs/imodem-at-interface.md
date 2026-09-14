@@ -152,12 +152,21 @@ The internal card moves the AT interface to its own part at `0x80`, so its
 side of a session is in `serial_internal` rather than `serial_a`.  Two more
 things that card needs, both of which it was missing:
 
-* **Both periodic lines.**  The handlers the firmware installs are the same in
-  either enclosure - vector `0x20` reaches the serial service at `0xb2f1a`,
-  vector `0x2a` the system tick at `0xa4690` - and the card needs both: IRQ0
-  services its command port, IRQ10 is the board's own tick.  Driven on IRQ0
-  alone it has a serviced port and no time base, and every delay it takes
-  spins forever at `0xa45df`, which is 93% of the instructions in such a run.
+* **Both periodic lines, from their own counters.**  The handlers the firmware
+  installs are the same in either enclosure - vector `0x20` reaches the serial
+  service at `0xb2f1a`, vector `0x2a` the system tick at `0xa4690` - and the
+  card needs both: IRQ0 services its command port, IRQ10 is the board's own
+  100 Hz tick on counter 1.  Driven on IRQ0 alone it has a serviced port and
+  no time base, and every delay it takes spins forever at `0xa45df`, which is
+  93% of the instructions in such a run.
+
+  IRQ0 is counter 0, and the firmware is what says so: on taking the port it
+  reprograms that counter from a table at `a400:f171`, indexed by the DTE rate
+  its attention receiver just stored.  The ten entries are the nearest
+  integers to 15, 30, 60, 120, 240, 480, 960, 1920, 2880 and 5760 Hz against
+  300 through 115200 baud - exactly half the character rate at every one of
+  them.  Those are round only at the clock `pit.py` derives, which is a third
+  witness to it after the S-registers and `CLKPRS`.
 * **A tick at the rate the firmware keeps.**  The command task re-arms its
   receiver on a period of its own, and a re-arm between two characters resets
   the attention state and drops the rest of the line.  With the 8254 clocked
@@ -263,16 +272,22 @@ established by the table, not by the part number.)  The init at `4030:010b`
 writes `0x00` there while setting both SIOs to divisor 2 - which on 3.6864 MHz
 is 115200 exactly.
 
-The instruction clock the interval is scaled against comes from the firmware's
-own description of its board: `ATI7` prints `Clock Freq 20.16Mhz`.  At roughly
-one instruction per clock that puts a 9600-baud character at about 20,900
-instructions - within 5% of the 20,000 that had been verified empirically long
-before the clock was recovered.  Two independent routes to the same number.
+The instruction clock the interval is scaled against is `pit.py`'s, and there
+is only the one now.  It used to be read off `ATI7`'s `Clock Freq 20.16Mhz` at
+roughly an instruction per clock, which put a 9600-baud character at about
+20,900 instructions.  But the board carries two oscillators and that is the
+other one - the 40.320M that clocks the ASIC and the DSP, halved - while the
+386EX has its own 50.000M halved to 25 MHz ([board
+map](imodem-board-map.md)).  Twenty million instructions a second off a 25 MHz
+386 would be 1.24 cycles each; `pit.py` takes five, which is 5M a second and a
+character at about 5,200 instructions.
 
-Note that `pit.INSTRUCTIONS_PER_SECOND` still carries an older 2,500,000
-assumption for the 8254 ratio, documented there as an assumption rather than a
-measurement.  Reconciling the two is a separate change with a much wider blast
-radius and has not been made.
+What matters to the firmware is not that figure but its ratio to the timer
+tick, and that is what having two clocks broke: the tick was scaled against a
+third assumption, 2,500,000, so a 9600-baud character was 0.84 of a 10 ms tick
+where a character at that rate is 0.104 of one.  The firmware saw its DTE
+running eight times slower than its own clock said, which is what made the
+internal card's receiver re-arm mid-line.  One clock for both puts it right.
 
 ## Why every command answers `NO CARRIER`
 

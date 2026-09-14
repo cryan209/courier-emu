@@ -70,11 +70,24 @@ CPU_CLOCK_HZ = 25_000_000
 TIMER_PRESCALE = 28
 CLOCK_HZ = CPU_CLOCK_HZ // TIMER_PRESCALE   # 892,857
 
-# The instruction clock the harness runs at. The 80186 side calibrates this from
-# the answer machine's ring qualification window; nothing equivalent has been
-# recovered for the 386, so this is a stated assumption rather than a
-# measurement, and it only matters as a ratio against CLOCK_HZ.
-INSTRUCTIONS_PER_SECOND = 2_500_000
+# The instruction clock the harness runs at, and the one place it is stated.
+#
+# The clock above is the part's; what is left is how many of its cycles an
+# instruction costs, and that is the one number here that no reading of the
+# firmware supplies - it is a property of the part and the code mix. The board
+# fixes everything around it: the 386EX is 25 MHz and the DSP's C5x is
+# single-cycle at 20.16 MHz. Five cycles an instruction is what real-mode code
+# on this part costs, and it is the figure taken here; it puts the CPU at 5M
+# instructions a second, and the DSP at 4.03 of its instructions to each of
+# those, which is where isdn.DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION's 4 comes
+# from. That constant is derived from this one now rather than stated twice.
+#
+# This used to be 2,500,000 - ten cycles an instruction - while sio.py carried
+# 20,160,000 for the same CPU, which is 1.24. Neither is a 386EX, and having
+# both meant a 9600-baud character was 21,000 instructions to the serial model
+# and 8.4 ms to the timers, where it is 1.04 ms. The two are one constant now.
+CYCLES_PER_INSTRUCTION = 5
+INSTRUCTIONS_PER_SECOND = CPU_CLOCK_HZ // CYCLES_PER_INSTRUCTION   # 5,000,000
 
 
 def ticks_for(instructions: int, clock_hz: int = CLOCK_HZ) -> int:

@@ -12,7 +12,7 @@ from .imodem_config import NVRAM_BASE
 from .bri import BriNetwork
 from . import imodem_trace
 from .pic import InterruptControllers
-from .pit import ProgrammableIntervalTimer
+from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .imodem_mailbox import ImodemMailbox
 from .sio import (
@@ -155,20 +155,26 @@ UART_CLOCK_SELECT_BIT = 0x02
 # the PC-AT line, not from the UART's own interrupt. The external unit keeps
 # SIO0 on IRQ3 and does not have this part at all, which is why it is only
 # installed for the enclosure that has it.
-# The card needs both lines, and they are two different sources. IRQ0 is the
-# one above, servicing the command port. IRQ10 is the board's own periodic
-# tick, which is the same board and the same line as in the external
-# enclosure: the handler the firmware installs on each vector is identical in
-# the two cases - 0x20 reaches the serial service at 0xb2f1a and 0x2a reaches
-# the system tick at 0xa4690 - so an internal card that gets only IRQ0 has a
-# serviced command port and no time base at all, and every delay the firmware
-# takes spins forever at 0xa45df. Driving both from the one modelled counter
-# is the harness standing two periodic sources on the one it has; the rates
-# are not separately recovered.
+# The card needs both lines, and they are two counters. IRQ10 is the board's
+# own 100 Hz tick on counter 1, the same line and the same counter as in the
+# external enclosure - the handler the firmware installs on each vector is
+# identical in the two cases, 0x20 reaching the serial service at 0xb2f1a and
+# 0x2a the system tick at 0xa4690 - so a card that gets only IRQ0 has a
+# serviced command port and no time base at all, and every delay it takes
+# spins forever at 0xa45df.
+#
+# IRQ0 is counter 0, and the firmware says so itself: when it starts serving
+# this port, 0xb3150 reprograms counter 0 from a table at a400:f171 indexed by
+# the DTE rate the attention receiver stored. The ten entries are the nearest
+# integers to 15, 30, 60, 120, 240, 480, 960, 1920, 2880 and 5760 Hz, against
+# 300 through 115200 baud - exactly half the character rate at every one of
+# them, which is a part with a receive FIFO being drained twice a character.
+# A counter whose period the serial code sets to the serial rate is the serial
+# service, so that is the line it carries.
 INTERNAL_UART_BASE = 0x80
 INTERNAL_UART_IRQ = 0
 INTERNAL_TICK_IRQ = 0
-INTERNAL_COUNTER_IRQ = {1: (INTERNAL_TICK_IRQ, 10)}
+INTERNAL_COUNTER_IRQ = {0: (INTERNAL_TICK_IRQ,), 1: (10,)}
 
 # How the host has the card's port set up before anything is typed at it.
 #
@@ -229,7 +235,7 @@ MAILBOX_SERVICE_INSTRUCTIONS = 2048
 # services the modem tick; it cannot wake the ISDN timeout worker.
 # 46bc:0002 subtracts 14h per call. Treat this as a modeled 20 ms period;
 # the oscillator/divider of the board timer has not been recovered.
-RTOS_SERVICE_INSTRUCTIONS = 50_000
+RTOS_SERVICE_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // 50   # 20 ms
 # DSP instructions per CPU instruction. This is a board fact now rather than a
 # scheduling convenience, and the board carries both halves of it on two
 # oscillators (docs/imodem-board-map.md): the ECLIPTEK 40.320M that clocks the
@@ -240,17 +246,14 @@ RTOS_SERVICE_INSTRUCTIONS = 50_000
 #
 #   20.16 / 25 = 0.8064 DSP instructions per CPU *cycle*
 #
-# times the 386's cycles per instruction, and 4 is that at 4.96 cycles - which
-# is what real-mode code on this part costs, so the number stands.
-#
-# It is also the only one of the harness's three statements of this CPU's speed
-# that is physically possible. pit.INSTRUCTIONS_PER_SECOND's 2,500,000 wants
-# 10 cycles an instruction, and sio.CPU_INSTRUCTIONS_PER_SECOND's 20,160,000
-# wants 1.24 - the latter because it reads ATI7's "Clock Freq 20.16Mhz" as the
-# CPU's, where the board map has that crystal on the ASIC and the CPU on its
-# own. Reconciling those two against this one is a re-timing of the whole
-# harness and is not done here.
-DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
+# times the 386's cycles per instruction, which pit.py states once for the
+# whole harness: five, putting the CPU at 5M instructions a second. So the
+# ratio is 4.03, and it is taken from there rather than written out, because
+# the two are the same statement about the same pair of parts.
+DSP_INSTRUCTION_RATE = 20_160_000          # 40.320 MHz / 2, and single-cycle
+DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = round(
+    DSP_INSTRUCTION_RATE / INSTRUCTIONS_PER_SECOND
+)
 
 # Which 8254 counter drives which IRQ line.
 #
