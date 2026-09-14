@@ -809,12 +809,8 @@ class IsdnMachine:
 
         profile = self.profile
 
-        def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
-            self.instructions += 1
-            if self._code_observer is not None:
-                self._code_observer(address)
-            if flash_dirty[0]:
-                apply_flash()
+        def patch_at(address: int) -> None:
+            """Apply the two firmware patches that key off a single address."""
             if address == PRODUCT_TYPE_PROBE_COMPLETE:
                 # [d2c3] is the probe's own verdict now that the latch answers
                 # it -- 0x22 External or 0x28 Internal -- so it is left alone.
@@ -827,20 +823,39 @@ class IsdnMachine:
                     else suffix & ~PRODUCT_MODEM_SUFFIX
                 )
                 uc.mem_write(PRODUCT_MODEM_SUFFIX_ADDRESS, bytes((suffix,)))
-            if (
-                address == EXTERNAL_COMMAND_RECEIVE_ARMED
-                and self.product_type == "external"
-            ):
+            else:
                 uc.mem_write(
                     SERIAL_RECEIVE_DISPATCH_ADDRESS,
                     EXTERNAL_ATTENTION_RECEIVER.to_bytes(2, "little"),
                 )
+
+        # Everything below this line runs once per guest instruction, so the
+        # addresses the patches above wait for are collected into one set
+        # membership test, and the objects the body touches are bound here
+        # rather than looked up on self each time.
+        patch_points = frozenset(
+            {PRODUCT_TYPE_PROBE_COMPLETE}
+            | ({EXTERNAL_COMMAND_RECEIVE_ARMED} if self.product_type == "external" else set())
+        )
+        observer = self._code_observer
+        recent_append = self.recent.append
+        pc_counts = self.pc_counts
+
+        def on_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
+            instructions = self.instructions + 1
+            self.instructions = instructions
+            if observer is not None:
+                observer(address)
+            if flash_dirty[0]:
+                apply_flash()
+            if address in patch_points:
+                patch_at(address)
             if profile:
-                self.pc_counts[address] += 1
-            self.recent.append(address)
-            if self.instructions < self._next_poll:
+                pc_counts[address] += 1
+            recent_append(address)
+            if instructions < self._next_poll:
                 return
-            self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS
+            self._next_poll = instructions + TIMER_POLL_INSTRUCTIONS
             self.poll_timers()
             if not uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                 return
