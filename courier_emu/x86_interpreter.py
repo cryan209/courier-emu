@@ -167,9 +167,37 @@ class Uc:
         self._intr_hooks: tuple[tuple[Any, Any], ...] = ()
         self._insn_hooks: dict[int, tuple[tuple[Any, Any], ...]] = {}
         self._in_memory_hook = False
+        # The board scheduler does not need a Python code-hook call for every
+        # guest instruction.  Keep its deadline in the dispatch loop and cross
+        # back into CourierMachine only at the requested interval.  The
+        # callback sees the instruction about to retire, matching Unicorn's
+        # code-hook timing and the old on_code_counting clock.
+        self._clock_period = 0
+        self._clock_next = 0
+        self._clock_callback: Callable[[Any, int, Any], None] | None = None
+        self._clock_user: Any = None
         self.running = False
         self.halted = False
         self.retired = 0
+
+    def instruction_clock_add(
+        self,
+        period: int,
+        callback: Callable[[Any, int, Any], None],
+        user: Any = None,
+    ) -> None:
+        """Call ``callback`` at bounded instruction intervals.
+
+        This is deliberately a small interpreter extension rather than a
+        Unicorn compatibility API.  Device scheduling is periodic; code
+        observation remains on ordinary hooks and stays opt-in.
+        """
+        if period <= 0:
+            raise ValueError("instruction clock period must be positive")
+        self._clock_period = period
+        self._clock_next = self.retired + period
+        self._clock_callback = callback
+        self._clock_user = user
 
     def mem_map(self, address: int, size: int, perms: int = 7) -> None:
         if address & 0xFFF or size <= 0 or size & 0xFFF:
@@ -364,11 +392,31 @@ class Uc:
         return value
 
     def _fetch(self, size: int, signed: bool = False) -> int:
+        """Read the immediate or displacement that follows the opcode.
+
+        Every size but 1 and 2 belongs to the 386ex profile, so those two are
+        written out rather than reached through the general loop: building a
+        `range` per call cost more here than the reads did, and this is the
+        most called helper the interpreter has.
+        """
         regs = self.regs
         memory = self.memory
         mask = self.address_mask
         base = regs[UC_X86_REG_CS] * 16
         ip = regs[UC_X86_REG_IP]
+        if size == 2:
+            value = (memory[(base + ip) & mask]
+                     | memory[(base + ((ip + 1) & 0xFFFF)) & mask] << 8)
+            regs[UC_X86_REG_IP] = (ip + 2) & 0xFFFF
+            if signed and value & 0x8000:
+                value -= 0x10000
+            return value
+        if size == 1:
+            value = memory[(base + ip) & mask]
+            regs[UC_X86_REG_IP] = (ip + 1) & 0xFFFF
+            if signed and value & 0x80:
+                value -= 0x100
+            return value
         value = 0
         for shift in range(0, size * 8, 8):
             value |= memory[(base + ip) & mask] << shift
@@ -709,11 +757,25 @@ class Uc:
             single_hook, single_user = global_hooks[0][0], global_hooks[0][1]
         else:
             single_hook = single_user = None
+        clock_callback = self._clock_callback
+        clock_user = self._clock_user
+        clock_period = self._clock_period
+        clock_next = self._clock_next
         retired = 0
         while self.running and (not count or retired < count):
             start_ip = cpu_regs[REG_IP]
             code_base = cpu_regs[UC_X86_REG_CS] * 16
             physical = (code_base + start_ip) & address_mask
+            # Fire before the boundary instruction, like UC_HOOK_CODE.  The
+            # callback may stop execution to dispatch an interrupt; in that
+            # case this instruction remains pending for the next emu_start.
+            total_about_to_retire = self.retired + 1
+            if clock_callback is not None and total_about_to_retire >= clock_next:
+                clock_callback(self, total_about_to_retire, clock_user)
+                clock_next = total_about_to_retire + clock_period
+                self._clock_next = clock_next
+                if not self.running:
+                    break
             if single_hook is not None:
                 single_hook(self, physical, 1, single_user)
             else:
@@ -765,89 +827,97 @@ class Uc:
             else:
                 bits = 16
             group = _GROUP[opcode]
-            if group == 1:  # MOVS/STOS/LODS
-                # A repeated one of these is the single most executed
-                # instruction of a boot - each iteration re-enters
-                # dispatch, because that is the edge Unicorn retires and the
-                # harness counts - so it reads its registers and memory
-                # directly. Bits 3:1 of the opcode name the form: 2 moves
-                # SI to DI, 5 stores the accumulator, 6 loads it.
-                if not repeat or cpu_regs[UC_X86_REG_CX]:
-                    form = (opcode >> 1) & 7
-                    size = 1 if not opcode & 1 else operand_size
-                    step = -size if cpu_regs[UC_X86_REG_FLAGS] & DF else size
-                    if form != 5:
-                        segment = segment_override if segment_override is not None else cpu_regs[UC_X86_REG_DS]
-                        source = cpu_regs[UC_X86_REG_SI]
-                        value = self._load(((segment & 0xFFFF) * 16 + source) & address_mask, size)
-                        cpu_regs[UC_X86_REG_SI] = (source + step) & 0xFFFF
-                    else:
-                        value = cpu_regs[UC_X86_REG_AX] & 0xFF if size == 1 else cpu_regs[UC_X86_REG_AX]
-                    if form != 6:
-                        destination = cpu_regs[UC_X86_REG_DI]
-                        self._store(((cpu_regs[UC_X86_REG_ES] & 0xFFFF) * 16 + destination) & address_mask, size, value)
-                        cpu_regs[UC_X86_REG_DI] = (destination + step) & 0xFFFF
-                    elif size == 1:
-                        cpu_regs[UC_X86_REG_AX] = (cpu_regs[UC_X86_REG_AX] & ~0xFF) | value
-                    else:
-                        cpu_regs[UC_X86_REG_AX] = value & register_mask
-                    if repeat:
-                        cpu_regs[UC_X86_REG_CX] = (cpu_regs[UC_X86_REG_CX] - 1) & 0xFFFF
-                        # Re-enter once with CX zero. This performs no memory
-                        # operation but matches the boundary at which Unicorn
-                        # retires a REP instruction and advances past it.
-                        cpu_regs[REG_IP] = start_ip
-            elif group == 2:  # MOV r/m,r and r,r/m
-                # This group and the ALU group below are most of what the
-                # firmware executes, so their operands are
-                # decoded here rather than through _operand, whose closure pair
-                # costs more than either instruction does.
-                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
-                reg = (modrm >> 3) & 7; size = 1 if opcode in (0x88, 0x8A) else operand_size
-                to_register = opcode & 2
-                if modrm >= 0xC0:
-                    rm = modrm & 7
+            if group == 11:  # Jcc rel8
+                ip = cpu_regs[REG_IP]; displacement = cpu_memory[(code_base + ip) & address_mask]; ip = (ip + 1) & 0xFFFF
+                if self._condition(opcode & 15):
+                    ip += displacement - 256 if displacement & 0x80 else displacement
+                cpu_regs[REG_IP] = ip & 0xFFFF
+            elif group == 18:  # ALU r/m,imm
+                modrm = self._fetch8(); operation = (modrm >> 3) & 7; size = 1 if opcode == 0x80 else operand_size
+                read, write = self._operand(modrm, size, segment_override)
+                immediate = self._fetch(1, signed=opcode == 0x83) if opcode in (0x80,0x83) else self._fetch(size)
+                result = self._alu(operation, read(), immediate & ((1 << (size*8))-1), size*8)
+                if operation != 7: write(result)
+            elif group == 19:  # RET near
+                self.regs[UC_X86_REG_IP] = self._pop(operand_size)
+                if opcode == 0xC2: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
+            elif group == 20:  # CALL rel16
+                displacement = self._fetch(operand_size, signed=True); self._push(self.regs[UC_X86_REG_IP], operand_size); self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
+            elif group == 16:  # group F6/F7: TEST/NOT/NEG/MUL/DIV
+                modrm = self._fetch8(); operation = (modrm >> 3) & 7
+                size = 1 if opcode == 0xF6 else operand_size; bits = size * 8
+                read, write = self._operand(modrm, size, segment_override)
+                value, mask = read(), (1 << bits) - 1
+                if operation in (0, 1): self._logic_flags(value & self._fetch(size), bits)
+                elif operation == 2: write(~value & mask)
+                elif operation == 3: write(self._alu(5, 0, value, bits))
+                elif operation == 4:
+                    product = (self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]) * value
                     if size == 1:
-                        source, destination = (rm, reg) if to_register else (reg, rm)
-                        value = (cpu_regs[source & 3] >> (8 if source & 4 else 0)) & 0xFF
-                        index, shift = destination & 3, 8 if destination & 4 else 0
-                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | value << shift
-                    elif to_register: cpu_regs[reg] = cpu_regs[rm] & register_mask
-                    else: cpu_regs[rm] = cpu_regs[reg] & register_mask
-                else:
+                        self.reg_write(UC_X86_REG_AX, product)
+                    else:
+                        self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
+                    high = product >> bits
+                    self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | ((CF | OF) if high else 0)
+                elif operation == 5:
+                    accumulator = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                    signed_acc = accumulator - (1 << bits) if accumulator & (1 << (bits - 1)) else accumulator
+                    signed_value = value - (1 << bits) if value & (1 << (bits - 1)) else value
+                    product = signed_acc * signed_value
+                    if size == 1: self.reg_write(UC_X86_REG_AX, product)
+                    else: self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
+                    truncated = product & mask
+                    fits = product == (truncated - (1 << bits) if truncated & (1 << (bits - 1)) else truncated)
+                    self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | (0 if fits else CF | OF)
+                elif operation == 6:
+                    dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
+                    if value == 0: raise UcError("division by zero")
+                    quotient, remainder = divmod(dividend, value)
+                    if quotient > mask: raise UcError("division overflow")
+                    if size == 1: self.reg_write(UC_X86_REG_AX, quotient | remainder << 8)
+                    else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
+                elif operation == 7:
+                    raw_dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
+                    dividend_bits = bits * 2
+                    dividend = raw_dividend - (1 << dividend_bits) if raw_dividend & (1 << (dividend_bits - 1)) else raw_dividend
+                    divisor = value - (1 << bits) if value & (1 << (bits - 1)) else value
+                    if divisor == 0: raise UcError("division by zero")
+                    quotient = abs(dividend) // abs(divisor)
+                    if (dividend < 0) != (divisor < 0): quotient = -quotient
+                    remainder = dividend - quotient * divisor
+                    minimum, maximum = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+                    if not minimum <= quotient <= maximum: raise UcError("division overflow")
+                    if size == 1: self.reg_write(UC_X86_REG_AX, (quotient & 0xFF) | ((remainder & 0xFF) << 8))
+                    else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
+                else: raise UcError(f"unsupported F{6 if size == 1 else 7:x} group /{operation}")
+            elif group == 24: self.regs[UC_X86_REG_FLAGS] &= ~CF
+            elif group == 23:  # group FF: INC/DEC/CALL/JMP/PUSH r/m
+                modrm = self._fetch8(); operation = (modrm >> 3) & 7
+                if operation in (3, 5):
+                    if modrm >> 6 == 3: raise UcError("far call/jump requires memory operand")
                     address = self._ea(modrm >> 6, modrm & 7, segment_override)
-                    if not to_register:
-                        self._store(address, size, (cpu_regs[reg & 3] >> (8 if reg & 4 else 0)) & 0xFF if size == 1 else cpu_regs[reg])
-                    elif size == 1:
-                        index, shift = reg & 3, 8 if reg & 4 else 0
-                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | self._load(address, 1) << shift
-                    else: cpu_regs[reg] = self._load(address, size) & register_mask
-            elif group == 3:  # MOV r8,imm8
-                ip = cpu_regs[REG_IP]; value = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
-                register = opcode - 0xB0; index, shift = register & 3, 8 if register & 4 else 0
-                cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | value << shift
-            elif group == 4:  # ALU r/m,r and r,r/m
-                operation = (opcode >> 3) & 7
-                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
-                reg = (modrm >> 3) & 7; size = 1 if not opcode & 1 else operand_size
-                rm, address = modrm & 7, -1
-                if modrm >= 0xC0:
-                    dest = (cpu_regs[rm & 3] >> (8 if rm & 4 else 0)) & 0xFF if size == 1 else cpu_regs[rm]
+                    value = int.from_bytes(self.mem_read(address, operand_size), "little")
+                    segment = int.from_bytes(self.mem_read(address + operand_size, 2), "little")
+                    if operation == 3:
+                        self._push(self.regs[UC_X86_REG_CS])
+                        self._push(self.regs[UC_X86_REG_IP], operand_size)
+                    self.regs[UC_X86_REG_CS], self.regs[UC_X86_REG_IP] = segment, value & 0xFFFF
                 else:
-                    address = self._ea(modrm >> 6, rm, segment_override)
-                    dest = self._load(address, size)
-                source = (cpu_regs[reg & 3] >> (8 if reg & 4 else 0)) & 0xFF if size == 1 else cpu_regs[reg]
-                if opcode & 2: source, dest = dest, source
-                result = self._alu(operation, dest, source, size * 8)
-                if operation != 7:
-                    if opcode & 2: target = reg
-                    elif address >= 0: target = -1
-                    else: target = rm
-                    if target < 0: self._store(address, size, result)
-                    elif size == 1:
-                        index, shift = target & 3, 8 if target & 4 else 0
-                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | (result & 0xFF) << shift
-                    else: cpu_regs[target] = result & register_mask
+                    read, write = self._operand(modrm, operand_size, segment_override)
+                    value = read()
+                    if operation in (0, 1):
+                        old_cf = self.regs[UC_X86_REG_FLAGS] & CF
+                        write(self._alu(0 if operation == 0 else 5, value, 1, bits))
+                        self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
+                    elif operation == 2:
+                        self._push(self.regs[UC_X86_REG_IP], operand_size)
+                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
+                    elif operation == 4:
+                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
+                    elif operation == 6:
+                        self._push(value, operand_size)
+                    else:
+                        raise UcError(f"unsupported FF group /{operation}")
             elif group == 5:  # shift/rotate r/m
                 ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
                 operation = (modrm >> 3) & 7
@@ -900,6 +970,35 @@ class Uc:
                     if operation >= 4:
                         self._logic_flags(result, bits)
                     cpu_regs[UC_X86_REG_FLAGS] = cpu_regs[UC_X86_REG_FLAGS] & ~CF | (CF if carry else 0)
+            elif group == 3:  # MOV r8,imm8
+                ip = cpu_regs[REG_IP]; value = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
+                register = opcode - 0xB0; index, shift = register & 3, 8 if register & 4 else 0
+                cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | value << shift
+            elif group == 17:  # XCHG AX,r16 (0x90 is NOP)
+                register = opcode - 0x90
+                self.regs[UC_X86_REG_AX], self.regs[register] = self.regs[register], self.regs[UC_X86_REG_AX]
+            elif group == 4:  # ALU r/m,r and r,r/m
+                operation = (opcode >> 3) & 7
+                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
+                reg = (modrm >> 3) & 7; size = 1 if not opcode & 1 else operand_size
+                rm, address = modrm & 7, -1
+                if modrm >= 0xC0:
+                    dest = (cpu_regs[rm & 3] >> (8 if rm & 4 else 0)) & 0xFF if size == 1 else cpu_regs[rm]
+                else:
+                    address = self._ea(modrm >> 6, rm, segment_override)
+                    dest = self._load(address, size)
+                source = (cpu_regs[reg & 3] >> (8 if reg & 4 else 0)) & 0xFF if size == 1 else cpu_regs[reg]
+                if opcode & 2: source, dest = dest, source
+                result = self._alu(operation, dest, source, size * 8)
+                if operation != 7:
+                    if opcode & 2: target = reg
+                    elif address >= 0: target = -1
+                    else: target = rm
+                    if target < 0: self._store(address, size, result)
+                    elif size == 1:
+                        index, shift = target & 3, 8 if target & 4 else 0
+                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | (result & 0xFF) << shift
+                    else: cpu_regs[target] = result & register_mask
             elif group == 6:  # XCHG r/m,r
                 ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
                 reg = (modrm >> 3) & 7
@@ -922,6 +1021,105 @@ class Uc:
                     index, shift = reg & 3, 8 if reg & 4 else 0
                     cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | other << shift
                 else: cpu_regs[reg] = other & register_mask
+            elif group == 32:  # MOV r/m,imm
+                modrm = self._fetch8(); size = 1 if opcode == 0xC6 else operand_size
+                _, write = self._operand(modrm, size, segment_override); write(self._fetch(size))
+            elif group == 14: self.reg_write(opcode - 0x58, self._pop(operand_size))
+            elif group == 13: self._push(self.regs[opcode - 0x50], operand_size)
+            elif group == 2:  # MOV r/m,r and r,r/m
+                # This group and the ALU group below are most of what the
+                # firmware executes, so their operands are
+                # decoded here rather than through _operand, whose closure pair
+                # costs more than either instruction does.
+                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
+                reg = (modrm >> 3) & 7; size = 1 if opcode in (0x88, 0x8A) else operand_size
+                to_register = opcode & 2
+                if modrm >= 0xC0:
+                    rm = modrm & 7
+                    if size == 1:
+                        source, destination = (rm, reg) if to_register else (reg, rm)
+                        value = (cpu_regs[source & 3] >> (8 if source & 4 else 0)) & 0xFF
+                        index, shift = destination & 3, 8 if destination & 4 else 0
+                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | value << shift
+                    elif to_register: cpu_regs[reg] = cpu_regs[rm] & register_mask
+                    else: cpu_regs[rm] = cpu_regs[reg] & register_mask
+                else:
+                    address = self._ea(modrm >> 6, modrm & 7, segment_override)
+                    if not to_register:
+                        self._store(address, size, (cpu_regs[reg & 3] >> (8 if reg & 4 else 0)) & 0xFF if size == 1 else cpu_regs[reg])
+                    elif size == 1:
+                        index, shift = reg & 3, 8 if reg & 4 else 0
+                        cpu_regs[index] = (cpu_regs[index] & ~(0xFF << shift)) | self._load(address, 1) << shift
+                    else: cpu_regs[reg] = self._load(address, size) & register_mask
+            elif group == 1:  # MOVS/STOS/LODS
+                # A repeated one of these is the single most executed
+                # instruction of a boot - each iteration re-enters
+                # dispatch, because that is the edge Unicorn retires and the
+                # harness counts - so it reads its registers and memory
+                # directly. Bits 3:1 of the opcode name the form: 2 moves
+                # SI to DI, 5 stores the accumulator, 6 loads it.
+                if not repeat or cpu_regs[UC_X86_REG_CX]:
+                    form = (opcode >> 1) & 7
+                    size = 1 if not opcode & 1 else operand_size
+                    step = -size if cpu_regs[UC_X86_REG_FLAGS] & DF else size
+                    if form != 5:
+                        segment = segment_override if segment_override is not None else cpu_regs[UC_X86_REG_DS]
+                        source = cpu_regs[UC_X86_REG_SI]
+                        value = self._load(((segment & 0xFFFF) * 16 + source) & address_mask, size)
+                        cpu_regs[UC_X86_REG_SI] = (source + step) & 0xFFFF
+                    else:
+                        value = cpu_regs[UC_X86_REG_AX] & 0xFF if size == 1 else cpu_regs[UC_X86_REG_AX]
+                    if form != 6:
+                        destination = cpu_regs[UC_X86_REG_DI]
+                        self._store(((cpu_regs[UC_X86_REG_ES] & 0xFFFF) * 16 + destination) & address_mask, size, value)
+                        cpu_regs[UC_X86_REG_DI] = (destination + step) & 0xFFFF
+                    elif size == 1:
+                        cpu_regs[UC_X86_REG_AX] = (cpu_regs[UC_X86_REG_AX] & ~0xFF) | value
+                    else:
+                        cpu_regs[UC_X86_REG_AX] = value & register_mask
+                    if repeat:
+                        cpu_regs[UC_X86_REG_CX] = (cpu_regs[UC_X86_REG_CX] - 1) & 0xFFFF
+                        # Re-enter once with CX zero. This performs no memory
+                        # operation but matches the boundary at which Unicorn
+                        # retires a REP instruction and advances past it.
+                        cpu_regs[REG_IP] = start_ip
+            elif group == 39:  # PUSH segment register
+                self._push(self.regs[{0x06: UC_X86_REG_ES, 0x0E: UC_X86_REG_CS, 0x16: UC_X86_REG_SS, 0x1E: UC_X86_REG_DS}[opcode]])
+            elif group == 26:  # OUT
+                size = 1 if opcode in (0xE6,0xEE) else operand_size; port = self._fetch8() if opcode in (0xE6,0xE7) else self.regs[UC_X86_REG_DX]
+                self._io(UC_X86_INS_OUT, port, size, self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX])
+            elif group == 63:  # RET far
+                self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop()
+                if opcode == 0xCA: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
+            elif group == 33:  # ALU accumulator,imm
+                operation = (opcode >> 3) & 7; size = 1 if not opcode & 1 else operand_size
+                left = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                result = self._alu(operation, left, self._fetch(size), size * 8)
+                if operation != 7:
+                    self._set_reg8(0, result) if size == 1 else self.reg_write(UC_X86_REG_AX, result)
+            elif group == 21:  # JMP rel8
+                displacement = self._fetch(1, signed=True)
+                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
+            elif group == 9:  # MOV to and from a segment register
+                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
+                segment_reg = (UC_X86_REG_ES, UC_X86_REG_CS, UC_X86_REG_SS, UC_X86_REG_DS)[(modrm >> 3) & 3]
+                if modrm >= 0xC0:
+                    rm = modrm & 7
+                    if opcode == 0x8C: cpu_regs[rm] = cpu_regs[segment_reg] & register_mask
+                    else: cpu_regs[segment_reg] = cpu_regs[rm] & 0xFFFF
+                else:
+                    address = self._ea(modrm >> 6, modrm & 7, segment_override)
+                    if opcode == 0x8C: self._store(address, 2, cpu_regs[segment_reg])
+                    else: cpu_regs[segment_reg] = self._load(address, 2)
+            elif group == 40:  # POP segment register
+                self.reg_write({0x07: UC_X86_REG_ES, 0x17: UC_X86_REG_SS, 0x1F: UC_X86_REG_DS}[opcode], self._pop())
+            elif group == 8:  # MOV r16,imm
+                if operand_size == 2:
+                    ip = cpu_regs[REG_IP]
+                    base = code_base + ip
+                    cpu_regs[opcode - 0xB8] = cpu_memory[base & address_mask] | cpu_memory[(base + 1) & address_mask] << 8
+                    cpu_regs[REG_IP] = (ip + 2) & 0xFFFF
+                else: self.reg_write(opcode - 0xB8, self._fetch(operand_size))
             elif group == 7:  # LOOP/LOOPE/LOOPNE/JCXZ
                 ip = cpu_regs[REG_IP]; displacement = cpu_memory[(code_base + ip) & address_mask]; ip = (ip + 1) & 0xFFFF
                 if opcode == 0xE3:
@@ -934,147 +1132,20 @@ class Uc:
                     elif opcode == 0xE1: take = take and bool(cpu_regs[UC_X86_REG_FLAGS] & ZF)
                 if take: ip += displacement - 256 if displacement & 0x80 else displacement
                 cpu_regs[REG_IP] = ip & 0xFFFF
-            elif group == 8:  # MOV r16,imm
-                if operand_size == 2:
-                    ip = cpu_regs[REG_IP]
-                    base = code_base + ip
-                    cpu_regs[opcode - 0xB8] = cpu_memory[base & address_mask] | cpu_memory[(base + 1) & address_mask] << 8
-                    cpu_regs[REG_IP] = (ip + 2) & 0xFFFF
-                else: self.reg_write(opcode - 0xB8, self._fetch(operand_size))
-            elif group == 9:  # MOV to and from a segment register
-                ip = cpu_regs[REG_IP]; modrm = cpu_memory[(code_base + ip) & address_mask]; cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
-                segment_reg = (UC_X86_REG_ES, UC_X86_REG_CS, UC_X86_REG_SS, UC_X86_REG_DS)[(modrm >> 3) & 3]
-                if modrm >= 0xC0:
-                    rm = modrm & 7
-                    if opcode == 0x8C: cpu_regs[rm] = cpu_regs[segment_reg] & register_mask
-                    else: cpu_regs[segment_reg] = cpu_regs[rm] & 0xFFFF
-                else:
-                    address = self._ea(modrm >> 6, modrm & 7, segment_override)
-                    if opcode == 0x8C: self._store(address, 2, cpu_regs[segment_reg])
-                    else: cpu_regs[segment_reg] = self._load(address, 2)
-            elif group == 10:  # INC r16
-                register = opcode - 0x40; old_cf = self.regs[UC_X86_REG_FLAGS] & CF
-                self.reg_write(register, self._alu(0, self.regs[register], 1, bits)); self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
-            elif group == 11:  # Jcc rel8
-                ip = cpu_regs[REG_IP]; displacement = cpu_memory[(code_base + ip) & address_mask]; ip = (ip + 1) & 0xFFFF
-                if self._condition(opcode & 15):
-                    ip += displacement - 256 if displacement & 0x80 else displacement
-                cpu_regs[REG_IP] = ip & 0xFFFF
-            elif group == 12:  # DEC r16
-                register = opcode - 0x48; old_cf = self.regs[UC_X86_REG_FLAGS] & CF
-                self.reg_write(register, self._alu(5, self.regs[register], 1, bits)); self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
-            elif group == 13: self._push(self.regs[opcode - 0x50], operand_size)
-            elif group == 14: self.reg_write(opcode - 0x58, self._pop(operand_size))
-            elif group == 15: self.regs[UC_X86_REG_FLAGS] &= ~DF
-            elif group == 16:  # group F6/F7: TEST/NOT/NEG/MUL/DIV
-                modrm = self._fetch8(); operation = (modrm >> 3) & 7
-                size = 1 if opcode == 0xF6 else operand_size; bits = size * 8
-                read, write = self._operand(modrm, size, segment_override)
-                value, mask = read(), (1 << bits) - 1
-                if operation in (0, 1): self._logic_flags(value & self._fetch(size), bits)
-                elif operation == 2: write(~value & mask)
-                elif operation == 3: write(self._alu(5, 0, value, bits))
-                elif operation == 4:
-                    product = (self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]) * value
-                    if size == 1:
-                        self.reg_write(UC_X86_REG_AX, product)
-                    else:
-                        self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
-                    high = product >> bits
-                    self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | ((CF | OF) if high else 0)
-                elif operation == 5:
-                    accumulator = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
-                    signed_acc = accumulator - (1 << bits) if accumulator & (1 << (bits - 1)) else accumulator
-                    signed_value = value - (1 << bits) if value & (1 << (bits - 1)) else value
-                    product = signed_acc * signed_value
-                    if size == 1: self.reg_write(UC_X86_REG_AX, product)
-                    else: self.reg_write(UC_X86_REG_AX, product); self.reg_write(UC_X86_REG_DX, product >> bits)
-                    truncated = product & mask
-                    fits = product == (truncated - (1 << bits) if truncated & (1 << (bits - 1)) else truncated)
-                    self.regs[UC_X86_REG_FLAGS] = (self.regs[UC_X86_REG_FLAGS] & ~(CF | OF)) | (0 if fits else CF | OF)
-                elif operation == 6:
-                    dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
-                    if value == 0: raise UcError("division by zero")
-                    quotient, remainder = divmod(dividend, value)
-                    if quotient > mask: raise UcError("division overflow")
-                    if size == 1: self.reg_write(UC_X86_REG_AX, quotient | remainder << 8)
-                    else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
-                elif operation == 7:
-                    raw_dividend = self.regs[UC_X86_REG_AX] if size == 1 else (self.regs[UC_X86_REG_DX] << bits) | self.regs[UC_X86_REG_AX]
-                    dividend_bits = bits * 2
-                    dividend = raw_dividend - (1 << dividend_bits) if raw_dividend & (1 << (dividend_bits - 1)) else raw_dividend
-                    divisor = value - (1 << bits) if value & (1 << (bits - 1)) else value
-                    if divisor == 0: raise UcError("division by zero")
-                    quotient = abs(dividend) // abs(divisor)
-                    if (dividend < 0) != (divisor < 0): quotient = -quotient
-                    remainder = dividend - quotient * divisor
-                    minimum, maximum = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
-                    if not minimum <= quotient <= maximum: raise UcError("division overflow")
-                    if size == 1: self.reg_write(UC_X86_REG_AX, (quotient & 0xFF) | ((remainder & 0xFF) << 8))
-                    else: self.reg_write(UC_X86_REG_AX, quotient); self.reg_write(UC_X86_REG_DX, remainder)
-                else: raise UcError(f"unsupported F{6 if size == 1 else 7:x} group /{operation}")
-            elif group == 17:  # XCHG AX,r16 (0x90 is NOP)
-                register = opcode - 0x90
-                self.regs[UC_X86_REG_AX], self.regs[register] = self.regs[register], self.regs[UC_X86_REG_AX]
-            elif group == 18:  # ALU r/m,imm
-                modrm = self._fetch8(); operation = (modrm >> 3) & 7; size = 1 if opcode == 0x80 else operand_size
-                read, write = self._operand(modrm, size, segment_override)
-                immediate = self._fetch(1, signed=opcode == 0x83) if opcode in (0x80,0x83) else self._fetch(size)
-                result = self._alu(operation, read(), immediate & ((1 << (size*8))-1), size*8)
-                if operation != 7: write(result)
-            elif group == 19:  # RET near
-                self.regs[UC_X86_REG_IP] = self._pop(operand_size)
-                if opcode == 0xC2: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
-            elif group == 20:  # CALL rel16
-                displacement = self._fetch(operand_size, signed=True); self._push(self.regs[UC_X86_REG_IP], operand_size); self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
-            elif group == 21:  # JMP rel8
-                displacement = self._fetch(1, signed=True)
-                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
-            elif group == 22:  # JMP rel16
-                displacement = self._fetch(operand_size, signed=True)
-                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
-            elif group == 23:  # group FF: INC/DEC/CALL/JMP/PUSH r/m
-                modrm = self._fetch8(); operation = (modrm >> 3) & 7
-                if operation in (3, 5):
-                    if modrm >> 6 == 3: raise UcError("far call/jump requires memory operand")
-                    address = self._ea(modrm >> 6, modrm & 7, segment_override)
-                    value = int.from_bytes(self.mem_read(address, operand_size), "little")
-                    segment = int.from_bytes(self.mem_read(address + operand_size, 2), "little")
-                    if operation == 3:
-                        self._push(self.regs[UC_X86_REG_CS])
-                        self._push(self.regs[UC_X86_REG_IP], operand_size)
-                    self.regs[UC_X86_REG_CS], self.regs[UC_X86_REG_IP] = segment, value & 0xFFFF
-                else:
-                    read, write = self._operand(modrm, operand_size, segment_override)
-                    value = read()
-                    if operation in (0, 1):
-                        old_cf = self.regs[UC_X86_REG_FLAGS] & CF
-                        write(self._alu(0 if operation == 0 else 5, value, 1, bits))
-                        self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
-                    elif operation == 2:
-                        self._push(self.regs[UC_X86_REG_IP], operand_size)
-                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
-                    elif operation == 4:
-                        self.regs[UC_X86_REG_IP] = value & 0xFFFF
-                    elif operation == 6:
-                        self._push(value, operand_size)
-                    else:
-                        raise UcError(f"unsupported FF group /{operation}")
-            elif group == 24: self.regs[UC_X86_REG_FLAGS] &= ~CF
+            elif group == 50: self._push(self.regs[UC_X86_REG_FLAGS])
+            elif group == 51: self.reg_write(UC_X86_REG_FLAGS, self._pop() | 2)
+            elif group == 59:  # CALL far
+                offset = self._fetch(operand_size)
+                segment = self._fetch(2)
+                self._push(self.regs[UC_X86_REG_CS])
+                self._push(self.regs[UC_X86_REG_IP], operand_size)
+                self.regs[UC_X86_REG_CS] = segment
+                self.regs[UC_X86_REG_IP] = offset & 0xFFFF
             elif group == 25:  # IN
                 size = 1 if opcode in (0xE4,0xEC) else operand_size; port = self._fetch8() if opcode in (0xE4,0xE5) else self.regs[UC_X86_REG_DX]
                 value = self._io(UC_X86_INS_IN, port, size)
                 if size == 1: self._set_reg8(0, value)
                 else: self.reg_write(UC_X86_REG_AX, value)
-            elif group == 26:  # OUT
-                size = 1 if opcode in (0xE6,0xEE) else operand_size; port = self._fetch8() if opcode in (0xE6,0xE7) else self.regs[UC_X86_REG_DX]
-                self._io(UC_X86_INS_OUT, port, size, self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX])
-            elif group == 27:  # INT imm8
-                number = self._fetch8()
-                for callback, user in self._intr_hooks:
-                    callback(self, number, user)
-            elif group == 28:  # IRET
-                self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop(); self.regs[UC_X86_REG_FLAGS] = self._pop() | 2
             elif group == 29: self.regs[UC_X86_REG_FLAGS] &= ~IF
             elif group == 30: self.regs[UC_X86_REG_FLAGS] |= IF
             elif group == 31:  # MOV accumulator to and from a direct address
@@ -1087,17 +1158,26 @@ class Uc:
                 else:
                     value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
                     self.mem_write(address, value.to_bytes(size, "little"))
-            elif group == 32:  # MOV r/m,imm
-                modrm = self._fetch8(); size = 1 if opcode == 0xC6 else operand_size
-                _, write = self._operand(modrm, size, segment_override); write(self._fetch(size))
-            elif group == 33:  # ALU accumulator,imm
-                operation = (opcode >> 3) & 7; size = 1 if not opcode & 1 else operand_size
-                left = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
-                result = self._alu(operation, left, self._fetch(size), size * 8)
-                if operation != 7:
-                    self._set_reg8(0, result) if size == 1 else self.reg_write(UC_X86_REG_AX, result)
-            elif group == 34: self._push(self._fetch(operand_size), operand_size)
-            elif group == 35: self._push(self._fetch(1, signed=True) & ((1 << bits) - 1), operand_size)
+            elif group == 52:  # TEST accumulator,imm
+                size = 1 if opcode == 0xA8 else operand_size
+                value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
+                self._logic_flags(value & self._fetch(size), size * 8)
+            elif group == 44:  # TEST r/m,r
+                modrm = self._fetch8(); reg = (modrm >> 3) & 7
+                size = 1 if opcode == 0x84 else operand_size
+                read, _ = self._operand(modrm, size, segment_override)
+                value = self._reg8(reg) if size == 1 else self.regs[reg]
+                self._logic_flags(read() & value, size * 8)
+            elif group == 10:  # INC r16
+                register = opcode - 0x40; old_cf = self.regs[UC_X86_REG_FLAGS] & CF
+                self.reg_write(register, self._alu(0, self.regs[register], 1, bits)); self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
+            elif group == 12:  # DEC r16
+                register = opcode - 0x48; old_cf = self.regs[UC_X86_REG_FLAGS] & CF
+                self.reg_write(register, self._alu(5, self.regs[register], 1, bits)); self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~CF | old_cf
+            elif group == 56: self.regs[UC_X86_REG_FLAGS] |= CF
+            elif group == 22:  # JMP rel16
+                displacement = self._fetch(operand_size, signed=True)
+                self.regs[UC_X86_REG_IP] = (self.regs[UC_X86_REG_IP] + displacement) & 0xFFFF
             elif group == 36:  # PUSHA
                 original_sp = self.regs[UC_X86_REG_SP]
                 for register in (UC_X86_REG_AX, UC_X86_REG_CX, UC_X86_REG_DX, UC_X86_REG_BX): self._push(self.regs[register], operand_size)
@@ -1107,6 +1187,22 @@ class Uc:
                 for register in (UC_X86_REG_DI, UC_X86_REG_SI, UC_X86_REG_BP): self.reg_write(register, self._pop(operand_size))
                 self._pop(operand_size)
                 for register in (UC_X86_REG_BX, UC_X86_REG_DX, UC_X86_REG_CX, UC_X86_REG_AX): self.reg_write(register, self._pop(operand_size))
+            elif group == 15: self.regs[UC_X86_REG_FLAGS] &= ~DF
+            elif group == 28:  # IRET
+                self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop(); self.regs[UC_X86_REG_FLAGS] = self._pop() | 2
+            elif group == 53:  # XLAT
+                # XLAT replaces AL with the byte at DS:[BX + unsigned AL].
+                # A segment override changes DS, while operand-size prefixes
+                # do not affect the byte lookup.
+                segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
+                address = self._physical(segment, self.regs[UC_X86_REG_BX] + self._reg8(0))
+                self._set_reg8(0, self.mem_read(address, 1)[0])
+            elif group == 27:  # INT imm8
+                number = self._fetch8()
+                for callback, user in self._intr_hooks:
+                    callback(self, number, user)
+            elif group == 34: self._push(self._fetch(operand_size), operand_size)
+            elif group == 35: self._push(self._fetch(1, signed=True) & ((1 << bits) - 1), operand_size)
             elif group == 38:  # IMUL r,r/m,imm
                 modrm = self._fetch8(); register = (modrm >> 3) & 7
                 read, _ = self._operand(modrm, operand_size, segment_override)
@@ -1116,10 +1212,6 @@ class Uc:
                 self.reg_write(register, result)
                 overflow = product != (result - (1 << bits) if result & (1 << (bits - 1)) else result)
                 self.regs[UC_X86_REG_FLAGS] = self.regs[UC_X86_REG_FLAGS] & ~(CF | OF) | ((CF | OF) if overflow else 0)
-            elif group == 39:  # PUSH segment register
-                self._push(self.regs[{0x06: UC_X86_REG_ES, 0x0E: UC_X86_REG_CS, 0x16: UC_X86_REG_SS, 0x1E: UC_X86_REG_DS}[opcode]])
-            elif group == 40:  # POP segment register
-                self.reg_write({0x07: UC_X86_REG_ES, 0x17: UC_X86_REG_SS, 0x1F: UC_X86_REG_DS}[opcode], self._pop())
             elif group == 41:  # POP r/m
                 modrm = self._fetch8()
                 if (modrm >> 3) & 7: raise UcError("unsupported 8F group")
@@ -1139,12 +1231,6 @@ class Uc:
                 segment = self.regs[UC_X86_REG_SS if rm in (2, 3, 6) and not (modrm >> 6 == 0 and rm == 6) else UC_X86_REG_DS]
                 address = self._ea(modrm >> 6, rm, segment)
                 self.reg_write(reg, (address - segment * 16) & 0xFFFF)
-            elif group == 44:  # TEST r/m,r
-                modrm = self._fetch8(); reg = (modrm >> 3) & 7
-                size = 1 if opcode == 0x84 else operand_size
-                read, _ = self._operand(modrm, size, segment_override)
-                value = self._reg8(reg) if size == 1 else self.regs[reg]
-                self._logic_flags(read() & value, size * 8)
             elif group == 45:  # INC/DEC r/m8
                 modrm = self._fetch8(); operation = (modrm >> 3) & 7
                 if operation not in (0, 1): raise UcError(f"unsupported FE group /{operation}")
@@ -1200,19 +1286,6 @@ class Uc:
                 if al & 0x80: flags |= SF
                 if self._parity(al): flags |= PF
                 self.regs[UC_X86_REG_FLAGS] = flags | 2
-            elif group == 50: self._push(self.regs[UC_X86_REG_FLAGS])
-            elif group == 51: self.reg_write(UC_X86_REG_FLAGS, self._pop() | 2)
-            elif group == 52:  # TEST accumulator,imm
-                size = 1 if opcode == 0xA8 else operand_size
-                value = self._reg8(0) if size == 1 else self.regs[UC_X86_REG_AX]
-                self._logic_flags(value & self._fetch(size), size * 8)
-            elif group == 53:  # XLAT
-                # XLAT replaces AL with the byte at DS:[BX + unsigned AL].
-                # A segment override changes DS, while operand-size prefixes
-                # do not affect the byte lookup.
-                segment = segment_override if segment_override is not None else self.regs[UC_X86_REG_DS]
-                address = self._physical(segment, self.regs[UC_X86_REG_BX] + self._reg8(0))
-                self._set_reg8(0, self.mem_read(address, 1)[0])
             elif group == 54:  # CMPS
                 if not repeat or self.regs[UC_X86_REG_CX]:
                     size = 1 if opcode == 0xA6 else operand_size
@@ -1257,16 +1330,8 @@ class Uc:
                             or repeat == 0xF2 and not equal
                         ):
                             self.regs[UC_X86_REG_IP] = start_ip
-            elif group == 56: self.regs[UC_X86_REG_FLAGS] |= CF
             elif group == 57: self.regs[UC_X86_REG_FLAGS] ^= CF
             elif group == 58: self.regs[UC_X86_REG_FLAGS] |= DF
-            elif group == 59:  # CALL far
-                offset = self._fetch(operand_size)
-                segment = self._fetch(2)
-                self._push(self.regs[UC_X86_REG_CS])
-                self._push(self.regs[UC_X86_REG_IP], operand_size)
-                self.regs[UC_X86_REG_CS] = segment
-                self.regs[UC_X86_REG_IP] = offset & 0xFFFF
             elif group == 60:  # JMP far
                 offset = self._fetch(operand_size)
                 segment = self._fetch(2)
@@ -1285,9 +1350,6 @@ class Uc:
                 if nesting: self._push(frame, operand_size)
                 self.regs[UC_X86_REG_BP] = frame
                 self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] - allocation) & 0xFFFF
-            elif group == 63:  # RET far
-                self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop()
-                if opcode == 0xCA: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
             elif group == 64: self.halted = True; self.running = False
             elif group == 65:  # the 386's two-byte opcode escape
                 self._two_byte(operand_size, segment_override)
