@@ -110,6 +110,7 @@ void C5xCore::reset()
     m_mailbox_output.fill(0);
     m_asic_output.fill(0xffff);
     m_io_events.clear();
+    m_io_port_stats.fill({});
     m_data_events.clear();
     m_data_write_counts.fill(0);
     m_pc_trace.clear();
@@ -573,6 +574,10 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
         ++m_line_rx_consumed;
     }
     uint16_t value = m_io_read ? m_io_read(port) : m_io[port];
+    PortStat &stat = m_io_port_stats[port];
+    ++stat.reads;
+    stat.last_read = value;
+    stat.last_read_pc = static_cast<uint16_t>(m_pc - 1);
     m_io_events.push_back({false, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     return value;
 }
@@ -593,6 +598,10 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // overwrite an incoming CPU word, or vice versa.
         m_mailbox_output[port - 0x5e] = value;
     else m_io[port] = value;
+    PortStat &stat = m_io_port_stats[port];
+    ++stat.writes;
+    stat.last_write = value;
+    stat.last_write_pc = static_cast<uint16_t>(m_pc - 1);
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
     // resident image uses external port 006a at high program addresses. The

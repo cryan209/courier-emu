@@ -337,18 +337,10 @@ void courier_c5x_get_io_port_stats(
     void *handle, uint16_t port, uint64_t *values, std::size_t count)
 {
     if (!handle || !values || count < 6) return;
-    uint64_t reads = 0, writes = 0, last_read = 0, last_write = 0;
-    uint64_t last_read_pc = 0, last_write_pc = 0;
-    for (const auto &event : static_cast<C5xCore *>(handle)->io_events()) {
-        if (event.port != port) continue;
-        if (event.write) {
-            ++writes; last_write = event.value; last_write_pc = event.pc;
-        } else {
-            ++reads; last_read = event.value; last_read_pc = event.pc;
-        }
-    }
+    const auto &stat = static_cast<C5xCore *>(handle)->io_port_stat(port);
     uint64_t result[] = {
-        reads, writes, last_read, last_write, last_read_pc, last_write_pc,
+        stat.reads, stat.writes, stat.last_read, stat.last_write,
+        stat.last_read_pc, stat.last_write_pc,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

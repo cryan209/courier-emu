@@ -109,6 +109,18 @@ public:
         uint64_t instruction;
     };
 
+    // Per-port totals, kept as the accesses happen. These used to be
+    // recovered by scanning the whole m_io_events log on every query, which
+    // is linear in the length of the run: the ROM-load loops in bridge.py
+    // ask for them once per single-step, so the cost of loading a block grew
+    // with how much had already been loaded. Counting here makes the query
+    // O(1) and independent of the event log.
+    struct PortStat {
+        uint64_t reads, writes;
+        uint16_t last_read, last_write;
+        uint16_t last_read_pc, last_write_pc;
+    };
+
     struct DataEvent {
         uint16_t address;
         uint16_t value;
@@ -257,6 +269,7 @@ public:
     const std::vector<IoEvent> &io_events() const { return m_io_events; }
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
     uint64_t data_write_count(uint16_t address) const { return m_data_write_counts[address]; }
+    const PortStat &io_port_stat(uint16_t port) const { return m_io_port_stats[port]; }
     const std::deque<uint32_t> &pc_trace() const { return m_pc_trace; }
     // The trace windows. Two are compiled in for the call overlay and the
     // low-page stub; a third is settable so a caller can watch a handler
@@ -311,6 +324,7 @@ private:
     std::vector<IoEvent> m_io_events;
     std::vector<DataEvent> m_data_events;
     std::array<uint64_t, 65536> m_data_write_counts{};
+    std::array<PortStat, 65536> m_io_port_stats{};
     std::deque<uint32_t> m_pc_trace;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_trace_data_writes = false;
