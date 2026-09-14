@@ -34,7 +34,7 @@ from .timers import (
     SUGGESTED_TICK_MS, TICK_SOURCES,
     TIMER_POLL_INSTRUCTIONS, TimerBlock,
 )
-from .uart import EbSerial
+from .uart import DteTransmitLine, EbSerial
 from .rom_serial import locate_rom_serial
 from .x86_clock import NativeX86Clock
 from .machine_map import courier_machine_map
@@ -130,9 +130,13 @@ KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
 # match each other as the board's do.
 FRAME_HZ = 2_401
 FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // FRAME_HZ
-# How long a character sits on the wire before the receiver takes it. Long
-# enough that the frame service sees the line low at least once.
-START_BIT_INSTRUCTIONS = 32_768
+# The terminal's bit period. The ROM measures the start bit to find the rate,
+# so this is the DTE's own timing and not a figure the firmware is handed.
+DTE_BAUD = 9_600
+DTE_BIT_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // DTE_BAUD
+# How long a character sits on the wire before the receiver takes it. One
+# whole 8N1 frame, which is what the wire actually holds.
+START_BIT_INSTRUCTIONS = DTE_BIT_INSTRUCTIONS * DteTransmitLine.FRAME_BITS
 RX_BIT_INSTRUCTIONS = 150
 # When the harness's terminal raises its handshake. Long enough after reset
 # that the ROM's callback chain has already sampled the line unasserted.
@@ -602,6 +606,8 @@ class CourierMachine:
         self._rx_started_at = 0
         self._rx_edge_at = 0
         self._rom_rx_bit = 0
+        #: The terminal's wire. Sampled by address, never by PC.
+        self.dte_line = DteTransmitLine(DTE_BIT_INSTRUCTIONS)
         self._rom_dte_opened = False
         self._previous_address: int | None = None
         # The C52 comes out of board reset held, the same as the part does.
@@ -1709,12 +1715,19 @@ class CourierMachine:
                     # idle-then-start transition, so a byte that appeared in
                     # the buffer with the line never having gone low is one
                     # the chain cannot see.
-                    if not self.uart.holding:
+                    if not self.dte_line.busy:
+                        # Put the character on the wire and let it run at the
+                        # terminal's rate. `holding` is no longer a window the
+                        # harness opens and closes; it reports what the line is
+                        # doing, so the paths that ask whether a character is
+                        # arriving still get an answer.
+                        self.dte_line.begin(self.serial_rx[0], self.instructions)
                         self.uart.holding = True
                         self._rx_started_at = self.instructions
                         self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
                         self._rom_rx_bit = 0
-                    elif self.instructions - self._rx_started_at >= START_BIT_INSTRUCTIONS:
+                    elif self.dte_line.complete(self.instructions):
+                        self.dte_line.idle()
                         self.uart.holding = False
                         if self._rom_dte_opened:
                             # Temporary autobaud handlers reuse type 0x14.
@@ -2421,30 +2434,16 @@ class CourierMachine:
                 bit = 0x80 if self.nvram.read_latch() & BIT_DATA else 0x00
                 _uc.mem_write(address, bytes(((sampled[0] & 0x7F) | bit,)) + sampled[1:])
             if address == 0xFF5A and self.uart is not None:
-                # Port 2 pin 5 is the physical serial receive line sampled by
-                # the ROM's timer ISR during autobaud. It idles at mark/high;
-                # presenting the reset value (low) fabricates an endless
-                # start bit, after which the ROM disables its receiver.
+                # Port 2 pin 5 is the physical serial receive line. Read the
+                # wire at the instant the firmware looks at it: idle is mark,
+                # and a character in progress is a start bit, eight data bits
+                # and a stop bit spread over real time. Both revisions of this
+                # board's firmware assemble that character with their own
+                # timer, from routines 0x300 apart between the two images, and
+                # neither needs to be recognised here for the level to be
+                # right.
                 sampled = bytes(_uc.mem_read(address, size))
-                bit = 0x00 if self.uart.holding else 0x20
-                if (
-                    self.uart.holding
-                    and self.serial_rx
-                    and current_pc() in (0x9EDF9, 0x9EE35)
-                ):
-                    # Before enabling the 80C186 receiver, this ROM measures
-                    # and assembles the first character through timer 2. Feed
-                    # those eight sampling reads from the same queued byte,
-                    # least-significant bit first, exactly as its RCR loop
-                    # expects. Later characters arrive through S0RBUF.
-                    terminal_value = self.serial_rx[0]
-                    bit = ((terminal_value >> self._rom_rx_bit) & 1) << 5
-                    self._rom_rx_bit += 1
-                    if self._rom_rx_bit == 8:
-                        self.serial_rx.popleft()
-                        self.uart.holding = False
-                        self.uart.received += 1
-                        self._rom_rx_bit = 0
+                bit = 0x20 if self.dte_line.level(self.instructions) else 0x00
                 _uc.mem_write(address, bytes(((sampled[0] & 0xDF) | bit,)) + sampled[1:])
             if (
                 self.dsp_bridge is not None

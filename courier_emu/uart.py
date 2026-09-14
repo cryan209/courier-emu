@@ -238,3 +238,61 @@ class EbSerial:
             "received": self.received,
             "transmitted": self.transmitted,
         }
+
+
+class DteTransmitLine:
+    """The DTE's transmit wire, as the modem's receive pin samples it.
+
+    The pin is a wire, not a value produced where the firmware happens to
+    read it. A character occupies real time here - one space start bit,
+    eight data bits least significant first, then mark - so the level any
+    sampler sees depends only on when it looks. Both this board's firmware
+    revisions autobaud by sampling this pin through a timer, at routines
+    that sit 0x300 apart between the two images; driving the wire instead of
+    the code path serves either one without the harness knowing where those
+    routines are.
+
+    The frame is 8N1 against the queued byte. The ROM discovers the rate
+    from the start bit itself, which is the point of autobaud, so the bit
+    period here is the terminal's and not something the firmware is told.
+    """
+
+    #: Start bit, eight data bits, stop bit.
+    FRAME_BITS = 10
+
+    def __init__(self, bit_instructions: int) -> None:
+        self.bit_instructions = bit_instructions
+        self.byte: int | None = None
+        self.started = 0
+
+    @property
+    def busy(self) -> bool:
+        return self.byte is not None
+
+    def begin(self, byte: int, instructions: int) -> None:
+        self.byte = byte & 0xFF
+        self.started = instructions
+
+    def bit_index(self, instructions: int) -> int:
+        if self.byte is None:
+            return self.FRAME_BITS
+        return (instructions - self.started) // self.bit_instructions
+
+    def level(self, instructions: int) -> int:
+        """1 for mark, 0 for space. Idle is mark, which is what a terminal
+        that is not sending holds the line at - and what the ROM's samplers
+        shift in while they wait."""
+        index = self.bit_index(instructions)
+        if self.byte is None or index >= self.FRAME_BITS - 1:
+            return 1
+        if index == 0:
+            return 0
+        return (self.byte >> (index - 1)) & 1
+
+    def complete(self, instructions: int) -> bool:
+        """Whether the stop bit has been on the wire long enough to end the
+        frame. The receiver latches the character here."""
+        return self.byte is not None and self.bit_index(instructions) >= self.FRAME_BITS
+
+    def idle(self) -> None:
+        self.byte = None
