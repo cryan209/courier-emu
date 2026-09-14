@@ -168,7 +168,7 @@ UART_CLOCK_SELECT_BIT = 0x02
 INTERNAL_UART_BASE = 0x80
 INTERNAL_UART_IRQ = 0
 INTERNAL_TICK_IRQ = 0
-INTERNAL_COUNTER_IRQ = {0: (INTERNAL_TICK_IRQ, 10)}
+INTERNAL_COUNTER_IRQ = {1: (INTERNAL_TICK_IRQ, 10)}
 
 # How the host has the card's port set up before anything is typed at it.
 #
@@ -182,12 +182,13 @@ INTERNAL_COUNTER_IRQ = {0: (INTERNAL_TICK_IRQ, 10)}
 # port must be opened from the host side first, and this is what a PC driver
 # opens a modem card at: 57600, eight bits, no parity.
 #
-# 57600 rather than 9600 for a second reason, and this one is the harness's:
-# the command task re-arms the receiver about every 54,000 instructions, and a
-# re-arm mid-line resets the attention state and drops the rest of the command.
-# A five-character line at 57600 is inside that window and one at 9600 is not.
-# Whether the real window is that short depends on the board tick rate, which
-# is not recovered - see DEFAULT_COUNTER_IRQ.
+# Any divisor in the firmware's table works - the card answers at every rate
+# from 300 to 115200 - so this is only the rate a driver would pick, not a rate
+# the harness has to pick to make the thing work. It did have to, once: with
+# the tick running at the 641 Hz the 8254's clock used to be assumed to give,
+# the command task re-armed its receiver every 54,000 instructions and cut a
+# 9600-baud line in half. At the tick the firmware actually keeps that window
+# is six times wider and holds a whole line at any rate.
 HOST_DTE_DIVISOR = 2
 HOST_DTE_LCR = 0x03
 
@@ -241,11 +242,12 @@ DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
 # instead of spinning, and it reaches the most distinct code. IRQ3 stalls
 # elsewhere and IRQ6 faults.
 #
-# What that establishes is that IRQ10 carries the system tick, not that an 8254
-# counter is what raises it. The harness drives IRQ10 from counter 0 because
-# that is the periodic source it has; which device is physically wired to that
-# line is not recovered, and neither is the counter-to-line routing in general.
-DEFAULT_COUNTER_IRQ = {0: (10,)}
+# Which counter feeds it is now recovered too, and it is counter 1 rather than
+# the counter 0 this used to drive. The handler on that line is the one the
+# S-register timeouts count down in, and the firmware scales them at 100 ticks
+# to the second; counter 1's divisor is the only one of the three that gives
+# 100 Hz. See pit.CLOCK_HZ for the derivation.
+DEFAULT_COUNTER_IRQ = {1: (10,)}
 
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_IO_EVENTS = 256

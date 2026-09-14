@@ -26,13 +26,32 @@ READ_BACK = 3  # select field 0b11 is the 8254 read-back command
 
 COUNT_MODULUS = 0x10000
 
-# The counter input clock. Every other port on this board follows the PC-AT
-# layout, so the PC-AT 1.193182 MHz dot-clock derivative is the reasonable
-# default, but nothing recovered from the firmware confirms it: the divisors it
-# programs (1860, 8928, 35714) are not the round PC values, so the ISDN board
-# may well clock its 8254 from something else. Treat this as the one knob that
-# sets absolute time, and override it once a calibration is found.
-CLOCK_HZ = 1_193_182
+# The counter input clock, derived from the firmware rather than assumed.
+#
+# The divisors it programs - 1860, 8928, 35714, all mode 2 - are not the round
+# PC values, so the PC-AT 1.193182 MHz this used to assume was only ever the
+# company the rest of the board keeps. What settles it is the firmware's own
+# arithmetic on the S-registers, whose units Hayes fixes: converting each one
+# into the ticks its timers count states the tick rate outright.
+#
+#   S7  wait for carrier   seconds    x 100   0xa9a27  mov ah,0x64 ; mul ah
+#   S9  carrier detect     1/10 s     x 10    0xa9a45  mov ah,0x0a ; mul ah
+#   S12 escape guard       1/50 s     x 2     0xa50a1  shl ax,1
+#   S25 DTR delay          1/100 s    x 1     0xa61c1  stored as it is read
+#
+# Four statements, one answer: a tick is 1/100 s. Those countdowns are serviced
+# by the handler on vector 0x2a, which is IRQ10, and which is the same handler
+# that advances the free-running tick counter at [c8cb] - 0x405f8 and 0xa4690
+# execute 4,804 times each over a 20M-instruction run. So IRQ10 runs at 100 Hz,
+# and of the three divisors only 8928 gives 100 Hz, at this clock:
+#
+#   counter 0  /1860    480.000 Hz   2.0833 ms
+#   counter 1  /8928    100.000 Hz   10 ms exactly - the system tick
+#   counter 2  /35714    24.999 Hz   40 ms (35712 would be 25.000 Hz)
+#
+# The old 1.193182 MHz made the same counter 133.645 Hz, so every timeout the
+# firmware set was a third short.
+CLOCK_HZ = 892_800
 
 # The instruction clock the harness runs at. The 80186 side calibrates this from
 # the answer machine's ring qualification window; nothing equivalent has been

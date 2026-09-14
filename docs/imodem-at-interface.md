@@ -158,12 +158,15 @@ things that card needs, both of which it was missing:
   services its command port, IRQ10 is the board's own tick.  Driven on IRQ0
   alone it has a serviced port and no time base, and every delay it takes
   spins forever at `0xa45df`, which is 93% of the instructions in such a run.
-* **A DTE rate fast enough to beat the re-arm.**  The command task re-arms the
-  receiver about every 54,000 instructions, and a re-arm between two
-  characters resets the attention state and drops the rest of the line.  At
-  57600 a five-character command is inside that window; at 9600 it is not, and
-  the `CR` arrives after a re-arm and is never collected.  Whether the real
-  window is that short depends on the board tick rate, which is not recovered.
+* **A tick at the rate the firmware keeps.**  The command task re-arms its
+  receiver on a period of its own, and a re-arm between two characters resets
+  the attention state and drops the rest of the line.  With the 8254 clocked
+  at the PC-AT rate this used to assume, that period was about 54,000
+  instructions and a 9600-baud line lost its `CR` to it.  The clock is now
+  derived from the firmware instead - see `CLOCK_HZ` in courier_emu/pit.py,
+  where the S-register conversions state the tick as 1/100 s four times over -
+  and at that rate the window holds a whole line at any rate in the firmware's
+  own table, 300 through 115200.
 
 **The external unit does not autobaud the AT; the internal card does.**  A
 Courier of this era is expected to take its DTE format from the `AT` prefix.
