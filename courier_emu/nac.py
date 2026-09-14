@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from hashlib import sha256
 from pathlib import Path
 import struct
@@ -41,7 +42,7 @@ class NacFormatError(ValueError):
     """Raised when a file does not match the recovered Courier NAC layout."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NacRecord:
     """One binary Intel HEX record."""
 
@@ -61,7 +62,11 @@ class NacImage:
 
     path: Path
     data: bytes
-    records: tuple[NacRecord, ...]
+    # The file offset of every record header, in stream order. The records
+    # themselves are rebuilt from these on the first `records` access: an
+    # image holds tens of thousands, only the report command looks at them,
+    # and building them costs more than painting the flash spans does.
+    record_offsets: tuple[int, ...]
     spans: tuple[tuple[int, bytes], ...]
     start_segment: int | None
     start_offset: int | None
@@ -80,11 +85,11 @@ class NacImage:
                 f"but the file holds {expected:#x}"
             )
 
-        records: list[NacRecord] = []
-        # Physical address -> byte, painted in record order so that a later
-        # record overwrites an earlier one at the same address, as a loader
-        # walking the stream would.
-        painted: dict[int, int] = {}
+        record_offsets: list[int] = []
+        # (physical address, bytes) in record order, so that a later record
+        # overwrites an earlier one at the same address, as a loader walking
+        # the stream would.
+        chunks: list[tuple[int, bytes]] = []
         segment: int | None = None
         start: tuple[int, int] | None = None
         offset = HEADER_SIZE
@@ -101,7 +106,7 @@ class NacImage:
             body = data[offset + 4 : offset + 4 + length]
             if len(body) != length:
                 raise NacFormatError(f"truncated record body at {offset:#x}")
-            records.append(NacRecord(offset, kind, address, body))
+            record_offsets.append(offset)
             if kind == RECORD_EOF:
                 seen_eof = True
                 offset += 4 + length
@@ -123,9 +128,7 @@ class NacImage:
                     raise NacFormatError(
                         f"data record at {offset:#x} precedes any extended segment record"
                     )
-                base = segment * 16 + address
-                for index, byte in enumerate(body):
-                    painted[base + index] = byte
+                chunks.append((segment * 16 + address, body))
             else:
                 raise NacFormatError(f"unknown record type {kind:#04x} at {offset:#x}")
             offset += 4 + length
@@ -135,14 +138,14 @@ class NacImage:
             raise NacFormatError(
                 f"EOF record at {offset:#x} does not end the stream at {limit:#x}"
             )
-        if not painted:
+        if not chunks:
             raise NacFormatError("record stream carries no data records")
 
         return cls(
             source.resolve(),
             data,
-            tuple(records),
-            _coalesce(painted),
+            tuple(record_offsets),
+            _paint(chunks),
             start[0] if start else None,
             start[1] if start else None,
         )
@@ -187,6 +190,20 @@ class NacImage:
         if self.start_segment is None or self.start_offset is None:
             return None
         return self.start_segment * 16 + self.start_offset
+
+    @cached_property
+    def records(self) -> tuple[NacRecord, ...]:
+        """Every record of the stream, decoded from the offsets kept at load."""
+        data = self.data
+        return tuple(
+            NacRecord(
+                offset,
+                data[offset + 3],
+                (data[offset + 1] << 8) | data[offset + 2],
+                data[offset + 4 : offset + 4 + data[offset]],
+            )
+            for offset in self.record_offsets
+        )
 
     @property
     def data_records(self) -> tuple[NacRecord, ...]:
@@ -246,6 +263,48 @@ class NacImage:
             "entry_physical": entry,
             "trailer_undecoded": self.trailer.hex(),
         }
+
+
+def _paint(chunks: list[tuple[int, bytes]]) -> tuple[tuple[int, bytes], ...]:
+    """Lay the data records out as the contiguous spans they cover.
+
+    A NAC's records run in ascending, mostly contiguous order, so a record
+    normally just extends the span being built and the whole stream is laid
+    out in one pass. A record that writes behind a span already finished -
+    which the format permits, since a later record overwrites an earlier one -
+    gives up and paints the byte dictionary instead, which is far slower but
+    does not care what order the records arrive in.
+    """
+    spans: list[tuple[int, bytearray]] = []
+    start, run = -1, bytearray()
+    for base, body in chunks:
+        if base == start + len(run):
+            run += body
+            continue
+        if start <= base < start + len(run):
+            offset = base - start
+            run[offset:offset + len(body)] = body
+            continue
+        if any(first <= base < first + len(payload) for first, payload in spans):
+            painted: dict[int, int] = {}
+            for chunk_base, chunk in chunks:
+                for index, byte in enumerate(chunk):
+                    painted[chunk_base + index] = byte
+            return _coalesce(painted)
+        if run:
+            spans.append((start, run))
+        start, run = base, bytearray(body)
+    if run:
+        spans.append((start, run))
+
+    # Separately built spans can still meet, so join the ones that touch.
+    joined: list[tuple[int, bytearray]] = []
+    for first, payload in sorted(spans):
+        if joined and first == joined[-1][0] + len(joined[-1][1]):
+            joined[-1][1].extend(payload)
+        else:
+            joined.append((first, payload))
+    return tuple((first, bytes(payload)) for first, payload in joined)
 
 
 def _coalesce(painted: dict[int, int]) -> tuple[tuple[int, bytes], ...]:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -436,7 +435,10 @@ def _run_linked_pair(args: argparse.Namespace) -> int:
     )
     # Drain both stdout pipes concurrently.  Waiting for A before reading B
     # can deadlock once B's JSON report fills its pipe while A is blocked on
-    # the shared line socket.
+    # the shared line socket. The import is here because it pulls in logging,
+    # which no other command pays for.
+    from concurrent.futures import ThreadPoolExecutor
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         result_a = pool.submit(side_a.communicate)
         result_b = pool.submit(side_b.communicate)

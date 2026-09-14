@@ -50,13 +50,26 @@ class XmdFormatError(ValueError):
     """Raised when a file does not match the recovered Courier XMD layout."""
 
 
+# One byte translation per key value, built on first use: a block is a single
+# XOR against one key, so decoding it is a table lookup over the whole block
+# rather than a Python-level XOR per byte.
+_TABLES: dict[int, bytes] = {}
+
+
+def _table(key: int) -> bytes:
+    table = _TABLES.get(key)
+    if table is None:
+        table = _TABLES[key] = bytes(byte ^ key for byte in range(256))
+    return table
+
+
 def decode(data: bytes, first_key: int = FIRST_KEY) -> bytes:
     """Undo the chained XOR. Each block's key is the previous block's last byte."""
     body = data[HEADER_SIZE:]
     out = bytearray()
     key = first_key
     for start in range(0, len(body), BLOCK_SIZE):
-        block = bytes(byte ^ key for byte in body[start : start + BLOCK_SIZE])
+        block = body[start : start + BLOCK_SIZE].translate(_table(key))
         out += block
         key = block[-1]
     return bytes(out)

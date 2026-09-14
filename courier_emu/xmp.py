@@ -16,6 +16,9 @@ HEADER_SIZE = 0x80
 PAYLOAD_SIZE = 0xB8000
 EXPECTED_SIZE = HEADER_SIZE + PAYLOAD_SIZE
 OBFUSCATION_KEY = 0x45
+# The whole body is one XOR against that key, so it is a byte translation
+# rather than three quarters of a million Python-level XORs.
+_DEOBFUSCATE = bytes(byte ^ OBFUSCATION_KEY for byte in range(256))
 ERASED_BYTE = 0xFF
 
 # The payload begins with a far-callable dispatch stub:
@@ -63,7 +66,7 @@ class XmpImage:
             )
         if not data.startswith(MAGIC):
             raise XmpFormatError("missing USR XMP magic")
-        payload = bytes(byte ^ OBFUSCATION_KEY for byte in data[HEADER_SIZE:])
+        payload = data[HEADER_SIZE:].translate(_DEOBFUSCATE)
         if not payload.startswith(BOOT_SIGNATURE):
             raise XmpFormatError(
                 f"missing dispatch stub at payload offset 0; "
