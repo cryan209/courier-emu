@@ -1,0 +1,44 @@
+{
+  "mode": "two real Couriers, leased-line link, live capture",
+  "captured_at": "2026-09-14T23:54:47",
+  "queries": [
+    "ATI6",
+    "ATZ"
+  ],
+  "resumed": false,
+  "ends": [
+    {
+      "port": "/dev/cu.usbserial-11430",
+      "dte_baud": 115200,
+      "escape_text": "",
+      "hello": {
+        "sent": "AT",
+        "text": "AT\r\r\nOK\r\n",
+        "raw_hex": "41540d0d0a4f4b0d0a",
+        "first_byte_at": 2187615.4394
+      },
+      "lines": {
+        "DTR": true,
+        "RTS": true,
+        "CTS": false,
+        "DCD": false,
+        "RI": false,
+        "DSR": false
+      },
+      "queries": [
+        {
+          "sent": "ATI6",
+          "text": "ATI6\r\r\nUSRobotics Courier V.Everything Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   0      Octets Received               0\r\nBlocks sent                   0      Blocks Received               0\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nLast Call              00:00:00\r\n\r\nDisconnect Reason is Keypress Abort\r\nOK\r\n",
+          "raw_hex": "415449360d0d0a5553526f626f7469637320436f757269657220562e45766572797468696e67204c696e6b20446961676e6f73746963732e2e2e0d0a0d0a43686172732073656e74202020202020202020202020202020202020202030202020202020436861727320526563656976656420202020202020202020202020202020300d0a4368617273206c6f73742020202020202020202020202020202020202020300d0a4f63746574732073656e7420202020202020202020202020202020202020302020202020204f6374657473205265636569766564202020202020202020202020202020300d0a426c6f636b732073656e742020202020202020202020202020202020202030202020202020426c6f636b73205265636569766564202020202020202020202020202020300d0a426c6f636b7320726573656e742020202020202020202020202020202020300d0a0d0a5265747261696e7320526571756573746564202020202020202020202020302020202020205265747261696e73204772616e7465642020202020202020202020202020300d0a4c696e6520526576657273616c732020202020202020202020202020202030202020202020426c65727320202020202020202020202020202020202020202020202020300d0a4c696e6b2054696d656f7574732020202020202020202020202020202020302020202020204c696e6b204e616b73202020202020202020202020202020202020202020300d0a0d0a4461746120436f6d7072657373696f6e202020202020204e4f4e450d0a457175616c697a6174696f6e20202020202020202020204c6f6e670d0a46616c6c6261636b20202020202020202020202020202044697361626c65640d0a4c6173742043616c6c202020202020202020202020202030303a30303a30300d0a0d0a446973636f6e6e65637420526561736f6e206973204b657970726573732041626f72740d0a4f4b0d0a",
+          "first_byte_at": 2187616.4519
+        },
+        {
+          "sent": "ATZ",
+          "text": "ATZ\r\r\nOK\r\n",
+          "raw_hex": "41545a0d0d0a4f4b0d0a",
+          "first_byte_at": 2187617.9774
+        }
+      ]
+    }
+  ]
+}

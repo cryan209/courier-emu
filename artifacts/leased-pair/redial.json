@@ -1,0 +1,37 @@
+{
+  "mode": "two real Couriers, leased-line link, live capture",
+  "captured_at": "2026-09-14T23:56:22",
+  "queries": [
+    "ATD"
+  ],
+  "resumed": false,
+  "ends": [
+    {
+      "port": "/dev/cu.usbserial-FT4TQOFT",
+      "dte_baud": 115200,
+      "escape_text": "",
+      "hello": {
+        "sent": "AT",
+        "text": "AT\r\r\nOK\r\n",
+        "raw_hex": "41540d0d0a4f4b0d0a",
+        "first_byte_at": 2187711.9965
+      },
+      "lines": {
+        "DTR": true,
+        "RTS": true,
+        "CTS": false,
+        "DCD": false,
+        "RI": false,
+        "DSR": true
+      },
+      "queries": [
+        {
+          "sent": "ATD",
+          "text": "ATD\r",
+          "raw_hex": "4154440d",
+          "first_byte_at": 2187713.0166
+        }
+      ]
+    }
+  ]
+}
