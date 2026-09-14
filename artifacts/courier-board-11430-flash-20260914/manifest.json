@@ -1,0 +1,22 @@
+{
+  "status": "incomplete",
+  "device": "/dev/cu.usbserial-11430",
+  "baud": 115200,
+  "started_utc": "2026-09-14T07:39:37.745834+00:00",
+  "physical_start": 524288,
+  "length": 524288,
+  "page_bytes": 256,
+  "copies_required_per_page": 2,
+  "pages_verified": 0,
+  "terminal_status_counts": {},
+  "failed_attempts": [],
+  "firmware_writes": false,
+  "firmware_upload": false,
+  "assumptions": [
+    "CPU addresses 80000..fffff expose the 512 KiB flash at runtime.",
+    "Identical repeated reads establish capture consistency, not the absence of bank aliases.",
+    "DSP internal ROM is outside the scope of this CPU-memory capture."
+  ],
+  "elapsed_seconds": 0.58,
+  "error": "ValueError: unknown firmware 061-7.4.16 / 3.0.13 at 20.16 MHz; add it to TARGETS first"
+}
