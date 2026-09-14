@@ -186,63 +186,87 @@ its initialisation - and then stops. Whether it is dormant because the ASIC
 fronts the codec on this board, or because one firmware serves two hardware
 variants, is not settled here.
 
-## 3. The C52's internal mask ROM is not what the modem executes
+## 3. Corrected: the XMF payload loads at `8000`, not `0000`
 
-The open question in [dsp-rom-probe.md](dsp-rom-probe.md) was whether the
-bootstrap at DSP program `0000..0fff` is mask ROM. It is not, and the image
-says so:
+> **Superseded 2026-09-15.** This section argued that main211's DSP payload
+> occupies program `0000..75d9`, and from there that the part runs in
+> microprocessor mode with its mask ROM never mapped. The origin was wrong.
+> The supervisor names its own destination, and it says `8000`. What follows
+> is the correction; the reasoning it replaces is in git.
 
-- The firmware's own DSP payload has a segment at **origin `0x0000`** covering
-  program words `0000..75d9`. That spans the entire 4K mask-ROM window.
-- The origin is confirmed by the code, not just by a harness constant: every
-  branch is self-consistent with it. `bcnd 80c3` at `01cc` targets `00c3`, and
-  the handler chain stores `81de/81f4/820d/81a3` for code that sits at
-  `01de/01f4/020d/01a3`.
-- Program `0000` is not a vector table. It is straight-line reset code that
-  runs *through* the INT3 and TXNT vector slots, with `setc intm` at `0005`
-  disabling interrupts first:
+The origins are not a property of the container and were never measured - they
+were constants in `courier_emu/xmf.py`. The supervisor states them. Its
+download call site is the same shape a flash ROM's is,
 
-```
-0000  ldp  #000
-0001  splk @57, #ffff
-0005  setc intm
-0007  splk @2a, #0010   ; CWSR
-0009  splk @28, #000a   ; PDWSR - program/data wait states
-000b  splk @29, #0001   ; IOWSR - I/O wait states
+```asm
+mov ax, <entry>       ; the C5x program word to load at and enter
+call <reset>
+mov ax, <start>       ; first source offset
+mov cx, <end>         ; one past the last
+call <downloader>
 ```
 
-- Programming wait states is only meaningful for **external** memory. On-chip
-  memory needs none.
+and the further images come from the table the loader indexes with
+`mov bl, 6 ; mul bl ; mov bx, <base>`. Read out of the images themselves:
 
-Taken together: the C52 runs in microprocessor mode with external program
-memory, its reset vector included. The mask ROM is never mapped, so it holds
-no boot loader the modem uses, and the download must be the 80186 writing
-external DSP program RAM while the DSP is held in reset - the alternative that
-document raised and could not choose.
+| row | 2.1.1 / 2.2.05 | 2.3.12 / 2.3.33 |
+|---|---|---|
+| resident | `8000`, 30,170 words | `1000`, 26,080 words |
+| 6 | `9d00` | `1dc9` |
+| 7 | `af50` / `af00` | **`0000`**, 4,090 words |
+| 8 | `dc00` | `5cb0` |
 
-The practical consequence is the useful one: **the DSP program is not missing.**
-All of `0000..75d9`, `8000..d9ef` and the `de83` overlay come from the flash
-image already captured. There is nothing behind a mask-ROM protection bit that
-the modem itself executes.
+So the 3453B series occupies `8000..ffff` - the board's two `CY7C199` parts,
+32K words of external program RAM - and touches nothing below `8000`. The
+3453C series occupies `0000..7fff` instead, one image loading at program
+`0000`.
 
-There is a stronger test than any of the above, and it was already in the runs.
-The bridge does not assume the transfer: it accumulates the supervisor's actual
-download stream and compares it against the image. Every answered-call run
-reports `bootstrap_match: true` at `bootstrap_bytes: 60344` - 30,172 words, the
-whole origin-`0x0000` segment. The supervisor really does transfer code whose
-content is `0x0000`-origin, spanning the entire 4K mask-ROM window, so program
-`0000..0fff` is written by the CPU and is therefore RAM.
+The branch evidence reads the other way round once the origin is right. At
+`81cc` the instruction is `bcnd 81cf` and it targets the `bit 15, @7f` that
+follows it; `lacc #81de` at `81c3` names the handler at `81de`. At origin
+`8000` those are literal addresses. The superseded reading placed the same code
+at `01cc` and had to strip bit 15 off every branch target in the segment - all
+of them, with not one target below `8000` anywhere in the payload.
 
-That matters because the DSP is custom-marked `(C) US ROBOTICS`, which is
-exactly what a mask-ROM part looks like, and the arguments above - branch
-targets, wait states, code running through the vector slots - would all read
-the same way if the low words were mask ROM that the flash image merely carries
-a copy of. The download stream is what discriminates.
+The wait-state argument survives, and says less than it appeared to. The reset
+code does program external timing:
 
-None of this is a readout. It does not say what is physically on the die, and
-it does not rule out mask ROM contents that are simply never mapped. What it
-does rule out is the worry that drove the probe work: that some of the running
-DSP code is unavailable.
+```
+8000  ldp  #000
+8001  splk @57, #ffff
+8005  setc intm
+8007  splk @2a, #0010   ; CWSR
+8009  splk @28, #000a   ; PDWSR - program/data wait states
+800b  splk @29, #0001   ; IOWSR - I/O wait states
+```
+
+(2.3.x writes `2000` and `0101` to the same two registers, and adds an
+`out @53, 8057` ahead of everything.) External memory is certainly in the map -
+the 32K of RAM this code runs from is external. That is no longer evidence
+about `0000..1fff`, because the firmware never addresses it.
+
+`bootstrap_match: true` at `bootstrap_bytes: 60344` still holds, and still
+means the supervisor transfers exactly the resident row. It never said where
+the words land; the destination goes to ports `40`/`42` from the call site
+above, and that is the `8000` the row names.
+
+### What this leaves
+
+The 3453B payload is consistent with the 'C51 measured on the 2806 board:
+`0000..1fff` is the part's 8K mask ROM, holding the service loader at `0610`
+that performs the `BLDP` writes, and the download fills the external RAM above
+it. See [the download architecture](c51-cpu-loader.md) and
+[board.md](board.md#which-dsp-a-c51-measured).
+
+The 3453C payload is not. It loads program words at `0000` and runs its
+resident from `1000`, both inside the window a 'C51 in microcomputer mode
+answers from mask ROM, where nothing is writable and no loader survives. Those
+images need external program memory from `0000` - a different part or a
+different `MP/MC` - and no board running them has been probed here.
+
+Nothing above is a readout of the die, and the mask ROM's contents are
+recovered separately in
+[dsp-rom-content-analysis.md](dsp-rom-content-analysis.md).
 
 ### Still unavailable
 

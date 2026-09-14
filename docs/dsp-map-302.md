@@ -262,12 +262,21 @@ document already made, now measured.
 
 ### The window applies to the ROM images, not to every image
 
-`main211.xmf` presents a first segment at origin `0x0000` *and* one at
-`0x8000`, and which of those is its real payload is the unresolved question at
-the end of this document. For an image like that the harness cannot say where
-the board's RAM sits, so `NativeC5x` switches the window off when any program
-segment origin is below `0x8000`, and that image's data space behaves exactly
-as it did before the window existed. Turning it on for `main211` regressed its
+> **Corrected 2026-09-15.** `main211.xmf` presents no segment below `0x8000`.
+> Its supervisor's overlay table puts every row at `8000`, `9d00`, `af50` and
+> `dc00`; the `0x0000` origin was a harness constant. The question below is
+> therefore moot for the 2.1/2.2 images, and the window stays on for them. It
+> is the 2.3.x XMFs that load low - resident at `1000`, one overlay at `0000` -
+> and switch it off. See
+> [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000).
+
+`main211.xmf` was read as presenting a first segment at origin `0x0000` *and*
+one at `0x8000`, and which of those was its real payload is the unresolved
+question at the end of this document. For an image like that the harness cannot
+say where the board's RAM sits, so `NativeC5x` switches the window off when any
+program segment origin is below `0x8000`, and that image's data space behaves
+exactly as it did before the window existed. Turning it on for `main211`
+regressed its
 call-overlay run to the point of never arming `IMR`.
 
 So the window is a fact established for the 20.16 MHz ROM downloads, whose
@@ -359,9 +368,12 @@ repeat counts at the aliased `0x001d`/`0x0024`/`0x0028`, and the same `idle` at
 `0x814d` once a branch to an absolute `0x8xxx` label carries it up.
 
 That reading - **`0x8000` and `0x0000` being the same cell** - is the second of
-the two possibilities this section raised, and it would dissolve the
+the two possibilities this section raised, and it was offered as dissolving the
 `main211.xmf` problem: a segment placed at origin `0x0000` whose code is linked
 for `0x8000` is no contradiction on a board that decodes fifteen address lines.
+The problem dissolved the other way instead. The segment is at `0x8000`, the
+code is linked for `0x8000`, and no alias is needed to reconcile them - so this
+is no longer evidence for one.
 
 ### The vector base is what argues against it, not the RAM
 

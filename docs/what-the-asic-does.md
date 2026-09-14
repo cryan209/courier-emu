@@ -60,13 +60,12 @@ panel and the line relay.
 
 ### 2. It bootstraps the DSP
 
-The C52's program memory is **RAM**, not mask ROM: the supervisor's own
-download stream matches the flash image's origin-`0x0000` segment byte for
-byte, all 30,172 words - `bootstrap_match: true` at `bootstrap_bytes: 60344` in
-every answered-call run. That covers program `0000..0fff`, the whole window a
-C52's internal ROM would occupy, so the part runs in microprocessor mode and the
-mask ROM is not what executes
-([hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md)).
+The DSP's program memory above `0x8000` is **RAM**: the supervisor's own
+download stream matches the image's resident segment byte for byte, all 30,172
+words - `bootstrap_match: true` at `bootstrap_bytes: 60344` in every
+answered-call run. It says nothing about `0000..1fff`, which this firmware
+never addresses and the board answers from the C51's mask ROM
+([hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000)).
 
 The transfer goes through `0x40`-`0x4e`, strobed thousands of times while the
 C52 is held in reset. So the ASIC is what holds the DSP in reset and writes its

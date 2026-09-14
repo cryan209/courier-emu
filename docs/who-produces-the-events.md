@@ -348,8 +348,12 @@ courier-board.rom   origin 8000 words 28327
 main211.xmf         origin 0000 words 30170 | origin de83 words 2478 | origin 8000 words 23024
 ```
 
-An update payload carries a segment at origin `0x0000`; a flash image, as this
-harness slices it, carries only the `0x8000` bank. The C5x fetches its vectors
+That listing is stale: the harness sliced the XMF at constants rather than at
+what its supervisor says. Both carry only high banks.
+
+> **Corrected 2026-09-15.** The `0x0000` origin was a constant in `courier_emu/xmf.py`, not a measurement. The supervisor's download call site names `8000`, and its overlay table puts the 2.1/2.2 rows at `8000`, `9d00`, `af50` and `dc00` - so an XMF has no low block either, and agrees with the ROMs. See [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000).
+
+ The C5x fetches its vectors
 from low program memory, so IRQ 5 vectors into memory that was never
 populated and the core runs away instead of servicing anything.
 
@@ -365,9 +369,9 @@ boards all four enter high:
 | 7 | `0xb000` | 7498 / 7499 |
 | 8 | `0xdc00` | 7498 / 7350 |
 
-**None at `0x0000`.** An XMF payload has an origin-`0x0000` segment; a ROM has
-nothing there. So an earlier revision of this note was wrong to call the low
-block "missing": there is none to find. The resident bank is the program, it is
+**None at `0x0000`** - and none in an XMF either, once its own overlay table
+is read instead of the harness constants. An earlier revision called the low
+block "missing"; there is none to find. The resident bank is the program, it is
 loaded into the C52's program RAM at `0x8000`, and its vectors are at its own
 base.
 

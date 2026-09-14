@@ -3,20 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+import re
 import struct
 
 
 HEADER_SIZE = 0x200
 SUPERVISOR_OFFSET = 0x1B5E0
-DSP_BOOT_OFFSET = 0x2F0
-DSP_BOOT_SIZE = 0xEBB4
-DSP_BOOT_ORIGIN = 0x0000
-DSP_OVERLAY_OFFSET = DSP_BOOT_OFFSET + DSP_BOOT_SIZE
-DSP_OVERLAY_SIZE = 0x135C
-DSP_OVERLAY_ORIGIN = 0xDE83
-DSP_RESIDENT_OFFSET = DSP_OVERLAY_OFFSET + DSP_OVERLAY_SIZE
-DSP_RESIDENT_SIZE = SUPERVISOR_OFFSET - DSP_RESIDENT_OFFSET
-DSP_RESIDENT_ORIGIN = 0x8000
 FLASH_PHYSICAL_BASE = 0x40000
 EXPECTED_SIZE = 0xB8000
 ENTRY_SIGNATURE = bytes.fromhex("bd0b00e96411")
@@ -24,9 +16,70 @@ BOOT_SIGNATURE = bytes.fromhex("b800108ed033c08ed88ec0bec002")
 ENTRY_SEGMENT = (FLASH_PHYSICAL_BASE + SUPERVISOR_OFFSET) >> 4
 ENTRY_OFFSET = 0x410
 
+# The DSP program area is not one flat load, and its origins are not a
+# property of the container: the supervisor names them. It requests a
+# destination through the same instructions a flash ROM's supervisor uses -
+#
+#     mov ax, <entry>     ; the C5x program word to load at and enter
+#     call <reset>
+#     mov ax, <start>     ; first source offset in the window below
+#     mov cx, <end>       ; one past the last
+#     call <downloader>
+#
+# and, inside the downloader, `mov ax, <segment> ; mov es, ax`. The further
+# images come from a table the loader indexes - `mov bl, 6 ; mul bl ;
+# mov bx, <base>` - whose rows are start, end and destination, with the source
+# segment chosen by comparing the index against 6, 7 and 8 and falling through
+# to the resident's.
+#
+# This is read rather than assumed because the two XMF families disagree about
+# it. 2.1.1 and 2.2.05 place every image in `8000..ffff`; 2.3.x places them in
+# `0000..7fff`, including one that loads at program `0000`. A fixed set of
+# origins recovered from one of them silently mislocates the other, and an
+# origin is what decides whether a branch target needs bit 15 masked off.
+DSP_CALL_SITE = re.compile(rb"\xb8(..)\xe8(..)\xb8(..)\xb9(..)\xe8(..)", re.S)
+DSP_SOURCE_WINDOW = re.compile(rb"\xb8(..)\x8e\xc0", re.S)
+DSP_OVERLAY_TABLE = re.compile(rb"\xb3(.)\xf6\xe3\xbb(..)", re.S)
+DSP_OVERLAY_SEGMENT = re.compile(rb"\xb8(..)\x83\xfb(.)\x74", re.S)
+DSP_DOWNLOADER_WINDOW = 0x120
+DSP_OVERLAY_WIDTH = 6
+CODE_SEGMENT_SIZE = 0x10000
+
+
+_SEGMENTS: dict[str, tuple["DspSegment", ...]] = {}
+
 
 class XmfFormatError(ValueError):
     """Raised when a file does not match the recovered Courier XMF layout."""
+
+
+@dataclass(frozen=True)
+class DspSegment:
+    """One image the supervisor downloads, as its own code describes it."""
+
+    index: int
+    origin: int
+    file_offset: int
+    size: int
+    resident: bool
+
+    @property
+    def end(self) -> int:
+        return self.file_offset + self.size
+
+    @property
+    def words(self) -> int:
+        return self.size // 2
+
+    def describe(self) -> dict[str, object]:
+        return {
+            "index": self.index,
+            "origin": self.origin,
+            "file_offset": self.file_offset,
+            "size": self.size,
+            "words": self.words,
+            "resident": self.resident,
+        }
 
 
 @dataclass(frozen=True)
@@ -101,12 +154,117 @@ class XmfImage:
     def dsp_words(self) -> tuple[int, ...]:
         return struct.unpack(f"<{self.dsp_word_count}H", self.dsp)
 
+    def _resident_call_site(self) -> tuple[int, int, int] | None:
+        """The resident download's source segment, file offset and length.
+
+        A supervisor calls the downloader from several places - these images
+        match five times - so the candidates are compared on what they say
+        about the payload rather than on where they were found, and a
+        disagreement is refused rather than chosen between.
+        """
+        head = self.supervisor[:CODE_SEGMENT_SIZE]
+        candidates: set[tuple[int, int, int, int]] = set()
+        for match in DSP_CALL_SITE.finditer(head):
+            entry, _, start, end, _ = (
+                struct.unpack("<H", match[index])[0] for index in range(1, 6)
+            )
+            if end <= start or (end - start) % 2:
+                continue
+            target = (match.start(5) + 2 + struct.unpack("<h", match[5])[0]) & 0xFFFF
+            window = DSP_SOURCE_WINDOW.search(
+                head[target : target + DSP_DOWNLOADER_WINDOW]
+            )
+            if window is None:
+                continue
+            segment = struct.unpack("<H", window[1])[0]
+            offset = (segment << 4) - FLASH_PHYSICAL_BASE + start
+            length = end - start
+            if offset < HEADER_SIZE or offset + length > self.supervisor_offset:
+                continue
+            candidates.add((segment, offset, length, entry))
+        if not candidates:
+            return None
+        if len(candidates) > 1:
+            raise XmfFormatError(
+                "the DSP download call site matched with conflicting parameters; "
+                "refusing to choose between them"
+            )
+        return candidates.pop()
+
+    def dsp_segments(self) -> tuple[DspSegment, ...]:
+        """Every image the supervisor downloads, resident first.
+
+        The resident is one row of the overlay table, so that is checked rather
+        than asserted: if no row reproduces what the download call site
+        independently says, the table was not found and only the resident is
+        returned. The table's length is not marked and rows past its end still
+        look like plausible ranges, so a row is kept only when the loader has a
+        source segment for its index.
+        """
+        cached = _SEGMENTS.get(self.digest)
+        if cached is not None:
+            return cached
+        call_site = self._resident_call_site()
+        if call_site is None:
+            raise XmfFormatError(
+                "no DSP download call site found; this image's C5x payload "
+                "cannot be located, so its program origins are unknown"
+            )
+        source_segment, offset, length, entry = call_site
+        resident = DspSegment(-1, entry, offset, length, True)
+        found: list[DspSegment] = []
+        head = self.supervisor[:CODE_SEGMENT_SIZE]
+        table = DSP_OVERLAY_TABLE.search(head)
+        if table is not None and table[1][0] == DSP_OVERLAY_WIDTH:
+            base = struct.unpack("<H", table[2])[0]
+            sources = {
+                match[2][0]: struct.unpack("<H", match[1])[0]
+                for match in DSP_OVERLAY_SEGMENT.finditer(
+                    head[table.end() : table.end() + DSP_DOWNLOADER_WINDOW]
+                )
+            }
+            for index in range(0x10):
+                row = base + DSP_OVERLAY_WIDTH * index
+                if row + DSP_OVERLAY_WIDTH > len(head):
+                    break
+                start, end, origin = struct.unpack_from("<3H", head, row)
+                source = sources.get(index)
+                if source is None:
+                    continue
+                row_offset = (source << 4) - FLASH_PHYSICAL_BASE + start
+                row_length = end - start
+                if row_length <= 0 or row_length % 2:
+                    continue
+                if (
+                    row_offset < HEADER_SIZE
+                    or row_offset + row_length > self.supervisor_offset
+                ):
+                    continue
+                found.append(
+                    DspSegment(index, origin, row_offset, row_length, False)
+                )
+            # The resident is the fall-through row: the one with no source
+            # segment of its own, matching what the call site already said.
+            for index in range(0x10):
+                row = base + DSP_OVERLAY_WIDTH * index
+                if row + DSP_OVERLAY_WIDTH > len(head):
+                    break
+                if index in sources:
+                    continue
+                start, end, origin = struct.unpack_from("<3H", head, row)
+                row_offset = (source_segment << 4) - FLASH_PHYSICAL_BASE + start
+                if (row_offset, end - start, origin) == (offset, length, entry):
+                    resident = DspSegment(index, entry, offset, length, True)
+                    break
+        segments = (resident, *found)
+        _SEGMENTS[self.digest] = segments
+        return segments
+
     def dsp_program_segments(self) -> tuple[tuple[int, bytes], ...]:
-        """Return the recovered C52 program-memory origin and bytes for each segment."""
-        return (
-            (DSP_BOOT_ORIGIN, self.data[DSP_BOOT_OFFSET:DSP_OVERLAY_OFFSET]),
-            (DSP_OVERLAY_ORIGIN, self.data[DSP_OVERLAY_OFFSET:DSP_RESIDENT_OFFSET]),
-            (DSP_RESIDENT_ORIGIN, self.data[DSP_RESIDENT_OFFSET:self.supervisor_offset]),
+        """Return the C5x program-memory origin and bytes for each segment."""
+        return tuple(
+            (segment.origin, self.data[segment.file_offset : segment.end])
+            for segment in self.dsp_segments()
         )
 
     @property
@@ -166,17 +324,7 @@ class XmfImage:
             "dsp_size": len(self.dsp),
             "dsp_words": self.dsp_word_count,
             "dsp_program_segments": [
-                {
-                    "origin": origin,
-                    "file_offset": file_offset,
-                    "size": len(segment),
-                    "words": len(segment) // 2,
-                }
-                for (origin, segment), file_offset in zip(
-                    self.dsp_program_segments(),
-                    (DSP_BOOT_OFFSET, DSP_OVERLAY_OFFSET, DSP_RESIDENT_OFFSET),
-                    strict=True,
-                )
+                segment.describe() for segment in self.dsp_segments()
             ],
             "supervisor_offset": self.supervisor_offset,
             "supervisor_size": len(self.supervisor),

@@ -139,12 +139,16 @@ class NativeC5x:
             origins = [origin for origin, _ in image.dsp_program_segments()]
             # The board's external RAM answers both spaces at 0x8000-0xfeff,
             # but that is only usable for an image whose program is actually
-            # linked there. main211.xmf offers a segment at origin 0x0000 as
-            # well, and which of its two is the real payload is unresolved, so
-            # the window is switched off rather than guessed at.
+            # linked there. The 2.1/2.2 XMFs are: their supervisor's table puts
+            # every image in 8000..ffff. The 2.3 XMFs put theirs in 0000..7fff,
+            # so for those the window is switched off rather than mislaid.
             if origins and min(origins) < SHARED_WINDOW[0]:
                 self.library.courier_c5x_set_shared_window(self.handle, 0xFFFF, 0x0000)
-            for origin, segment in image.dsp_program_segments():
+            # Only the resident is present at reset. The supervisor downloads
+            # it and nothing else; the overlays land later, over the top of it,
+            # through the loader the ASIC bridge drives. Preloading them here
+            # would overwrite resident code the part is still executing.
+            for origin, segment in image.dsp_program_segments()[:1]:
                 storage = (ctypes.c_uint8 * len(segment)).from_buffer_copy(segment)
                 error = ctypes.create_string_buffer(512)
                 result = self.library.courier_c5x_load_program(
@@ -724,6 +728,16 @@ def run_dsp(
     command = [
         str(runner),
         str(image.path),
+        # The resident alone, as at reset. An overlay only reaches the DSP
+        # once the running resident asks the supervisor for it.
+        *[
+            argument
+            for segment in image.dsp_segments()[:1]
+            for argument in (
+                "--segment",
+                f"{segment.file_offset}:{segment.size}:{segment.origin}",
+            )
+        ],
         "--instructions",
         str(instructions),
         "--trace",

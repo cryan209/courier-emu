@@ -1382,17 +1382,29 @@ the two strobes, which is what 302's `bldp` from data `0x80f5` needs.
 > DMA**, and applies to a DMA master reaching the SARAM - not to the CPU's own
 > program and data addressing.
 
-### Its program memory is RAM
+### Its program memory is RAM, above `0x8000`
 
 The bridge does not assume the transfer: it accumulates the supervisor's actual
 download stream and compares it against the image. Every run reports
 `bootstrap_match: true` at `bootstrap_bytes: 60344` - 30,172 words, the whole
-origin-`0x0000` segment covering program `0000..75d9`.
+resident segment.
 
-So the supervisor transfers 30k words of `0x0000`-origin code spanning the entire
-mask-ROM window. **Program `0000..0fff` is written by the CPU, so it is external
-RAM**, and the part runs in microprocessor mode. Whether the die also carries a
-mask ROM that is simply never mapped is not something this can say.
+> **Corrected 2026-09-15.** That segment's origin is `0x8000`, not `0x0000`,
+> so this says nothing about the mask-ROM window. `0x0000` was a constant in
+> `courier_emu/xmf.py`; the supervisor's own download call site names the
+> destination it requests, and for 2.1.1 and 2.2.05 that is `8000`, with the
+> overlay table's other rows at `9d00`, `af50` and `dc00`. Every branch target
+> in the payload has bit 15 set, which at origin `8000` needs no explaining and
+> at origin `0000` needed masking off. The download match is a content match;
+> it never located the words. See
+> [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000).
+
+So the supervisor transfers 30k words into the external RAM at `0x8000` and
+addresses nothing below it - which is what a part whose low 8K is mask ROM
+requires, and agrees with the `MP/MC`-low measurement in
+[which DSP: a 'C51, measured](#which-dsp-a-c51-measured). The 2.3.x XMFs are
+the ones that do not fit it: their table loads at `1000`, with one row at
+program `0000`.
 
 The two `CY7C199-15VC` give 64 KB = **32K words, exactly `0x8000`-`0xffff`** - the
 range the supervisor's downloads fill (`0x8000`-`0xf8b5` on 302, `0x8000`-`0xf949`

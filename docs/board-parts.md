@@ -416,8 +416,10 @@ mask-ROM part looks like, so that argument deserved a better test than it had.
 There is one, and it was already in the runs. The bridge does not assume the
 transfer: it accumulates the supervisor's actual download stream and compares
 it against the image. Every run reports `bootstrap_match: true` at
-`bootstrap_bytes: 60344` - 30,172 words, the whole origin-`0x0000` segment
-covering program `0000..75d9`.
+`bootstrap_bytes: 60344` - 30,172 words, the whole resident segment.
+
+> **Corrected 2026-09-15.** The `0x0000` origin was a constant in `courier_emu/xmf.py`, not a measurement. The supervisor's download call site names `8000`, and its overlay table puts the 2.1/2.2 rows at `8000`, `9d00`, `af50` and `dc00` - so an XMF has no low block either, and agrees with the ROMs. See [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000).
+
 
 So the supervisor really does transfer 30k words whose content is
 `0x0000`-origin code, spanning the entire 4K mask-ROM window. Program

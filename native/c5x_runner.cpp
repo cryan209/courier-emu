@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <deque>
+#include <array>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -54,9 +55,11 @@ int main(int argc, char **argv)
         if (argc < 2) throw std::runtime_error(
             "usage: c5x_runner IMAGE [--offset N] [--bytes N] [--instructions N] [--trace N]");
         std::string path = argv[1];
-        uint64_t offset = 0x2f0, byte_count = 0xebb4;
-        uint64_t overlay_offset = 0xeea4, overlay_byte_count = 0x135c;
-        uint64_t high_offset = 0x10200, high_byte_count = 0xb3e0;
+        // The image's own supervisor names every segment, so the caller
+        // passes them in as --segment OFFSET:BYTES:ORIGIN. Nothing here knows
+        // a layout: 2.1/2.2 load at 8000 and up, 2.3 at 0000..7fff, and a
+        // default recovered from either one mislocates the other.
+        std::vector<std::array<uint64_t, 3>> segments;
         uint64_t limit = 1'000'000, trace_start = 0, trace_count = 0;
         uint64_t force_pc_after = UINT64_MAX;
         uint16_t force_pc = 0;
@@ -75,14 +78,23 @@ int main(int argc, char **argv)
                 seeded_ports.emplace_back(uint16_t(port), uint16_t(port_value));
                 continue;
             }
+            if (option == "--segment") {
+                std::string field = argument;
+                auto first = field.find(':');
+                auto second = field.find(':', first == std::string::npos ? first : first + 1);
+                if (first == std::string::npos || second == std::string::npos)
+                    throw std::runtime_error("segment must be OFFSET:BYTES:ORIGIN");
+                auto segment_offset = number(field.substr(0, first).c_str());
+                auto segment_bytes = number(field.substr(first + 1, second - first - 1).c_str());
+                auto segment_origin = number(field.substr(second + 1).c_str());
+                if (segment_bytes & 1) throw std::runtime_error("DSP byte count must be even");
+                if (segment_bytes / 2 > 65536) throw std::runtime_error("DSP image exceeds 64K words");
+                if (segment_origin > 0xffff) throw std::runtime_error("segment origin exceeds 16 bits");
+                segments.push_back({segment_offset, segment_bytes, segment_origin});
+                continue;
+            }
             uint64_t value = number(argument);
-            if (option == "--offset") offset = value;
-            else if (option == "--bytes") byte_count = value;
-            else if (option == "--overlay-offset") overlay_offset = value;
-            else if (option == "--overlay-bytes") overlay_byte_count = value;
-            else if (option == "--high-offset") high_offset = value;
-            else if (option == "--high-bytes") high_byte_count = value;
-            else if (option == "--instructions") limit = value;
+            if (option == "--instructions") limit = value;
             else if (option == "--trace-start") trace_start = value;
             else if (option == "--trace") trace_count = value;
             else if (option == "--force-pc") {
@@ -92,43 +104,32 @@ int main(int argc, char **argv)
             else if (option == "--force-pc-after") force_pc_after = value;
             else throw std::runtime_error("unknown option: " + option);
         }
-        if ((byte_count | overlay_byte_count | high_byte_count) & 1)
-            throw std::runtime_error("DSP byte count must be even");
-        if (byte_count / 2 > 65536) throw std::runtime_error("DSP image exceeds 64K words");
+        if (segments.empty()) throw std::runtime_error("no --segment given");
 
         std::ifstream input(path, std::ios::binary);
         if (!input) throw std::runtime_error("cannot open image: " + path);
         input.seekg(0, std::ios::end);
         uint64_t size = uint64_t(input.tellg());
-        if (offset + byte_count > size || overlay_offset + overlay_byte_count > size ||
-            high_offset + high_byte_count > size)
-            throw std::runtime_error("DSP range is outside image");
-        input.seekg(std::streamoff(offset));
-        std::vector<unsigned char> bytes(byte_count);
-        input.read(reinterpret_cast<char *>(bytes.data()), std::streamsize(bytes.size()));
-        if (!input) throw std::runtime_error("short read from image");
-        std::vector<uint16_t> words(byte_count / 2);
-        for (std::size_t i = 0; i < words.size(); ++i)
-            words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
-        input.seekg(std::streamoff(overlay_offset));
-        bytes.resize(overlay_byte_count);
-        input.read(reinterpret_cast<char *>(bytes.data()), std::streamsize(bytes.size()));
-        if (!input) throw std::runtime_error("short read from DSP overlay segment");
-        std::vector<uint16_t> overlay_words(overlay_byte_count / 2);
-        for (std::size_t i = 0; i < overlay_words.size(); ++i)
-            overlay_words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
-        input.seekg(std::streamoff(high_offset));
-        bytes.resize(high_byte_count);
-        input.read(reinterpret_cast<char *>(bytes.data()), std::streamsize(bytes.size()));
-        if (!input) throw std::runtime_error("short read from high DSP segment");
-        std::vector<uint16_t> high_words(high_byte_count / 2);
-        for (std::size_t i = 0; i < high_words.size(); ++i)
-            high_words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
 
         courier::C5xCore core;
-        core.load_program(words.data(), words.size());
-        core.load_program(overlay_words.data(), overlay_words.size(), 0xde83);
-        core.load_program(high_words.data(), high_words.size(), 0x8000);
+        // Segments are loaded in the order given and the part enters the
+        // first. Overlays land over the top of resident code, so pass one only
+        // when that is the state being probed: at reset the board has
+        // downloaded the resident and nothing else.
+        for (const auto &segment : segments) {
+            auto [segment_offset, segment_bytes, segment_origin] = segment;
+            if (segment_offset + segment_bytes > size)
+                throw std::runtime_error("DSP range is outside image");
+            input.seekg(std::streamoff(segment_offset));
+            std::vector<unsigned char> bytes(segment_bytes);
+            input.read(reinterpret_cast<char *>(bytes.data()), std::streamsize(bytes.size()));
+            if (!input) throw std::runtime_error("short read from image");
+            std::vector<uint16_t> words(segment_bytes / 2);
+            for (std::size_t i = 0; i < words.size(); ++i)
+                words[i] = uint16_t(bytes[i * 2] | (uint16_t(bytes[i * 2 + 1]) << 8));
+            core.load_program(words.data(), words.size(), uint16_t(segment_origin));
+        }
+        core.set_pc(uint16_t(segments.front()[2]));
         for (auto [port, value] : seeded_ports) core.set_io(port, value);
         std::deque<uint16_t> recent;
         std::string status = "instruction-limit", error;
@@ -156,13 +157,10 @@ int main(int argc, char **argv)
         std::cout << "{\n"
                   << "  \"status\": \"" << status << "\",\n"
                   << "  \"error\": \"" << escape_json(error) << "\",\n"
-                  << "  \"loaded_offset\": " << offset << ",\n"
-                  << "  \"loaded_bytes\": " << byte_count << ",\n"
-                  << "  \"loaded_words\": " << words.size() << ",\n"
-                  << "  \"overlay_loaded_offset\": " << overlay_offset << ",\n"
-                  << "  \"overlay_loaded_words\": " << overlay_words.size() << ",\n"
-                  << "  \"high_loaded_offset\": " << high_offset << ",\n"
-                  << "  \"high_loaded_words\": " << high_words.size() << ",\n"
+                  << "  \"resident_offset\": " << segments.front()[0] << ",\n"
+                  << "  \"resident_bytes\": " << segments.front()[1] << ",\n"
+                  << "  \"resident_origin\": \"" << hex16(uint16_t(segments.front()[2])) << "\",\n"
+                  << "  \"segments\": " << segments.size() << ",\n"
                   << "  \"instructions\": " << state.instructions << ",\n"
                   << "  \"cycles\": " << state.cycles << ",\n"
                   << "  \"pc\": \"" << hex16(state.pc) << "\",\n"

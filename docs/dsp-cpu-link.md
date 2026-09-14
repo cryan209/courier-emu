@@ -371,9 +371,11 @@ routine: the ISR that clears `@6b` is at `0x8188`, ends in `rete`, and reads
 | 7 | `0xb000` | 7498 / 7499 |
 | 8 | `0xdc00` | 7498 / 7350 |
 
-**None at `0x0000`.** An XMF payload carries an origin-`0x0000` segment; a ROM
-carries nothing there, so an earlier reading calling the low block "missing" was
-wrong - there is none to find. With `iptr` zero the core's own vectoring sends
+**None at `0x0000`**, in a ROM or an XMF alike.
+
+> **Corrected 2026-09-15.** The `0x0000` origin was a constant in `courier_emu/xmf.py`, not a measurement. The supervisor's download call site names `8000`, and its overlay table puts the 2.1/2.2 rows at `8000`, `9d00`, `af50` and `dc00` - so an XMF has no low block either, and agrees with the ROMs. See [hardware-timebase-and-audio-path.md](hardware-timebase-and-audio-path.md#3-corrected-the-xmf-payload-loads-at-8000-not-0000).
+
+ With `iptr` zero the core's own vectoring sends
 IRQ 5 to `(5 + 1) << 1` = `0x000c`, unloaded memory, which is exactly where the
 woken core was seen to run away. The same slot above a `0x8000` base is `0x800c`.
 `_configure_frame_interrupt` now arms IRQ 5 at `origin + 0x0c` for any image

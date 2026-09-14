@@ -30,7 +30,7 @@ from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .timebase import DEFAULT_COURIER, Timebase
 from .sip import PolyphaseResampler, SipSession
-from .xmf import DSP_BOOT_SIZE, XmfImage
+from .xmf import XmfImage
 
 
 DSP_COMMAND_PORT = 0x1E
@@ -127,6 +127,8 @@ class LineToCodec(Resampler):
 
 
 C50_TDM_IRQ = 7
+# A word offset into the resident segment, not an absolute program address:
+# the 2.1/2.2 resident loads at 8000, so the handler is at 8228.
 C50_TDM_ISR = 0x0228
 C50_TDM_ISR_SIGNATURE = bytes.fromhex("ffbd5208b0bf030090bf")
 # Call overlay 7 is stored at b9c0 with branches already linked for c418. The
@@ -378,12 +380,10 @@ class CourierDspBridge:
             # arrived. There is no shorter resident bootstrap to recognize.
             self.bootstrap_target_size = len(self.expected_bootstrap)
         else:
-            # The 2.3 supervisor downloads the shorter 0xcbc0-byte resident
-            # bootstrap; the 2.1/2.2 supervisors transfer the full segment.
-            self.bootstrap_target_size = (
-                0xCBC0 if getattr(image, "supervisor_offset", 0) == 0x17BB0
-                else DSP_BOOT_SIZE
-            )
+            # The resident row of the supervisor's own overlay table gives the
+            # length it transfers, which differs by family: 0xebb4 bytes on
+            # 2.1/2.2, 0xcbc0 on 2.3. Neither is a container constant.
+            self.bootstrap_target_size = len(self.expected_bootstrap)
         # Match the measured 20.16 MHz DSP payloads, not unrelated 25 MHz
         # ROMs or XMF images whose customer mask ROM has not been captured.
         self.boot_rom_enabled = sha256(self.expected_bootstrap).hexdigest() in {
@@ -995,7 +995,9 @@ class CourierDspBridge:
                 C50_TDM_ISR * 2 : C50_TDM_ISR * 2 + len(C50_TDM_ISR_SIGNATURE)
             ] == C50_TDM_ISR_SIGNATURE
         ):
-            self.core.configure_line_frame_interrupt(C50_TDM_IRQ, C50_TDM_ISR)
+            self.core.configure_line_frame_interrupt(
+                C50_TDM_IRQ, self.image.dsp_program_segments()[0][0] + C50_TDM_ISR
+            )
             return
         origin = self.image.dsp_program_segments()[0][0]
         if hasattr(self.core, "configure_line_frame_interrupt") and origin:
