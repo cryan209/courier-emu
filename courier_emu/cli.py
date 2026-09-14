@@ -1577,8 +1577,6 @@ def main(argv: list[str] | None = None) -> int:
                     {"instructions": count, "direction": direction, "text": text}
                     for count, direction, text in transcript
                 ]
-            if args.leds:
-                _print_leds(result)
             if args.terminal and args.report:
                 # stdout is the serial stream in this mode, so an explicitly
                 # requested report goes beside it rather than into it.
