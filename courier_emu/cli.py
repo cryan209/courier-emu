@@ -66,7 +66,7 @@ DEFAULT_ISDN_INSTRUCTIONS = 20_000_000
 # hours of emulated execution.
 CONSOLE_INSTRUCTIONS = 10_000_000_000
 from .dsp import run_dsp
-from .machine import SUGGESTED_TICK_MS, TICK_SOURCES
+from .timers import SUGGESTED_TICK_MS, TICK_SOURCES
 from .terminal import run_console
 
 

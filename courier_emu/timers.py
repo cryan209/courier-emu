@@ -121,6 +121,41 @@ INSTRUCTIONS_PER_SECOND = 4_348_000
 # by the clock ratio alone. See docs/hardware-timebase-and-audio-path.md.
 CYCLES_PER_INSTRUCTION = 5.93
 
+# How the harness drives the board's periodic edge. Both of these describe
+# the time base rather than the machine that applies them, and the command
+# line needs both to build its parser - reaching them through machine.py
+# imported the whole board model to read two numbers.
+
+# The period that makes the countdowns elapse at a plausible rate, and **the
+# default since 2026-09-13**. It used to be off by default, on the grounds that
+# supplying it changes call timing and the linked pair answers OK where an
+# undriven run reports NO CARRIER - which of those is faithful was open.
+#
+# What settled it is that an undriven run is not a slower run, it is a broken
+# one. Both 512 KiB flash captures stall in the same place without a tick: the
+# 25 MHz 2806 capture faults at 5,684,093 instructions and the 20.16 MHz 4.03d
+# capture stops at 5,689,414, within 0.1% of each other, two boards and two
+# generations at the same wall. With the tick both run to a 60,000,000
+# instruction limit clean, and the 2806 prints its own ATI7. See
+# docs/running-the-25mhz-image.md.
+#
+# A board whose periodic service never runs is not a state any hardware is in,
+# so the faithful default is the one that drives it. Pass `tick_ms=0` (or
+# `--tick-ms 0`) to get the old undriven behaviour back for a comparison.
+#
+# This remains a stand-in: what produces the real edge is not established - see
+# the INT0 note below - and modelling that is the actual fix.
+SUGGESTED_TICK_MS = 5
+
+# The other candidate source, and the only one that leaves both of the
+# firmware's mutual watchdogs quiet: pace the chain off the DSP frame
+# interrupt instead of off a period. The two watchdogs bound the legal ratio
+# to between 1/25 and 3 ticks per DSP interrupt, and 1:1 sits inside it. This
+# is opt-in because the ratio is a choice within that band rather than a
+# measurement, and because it delivers an edge the interrupt controller has
+# masked - see "Pacing the chain from the DSP interrupt".
+TICK_SOURCES = ("dsp",)
+
 
 def ticks_for(instructions: int) -> int:
     return instructions * TIMER_CLOCK_HZ // INSTRUCTIONS_PER_SECOND
