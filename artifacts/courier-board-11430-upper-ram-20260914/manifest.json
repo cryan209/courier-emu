@@ -1,0 +1,101 @@
+{
+  "status": "complete",
+  "device": "/dev/cu.usbserial-11430",
+  "baud": 115200,
+  "started_utc": "2026-09-14T08:01:39.385981+00:00",
+  "physical_start": 65536,
+  "length_per_pass": 65536,
+  "passes_required": 2,
+  "pages_captured": 512,
+  "failed_attempts": [],
+  "passes": [
+    {
+      "image": "ram-pass1.bin",
+      "sha256": "770bd058d435ca595155e4dbb38cbc2dde955468c2adbafbc6db25441ac6f305",
+      "seconds": 69.13
+    },
+    {
+      "image": "ram-pass2.bin",
+      "sha256": "8e374ea3d55a3e373e8b581c540e480d4a136bd9253a0658f68621e98f0b444c",
+      "seconds": 69.13
+    }
+  ],
+  "firmware_upload": false,
+  "memory_write_commands": false,
+  "excluded_ranges": [
+    {
+      "start": 65280,
+      "end_exclusive": 65536,
+      "reason": "relocated peripheral control block, not ordinary RAM"
+    }
+  ],
+  "assumptions": [
+    "The upper window is an uncharacterized CPU address range; data alone does not identify its physical owner.",
+    "Each pass is a live sequential capture, not an atomic machine snapshot.",
+    "The AT command itself changes command buffers, stack and other working RAM.",
+    "A cached EEPROM subset is not a complete EEPROM image."
+  ],
+  "elapsed_seconds": 144.78,
+  "terminal_status_counts": {
+    "ERROR": 534
+  },
+  "identity": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Australia External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        04/30/98\r\nDSP date               03/13/98\r\n\r\nSupervisor rev         061-7.4.16\r\nDSP rev                3.0.13\r\n\r\nSerial Number          0409550000376154\r\n\r\nOK\r\n",
+  "firmware": {
+    "supervisor": "061-7.4.16",
+    "dsp": "3.0.13",
+    "clock_mhz": "20.16"
+  },
+  "alias_samples": [
+    {
+      "lower_address": 0,
+      "upper_address": 65536,
+      "lower_stable_bytes": 231,
+      "upper_matches_stable_lower_bytes": 225,
+      "matches_lower_before": false,
+      "matches_lower_after": false
+    },
+    {
+      "lower_address": 1792,
+      "upper_address": 67328,
+      "lower_stable_bytes": 256,
+      "upper_matches_stable_lower_bytes": 256,
+      "matches_lower_before": true,
+      "matches_lower_after": true
+    },
+    {
+      "lower_address": 8192,
+      "upper_address": 73728,
+      "lower_stable_bytes": 256,
+      "upper_matches_stable_lower_bytes": 256,
+      "matches_lower_before": true,
+      "matches_lower_after": true
+    },
+    {
+      "lower_address": 32768,
+      "upper_address": 98304,
+      "lower_stable_bytes": 256,
+      "upper_matches_stable_lower_bytes": 256,
+      "matches_lower_before": true,
+      "matches_lower_after": true
+    },
+    {
+      "lower_address": 57344,
+      "upper_address": 122880,
+      "lower_stable_bytes": 256,
+      "upper_matches_stable_lower_bytes": 256,
+      "matches_lower_before": true,
+      "matches_lower_after": true
+    },
+    {
+      "lower_address": 65024,
+      "upper_address": 130560,
+      "lower_stable_bytes": 256,
+      "upper_matches_stable_lower_bytes": 256,
+      "matches_lower_before": true,
+      "matches_lower_after": true
+    }
+  ],
+  "changed_bytes": 45,
+  "anchors_rechecked": true,
+  "finished_utc": "2026-09-14T08:04:04.163122+00:00"
+}

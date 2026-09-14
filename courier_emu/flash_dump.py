@@ -42,6 +42,21 @@ TARGETS = {
         bytes.fromhex("BD 0B 00 E9 AD 0F 0D 0A".replace(" ", "")),
         bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E9 11 00 FC 06 00 00".replace(" ", "")),
     ),
+    # Australian External 20.16 MHz board, serial 0409550000376154,
+    # identified and anchor-read on 2026-09-14.  Its application starts like
+    # the 4.03 family, but it retains the older 3.0.13 DSP and has a distinct
+    # boot-block entry point at fc00:0fe7.
+    ("061-7.4.16", "3.0.13", "20.16"): (
+        bytes.fromhex("BD 0B 00 E9 AD 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E7 0F 00 FC 06 00 00".replace(" ", "")),
+    ),
+    # Later Australian External 20.16 MHz board, serial 21OWZ849PS95,
+    # identified and anchor-read on 2026-09-14.  It uses the same Australian
+    # boot entry as the 061-7.4.16 board and the later 3.1.2 DSP.
+    ("061-7.6.7", "3.1.2", "20.16"): (
+        bytes.fromhex("BD 0B 00 E9 AF 0F 0D 0A".replace(" ", "")),
+        bytes.fromhex("FA BA A4 FF B8 00 80 EF EA E7 0F 00 FC 06 00 00".replace(" ", "")),
+    ),
     # The 25 MHz US/Canada external board, serial 22AEB36ACKND, read 2026-09-12.
     # Same revision strings as the 20.16 MHz stock entry above and a different
     # image: the leading jump displacement is 0f93 rather than 0f7c, and the

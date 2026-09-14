@@ -69,9 +69,19 @@ after the header. The FAQ's “10K” is a loose description; its “DMA?” is 
 how this implementation moves the bytes. The CPU explicitly loads, shifts,
 polls and outputs each value. Output is through `c4/c6`; `c0/c2` are read.
 
-The physical recipient and source-bank contents after the mapping write
-have not been established here. A legacy download/test interface is a
-plausible interpretation, not a measured identification. This is not the
+On every complete ROM examined here, the ordinary physical `0xe0000` source
+window (`ROM[0x60000:0x63ffc]`) is entirely `ff`: all 16,380 bytes have SHA-256
+`662a4843f357419e1a81d7587149277eed0018ef93f44c6bc3dd2ba5414d1a26`.
+If that is the window still selected after the `UCSST=e000` write, the encoder
+would emit four `3f` values for every three input bytes; there is no firmware
+or DSP payload there. The observed physical-board reboot is consistent with
+the more immediate problem: changing the upper chip-select start can remove
+the currently executing `0x88xxx` ROM code before the transfer loop completes.
+
+The physical recipient and the exact post-remap bus decoding have not been
+established. A legacy download/test interface is a plausible interpretation,
+not a measured identification. On the captured hardware it should be treated
+as a stale, incompatible path rather than a useful transfer command. This is not the
 verified `40..4e`/`50..5e` parallel DSP download path, accepts no arbitrary
 source address, and does not return DSP memory over the serial terminal.
 It also has readiness loops without a software timeout.
@@ -99,6 +109,41 @@ not be read as proof that this handler writes NVRAM.
 | `ATY14`, `ATY15` | Configuration and current DIP-switch report; already identified in the repo. |
 | `ATUSR`, `ATRS99?`, `ATI92`, `ATI99` | Credits/copyright/date according to the FAQ; no direct DSP access implied. |
 | `AT!E`, `AT&J`, `ATZ` variants | Calling-tone control, uncertain jack selection, and reset variants according to the FAQ. Not DSP memory primitives. |
+
+## `ATRS99?`: a single exact-match escape, not an `RS` family
+
+The `R` handler contains one special case before its ordinary receive-mode
+behavior. It requires at least four remaining characters and compares them
+directly with `S99?`:
+
+```text
+cmp cx,4
+jb  ordinary_R
+cmp word [si],3953h       ; "S9"
+jne ordinary_R
+cmp word [si+2],3f39h     ; "9?"
+jne ordinary_R
+lcall 8000:02adh
+```
+
+The supervisor stub at `8000:02ad` consumes exactly those four characters,
+sets `SI=0006`, and calls the normal zero-terminated string printer. Offset
+`0006` is the CR/LF immediately before the ROM copyright banner, which ends
+at the zero byte at `0063`. Thus `ATRS99?` prints only that copyright block.
+
+There is no number parser, selector table, range check, or sibling `RS`
+dispatch in this path. The exact code occurs in both Australian captures,
+both captured US revisions, the 25 MHz capture, and `IDSDL302.ROM`. Other
+strings beginning `ATR...` fall back to ordinary `ATR`; the main parser may
+then interpret the remaining characters as another chained AT command. For
+example, an apparent `ATRS0?` is `ATR` followed by the standard `S0?` query,
+not hidden `RS0` functionality.
+
+The adjacent credits-printing stub is separate. Supervisor entry `8000:0296`
+prints the copyright string at `0006` and then the credits string at `0064`;
+the historical FAQ associates that output with `ATUSR`. The previously tested
+US board returned `ERROR` for that spelling, so its complete parser route is
+not claimed here. In any event, it is not another entry in an `RS` family.
 
 For actual DSP observations, our already traced `ATY12` buffered receive /
 transmit report and mailbox streamers are more direct than the new `ATN`

@@ -1,0 +1,226 @@
+{
+  "status": "complete",
+  "device": "/dev/cu.usbserial-11430",
+  "baud": 115200,
+  "started_utc": "2026-09-14T08:27:59.234765+00:00",
+  "physical_start": 0,
+  "length_per_pass": 65280,
+  "passes_required": 2,
+  "pages_captured": 510,
+  "failed_attempts": [],
+  "passes": [
+    {
+      "image": "ram-pass1.bin",
+      "sha256": "ffb5eefbb7cf7fef64c31072765df6d8ba5ab254ddce1b70f4ff1916babb31c4",
+      "seconds": 70.13
+    },
+    {
+      "image": "ram-pass2.bin",
+      "sha256": "fdc6777049e2d158a498da32a8ea05119a7eb6710d08544ac041792b34a2fbd6",
+      "seconds": 70.13
+    }
+  ],
+  "firmware_upload": false,
+  "memory_write_commands": false,
+  "excluded_ranges": [
+    {
+      "start": 65280,
+      "end_exclusive": 65536,
+      "reason": "relocated peripheral control block, not ordinary RAM"
+    }
+  ],
+  "assumptions": [
+    "ATI7's 64 KiB RAM is visible in the lowest 64 KiB CPU window.",
+    "Each pass is a live sequential capture, not an atomic machine snapshot.",
+    "The AT command itself changes command buffers, stack and other working RAM.",
+    "A cached EEPROM subset is not a complete EEPROM image."
+  ],
+  "elapsed_seconds": 141.93,
+  "terminal_status_counts": {
+    "ERROR": 514
+  },
+  "identity": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           Australia External\r\nOptions                HST,V32bis,Terbo,VFC,V34+,x2,V90\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        12/02/98\r\nDSP date               09/09/98\r\n\r\nSupervisor rev         061-7.6.7\r\nDSP rev                3.1.2\r\n\r\nSerial Number          21OWZ849PS95\r\n\r\nOK\r\n",
+  "firmware": {
+    "supervisor": "061-7.6.7",
+    "dsp": "3.1.2",
+    "clock_mhz": "20.16"
+  },
+  "settings_cache": {
+    "start": 1874,
+    "end_exclusive": 1892,
+    "matches_between_passes": true,
+    "passes": [
+      {
+        "pass": 1,
+        "sha256": "60daa3a5f7dbfa200f8c82840ecf5b42640b70f3b7218a4c6bbd67db542e75a4",
+        "records": [
+          {
+            "setting": 1,
+            "ram_address": 1889,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 2,
+            "ram_address": 1874,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 3,
+            "ram_address": 1877,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 4,
+            "ram_address": 1880,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 5,
+            "ram_address": 1883,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 6,
+            "ram_address": 1886,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          }
+        ]
+      },
+      {
+        "pass": 2,
+        "sha256": "60daa3a5f7dbfa200f8c82840ecf5b42640b70f3b7218a4c6bbd67db542e75a4",
+        "records": [
+          {
+            "setting": 1,
+            "ram_address": 1889,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 2,
+            "ram_address": 1874,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 3,
+            "ram_address": 1877,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 4,
+            "ram_address": 1880,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 5,
+            "ram_address": 1883,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          },
+          {
+            "setting": 6,
+            "ram_address": 1886,
+            "raw_hex": "000000",
+            "decoded_copies": [
+              5,
+              241,
+              29
+            ],
+            "all_copies_agree": false,
+            "majority_valid": false,
+            "value": null
+          }
+        ]
+      }
+    ]
+  },
+  "changed_bytes": 39,
+  "anchors_rechecked": true,
+  "finished_utc": "2026-09-14T08:30:21.166788+00:00"
+}
