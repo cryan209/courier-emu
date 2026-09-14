@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .timebase import IMODEM_386EX
+
 
 # Intel 8254 programmable interval timer, as the ISDN Courier wires it: three
 # counters at I/O 0xf040..0xf042 with the control port at 0xf043. That is the
@@ -66,9 +68,13 @@ COUNT_MODULUS = 0x10000
 # and 35714.29, and what the firmware programs is 1860, 8928 and 35714 - the
 # nearest integer to each. No other prescale comes close: 26 and 30 are 7% out
 # on all three.
-CPU_CLOCK_HZ = 25_000_000
-TIMER_PRESCALE = 28
-CLOCK_HZ = CPU_CLOCK_HZ // TIMER_PRESCALE   # 892,857
+# These are the I-modem board's, and `timebase.IMODEM_386EX` is where they
+# live now - the paragraphs above are the derivation. Naming the board keeps
+# this part's five cycles an instruction from being imported by the 80C186EB
+# Courier, which costs 5.93 and runs off a different crystal again.
+CPU_CLOCK_HZ = IMODEM_386EX.cpu_clock_hz
+TIMER_PRESCALE = IMODEM_386EX.timer_divisor
+CLOCK_HZ = IMODEM_386EX.timer_clock_hz   # 892,857
 
 # The instruction clock the harness runs at, and the one place it is stated.
 #
@@ -86,8 +92,8 @@ CLOCK_HZ = CPU_CLOCK_HZ // TIMER_PRESCALE   # 892,857
 # 20,160,000 for the same CPU, which is 1.24. Neither is a 386EX, and having
 # both meant a 9600-baud character was 21,000 instructions to the serial model
 # and 8.4 ms to the timers, where it is 1.04 ms. The two are one constant now.
-CYCLES_PER_INSTRUCTION = 5
-INSTRUCTIONS_PER_SECOND = CPU_CLOCK_HZ // CYCLES_PER_INSTRUCTION   # 5,000,000
+CYCLES_PER_INSTRUCTION = IMODEM_386EX.cycles_per_instruction
+INSTRUCTIONS_PER_SECOND = IMODEM_386EX.instructions_per_second   # 5,000,000
 
 
 def ticks_for(instructions: int, clock_hz: int = CLOCK_HZ) -> int:

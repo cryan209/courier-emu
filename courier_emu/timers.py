@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+from typing import Callable
+
+from .timebase import DEFAULT_COURIER, Timebase, board_for_timer0_compare
 from typing import Any
 
 
@@ -110,8 +114,19 @@ TIMER_POLL_INSTRUCTIONS = 1_024
 # their own crystal. main211 uses 0x7e00 - 32,256 ticks - and at this ratio
 # that is 21,740 instructions, which is 5.000 ms at daa.py's rate. The old
 # pair put the same compare at 7,167 instructions, or 1.6 ms.
-TIMER_CLOCK_HZ = 6_451_200
-INSTRUCTIONS_PER_SECOND = 4_348_000
+# Both figures now come from `timebase`, which keeps the crystal and the cycle
+# count apart so that one model serves every board. The pair below is the
+# 302/403's, because that is the behavioural reference and what a run assumes
+# until the firmware identifies itself; `TimerBlock` re-pins to the board whose
+# T0CMPA the firmware actually writes.
+#
+# The paragraph above is why the old pair could be a single one: only the ratio
+# reaches the timers, and in that ratio the crystal cancels. What it did not
+# cover is everything that takes INSTRUCTIONS_PER_SECOND as an *absolute* rate
+# - a frame period, a baud divisor - and those were reading main211's
+# 25.8048 MHz figure on a 20.16 MHz board, 28% fast.
+TIMER_CLOCK_HZ = DEFAULT_COURIER.timer_clock_hz
+INSTRUCTIONS_PER_SECOND = DEFAULT_COURIER.instructions_per_second
 # The same figure the paragraph above names, as a constant, because more than
 # the timers need it. An 80186 instruction is not a clock cycle, and anything
 # that converts between the CPU's instruction count and another part's *clock*
@@ -119,7 +134,7 @@ INSTRUCTIONS_PER_SECOND = 4_348_000
 # the two processors' instruction rates differ by this factor even when they
 # share a crystal - which is what `bridge.dsp_steps` gets wrong when it scales
 # by the clock ratio alone. See docs/hardware-timebase-and-audio-path.md.
-CYCLES_PER_INSTRUCTION = 5.93
+CYCLES_PER_INSTRUCTION = DEFAULT_COURIER.cycles_per_instruction
 
 # How the harness drives the board's periodic edge. Both of these describe
 # the time base rather than the machine that applies them, and the command
@@ -157,8 +172,10 @@ SUGGESTED_TICK_MS = 5
 TICK_SOURCES = ("dsp",)
 
 
-def ticks_for(instructions: int) -> int:
-    return instructions * TIMER_CLOCK_HZ // INSTRUCTIONS_PER_SECOND
+def ticks_for(instructions: int, timebase=DEFAULT_COURIER) -> int:
+    """Instructions to timer ticks. Only the ratio is used, and the crystal
+    cancels in it, so this answers the same for either 186 board."""
+    return int(instructions * timebase.ticks_per_instruction)
 
 
 @dataclass
@@ -334,10 +351,40 @@ class TimerBlock:
     writes: int = 0
     interrupts: int = 0
     controller: InterruptController = field(default_factory=InterruptController)
+    #: The board this run believes it is on. It starts at the 302/403 and is
+    #: re-pinned when the firmware programs a T0CMPA that identifies another.
+    timebase: Timebase = DEFAULT_COURIER
+    #: Called with the new board when that happens, so whatever cached a rate
+    #: derived from the old one can recompute it.
+    on_timebase_change: Callable[[Timebase], None] | None = None
+    timebase_pinned: bool = False
     _pending: list[int] = field(default_factory=list)
 
     def _tick(self, instructions: int) -> int:
-        return ticks_for(instructions)
+        return ticks_for(instructions, self.timebase)
+
+    def _identify_board(self, index: int, name: str, value: int) -> None:
+        """Take the crystal from the timer constant the firmware just wrote.
+
+        Both 186 firmwares program timer 0 for 5.000 ms on their own crystal,
+        so the compare names the board: 25,200 counts is 5 ms only at
+        20.16 MHz and 32,256 only at 25.8048 MHz. The 7.4.16 board checks its
+        own value back at 0x4a83b, which is the firmware agreeing that this
+        constant is the one that identifies it.
+
+        Only a value that names a board moves anything; anything else leaves
+        the assumed board alone rather than guessing from it.
+        """
+        if index or name != "compare_a" or self.timebase_pinned:
+            return
+        board = board_for_timer0_compare(value)
+        if board is None or board is self.timebase:
+            self.timebase_pinned = board is not None
+            return
+        self.timebase = board
+        self.timebase_pinned = True
+        if self.on_timebase_change is not None:
+            self.on_timebase_change(board)
 
     def read(
         self, address: int, size: int, instructions: int, *, grant: bool = True
@@ -400,6 +447,7 @@ class TimerBlock:
             current = timer.control if name == "control" else getattr(timer, name)
             value = (current & 0xFF00) | (value & 0xFF)
         timer.write(name, value)
+        self._identify_board(index, name, timer.compare_a)
         timer.origin = self._tick(instructions)
         return True
 

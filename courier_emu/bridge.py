@@ -28,7 +28,7 @@ from .dsp import NativeC5x
 from .ata import SipLine
 from .exchange import LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
-from .timers import CYCLES_PER_INSTRUCTION
+from .timebase import DEFAULT_COURIER, Timebase
 from .sip import PolyphaseResampler, SipSession
 from .xmf import DSP_BOOT_SIZE, XmfImage
 
@@ -54,8 +54,15 @@ LINE_RATE = DAA_SAMPLE_RATE
 # unit is 20.16 MHz throughout - its boot ROM, its DAA notes and its timer
 # programming all say so - and both processors run from it. What was left was
 # the 5:4 applied to an instruction count, which is wrong twice over.
+# The clock ratio is one **on the 302/403**, where both processors run from
+# the 40.320 MHz can. It is not one on the 2806: `docs/asic-pinout.md` traces
+# the C5x's CLKIN to the ASIC, which runs from that same can on either board,
+# so the 2806's 25.8048 MHz crystal is the CPU's alone and the DSP does not
+# speed up with it. Two boards that share a cycles-per-instruction therefore
+# do not share this ratio - 5.93 against 4.63 - which is why it is asked of
+# the board rather than written out here.
 DSP_CLOCK_RATIO = 1
-DSP_STEPS_PER_X86 = DSP_CLOCK_RATIO * CYCLES_PER_INSTRUCTION
+DSP_STEPS_PER_X86 = DEFAULT_COURIER.dsp_steps_per_x86
 
 
 class Resampler:
@@ -512,6 +519,11 @@ class CourierDspBridge:
         # Fractional DSP steps carried between batches, so the average ratio
         # stays exact rather than truncating once per batch.
         self._dsp_step_debt = 0.0
+        # The board's own ratio, so a re-pin reaches the scheduler. It starts
+        # at the 302/403's and `set_timebase` moves it when the firmware's
+        # timer constant identifies a different board.
+        self.timebase: Timebase = DEFAULT_COURIER
+        self.dsp_steps_per_x86 = DEFAULT_COURIER.dsp_steps_per_x86
         self._line_instructions = 0
         self._line_tx_index = 0
         self._audio_line_trace: deque[dict[str, Any]] = deque(maxlen=512)
@@ -1933,7 +1945,7 @@ class CourierDspBridge:
         #
         # The remainder is carried rather than truncated, so the average ratio
         # stays exact instead of losing a fraction of a step per batch.
-        self._dsp_step_debt += self._x86_ticks * DSP_STEPS_PER_X86
+        self._dsp_step_debt += self._x86_ticks * self.dsp_steps_per_x86
         dsp_steps = int(self._dsp_step_debt)
         self._dsp_step_debt -= dsp_steps
         self._x86_ticks = 0
@@ -2067,6 +2079,16 @@ class CourierDspBridge:
                     self.sip.send_audio(self._sip_tx_rate.convert(samples))
         except RuntimeError as exc:
             self.error = str(exc)
+
+    def set_timebase(self, timebase: Timebase) -> None:
+        """Adopt the board the firmware has just identified itself as.
+
+        Only the DSP ratio is taken from it here. The step debt is left where
+        it is: it holds a fraction of one C50 instruction, and the boundary it
+        is carried across is an ordinary scheduling batch, not a discontinuity.
+        """
+        self.timebase = timebase
+        self.dsp_steps_per_x86 = timebase.dsp_steps_per_x86
 
     def _service_codec(self) -> None:
         """Advance the silicon DAA by one ASIC service frame.

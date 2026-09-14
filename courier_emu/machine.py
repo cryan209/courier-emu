@@ -37,6 +37,8 @@ from .timers import (
 from .uart import EbSerial
 from .rom_serial import locate_rom_serial
 from .x86_clock import NativeX86Clock
+from .machine_map import courier_machine_map
+from .timebase import Timebase
 
 try:  # only needed to size a basic block; there is a slower path without it
     import capstone as _capstone
@@ -44,7 +46,6 @@ except ImportError:  # pragma: no cover - exercised by the fallback hook
     _capstone = None
 
 
-ADDRESS_SPACE_SIZE = 0x100000
 NVRAM_INPUT_BITS = BIT_DATA | BIT_READY
 MAX_SERIAL_BYTES = 64 * 1024
 MAX_SERIAL_TRACE_EVENTS = 256
@@ -52,7 +53,6 @@ TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 # The C52's reset line, in the relocated peripheral control block. Driving it
 # low holds the coprocessor in reset; the ROM pulses it at 8e40c/8e418. Other
 # P1 latch bits are exercised heavily during self-test and must not reset it.
-DSP_RESET_PORT = 0xFF56
 ROM_DSP_RESET_BIT = 0x0008
 PAYLOAD_DSP_RESET_BIT = 0x0002
 # How often the board's periodic service runs. Everything it does is an edge
@@ -79,7 +79,6 @@ _RESUME_REGISTER_NAMES = (
 COMMAND_BUSY_COOLDOWN = 256
 # The boot block's flash driver is reached here, with an ASCII service
 # letter in BL. An update payload does not carry the handler.
-FLASH_SERVICE_VECTOR = 0x0A
 # The E setting, which the `no-echo` option switch leaves clear at 0x63e93.
 ECHO_SETTING = 0x092D
 # A command that has stopped making progress is waiting on its DTE - the
@@ -96,7 +95,6 @@ KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
 # [0x32d] among them. Nothing on the CPU side produces that edge, so
 # without it every firmware timeout waits forever - ATI11 arms 20 ticks
 # at 0x62d68 and spins at 0x62d6d because they never elapse.
-TICK_VECTOR = 0x0F
 # The board ROM needs a second edge beside the tick. Both of its tick handlers
 # install on vector 0x3c - 0x80a70's countdown chain and 0x80ad9, which is what
 # increments the tick cell at [0x12a] - so TICK_VECTOR is its time base as it
@@ -328,6 +326,8 @@ class RunResult:
     flash: dict[str, Any] | None = None
     ring: dict[str, int] | None = None
     timers: dict[str, Any] | None = None
+    #: The board this run decided it was on, and what it derived from that.
+    timebase: dict[str, Any] | None = None
     interrupt_vectors: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -439,6 +439,7 @@ class CourierMachine:
             raise ValueError(f"unknown x86 engine {cpu_engine!r}")
         self.cpu_engine = cpu_engine
         self.image = image
+        self.hardware_map = courier_machine_map(image)
         self.quad_terminal = QuadTerminal() if quad_terminal else None
         if self.quad_terminal is not None:
             self.quad_terminal.validate(image)
@@ -456,6 +457,7 @@ class CourierMachine:
         self.tick_ms = tick_ms
         # The INT0 period, in instructions. The default is the board's measured
         # rate; `--frame-hz` is for comparing against it, not for tuning.
+        self._frame_hz = frame_hz
         self.frame_instructions = (INSTRUCTIONS_PER_SECOND // frame_hz
                                    if frame_hz else FRAME_INSTRUCTIONS)
         if tick_source is not None and tick_source not in TICK_SOURCES:
@@ -572,7 +574,11 @@ class CourierMachine:
         # through board latch 0, so it needs its own front end onto the same
         # 93C66 model. This holds the data pin the driver at 0x1401 last drove.
         self._eeprom_data_in = False
-        self.timers = TimerBlock(fast=fast_delays, answers_reads=self.emulate_interrupts)
+        self.timers = TimerBlock(
+            fast=fast_delays, answers_reads=self.emulate_interrupts,
+            on_timebase_change=self._adopt_timebase,
+        )
+        self.timebase = self.timers.timebase
         if self._quad_profile:
             self.timers.controller = EbInterruptController()
         self._quad_irq_in_service = False
@@ -829,6 +835,23 @@ class CourierMachine:
         """Continue from a snapshot on the next run() instead of from reset."""
         self._resume_state = state
 
+    def _adopt_timebase(self, timebase: Timebase) -> None:
+        """Re-pin every rate derived from the CPU clock to the board the
+        firmware has just identified itself as.
+
+        Only the absolute rates move. The timer block's own ratio is
+        crystal-free (see `timebase.Timebase.ticks_per_instruction`), so its
+        counting is unaffected - which is why this went unnoticed while the
+        20.16 MHz board was being run on main211's 25.8048 MHz figure.
+        """
+        self.timebase = timebase
+        if self._frame_hz:
+            self.frame_instructions = timebase.instructions_per_second // self._frame_hz
+        else:
+            self.frame_instructions = timebase.instructions_per_second // FRAME_HZ
+        if self.dsp_bridge is not None:
+            self.dsp_bridge.set_timebase(timebase)
+
     def run(self, instruction_limit: int = 250_000) -> RunResult:
         if self.cpu_engine == "interpreter":
             from . import x86_interpreter as _backend
@@ -910,7 +933,7 @@ class CourierMachine:
         # Diagnostics that need to read emulated RAM (a console script sampling
         # a firmware variable, for example) have no other handle on the engine.
         self.uc = uc
-        uc.mem_map(0, ADDRESS_SPACE_SIZE)
+        uc.mem_map(0, self.hardware_map.address_space_size)
         uc.mem_write(self.image.load_base, self.image.data)
         for address, payload in getattr(self.image, "initial_memory", ()):
             uc.mem_write(address, payload)
@@ -1785,7 +1808,7 @@ class CourierMachine:
                 # chain hangs off. A ROM run reaches its own time base from
                 # the reset vector, so this stands in only for a payload run.
                 self._last_tick = self.instructions
-                self._external_interrupt_pending = TICK_VECTOR
+                self._external_interrupt_pending = self.hardware_map.tick_vector
                 self.ticks += 1
                 _uc.emu_stop()
             if (
@@ -1805,7 +1828,7 @@ class CourierMachine:
                 # source unmasked - it is gated on the mask rather than
                 # bypassing it, unlike the tick.
                 self._last_tick = self.instructions
-                self._external_interrupt_pending = TICK_VECTOR
+                self._external_interrupt_pending = self.hardware_map.tick_vector
                 if (
                     self._rom_tick
                     and self._int1_pending is None
@@ -1828,7 +1851,7 @@ class CourierMachine:
                 # the 80186 pin the firmware masked.
                 self._tick_owed = False
                 self._last_tick = self.instructions
-                self._external_interrupt_pending = TICK_VECTOR
+                self._external_interrupt_pending = self.hardware_map.tick_vector
                 self.ticks += 1
                 _uc.emu_stop()
 
@@ -2303,7 +2326,7 @@ class CourierMachine:
             return True
 
         def on_interrupt(_uc: Any, number: int, _data: Any) -> None:
-            if number == FLASH_SERVICE_VECTOR and service_parameter_flash(_uc):
+            if number == self.hardware_map.flash_service_vector and service_parameter_flash(_uc):
                 # The hook already reports IP past the `int`, so resuming
                 # from here is resuming after the call the service answered.
                 self._service_resume = True
@@ -2434,7 +2457,7 @@ class CourierMachine:
                         self._quad_interrupt_stack.remove(completed)
                 if completed == INT0_VECTOR:
                     self._quad_irq_in_service = False
-            if address == DSP_RESET_PORT and self.dsp_bridge is not None:
+            if address == self.hardware_map.dsp_reset_port and self.dsp_bridge is not None:
                 # The board holds the C52 in reset through this bit, and a part
                 # in reset drives nothing: its transfer interface reads back as
                 # all ones. Both firmwares reset the coprocessor by pulsing the
@@ -2622,11 +2645,21 @@ class CourierMachine:
             if fast_rom_clock else None
         )
         if self.cpu_engine == "interpreter":
-            # The interpreter already crosses Python once per instruction and
-            # has no native basic-block clock to optimize around. Its exact
-            # code hook is the scheduler clock; treating each decoded opcode
-            # as a synthetic one-byte block undercounts prefixed/string work.
-            uc.hook_add(UC_HOOK_CODE, on_code_counting)
+            # Keep the scheduler deadline inside the interpreter's dispatch
+            # loop. Crossing into Python once per instruction made normal ROM
+            # execution behave like a tracing run; devices need service only
+            # at this bounded interval.
+            instruction_base = self.instructions - uc.retired
+
+            def interpreter_service(_uc: Any, retired: int, _data: Any) -> None:
+                total = instruction_base + retired
+                self.instructions = total
+                elapsed = total - self._last_service
+                self._last_service = total
+                self._next_service = total + SERVICE_INSTRUCTIONS
+                service_chunk(_uc, elapsed)
+
+            uc.instruction_clock_add(SERVICE_INSTRUCTIONS, interpreter_service)
         elif disassembler is not None and not fast_rom_clock:
             uc.hook_add(UC_HOOK_BLOCK, on_block)
         elif disassembler is None:
@@ -2634,11 +2667,18 @@ class CourierMachine:
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
         uc.hook_add(UC_HOOK_INTR, on_interrupt)
-        uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, 0xFF00, 0xFFFF)
-        uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, 0xFF00, 0xFFFF)
-        uc.hook_add(UC_HOOK_MEM_WRITE, on_dsp_queue_write, None, 0x02CA, 0x030F)
+        mmio = self.hardware_map.mmio
+        dsp_queue = self.hardware_map.dsp_queue
+        serial_callback = self.hardware_map.serial_callback
+        uc.hook_add(UC_HOOK_MEM_READ, on_mmio_read, None, mmio.first, mmio.last)
+        uc.hook_add(UC_HOOK_MEM_WRITE, on_mmio_write, None, mmio.first, mmio.last)
         uc.hook_add(
-            UC_HOOK_MEM_WRITE, on_serial_tx_callback_write, None, 0x02AA, 0x02AB
+            UC_HOOK_MEM_WRITE, on_dsp_queue_write, None,
+            dsp_queue.first, dsp_queue.last,
+        )
+        uc.hook_add(
+            UC_HOOK_MEM_WRITE, on_serial_tx_callback_write, None,
+            serial_callback.first, serial_callback.last,
         )
         if self.mem_watch is not None:
             uc.hook_add(
@@ -2871,6 +2911,11 @@ class CourierMachine:
             flash=flash_result,
             ring=self.ring.status() if self.ring is not None else None,
             timers=self.timers.status(),
+            timebase={
+                **self.timebase.describe(),
+                "identified": self.timers.timebase_pinned,
+                "frame_instructions": self.frame_instructions,
+            },
             interrupt_vectors=interrupt_vectors,
         )
 
