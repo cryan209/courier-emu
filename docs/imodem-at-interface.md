@@ -114,7 +114,11 @@ occupies, and both frames are ten bits, so what reaches the wire *is* 7E1 and
 a 7E1 terminal parses it correctly.  Over a full banner-and-result-code stream
 73 bytes of 73 carry correct even parity, and `ATI4` says the same thing in
 words: `BAUD=9600 PARITY=E WORDLEN=7`.  The console masks the parity bit for
-display and sets it on the way in; `serial_a` in the report is the raw stream.
+display and sets it on the way in, and `serial_a` in the report is that same
+reading: the seven data bits, as the terminal on the port sees them.  It used
+to be the raw stream, which put bit 7 on half the characters and read as line
+corruption.  A session that reconfigures the modem for eight-bit data would
+need the wire bytes instead.
 
 Receive is the same technique in reverse - the firmware takes eight bits and
 masks the top one rather than checking it - so parity on the way in is not

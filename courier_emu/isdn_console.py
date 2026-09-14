@@ -32,7 +32,7 @@ import time
 from typing import Any, Callable, Iterable
 
 from .pit import INSTRUCTIONS_PER_SECOND
-from .sio import even_parity
+from .sio import even_parity, without_parity
 
 # Long enough for the kernel to create and first-run the command task; the
 # nine-task startup completes a little before 3M instructions.
@@ -101,7 +101,7 @@ def scripted_pump(
         if received:
             log.append((machine.instructions, "received", _readable(received)))
             if waiting[0]:
-                response.extend(byte & 0x7F for byte in received)
+                response.extend(without_parity(received))
                 if _has_result_code(response):
                     waiting[0] = False
         if (commands and not waiting[0]
@@ -133,7 +133,7 @@ def _has_result_code(response: bytes | bytearray) -> bool:
 
 
 def _readable(data: bytes) -> str:
-    """Drop the parity bit before decoding.
+    """Decode what a 7E1 terminal reads.
 
     Bit 7 of what the firmware transmits is even parity over the low seven,
     computed in software on a part it has programmed for eight data bits and
@@ -141,7 +141,7 @@ def _readable(data: bytes) -> str:
     ATI4 describes the link the same way - ``PARITY=E WORDLEN=7``. A terminal
     set the matching way never sees it.
     """
-    return bytes(byte & 0x7F for byte in data).decode("ascii", "replace")
+    return without_parity(data).decode("ascii", "replace")
 
 
 def _on_the_wire(text: str | bytes) -> bytes:

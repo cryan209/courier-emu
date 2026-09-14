@@ -21,6 +21,7 @@ from .sio import (
     UART_CLOCK_HIGH_RATES_HZ,
     UART_CLOCK_LOW_RATES_HZ,
     SerialChannel,
+    without_parity,
 )
 
 
@@ -968,8 +969,12 @@ class IsdnMachine:
                 for number, count in sorted(self.software_interrupts.items())
             },
             timer_ticks=self.timer_ticks,
-            serial_a=self.channels[UART_A_BASE].tx.decode("ascii", "replace"),
-            serial_b=self.channels[UART_B_BASE].tx.decode("ascii", "replace"),
+            # As the terminal on the port reads it. `tx` is the wire, and the
+            # wire carries the firmware's software parity in bit 7; a reader
+            # that keeps it sees every odd-parity character as a replacement
+            # character. See `without_parity`.
+            serial_a=without_parity(self.channels[UART_A_BASE].tx).decode("ascii", "replace"),
+            serial_b=without_parity(self.channels[UART_B_BASE].tx).decode("ascii", "replace"),
             serial={
                 name: self.channels[base].status()
                 for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE),

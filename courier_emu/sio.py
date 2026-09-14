@@ -162,6 +162,22 @@ def even_parity(value: int) -> int:
     return value | (0x80 if bin(value).count("1") % 2 else 0)
 
 
+def without_parity(data: bytes | bytearray) -> bytes:
+    """What a 7E1 receiver takes off the wire: the seven data bits.
+
+    The inverse of `even_parity`, and the direction every reader of this
+    port's output needs - the terminal on the other end of the cable parses
+    the frame the firmware sends, so the parity bit never reaches the screen
+    or the transcript. Reading the byte whole instead leaves half the
+    characters with bit 7 set, which looks exactly like line corruption.
+
+    This assumes the link the firmware comes up in and the harness types to.
+    A session that reconfigures the modem for eight-bit data stops the
+    firmware generating parity, and those bytes must not come through here.
+    """
+    return bytes(byte & 0x7F for byte in data)
+
+
 class SerialChannel:
     """One 16550 channel: a transmit sink, a receive queue, and its interrupt.
 
