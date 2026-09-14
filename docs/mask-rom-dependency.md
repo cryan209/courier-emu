@@ -62,14 +62,49 @@ supervisor drives the same ports (`40..5e`, `18`, `1c`) as a 302/403 one, which
 implies a DSP-side loader is still listening; where it lives on a part that
 then unmaps the ROM is untested here, and no 3453C board has been probed.
 
+## What is at `1800`, then: RAM, and probably the same RAM
+
+The vectors land in memory the download writes. Row 5 is a single contiguous
+transfer - start `0`, end `cbc0`, arriving at program `1000..75df` - and the
+trampoline table sits at `1802`, mid-stream, installed by the same `BLDP`
+writes as the code either side of it. So `1800` is writable program memory on
+that board, which is the whole point of unmapping the ROM in the same prologue
+that points the vectors there.
+
+Which writable memory is not stated, but the extents are suggestive. Taking
+every row of each family's table, the resident and the four overlays alike:
+
+| | program extent | words |
+|---|---|---|
+| 3453B | `8000..f5d9`, row 9 to `f707` | 30,472 |
+| 3453C | `0000..75df`, row 9 to `7707` | 30,472 |
+
+The same `0x7708`-word extent, the C series' shifted down by exactly `0x8000`.
+The B board's two `CY7C199` parts are 32K words and its image fills them with
+about 1.5K to spare; the C image wants the identical amount at the other end of
+the map. The simplest hardware for that is the same pair of RAMs with the top
+address line decoded the other way - which is what `MP/MC=1` frees you to do,
+since with no ROM at `0000..1fff` the whole 64K is external.
+
+`PMST.RAM` is set, so on-chip SARAM would map into program space if the part
+had any reaching `1800` - only a `'C50` (9K, `0800..2bff`) or `'LC56` (6K,
+`0800..1fff`) does. That is not evidence of any, because the B images set the
+same bit while their program never comes near the SARAM window at all; it is
+inherited boilerplate in both. No part with SARAM reaching `1800` could hold
+more than a tenth of a 30K image regardless.
+
+The decode itself needs a 3453C board on the bench. So does the open question
+above.
+
 ## It is not about V.92
 
 V.92 is already in the B series: `3453Bv2.1.1` carries the `+PQC` quick-connect
 command set and the `V.92` identity string, same as 2.3.33. `MOH_status`
 appears from 2.2.05. And the C series' DSP payload is **smaller** - 48,199
-words against 55,638, a 7,439-word reduction - so the move into low memory
-bought no room and covered no added feature. On this evidence it is a
-board/part change, not a firmware-size one.
+words against 55,638, a 7,439-word reduction - and it asks for the same
+`0x7708`-word extent the B series does. The move into low memory bought no
+room and covered no added feature. On this evidence it is a board change, not
+a firmware-size one.
 
 ## Reproducing
 
