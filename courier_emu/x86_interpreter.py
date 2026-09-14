@@ -112,6 +112,7 @@ _GROUP_OPCODES: tuple[tuple[int, ...], ...] = (
     (0xC8,),  # 62: ENTER
     (0xCA, 0xCB),  # 63: RET far
     (0xF4,),  # 64: HLT
+    (0x0F,),  # 65: the 386's two-byte opcode escape
 )
 _GROUP: tuple[int, ...] = tuple(
     next((group for group, opcodes in enumerate(_GROUP_OPCODES) if opcode in opcodes), 0)
@@ -496,6 +497,174 @@ class Uc:
         if code == 13: return bool(f & SF) == bool(f & OF)
         if code == 14: return bool(f & ZF) or bool(f & SF) != bool(f & OF)
         return not f & ZF and bool(f & SF) == bool(f & OF)
+
+    def _two_byte(self, operand_size: int, segment_override: int | None) -> None:
+        """The 0x0f escape: the 386 two-byte opcodes this firmware is built from.
+
+        These are what the compiler emits that an 8086 has no encoding for -
+        near conditional branches, the condition-to-byte SETcc, the widening
+        moves, the two-operand multiply, the double shifts, the bit tests and
+        the bit scans. The system instructions behind the same escape are not
+        implemented: this CPU never leaves real mode, so reaching one means the
+        run has gone somewhere the harness does not model, and stopping says so.
+        """
+        if self.profile != "386ex":
+            raise UcError("two-byte opcode 0f in 186eb profile")
+        opcode = self._fetch8()
+        bits = operand_size * 8
+        mask = (1 << bits) - 1
+        sign = 1 << (bits - 1)
+        if 0x80 <= opcode <= 0x8F:
+            # Jcc with a full displacement, rather than the 8086's rel8.
+            displacement = self._fetch(operand_size, signed=True)
+            if self._condition(opcode & 15):
+                self.regs[UC_X86_REG_IP] = (
+                    self.regs[UC_X86_REG_IP] + displacement
+                ) & 0xFFFF
+        elif 0x90 <= opcode <= 0x9F:
+            # SETcc writes the condition itself as a byte, flags untouched.
+            modrm = self._fetch8()
+            _, write = self._operand(modrm, 1, segment_override)
+            write(1 if self._condition(opcode & 15) else 0)
+        elif opcode in (0xB6, 0xB7, 0xBE, 0xBF):
+            # MOVZX/MOVSX. The source is a byte for the even opcodes and a
+            # word for the odd ones; the destination is the operand size.
+            modrm = self._fetch8()
+            register = (modrm >> 3) & 7
+            size = 1 if not opcode & 1 else 2
+            read, _ = self._operand(modrm, size, segment_override)
+            value = read()
+            if opcode >= 0xBE and value & (1 << (size * 8 - 1)):
+                value |= mask & ~((1 << (size * 8)) - 1)
+            self.reg_write(register, value)
+        elif opcode == 0xAF:
+            # IMUL r,r/m keeps the low half. CF and OF say whether the product
+            # needed the half that was dropped; the rest are undefined, and
+            # left alone as the 0x69/0x6b form above does.
+            modrm = self._fetch8()
+            register = (modrm >> 3) & 7
+            read, _ = self._operand(modrm, operand_size, segment_override)
+            left = self.regs[register] & mask
+            right = read()
+            product = (
+                (left - (1 << bits) if left & sign else left)
+                * (right - (1 << bits) if right & sign else right)
+            )
+            result = product & mask
+            self.reg_write(register, result)
+            overflow = product != (result - (1 << bits) if result & sign else result)
+            self.regs[UC_X86_REG_FLAGS] = (
+                self.regs[UC_X86_REG_FLAGS] & ~(CF | OF) | ((CF | OF) if overflow else 0)
+            )
+        elif opcode in (0xA4, 0xA5, 0xAC, 0xAD):
+            # SHLD/SHRD shift the destination and fill from the register, which
+            # is what a compiler builds a wide shift out of. A zero count
+            # leaves the flags alone; otherwise they read as the equivalent
+            # single shift's, with CF the last bit shifted out.
+            modrm = self._fetch8()
+            register = (modrm >> 3) & 7
+            read, write = self._operand(modrm, operand_size, segment_override)
+            left = opcode < 0xAC
+            count = (
+                self._fetch8() if not opcode & 1 else self.regs[UC_X86_REG_CX] & 0xFF
+            ) & 0x1F
+            value = read()
+            if count:
+                # The pair of operands as one double-width value, rotated. For
+                # a count within the operand size this is the plain shift the
+                # manual defines; past it the manual calls the result
+                # undefined, and what the part actually does - and what the
+                # other engine does - is carry on funnelling the same pair.
+                filler = self.regs[register] & mask
+                pair = (value << bits) | filler if left else (filler << bits) | value
+                width = bits * 2
+                rotated = (
+                    (pair << count) | (pair >> (width - count)) if left
+                    else (pair >> count) | (pair << (width - count))
+                ) & ((1 << width) - 1)
+                result = (rotated >> bits) if left else (rotated & mask)
+                carry = (pair >> (width - count)) & 1 if left else (pair >> (count - 1)) & 1
+                write(result)
+                self._logic_flags(result, bits)
+                self.regs[UC_X86_REG_FLAGS] = (
+                    self.regs[UC_X86_REG_FLAGS] & ~CF | (CF if carry else 0)
+                )
+        elif opcode in (0xA3, 0xAB, 0xB3, 0xBB, 0xBA):
+            # The bit tests. CF takes the bit; BTS/BTR/BTC then set, clear or
+            # complement it. Only one form walks: a register bit offset
+            # against memory addresses a bit string, so it steps whole
+            # operands away from the effective address and its offset is
+            # signed. An immediate offset, and any offset against a register,
+            # stays inside the operand and is taken modulo its width.
+            modrm = self._fetch8()
+            if opcode == 0xBA:
+                operation = (modrm >> 3) & 7
+                if operation < 4:
+                    raise UcError(f"unsupported 0f ba group /{operation}")
+                operation -= 4
+            else:
+                operation = (opcode >> 3) & 3
+            mod, rm = modrm >> 6, modrm & 7
+            if mod == 3:
+                offset = self._fetch8() & 0x1F if opcode == 0xBA else self.regs[(modrm >> 3) & 7]
+                index = offset % bits
+                value = self.regs[rm] & mask
+                taken = (value >> index) & 1
+                if operation:
+                    if operation == 1: value |= 1 << index
+                    elif operation == 2: value &= ~(1 << index)
+                    else: value ^= 1 << index
+                    self.reg_write(rm, value)
+            else:
+                # The walk has to be done on the offset, not on the physical
+                # address: a bit string runs inside its segment and wraps at
+                # its end, the way every other 16-bit address does.
+                segment = segment_override
+                if segment is None:
+                    uses_bp = rm in (2, 3) or (rm == 6 and mod != 0)
+                    segment = self.regs[UC_X86_REG_SS if uses_bp else UC_X86_REG_DS]
+                base = (segment & 0xFFFF) * 16
+                offset = (self._ea(mod, rm, segment) - base) & 0xFFFF
+                if opcode == 0xBA:
+                    index = (self._fetch8() & 0x1F) % bits
+                else:
+                    bit = self.regs[(modrm >> 3) & 7] & mask
+                    if bit & sign:
+                        bit -= 1 << bits
+                    offset = (offset + (bit // bits) * operand_size) & 0xFFFF
+                    index = bit % bits
+                address = (base + offset) & self.address_mask
+                value = self._load(address, operand_size)
+                taken = (value >> index) & 1
+                if operation:
+                    if operation == 1: value |= 1 << index
+                    elif operation == 2: value &= ~(1 << index)
+                    else: value ^= 1 << index
+                    self._store(address, operand_size, value)
+            self.regs[UC_X86_REG_FLAGS] = (
+                self.regs[UC_X86_REG_FLAGS] & ~CF | (CF if taken else 0)
+            )
+        elif opcode in (0xBC, 0xBD):
+            # BSF/BSR. ZF reports an all-zero source, and leaves the
+            # destination as it was rather than inventing an index for it.
+            modrm = self._fetch8()
+            register = (modrm >> 3) & 7
+            read, _ = self._operand(modrm, operand_size, segment_override)
+            value = read() & mask
+            # ZF reports an all-zero source, and the destination is then left
+            # as it was rather than given an index that does not exist. The
+            # other flags are undefined for this instruction; describing the
+            # source the way a logical operation would is what the other
+            # engine does, and it produces that ZF on the way.
+            self._logic_flags(value, bits)
+            if value:
+                self.reg_write(
+                    register,
+                    (value & -value).bit_length() - 1 if opcode == 0xBC
+                    else value.bit_length() - 1,
+                )
+        else:
+            raise UcError(f"unsupported two-byte opcode 0f {opcode:02x} ({self.profile})")
 
     def _io(self, instruction: int, port: int, size: int, value: int = 0) -> int:
         result = 0
@@ -1120,6 +1289,8 @@ class Uc:
                 self.regs[UC_X86_REG_IP] = self._pop(); self.regs[UC_X86_REG_CS] = self._pop()
                 if opcode == 0xCA: self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] + self._fetch(2)) & 0xFFFF
             elif group == 64: self.halted = True; self.running = False
+            elif group == 65:  # the 386's two-byte opcode escape
+                self._two_byte(operand_size, segment_override)
             else:
                 self.regs[UC_X86_REG_IP] = start_ip
                 raise UcError(f"unsupported opcode {opcode:02x} ({self.profile}) at {physical:#x}")
