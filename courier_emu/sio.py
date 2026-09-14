@@ -136,45 +136,72 @@ UART_CLOCK_LOW_RATES_HZ = 12_345_600   # 300..19200, clock-select bit set
 # change with a much wider blast radius, and is not made here.
 CPU_INSTRUCTIONS_PER_SECOND = 20_160_000
 
-def even_parity(value: int) -> int:
-    """The parity bit the firmware generates in software.
+# The link the firmware comes up in is 7E1: start, seven data bits, even
+# parity, stop. It produces that frame from a transmitter it has programmed
+# 8N1 (``LCR = 0x03``), which works because the two frames are the same bits
+# in the same order - an 8N1 frame's eighth data bit sits exactly where a 7E1
+# frame's parity bit sits, and both are ten bits long. Computing parity into
+# the top bit and letting the part shift out eight "data" bits therefore puts
+# a real 7E1 frame on the wire. Doing it in software rather than in the LCR is
+# what lets the firmware offer every parity setting without touching the line
+# format. The evidence is both halves agreeing: over a full banner-and-result-
+# code stream 73 bytes of 73 carry correct even parity, and ATI4 states the
+# link in words - "BAUD=9600 PARITY=E WORDLEN=7".
+#
+# The receive direction is the same technique in reverse: the firmware takes
+# eight bits and masks the top one off, so the parity a terminal sends is
+# accepted and discarded rather than checked.
 
-    The link is 7E1: start, seven data bits, even parity, stop. The firmware
-    produces that frame from a transmitter it has programmed 8N1
-    (``LCR = 0x03``), which works because the two frames are the same bits in
-    the same order -- an 8N1 frame's eighth data bit sits exactly where a 7E1
-    frame's parity bit sits, and both are ten bits long. Computing parity into
-    the top bit and letting the part shift out eight "data" bits therefore
-    puts a real 7E1 frame on the wire, which a 7E1 receiver parses correctly.
-    Doing parity in software rather than in the LCR is what lets the firmware
-    offer every parity setting, and pass eight-bit data, without touching the
-    line format.
+# The framings this firmware transmits in, as its own routine at 0xa5047
+# chooses between them. That routine returns without touching the byte when
+# the product-type cell's Internal bit is set - an internal unit passes eight
+# data bits - and otherwise masks the byte to seven data bits, computes even
+# parity into bit 7, and then adjusts bit 7 for the parity its configuration
+# selects. These numbers are the values that setting takes, which is why they
+# are not in an order anyone would choose: SPACE and MARK are the branches it
+# tests first, ODD is the one it tests next, and every other value leaves the
+# even parity it has already computed. See docs/imodem-at-interface.md.
+SPACE, MARK, ODD, EVEN = 0, 1, 2, 3
+EIGHT_BIT = -1
 
-    The evidence is both halves agreeing: over a full banner-and-result-code
-    stream 73 bytes of 73 carry correct even parity, and ATI4 states the link
-    in words -- "BAUD=9600 PARITY=E WORDLEN=7".
+FRAMING_NAMES = {
+    EIGHT_BIT: "8N1", SPACE: "7S1", MARK: "7M1", ODD: "7O1", EVEN: "7E1",
+}
 
-    The receive direction is the same technique in reverse: the firmware takes
-    eight bits and masks the top one off, so the parity a terminal sends is
-    accepted and discarded rather than checked.
-    """
+
+def framing_of(setting: int, internal: bool) -> int:
+    """The framing the firmware's two cells select, as it reads them."""
+    if internal:
+        return EIGHT_BIT
+    return setting if setting in (SPACE, MARK, ODD) else EVEN
+
+
+def framed(value: int, framing: int = EVEN) -> int:
+    """One byte as this framing puts it on the wire, bit 7 included."""
+    if framing == EIGHT_BIT:
+        return value & 0xFF
     value &= 0x7F
-    return value | (0x80 if bin(value).count("1") % 2 else 0)
+    if framing == SPACE:
+        return value
+    if framing == MARK:
+        return value | 0x80
+    even = value | (0x80 if bin(value).count("1") % 2 else 0)
+    return even ^ 0x80 if framing == ODD else even
 
 
-def without_parity(data: bytes | bytearray) -> bytes:
-    """What a 7E1 receiver takes off the wire: the seven data bits.
+def received(data: bytes | bytearray, framing: int = EVEN) -> bytes:
+    """What a terminal set to this framing takes off the wire.
 
-    The inverse of `even_parity`, and the direction every reader of this
-    port's output needs - the terminal on the other end of the cable parses
-    the frame the firmware sends, so the parity bit never reaches the screen
-    or the transcript. Reading the byte whole instead leaves half the
-    characters with bit 7 set, which looks exactly like line corruption.
-
-    This assumes the link the firmware comes up in and the harness types to.
-    A session that reconfigures the modem for eight-bit data stops the
-    firmware generating parity, and those bytes must not come through here.
+    Four of the five framings carry the data in the low seven bits and a
+    parity or fill bit above it, which the receiver drops; the eight-bit one
+    has no such bit and every bit is data. Reading a seven-bit frame whole
+    leaves bit 7 set on half the characters, which looks exactly like line
+    corruption; masking an eight-bit frame destroys real data. Which one it
+    is comes from the firmware, not from an assumption here - see
+    `IsdnMachine.dte_framing`.
     """
+    if framing == EIGHT_BIT:
+        return bytes(data)
     return bytes(byte & 0x7F for byte in data)
 
 

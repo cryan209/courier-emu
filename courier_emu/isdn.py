@@ -20,8 +20,11 @@ from .sio import (
     TERMINAL_PRESENT,
     UART_CLOCK_HIGH_RATES_HZ,
     UART_CLOCK_LOW_RATES_HZ,
+    EVEN,
+    FRAMING_NAMES,
     SerialChannel,
-    without_parity,
+    framing_of,
+    received,
 )
 
 
@@ -242,6 +245,14 @@ PRODUCT_TYPE_MODES = {
     "internal": 0x08,
     "rackmount": 0x04,
 }
+# The DTE framing is a configuration field, not something the firmware works
+# out from the AT it is typed. The settings block at 2600:d1d2 is unpacked
+# from the packed configuration at 2600:d513 by the shift-and-mask loop at
+# 0xaba49, and the eleventh field of it is the parity mode. The transmitter at
+# 0xa5047 reads exactly this cell, and the product-type cell above, to decide
+# what to put in bit 7 - so reading the same two is how the harness knows the
+# framing rather than assuming one. ATI4 reports what they say in words.
+PARITY_MODE_ADDRESS = 0x2600 * 16 + 0xD1DC
 PRODUCT_MODEM_SUFFIX_ADDRESS = 0x2600 * 16 + 0xD2C4
 PRODUCT_MODEM_SUFFIX = 0x01
 PRODUCT_TYPE_PROBE_COMPLETE = 0xA4506
@@ -301,6 +312,7 @@ class IsdnRunResult:
     hardware_interrupts: int = 0
     software_interrupts: dict[str, int] = field(default_factory=dict)
     timer_ticks: int = 0
+    dte_framing: str = ""
     serial_a: str = ""
     serial_b: str = ""
     download_bytes: int = 0
@@ -520,6 +532,25 @@ class IsdnMachine:
                     base: int | None = None) -> int:
         """Queue bytes on a channel as if a terminal had typed them."""
         return self.channels[base or self.command_base].feed(data)
+
+    def dte_framing(self) -> int:
+        """The framing the firmware is transmitting in, as it decides it.
+
+        Both cells are read live: the configuration is unpacked during startup
+        and the product-type cell is written by the board probe, so a reader
+        that latched either at reset would be reading the wrong link for the
+        first few million instructions.
+        """
+        if self.machine is None:
+            return framing_of(EVEN, internal=False)
+        # Through mem_read, not the interpreter's own buffer: both CPU
+        # engines answer this, and only one of them has a buffer to index.
+        setting = self.machine.mem_read(PARITY_MODE_ADDRESS, 1)[0]
+        product = self.machine.mem_read(PRODUCT_TYPE_ADDRESS, 1)[0]
+        return framing_of(
+            setting,
+            internal=bool(product & PRODUCT_TYPE_MODES["internal"]),
+        )
 
     def take_serial(self, base: int | None = None) -> bytes:
         """Take what the firmware has transmitted since the last call."""
@@ -958,6 +989,7 @@ class IsdnMachine:
                 and self._uart_of(port) is None
             }
         )
+        framing = self.dte_framing()
         return IsdnRunResult(
             status=status,
             instructions=self.instructions,
@@ -969,12 +1001,12 @@ class IsdnMachine:
                 for number, count in sorted(self.software_interrupts.items())
             },
             timer_ticks=self.timer_ticks,
-            # As the terminal on the port reads it. `tx` is the wire, and the
-            # wire carries the firmware's software parity in bit 7; a reader
-            # that keeps it sees every odd-parity character as a replacement
-            # character. See `without_parity`.
-            serial_a=without_parity(self.channels[UART_A_BASE].tx).decode("ascii", "replace"),
-            serial_b=without_parity(self.channels[UART_B_BASE].tx).decode("ascii", "replace"),
+            # As the terminal on the port reads it. `tx` is the wire, and on
+            # every framing but the eight-bit one the wire carries a parity
+            # bit above the data that the receiver drops.
+            dte_framing=FRAMING_NAMES[framing],
+            serial_a=received(self.channels[UART_A_BASE].tx, framing).decode("ascii", "replace"),
+            serial_b=received(self.channels[UART_B_BASE].tx, framing).decode("ascii", "replace"),
             serial={
                 name: self.channels[base].status()
                 for name, base in (("a", UART_A_BASE), ("b", UART_B_BASE),

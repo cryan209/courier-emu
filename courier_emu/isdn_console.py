@@ -11,11 +11,12 @@ board's DTE front-end then routes each line through the firmware's attention
 receiver, which consumes AT and resets the command buffer before handing the
 body to the parser. See docs/imodem-terminal-framing.md.
 
-The link is 7E1, and the firmware generates the parity bit itself rather than
-asking the part for it - see `even_parity` in courier_emu/sio.py for why a
-transmitter programmed 8N1 emits exactly that frame.  So a terminal on the
-other end is a 7E1 terminal, and `_on_the_wire` makes this one behave like
-one.
+The link is usually 7E1, and the firmware generates the parity bit itself
+rather than asking the part for it - see the framing section of
+courier_emu/sio.py for why a transmitter programmed 8N1 emits exactly that
+frame.  Which framing it is on any given run comes from the firmware's own
+configuration, through `IsdnMachine.dte_framing`; this terminal reads and
+types in whichever one that is.
 
 The firmware masks the parity bit on receive rather than checking it, so what
 this sends in is not load-bearing: a line sent with parity and a line sent
@@ -32,7 +33,7 @@ import time
 from typing import Any, Callable, Iterable
 
 from .pit import INSTRUCTIONS_PER_SECOND
-from .sio import even_parity, without_parity
+from .sio import EVEN, framed, received
 
 # Long enough for the kernel to create and first-run the command task; the
 # nine-task startup completes a little before 3M instructions.
@@ -97,17 +98,18 @@ def scripted_pump(
     response = bytearray()
 
     def pump(machine: Any) -> None:
-        received = machine.take_serial()
-        if received:
-            log.append((machine.instructions, "received", _readable(received)))
+        framing = machine.dte_framing()
+        incoming = machine.take_serial()
+        if incoming:
+            log.append((machine.instructions, "received", _readable(incoming, framing)))
             if waiting[0]:
-                response.extend(without_parity(received))
+                response.extend(received(incoming, framing))
                 if _has_result_code(response):
                     waiting[0] = False
         if (commands and not waiting[0]
                 and machine.instructions >= next_send[0]):
             line = commands.pop()
-            machine.send_serial(_on_the_wire(line))
+            machine.send_serial(_on_the_wire(line, framing))
             log.append((machine.instructions, "sent", line))
             response.clear()
             waiting[0] = True
@@ -132,22 +134,24 @@ def _has_result_code(response: bytes | bytearray) -> bool:
     return any(b"\r\n" + code + b"\r\n" in framed for code in _RESULT_CODES)
 
 
-def _readable(data: bytes) -> str:
-    """Decode what a 7E1 terminal reads.
+def _readable(data: bytes, framing: int = EVEN) -> str:
+    """Decode what a terminal set to this framing reads.
 
-    Bit 7 of what the firmware transmits is even parity over the low seven,
-    computed in software on a part it has programmed for eight data bits and
-    none: over a full banner-and-result-code stream, 73 bytes of 73 agree, and
-    ATI4 describes the link the same way - ``PARITY=E WORDLEN=7``. A terminal
-    set the matching way never sees it.
+    On every framing but the eight-bit one, bit 7 of what the firmware
+    transmits is the parity it generates in software on a part it has
+    programmed for eight data bits and none: over a full banner-and-result-
+    code stream, 73 bytes of 73 agree, and ATI4 describes the link the same
+    way - ``PARITY=E WORDLEN=7``. A terminal set the matching way never sees
+    it. Which framing that is comes from the firmware; see
+    `IsdnMachine.dte_framing`.
     """
-    return without_parity(data).decode("ascii", "replace")
+    return received(data, framing).decode("ascii", "replace")
 
 
-def _on_the_wire(text: str | bytes) -> bytes:
-    """What a 7E1 terminal puts on the line for this text."""
+def _on_the_wire(text: str | bytes, framing: int = EVEN) -> bytes:
+    """What a terminal set to this framing puts on the line for this text."""
     data = text.encode("ascii", "replace") if isinstance(text, str) else bytes(text)
-    return bytes(even_parity(byte) for byte in data)
+    return bytes(framed(byte, framing) for byte in data)
 
 
 def interactive_pump(
@@ -185,9 +189,10 @@ def interactive_pump(
     next_clock_sync = [after]
 
     def pump(machine: Any) -> None:
-        received = machine.take_serial()
-        if received:
-            sink.write(_readable(received))
+        framing = machine.dte_framing()
+        incoming = machine.take_serial()
+        if incoming:
+            sink.write(_readable(incoming, framing))
             sink.flush()
         if detached[0] or machine.instructions < after:
             return
@@ -231,7 +236,7 @@ def interactive_pump(
                 # and down a line.
                 sink.write(data.decode("ascii", "replace").replace("\r", "\r\n"))
                 sink.flush()
-            machine.send_serial(_on_the_wire(data))
+            machine.send_serial(_on_the_wire(data, framing))
         if detached[0]:
             machine.stop("detached")
 

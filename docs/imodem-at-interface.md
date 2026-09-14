@@ -113,12 +113,34 @@ itself into the top bit, so `USRobotics` leaves the part as
 occupies, and both frames are ten bits, so what reaches the wire *is* 7E1 and
 a 7E1 terminal parses it correctly.  Over a full banner-and-result-code stream
 73 bytes of 73 carry correct even parity, and `ATI4` says the same thing in
-words: `BAUD=9600 PARITY=E WORDLEN=7`.  The console masks the parity bit for
-display and sets it on the way in, and `serial_a` in the report is that same
-reading: the seven data bits, as the terminal on the port sees them.  It used
-to be the raw stream, which put bit 7 on half the characters and read as line
-corruption.  A session that reconfigures the modem for eight-bit data would
-need the wire bytes instead.
+words: `BAUD=9600 PARITY=E WORDLEN=7`.
+
+**The framing is read from the firmware, not assumed.**  The transmitter at
+`0xa5047` decides it from two cells in its data segment, and the harness reads
+the same two rather than guessing:
+
+* `2600:d2c3` is the board probe's product-type verdict.  Its Internal bit
+  (`0x08`) makes the routine return before it touches the byte at all, so an
+  internal unit transmits eight data bits and no parity.
+* `2600:d1dc` selects the parity for everything else: `0` space, `1` mark, `2`
+  odd, and any other value the even parity the routine has already computed.
+  It is not a constant and not a detection - it is the eleventh field of the
+  settings block at `2600:d1d2`, which the shift-and-mask loop at `0xaba49`
+  unpacks from the packed configuration at `2600:d513` during startup.  It
+  comes up at `3`, which is why `ATI4` says `PARITY=E`.
+
+`IsdnMachine.dte_framing` reads both, live, and the report names the result in
+`dte_framing`.  The console and the report then read and type in that framing:
+seven data bits and a parity bit for four of the five, and eight data bits for
+an internal unit, whose data must not be masked.
+
+**This firmware does not autobaud the AT.**  A Courier of this era is expected
+to take its DTE framing from the `AT` prefix, and the detector is there - the
+attention receiver at `0xb3596` masks each byte with `and al,0x5f`, which
+strips the parity bit and the case together - but it only *accepts* any
+framing, it does not adopt it.  Typing `AT` in 7E1, 7O1, 7M1, 7S1 and 8N1 all
+produce the same answer, in 7E1, and leave `2600:d1dc` at `3`.  Whatever sets
+that cell, an `AT` typed at the port is not it.
 
 Receive is the same technique in reverse - the firmware takes eight bits and
 masks the top one rather than checking it - so parity on the way in is not
