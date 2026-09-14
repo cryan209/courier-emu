@@ -217,6 +217,10 @@ DETECTOR_PRESENT_LEVEL = 0x30
 # 0x7f, and vectors through a 128-entry table at program 0x83e9. `lamm`/`samm`
 # mask the address to 0x7f, so these are plain data cells 0x0057/0x005e/0x005f.
 HOST_STATUS_CELL = 0x57
+# The C51's 8K of on-chip mask ROM occupies program 0000..1fff; its SARAM
+# starts at 2000 (courier_emu/dsp_probe, measured on the 2806 board). A group
+# the loader writes below this reaches ROM space and never reads back.
+C51_MASK_ROM_WORDS = 0x2000
 HOST_TAG_CELL = 0x5E
 HOST_WORD_CELL = 0x5F
 # `BIT dma, code` on the C5x tests bit (15 - code), not bit `code`. The
@@ -296,6 +300,8 @@ class BridgeStatus:
     bootstrap_match: bool | None
     bootstraps: int
     overlay_downloads: int
+    overlay_words_verified: int
+    overlay_words_unreadable: int
     overlay_id: int | None
     overlay_match: bool | None
     overlay_heads: list[str]
@@ -438,6 +444,13 @@ class CourierDspBridge:
         # overlay table rather than by any value the bridge chooses.
         self._overlay_target = None
         self._overlay_buffer = bytearray()
+        #: (destination, four words) for each group the resident has taken, in
+        #: the order it took them. A payload is not one block at its entry
+        #: word: the supervisor re-points ff62 between sections, so where each
+        #: group landed is the only way to read the overlay back.
+        self._overlay_groups: list[tuple[int, bytes]] = []
+        self.overlay_words_verified = 0
+        self.overlay_words_unreadable = 0
         self.overlay_downloads = 0
         # `out 0x1e, 4` at 0x8e631 starts an overlay transfer.
         self.transfer_start_command = 4
@@ -1410,6 +1423,7 @@ class CourierDspBridge:
                 # Not a payload this ROM's table knows. Drop it rather than
                 # publish something unidentified into program space.
                 self._overlay_buffer = bytearray()
+                self._overlay_groups = []
                 return
         target = self._overlay_target
         # A payload may end after the first two words of its padded final
@@ -1425,15 +1439,43 @@ class CourierDspBridge:
             # loader's BLDP instructions.  Reading them back here verifies the
             # modeled transport; it must never be the operation that publishes
             # the overlay.
-            words = (target.length + 1) // 2
-            installed = b"".join(
-                self.core.program(target.entry_word + index).to_bytes(2, "little")
-                for index in range(words)
-            )[:target.length]
-            self.overlay_match = installed == image
+            #
+            # Read each group back from the destination the loader used, not
+            # from one run at the entry word: the supervisor re-points ff62
+            # partway through, so a payload is spread over more than one base.
+            #
+            # The groups before that re-point are the transfer's header, and
+            # they go out against a destination nothing has set yet - ff62 is
+            # still its reset zero, with no write to it recorded - so the
+            # loader puts them at program 0000. That is the C51's on-chip mask
+            # ROM in microcomputer mode, which ignores writes, and this part
+            # boots that way: MP/MC reads 0 on the real board and PMST stays
+            # 0000 throughout the download. Program 2000 is where its SARAM
+            # starts (courier_emu/dsp_probe, measured on the 2806 board). So
+            # those words are unreadable by construction, not a transport
+            # failure, and the image proper - everything from the re-point on -
+            # is what lands at the entry word.
+            verified = 0
+            unreadable = 0
+            for base, words in self._overlay_groups:
+                if base < C51_MASK_ROM_WORDS:
+                    unreadable += 4
+                    continue
+                installed = b"".join(
+                    self.core.program(base + index).to_bytes(2, "little")
+                    for index in range(4)
+                )
+                if installed != words:
+                    self.overlay_match = False
+                    break
+                verified += 4
+            else:
+                self.overlay_words_verified += verified
+                self.overlay_words_unreadable += unreadable
         if self.overlay_match:
             self.overlay_downloads += 1
         self._overlay_buffer = bytearray()
+        self._overlay_groups = []
         self._overlay_target = None
 
     def _commit_overlay_group(self, block: bytes) -> None:
@@ -1466,6 +1508,7 @@ class CourierDspBridge:
                     # INTR and status poll; the next 0200 event is raised only
                     # after it has elapsed.
                     self.core.step(32)
+                    self._overlay_groups.append((base, bytes(block)))
                     return True
             return False
 
@@ -1653,6 +1696,7 @@ class CourierDspBridge:
             if strobe == self.transfer_start_command:
                 self._overlay_target = None
                 self._overlay_buffer = bytearray()
+                self._overlay_groups = []
                 self._overlay_status = 0x07
             elif self.active and strobe in self._windows:
                 # Measured framing: each acknowledgement commits four bytes -
@@ -2412,6 +2456,8 @@ class CourierDspBridge:
                 "call_overlay_active": self._call_overlay_active,
                 "call_resume_state": self._call_resume_state,
                 "connected_event_queued": self._connected_event_queued,
+                "carrier_source": self._carrier_source,
+                "legacy_carrier_fallback": self.legacy_carrier_fallback,
                 "carrier_probe_frames": self._carrier_probe_frames,
                 "carrier_best_score": round(self._carrier_best_score),
                 "negotiation_audio": self._negotiation_audio_status(),
