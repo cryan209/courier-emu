@@ -1629,6 +1629,21 @@ class CourierMachine:
                 self._timer_poll_owed += TIMER_POLL_INSTRUCTIONS
                 self.timers.tick(self.instructions)
                 interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
+                # The ROM arms INT1 and starts timer 1 as a stopwatch, then
+                # reads that stopwatch in the handler to derive a bit period.
+                # Only one thing on the board can be measured that way: the
+                # start bit. Drive INT1 from the wire's mark-to-space edge, so
+                # the interval the firmware measures is the interval a
+                # character actually took to arrive.
+                if (
+                    self.timers.controller.enabled("int1")
+                    and self._external_interrupt_pending is None
+                    and interrupts_on
+                    and self.dte_line.take_edge()
+                ):
+                    self._external_interrupt_pending = INT1_VECTOR
+                    self.int1_delivered = True
+                    _uc.emu_stop()
                 if (
                     not self.int1_delivered
                     and self.int1_after_ms is not None

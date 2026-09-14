@@ -264,6 +264,10 @@ class DteTransmitLine:
         self.bit_instructions = bit_instructions
         self.byte: int | None = None
         self.started = 0
+        #: The mark-to-space transition that opens a frame. The ROM arms an
+        #: external interrupt and a stopwatch and waits for exactly this; it
+        #: is the only thing on the wire that says a character has begun.
+        self._edge = False
 
     @property
     def busy(self) -> bool:
@@ -272,6 +276,12 @@ class DteTransmitLine:
     def begin(self, byte: int, instructions: int) -> None:
         self.byte = byte & 0xFF
         self.started = instructions
+        self._edge = True
+
+    def take_edge(self) -> bool:
+        """Consume the start edge, if one is waiting. One frame, one edge."""
+        edge, self._edge = self._edge, False
+        return edge
 
     def bit_index(self, instructions: int) -> int:
         if self.byte is None:
@@ -296,3 +306,4 @@ class DteTransmitLine:
 
     def idle(self) -> None:
         self.byte = None
+        self._edge = False
