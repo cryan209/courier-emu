@@ -1440,32 +1440,56 @@ class CourierDspBridge:
         """Expose four words to the resident loader and await its real ACK."""
         if len(block) != 8:
             raise ValueError("overlay ASIC block must contain four words")
+        def present(words: bytes) -> None:
+            for index in range(4):
+                first = index * 2
+                self.core.set_io(0x58 + index,
+                                 words[first] | (words[first + 1] << 8))
+            # Bit 9 is the ASIC's four-word-ready event. The resident clears
+            # it by writing 0300 only after all four BLDP operations have
+            # completed.
+            self.core.set_io(HOST_STATUS_CELL,
+                             self.core.io(HOST_STATUS_CELL) | 0x0200)
+
+        def settle(base: int) -> bool:
+            """Step the resident until it has taken the four words from `base`."""
+            for _ in range(20_000):
+                self.core.step(1)
+                if self.core.data(0xFF62) == (base + 4) & 0xFFFF:
+                    # ff62 is written in the branch delay slot just before the
+                    # loader returns to its idle/poll loop. Do not advertise
+                    # the next bank yet: an idle-path 0300 write in that short
+                    # tail can otherwise clear a newly raised 0200 before it is
+                    # consumed. The caller may have interrupted ordinary
+                    # resident work and need not return to an IDLE instruction
+                    # immediately. A small tail is enough to retire the branch,
+                    # INTR and status poll; the next 0200 event is raised only
+                    # after it has elapsed.
+                    self.core.step(32)
+                    return True
+            return False
+
+        # The idle/status paths also write 0300 to this latch. The loader alone
+        # advances ff62 after its four BLDPs, which is stronger (and portable
+        # across resident revisions) than accepting any status write as the
+        # acknowledgement.
         destination = self.core.data(0xFF62)
-        for index in range(4):
-            first = index * 2
-            self.core.set_io(0x58 + index,
-                             block[first] | (block[first + 1] << 8))
-        # Bit 9 is the ASIC's four-word-ready event. The resident clears it by
-        # writing 0300 only after all four BLDP operations have completed.
-        self.core.set_io(HOST_STATUS_CELL,
-                         self.core.io(HOST_STATUS_CELL) | 0x0200)
+        present(block)
         self._overlay_status &= ~0x02
-        for _ in range(20_000):
-            self.core.step(1)
-            # The idle/status paths also write 0300 to this latch. The loader
-            # alone advances ff62 after its four BLDPs, which is stronger (and
-            # portable across resident revisions) than accepting any status
-            # write as the acknowledgement.
-            if self.core.data(0xFF62) == (destination + 4) & 0xFFFF:
-                # ff62 is written in the branch delay slot just before the
-                # loader returns to its idle/poll loop. Do not advertise the
-                # next bank yet: an idle-path 0300 write in that short tail can
-                # otherwise clear a newly raised 0200 before it is consumed.
-                # The caller may have interrupted ordinary resident work and
-                # need not return to an IDLE instruction immediately. A small
-                # tail is enough to retire the branch, INTR and status poll;
-                # the next 0200 event is raised only after it has elapsed.
-                self.core.step(32)
+        if settle(destination):
+            self._overlay_status |= 0x02
+            return
+        # ff62 is also the supervisor's download-destination register: mailbox
+        # command 02 writes it (`dsp_mailbox.HOST_WRITE_CELLS`). At a section
+        # boundary the resident leaves this poll loop through its `retc ntc`
+        # gate and the supervisor re-points the pointer, so the ready event
+        # raised against the old base is never taken. Once the resident has
+        # settled on the new base, present the same four words again there and
+        # count the acknowledgement from it.
+        repointed = self.core.data(0xFF62)
+        if repointed != destination:
+            present(block)
+            if settle(repointed):
                 self._overlay_status |= 0x02
                 return
         raise RuntimeError("C51 resident loader did not acknowledge overlay block")
