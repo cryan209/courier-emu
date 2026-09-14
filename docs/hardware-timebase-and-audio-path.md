@@ -266,7 +266,10 @@ different `MP/MC` - and no board running them has been probed here.
 
 Nothing above is a readout of the die, and the mask ROM's contents are
 recovered separately in
-[dsp-rom-content-analysis.md](dsp-rom-content-analysis.md).
+[dsp-rom-content-analysis.md](dsp-rom-content-analysis.md). What each family
+does with that ROM - the B series vectoring through it, the C series unmapping
+it and carrying a copy of its dispatch table - is measured in
+[mask-rom-dependency.md](mask-rom-dependency.md).
 
 ### Still unavailable
 
