@@ -1,0 +1,126 @@
+{
+  "mode": "two real Couriers, leased-line link, live capture",
+  "captured_at": "2026-09-14T23:42:05",
+  "queries": [
+    "ATI11",
+    "ATG00070000",
+    "ATGLK2I0058",
+    "ATGLK2I005A",
+    "ATGLK2I005C",
+    "ATGLK2I005E",
+    "ATG00620000",
+    "ATGLK2I0058",
+    "ATGLK2I005A",
+    "ATGLK2I005C",
+    "ATGLK2I005E",
+    "ATGLK2I0194",
+    "ATGLK2I0196",
+    "ATI6"
+  ],
+  "resumed": true,
+  "ends": [
+    {
+      "port": "/dev/cu.usbserial-FT4TQOFT",
+      "dte_baud": 115200,
+      "escape_text": "\r\nOK\r\n",
+      "hello": {
+        "sent": "AT",
+        "text": "AT\r\r\nOK\r\n",
+        "raw_hex": "41540d0d0a4f4b0d0a",
+        "first_byte_at": 2186834.0097
+      },
+      "queries": [
+        {
+          "sent": "ATI11",
+          "text": "ATI11\r\r\nUSRobotics Courier V.Everything Link Diagnostics...\r\n\r\nModulation               V.34+\r\nCarrier Freq    ( Hz )   1959/1959\r\nSymbol Rate              3429/3429\r\nTrellis Code             64S-4D/64S-4D\r\nNonlinear Encoding       ON/ON\r\nPrecoding                OFF/OFF\r\nShaping                  OFF/OFF\r\nPreemphasis Index        1/1\r\nRecv/Xmit Level (-dBm)   16.6/17.6\r\nSNR             ( dB )   43.9\r\nNear Echo Loss  ( dB )   8.5\r\nFar Echo Loss   ( dB )   51.5\r\nRoundtrip Delay (msec)   0\r\nTiming Offset   ( ppm)   -2352\r\nCarrier Offset  ( ppm)   120\r\nRX Upshifts              0\r\nRX Downshifts            0\r\nTX Speedshifts           0\r\nV.90 Status              0002\r\n\r\nOK\r\n",
+          "raw_hex": "41544931310d0d0a5553526f626f7469637320436f757269657220562e45766572797468696e67204c696e6b20446961676e6f73746963732e2e2e0d0a0d0a4d6f64756c6174696f6e202020202020202020202020202020562e33342b0d0a436172726965722046726571202020202820487a2029202020313935392f313935390d0a53796d626f6c20526174652020202020202020202020202020333432392f333432390d0a5472656c6c697320436f6465202020202020202020202020203634532d34442f3634532d34440d0a4e6f6e6c696e65617220456e636f64696e67202020202020204f4e2f4f4e0d0a507265636f64696e67202020202020202020202020202020204f46462f4f46460d0a53686170696e672020202020202020202020202020202020204f46462f4f46460d0a507265656d70686173697320496e6465782020202020202020312f310d0a526563762f586d6974204c6576656c20282d64426d2920202031362e362f31372e360d0a534e522020202020202020202020202028206442202920202034332e390d0a4e656172204563686f204c6f73732020282064422029202020382e350d0a466172204563686f204c6f737320202028206442202920202035312e350d0a526f756e64747269702044656c617920286d73656329202020300d0a54696d696e67204f6666736574202020282070706d292020202d323335320d0a43617272696572204f66667365742020282070706d292020203132300d0a52582055707368696674732020202020202020202020202020300d0a525820446f776e736869667473202020202020202020202020300d0a54582053706565647368696674732020202020202020202020300d0a562e3930205374617475732020202020202020202020202020303030320d0a0d0a4f4b0d0a",
+          "first_byte_at": 2186834.8207
+        },
+        {
+          "sent": "ATG00070000",
+          "text": "ATG00070000\r\r\nERROR\r\n",
+          "raw_hex": "41544730303037303030300d0d0a4552524f520d0a",
+          "first_byte_at": 2186836.3387
+        },
+        {
+          "sent": "ATGLK2I0058",
+          "text": "ATGLK2I0058\r\r\n20\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035380d0d0a32300d0a4f4b0d0a",
+          "first_byte_at": 2186837.8542
+        },
+        {
+          "sent": "ATGLK2I005A",
+          "text": "ATGLK2I005A\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035410d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2186839.359
+        },
+        {
+          "sent": "ATGLK2I005C",
+          "text": "ATGLK2I005C\r\r\n0E\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035430d0d0a30450d0a4f4b0d0a",
+          "first_byte_at": 2186840.8803
+        },
+        {
+          "sent": "ATGLK2I005E",
+          "text": "ATGLK2I005E\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035450d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2186842.3939
+        },
+        {
+          "sent": "ATG00620000",
+          "text": "ATG00620000\r\r\nERROR\r\n",
+          "raw_hex": "41544730303632303030300d0d0a4552524f520d0a",
+          "first_byte_at": 2186843.9146
+        },
+        {
+          "sent": "ATGLK2I0058",
+          "text": "ATGLK2I0058\r\r\n20\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035380d0d0a32300d0a4f4b0d0a",
+          "first_byte_at": 2186845.4327
+        },
+        {
+          "sent": "ATGLK2I005A",
+          "text": "ATGLK2I005A\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035410d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2186846.9387
+        },
+        {
+          "sent": "ATGLK2I005C",
+          "text": "ATGLK2I005C\r\r\n0E\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035430d0d0a30450d0a4f4b0d0a",
+          "first_byte_at": 2186848.4453
+        },
+        {
+          "sent": "ATGLK2I005E",
+          "text": "ATGLK2I005E\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035450d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2186849.96
+        },
+        {
+          "sent": "ATGLK2I0194",
+          "text": "ATGLK2I0194\r\r\n94\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303139340d0d0a39340d0a4f4b0d0a",
+          "first_byte_at": 2186851.4673
+        },
+        {
+          "sent": "ATGLK2I0196",
+          "text": "ATGLK2I0196\r\r\n96\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303139360d0d0a39360d0a4f4b0d0a",
+          "first_byte_at": 2186852.9805
+        },
+        {
+          "sent": "ATI6",
+          "text": "ATI6\r\r\nUSRobotics Courier V.Everything Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   6      Octets Received               4\r\nBlocks sent                   5      Blocks Received               3\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       MNP5\r\nEqualization           Long\r\nFallback               Enabled\r\nProtocol               MNP 244/8\r\nSpeed                  33600/33600\r\nCurrent Call           00:02:46\r\n\r\nOnline\r\nOK\r\n",
+          "raw_hex": "415449360d0d0a5553526f626f7469637320436f757269657220562e45766572797468696e67204c696e6b20446961676e6f73746963732e2e2e0d0a0d0a43686172732073656e74202020202020202020202020202020202020202030202020202020436861727320526563656976656420202020202020202020202020202020300d0a4368617273206c6f73742020202020202020202020202020202020202020300d0a4f63746574732073656e7420202020202020202020202020202020202020362020202020204f6374657473205265636569766564202020202020202020202020202020340d0a426c6f636b732073656e742020202020202020202020202020202020202035202020202020426c6f636b73205265636569766564202020202020202020202020202020330d0a426c6f636b7320726573656e742020202020202020202020202020202020300d0a0d0a5265747261696e7320526571756573746564202020202020202020202020302020202020205265747261696e73204772616e7465642020202020202020202020202020300d0a4c696e6520526576657273616c732020202020202020202020202020202030202020202020426c65727320202020202020202020202020202020202020202020202020300d0a4c696e6b2054696d656f7574732020202020202020202020202020202020302020202020204c696e6b204e616b73202020202020202020202020202020202020202020300d0a0d0a4461746120436f6d7072657373696f6e202020202020204d4e50350d0a457175616c697a6174696f6e20202020202020202020204c6f6e670d0a46616c6c6261636b202020202020202020202020202020456e61626c65640d0a50726f746f636f6c2020202020202020202020202020204d4e50203234342f380d0a537065656420202020202020202020202020202020202033333630302f33333630300d0a43757272656e742043616c6c202020202020202020202030303a30323a34360d0a0d0a4f6e6c696e650d0a4f4b0d0a",
+          "first_byte_at": 2186854.4879
+        }
+      ],
+      "resume": {
+        "sent": "ATO",
+        "text": "ATO\r\r\nCONNECT 33600/ARQ/V34/MNP/MNP5\r\n",
+        "raw_hex": "41544f0d0d0a434f4e4e4543542033333630302f4152512f5633342f4d4e502f4d4e50350d0a",
+        "first_byte_at": 2186855.9953
+      }
+    }
+  ]
+}
