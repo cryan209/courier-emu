@@ -92,3 +92,49 @@ The [normally booted DSP replay](../artifacts/g-eight-hex-board/booted-emulator.
 now matches all five board results. This resolves the previously reported
 query-62 `0012` versus `0015` mismatch as a difference in test initialization;
 see [the comparison analysis](mailbox-312-comparison.md).
+
+## The same command on 7.6.7, and what it costs online
+
+Measured 2026-09-15 on the leased-line unit at `/dev/cu.usbserial-FT4TQOFT`,
+supervisor 7.6.7 / DSP 3.1.2, serial `21OWZ849PS95` - the board whose flash is
+`artifacts/courier-board-11430-flash-20260914-unit2-02/courier-board.rom`.
+
+**`LK2` is mandatory on this build.** Bare `ATG00070000` answers `ERROR`, and so
+does bare `ATG`. The handler itself is byte-equivalent to 4.03d's, relocated to
+file `0x26794`, with the queue helper at `8f51:01e4`; only the prefix check
+differs. At `0x2673b` both builds compare `word [si]` against `'LK'` and
+`[si+2]` against `'2'`; 4.03d's mismatch branch continues into the subcommand
+dispatch, while 7.6.7 jumps to `stc; ret`. So every form below carries the
+prefix: `ATGLK200070000` queues what `ATG00070000` queues on 4.03d.
+
+The subcommand letters, disassembled from the same image:
+
+| Form | Handler | Action |
+|---|---|---|
+| `ATGLK2Iport` | `0x267d7` | one `in al, dx` |
+| `ATGLK2Bport` | `0x27af4` | 16 consecutive ports, `in`/`inc dx` |
+| `ATGLK2Oport,val` | `0x267f7` | one `out dx, al`; the comma is required |
+| `ATGLK2=[seg:]off` | `0x27a28` | 16 memory bytes from `es:[bx]` |
+| `ATGLK2R[seg:]off` | `0x27a93` | 8 memory words |
+| `ATGLK2N` | `0x267cf` | sets bit 0 of `[0x158]` |
+
+`I` reads ports, not memory, so the queue pointers cannot be read with it:
+`ATGLK2I0194` returns `94` and `I0196` returns `96` because those ports are
+unmapped and float the address low byte. `R` reads them properly.
+
+**Query 07 is delivered and answered during a live V.34 call.** With the pair
+connected at 33600/33600, `ATGLK2R0190` showed tail and head both at `0x019E`
+before and `0x01A4` after, the six bytes at `0x0198` holding the expected
+`ff00 0007 0000` frame, and port `0x58` moving from `0x20` to `0x31` - reply tag
+`0x0031`, the same value the idle 4.03d board gave. This answers the
+concurrency question left open above, for that query.
+
+**Query 62 dropped the call and wedged the supervisor.** Issued next on the same
+connection, `ATGLK200620000` was followed by `NO CARRIER`, and the modem then
+stopped answering `AT` at all until it was power cycled. Treat tag `0x62` as
+unsafe while a call is up. Whether it is the query or the concurrency that wedges
+the supervisor is not established; one occurrence, not repeated.
+
+[Online capture](../artifacts/leased-pair/dsp-queue-online.json),
+[prefix comparison](../artifacts/leased-pair/dsp-lk2-prefixed.json), and the
+[refusals before the prefix was known](../artifacts/leased-pair/dsp-online.json).

@@ -1,0 +1,120 @@
+{
+  "mode": "two real Couriers, leased-line link, live capture",
+  "captured_at": "2026-09-15T00:25:05",
+  "queries": [
+    "ATGLK200070000",
+    "ATGLK2I0058",
+    "ATGLK2I005A",
+    "ATGLK2I005C",
+    "ATGLK2I005E",
+    "ATGLK200620000",
+    "ATGLK2I0058",
+    "ATGLK2I005A",
+    "ATGLK2I005C",
+    "ATGLK2I005E",
+    "ATGLK2I0194",
+    "ATGLK2I0196"
+  ],
+  "resumed": true,
+  "ends": [
+    {
+      "port": "/dev/cu.usbserial-FT4TQOFT",
+      "dte_baud": 115200,
+      "escape_text": "\r\nOK\r\n",
+      "hello": {
+        "sent": "AT",
+        "text": "AT\r\r\nOK\r\n",
+        "raw_hex": "41540d0d0a4f4b0d0a",
+        "first_byte_at": 2189416.5321
+      },
+      "lines": {
+        "DTR": true,
+        "RTS": true,
+        "CTS": true,
+        "DCD": true,
+        "RI": false,
+        "DSR": true
+      },
+      "queries": [
+        {
+          "sent": "ATGLK200070000",
+          "text": "ATGLK200070000\r\r\nOK\r\n",
+          "raw_hex": "4154474c4b3230303037303030300d0d0a4f4b0d0a",
+          "first_byte_at": 2189417.5465
+        },
+        {
+          "sent": "ATGLK2I0058",
+          "text": "ATGLK2I0058\r\r\n20\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035380d0d0a32300d0a4f4b0d0a",
+          "first_byte_at": 2189419.053
+        },
+        {
+          "sent": "ATGLK2I005A",
+          "text": "ATGLK2I005A\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035410d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2189420.5689
+        },
+        {
+          "sent": "ATGLK2I005C",
+          "text": "ATGLK2I005C\r\r\n0E\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035430d0d0a30450d0a4f4b0d0a",
+          "first_byte_at": 2189422.0655
+        },
+        {
+          "sent": "ATGLK2I005E",
+          "text": "ATGLK2I005E\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035450d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2189423.5803
+        },
+        {
+          "sent": "ATGLK200620000",
+          "text": "ATGLK200620000\r\r\nOK\r\n",
+          "raw_hex": "4154474c4b3230303632303030300d0d0a4f4b0d0a",
+          "first_byte_at": 2189425.0886
+        },
+        {
+          "sent": "ATGLK2I0058",
+          "text": "ATGLK2I0058\r\r\n20\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035380d0d0a32300d0a4f4b0d0a",
+          "first_byte_at": 2189426.5983
+        },
+        {
+          "sent": "ATGLK2I005A",
+          "text": "ATGLK2I005A\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035410d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2189428.109
+        },
+        {
+          "sent": "ATGLK2I005C",
+          "text": "ATGLK2I005C\r\r\n0E\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035430d0d0a30450d0a4f4b0d0a",
+          "first_byte_at": 2189429.6296
+        },
+        {
+          "sent": "ATGLK2I005E",
+          "text": "ATGLK2I005E\r\r\n00\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303035450d0d0a30300d0a4f4b0d0a",
+          "first_byte_at": 2189431.1357
+        },
+        {
+          "sent": "ATGLK2I0194",
+          "text": "ATGLK2I0194\r\r\n94\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303139340d0d0a39340d0a4f4b0d0a",
+          "first_byte_at": 2189432.6562
+        },
+        {
+          "sent": "ATGLK2I0196",
+          "text": "ATGLK2I0196\r\r\n96\r\nOK\r\n",
+          "raw_hex": "4154474c4b3249303139360d0d0a39360d0a4f4b0d0a",
+          "first_byte_at": 2189434.1615
+        }
+      ],
+      "resume": {
+        "sent": "ATO",
+        "text": "ATO\r\r\nCONNECT/ARQ\r\n",
+        "raw_hex": "41544f0d0d0a434f4e4e4543542f4152510d0a",
+        "first_byte_at": 2189435.6693
+      }
+    }
+  ]
+}
