@@ -51,7 +51,24 @@ COUNT_MODULUS = 0x10000
 #
 # The old 1.193182 MHz made the same counter 133.645 Hz, so every timeout the
 # firmware set was a third short.
-CLOCK_HZ = 892_800
+#
+# The board and the firmware then say the same thing a second way, exactly.
+# The 8254 here is the 386EX's own timer control unit - which is why it sits at
+# 0xf040 beside the interrupt controllers at 0xf020/0xf0a0 and the serial ports
+# at 0xf4f8/0xf8f8 - so it runs on that part's prescaled clock. The board
+# carries a 50.000 MHz oscillator for the 386EX, halved to the KU80386EX25's
+# 25 MHz (docs/imodem-board-map.md), and the firmware writes CLKPRS at 0xf804
+# with 12 during setup, which prescales by 2 * (12 + 2):
+#
+#   25 MHz / 28 = 892,857.14 Hz
+#
+# At that clock the ideal divisors for 480, 100 and 25 Hz are 1860.12, 8928.57
+# and 35714.29, and what the firmware programs is 1860, 8928 and 35714 - the
+# nearest integer to each. No other prescale comes close: 26 and 30 are 7% out
+# on all three.
+CPU_CLOCK_HZ = 25_000_000
+TIMER_PRESCALE = 28
+CLOCK_HZ = CPU_CLOCK_HZ // TIMER_PRESCALE   # 892,857
 
 # The instruction clock the harness runs at. The 80186 side calibrates this from
 # the answer machine's ring qualification window; nothing equivalent has been

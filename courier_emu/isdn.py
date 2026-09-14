@@ -230,7 +230,26 @@ MAILBOX_SERVICE_INSTRUCTIONS = 2048
 # 46bc:0002 subtracts 14h per call. Treat this as a modeled 20 ms period;
 # the oscillator/divider of the board timer has not been recovered.
 RTOS_SERVICE_INSTRUCTIONS = 50_000
-# Scheduling ratio for the coupled harness; not a measured I-modem clock.
+# DSP instructions per CPU instruction. This is a board fact now rather than a
+# scheduling convenience, and the board carries both halves of it on two
+# oscillators (docs/imodem-board-map.md): the ECLIPTEK 40.320M that clocks the
+# ASIC - the same part and frequency both analogue boards carry - and the
+# ECLIPTEK 50.000M that is the 386EX's own. The DSP runs at half the first,
+# 20.16 MHz, and is single-cycle, so it retires 20,160,000 instructions a
+# second; the 386EX runs at half the second, 25 MHz. The ratio is therefore
+#
+#   20.16 / 25 = 0.8064 DSP instructions per CPU *cycle*
+#
+# times the 386's cycles per instruction, and 4 is that at 4.96 cycles - which
+# is what real-mode code on this part costs, so the number stands.
+#
+# It is also the only one of the harness's three statements of this CPU's speed
+# that is physically possible. pit.INSTRUCTIONS_PER_SECOND's 2,500,000 wants
+# 10 cycles an instruction, and sio.CPU_INSTRUCTIONS_PER_SECOND's 20,160,000
+# wants 1.24 - the latter because it reads ATI7's "Clock Freq 20.16Mhz" as the
+# CPU's, where the board map has that crystal on the ASIC and the CPU on its
+# own. Reconciling those two against this one is a re-timing of the whole
+# harness and is not done here.
 DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = 4
 
 # Which 8254 counter drives which IRQ line.
