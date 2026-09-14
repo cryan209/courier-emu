@@ -35,6 +35,32 @@ CF, PF, AF, ZF, SF, TF, IF, DF, OF = (
 # the dispatch loop asks this of every instruction it decodes.
 _PREFIXES = (0x26, 0x2E, 0x36, 0x3E, 0x66, 0x67, 0xF0, 0xF2, 0xF3)
 _IS_PREFIX: tuple[bool, ...] = tuple(byte in _PREFIXES for byte in range(256))
+
+# Opcodes that are undefined on the part, as against merely unimplemented here.
+# The 80C186EB manual is explicit about what the CPU does with one:
+# "Execution of an undefined opcode causes an Invalid Opcode trap" (Type 6,
+# section 2.3.4). That is a hardware response with a firmware handler behind
+# it, so it is modelled rather than raised - the Australian captures install a
+# real Type 6 stub at 8000:0f83 which loads a fault code and jumps to the
+# common reporter.
+#
+# The distinction matters in the other direction too. An opcode this
+# interpreter simply has not got yet - BOUND, INS/OUTS, SAHF/LAHF, WAIT, INT3,
+# INTO, DAS/AAA/AAS, and 82 as the alias of 80 - is a gap in the model, not a
+# fault in the guest, and must stay loud rather than be handed to a trap that
+# would hide it.
+#
+# 0x0f is the two-byte escape from the 286 on, 0x63 is ARPL from the 286,
+# 0x64-0x67 are the 386's segment and size prefixes, and 0xd6 and 0xf1 are
+# undocumented throughout. None of them is an 80186 instruction.
+_UNDEFINED_OPCODES = {
+    "186eb": frozenset({0x0F, 0x63, 0x64, 0x65, 0x66, 0x67, 0xD6, 0xF1}),
+    "386ex": frozenset({0xD6, 0xF1}),
+}
+
+#: Type 6, Invalid Opcode. Type 7, Escape Opcode.
+INVALID_OPCODE_VECTOR = 6
+ESCAPE_OPCODE_VECTOR = 7
 # Even parity of the low byte, the only form the flag word wants it in.
 _PARITY: tuple[bool, ...] = tuple(byte.bit_count() % 2 == 0 for byte in range(256))
 
@@ -65,7 +91,7 @@ _GROUP_OPCODES: tuple[tuple[int, ...], ...] = (
     (0xFC,),  # 15: CLD
     (0xF6, 0xF7),  # 16: group F6/F7: TEST/NOT/NEG/MUL/DIV
     (0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97),  # 17: XCHG AX,r16 (0x90 is NOP)
-    (0x80, 0x81, 0x83),  # 18: ALU r/m,imm
+    (0x80, 0x81, 0x82, 0x83),  # 18: ALU r/m,imm (82 is 80's alias)
     (0xC2, 0xC3),  # 19: RET near
     (0xE8,),  # 20: CALL rel16
     (0xEB,),  # 21: JMP rel8
@@ -113,6 +139,15 @@ _GROUP_OPCODES: tuple[tuple[int, ...], ...] = (
     (0xCA, 0xCB),  # 63: RET far
     (0xF4,),  # 64: HLT
     (0x0F,),  # 65: the 386's two-byte opcode escape
+    (0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF),  # 66: ESC to the 80C187
+    (0x9E,),  # 67: SAHF
+    (0x9F,),  # 68: LAHF
+    (0xCC,),  # 69: INT 3
+    (0xCE,),  # 70: INTO
+    (0x9B,),  # 71: WAIT
+    (0x2F,),  # 72: DAS
+    (0x37,),  # 73: AAA
+    (0x3F,),  # 74: AAS
 )
 _GROUP: tuple[int, ...] = tuple(
     next((group for group, opcodes in enumerate(_GROUP_OPCODES) if opcode in opcodes), 0)
@@ -165,6 +200,19 @@ class Uc:
         self._read_span: tuple[int, int] = (1, 0)
         self._write_span: tuple[int, int] = (1, 0)
         self._intr_hooks: tuple[tuple[Any, Any], ...] = ()
+        #: Set to the vector when the CPU itself faults, as against executing
+        #: an `int n`. A fault pushes the address of the faulting instruction
+        #: rather than the one after it, so the two cannot share a path.
+        self.fault: int | None = None
+        #: RELREG's Escape Trap bit, which decides whether ESC faults to Type
+        #: 7 or goes out to an 80C187. It resets to zero (80C186EB manual,
+        #: figure 4-1) and nothing in these firmwares sets it, so ESC takes
+        #: the coprocessor path - and with no 80C187 on the board, the operand
+        #: cycle happens and execution carries on. The 8-bit-bus 80C188 traps
+        #: regardless of this bit; this is the 16-bit part.
+        self.escape_trap = False
+        undefined = _UNDEFINED_OPCODES[profile]
+        self._undefined_table = tuple(byte in undefined for byte in range(256))
         self._insn_hooks: dict[int, tuple[tuple[Any, Any], ...]] = {}
         self._in_memory_hook = False
         # The board scheduler does not need a Python code-hook call for every
@@ -523,6 +571,18 @@ class Uc:
             lambda value: self._store(address, size, value),
         )
 
+    def _raise_fault(self, vector: int, start_ip: int) -> None:
+        """Take a CPU fault through the guest's own handler.
+
+        A trap restarts the faulting instruction, so IP is wound back to it
+        before the hooks are told. `fault` is what separates this from an
+        `int n` for the harness, which must not resume two bytes along.
+        """
+        self.regs[UC_X86_REG_IP] = start_ip
+        self.fault = vector
+        for callback, user in self._intr_hooks:
+            callback(self, vector, user)
+
     def _condition(self, code: int) -> bool:
         # A conditional branch is about a fifth of everything this interpreter
         # executes, so the sixteen conditions are tested one at a time rather
@@ -761,6 +821,10 @@ class Uc:
         clock_user = self._clock_user
         clock_period = self._clock_period
         clock_next = self._clock_next
+        # Undefined-opcode lookup for this profile, as a 256-entry table: the
+        # test sits on the dispatch chain's fall-through, which every
+        # unhandled opcode reaches.
+        _UNDEFINED = self._undefined_table
         retired = 0
         while self.running and (not count or retired < count):
             start_ip = cpu_regs[REG_IP]
@@ -806,6 +870,7 @@ class Uc:
             # same CS:IP the loop just computed.
             opcode = cpu_memory[physical]
             cpu_regs[UC_X86_REG_IP] = (start_ip + 1) & 0xFFFF
+            undefined_prefix = False
             if _IS_PREFIX[opcode]:
                 # A repeat prefix is re-read on every iteration of the string
                 # instruction it governs, so this walk fetches its own bytes.
@@ -817,13 +882,26 @@ class Uc:
                     elif opcode == 0x2E: segment_override = cpu_regs[UC_X86_REG_CS]
                     elif opcode == 0x36: segment_override = cpu_regs[UC_X86_REG_SS]
                     elif opcode == 0x66 or opcode == 0x67:
-                        if self.profile != "386ex": raise UcError(f"386 prefix {opcode:02x} in 186eb profile at {physical:#x}")
+                        if self.profile != "386ex":
+                            # Undefined on the 186, so the part traps rather
+                            # than treating it as a prefix. Handled here
+                            # because the prefix walk consumes these bytes
+                            # before the dispatch chain ever sees them.
+                            undefined_prefix = True
+                            break
                         if opcode == 0x66: operand_size = 4
                         else: raise UcError(f"32-bit addressing not implemented at {physical:#x}")
                     ip = cpu_regs[REG_IP]
                     opcode = cpu_memory[(code_base + ip) & address_mask]
                     cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
                 bits = operand_size * 8
+                if undefined_prefix:
+                    self._raise_fault(INVALID_OPCODE_VECTOR, start_ip)
+                    retired += 1
+                    self.retired += 1
+                    if not self.running:
+                        break
+                    continue
             else:
                 bits = 16
             group = _GROUP[opcode]
@@ -1352,7 +1430,95 @@ class Uc:
                 self.regs[UC_X86_REG_SP] = (self.regs[UC_X86_REG_SP] - allocation) & 0xFFFF
             elif group == 64: self.halted = True; self.running = False
             elif group == 65:  # the 386's two-byte opcode escape
-                self._two_byte(operand_size, segment_override)
+                if _UNDEFINED[opcode]:
+                    # There is no two-byte escape before the 286. On the
+                    # 80C186EB 0f is simply an undefined opcode.
+                    self._raise_fault(INVALID_OPCODE_VECTOR, start_ip)
+                    if not self.running:
+                        retired += 1
+                        self.retired += 1
+                        break
+                else:
+                    self._two_byte(operand_size, segment_override)
+            elif group == 67:  # SAHF
+                # AH carries SF ZF - AF - PF - CF in 8080 order; bit 1 reads
+                # back as one and the high byte of the flag word is untouched.
+                ah = self._reg8(4)
+                keep = self.regs[UC_X86_REG_FLAGS] & ~(CF | PF | AF | ZF | SF)
+                self.regs[UC_X86_REG_FLAGS] = keep | (ah & (CF | PF | AF | ZF | SF)) | 2
+            elif group == 68:  # LAHF
+                self._set_reg8(4, (self.regs[UC_X86_REG_FLAGS] & 0xFF) | 2)
+            elif group == 69:  # INT 3
+                for callback, user in self._intr_hooks:
+                    callback(self, 3, user)
+            elif group == 70:  # INTO
+                if self.regs[UC_X86_REG_FLAGS] & OF:
+                    for callback, user in self._intr_hooks:
+                        callback(self, 4, user)
+            elif group == 71:  # WAIT
+                # WAIT suspends until the coprocessor's BUSY pin clears. With
+                # no 80C187 on the board the pin is never asserted, so it
+                # retires immediately rather than waiting on nothing.
+                pass
+            elif group == 72:  # DAS
+                # The subtract counterpart of DAA: the same two decisions on
+                # the original AL and CF, correcting downwards.
+                old_al = self._reg8(0)
+                old_cf = bool(self.regs[UC_X86_REG_FLAGS] & CF)
+                al = old_al
+                adjust_low = (al & 0x0F) > 9 or bool(self.regs[UC_X86_REG_FLAGS] & AF)
+                if adjust_low:
+                    al = (al - 0x06) & 0xFF
+                adjust_high = old_al > 0x99 or old_cf
+                if adjust_high:
+                    al = (al - 0x60) & 0xFF
+                self._set_reg8(0, al)
+                flags = self.regs[UC_X86_REG_FLAGS] & ~(CF | PF | AF | ZF | SF)
+                if adjust_high or old_cf: flags |= CF
+                if adjust_low: flags |= AF
+                if al == 0: flags |= ZF
+                if al & 0x80: flags |= SF
+                if _PARITY[al]: flags |= PF
+                self.regs[UC_X86_REG_FLAGS] = flags | 2
+            elif group == 73 or group == 74:  # AAA / AAS
+                # Unpacked BCD adjust after an add or a subtract. AL's high
+                # nibble is always cleared; AH moves by one either way.
+                al = self._reg8(0)
+                ah = self._reg8(4)
+                carry = (al & 0x0F) > 9 or bool(self.regs[UC_X86_REG_FLAGS] & AF)
+                if carry:
+                    step = 6 if group == 73 else -6
+                    al = (al + step) & 0xFF
+                    ah = (ah + (1 if group == 73 else -1)) & 0xFF
+                self._set_reg8(0, al & 0x0F)
+                self._set_reg8(4, ah)
+                flags = self.regs[UC_X86_REG_FLAGS] & ~(CF | AF)
+                if carry: flags |= CF | AF
+                self.regs[UC_X86_REG_FLAGS] = flags | 2
+            elif group == 66:  # ESC, the escape to an external 80C187
+                # With RELREG's ET bit clear the CPU does not fault: it runs
+                # the operand cycle for the coprocessor and carries on. This
+                # board has no 80C187, so the cycle is read and discarded -
+                # which is what the bus does with nothing answering it. The
+                # read is still taken because it is a real memory access and
+                # anything watching the bus should see it.
+                ip = cpu_regs[REG_IP]
+                modrm = cpu_memory[(code_base + ip) & address_mask]
+                cpu_regs[REG_IP] = (ip + 1) & 0xFFFF
+                if self.escape_trap:
+                    self._raise_fault(ESCAPE_OPCODE_VECTOR, start_ip)
+                    if not self.running:
+                        break
+                elif modrm < 0xC0:
+                    self._load(self._ea(modrm >> 6, modrm & 7, segment_override), 2)
+            elif _UNDEFINED[opcode]:
+                # Not an instruction on this part. The CPU traps, and these
+                # firmwares have a handler waiting for it.
+                self._raise_fault(INVALID_OPCODE_VECTOR, start_ip)
+                if not self.running:
+                    retired += 1
+                    self.retired += 1
+                    break
             else:
                 self.regs[UC_X86_REG_IP] = start_ip
                 raise UcError(f"unsupported opcode {opcode:02x} ({self.profile}) at {physical:#x}")

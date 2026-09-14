@@ -621,6 +621,10 @@ class CourierMachine:
         self.last_addresses: deque[int] = deque(maxlen=64)
         self.instructions = 0
         self.interrupt: int | None = None
+        #: A trap the CPU took itself - invalid opcode, escape opcode - as
+        #: against an `int n` the firmware executed.
+        self.cpu_fault: int | None = None
+        self.cpu_faults: Counter[int] = Counter()
         self.accelerated_delays = 0
         self.milestones: list[str] = []
         if with_dsp and not hasattr(image, "dsp_program_segments"):
@@ -2332,10 +2336,19 @@ class CourierMachine:
                 self._service_resume = True
                 _uc.emu_stop()
                 return
+            # A CPU fault pushes the address of the faulting instruction,
+            # not the one after it, so it cannot go out as a software
+            # interrupt. The interpreter sets `fault` to say which it is.
+            if getattr(_uc, "fault", None) is not None:
+                self.cpu_fault = number
+                _uc.fault = None
+                _uc.emu_stop()
+                return
             self.interrupt = number
             _uc.emu_stop()
 
-        def dispatch_interrupt(number: int, *, software: bool = True) -> int:
+        def dispatch_interrupt(number: int, *, software: bool = True,
+                               fault: bool = False) -> int:
             """Take a real-mode software interrupt through the vector table.
 
             The ROM's boot block copies itself over the bottom of memory, so
@@ -2358,7 +2371,10 @@ class CourierMachine:
             offset = int.from_bytes(vector[:2], "little")
             segment = int.from_bytes(vector[2:], "little")
             if not software:
-                if self._quad_profile:
+                # A CPU fault is not a controller request: nothing will EOI
+                # it, so entering it here would leave a stale number for the
+                # next EOI write to pop.
+                if self._quad_profile and not fault:
                     self._quad_interrupt_stack.append(number)
                 uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0200)
             uc.reg_write(UC_X86_REG_CS, segment)
@@ -2739,7 +2755,11 @@ class CourierMachine:
                     self._service_resume = False
                     begin = current_pc()
                     continue
-                if self.emulate_interrupts and self.interrupt is not None:
+                if self.emulate_interrupts and self.cpu_fault is not None:
+                    self.cpu_faults[self.cpu_fault] += 1
+                    begin = dispatch_interrupt(self.cpu_fault, software=False, fault=True)
+                    self.cpu_fault = None
+                elif self.emulate_interrupts and self.interrupt is not None:
                     begin = dispatch_interrupt(self.interrupt)
                     self.interrupt = None
                     continue
