@@ -254,6 +254,31 @@ the line entirely: the datapump advances its oscillator once per line-frame
 interrupt, and the model delivers 8000 of those per second where the
 increments the firmware programs imply 9600.
 
+### 6/5 is 64 samples against 1/150 s
+
+The probe is not a set of independently generated tones. Correlating it against
+itself, it **repeats every 64 samples** - `r = 0.874`, with the harmonics at
+128, 192 and 256 following in order behind it and nothing else close. It is one
+64-point table played round and round, which is how a multitone probe is built.
+
+That fixes the rate with no appeal to the divider at all. V.34's probe has a
+150 Hz fundamental, so one table pass has to last 1/150 s, so the table has to
+be clocked at `64 x 150 = 9600` samples per second. At 8000 those same 64
+points last 1/125 s and the comb comes out on a 125 Hz grid, which is what is
+measured. The ratio is `9600 / 8000 = 6/5` and it is exactly the 1.2019 the
+line lines up with.
+
+Note the rate this forces does not depend on the symbol rate: the probe's
+fundamental is 150 Hz whichever of the six rows is selected. So it constrains
+the codec during Phase 2 specifically, and says nothing directly about what
+index 4 should be for data - which leaves the divider argument for 8000 intact
+and puts the question as "what puts the part at 9600 while it probes".
+
+Ruled out while getting here: the DAC accumulator is not a hidden 6:5
+decimator. Counting writes to both candidate ASIC slots without the call-TDM
+gate, `0xfffd` and `0xffff` each take **zero** writes across a whole run. The
+datapump writes neither; that mechanism belongs to another route.
+
 ### The receive direction is faithful
 
 Worth ruling out, since a link that will not train invites the guess that the
