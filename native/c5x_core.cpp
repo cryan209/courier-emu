@@ -34,6 +34,35 @@ static constexpr uint16_t SPC_RRST = 1u << 7;   // receiver out of reset
 static constexpr uint16_t SPC_RRDY = 1u << 10;  // a received word is waiting
 static constexpr uint16_t SPC_XRDY = 1u << 11;  // DXR can take another word
 
+// Register 4 applies gain in the analog half of the AC01, between the phone
+// line and the converter. DOUT carries all sixteen ADC bits; only DIN's DAC
+// word reserves its bottom two bits for control. Saturate receive gain at the
+// signed serial-word endpoints, without throwing away DOUT bits 1:0.
+static uint16_t ac01_input_scale(uint16_t sample, unsigned shifts)
+{
+    int32_t value = int16_t(sample);
+    if (shifts) value *= int32_t(1u << shifts);
+    value = std::clamp(value, int32_t(-32768), int32_t(32767));
+    return uint16_t(value);
+}
+
+static uint16_t ac01_input_sample(uint16_t sample, uint8_t register4)
+{
+    const unsigned gain = (register4 >> 2) & 3;
+    if (!gain) return 0;                 // analog input squelch
+    return ac01_input_scale(sample, gain - 1);  // 0, +6, +12 dB
+}
+
+static uint16_t ac01_output_sample(uint16_t sample, uint8_t register4)
+{
+    const unsigned gain = register4 & 3;
+    if (!gain) return 0;                 // analog output squelch
+    if (gain == 1) return sample & 0xfffc;
+    // Codes 2 and 3 are -6 and -12 dB. Division is deliberately before
+    // requantisation to the converter's 14-bit, left-justified word.
+    return uint16_t(int16_t(sample) / int32_t(1u << (gain - 1))) & 0xfffc;
+}
+
 [[noreturn]] static void fatalerror(const char *format, ...)
 {
     char buffer[512];
@@ -313,7 +342,8 @@ void C5xCore::codec_transmit(uint16_t word)
     }
     if (!m_rom_codec) return;
     // The sample is the top 14 bits; the low two were never data.
-    const uint16_t sample = uint16_t(word & 0xfffc);
+    const uint16_t sample = ac01_output_sample(
+        uint16_t(word & 0xfffc), m_codec.registers[4]);
     m_line_tx.push_back(sample);
     if (sample) ++m_line_tx_nonzero;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
@@ -340,7 +370,7 @@ void C5xCore::codec_frame(bool secondary)
     // queue is silence on the line, which is a delivered zero, not a repeat.
     uint16_t sample = 0;
     if (!m_codec_rx.empty()) {
-        sample = m_codec_rx.front();
+        sample = ac01_input_sample(m_codec_rx.front(), m_codec.registers[4]);
         m_codec_rx.pop_front();
         ++m_serial.rx_consumed;
         m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,

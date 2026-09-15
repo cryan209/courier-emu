@@ -279,6 +279,14 @@ which recognised the samples of two known builds and nothing else.
 
 `courier_emu/dsp.py` exposes `codec_state()` and `codec_sample_rate`.
 
+Register 4's analog gains are also part of the modeled signal path. Input
+codes select squelch, 0, +6 or +12 dB before the ADC word reaches `DRR`; output
+codes select squelch, 0, -6 or -12 dB between the DAC word and the phone line.
+Receive gain is saturated to DOUT's signed 16-bit ADC word; transmit is
+requantized to DIN's 14-bit DAC field after removing its two control bits.
+This matters on the normal `0x09` setup: its +6 dB input gain doubles the peer
+waveform seen by the datapump.
+
 Booting 302 through the ROM and reading the model back:
 
 ```
