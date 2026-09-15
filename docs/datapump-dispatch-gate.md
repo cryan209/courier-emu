@@ -495,6 +495,39 @@ local analog loopback, so this is a fault in the model, not the firmware's
 design, and it means `0x10` being published is **not** evidence that the
 datapump ran.
 
+#### The slot was 0, and it returns out of the overlay
+
+Setting the trace to `0x9900`-`0xffff` - high memory, with the spin address
+excluded so it cannot flood the ring - catches the last 210 in-range
+instructions. They run `0x9d02`, `0x9d43`-`0x9d56`, `0x9daf`, `0x9e13`, and end
+on `0x9e1e` with op `ef00`, a bare `ret`.
+
+`0x9d00` is slot 0 of the table at `0x9b6c`: **V.34, overlay 6's entry.** And
+with `AT&T1` alone the overlay really is resident - `overlay_downloads: 2` - so
+this is the overlay's own code, not the base image's. 35 of the 126 distinct
+addresses executed carry opcodes that differ from `dsp_program_segments`,
+which is exactly what a loaded overlay should look like where it overwrote the
+resident.
+
+So the sequence is: `&T1` sets flag C, the discriminator answers not-equal, the
+selection block at `0x8bc41` writes `[0xe3c] = 6` and the loader brings in
+overlay 6; the supervisor publishes `0010:5001`; the DSP's selector picks slot
+0; the `bacc` at `0x9b6b` enters `0x9d00`; and the overlay runs to `0x9e1e` and
+**returns**. The ROM dispatched it with all eight hardware stack slots preloaded
+with `0x065a`, so that `ret` is the halt.
+
+Which leaves the real question one step further in: whether the overlay is
+taking an early-exit branch it should not, or whether it expects an ordinary
+call frame and the ROM's fill-the-stack dispatch is the wrong way to enter it.
+
+**A caution about the windows in this document.** "`0x9d00` never entered", said
+earlier, came from a trace range that stopped at `0x9d20`; the overlay's code
+runs past it. Three of the ranges used here were too narrow to see what they
+were meant to rule out. A negative from `--dsp-trace-range` only means *nothing
+in that window ran* - and the ring keeps the last 512 records, so a positive can
+be a tail. The leased-side claim is not affected: it rests on a whole-space
+snapshot whose highest address is `0x9893`.
+
 The leased case is different and is not this: its whole-space snapshot spreads
 over `0x8000`-`0x9900`, 346 distinct addresses, with the DSP alive throughout.
 
