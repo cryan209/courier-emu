@@ -214,13 +214,38 @@ and `360 x 3200 / 144` is exactly 8000. If row 4's `Fs` were 9600 that word
 would read 120, which is row 0's value, not row 4's.
 
 So the codec almost certainly is at 8000 Hz for index 4, and the 1.2 is
-somewhere between the datapump's oscillator and the line. One candidate is the
-DAC path itself: the line sample is the *mean* of the datapump's writes to the
-ASIC slot across a codec frame, so if the datapump emits samples at three per
-symbol - 9600 at 3200 baud, which is what index 0's 7200 at 2400 baud also is -
-and the codec frame clock runs at 8000, each frame averages 1.2 datapump
-samples and every frequency lands 1.2x low. That is a hypothesis with a
-measurement behind it and no code reading yet.
+somewhere between the datapump's oscillator and the line.
+
+### It is not the DAC averaging, and it is the line clock
+
+The first candidate was the DAC path: the line sample is documented as the
+*mean* of the datapump's writes to the ASIC slot across a codec frame, which
+would fold 1.2 datapump samples into one line sample if the datapump ran at
+three samples per symbol. Counting those writes kills it. Across a whole
+leased-pair run the model records **zero** writes to the line DAC slot and zero
+frames collecting them: that branch is gated on call-TDM being active, which on
+this route it is not. Every line sample is pushed from the generic write hook
+at C52 program `0x818f`, one per line-frame interrupt.
+
+What the same counters do show is a mismatch between two clocks. For the
+originating end, which stays at `B = 18` for the whole run, the core produced
+203,499 line samples and the line emitted 244,800:
+
+```text
+emitted / produced = 1.2030        probe scale error = 1.2019
+```
+
+The line's frame pacing advances on the codec's conversion count
+(`frames_clocked`), but a transmit sample is produced once per *line-frame
+interrupt*, and the two do not run at the same rate. The shortfall is made up
+with zero padding, which spreads the datapump's samples across 1.2x as many
+output slots and drops every frequency by that factor.
+
+Pacing the line on samples actually produced instead brings the ratio to 1.06,
+stops the answering end falling back to `B = 20`, and keeps the line alive for
+the whole run rather than 2.6 s - but both ends then hold their opening tones
+unchanged for 110 s, so it trains no better. Recorded as a measurement, not as
+a fix.
 
 ## Two variables share the offset `@5b`
 
@@ -420,11 +445,11 @@ All of those are `B = 18`. **The V.PCM sample rate on this firmware is 8000 Hz.*
   two 3-bit fields drawn from the call-mode and answer-mode buffers, which is
   the obvious reconciliation, but its result goes to `@7f`/`@7c` and has no
   shown path to either index.
-* **Where the 1.2 in the line probe comes from.** The section above measures
-  the V.34 probe rendering at a 124.8 Hz grid where the standard puts it at
-  150. Index 4's 8000 Hz survives the challenge on two independent arguments,
-  so the factor is downstream of the divider. Reading the datapump's writes to
-  the ASIC DAC slot and counting them per codec frame would settle it.
+* **Why the line-frame interrupt and the codec conversion clock differ by
+  1.2.** The section above pins the probe's scale error to the line pacing
+  rather than to the divider or to the DAC averaging, but not what makes the
+  two clocks disagree. `m_line_frame_period` is computed from the codec
+  divisor, so on the face of it they should match.
 * **Which rates this modem actually offers.** The advertised values live in data
   RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time from the probe, so
   "3200 and 3429 enabled, the rest zeroed" is not something the ROM states. The
