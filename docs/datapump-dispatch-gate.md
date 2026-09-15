@@ -555,71 +555,64 @@ address. `bacc` at `0x9b6b` pushes neither. Whatever normally enters slot 0 is
 not the tail-jump this path uses, and the ROM's fill-the-stack dispatch only
 turns the resulting underflow into a halt instead of a wild branch.
 
-#### Nothing pushes it: the code being executed is not the overlay
+#### The overlay is placed correctly; `entry_word` is the entry, not the base
 
-The question has no answer as asked, because the premise fails. Comparing every
-address the DSP actually executed against both candidate sources:
+`DspOverlay.entry_word` for overlay 6 is `0x9D00`, and an earlier revision of
+this section read that as the load address, found every executed opcode
+disagreeing with the payload laid out that way, and concluded the transfer was
+misaligned by 76 words. That was wrong, and the `ff62` re-point and header
+length are not at fault.
+
+The load base is `0x9D00 - 76 = 0x9CB4`, and `0x9D00` is payload **word 76**.
+The check is one word: payload word 76 is `0x7a80`, which is exactly the opcode
+executed at `0x9d00`. Laid out that way:
 
 | executed addresses (126 distinct) | |
 |---|---|
-| match the base resident image | 91 |
-| match overlay 6's image at its documented `0x9d00` base | **0** |
-| match neither | 35 |
+| inside the overlay span, matching overlay 6 | 37 of 45 |
+| outside the span, matching the base resident image | 81 of 81 |
 
-Overlay 6 is not in program memory the way the slot table addresses it. But it is
-*there*: all **35 of 35** of the unexplained addresses match overlay 6 at a
-uniform shift of **+76 words**, so the content is present and displaced by 152
-bytes relative to the `0x9d00` the table jumps to.
+The eight that still disagree - `0xada5`-`0xadaa` and `0xb058`-`0xb060` - hold
+resident content inside the span, which is what the multi-base transfer this
+file already describes should produce: the payload does not occupy one
+contiguous run, so a single-base span over-claims its extent. `overlay_match`
+and `overlay_downloads` were never the wrong check for placement in the way that
+revision said; they simply do not speak to it either way.
 
-So at `0x9d00` the DSP runs base resident code, and a couple of words later it
-falls into overlay code that is misaligned by 76 words. The `pop`/`ret`
-imbalance measured above is an artifact of executing that mixture, not a frame
-convention, and `0x9e1a` is not a real call-frame consumer. The halt is the
-downstream symptom.
+#### What the overlay does at `0x9e1a`: it yields
 
-`bridge.py` already knows the transfer is not single-based - "the supervisor
-re-points `ff62` partway through, so a payload is spread over more than one
-base", and "the groups before that re-point are the transfer's header" - and the
-same runs report `overlay_words_unreadable: 172`. The 76-word displacement
-belongs to that machinery: either the header length or the second base is wrong.
-Note that `overlay_match: true` and `overlay_downloads: 2` are **not** evidence
-against this; they compare the bytes that crossed the transfer, not where they
-landed.
+Read at the correct base the code is unambiguous:
 
-**A second place to audit for the same fault.** `_activate_call_overlay` writes
-a signature-matched slice of the image to `C50_CALL_OVERLAY_DESTINATION =
-0xC418`, spanning roughly `0xC418`-`0xCE70`. That lands on the resident V.22 and
-V.22bis slot entries at `0xcd04`, `0xcd1e`, `0xcd85`, `0xcd9d` and across the
-`0xc700`-`0xca00` window. It is a harness-authored overlay over firmware code,
-and until the placement above is settled it should not be trusted either.
+```text
+9e18  lacc @34
+9e19  retc lt          ; bail if @34 < 0
+9e1a  be32  pop        ; discard one frame
+9e1b  lacc #9dcf
+9e1d  samm @6d         ; install 0x9dcf as the resume vector
+9e1e  ef00  ret        ; and return through the next one
+```
 
-**A caution about the windows in this document.** "`0x9d00` never entered", said
-earlier, came from a trace range that stopped at `0x9d20`; the overlay's code
-runs past it. Three of the ranges used here were too narrow to see what they
-were meant to rule out. A negative from `--dsp-trace-range` only means *nothing
-in that window ran* - and the ring keeps the last 512 records, so a positive can
-be a tail. The leased-side claim is not affected: it rests on a whole-space
-snapshot whose highest address is `0x9893`.
+`pop` then `ret` is a **coroutine yield**: it throws away its own return address
+and returns two levels up, leaving `@6d` pointing at where to resume. `@6d` is
+the same cell tags `0x59` and `0x5a` write, so it is the scheduler's next-resume
+vector, and something is expected to re-enter through it.
 
-The leased case is different and is not this: its whole-space snapshot spreads
-over `0x8000`-`0x9900`, 346 distinct addresses, with the DSP alive throughout.
+So the frame finding stands, on a correct base this time: the yield needs **two**
+live frames above it, and the path that reaches it builds **one**.
 
-**The likeliest missing piece is `[0x05cd]` bit 6.** The gate is evaluated twice,
-at `0x8bbaa` and again at `0x8bee8`, so an input that changes in between gives
-carry at the load and clear at the dispatch - which is exactly the combination a
-leased call needs. `[0x5cd]` bit 6 is such an input, and it is settable:
-`or [0x5cd], 0xc0` at `0xc9114` and `0xc9134`, `or 0x60` at `0xc9154`, inside
-far-called routines that also set `[0x5a2]`, `[0x5b0]`, `[0x5b7]` and `[0x5cb]`
-- a profile block. None of them runs in any run here and `[0x5cd]` measures `00`
-throughout.
+```text
+80c8  call 839b        ; the only push - return address 0x80ca
+839b  ... bacc         ; tail-jump into the tag handler
+9b6b  bacc             ; tail-jump into slot 0 at 0x9d00
+9d00  call 8767        ; the overlay's own frame
+      ... pop + ret    ; two levels removed
+```
 
-A second candidate is that something sends `0x10` once the overlay reports
-ready. Worth knowing while testing it: **DSP-originated messages differ by
-harness path**. The same leased pair run with `--line-audio-only` reports
-`dsp_originated_messages: 1`, tag `006b:4321`, on both ends; the default path
-reports **0**. The default path is also the one that delivers 37 host messages
-including the `0x5a` that installs the oscillator, so this is not by itself a
-harness fault - but any test of the arming route has to account for it.
+Net one level short, so the `ret` reaches past `0x80ca` into the stale `0x065a`
+the ROM left, and halts. Either an intermediate transition should be a `call`
+rather than a `bacc`, or `0x9d00` is the wrong door - the coroutine may be meant
+to be resumed through `@6d` by a scheduler that enters at the right depth, with
+`0x9d00` only its first-time entry.
 
 ### Why neither end reports a result code: the DSP never sends
 
