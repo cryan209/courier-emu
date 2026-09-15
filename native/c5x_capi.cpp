@@ -400,6 +400,7 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.trcv_reads, serial.tdxr_writes, serial.tspc_writes,
         serial.last_trcv_pc, serial.last_tdxr_pc, serial.last_tspc_pc,
         serial.line_tx_writes, serial.line_tx_nonzero, serial.line_frame_interrupts,
+        serial.line_dac_writes, serial.line_dac_frames,
         serial.line_tx_last, serial.line_tx_last_pc, serial.imr,
         serial.v8_rx_state, serial.v8_rx_peak, serial.codec_rx_peak,
         serial.negotiation_loop_entries, serial.negotiation_loop_pc, serial.negotiation_source, serial.negotiation_pair,

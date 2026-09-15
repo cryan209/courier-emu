@@ -550,7 +550,7 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 51)()
+        values = (ctypes.c_uint64 * 53)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
@@ -560,6 +560,7 @@ class NativeC5x:
             "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
             "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
             "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
+            "line_dac_writes", "line_dac_frames",
             "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak", "codec_rx_peak",
             "negotiation_loop_entries", "negotiation_loop_pc", "negotiation_source", "negotiation_pair", "negotiation_source_value",
             "negotiation_pair_value", "negotiation_acc", "v8_dispatches",

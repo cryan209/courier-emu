@@ -90,6 +90,7 @@ void C5xCore::reset()
     m_line_rx.clear();
     m_line_tx.clear();
     m_line_rx_consumed = m_line_tx_nonzero = 0;
+    m_line_dac_writes = m_line_dac_frames = 0;
     m_line_tx_last_pc = 0;
     m_v8_mode = V8Mode::Off;
     m_tdm_rx_ready = false;
@@ -562,6 +563,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
     if (m_call_tdm_active && address == m_line_dac_slot) {
         m_line_dac_sum += int16_t(value);
         ++m_line_dac_count;
+        ++m_line_dac_writes;
         std::vector<uint16_t> &phase = m_line_phase_tx[m_io[0x52] & 3];
         if (phase.size() < 400000) phase.push_back(value);
     }
@@ -1087,6 +1089,7 @@ void C5xCore::step()
                 // and nothing else. Whatever V.8 the call needs is the C52
                 // overlay's to emit.
                 if (m_line_dac_count) {
+                    ++m_line_dac_frames;
                     int16_t sample = int16_t(
                         m_line_dac_sum / int64_t(m_line_dac_count));
                     m_line_tx.push_back(uint16_t(sample));
@@ -1136,6 +1139,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
+        m_line_dac_writes, m_line_dac_frames,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
         m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak,
         m_negotiation_loop_entries, m_negotiation_loop_pc, m_negotiation_source, m_negotiation_pair,

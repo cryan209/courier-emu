@@ -137,6 +137,10 @@ public:
         uint64_t trcv_reads, tdxr_writes, tspc_writes;
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
         uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
+        // How often the datapump wrote the line DAC slot, and how many
+        // codec frames collected those writes. Their ratio is how many
+        // datapump samples the model folds into one line sample.
+        uint64_t line_dac_writes, line_dac_frames;
         uint16_t line_tx_last, line_tx_last_pc, imr, v8_rx_state, v8_rx_peak, codec_rx_peak;
         uint64_t negotiation_loop_entries;
         uint16_t negotiation_loop_pc, negotiation_source, negotiation_pair, negotiation_source_value, negotiation_pair_value;
@@ -433,6 +437,7 @@ private:
     std::vector<uint16_t> m_line_tx;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
+    uint64_t m_line_dac_writes = 0, m_line_dac_frames = 0;
     uint16_t m_line_tx_last_pc = 0;
     // Which side of the call this is. The role gates the receive-side V.8
     // indicator qualification below; nothing here generates a tone.
