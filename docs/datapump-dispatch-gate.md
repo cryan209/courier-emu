@@ -211,8 +211,23 @@ which is why a leased seizure carries.
 | `send-11` `884db` | **0** | 0 |
 
 `0059:715d` and `005a:704d` are gone; the ends now publish `0014:5141` and
-`0017:5041`, the discriminator-equal words. The blocker has moved from the CF
-gate to the discriminator, which is where a dial already sat.
+`0017:5041`, the discriminator-equal words.
+
+**That is a loss, not progress.** Carrying the gate is what the leased branch
+*is*. Traced against a plain `&L1` pair over the overlay route:
+
+| run | `[0xe3c] <- 6` `8bbba` | loader `8b5d1` | `overlay_downloads` | `overlay_id` | publishes |
+|---|---|---|---|---|---|
+| `&L1` answer | **1** | 0 | **2** | **8** | `0059:715d` |
+| `&L1` originate | **1** | **1** | **2** | **8** | `005a:704d` |
+| `&N1 &L1` answer | 0 | 0 | **0** | none | `0014:5141` |
+| `&N1 &L1` originate | 0 | 0 | **0** | none | `0017:5041` |
+
+With `&N1` the call overlay is never downloaded at all. `&L1` on its own is the
+complete leased arming - the carry reaches `mov [0xe3c], 6`, the loader chains
+it to 8, and the dispatch publishes the leased command - and it is the only
+configuration tried here in which the datapump overlay loads. A fixed `&N` rate
+takes a leased line off that branch and onto the dial's, where it does not.
 
 ### The writer census for the gate and the discriminator
 
@@ -232,7 +247,14 @@ dial section traces to the nine-stub thunk table. `[0x05cd]` bit 6 is the second
 independent way to clear the CF gate - `test [0x5cd], 0x40 / jne` passes before
 `&L` is even read - and it is settable, from the `0xc9xxx` block.
 
-### `0x876c5` is `AT&T1`, and with `&N1` it publishes `0x10`
+### `0x876c5` is `AT&T1` - which is the dial branch, not the leased one
+
+`&T1` is local analog loopback. Setting flag C through it forces the *dialed*
+dispatch out of a diagnostic, and has nothing to do with leased operation: the
+leased branch never consults the discriminator at all, because the CF gate
+answers first. This section records the route because flag C is the only one of
+the discriminator's three that can be set at all, and because it establishes
+that `0x10` is reachable - not because it is a step toward a leased `CONNECT`.
 
 Flag C's setter is reached by exactly one route, and every step of it is now
 identified.
@@ -314,6 +336,10 @@ project: `&N1` clears the CF gate so the path falls through to the
 discriminator, and `&T1` sets flag C so the discriminator answers not-equal.
 Neither command alone does it - `&N1` alone publishes `0014`/`0017`, `&T1`
 alone leaves the gate carrying.
+
+Both are loopback and fixed-rate settings, so this says `0x10` is reachable and
+says nothing about a leased line, which wants `0x5a` instead and already emits
+it.
 
 **Not yet on a leased line.** `--at AT&N1 --at AT&T1 --at AT&L1` on both ends of
 a linked pair aborts the harness before the dispatch, in `bridge.py`'s
