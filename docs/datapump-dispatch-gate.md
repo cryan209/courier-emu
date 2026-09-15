@@ -232,6 +232,94 @@ dial section traces to the nine-stub thunk table. `[0x05cd]` bit 6 is the second
 independent way to clear the CF gate - `test [0x5cd], 0x40 / jne` passes before
 `&L` is even read - and it is settable, from the `0xc9xxx` block.
 
+### `0x876c5` is `AT&T1`, and with `&N1` it publishes `0x10`
+
+Flag C's setter is reached by exactly one route, and every step of it is now
+identified.
+
+**The setter.** `0x876b1` gates on one bit:
+
+```text
+876b1  test byte [0x33e], 4
+876b6  je   876c5           ; clear -> the flag
+876b8  or   byte [0x32c], 0x80   ; set -> the abort bit instead
+876bd  or   byte [0x685], 0x40
+876c5  or   byte [0x685], 1      ; FLAG C
+876ca  mov  byte [0xb8a], 1
+```
+
+Runs have `033e: 02`, so bit 2 is clear and the `je` is taken.
+
+**The thunk.** `0x876b1` is the target of stub 1 of eight `call X / retf` stubs
+at `0x875d8`, stride 4: `875f8`, **`876b1`**, `876d5`, `876f2`, `876f9`,
+`87700`, `87715`, `87738`. The only far references to those stubs are eight
+`lcall 8000:75xx` blocks at `0xa6af0`, stride 6.
+
+**The table.** The indexed jump at `0xa6ad7` is `jmp word ptr cs:[bx + 0x1dbe]`
+with `bx = 2 * AL` and CS `a4d2`, so the table is at `0xa6ade`. Decoded, it is
+nine entries wide and eight of them land on those `lcall` blocks:
+
+| `AL` | word | target | |
+|---|---|---|---|
+| 0 | `1dd0` | `a6af0` | stub 0 |
+| **1** | `1dd6` | `a6af6` | **stub 1 - flag C** |
+| 2 | `1dbc` | `a6adc` | `stc / ret` - the reject |
+| 3..8 | `1ddc`..`1dfa` | `a6afc`..`a6b1a` | stubs 2..7 |
+
+**The router**, `0xa6a6c`, parses `AL` as a decimal argument off the command
+line and range-checks it before the jump:
+
+```text
+a6a6c  lcall 8000:9cbc         ; the decimal parser -> AL
+a6a71  jb   a6adc              ; unparseable -> ERROR
+a6a73  test [0xea7], 1         ; set -> reject AL 1 and 8
+a6a84  cmp  al, 9 / jae a6adc
+a6a88  test [0x33e], 1         ; set -> reject AL 3, 6, 7
+a6a9b  test [0x33e], 4 + [0x331], 1  ; both -> reject AL 6, 7
+a6ab1  cmp al,0 / al,4 / al,5 / je a6ad2   ; these three skip the flag tests
+a6abd  test [0x685], 7  / jne a6adc
+a6ac4  test [0xa96], 0xe / jne a6adc
+a6acb  test [0x5a5], 1  / jne a6adc
+a6ad2  cwde / mov bx, ax / shl bx, 1 / jmp cs:[bx+0x1dbe]
+```
+
+`[0x0ea7]` is the cell the 403 table already names "rejects `AL = 1` when set".
+`AL = 1` is outside `{0, 4, 5}`, so it also has to pass the three flag tests -
+the discriminator's own cells, read here as a precondition. All are zero in
+these runs, so `AL = 1` is admitted.
+
+**The command is `&T`.** Probed one run each, 60M, with `--trace-pc` on all four
+sites:
+
+| command | router | idx jump | stub 1 | `876c5` | `[0x685]` | reply |
+|---|---|---|---|---|---|---|
+| `AT&T1` | **1** | **1** | **1** | **1** | **`01`** | (none) |
+| `AT&I1` | 0 | 0 | 0 | 0 | `00` | `OK` |
+| `AT&I4` | 0 | 0 | 0 | 0 | `00` | `OK` |
+| `AT&I8` | 0 | 0 | 0 | 0 | `00` | `ERROR` |
+
+which is the `&T1` the 403 note pairs with `&L1` as the two command arming
+routes.
+
+**`&N1` then `&T1` publishes `0x10`.** One modem, 220M, no line:
+
+```text
+trace  cfgate 3  discrim 10  flagC 1  site_5a 1  send_10 1
+tail   0077:0000  0076:0000  0004:0000  0010:5041  001f:0000  0019:0000
+peek   [0x600]=01  [0x685]=01  [0x32c]=00
+```
+
+`0010:5041` is the datapump dispatch, reached for the first time in this
+project: `&N1` clears the CF gate so the path falls through to the
+discriminator, and `&T1` sets flag C so the discriminator answers not-equal.
+Neither command alone does it - `&N1` alone publishes `0014`/`0017`, `&T1`
+alone leaves the gate carrying.
+
+**Not yet on a leased line.** `--at AT&N1 --at AT&T1 --at AT&L1` on both ends of
+a linked pair aborts the harness before the dispatch, in `bridge.py`'s
+`_commit_rom_group`: `C51 ROM loader did not acknowledge strobe 1`. That is a
+bridge limit on the reload `&T1` provokes, not a firmware branch.
+
 Traced across a full leased pair (`--trace-pc`, both ends `AT&L1`, 156M):
 
 | watch | answer | originate |
