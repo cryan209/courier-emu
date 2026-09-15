@@ -464,12 +464,39 @@ dispatch through the nine-slot table at `0x9b48`/`0x9b51` whose slot 0 is
 runs instead is tag `0x5a`'s handler: `@44` set, then the resident oscillator -
 `0x984c`, a two-pole resonator, and `0x8b1a`, a polynomial sine.
 
-Forcing the other side of the gate shows the halves are exclusive. `&N1` and
-`&T1` on one modem publish `0010:5041`, and then the slot dispatch **does** run
-- `0x9b58`, `0x9b5a`, `0x9b5e`, `0x9b60`, the selector at `0x9b62`-`0x9b6b` -
-but that run has `overlay_downloads: 0`, so the selector falls to a resident
-slot and `0x9d00` is still never entered. Leased loads the overlay and sends a
-tone; forced sends the start and has no overlay to start.
+Forcing the other side of the gate shows the halves are exclusive. `&T1`
+**alone** publishes `0010:5001` - an earlier revision of this document said
+neither command alone would do it, which was wrong; `&N1` only changes the data
+word, to `5041`. The slot dispatch then **does** run: `0x9b58`, `0x9b5a`,
+`0x9b5e`, `0x9b60`, the selector at `0x9b7e`, and on through `0x9b65`-`0x9b6b`,
+so it passes the `retc ntc` and executes the `bacc` into a slot. But that run
+has `overlay_downloads: 0`, so the slot is a resident one, and `0x9d00` is still
+never entered.
+
+**And then the DSP dies.** A whole-space snapshot of the last 512 instructions
+of an `AT&T1` run is one address, 512 times:
+
+```text
+065a  setc intm
+065b  b 065b          ; <-- here, forever
+```
+
+That is the on-chip ROM's halt sink, and the six instructions above it are how
+the ROM dispatches: `lacc #065a / rpt #07 / push` fills all eight hardware stack
+slots with the halt address, then `lamm @7d / bacc` jumps to the handler. Any
+`ret` out of a handler dispatched that way lands on `0x065a`, masks interrupts
+and spins. So the DSP got the start command, selected a slot, entered it, and
+returned - and the ROM treats a return as fatal.
+
+This also explains the `_commit_rom_group` abort - "C51 ROM loader did not
+acknowledge strobe 1" - when `&T1` is used on a linked pair: the DSP is wedged
+with `INTM` set and cannot service the loader. A real Courier does not hang on
+local analog loopback, so this is a fault in the model, not the firmware's
+design, and it means `0x10` being published is **not** evidence that the
+datapump ran.
+
+The leased case is different and is not this: its whole-space snapshot spreads
+over `0x8000`-`0x9900`, 346 distinct addresses, with the DSP alive throughout.
 
 **The likeliest missing piece is `[0x05cd]` bit 6.** The gate is evaluated twice,
 at `0x8bbaa` and again at `0x8bee8`, so an input that changes in between gives
