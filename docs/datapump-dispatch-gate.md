@@ -111,6 +111,92 @@ that register at all, and its `0x1f` commit fallback sees six messages all
 carrying data `0000`. Hence `call_overlay_available: true`,
 `call_overlay_active: false`.
 
+## On a leased line the same sites publish `0x5a` and `0x59`
+
+The section above answers the dial. `&L1` takes a different branch of the same
+instruction, and it is the branch nobody had traced.
+
+Both dispatch sites are three-way, and both publish `[0x0281]` as the data word:
+
+```text
+8bee8  mov  ax, 0x5a
+8beeb  call 8b863          ; the CF gate
+8beee  jb   8bef8          ; carry      -> publish 0x5a
+8bef0  call 8b84f          ; the discriminator
+8bef3  je   8bf01          ; all flags clear -> publish nothing here
+8bef5  mov  ax, 0x10       ; a flag set -> the dialed datapump dispatch
+8bef8  mov  bx, word [0x281]
+8befc  lcall 8f43:0224
+
+884cb  mov  ax, 0x59
+884ce  call 8b863
+884d1  jb   884de          ; carry      -> publish 0x59
+884d3  mov  ax, 0x14       ; all flags clear
+884d6  call 8b84f
+884d9  je   884de
+884db  mov  ax, 0x11       ; a flag set
+884de  mov  bx, word [0x281]
+884e2  lcall 8f43:0224
+```
+
+| site | CF gate carry | gate clear, flags clear | gate clear, a flag set |
+|---|---|---|---|
+| `0x8bee8` | **`0x5a`** | nothing | `0x10` |
+| `0x884cb` | **`0x59`** | `0x14` | `0x11` |
+
+So `0x10`/`0x11` are the *dialed* datapump commands
+([datapump-slots.md](datapump-slots.md) has the nine-slot table they select) and
+`0x5a`/`0x59` are their leased-line counterparts. A dial never reaches either
+column because the discriminator is equal; a leased line never reaches them
+because the CF gate answers first.
+
+**`[0x05fa]` is `&L`.** The gate at `0x8b863` returns carry when
+`[0x5cd] & 0x40 == 0` and `[0x5fa] == 1` and (`[0x600] == 0` or `[0x600] > 3`).
+Peeked at the end of four 302 runs:
+
+| run | `5cd` | `5fa` | `600` | `e3c` | `32c` | `a96` | `5a5` | `685` |
+|---|---|---|---|---|---|---|---|---|
+| idle | `00` | `00` | `00` | `00` | `00` | `00` | `00` | `00` |
+| `ATDT` dial | `00` | `00` | `00` | `00` | `00` | `00` | `00` | `00` |
+| leased answer | `00` | **`01`** | `00` | `00` | `00` | `00` | `00` | `00` |
+| leased originate | `00` | **`01`** | `00` | `00` | `00` | `00` | `00` | `00` |
+
+`[0x05fa]` is set only by `&L1`, which is the 302 counterpart of the `[0x04f2]`
+the 403 note names, and it is the only one of the eight cells a leased seizure
+moves. `[0x0600]` is the cell that would have to reach 1..3 to clear the gate
+and let the leased path fall through to the discriminator; nothing in these runs
+writes it.
+
+Traced across a full leased pair (`--trace-pc`, both ends `AT&L1`, 156M):
+
+| watch | answer | originate |
+|---|---|---|
+| CF gate `8b863` | 2 | 3 |
+| discriminator `8b84f` | 11 | 11 |
+| site `8bee8` | 0 | **1** |
+| `send-10` `8bef5` | 0 | **0** |
+| publish `8bef8` | 0 | 1 |
+| site `884cb` | **1** | 0 |
+| `send-14` `884d3` | **0** | 0 |
+| `send-11` `884db` | **0** | 0 |
+| overlay id 6 `8bbba` | 1 | 1 |
+| `call-loader` `8b5d1` | 0 | **1** |
+
+The leased path therefore gets *further* than the dial: `[0xe3c] <- 6` is
+reached at `8bbba` on both ends - by the CF gate returning carry, which is the
+route the 403 note describes - and the originating end enters the loader, which
+a dial never does (`bootstraps: 1`, `call-loader` 0 in the dial table above).
+The run reports `overlay_downloads: 2`, `overlay_id: 8`, `overlay_match: true`.
+
+**The harness discards both words.** `bridge.py`'s `_observe_asic_command`
+accepts `0x13..0x1f` and `0x7d..0x84` only, so `0059:715d` and `005a:704d` - the
+last thing each end publishes - fall through it, along with the rest of the
+leased setup block (`0x42`, `0x44`, `0x48`, `0x49`, `0x50` x6, `0x51`, `0x52`,
+`0x53`, `0x71`, `0x76`, `0x77`). 302 never writes a header above `0x77` on any
+path, and its own inbound dispatcher rejects one: `0x8f492` reads the header and
+`cmp al, 0x76 / jb` drops everything at or above `0x76`. The `0x7d..0x84` window
+is main211's, and on this image it is empty in both directions.
+
 ## Solved along the way: why 403 sent a zero tone level
 
 403 originally put 66,251 samples of pure silence on the line where 302 put
