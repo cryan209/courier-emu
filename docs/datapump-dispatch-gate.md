@@ -516,9 +516,47 @@ overlay 6; the supervisor publishes `0010:5001`; the DSP's selector picks slot
 **returns**. The ROM dispatched it with all eight hardware stack slots preloaded
 with `0x065a`, so that `ret` is the halt.
 
-Which leaves the real question one step further in: whether the overlay is
-taking an early-exit branch it should not, or whether it expects an ordinary
-call frame and the ROM's fill-the-stack dispatch is the wrong way to enter it.
+#### It expects a deeper frame than the dispatcher builds
+
+Decoding the control flow in that traced window answers it. The chain that
+reaches the slot pushes **once**:
+
+```text
+80c8  call 839b        ; the only real frame - return address 0x80ca
+839b  ... bacc         ; into the tag handler, tail-jump, no push
+9b6b  bacc             ; into slot 0, tail-jump, no push
+```
+
+and the slot removes **twice**:
+
+```text
+9d00  call a0b6 / 9d43 call / 9d54 call / 9d62 ret
+9e19  retc            ; not taken
+9e1a  be32  pop       ; an explicit stack pop
+9e1e  ef00  ret       ; and then a return
+```
+
+`pop` then `ret` consumes two stack levels for one entry. Over the whole
+210-instruction window the imbalance is plain: **10 calls against 19 `ret`, 9
+`retc`, 3 `retd` and 2 `pop`.** The `9e19 / 9e1a / 9e1e` sequence appears twice
+in the tail, so the code goes round draining one more level each pass.
+
+The C5x stack is eight deep and the model is faithful - `native/c5x_ops.ipp`
+implements it as MAME does, circular over `m_pcstack[8]`, with `POP_STACK`
+replicating the bottom entry the way the part does. So the extra removals walk
+back through what the ROM left there: the eight copies of `0x065a` pushed by
+`lacc #065a / rpt #07 / push` at startup. One of them is popped, and that is the
+halt.
+
+**So the overlay does expect a frame, and a deeper one than a plain
+subroutine's.** The explicit `pop` at `0x9e1a` says its caller is supposed to
+have pushed a word - a resume or continuation address - on top of the return
+address. `bacc` at `0x9b6b` pushes neither. Whatever normally enters slot 0 is
+not the tail-jump this path uses, and the ROM's fill-the-stack dispatch only
+turns the resulting underflow into a halt instead of a wild branch.
+
+That is the thing to fix or to model next: what pushes the word the overlay
+pops.
 
 **A caution about the windows in this document.** "`0x9d00` never entered", said
 earlier, came from a trace range that stopped at `0x9d20`; the overlay's code
