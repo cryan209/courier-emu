@@ -652,6 +652,10 @@ class CourierMachine:
                 dsp_trace_range=dsp_trace_range,
                 dsp_peek=dsp_peek,
                 dsp_write_watch=dsp_write_watch,
+                # Option switch 5. On a leased pair this is what makes one
+                # end the answerer, so the line model reads it from the same
+                # strap the firmware does.
+                auto_answer="no-auto-answer" not in self.panel.dip_closed,
             )
             if with_dsp
             else None

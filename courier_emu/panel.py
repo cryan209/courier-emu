@@ -346,6 +346,14 @@ DIP_SWITCHES: dict[str, tuple[int, int, str]] = {
     "carrier-detect-override": (0x14, 0x04, "0x5e3e1 clears [0x09e9]: &C0, CD forced on"),
     # 0x63ead leaves [0x08de] — S0, rings before answering — at the zero stored
     # by 0x63e0b instead of copying the flash default of 1 into it.
+    #
+    # This is switch 5 on the case, the first of these mapped against the
+    # physical unit: Scott reports the board makes the end with switch 5 on
+    # the answerer of a leased pair. Auto answer is what picks the answering
+    # end, so switch 5 on is the position that leaves S0 at its flash
+    # default — i.e. this input *open*, since the firmware reads a closed
+    # switch low and a closed one here suppresses the answer. Read "closed"
+    # below as switch 5 off.
     "no-auto-answer": (0x14, 0x10, "0x63eb5 leaves S0 at [0x08de] clear"),
 }
 
@@ -387,10 +395,17 @@ DEFAULT_DIP_CLOSED: frozenset[str] = frozenset({"result-codes"})
 # A modem on a dedicated line has no DTE holding DTR up and no dial tone or
 # ring supervision to lean on, so it has to ignore DTR and hold carrier detect
 # asserted. Auto answer is left on by leaving `no-auto-answer` open.
+# The two ends of a leased pair are not strapped alike: switch 5 picks which
+# one answers, so the originating end is the dedicated-line strap with auto
+# answer suppressed. Nothing distinguishes the ends otherwise.
 DIP_PRESETS: dict[str, frozenset[str]] = {
     "default": DEFAULT_DIP_CLOSED,
     "dedicated-line": frozenset(
         {"result-codes", "dtr-override", "carrier-detect-override"}
+    ),
+    "dedicated-line-originate": frozenset(
+        {"result-codes", "dtr-override", "carrier-detect-override",
+         "no-auto-answer"}
     ),
 }
 

@@ -381,7 +381,7 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--line-link",
         args.socket,
         "--dip-preset",
-        args.dip_preset,
+        args.dip_preset or (args.a_dip_preset if listen else args.b_dip_preset),
         "--board-id",
         args.board_id,
     ]
@@ -1311,9 +1311,27 @@ def build_parser() -> argparse.ArgumentParser:
     link.add_argument(
         "--dip-preset",
         choices=sorted(DIP_PRESETS),
+        default=None,
+        metavar="NAME",
+        help="option switches for both sides, overriding the per-side "
+        "defaults. Strapping both ends alike leaves neither one the "
+        "answerer, which is what the board does too",
+    )
+    link.add_argument(
+        "--a-dip-preset",
+        choices=sorted(DIP_PRESETS),
         default="dedicated-line",
         metavar="NAME",
-        help="option switches for both sides (default dedicated-line)",
+        help="option switches for side A (default dedicated-line: switch 5 "
+        "on, so this end answers)",
+    )
+    link.add_argument(
+        "--b-dip-preset",
+        choices=sorted(DIP_PRESETS),
+        default="dedicated-line-originate",
+        metavar="NAME",
+        help="option switches for side B (default dedicated-line-originate: "
+        "switch 5 off, so this end calls)",
     )
     link.add_argument("--board-id", type=_board_id, default=str(DEFAULT_BOARD_ID))
     link.add_argument("--tick-ms", type=_number, default=None, metavar="MS")

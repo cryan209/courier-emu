@@ -371,6 +371,7 @@ class CourierDspBridge:
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
+        auto_answer: bool = True,
     ) -> None:
         self.image = image
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
@@ -502,11 +503,13 @@ class CourierDspBridge:
         self._rx_samples_queued = False
         self._rx_samples_codec_queued = False
         self.dial_digits = ""
-        # Which end of the pair the operator made this one. A switched
-        # call tells the DAA its role by ringing; a leased pair has no
-        # exchange and no ring, so ``ATA`` and ``ATD`` are the only thing
-        # that distinguishes the two ends -- which is how the real pair
-        # is set up as well.
+        # Which end of the pair this one is. A switched call learns its role
+        # from the line, by ringing. A leased pair has no exchange and no
+        # ring: the board decides it with option switch 5, which is auto
+        # answer, and the end that answers is the one strapped to. A command
+        # still overrides the strap, as typing `ATD` at the answering end
+        # does on the bench.
+        self.auto_answer = auto_answer
         self._commanded_role: str | None = None
         self.daa = daa
         self.sip = sip
@@ -1130,8 +1133,8 @@ class CourierDspBridge:
 
         Which operation the seizure is depends on the line, not on this class:
         answering a ringing loop is an answer, and anything else originates.
-        A leased pair has neither an exchange nor a ring, so there the roles
-        come from the commands the two ends were given.
+        A leased pair has neither an exchange nor a ring, so there the role
+        is the board's auto-answer strap, or the command if one named it.
         """
         if self.exchange is None and not self.boot_rom_enabled:
             # Without a modeled line the seizure is still the stand-in's: the
@@ -1147,8 +1150,10 @@ class CourierDspBridge:
             return
         if self.exchange is not None:
             answering = self.exchange.state == "ringing"
-        else:
+        elif self._commanded_role is not None:
             answering = self._commanded_role == "answer"
+        else:
+            answering = self.auto_answer
         self.daa.seize("answer" if answering else "originate")
 
     def begin_dialing(self) -> None:
