@@ -2398,7 +2398,16 @@ class CourierDspBridge:
         if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
             return
         off_hook = self.daa is not None and self.daa.off_hook
-        available = len(self.core.line_tx_samples(self._line_tx_index))
+        # The codec stream is at the codec's rate, which this firmware runs at
+        # 9600 while the line carries 8000. `_queue_line_audio` already
+        # converts on the way in; taking the transmit side raw put every tone
+        # on the wire at 8000/9600 of its frequency - a 1200 Hz V.22 originate
+        # carrier measured 1000 Hz, the 2400 Hz answer carrier 2000, and the
+        # 1800 Hz guard tone 1500 - so neither end could train on the other.
+        # `_take_line_audio` is the conversion the audio-only path already
+        # uses, and it buffers, because six codec samples are five line ones.
+        self._take_line_audio()
+        available = len(self._exchange_line_buffer)
         if (
             off_hook
             and available < LINE_FRAME_SAMPLES
@@ -2412,8 +2421,9 @@ class CourierDspBridge:
             # continue even when its newest block is not complete yet.
             return
         self._line_instructions = 0
-        samples = self.core.line_tx_samples(self._line_tx_index)[:LINE_FRAME_SAMPLES]
-        self._line_tx_index += len(samples)
+        samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
+        del self._exchange_line_buffer[:len(samples)]
+        self._line_tx_index = self._exchange_tx_index
         if len(samples) < LINE_FRAME_SAMPLES:
             # Online mode must keep the peer's frame clock alive even while a
             # callback transition temporarily leaves the datapump without a

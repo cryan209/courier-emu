@@ -367,6 +367,59 @@ route the 403 note describes - and the originating end enters the loader, which
 a dial never does (`bootstraps: 1`, `call-loader` 0 in the dial table above).
 The run reports `overlay_downloads: 2`, `overlay_id: 8`, `overlay_match: true`.
 
+### There is nothing to model: `0x5a` is a datapump the DSP already runs
+
+The DSP's receive dispatcher rejects a tag above `0x7f` and otherwise vectors
+through its table - base `0x8401` on 302 (3.0.13), `0x83e9` on 403 (3.1.2), per
+[dsp-map-302.md](dsp-map-302.md). `0x59` and `0x5a` are inside that range and
+both have real handlers, where their neighbours `0x5b` and `0x5c` are the shared
+no-op:
+
+```text
+tag 0x5a -> 8ddd            tag 0x59 -> 8df9
+8ddd  splk @6f, #0040       8df9  splk @6f, #0043
+8ddf  splk @6d, #8f14       8dfb  splk @6d, #8fd5
+8de1  splk @6e, #01e0       8dfd  splk @6e, #01e0
+8de3  call 8e59             8dff  call 8e59
+8de5  splk @4b, #99a3       8e01  splk @4b, #99a3
+8df3  splk @0b, #43bc       8e0f  splk @0b, #4c00
+8df5  splk @44, #2000       8e11  splk @44, #4000
+```
+
+`@44` is the transmit carrier increment and `@6f` the marker cell, both from
+[fsk-modulation.md](fsk-modulation.md), which reads `#2000` and `#4000` at
+9600 Hz as **1200 and 2400 Hz - the V.22 originate and answer carriers** - and
+names `#0040`/`#0043` as the values entries reached outside the `9b42` path
+write. So the leased pair installs V.22, each end on its own side's carrier,
+with no negotiation: which is what a dedicated line is.
+
+Both handlers execute, traced over a leased pair with `--dsp-trace-range`:
+originate runs `8ddd` through `8df5` and the `splk @44, #2000`, answer runs
+`8df9` through `8e11` and the `#4000`. `host_messages_delivered` is 37 on both
+ends, the same as the count assembled. **The ASIC needs no new modelling for
+`0x5a`** - the register filter never sees it, but delivery to the DSP is a
+different path and already works.
+
+### The transmit side was not rate-converted
+
+Recording the pair's line audio and taking the spectrum of each end's transmit
+found every tone at `8000/9600` of where it belongs:
+
+| end | expected | measured before | measured after |
+|---|---|---|---|
+| originate | 1200 Hz carrier, 600 baud | `1000`, `750` | **`930`, `1470`** - 1200 +/- 300 |
+| answer | 2400 Hz carrier + 1800 Hz guard | `1500`, `2040` | **`1800`**, `2130` |
+
+`_queue_line_audio` converts on the way in; `_service_line` took
+`core.line_tx_samples` raw and put codec-rate samples on an 8000 Hz line. The
+answer end's dominant tone moving `1500 -> 1800` is the V.22 guard tone landing
+where it belongs, and the originate end's pair of sidebands at `930`/`1470` is a
+600-baud carrier at 1200. `_take_line_audio` is the conversion the audio-only
+path already used; `_service_line` now shares it, and buffers, because six codec
+samples are five line ones.
+
+This does not by itself produce `CONNECT`.
+
 **The harness discards both words.** `bridge.py`'s `_observe_asic_command`
 accepts `0x13..0x1f` and `0x7d..0x84` only, so `0059:715d` and `005a:704d` - the
 last thing each end publishes - fall through it, along with the rest of the
