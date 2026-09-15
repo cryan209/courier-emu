@@ -919,13 +919,33 @@ void C5xCore::op_sub_limm()
 
 void C5xCore::op_subb()
 {
-	fatalerror("TMS320C5x: unimplemented op subb at %08X\n", m_pc-1);
+	// SPRU056D 6-135: (ACC) - (dma) - (logical inversion of C) -> ACC, the
+	// mirror of op_addc's carry-in. The borrow is the inverted carry, so a
+	// set C subtracts nothing extra and a clear C subtracts one more.
+	uint32_t value = DM_READ16(GET_ADDRESS());
+	m_acc = SUB(uint32_t(m_acc), value + (m_st1.c ? 0u : 1u), false);
+	CYCLES(1);
 }
 
 void C5xCore::op_subc()
 {
+	// SPRU056D 6-137: the conditional-subtract divide step, not a borrow
+	// subtract - this body used to be op_subb's, which is a different
+	// instruction. ACC - (dma << 15): a non-negative result is shifted up
+	// with a one shifted in, a negative one leaves ACC shifted up alone,
+	// which is what makes a repeated SUBC a restoring division.
 	uint32_t value = DM_READ16(GET_ADDRESS());
-	m_acc = SUB(uint32_t(m_acc), value + (m_st1.c ? 0u : 1u), false);
+	int32_t difference = int32_t(uint32_t(m_acc) - (value << 15));
+	if (difference >= 0)
+	{
+		m_acc = int32_t((uint32_t(difference) << 1) | 1u);
+		m_st1.c = 1;
+	}
+	else
+	{
+		m_acc = int32_t(uint32_t(m_acc) << 1);
+		m_st1.c = 0;
+	}
 	CYCLES(1);
 }
 
