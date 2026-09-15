@@ -149,6 +149,9 @@ public:
         uint16_t v8_record, v8_handler, v8_countdown, v8_flags;
         uint16_t negotiation_d76, negotiation_d77, negotiation_d78, negotiation_d79;
         uint16_t negotiation_d26, negotiation_indx, negotiation_arp, negotiation_pm;
+        // Trans-hybrid return: frames the loop delivered and the loudest one.
+        uint64_t hybrid_frames;
+        uint16_t hybrid_peak;
     };
 
     // The TLC320AC01 on the DSP's serial port. See docs/ac01-codec-protocol.md:
@@ -215,6 +218,13 @@ public:
     void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
+    // `return_scale` is 1/256ths of the transmit sample; `delay` is in codec
+    // frames. Zero scale opens the loop and drops the delay line.
+    void set_hybrid_return(uint32_t return_scale, uint32_t delay);
+    uint32_t hybrid_return() const { return m_hybrid_return; }
+    std::size_t hybrid_line_size() const { return m_hybrid_line.size(); }
+    uint64_t hybrid_frames() const { return m_hybrid_frames; }
+    uint16_t hybrid_peak() const { return m_hybrid_peak; }
     // Quad NAC digital highway: one G.711 octet in each direction per 8 kHz
     // frame. This is deliberately separate from the AC01's 16-bit words.
     void configure_digital_pcm(bool enabled, uint16_t idle_codeword = 0xff,
@@ -417,6 +427,18 @@ private:
     void codec_apply_asic_timing(uint16_t word);
     void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
+    // Trans-hybrid return. The codec's analog output reaches its own analog
+    // input through the hybrid, attenuated by how well the hybrid is
+    // terminated: near unity when the DAA is on hook and the line side is
+    // isolated, low once it is off hook into a terminated line. That path is
+    // what AT&T1 runs on - the firmware sends no loopback command and leaves
+    // the AC01's own register 5 at its boot value, so the loop cannot be
+    // keyed off anything software-visible. 256 is unity.
+    std::deque<int16_t> m_hybrid_line;
+    uint32_t m_hybrid_return = 0;
+    uint64_t m_hybrid_frames = 0;
+    uint16_t m_hybrid_peak = 0;
+    uint32_t m_hybrid_delay = 0;
     std::deque<uint8_t> m_g711_rx;
     std::vector<uint8_t> m_g711_tx;
     std::deque<uint16_t> m_codec_boot;

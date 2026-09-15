@@ -163,6 +163,13 @@ void courier_c5x_queue_codec_rx(void *handle, const uint16_t *samples, std::size
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_codec_rx(samples, count);
 }
 
+void courier_c5x_set_hybrid_return(void *handle, uint32_t return_scale,
+    uint32_t delay)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_hybrid_return(
+        return_scale, delay);
+}
+
 void courier_c5x_configure_digital_pcm(void *handle, int enabled,
     uint16_t idle_codeword, uint32_t clock_hz)
 {
@@ -388,7 +395,7 @@ void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values,
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 28) return;
+    if (!handle || !values || count < 55) return;
     auto serial = static_cast<C5xCore *>(handle)->serial_state();
     uint64_t result[] = {
         serial.drr, serial.dxr, serial.spc,
@@ -412,6 +419,7 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.negotiation_d78, serial.negotiation_d79,
         serial.negotiation_d26, serial.negotiation_indx,
         serial.negotiation_arp, serial.negotiation_pm,
+        serial.hybrid_frames, serial.hybrid_peak,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

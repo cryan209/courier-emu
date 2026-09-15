@@ -228,6 +228,9 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
+        lib.courier_c5x_set_hybrid_return.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32
+        ]
         lib.courier_c5x_configure_digital_pcm.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16, ctypes.c_uint32
         ]
@@ -432,6 +435,23 @@ class NativeC5x:
         storage = (ctypes.c_uint16 * len(samples))(*(sample & 0xFFFF for sample in samples))
         self.library.courier_c5x_queue_codec_rx(self.handle, storage, len(storage))
 
+    def set_hybrid_return(self, return_scale: int, delay: int = 0) -> None:
+        """Close the codec's analog output back onto its own analog input.
+
+        `return_scale` is in 1/256ths, so 256 is unity and 0 opens the loop;
+        `delay` is in codec frames. This is the hybrid, not a codec function:
+        the AC01's own loopback bit is never set by this firmware, and AT&T1
+        sends no command that would distinguish it from a call (the mailbox
+        traffic for &T1 and &T8 is identical), so the return is a property of
+        how the analog front end is terminated.
+        """
+        if not 0 <= return_scale <= 1024:
+            raise ValueError("hybrid return scale is in 1/256ths, 0..1024")
+        if not 0 <= delay <= 4096:
+            raise ValueError("hybrid delay is in codec frames, 0..4096")
+        self.library.courier_c5x_set_hybrid_return(
+            self.handle, return_scale, delay)
+
     def configure_digital_pcm(self, enabled: bool = True, *,
                               idle_codeword: int = 0xff,
                               clock_hz: int = 20_160_000) -> None:
@@ -550,7 +570,7 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 53)()
+        values = (ctypes.c_uint64 * 55)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
@@ -567,6 +587,7 @@ class NativeC5x:
             "v8_record", "v8_handler", "v8_countdown", "v8_flags",
             "negotiation_d76", "negotiation_d77", "negotiation_d78", "negotiation_d79",
             "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
+            "hybrid_frames", "hybrid_peak",
         )
         state = dict(zip(names, map(int, values), strict=True))
         if state["negotiation_acc"] & 0x80000000:

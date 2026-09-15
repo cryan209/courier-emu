@@ -214,6 +214,13 @@ static constexpr uint64_t BOARD_OSCILLATOR_HZ = 40'320'000;
 static constexpr uint64_t C5X_CLOCK_HZ = BOARD_OSCILLATOR_HZ / 2;
 static constexpr uint16_t ASIC_CODEC_TIMING_BASE = 0x0078;
 
+void C5xCore::set_hybrid_return(uint32_t return_scale, uint32_t delay)
+{
+    m_hybrid_return = return_scale;
+    m_hybrid_delay = delay;
+    if (!return_scale) m_hybrid_line.clear();
+}
+
 void C5xCore::configure_digital_pcm(bool enabled, uint16_t idle_codeword,
     uint32_t clock_hz)
 {
@@ -344,6 +351,13 @@ void C5xCore::codec_transmit(uint16_t word)
     // The sample is the top 14 bits; the low two were never data.
     const uint16_t sample = ac01_output_sample(
         uint16_t(word & 0xfffc), m_codec.registers[4]);
+    // Tap the analog output for the trans-hybrid return before the line gets
+    // it. One push per primary frame pairs with one pop in codec_frame, so
+    // the delay line settles at m_hybrid_delay entries and stays there.
+    if (m_hybrid_return) {
+        m_hybrid_line.push_back(int16_t(sample));
+        if (m_hybrid_line.size() > m_hybrid_delay + 64) m_hybrid_line.pop_front();
+    }
     m_line_tx.push_back(sample);
     if (sample) ++m_line_tx_nonzero;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
@@ -368,11 +382,32 @@ void C5xCore::codec_frame(bool secondary)
     }
     // The ADC converts whether or not the line is doing anything. An empty
     // queue is silence on the line, which is a delivered zero, not a repeat.
-    uint16_t sample = 0;
+    int32_t analog = 0;
+    bool present = false;
     if (!m_codec_rx.empty()) {
-        sample = ac01_input_sample(m_codec_rx.front(), m_codec.registers[4]);
+        analog = int16_t(m_codec_rx.front());
         m_codec_rx.pop_front();
         ++m_serial.rx_consumed;
+        present = true;
+    }
+    // The hybrid's return sums with whatever the line brought in, at the
+    // analog input, so it goes through the input gain with it.
+    if (m_hybrid_return && m_hybrid_line.size() > m_hybrid_delay) {
+        const int32_t echo =
+            int32_t(m_hybrid_line.front()) * int32_t(m_hybrid_return) / 256;
+        analog += echo;
+        m_hybrid_line.pop_front();
+        ++m_hybrid_frames;
+        m_hybrid_peak = std::max<uint16_t>(m_hybrid_peak,
+            uint16_t(std::abs(int(echo))));
+        present = true;
+    }
+    uint16_t sample = 0;
+    if (present) {
+        if (analog > 32767) analog = 32767;
+        if (analog < -32768) analog = -32768;
+        sample = ac01_input_sample(uint16_t(int16_t(analog)),
+            m_codec.registers[4]);
         m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,
             uint16_t(std::abs(int(int16_t(sample)))));
     }
@@ -1216,7 +1251,8 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_negotiation_source_value, m_negotiation_pair_value, m_negotiation_acc,
         m_v8_dispatches, m_v8_record, m_v8_handler, m_v8_countdown, m_v8_flags,
         m_negotiation_d76, m_negotiation_d77, m_negotiation_d78, m_negotiation_d79,
-        m_negotiation_d26, m_negotiation_indx, m_negotiation_arp, m_negotiation_pm};
+        m_negotiation_d26, m_negotiation_indx, m_negotiation_arp, m_negotiation_pm,
+        m_hybrid_frames, m_hybrid_peak};
 }
 
 } // namespace courier

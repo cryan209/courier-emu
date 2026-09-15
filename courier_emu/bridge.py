@@ -466,6 +466,7 @@ class CourierDspBridge:
         # the supervisor polls it after the start strobe to learn that the
         # loader has latched its program pointer from ff62. True while that
         # latch is still outstanding.
+        self._hybrid_return_applied: int | None = None
         self._overlay_destination_pending = False
         # ff62 as it stood when the start strobe arrived. The loader advances
         # it through a transfer, so after the first one it is never zero and
@@ -1855,6 +1856,8 @@ class CourierDspBridge:
             self._codec_handed_peak = 0
             self._codec_handed_at = 0
             self._core_rebuilt_at = self._instructions
+            # A fresh core has an open hybrid; re-apply on the next service.
+            self._hybrid_return_applied = None
             # The line does not stop while the DSP resets. Re-present what the
             # codec had already clocked out to the core that is gone, because
             # on the board those words were never the DSP's to lose - they were
@@ -2137,6 +2140,11 @@ class CourierDspBridge:
                 self._sip_rx_samples.extend(
                     self._sip_rx_rate.convert(self.sip.receive_audio())
                 )
+            # The hybrid is part of the analog front end and is there whether
+            # or not a peer socket is, so this is outside the line guard: a
+            # standalone AT&T1 has no line and is exactly the case that needs
+            # the return.
+            self._apply_hybrid_return()
             if self.line is not None:
                 self._service_line()
             self._maybe_start_asic_call_engine()
@@ -2405,6 +2413,30 @@ class CourierDspBridge:
             # A direct wire has no dial tone or ringing. Socket availability
             # indicates the local line connection, never carrier detection.
             self.daa.line_state = "quiet" if self.line.connected else "disconnected"
+
+    # Trans-hybrid return, in 1/256ths. On hook the DAA isolates the line and
+    # the hybrid looks into an open, so almost all of the transmit comes back
+    # - which is the path AT&T1 tests, and why it needs no command of its own.
+    # Off hook into a terminated line a real hybrid gives 20 dB or so of
+    # trans-hybrid loss; that figure is the usual order of magnitude, not a
+    # measurement of this board.
+    HYBRID_RETURN_ON_HOOK = 240
+    HYBRID_RETURN_OFF_HOOK = 26
+    # Codec frames. The return is an analog path a few hundred microseconds
+    # long; four frames is that order at the rates this codec runs.
+    HYBRID_RETURN_DELAY = 4
+
+    def _apply_hybrid_return(self) -> None:
+        """Track the hook state the hybrid's termination follows."""
+        if not hasattr(self.core, "set_hybrid_return"):
+            return
+        off_hook = self.daa is not None and self.daa.off_hook
+        scale = (self.HYBRID_RETURN_OFF_HOOK if off_hook
+                 else self.HYBRID_RETURN_ON_HOOK)
+        if scale == self._hybrid_return_applied:
+            return
+        self.core.set_hybrid_return(scale, self.HYBRID_RETURN_DELAY)
+        self._hybrid_return_applied = scale
 
     def _service_line(self) -> None:
         """Hand one frame to the far end and take its frame off the line.
