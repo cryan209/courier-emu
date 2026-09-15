@@ -388,10 +388,26 @@ tag 0x5a -> 8ddd            tag 0x59 -> 8df9
 
 `@44` is the transmit carrier increment and `@6f` the marker cell, both from
 [fsk-modulation.md](fsk-modulation.md), which reads `#2000` and `#4000` at
-9600 Hz as **1200 and 2400 Hz - the V.22 originate and answer carriers** - and
+9600 Hz as 1200 and 2400 Hz - the V.22 originate and answer carriers - and
 names `#0040`/`#0043` as the values entries reached outside the `9b42` path
-write. So the leased pair installs V.22, each end on its own side's carrier,
-with no negotiation: which is what a dedicated line is.
+write.
+
+**This is not the V.22 datapump, and an earlier revision of this section was
+wrong to say so.** Tracing a leased pair over the slot entries themselves -
+`0xcc90`-`0xce20`, which holds V.22 `cd79`/`ccfa` and V.22bis `cd61`/`cce0` -
+gives **zero** executed instructions on both ends, as do the two windows the
+core traces unconditionally, `0xc700`-`0xca00` and `0x0200`-`0x0300`. Snapshot
+the last 512 instructions with a whole-space range and the DSP is in
+`0x8000`-`0x9900` throughout: hottest are `0x9856`/`0x9860`, a two-pole
+resonator stepping a delay line, and `0x8b1a`, a polynomial sine with
+`mpy #6487` - pi/2 in Q14. The DSP is running an **oscillator**, not a trained
+datapump, so there is no receiver and nothing to report.
+
+Read the dispatch again and that is what it says: `mov ax, 0x5a` is the value
+already in `AX` *before* the gate, and the gate returning carry only skips the
+`mov ax, 0x10` that would have replaced it. `0x5a` is the fallback the
+supervisor sends when it does **not** start the datapump - not a leased-line
+counterpart of `0x10`.
 
 Both handlers execute, traced over a leased pair with `--dsp-trace-range`:
 originate runs `8ddd` through `8df5` and the `splk @44, #2000`, answer runs
@@ -405,18 +421,23 @@ different path and already works.
 Recording the pair's line audio and taking the spectrum of each end's transmit
 found every tone at `8000/9600` of where it belongs:
 
-| end | expected | measured before | measured after |
-|---|---|---|---|
-| originate | 1200 Hz carrier, 600 baud | `1000`, `750` | **`930`, `1470`** - 1200 +/- 300 |
-| answer | 2400 Hz carrier + 1800 Hz guard | `1500`, `2040` | **`1800`**, `2130` |
+| end | measured before | measured after |
+|---|---|---|
+| originate | `1000`, `750` | `930`, `1470` |
+| answer | `1500`, `2040` | **`1800`**, `2130` |
+
+The answer end's dominant tone moving `1500 -> 1800` is the clean result: the
+raw stream really does hold 1800, and `1500` is `1800 * 5/6`. The resampler was
+unit-tested on synthetic 1200, 1800 and 2400 Hz tones at 9600 and reproduces
+each within one bin with artifacts 40x down, so the conversion is sound. Do not
+read more than the scaling out of the other peaks: these are short windows on a
+changing signal, and the earlier gloss of them as V.22 sidebands was over-read.
 
 `_queue_line_audio` converts on the way in; `_service_line` took
-`core.line_tx_samples` raw and put codec-rate samples on an 8000 Hz line. The
-answer end's dominant tone moving `1500 -> 1800` is the V.22 guard tone landing
-where it belongs, and the originate end's pair of sidebands at `930`/`1470` is a
-600-baud carrier at 1200. `_take_line_audio` is the conversion the audio-only
-path already used; `_service_line` now shares it, and buffers, because six codec
-samples are five line ones.
+`core.line_tx_samples` raw and put codec-rate samples on an 8000 Hz line.
+`_take_line_audio` is the conversion the audio-only path already used;
+`_service_line` now shares it, and buffers, because six codec samples are five
+line ones.
 
 This does not by itself produce `CONNECT`.
 
@@ -429,7 +450,7 @@ calls from `0x80ca`; and `out @7d, 005e` / `out @7d, 005f` to hand the two
 halves over. Every stage was checked and the fault is at the top of it.
 
 **The drainer runs and finds nothing.** Traced over a leased pair, `0x83d6` is
-entered 128 times on each end and returns at `0x83d9` every time:
+entered and returns at `0x83d9`:
 
 ```text
 83d6  ldp  #000
@@ -438,7 +459,10 @@ entered 128 times on each end and returns at `0x83d9` every time:
 83d9  retc eq      ; read == write: nothing queued
 ```
 
-so the ring is always empty. Consistent with that, ports `0x5e`/`0x5f` show
+**Read that trace carefully.** `native/c5x_core.cpp:1027` keeps the *last* 512
+records and drops the oldest, so the 512 entries it returned - 128 visits x 4
+addresses - describe the end of the run, not all of it. What actually proves the
+ring is always empty is a total, not a window: ports `0x5e`/`0x5f` show
 **34 reads and 0 writes** - the reads are the DSP taking inbound tag and word
 from `0xff5e`/`0xff5f` through the `0x23f0` helper, folded onto the same
 register. The host-to-DSP direction works; the DSP-to-host direction has never
