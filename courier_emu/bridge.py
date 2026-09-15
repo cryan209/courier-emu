@@ -605,6 +605,32 @@ class CourierDspBridge:
         """
         return float(getattr(self.core, "codec_sample_rate", 0.0) or 0.0)
 
+    def datapump_sample_rate(self) -> float:
+        """What the datapump clocks its own samples at, which is not the codec.
+
+        The codec converts at `MCLK / (2 x A x B)`; the datapump runs three
+        samples per V.34 symbol, and the two are only the same number at index
+        0, where 3 x 2400 and the divider both give 7200. That coincidence is
+        why the distinction went unnoticed - every frequency that pins "7200"
+        is generated at index 0, where there is no shift to see.
+
+        Everywhere else the firmware shifts between the two, and word 2 of each
+        rate-table row is the ratio: `word2 / 120` is exactly `3 x baud / codec
+        rate` for every row (`docs/codec-sample-rates.md`). The firmware sends
+        that word to ASIC port 0x6b, so read it from there rather than assuming
+        a rate.
+
+        Falls back to the codec's rate, which is right at index 0 and is what
+        this did everywhere before the ratio was identified.
+        """
+        codec = self.codec_sample_rate()
+        if not codec or not hasattr(self.core, "io"):
+            return codec
+        ratio = self.core.io(0x6B) & 0x00FF
+        if not ratio:
+            return codec
+        return codec * ratio / 120.0
+
     def _take_line_audio(self) -> None:
         """Move the datapump's new output onto the line, at the line's rate.
 
@@ -617,7 +643,7 @@ class CourierDspBridge:
         if not produced:
             return
         self._exchange_tx_index += len(produced)
-        rate = self.codec_sample_rate()
+        rate = self.datapump_sample_rate()
         self._exchange_line_buffer.extend(
             self._codec_to_line.convert(produced, rate, LINE_RATE)
             if rate else produced
