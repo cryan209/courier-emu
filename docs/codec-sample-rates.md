@@ -149,6 +149,79 @@ The reset sequence writes `B = 20`, so the board comes up at 7200 Hz, and the
 resident returns to it explicitly (`lacl #00 ; call 8151` at `a350` and `a356`,
 `splk @5b, #0000` at `9499`).
 
+## A measured line probe comes out 1.2x low
+
+The table above is derived. This section is a measurement against it, and the
+two disagree by exactly `6/5`. It is recorded here rather than resolved.
+
+Two `courier run` instances over one line socket, both `AT&L1`, the answering
+end strapped by option switch 5, no exchange and no injected audio
+(`--line-audio-only`): each end emits a **190 ms multitone burst, in turn** -
+the answerer at 17.00 s, the originator at 17.66 s. Flat-topped, RMS doubling
+in one 10 ms step and dropping back in one. Between the bursts each end holds a
+steady unmodulated tone; demodulated against its own carrier the phase advances
+linearly and the envelope is flat, so there is no modulation and no reversal.
+
+Two modems probing the line in turn is V.34 Phase 2, and the burst's spectrum
+identifies itself. Sixty-one lines resolve into a comb spaced **124.8 Hz**,
+and the interesting part is which harmonics are missing. Numbering them `k` on
+that grid, the comb carries `k = 2..25` except **`k = 6, 8, 12, 16`**. Scale
+the grid to V.34's 150 Hz probe spacing and those four are **900, 1200, 1800
+and 2400 Hz** - exactly the tones V.34 omits from the line probe. Twenty of the
+twenty-one probe tones, with the right four holes in the right places.
+
+The omission pattern is a property of how the signal was built and does not
+depend on playback rate, so the generator intends a 150 Hz grid. The stream
+renders it at 124.8. The scale error is `150 / 124.8 = 1.2019`, which is `1.2`
+within the 1 Hz resolution of the measurement.
+
+Applying the same factor to the steady tones either side of the bursts:
+
+| rendered | x1.2 | |
+|---:|---:|---|
+| 1998 Hz | 2400 | V.22bis answer carrier |
+| 1498 Hz | 1800 | V.32 carrier |
+| 996 Hz | 1200 | V.22bis originate carrier |
+
+Three textbook carriers from a factor derived independently of them.
+
+### Raising the master clock is not the fix
+
+`Fs = MCLK / (2 x A x B)` with `A = 10` and `B = 18` gives 9600 Hz at
+`MCLK = 3.456 MHz`, and with that clock the probe lands on the 150 Hz grid
+directly - measured gaps of 150 and 300, the 300s falling exactly where the
+four omitted tones belong. So the factor is real and it is in the rate, not in
+the analysis.
+
+It is still wrong, because it scales every row. Index 0 goes from 7200 Hz to
+8640 Hz, and index 0 is the best-pinned number in this document: the DTMF table
+at `86fd` within 0.05%, `4aab` -> 2100.000 Hz, `4800` -> 2025.0 Hz, `3aab` ->
+1650.0 Hz. At 8640 Hz those become 2520, 2430 and 1980 and none of them is a
+standard frequency. A single master clock cannot put index 0 at 7200 and the
+probe on a 150 Hz grid at the same time.
+
+Nor does it make the link train. At either clock the answering end still falls
+back from `B = 18` to `B = 20` about 2.3 s in, re-runs its datapump init, and
+never transmits again; neither end reaches CONNECT.
+
+### What this does not overturn
+
+Index 4 at 8000 Hz has two independent supports and this measurement displaces
+neither. The divider ratio `1/20 : 1/19 : 1/18` is forced by any
+`MCLK / (2 x A x B)` form once index 0 is pinned. And word 2 of each row is
+`360 x baud / Fs` from the firmware's own table: row 4 carries `0090` = 144,
+and `360 x 3200 / 144` is exactly 8000. If row 4's `Fs` were 9600 that word
+would read 120, which is row 0's value, not row 4's.
+
+So the codec almost certainly is at 8000 Hz for index 4, and the 1.2 is
+somewhere between the datapump's oscillator and the line. One candidate is the
+DAC path itself: the line sample is the *mean* of the datapump's writes to the
+ASIC slot across a codec frame, so if the datapump emits samples at three per
+symbol - 9600 at 3200 baud, which is what index 0's 7200 at 2400 baud also is -
+and the codec frame clock runs at 8000, each frame averages 1.2 datapump
+samples and every frequency lands 1.2x low. That is a hypothesis with a
+measurement behind it and no code reading yet.
+
 ## Two variables share the offset `@5b`
 
 `@5b` is data-page relative and this firmware keeps **two** variables there.
@@ -347,6 +420,11 @@ All of those are `B = 18`. **The V.PCM sample rate on this firmware is 8000 Hz.*
   two 3-bit fields drawn from the call-mode and answer-mode buffers, which is
   the obvious reconciliation, but its result goes to `@7f`/`@7c` and has no
   shown path to either index.
+* **Where the 1.2 in the line probe comes from.** The section above measures
+  the V.34 probe rendering at a 124.8 Hz grid where the standard puts it at
+  150. Index 4's 8000 Hz survives the challenge on two independent arguments,
+  so the factor is downstream of the divider. Reading the datapump's writes to
+  the ASIC DAC slot and counting them per codec frame would settle it.
 * **Which rates this modem actually offers.** The advertised values live in data
   RAM at `ff20..ff25` and `ff28..ff2d`, computed at run time from the probe, so
   "3200 and 3429 enabled, the rest zeroed" is not something the ROM states. The
