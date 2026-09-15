@@ -163,9 +163,74 @@ Peeked at the end of four 302 runs:
 
 `[0x05fa]` is set only by `&L1`, which is the 302 counterpart of the `[0x04f2]`
 the 403 note names, and it is the only one of the eight cells a leased seizure
-moves. `[0x0600]` is the cell that would have to reach 1..3 to clear the gate
-and let the leased path fall through to the discriminator; nothing in these runs
-writes it.
+moves.
+
+### `[0x0600]` is `&N`, and it has exactly one writer
+
+Scanning the image for every direct write to the cell - `mov`, `inc`/`dec`,
+`and`/`or`/`xor`/`add`/`sub`, `xchg`, immediate or register, byte or word -
+gives one site:
+
+```text
+a6995  lcall 8000:9cbc     ; the decimal ASCII parser -> AL
+a699a  jb   a69e4          ; unparseable -> ERROR
+a699c  mov  ah, 9          ; ceiling, raised from the [0x89d] capability bits:
+                           ;   &4 -> 0a, &40 -> 0b, &80 -> 11, &20 -> 20, else 28
+a69c4  cmp  al, ah
+a69c6  jae  a69e4          ; out of range -> ERROR
+a69c8  call a74c3
+a69cb  test byte [0x694], 4  / je a69df
+a69d2  test word [0x272], 4  / je a69df
+a69da  mov  byte [0x677], al  ; the diverted destination
+a69df  mov  byte [0x600], al  ; the only writer
+```
+
+Probed by command - one run each, `--peek 0x600`, 60M instructions:
+
+| command | `[0x600]` | result |
+|---|---|---|
+| `AT&N1` | **`01`** | `OK` |
+| `AT&A1`, `AT&B1`, `AT&G1`, `AT&U1`, `AT&Y1` | `00` | `OK` |
+| `AT&M1` | `00` | `ERROR` |
+
+So `[0x0600]` is `&N`, the fixed link rate, and the CF gate clears for `&N1`,
+`&N2`, `&N3` only. The factory default is `&N0` - the `ATI4` profile prints it -
+which is why a leased seizure carries.
+
+`&N1` moves the leased pair onto the dial's branch, measured over a full pair
+(`--at AT&N1 --at AT&L1`, 200M):
+
+| watch | answer | originate |
+|---|---|---|
+| CF gate `8b863` | 2 | 3 |
+| discriminator `8b84f` | 9 | 10 |
+| site `8bee8` | 0 | **1** |
+| `send-10` `8bef5` | 0 | **0** |
+| site `884cb` | **1** | 0 |
+| `send-14` `884d3` | **1** | 0 |
+| `send-11` `884db` | **0** | 0 |
+
+`0059:715d` and `005a:704d` are gone; the ends now publish `0014:5141` and
+`0017:5041`, the discriminator-equal words. The blocker has moved from the CF
+gate to the discriminator, which is where a dial already sat.
+
+### The writer census for the gate and the discriminator
+
+Same scan over all five cells. It finds direct `disp16` writes only, so an
+indexed or based write would not appear.
+
+| cell | role | writers |
+|---|---|---|
+| `[0x0600]` | `&N` | 1: `a69df` |
+| `[0x05cd]` | gate, bit 6 | 5, all in `c911x`-`c917x`: `or 0xc0` x2, `or 0x60`, `and 0x7f`, `and 0x1f` |
+| `[0x0a96]` | flag A, `& 2` | 7, and **none of them sets bit 1**: `or 0x10` at `84291`, six `and 0xf1`/`0xef` |
+| `[0x05a5]` | flag B, `& 1` | 2, both `and 0xfe` - **no setter at all** |
+| `[0x0685]` | flag C, `& 1` | 18, of which one sets bit 0: `or 0x01` at `876c5` |
+
+Flags A and B cannot be set by this image. Flag C's single setter is the one the
+dial section traces to the nine-stub thunk table. `[0x05cd]` bit 6 is the second
+independent way to clear the CF gate - `test [0x5cd], 0x40 / jne` passes before
+`&L` is even read - and it is settable, from the `0xc9xxx` block.
 
 Traced across a full leased pair (`--trace-pc`, both ends `AT&L1`, 156M):
 
