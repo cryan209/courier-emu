@@ -305,6 +305,8 @@ class BridgeStatus:
     overlay_id: int | None
     overlay_match: bool | None
     overlay_heads: list[str]
+    overlay_destinations: list[str]
+    overlay_destination_waits: int
     transfer_commands: int
     mailbox_commands: int
     mailbox_windows: dict[str, int]
@@ -460,6 +462,17 @@ class CourierDspBridge:
         self.overlay_heads: list[str] = []
         self.overlay_match: bool | None = None
         self._overlay_status = 0x07
+        # Bit 2 of port 0x1e is the C51 overlay loader's idle/ready bit, and
+        # the supervisor polls it after the start strobe to learn that the
+        # loader has latched its program pointer from ff62. True while that
+        # latch is still outstanding.
+        self._overlay_destination_pending = False
+        # ff62 as it stood when the start strobe arrived. The loader advances
+        # it through a transfer, so after the first one it is never zero and
+        # "nonzero" would pass instantly for every overlay after it.
+        self._overlay_destination_mark = 0
+        self.overlay_destination_waits = 0
+        self.overlay_destinations: list[str] = []
         self.transfer_commands = 0
         self.mailbox_commands = 0
         self.mailbox_windows: Counter[str] = Counter()
@@ -1502,21 +1515,24 @@ class CourierDspBridge:
             # modeled transport; it must never be the operation that publishes
             # the overlay.
             #
-            # Read each group back from the destination the loader used, not
-            # from one run at the entry word: the supervisor re-points ff62
-            # partway through, so a payload is spread over more than one base.
+            # Read each group back from the destination the loader used
+            # rather than from one run at the entry word, because nothing here
+            # gets to assume the base.
             #
-            # The groups before that re-point are the transfer's header, and
-            # they go out against a destination nothing has set yet - ff62 is
-            # still its reset zero, with no write to it recorded - so the
-            # loader puts them at program 0000. That is the C51's on-chip mask
-            # ROM in microcomputer mode, which ignores writes, and this part
-            # boots that way: MP/MC reads 0 on the real board and PMST stays
-            # 0000 throughout the download. Program 2000 is where its SARAM
-            # starts (courier_emu/dsp_probe, measured on the 2806 board). So
-            # those words are unreadable by construction, not a transport
-            # failure, and the image proper - everything from the re-point on -
-            # is what lands at the entry word.
+            # A group landing below C51_MASK_ROM_WORDS is counted unreadable
+            # rather than failed: program 0000 is the C51's on-chip mask ROM
+            # in microcomputer mode, which ignores writes, and this part boots
+            # that way - MP/MC reads 0 on the real board and PMST stays 0000
+            # throughout the download, with SARAM starting at program 2000
+            # (courier_emu/dsp_probe, measured on the 2806 board).
+            #
+            # That used to happen, for the first 76 words of every overlay,
+            # and was recorded here as the transfer's header arriving before
+            # the supervisor re-pointed ff62. It was neither: the words were
+            # racing the tag-02 mailbox message that carries the destination,
+            # because the start strobe asserted the port-0x1e ready bit the
+            # supervisor polls for exactly that. With that bit modeled, this
+            # count is 0 and the whole payload lands at the table's address.
             verified = 0
             unreadable = 0
             for base, words in self._overlay_groups:
@@ -1762,7 +1778,21 @@ class CourierDspBridge:
                 self._overlay_target = None
                 self._overlay_buffer = bytearray()
                 self._overlay_groups = []
-                self._overlay_status = 0x07
+                # The supervisor does not send the destination through these
+                # ports: the row's third word goes out as mailbox tag 02,
+                # which the DSP's dispatcher stores to ff62 (the cell the C51
+                # loader at 811b reads as its program pointer). That send is a
+                # ring-buffer enqueue at [0x029c], drained later, so the
+                # destination reaches the DSP well after this strobe. The
+                # supervisor's own `in 1e / and 4 / cmp 4` poll below is what
+                # waits for it. Asserting bit 2 here answered that poll before
+                # ff62 had been written, and the groups that went out first
+                # were BLDP'd to program 0000 - the C51's mask ROM, which
+                # ignores writes - displacing the whole overlay by however
+                # many words raced the mailbox.
+                self._overlay_status = 0x07 & ~0x04
+                self._overlay_destination_pending = True
+                self._overlay_destination_mark = self.core.data(0xFF62)
             elif self.active and strobe in self._windows:
                 # Measured framing: each acknowledgement commits four bytes -
                 # a half-block - into alternating halves of the first window,
@@ -1917,6 +1947,14 @@ class CourierDspBridge:
             and self.transfer.command_port != DSP_COMMAND_PORT
             and self.active
         ):
+            if self._overlay_destination_pending:
+                destination = self.core.data(0xFF62)
+                if destination != self._overlay_destination_mark:
+                    self._overlay_destination_pending = False
+                    self._overlay_status |= 0x04
+                    self.overlay_destinations.append(f"{destination:04x}")
+                else:
+                    self.overlay_destination_waits += 1
             return self._overlay_status & ((1 << (size * 8)) - 1)
         if port == 0x1C:
             if self._completion_probe:
@@ -2505,6 +2543,8 @@ class CourierDspBridge:
             overlay_id=self.overlay_id,
             overlay_match=self.overlay_match,
             overlay_heads=list(self.overlay_heads),
+            overlay_destinations=list(self.overlay_destinations),
+            overlay_destination_waits=self.overlay_destination_waits,
             transfer_commands=self.transfer_commands,
             mailbox_commands=self.mailbox_commands,
             mailbox_windows=dict(self.mailbox_windows.most_common()),
