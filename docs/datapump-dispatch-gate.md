@@ -555,8 +555,43 @@ address. `bacc` at `0x9b6b` pushes neither. Whatever normally enters slot 0 is
 not the tail-jump this path uses, and the ROM's fill-the-stack dispatch only
 turns the resulting underflow into a halt instead of a wild branch.
 
-That is the thing to fix or to model next: what pushes the word the overlay
-pops.
+#### Nothing pushes it: the code being executed is not the overlay
+
+The question has no answer as asked, because the premise fails. Comparing every
+address the DSP actually executed against both candidate sources:
+
+| executed addresses (126 distinct) | |
+|---|---|
+| match the base resident image | 91 |
+| match overlay 6's image at its documented `0x9d00` base | **0** |
+| match neither | 35 |
+
+Overlay 6 is not in program memory the way the slot table addresses it. But it is
+*there*: all **35 of 35** of the unexplained addresses match overlay 6 at a
+uniform shift of **+76 words**, so the content is present and displaced by 152
+bytes relative to the `0x9d00` the table jumps to.
+
+So at `0x9d00` the DSP runs base resident code, and a couple of words later it
+falls into overlay code that is misaligned by 76 words. The `pop`/`ret`
+imbalance measured above is an artifact of executing that mixture, not a frame
+convention, and `0x9e1a` is not a real call-frame consumer. The halt is the
+downstream symptom.
+
+`bridge.py` already knows the transfer is not single-based - "the supervisor
+re-points `ff62` partway through, so a payload is spread over more than one
+base", and "the groups before that re-point are the transfer's header" - and the
+same runs report `overlay_words_unreadable: 172`. The 76-word displacement
+belongs to that machinery: either the header length or the second base is wrong.
+Note that `overlay_match: true` and `overlay_downloads: 2` are **not** evidence
+against this; they compare the bytes that crossed the transfer, not where they
+landed.
+
+**A second place to audit for the same fault.** `_activate_call_overlay` writes
+a signature-matched slice of the image to `C50_CALL_OVERLAY_DESTINATION =
+0xC418`, spanning roughly `0xC418`-`0xCE70`. That lands on the resident V.22 and
+V.22bis slot entries at `0xcd04`, `0xcd1e`, `0xcd85`, `0xcd9d` and across the
+`0xc700`-`0xca00` window. It is a harness-authored overlay over firmware code,
+and until the placement above is settled it should not be trusted either.
 
 **A caution about the windows in this document.** "`0x9d00` never entered", said
 earlier, came from a trace range that stopped at `0x9d20`; the overlay's code
