@@ -524,6 +524,7 @@ class CourierMachine:
         self.force_online = force_online
         self.serial_rx: deque[int] = deque(serial_input)
         self._alternate_line = bytearray()
+        self._rom_command_line = bytearray()
         self.console = console
         self.stop_requested = False
         self._resume_state: dict[str, Any] | None = None
@@ -1756,6 +1757,17 @@ class CourierMachine:
                             f"rom-rx {byte:02x} callbacks="
                             + bytes(_uc.mem_read(self._serial_callbacks, 6)).hex()
                         )
+                        # Read the line the terminal typed alongside the
+                        # firmware, which parses it for itself. Nothing is
+                        # intercepted; the line model needs the text only to
+                        # know whether this end was told to answer or to call.
+                        if byte in (10, 13):
+                            typed = attention_body(bytes(self._rom_command_line))
+                            self._rom_command_line.clear()
+                            if typed is not None and self.dsp_bridge is not None:
+                                self.dsp_bridge.note_dte_command(typed)
+                        else:
+                            self._rom_command_line.append(byte)
                         self.uart.deliver(byte)
                         _uc.emu_stop()
                 if self.quad_usart is not None:

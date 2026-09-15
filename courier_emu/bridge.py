@@ -502,6 +502,12 @@ class CourierDspBridge:
         self._rx_samples_queued = False
         self._rx_samples_codec_queued = False
         self.dial_digits = ""
+        # Which end of the pair the operator made this one. A switched
+        # call tells the DAA its role by ringing; a leased pair has no
+        # exchange and no ring, so ``ATA`` and ``ATD`` are the only thing
+        # that distinguishes the two ends -- which is how the real pair
+        # is set up as well.
+        self._commanded_role: str | None = None
         self.daa = daa
         self.sip = sip
         self.line = line
@@ -1025,15 +1031,57 @@ class CourierDspBridge:
                 C50_ROM_FRAME_IRQ, origin + C50_ROM_FRAME_VECTOR
             )
 
+    def note_dte_command(self, command: bytes) -> None:
+        """Observe a command the firmware parses for itself.
+
+        The ROM DTE path hands characters to the firmware's own attention
+        detector, so nothing here ever sees the text. Reading the same line
+        the terminal typed costs the firmware nothing and is the only way the
+        line model learns which end of a leased pair this one was made.
+        """
+        self._note_commanded_role(command.decode("ascii", "ignore").upper())
+
+    def _note_commanded_role(self, text: str) -> None:
+        """Record whether the operator made this end the answerer or the caller.
+
+        The supervisor's attention front-end strips the leading ``AT`` before
+        the command reaches us, so an answer arrives as ``A`` from a terminal
+        and as ``ATA`` from a direct caller. ``&L1`` on its own says nothing
+        about the role and leaves the last one standing; ``H`` puts the end
+        back to undecided, as hanging up does on the bench.
+        """
+        if text in ("H", "H0", "ATH", "ATH0"):
+            self._commanded_role = None
+            return
+        if text in ("A", "ATA"):
+            self._commanded_role = "answer"
+        else:
+            marker = text.find("D")
+            if marker < 0 or text.startswith("&"):
+                return
+            self._commanded_role = "originate"
+        if (
+            self.exchange is None
+            and self.daa is not None
+            and self.daa.off_hook
+            and self.daa.operation in ("originate", "answer")
+        ):
+            # Leased-line order: `&L1` seizes the pair before the operator
+            # says which end this is, so the role arrives after the relay has
+            # already closed. Nothing re-seizes, so take the role here.
+            self.daa.operation = self._commanded_role
+
     def arm_dial_tones(self, command: bytes) -> None:
+        text = command.decode("ascii", "ignore").upper()
+        self._note_commanded_role(text)
         if self._audio_only or self.exchange is not None:
             # With a modeled line the command is the firmware's alone. It
             # parses the dial string, seizes the loop through its own hook
             # relay, qualifies dial tone from its own detector count and
             # sequences its own digits; reading the text here could only
-            # duplicate or pre-empt that.
+            # duplicate or pre-empt that. Only the role above is kept, and
+            # that decides nothing until the firmware closes the relay.
             return
-        text = command.decode("ascii", "ignore").upper()
         # The supervisor's attention front-end strips the leading ``AT``
         # before calling us, so a real terminal supplies ``A`` here. Tests
         # and direct bridge users may still pass the complete ``ATA`` form.
@@ -1082,6 +1130,8 @@ class CourierDspBridge:
 
         Which operation the seizure is depends on the line, not on this class:
         answering a ringing loop is an answer, and anything else originates.
+        A leased pair has neither an exchange nor a ring, so there the roles
+        come from the commands the two ends were given.
         """
         if self.exchange is None and not self.boot_rom_enabled:
             # Without a modeled line the seizure is still the stand-in's: the
@@ -1095,7 +1145,10 @@ class CourierDspBridge:
             if self.exchange is not None:
                 self.exchange.service(False, [], 1)
             return
-        answering = self.exchange is not None and self.exchange.state == "ringing"
+        if self.exchange is not None:
+            answering = self.exchange.state == "ringing"
+        else:
+            answering = self._commanded_role == "answer"
         self.daa.seize("answer" if answering else "originate")
 
     def begin_dialing(self) -> None:
