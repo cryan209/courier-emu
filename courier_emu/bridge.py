@@ -610,42 +610,18 @@ class CourierDspBridge:
         """
         return float(getattr(self.core, "codec_sample_rate", 0.0) or 0.0)
 
-    def datapump_sample_rate(self) -> float:
-        """What the datapump clocks its own samples at, which is not the codec.
-
-        The codec converts at `MCLK / (2 x A x B)`; the datapump runs three
-        samples per V.34 symbol, and the two are only the same number at index
-        0, where 3 x 2400 and the divider both give 7200. Everywhere else the
-        firmware shifts between them, and word 2 of each rate-table row is the
-        ratio it uses: `word2 / 120` is exactly `3 x baud / codec rate` for
-        every row in the table (`docs/codec-sample-rates.md`). The firmware
-        sends that word to ASIC port 0x6b, so read it from there rather than
-        assuming a rate.
-
-        Falls back to the codec's rate, which is right at index 0 and is what
-        this did everywhere before the ratio was identified.
-        """
-        codec = self.codec_sample_rate()
-        if not codec or not hasattr(self.core, "io"):
-            return codec
-        ratio = self.core.io(0x6B) & 0x00FF
-        if not ratio:
-            return codec
-        return codec * ratio / 120.0
-
     def _take_line_audio(self) -> None:
-        """Move the datapump's new output onto the line, at the line's rate.
+        """Move the codec's new output onto the line, at the line's rate.
 
-        `line_tx_samples` is at whatever the codec is converting at, so handing
-        it straight to the exchange made every tone it generated read high by
-        the ratio - a 697 Hz DTMF row tone arriving as 929 Hz, which no
-        detector accepts.
+        `line_tx_samples` is the AC01/03 serial stream at its current conversion
+        rate.  The datapump may use a different internal rate, but that is an
+        ASIC/DSP detail and must not introduce another conversion here.
         """
         produced = self.core.line_tx_samples(self._exchange_tx_index)
         if not produced:
             return
         self._exchange_tx_index += len(produced)
-        rate = self.datapump_sample_rate()
+        rate = self.codec_sample_rate()
         self._exchange_line_buffer.extend(
             self._codec_to_line.convert(produced, rate, LINE_RATE)
             if rate else produced
@@ -2404,11 +2380,9 @@ class CourierDspBridge:
             # writes DXR. Use that clock, not CPU instruction counts or TX
             # writes: the former builds a growing audio backlog and the latter
             # deadlocks a silent peer whose transmitter is not running yet.
-            # Pace on samples the datapump actually produced, not on codec
-            # conversions. The two counts differ by about 1.2 here, and the
-            # line used to make up the shortfall with zero padding - silence
-            # inserted into a modem's transmit stream, which no hardware does
-            # and which ended the answering end's handshake in a fallback.
+            # Pace on the AC01/03 serial stream.  This is the same changing
+            # codec rate used by _take_line_audio, so one codec-to-line
+            # conversion determines both frame cadence and frame contents.
             frames = self.core.serial_state()['line_tx_writes']
             elapsed = max(0, frames - self._audio_codec_frames)
             self._audio_codec_frames = frames
@@ -2555,6 +2529,12 @@ class CourierDspBridge:
                 "legacy_carrier_fallback": self.legacy_carrier_fallback,
                 "carrier_probe_frames": self._carrier_probe_frames,
                 "carrier_best_score": round(self._carrier_best_score),
+                "codec_clock_events": (
+                    self.core.io_events(
+                        limit=32, ports=(0x68, 0x69, 0x6B, 0x6C)
+                    )
+                    if hasattr(self.core, "io_events") else []
+                ),
                 "negotiation_audio": self._negotiation_audio_status(),
                 "dsp_registers": {
                     f"{register:02x}": ((value & 0xFF) << 8) | (value >> 8)

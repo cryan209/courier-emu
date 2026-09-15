@@ -1203,14 +1203,16 @@ transition and the harness-generated digits.
 `link` runs two instances sharing a two-wire line over a UNIX socket. Each side
 hands the far end one 100 ms frame of hook state and line audio and blocks for
 the far end's frame, so two independently executing runs stay on the same
-emulated clock without either knowing how fast the other goes. Both sides get
-the `dedicated-line` option switches and answer:
+emulated clock without either knowing how fast the other goes. Both sides enter
+leased-line mode. The opposite option-switch presets leave switch 5 on at side
+A so it answers, and off at side B so it originates:
 
 ```sh
 ./courier link main211.xmf --instructions 40000000 --summary
 ```
 
-`--a-at` and `--b-at` change what each side is told to do, and `run` takes
+By default both sides receive `AT&L1`. `--a-at` and `--b-at` change what each
+side is told to do, and `run` takes
 `--line-link PATH` plus `--line-listen` directly if you would rather drive the
 two processes yourself. The link implies `--with-dsp` and supersedes
 `--daa-line`: the far end's hook state is the line state.

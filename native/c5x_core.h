@@ -395,6 +395,9 @@ private:
     // (IN+/IN-, high-pass in the path), frame-sync number 1.
     struct Ac01 {
         uint16_t registers[9] = {0, 18, 18, 0, 0x05, 0x01, 0x00, 0x00, 0x01};
+        // Nominal MCLK derived by the ASIC from the board oscillator. Runtime
+        // rate rows can scale the clock presented to the codec.
+        uint32_t nominal_mclk_hz = 2'880'000;
         uint32_t mclk_hz = 2'880'000;
         uint64_t sample_rate_millihz = 0;
         uint64_t secondary_frames = 0, register_writes = 0, register_reads = 0;
@@ -411,6 +414,7 @@ private:
     void codec_frame(bool secondary);
     void codec_transmit(uint16_t word);
     void codec_apply_register(uint16_t word);
+    void codec_apply_asic_timing(uint16_t word);
     void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
     std::deque<uint8_t> m_g711_rx;

@@ -172,14 +172,18 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
     m_io_read = std::move(read); m_io_write = std::move(write);
 }
 
-// The C5x's own cycle clock, which is what m_line_frame_period counts in.
-// 20.16 MHz is what this board clocks the DSP at, confirmed by Scott against
-// the hardware. The 25 MHz this used to carry was chosen to reproduce a
+// The board's 40.320 MHz source reaches the C5x through the ASIC and the
+// external X2/CLKIN path. The C50/51/52 divides that input by two to form
+// CLKOUT1 and its machine cycle (SPRU056D 9.2.1), so the effective core clock
+// used by m_line_frame_period is 20.16 MHz. The 25 MHz this used to carry was
+// chosen to reproduce a
 // shipped constant of 3472 cycles, and it made every frame 24% longer in DSP
 // cycles than the board's - the sample rate is unaffected, since the clock
 // cancels out of MCLK / (2 x A x B), but the DSP got that much more compute
 // per sample than it has.
-static constexpr uint64_t C5X_CLOCK_HZ = 20'160'000;
+static constexpr uint64_t BOARD_OSCILLATOR_HZ = 40'320'000;
+static constexpr uint64_t C5X_CLOCK_HZ = BOARD_OSCILLATOR_HZ / 2;
+static constexpr uint16_t ASIC_CODEC_TIMING_BASE = 0x0078;
 
 void C5xCore::configure_digital_pcm(bool enabled, uint16_t idle_codeword,
     uint32_t clock_hz)
@@ -213,8 +217,27 @@ void C5xCore::configure_rom_codec(bool enabled)
 
 void C5xCore::set_codec_mclk(uint32_t hz)
 {
+    m_codec.nominal_mclk_hz = hz;
     m_codec.mclk_hz = hz;
     if (m_codec.rate_programmed) codec_recompute_rate();
+}
+
+void C5xCore::codec_apply_asic_timing(uint16_t word)
+{
+    const uint16_t timing = word & 0x00ff;
+    // Word 2 of each firmware rate-table row. Relative to the 0x78 base,
+    // this models an ASIC-selected codec clock rather than a second PCM
+    // resampler in the bridge. At 0x90 with B=18, MCLK becomes 3.456 MHz and
+    // fs becomes 9.6 kHz: the measured 64-sample, 150-Hz V.34 probe rate.
+    switch (timing) {
+    case 0x78: case 0x82: case 0x85: case 0x8e: case 0x90: case 0x9a:
+        m_codec.mclk_hz = uint32_t(
+            uint64_t(m_codec.nominal_mclk_hz) * timing / ASIC_CODEC_TIMING_BASE);
+        if (m_codec.rate_programmed) codec_recompute_rate();
+        break;
+    default:
+        break;
+    }
 }
 
 // fs = MCLK / (2 x A x B), datasheet equations 11 and 20.
@@ -254,8 +277,10 @@ void C5xCore::codec_apply_register(uint16_t word)
     if (address == 6 && (word & 0x02)) {
         // Software reset returns every register to its power-up value and
         // clears itself.
+        const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
         const uint32_t mclk = m_codec.mclk_hz;
         m_codec = Ac01{};
+        m_codec.nominal_mclk_hz = nominal_mclk;
         m_codec.mclk_hz = mclk;
     }
 }
@@ -364,7 +389,11 @@ C5xCore::CodecState C5xCore::codec_state() const
     return out;
 }
 
-void C5xCore::set_io(uint16_t port, uint16_t value) { m_io[port] = value; }
+void C5xCore::set_io(uint16_t port, uint16_t value)
+{
+    m_io[port] = value;
+    if (m_rom_codec && port == 0x006b) codec_apply_asic_timing(value);
+}
 void C5xCore::host_write(uint16_t address, uint16_t value)
 {
     // NOT the board's protocol.  A real mailbox tag is a command index into
@@ -609,6 +638,7 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // overwrite an incoming CPU word, or vice versa.
         m_mailbox_output[port - 0x5e] = value;
     else m_io[port] = value;
+    if (m_rom_codec && port == 0x006b) codec_apply_asic_timing(value);
     PortStat &stat = m_io_port_stats[port];
     ++stat.writes;
     stat.last_write = value;

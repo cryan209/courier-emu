@@ -1,4 +1,29 @@
-# The codec has three sample rates, and V.34's symbol rate picks them
+# The codec rate combines its B divider with an ASIC-derived clock
+
+> **Audio-path correction (2026-09-15).** The emulator boundary is one
+> conversion in each direction: fixed 8 kHz phone-line PCM ↔ the current
+> AC01/03 serial rate ↔ DSP. The datapump's internal three-samples-per-symbol
+> timing is not a second PCM rate at the bridge. The current model interprets
+> ASIC port `0x6b` as scaling the codec clock derived from the 40.32 MHz board
+> oscillator, so the codec conversion and serial rates move together and the
+> bridge still converts only once. The later sections that describe a separate
+> datapump PCM stream are retained as investigation history.
+>
+> With nominal MCLK 2.880 MHz at timing word `0078`, the six currently
+> modelled rows are:
+>
+> | index | timing word | B | effective MCLK | codec/serial rate |
+> |---:|---:|---:|---:|---:|
+> | 0 | 120 | 20 | 2.880 MHz | 7200 Hz |
+> | 1 | 130 | 19 | 3.120 MHz | 8210.53 Hz |
+> | 2 | 133 | 19 | 3.192 MHz | 8400 Hz |
+> | 3 | 142 | 19 | 3.408 MHz | 8968.42 Hz |
+> | 4 | 144 | 18 | 3.456 MHz | 9600 Hz |
+> | 5 | 154 | 18 | 3.696 MHz | 10266.67 Hz |
+>
+> Rows 1, 3 and 5 reflect the integer timing words; their small difference
+> from exactly three times the nominal V.34 symbol rate is the table's own
+> quantization.
 
 `codec-rate-312.md` closes on a contradiction: the dial path runs at 7200 Hz,
 the AC01's divider registers are written once at reset and never again, and the

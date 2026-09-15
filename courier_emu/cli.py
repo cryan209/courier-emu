@@ -406,7 +406,11 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.append("--line-listen")
     if args.summary:
         command.append("--summary")
-    for text in commands or ["ATA"]:
+    # Both ends must enter leased-line mode, then option switch 5 chooses
+    # which end originates and which answers. Forcing ATA here used to make
+    # both DSPs run the answer sequence even though the default DIP presets
+    # correctly strapped the ends in opposite roles.
+    for text in commands or ["AT&L1"]:
         command.extend(("--at", text))
     return command
 
@@ -1299,14 +1303,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="COMMAND",
-        help="AT command for side A; repeatable (default ATA)",
+        help="AT command for side A; repeatable (default AT&L1)",
     )
     link.add_argument(
         "--b-at",
         action="append",
         default=[],
         metavar="COMMAND",
-        help="AT command for side B; repeatable (default ATA)",
+        help="AT command for side B; repeatable (default AT&L1)",
     )
     link.add_argument(
         "--dip-preset",
