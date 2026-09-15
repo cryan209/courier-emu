@@ -227,9 +227,9 @@ frames collecting them: that branch is gated on call-TDM being active, which on
 this route it is not. Every line sample is pushed from the generic write hook
 at C52 program `0x818f`, one per line-frame interrupt.
 
-What the same counters do show is a mismatch between two clocks. For the
-originating end, which stays at `B = 18` for the whole run, the core produced
-203,499 line samples and the line emitted 244,800:
+What the same counters do show is a second, separate defect with the same
+ratio. For the originating end, which stays at `B = 18` for the whole run, the
+core produced 203,499 line samples and the line emitted 244,800:
 
 ```text
 emitted / produced = 1.2030        probe scale error = 1.2019
@@ -238,14 +238,35 @@ emitted / produced = 1.2030        probe scale error = 1.2019
 The line's frame pacing advances on the codec's conversion count
 (`frames_clocked`), but a transmit sample is produced once per *line-frame
 interrupt*, and the two do not run at the same rate. The shortfall is made up
-with zero padding, which spreads the datapump's samples across 1.2x as many
-output slots and drops every frequency by that factor.
+with zero padding at the end of each frame.
 
-Pacing the line on samples actually produced instead brings the ratio to 1.06,
-stops the answering end falling back to `B = 20`, and keeps the line alive for
-the whole run rather than 2.6 s - but both ends then hold their opening tones
-unchanged for 110 s, so it trains no better. Recorded as a measurement, not as
-a fix.
+**That padding is not what shifts the frequencies.** Pacing the line on samples
+actually produced instead brings the steady-state emitted/produced ratio to
+0.9988 on the originator and 0.9906 on the answerer, stops the answering end
+falling back to `B = 20`, and keeps the line alive for the whole run instead of
+2.6 s - and every frequency is exactly where it was. The originator's tone
+measures 1000 Hz with the padding and 1000 Hz without it. Zero padding at a
+frame boundary chops the waveform, it does not stretch it.
+
+So the two 1.2s are the same underlying mismatch surfacing twice rather than
+one causing the other. The padding is a symptom. The scale error is upstream of
+the line entirely: the datapump advances its oscillator once per line-frame
+interrupt, and the model delivers 8000 of those per second where the
+increments the firmware programs imply 9600.
+
+### The receive direction is faithful
+
+Worth ruling out, since a link that will not train invites the guess that the
+two ends are not hearing each other. They are. Comparing two run lengths so the
+on-hook prologue cancels, every sample the wire delivers reaches the codec:
+
+| | line rx delta | codec queued delta | ratio |
+|---|---:|---:|---|
+| originator, `B = 18` | 156,800 | 156,800 | **1.0000** |
+| answerer, after falling back to `B = 20` | 156,800 | 141,120 | **1.1111** = 8000/7200 |
+
+One to one at a matched rate, and correctly resampled at a mismatched one. The
+socket, the queue and the rate conversion on the receive side are all sound.
 
 ## Two variables share the offset `@5b`
 
