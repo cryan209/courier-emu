@@ -420,6 +420,67 @@ samples are five line ones.
 
 This does not by itself produce `CONNECT`.
 
+### Why neither end reports a result code: the DSP never sends
+
+A result code follows the DSP telling the supervisor what the link did. On 302
+that return leg is: an enqueue into the outbound ring at `0x0bd0`, indexed by
+`@78` (write) and `@79` (read); a drainer at `0x83d6` that the service loop
+calls from `0x80ca`; and `out @7d, 005e` / `out @7d, 005f` to hand the two
+halves over. Every stage was checked and the fault is at the top of it.
+
+**The drainer runs and finds nothing.** Traced over a leased pair, `0x83d6` is
+entered 128 times on each end and returns at `0x83d9` every time:
+
+```text
+83d6  ldp  #000
+83d7  lacc @79
+83d8  sub  @78
+83d9  retc eq      ; read == write: nothing queued
+```
+
+so the ring is always empty. Consistent with that, ports `0x5e`/`0x5f` show
+**34 reads and 0 writes** - the reads are the DSP taking inbound tag and word
+from `0xff5e`/`0xff5f` through the `0x23f0` helper, folded onto the same
+register. The host-to-DSP direction works; the DSP-to-host direction has never
+carried a word.
+
+**The enqueue never executes.** Its entry is `0x83bd`, not the `0x83bf` that is
+3.1.2's - the caller passes the word in the accumulator and `83bd` opens
+`ldp #000 / sacl @7d` before the space check. Traced, `0x83bd`-`0x83d5` is
+**never reached** on either end.
+
+**It has exactly two callers**, and both are reporters:
+
+| site | word loaded | tag |
+|---|---|---|
+| `0xd59d` | `lacc #8048` | `0x48` |
+| `0xeb4b` | `lacc #801c` | `0x1c` |
+
+Bit 15 is the ring's more-follows marker, which the drainer strips with
+`and #7fff`. Tag `0x1c` is the one the supervisor's own inbound handler
+collects: `0x8f499` is `cmp al, 0x1d / je`, `cmp al, 0x1c / jne`, and the `0x1c`
+arm gathers data words into the buffer at `[0x14c]` indexed by `[0x24c]` while
+`0x1d` sets `[0x24d]` bit 1 and arms the `[0x24f]` countdown. So `0x1c`/`0x1d`
+are the report the supervisor is waiting on, and it is never sent.
+
+**The driver above them is dormant too.** The `0x48` reporter is called from
+`0xd4b4`, `0xd4d2`, `0xd4f7` (`call d58a`) and `0xd4eb`, `0xd50c`
+(`call d595`). Tracing the whole `0xd4a0`-`0xd5a0` window over a leased pair
+gives **zero entries** on both ends.
+
+So the datapump is installed, both ends transmit the right carrier and hear each
+other, and the DSP's entire status-reporting machinery is still asleep. What
+wakes `0xd4a0` and `0xeb00` is the open question; it is a receiver condition,
+one level in from anything this document has traced.
+
+**One thing to distrust while chasing it.**
+`runtime_inbound_delivered` reports `ffff:ffff` three times per run and
+`dsp_messages_taken: 3`. Since the DSP has written those ports zero times, those
+are phantom: `_dsp_completion_status` returns `status ^ 0x0006` under the ROM
+profile, so a DSP that has sent nothing reads back as having completed a send.
+Whether the inversion or the polarity is wrong is not established here, but the
+three delivered words are not messages.
+
 **The harness discards both words.** `bridge.py`'s `_observe_asic_command`
 accepts `0x13..0x1f` and `0x7d..0x84` only, so `0059:715d` and `005a:704d` - the
 last thing each end publishes - fall through it, along with the rest of the
