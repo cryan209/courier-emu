@@ -2373,8 +2373,12 @@ class CourierDspBridge:
             # writes DXR. Use that clock, not CPU instruction counts or TX
             # writes: the former builds a growing audio backlog and the latter
             # deadlocks a silent peer whose transmitter is not running yet.
-            codec = self.core.codec_state()
-            frames = codec['frames_clocked']
+            # Pace on samples the datapump actually produced, not on codec
+            # conversions. The two counts differ by about 1.2 here, and the
+            # line used to make up the shortfall with zero padding - silence
+            # inserted into a modem's transmit stream, which no hardware does
+            # and which ended the answering end's handshake in a fallback.
+            frames = self.core.serial_state()['line_tx_writes']
             elapsed = max(0, frames - self._audio_codec_frames)
             self._audio_codec_frames = frames
             rate = self.codec_sample_rate()
