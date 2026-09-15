@@ -173,8 +173,13 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 }
 
 // The C5x's own cycle clock, which is what m_line_frame_period counts in.
-// 3472 cycles is 7200 Hz here, which is the figure this core shipped with.
-static constexpr uint64_t C5X_CLOCK_HZ = 25'000'000;
+// 20.16 MHz is what this board clocks the DSP at, confirmed by Scott against
+// the hardware. The 25 MHz this used to carry was chosen to reproduce a
+// shipped constant of 3472 cycles, and it made every frame 24% longer in DSP
+// cycles than the board's - the sample rate is unaffected, since the clock
+// cancels out of MCLK / (2 x A x B), but the DSP got that much more compute
+// per sample than it has.
+static constexpr uint64_t C5X_CLOCK_HZ = 20'160'000;
 
 void C5xCore::configure_digital_pcm(bool enabled, uint16_t idle_codeword,
     uint32_t clock_hz)
@@ -203,7 +208,7 @@ void C5xCore::configure_rom_codec(bool enabled)
     // the part at 4444 Hz, which is a rate this board never runs at; nothing
     // here knows what the ASIC clocks the port at before programming, so this
     // stands in for it rather than claiming to model it.
-    m_line_frame_period = enabled ? 3472 : 258;
+    m_line_frame_period = enabled ? 2800 : 258;
 }
 
 void C5xCore::set_codec_mclk(uint32_t hz)
@@ -221,8 +226,9 @@ void C5xCore::codec_recompute_rate()
     m_codec.sample_rate_millihz = uint64_t(m_codec.mclk_hz) * 1000 / divisor;
     m_codec.rate_programmed = true;
     if (!m_rom_codec) return;
-    // Frame period in C5x cycles. With A = 10 and B = 20 this is 3472, the
-    // constant it replaces.
+    // Frame period in C5x cycles. With A = 10 and B = 20 this is 2800, which
+    // is 7200 Hz at the board's 20.16 MHz - the same rate the pre-programming
+    // stand-in above holds.
     const unsigned period = unsigned(C5X_CLOCK_HZ * divisor / m_codec.mclk_hz);
     if (period) m_line_frame_period = period;
 }
