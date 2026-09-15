@@ -114,7 +114,10 @@ void C5xCore::reset()
     m_data_events.clear();
     m_data_write_counts.fill(0);
     m_pc_trace.clear();
-    m_trace_data_writes = false;
+    // Whether writes are traced, and which cell, is a diagnostic the caller
+    // arms before the run - not device state the reset line clears. Clearing
+    // it here silently disarmed every `--dsp-write-watch` on these images,
+    // whose boot resets the core after the bridge arms it.
 }
 
 void C5xCore::load_program(const uint16_t *words, std::size_t count, uint16_t origin)
