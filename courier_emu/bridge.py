@@ -371,6 +371,7 @@ class CourierDspBridge:
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
+        legacy_carrier_fallback: bool = False,
         auto_answer: bool = True,
     ) -> None:
         self.image = image
@@ -497,6 +498,10 @@ class CourierDspBridge:
         self.dsp_originated_messages = 0
         self.dsp_originated_tags: Counter[str] = Counter()
         self._connected_event_queued = False
+        # Diagnostic compatibility only. A line connection or a host-side
+        # spectral score is not a result produced by the downloaded DSP.
+        self.legacy_carrier_fallback = legacy_carrier_fallback
+        self._carrier_source: str | None = None
         self.error: str | None = None
         self._x86_ticks = 0
         self.rx_samples = list(rx_samples or [])
@@ -610,15 +615,12 @@ class CourierDspBridge:
 
         The codec converts at `MCLK / (2 x A x B)`; the datapump runs three
         samples per V.34 symbol, and the two are only the same number at index
-        0, where 3 x 2400 and the divider both give 7200. That coincidence is
-        why the distinction went unnoticed - every frequency that pins "7200"
-        is generated at index 0, where there is no shift to see.
-
-        Everywhere else the firmware shifts between the two, and word 2 of each
-        rate-table row is the ratio: `word2 / 120` is exactly `3 x baud / codec
-        rate` for every row (`docs/codec-sample-rates.md`). The firmware sends
-        that word to ASIC port 0x6b, so read it from there rather than assuming
-        a rate.
+        0, where 3 x 2400 and the divider both give 7200. Everywhere else the
+        firmware shifts between them, and word 2 of each rate-table row is the
+        ratio it uses: `word2 / 120` is exactly `3 x baud / codec rate` for
+        every row in the table (`docs/codec-sample-rates.md`). The firmware
+        sends that word to ASIC port 0x6b, so read it from there rather than
+        assuming a rate.
 
         Falls back to the codec's rate, which is right at index 0 and is what
         this did everywhere before the ratio was identified.
@@ -747,7 +749,7 @@ class CourierDspBridge:
         accept that component (and the nominal 2.1 kHz ANSam component) only
         after a full 100 ms frame and only on an originating call.
         """
-        if self._audio_only:
+        if self._audio_only or not self.legacy_carrier_fallback:
             self._carrier_probe.clear()
             return
         if (
@@ -886,9 +888,9 @@ class CourierDspBridge:
             self._rate_trace_enabled = True
         answering = self.daa is not None and self.daa.operation == "answer"
         selector = 0x0000 if answering else 0x0002
-        if answering and hasattr(self.core, "set_v8_answering"):
+        if self.legacy_carrier_fallback and answering and hasattr(self.core, "set_v8_answering"):
             self.core.set_v8_answering(True)
-        elif not answering and hasattr(self.core, "set_v8_calling"):
+        elif self.legacy_carrier_fallback and not answering and hasattr(self.core, "set_v8_calling"):
             self.core.set_v8_calling(True)
         # Any line samples collected before the call overlay are call-progress
         # audio, not V.8. Do not let them precede the first peer frame in the
@@ -1214,7 +1216,7 @@ class CourierDspBridge:
 
     def force_connected_event(self) -> None:
         """Publish completion for validating the DTE online contract only."""
-        self._publish_connected_event()
+        self._publish_connected_event(diagnostic=True)
 
     def _collect_dsp_messages(self) -> None:
         """Observe resident mailbox writes without duplicating the hardware latch.
@@ -1639,8 +1641,10 @@ class CourierDspBridge:
             # receive callback consumes the reply by sampling ports 5e/5c.
             self._queue_runtime_message(0x0054, 0x0000)
 
-    def _publish_connected_event(self) -> None:
+    def _publish_connected_event(self, *, diagnostic: bool = False) -> None:
         if self._audio_only:
+            return
+        if not diagnostic and not self.legacy_carrier_fallback:
             return
         if self._connected_event_queued:
             return
@@ -1664,6 +1668,7 @@ class CourierDspBridge:
         if self._call_overlay_active or self._call_resume_pending:
             self._queue_runtime_message(0x001D, 0x0000)
         self._connected_event_queued = True
+        self._carrier_source = "forced-diagnostic" if diagnostic else "legacy-host-fallback"
 
     def handles(self, port: int) -> bool:
         return (
@@ -2504,6 +2509,8 @@ class CourierDspBridge:
             ),
             bootstraps=self.bootstraps,
             overlay_downloads=self.overlay_downloads,
+            overlay_words_verified=self.overlay_words_verified,
+            overlay_words_unreadable=self.overlay_words_unreadable,
             overlay_id=self.overlay_id,
             overlay_match=self.overlay_match,
             overlay_heads=list(self.overlay_heads),
@@ -2600,8 +2607,7 @@ class CourierDspBridge:
             core_rebuilt_at=self._core_rebuilt_at,
             codec_replayed=self._codec_replayed,
             v8_io_events=(
-                [event for event in self.core.io_events()
-                 if event["port"] in (0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E)][-64:]
+                self.core.io_events(limit=64, ports=(0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E))
                 if hasattr(self.core, "io_events") else []
             ),
             dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),

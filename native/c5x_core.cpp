@@ -1046,7 +1046,7 @@ void C5xCore::step()
                 // qualified it republishes the ready bit each codec slot.
                 if (m_v8_callback_ready) {
                     m_data[0x039f] |= 0x0100;
-                } else {
+                } else if (m_v8_mode != V8Mode::Off) {
                     m_data[0x039f] &= uint16_t(~0x0100);
                 }
                 if (!m_codec_rx.empty()) {
@@ -1071,7 +1071,11 @@ void C5xCore::step()
                     ++m_serial.rx_consumed;
                     m_v8_rx_window.push_back(input);
                     if (m_v8_rx_window.size() > 960) m_v8_rx_window.pop_front();
-                    uint16_t detected = detect_v8_tones(m_v8_rx_window);
+                    // Explicit legacy diagnostic mode only. In normal runs
+                    // the recovered program owns both result cells; neither
+                    // a C++ score nor a codec interrupt may overwrite them.
+                    uint16_t detected = m_v8_mode != V8Mode::Off
+                        ? detect_v8_tones(m_v8_rx_window) : 0;
                     if (detected) {
                         m_v8_rx_state |= detected;
                         m_data[0x0306] = m_v8_rx_state;

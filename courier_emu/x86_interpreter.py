@@ -7,6 +7,8 @@ be replaced without duplicating any 80186EB or 386EX device models.
 
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -227,6 +229,11 @@ class Uc:
         self.running = False
         self.halted = False
         self.retired = 0
+        self._native = None
+        # A watched write can schedule device updates after the instruction
+        # commits, before another native batch reads the affected memory.
+        self._after_instruction: Callable[[], None] | None = None
+        self.native_enabled = os.environ.get("COURIER_X86_NATIVE", "1") != "0"
 
     def instruction_clock_add(
         self,
@@ -825,8 +832,25 @@ class Uc:
         # test sits on the dispatch chain's fall-through, which every
         # unhandled opcode reaches.
         _UNDEFINED = self._undefined_table
+        if self.native_enabled and not global_hooks:
+            if self._native is None:
+                from .x86_native import NativeInterpreter
+                self._native = NativeInterpreter(self)
+            native = self._native
+        else:
+            native = None
         retired = 0
         while self.running and (not count or retired < count):
+            if native is not None:
+                budget = min(count - retired, 65536) if count else 65536
+                if clock_callback is not None:
+                    budget = min(budget, clock_next - self.retired - 1)
+                if budget > 0:
+                    done = native.execute(self, budget)
+                    retired += done
+                    self.retired += done
+                    if count and retired >= count:
+                        break
             start_ip = cpu_regs[REG_IP]
             code_base = cpu_regs[UC_X86_REG_CS] * 16
             physical = (code_base + start_ip) & address_mask
@@ -1524,4 +1548,7 @@ class Uc:
                 raise UcError(f"unsupported opcode {opcode:02x} ({self.profile}) at {physical:#x}")
             retired += 1
             self.retired += 1
+            if self._after_instruction is not None:
+                callback, self._after_instruction = self._after_instruction, None
+                callback()
         self.last_batch_retired = retired

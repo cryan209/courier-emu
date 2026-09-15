@@ -654,18 +654,28 @@ class NativeC5x:
             result.append({"pc": int(values[0]), "op": int(values[1])})
         return result
 
-    def io_events(self) -> list[dict[str, int | bool]]:
+    def io_events(self, *, limit: int | None = None,
+                  ports: tuple[int, ...] | None = None) -> list[dict[str, int | bool]]:
         count = int(self.library.courier_c5x_get_io_event_count(self.handle))
         result: list[dict[str, int | bool]] = []
-        for index in range(count):
+        indices = range(count) if limit is None else range(count - 1, -1, -1)
+        if limit is not None and limit <= 0:
+            return result
+        for index in indices:
             values = (ctypes.c_uint64 * 5)()
             self.library.courier_c5x_get_io_event(self.handle, index, values, len(values))
+            if ports is not None and values[1] not in ports:
+                continue
             event: dict[str, int | bool] = dict(zip(
                 ("write", "port", "value", "pc", "instruction"),
                 map(int, values), strict=True
             ))
             event["write"] = bool(event["write"])
             result.append(event)
+            if limit is not None and len(result) >= limit:
+                break
+        if limit is not None:
+            result.reverse()
         return result
 
     def io_port_stats(self, ports: range = range(0x50, 0x60)) -> dict[str, dict[str, int]]:

@@ -791,10 +791,9 @@ class CourierMachine:
             self.pc_watch
             or self._code_observer is not None
             or self.track_executed
-            or self.console is not None
             or (
                 self._payload_hooks
-                and (bool(self.serial_rx) or self.tick_source == "dsp")
+                and (bool(self.serial_rx) or self.console is not None or self.tick_source == "dsp")
             )
         )
 
@@ -2696,16 +2695,21 @@ class CourierMachine:
             # execution behave like a tracing run; devices need service only
             # at this bounded interval.
             instruction_base = self.instructions - uc.retired
+            interpreter_period = (
+                NATIVE_ROM_SERVICE_INSTRUCTIONS
+                if self._rom_tick and not self._needs_code_hook()
+                else SERVICE_INSTRUCTIONS
+            )
 
             def interpreter_service(_uc: Any, retired: int, _data: Any) -> None:
                 total = instruction_base + retired
                 self.instructions = total
                 elapsed = total - self._last_service
                 self._last_service = total
-                self._next_service = total + SERVICE_INSTRUCTIONS
+                self._next_service = total + interpreter_period
                 service_chunk(_uc, elapsed)
 
-            uc.instruction_clock_add(SERVICE_INSTRUCTIONS, interpreter_service)
+            uc.instruction_clock_add(interpreter_period, interpreter_service)
         elif disassembler is not None and not fast_rom_clock:
             uc.hook_add(UC_HOOK_BLOCK, on_block)
         elif disassembler is None:

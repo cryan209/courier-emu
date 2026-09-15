@@ -1560,9 +1560,9 @@ def main(argv: list[str] | None = None) -> int:
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
                 product_type=args.product_type,
-                # A terminal session wants responsiveness, not a profile --
-                # unless one was asked for, since hot_addresses comes from it.
-                profile=not args.terminal or args.report,
+                # Per-address tracing is opt-in: it disables native batches.
+                # The report requests it to populate hot_addresses.
+                profile=args.report,
                 product_modem=args.product_modem,
                 line_activate=args.line_activate,
                 flash_overlay=overlay,

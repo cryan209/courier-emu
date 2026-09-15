@@ -171,9 +171,9 @@ repository, installs the project into it, and from then on just starts the CLI.
 ./courier extract main211.xmf extracted/main211
 ```
 
-CPU execution is selectable. Unicorn remains the mature backend; the pure
-Python interpreter uses an 80186EB profile for analog Courier images and a
-386EX profile for I-Modem images:
+CPU execution is selectable. The non-JIT interpreter uses a guarded native
+execution loop with Python fallback, with an 80186EB profile for analog
+Courier images and a 386EX profile for I-Modem images:
 
 ```sh
 ./courier run main211.xmf --cpu-engine interpreter --instructions 1000 --summary
@@ -181,10 +181,19 @@ Python interpreter uses an 80186EB profile for analog Courier images and a
 ```
 
 The interpreter shares the existing peripheral, interrupt, flash and I/O
-models and requires no executable-memory/JIT permission. Its 386EX path boots
-through the current 10,000-instruction bring-up probe; instruction coverage is
-still incomplete, and unsupported instructions stop with their opcode,
-selected CPU profile and physical address rather than being guessed.
+models and requires no executable-memory/JIT permission. Native execution
+falls back at device accesses, watched addresses and instructions outside its
+supported subset. The Python reference still determines instruction coverage;
+unsupported instructions stop with their opcode, profile and physical address.
+ISDN per-address profiling is enabled by `--report`; ordinary runs use bounded
+instruction-clock callbacks instead. `COURIER_X86_NATIVE=0` selects the Python
+reference for comparison.
+
+Measure firmware execution with `python tools/benchmark_x86.py Ie030002.nac`
+or `python tools/benchmark_x86.py IDSDL302.ROM --with-dsp`. Add `--profile-exits`
+to identify native fallback addresses (with profiling overhead), or `--python`
+for the reference engine. See [interpreter performance](docs/interpreter-performance.md)
+for measured workloads and remaining limits.
 
 It uses `uv` when that is on `PATH` and falls back to `venv` plus `pip`
 otherwise. `PYTHON=<interpreter>` chooses the interpreter it builds the

@@ -408,7 +408,7 @@ class IsdnMachine:
         port_values: dict[int, int] | None = None,
         counter_irq: dict[int, int] | None = None,
         max_io_events: int = MAX_IO_EVENTS,
-        profile: bool = True,
+        profile: bool = False,
         mailbox_service: bool = True,
         rtos_service: bool = True,
         mailbox: ImodemMailbox | None = None,
@@ -849,6 +849,7 @@ class IsdnMachine:
 
         base, flat = self._flat_image()
         uc = Uc(UC_ARCH_X86, UC_MODE_16)
+        self.uc = uc
         # Kept so a caller can read memory back after a run; nothing else uses it.
         self.machine = uc
         uc.mem_map(0, ADDRESS_SPACE_SIZE)
@@ -871,6 +872,7 @@ class IsdnMachine:
                 self.flash.contents[offset:offset + len(data)] = data
 
         flash_dirty = [False]
+        applying_flash = [False]
 
         def on_flash_write(_uc: Any, _access: int, address: int, size: int,
                            value: int, _data: Any) -> None:
@@ -880,15 +882,21 @@ class IsdnMachine:
             read back is queued and applied on the next instruction boundary,
             where the CPU's own write cannot overwrite it again.
             """
-            if not self.flash.contains(address):
+            if applying_flash[0] or not self.flash.contains(address):
                 return
             self.flash.on_write(address, size, value)
             flash_dirty[0] = True
+            if self.cpu_engine == "interpreter":
+                uc._after_instruction = apply_flash
 
         def apply_flash() -> None:
             flash_dirty[0] = False
-            for address, payload in self.flash.take_patches():
-                uc.mem_write(address, payload)
+            applying_flash[0] = True
+            try:
+                for address, payload in self.flash.take_patches():
+                    uc.mem_write(address, payload)
+            finally:
+                applying_flash[0] = False
 
         def push_far(vector: int) -> bool:
             """Take a real-mode interrupt through the vector table."""
@@ -967,10 +975,16 @@ class IsdnMachine:
             if vector is not None and push_far(vector):
                 self.hardware_interrupts += 1
 
+        def sync_instruction() -> None:
+            if self.cpu_engine == "interpreter":
+                self.instructions = instruction_base + uc.retired + 1
+
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
+            sync_instruction()
             return self.read_port(port) & ((1 << (8 * size)) - 1)
 
         def on_out(_uc: Any, port: int, _size: int, value: int, _data: Any) -> None:
+            sync_instruction()
             self.write_port(port, value)
 
         def on_interrupt(_uc: Any, number: int, _data: Any) -> None:
@@ -997,7 +1011,26 @@ class IsdnMachine:
             )
             return False
 
-        uc.hook_add(UC_HOOK_CODE, on_code)
+        instruction_base = self.instructions
+        if self.cpu_engine == "interpreter" and not profile and observer is None:
+            def service(_uc: Any, retired: int, _data: Any) -> None:
+                self.instructions = instruction_base + retired
+                self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS
+                self.poll_timers()
+                if uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
+                    vector = self.pic.pending_vector()
+                    if vector is not None and push_far(vector):
+                        self.hardware_interrupts += 1
+
+            def patch_hook(_uc: Any, address: int, _size: int, _data: Any) -> None:
+                sync_instruction()
+                patch_at(address)
+
+            uc.instruction_clock_add(TIMER_POLL_INSTRUCTIONS, service)
+            for address in patch_points:
+                uc.hook_add(UC_HOOK_CODE, patch_hook, None, address, address)
+        else:
+            uc.hook_add(UC_HOOK_CODE, on_code)
         uc.hook_add(
             UC_HOOK_MEM_WRITE,
             on_flash_write,
@@ -1019,6 +1052,8 @@ class IsdnMachine:
         except UcError as exc:
             self.error = str(exc)
             status = "error"
+        if self.cpu_engine == "interpreter":
+            self.instructions = instruction_base + uc.retired
         if self._stop_reason is not None:
             status = self._stop_reason
 
