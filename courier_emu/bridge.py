@@ -2464,6 +2464,13 @@ class CourierDspBridge:
                         if self.line.peer_off_hook or self.line.connected
                         else "disconnected"
                     )
+            # The detector debounce counts samples taken off the loop, and on
+            # this path the loop is the socket: the peer frame goes straight
+            # into the codec FIFO without passing through `render`, so nothing
+            # else advances it. Without this the 0x0649 wait never reaches
+            # five, `_maybe_start_asic_call_engine` never releases 0x82, and a
+            # leased pair sits off hook exchanging audio forever.
+            self.daa.observe(len(incoming))
 
     def status(self) -> BridgeStatus:
         # Once the core is closed its native reads answer zero (the handle now
