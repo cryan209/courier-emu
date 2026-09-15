@@ -441,6 +441,53 @@ line ones.
 
 This does not by itself produce `CONNECT`.
 
+### Why the DSP runs an oscillator: one gate loads the datapump and suppresses its start
+
+The datapump image is **loaded and never started**, and the same test decides
+both, in opposite directions.
+
+`&L1` sets `[0x5fa] = 1`; with `[0x5cd] & 0x40` clear and `[0x600]` zero the CF
+gate at `0x8b863` returns carry. That carry reaches two sites:
+
+| site | branch on carry | effect |
+|---|---|---|
+| `0x8bbaa` | `jae 8bbc2` **not** taken | falls into `mov [0xe3c], 6` - the loader runs |
+| `0x8bee8` | `jb 8bef8` **taken** | skips `mov ax, 0x10` - publishes `0x5a` instead |
+
+The first arms the datapump; the second declines to start it. Measured on a
+leased pair: `overlay_downloads: 2`, `overlay_id: 8`, 18,692 and 18,788 overlay
+words verified - so overlay 6 (V.34, entry `0x9d00`) and its chained overlay 8
+really are resident - while the slot dispatch at `0x9b58`/`0x9b5c` **never runs**
+and `0x9d00` is **never entered**. Only mailbox commands `0x10` and `0x11`
+dispatch through the nine-slot table at `0x9b48`/`0x9b51` whose slot 0 is
+`0x9d00`, and those are exactly the commands the carry suppressed. What the DSP
+runs instead is tag `0x5a`'s handler: `@44` set, then the resident oscillator -
+`0x984c`, a two-pole resonator, and `0x8b1a`, a polynomial sine.
+
+Forcing the other side of the gate shows the halves are exclusive. `&N1` and
+`&T1` on one modem publish `0010:5041`, and then the slot dispatch **does** run
+- `0x9b58`, `0x9b5a`, `0x9b5e`, `0x9b60`, the selector at `0x9b62`-`0x9b6b` -
+but that run has `overlay_downloads: 0`, so the selector falls to a resident
+slot and `0x9d00` is still never entered. Leased loads the overlay and sends a
+tone; forced sends the start and has no overlay to start.
+
+**The likeliest missing piece is `[0x05cd]` bit 6.** The gate is evaluated twice,
+at `0x8bbaa` and again at `0x8bee8`, so an input that changes in between gives
+carry at the load and clear at the dispatch - which is exactly the combination a
+leased call needs. `[0x5cd]` bit 6 is such an input, and it is settable:
+`or [0x5cd], 0xc0` at `0xc9114` and `0xc9134`, `or 0x60` at `0xc9154`, inside
+far-called routines that also set `[0x5a2]`, `[0x5b0]`, `[0x5b7]` and `[0x5cb]`
+- a profile block. None of them runs in any run here and `[0x5cd]` measures `00`
+throughout.
+
+A second candidate is that something sends `0x10` once the overlay reports
+ready. Worth knowing while testing it: **DSP-originated messages differ by
+harness path**. The same leased pair run with `--line-audio-only` reports
+`dsp_originated_messages: 1`, tag `006b:4321`, on both ends; the default path
+reports **0**. The default path is also the one that delivers 37 host messages
+including the `0x5a` that installs the oscillator, so this is not by itself a
+harness fault - but any test of the arming route has to account for it.
+
 ### Why neither end reports a result code: the DSP never sends
 
 A result code follows the DSP telling the supervisor what the link did. On 302
