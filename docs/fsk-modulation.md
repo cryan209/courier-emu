@@ -122,42 +122,56 @@ it.
 
 ## The loopback, closed
 
-The loop closes. The firmware's own transmitter now drives the firmware's own
-receiver, and the receiver recovers the bits.
+The loop closes, but not through this module. **`courier_emu.fsk --loopback`
+no longer runs at all** - every mode raises `loopback did not reach 80c3`, and
+it does so at `32faa8e` too, so the zero-error table this section used to carry
+was already unreproducible before anyone went looking. Use
+[`courier_emu.fsk_loopback`](../courier_emu/fsk_loopback.py), which runs the
+part instead of driving it, and measures against the firmware's own delivered
+words rather than a slicer of its own.
 
-The bring-up is the ROM's, in the order dispatch entry `d7fc` and `d829`
-perform it: the transmit setup, the receive setup, then `d94e` (install the
-modulator at `d95f`), `d895` (initialise the AGC) and `d879` (install the
-receiver at `d8aa` and clear its delay lines). Nothing is installed by hand;
-the harness only supplies the data bit and the loop.
+What this module got wrong is worth keeping, because three harnesses in this
+lineage share it - `answer_tone`, `audio312` and `v34` all enter the mixer the
+same way:
 
-Three things had to be right, and each was wrong first:
+* **The on-chip mask ROM was absent.** `load_rom()` here installs the harness's
+  own five-instruction driver in that window, so the part has no interrupt
+  vector table. `INTR 17` is a software trap at fifteen sites, armed by the
+  receiver at `d879`; its vector at ROM `0x0022` is `lamm @69 ; bacc`, which
+  dispatches through B2 RAM at data `0x60`-`0x6a` that the resident's cold
+  start fills from program `812d`, and its handler is `0x81a6` - the routine
+  that packs two scaled receiver outputs into TDXR. The bare `RETE` this
+  section describes was standing in for all of that.
+* **The frame ISR was entered by forcing the PC**, which leaves `rete` popping
+  a stack that was never pushed. Raise irq 5 and let the part vector through
+  `0x000c` -> `@65` -> `0x8178`.
+* **The buffer pointer was pinned.** `0x390` is the consumer side of a
+  producer/consumer pair over a 32-word circular buffer on AR7
+  (`CBSR1`/`CBER1`/`CBCR` = `0bc0`/`0bdf`/`00ef`), advanced two words per codec
+  frame - one receive slot, one transmit slot, interleaved. Pinning it skips
+  the per-buffer service block at `0x80bb`, so the message-ring drain at
+  `0x83bf` never runs and the bring-up state machine never completes.
 
-* **The receiver raises `INTR 17` on every sample**, vectoring to program
-  `0x0022`. The resident bank begins at `0x8000` and does not contain that
-  vector, so the harness puts a bare `RETE` there.
-* **The loop must be fed through the codec receive queue.** `DRR` is served
-  from the core's codec queue, so the returned word goes in with
-  `queue_codec_rx`. Feeding the line queue instead - which is what the first
-  attempt did - leaves `DRR` at zero and looks exactly like a dead receiver.
-* **The buffer pointer and PC must be restored each frame**, as `audio312` and
-  the transmit-only path already do. Without it the ISR walks off the two-word
-  window and `DXR` reads zero from the second sample - the symptom that made
-  the first attempt look like a receiver failure when the receiver was fine.
+Run the part properly and it does complete, to `@6f = 008c`, and the loop
+recovers data:
 
-With those, every transmitted word fed back as the next received word:
-
-| mode | sampling offset | bit errors over 511 |
+| mode | raw bit error | symbol errors |
 |---|---:|---:|
-| `v21-originate` | 41 | 0 |
-| `v21-answer` | 43 | 0 |
-| `bell103-originate` | 44 | 0 |
-| `bell103-answer` | 42 | 0 |
+| `bell103-answer` | 0.101 | 3 in 534 |
+| `v21-answer` | 0.176 | 2 in 169 |
+| `v21-originate` | 0.114 | 1 in 169 |
+| `bell103-originate` | 0.196 | 22 in 169 |
+
+`bell103-originate` is the weak band on both harnesses - the crude detector
+further up scored it 34/511 where the others were clean, and here its
+soft-decision separation is the lowest measured, `d' = 1.95` against
+`2.15` for `bell103-answer`. Whether the residual is the band or the
+alignment is **not** settled.
 
 ```sh
 .venv/bin/python -m courier_emu.fsk --loopback \
   --rom artifacts/courier-board-21210-capture-403/courier-board.rom \
-  --output /tmp/loopback --mode v21-answer
+  --output /tmp/loopback --mode v21-answer   # BROKEN, see above
 ```
 
 Saved runs are in `artifacts/fsk-loopback-01/`. Note that this is the
