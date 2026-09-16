@@ -85,11 +85,16 @@ def run(rom, mode='bell103-answer', bits=None, span=48, budget=8_000_000):
         if not until(COLD_PARK, 3_000_000):
             raise RuntimeError('the cold start never reached its host wait')
         # The cold start leaves @26 pointing at the delivery routine, which
-        # sends the receiver's tail down the bit-assembly branch at d90b and
-        # past the resume at d912, so the bring-up never advances. A datapump
-        # start has to arrive with it clear. Which routine does that is NOT
-        # established - d55e is the bank's only `splk @26, #0000` and its
-        # caller is unaccounted for - so this stands in for the command path.
+        # sends *this* receiver's tail down the bit-assembly branch at d90b and
+        # past the resume at d912, so the FSK bring-up never advances. Which
+        # routine clears it is NOT established - d55e is the bank's only
+        # `splk @26, #0000` and its caller is unaccounted for - so this stands
+        # in for the command path.
+        #
+        # It is specific to this datapump, not a rule for starting one. HST
+        # (slot 3, c533) needs @26 left at 8320: clearing it there sends 8304's
+        # `bacc` to zero, and the slot runs a sixth as long and delivers
+        # nothing. Anything reusing this entry sequence has to decide per slot.
         core.set_data(DELIVERY_VECTOR, 0x0000)
 
         core.set_pc(DRIVER + len(frame))
