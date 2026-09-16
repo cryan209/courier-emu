@@ -155,18 +155,25 @@ same way:
 Run the part properly and it does complete, to `@6f = 008c`, and the loop
 recovers data:
 
-| mode | raw bit error | symbol errors |
-|---|---:|---:|
-| `bell103-answer` | 0.101 | 3 in 534 |
-| `v21-answer` | 0.176 | 2 in 169 |
-| `v21-originate` | 0.114 | 1 in 169 |
-| `bell103-originate` | 0.196 | 22 in 169 |
+| mode | alignment | raw bit error | polarity | symbol errors |
+|---|---:|---:|---|---:|
+| `bell103-answer` | 323 | 0.101 | direct | 1 in 165 |
+| `v21-originate` | 323 | 0.113 | direct | 1 in 165 |
+| `v21-answer` | 132 | 0.176 | inverted | 2 in 169 |
+| `bell103-originate` | 130 | 0.186 | inverted | 1 in 169 |
 
-`bell103-originate` is the weak band on both harnesses - the crude detector
-further up scored it 34/511 where the others were clean, and here its
-soft-decision separation is the lowest measured, `d' = 1.95` against
-`2.15` for `bell103-answer`. Whether the residual is the band or the
-alignment is **not** settled.
+All four within a factor of two on raw error and within one symbol error of
+each other, which is the result to expect: the four bands run the *same* DSP
+code and differ only in `@72`/`@73`, `@6b`, `@69` and `@0b`. A spread much
+wider than this would be evidence of something band-dependent in the model
+rather than in the signal, and an earlier pass that scored `bell103-originate`
+at 22 in 169 was exactly that - an alignment search that locked on the wrong
+offset, not a property of the band.
+
+The four split cleanly in two by alignment and polarity, `{bell103-answer,
+v21-originate}` against `{v21-answer, bell103-originate}`, and that pairing
+does **not** follow mark-above-centre versus mark-below. What it does follow is
+not established here.
 
 ```sh
 .venv/bin/python -m courier_emu.fsk --loopback \
