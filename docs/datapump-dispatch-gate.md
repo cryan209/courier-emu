@@ -674,25 +674,45 @@ level. This is the analog loopback `AT&T1` names, and it needs no line: the
 `codec_rx` queue is empty (`codec_rx_queued: 0`), so the only thing on the
 analog input is the hybrid's own return.
 
-### But it does not demodulate
+### But it does not demodulate: the receiver task is never scheduled
 
 The returned samples reach the DSP - `drr_reads: 23,988` at `codec_rx_peak:
-24,246`, one read per frame - but the read lands at the **resident serial ISR**
-`0x8193` (`last_drr_pc`), not in an overlay receiver. The receiver DSP chain
-never engages:
+24,246`, one read per frame - and the resident serial ISR at `0x8193`
+(`last_drr_pc`) even stores each one into the receive buffer (`0x8194 sacl *+`).
+So the demodulator is not starved of input. It is **never entered**:
 
 | indicator | value | reading |
 |---|---|---|
+| distinct `0xc700`-`0xca00` PCs executed | 0 | the overlay receiver never runs |
 | `negotiation_loop_entries` | 0 | no equalizer/training loop |
 | `v8_dispatches`, `v8_rx_state`, `v8_flags` | 0 | no V.8 handshake |
-| `0x5e`/`0x5f` writes | `0x3d`, `0x04` (2 words) | two small control words, no recovered-data stream |
+| `0x5e`/`0x5f` writes | `0x3d`, `0x04` (2 words) | two control words, no recovered-data stream |
 
-So `AT&T1` **modulates, loops the carrier back through the hybrid, and clocks the
-return in, but does not demodulate it.** Nothing trains, locks, or recovers
-symbols, and the two outbound words are not the `0x1c`/`0x48` reporters the
-supervisor waits on (below). This is the same wall the next section reaches from
-the transmit side: the receiver's stateful processing is dormant. Whatever wakes
-it is the remaining open question.
+Overlay 6 is a two-task datapump: a transmitter around `0x9d00`-`0xa3ff` and a
+receiver/demodulator around `0xc700`-`0xcbff` (the block `negotiation_loop`
+watches at `0xc7f7`/`0xc81a`; `0xca..0xcb` are its own subroutines, reached only
+from inside it). The scheduler at `0x8767` drives **one** foreground task vector,
+`@6d`. Filtering the data-write trace to `@6d` over a whole `AT&T1` run, every
+value it is ever given is a **transmitter** address:
+
+| `@6d` written | count |
+|---|---|
+| `0x9dcf` | 68 |
+| `0x0000` | 4 |
+| `0x9dd3`, `0x9dd7`, `0xa3ce` | 1 each |
+
+Never a `0xc7xx`. The overlay entry `0x9d00` arms only the transmit loop
+(`0x9d43`: `call 8837` / `intr 17` / `call 8767`, resume `@6d = 0x9d56`->`0x9dcf`),
+and the ISR vector `@65` stays at the resident serial handler `0x8189`. So
+`AT&T1` **modulates, loops the carrier back through the hybrid, buffers the
+return - and never arms the receiver to demodulate it.**
+
+For a real local analog loopback the receiver *should* come up: the modem is
+hearing its own full-level carrier and has no peer to negotiate with. Something
+that normally installs a `0xc7xx` vector into `@6d` (or calls the receiver
+entry) does not run here - the same "receiver condition" the next section hits
+from the transmit side, now located precisely: the demod task is never
+scheduled. That gate is the open question and the place to fix.
 
 ### Why neither end reports a result code: the DSP never sends
 
