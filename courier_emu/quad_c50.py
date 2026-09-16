@@ -1,4 +1,4 @@
-"""The Quad's CPU-side link to its C50 datapumps.
+"""The Quad's CPU-side link to its C51 datapumps.
 
 The supervisor at `0xcec04` resets the DSP, sends a command word, and streams a
 program image to it. Decoded from QF060003:
@@ -17,7 +17,7 @@ program image to it. Decoded from QF060003:
 
 `QuadC50Link` remains the passive decoder for saved I/O logs.
 `QuadC50Endpoint` is the active device: it boots the CPU-streamed resident on a
-native C50, acknowledges `0x98` bursts only after that core consumes them, and
+native C51, acknowledges `0x98` bursts only after that core consumes them, and
 implements the distinct runtime-overlay protocol on `0x9e`. It also exposes
 the card's byte-wide 8 kHz digital timeslot without converting its G.711
 codewords.
@@ -291,7 +291,7 @@ class QuadC50Endpoint:
             self.window_group = None
             # 0xcec38 and 0xcec12 both reset the part before the stream, and the
             # CPU repeats the whole load each time. On the board that reset puts
-            # the C50 back in its boot ROM, so the loader is there to receive the
+            # the C51 back in its boot ROM, so the loader is there to receive the
             # image again. Keeping one running core across resets left every
             # load after the first with nothing to receive it: the resident is
             # past its boot-time pulls by then and goes quiescent, which is
@@ -320,7 +320,7 @@ class QuadC50Endpoint:
             self._completion = True
             return
         if self.core is None:
-            # Phase one: the C50's own boot loader pulls the resident in before
+            # Phase one: the C51's own boot loader pulls the resident in before
             # any of its code is running. That boot path is not modelled, so the
             # stream is taken at wire speed and the burst acked immediately. The
             # image still comes from the CPU - nothing here supplies it.
@@ -348,10 +348,11 @@ class QuadC50Endpoint:
             self._start_core()
 
     def _start_core(self) -> None:
-        """Boot the C50 the way bridge.py already boots it on the 302/403.
+        """Boot the DSP the way bridge.py already boots it on the 302/403.
 
-        Same part - board-parts.md identifies it as a TMS320C50/LC50, not the
-        'C52 the core is named after - so the boot path is the same one that
+        Same part - board-parts.md records it as a 'C51, measured rather than
+        read off a marking (superseded 2026-09-13; the earlier TMS320C50/LC50
+        identification here was wrong) - so the boot path is the same one that
         works there: the recovered mask ROM, MP/MC low, a *zeroed* program
         space, and the loader fed its destination, length and words. The
         loader writes the resident; nothing here pre-loads a copy for it to

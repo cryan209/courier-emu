@@ -1,8 +1,10 @@
-# Quad server answer bring-up (2026-09-11)
+# Quad server answer bring-up (2026-09-11, remeasured 2026-09-17)
 
 The QF server is **not yet a negotiation peer**. A fresh controller boot,
-CPU-streamed DSP resident and `ATQ0V1` / `ATA` reproduce `OK` / `NO CARRIER`.
-No runtime overlay request occurs. This does not test V.8 interoperability.
+CPU-streamed DSP resident and `ATQ0V1` / `ATA` no longer abort the answer, but
+no runtime overlay request occurs and the transmitted timeslot is a stuck DC
+rail. This does not test V.8 interoperability. The sections below are dated:
+the 2026-09-11 blocker no longer reproduces - see the 2026-09-17 section.
 
 Run from the repository root:
 
@@ -33,32 +35,46 @@ The regression executes the real ROM against a padded test resident, verifies
 that no frames occur during download, and checks its transmitted codeword
 after handoff. This fixes the boot/PCM boundary; it does **not** establish that
 the stock resident has all overlays and interrupt targets needed for a call.
-The stock resident still escapes into low program addresses with PCM enabled.
+(The escape into low program addresses recorded here no longer happens; the
+2026-09-17 section has the measurement.)
 
-## Measured immediate call blocker
+## The answer abort is gone; the call now stalls silent (2026-09-17)
 
-`ATA` reaches call setup at `c7cfc` and the accepted branch at `c7d3f`.
-`c7d7b` is a common return, not evidence of rejection (the probe label has
-been corrected). Setup clears `[82fe]` at `c7d5e`.
+Re-measured with the same command line above, 12M instructions, against
+`artifacts/quad-server-bringup-20260911/fresh-ata.json`:
 
-The periodic handler at `c0b45` checks the DSP-transfer flag `[9d3e]` and
-exchange counter `[81cd]`. Three unserviced checks take `c0b69`, calling
-`f226:133e` (`f359e`) with `AL=0` while `[8311]` bit 0 is set. This routine
-sets `[82fe]` bit 7 at `f35a3`; the handler then requests a DSP reload at
-`c0b6e`. The answer path sees that bit at `efc84` and exits via `efc9c`.
+| | 2026-09-11 | 2026-09-17 |
+| --- | --- | --- |
+| terminal | `OK` / `NO CARRIER` | `OK`, then ATA still up at the limit |
+| DSP downloads / reboots | 23 / 22 | 2 / 1 |
+| `[82fe]` bit 7 | set at `f35a3` | never set; two writes, both zeroing |
+| DSP exchanges | none | 7 commands sent and acked, 1 reply posted |
+| PCM | inactive, 0 bytes TX | active, 49,194 G.711 bytes |
+| DSP pc at the limit | low program space | `0x82eb`, in the resident, IDLE |
 
-The earlier description of these reloads as harmless idle behavior in
-`quad-bringup-blockers.md` is incomplete: they also abort an answer attempt.
-The fresh 12M-instruction run records 22 completed DSP downloads, 22 reboots,
-and zero runtime overlay bursts. Merely enabling PCM or waiting longer does
-not fix this. `AT&D0` and `AT%D1` are accepted but also fail to produce an
-overlay request in the tested command sequence.
+`ATA` still reaches `c7cfc` and `c7d3f`, but the three unserviced checks at
+`c0b69` no longer happen, so nothing sets `[82fe]` bit 7 and the answer path at
+`efc84` no longer exits via `efc9c`. The resident also stays in program space
+instead of escaping low - the signature of the delay-slot interrupt bug fixed
+in 20133c6, whose orphaned stack pushes made `RETD` pop a stale address.
 
-Next work is the normal CPU/DSP command and response service that satisfies
-this watchdog and selects an answer overlay. Disabling the watchdog or forcing
-its RAM flags would conceal that missing mechanism. Stock resident interrupt
-execution must also be validated before connecting the analog client.
+Attribution is joint, not settled: four quad-side commits landed after the
+baseline (`19313a0` C51 boot ROM and split SARAM, `6369173` deferring PCM to
+boot completion, `c8b4195`, `df5d709`), and the old report has no
+`commands_sent` / `replies_posted` fields at all, so part of the exchange is
+new code rather than a freed path. Splitting it needs a run with 20133c6
+reverted.
 
-Evidence: `artifacts/quad-server-bringup-20260911/fresh-ata.json` and
-`abort-trace.json`. The Quad controller, receive, terminal, digital PCM and
-stock-audio regression suites pass together (22 tests).
+## What still blocks a connection
+
+`runtime_bursts` is 0. No runtime overlay is requested, so no answer overlay is
+selected.
+
+**It produces no audio.** 49,166 of the 49,194 captured bytes are codeword
+`0x00`, which in mu-law is full-scale negative (-8031), not silence - a stuck DC
+rail for 6.15 s. `dxr_writes` is 24,606 while DXR reads back 0 and
+`line_tx_nonzero` is 0: the timeslot is clocked and the same word goes out every
+frame. The part is running and framed; nothing is modulating.
+
+Next question is why the resident parks at `0x82eb` without requesting an
+overlay, given the CPU exchange it now answers.
