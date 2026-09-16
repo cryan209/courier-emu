@@ -751,7 +751,14 @@ class CourierMachine:
             self.serial_truncated = True
         # CONNECT is the DTE boundary: subsequent bytes are payload, not AT
         # commands. The firmware still owns the transition unless forced.
-        if not self.online_mode and b"CONNECT" in bytes(self.serial[-10:]).upper():
+        #
+        # Compare the seven data bits. This DTE runs 7E1, so the result code
+        # arrives as `c3 cf 4e 4e c5 c3 d4` - CONNECT with an even-parity bit
+        # in the eighth - and matching raw bytes missed it on every character
+        # whose parity happened to be odd. The run stayed in command mode for
+        # ever after its own CONNECT.
+        recent = bytes(byte & 0x7F for byte in self.serial[-10:])
+        if not self.online_mode and b"CONNECT" in recent.upper():
             self.online_mode = True
             self.serial_trace.append("entered-data-mode")
         if self.console is not None:
@@ -1691,6 +1698,12 @@ class CourierMachine:
                     and (
                         not self._rom_dte_opened
                         or self.uart.holding
+                        # Past CONNECT the command parser is not in the path at
+                        # all: the firmware has installed its data-mode
+                        # receiver in the same cell (4502 on this ROM), which
+                        # this test read as "still busy" and never typed
+                        # another character into a connected session.
+                        or self.online_mode
                         # Let the parser finish its command/result before
                         # starting the next queued byte. Its busy RX handler
                         # deliberately discards input during this interval.
