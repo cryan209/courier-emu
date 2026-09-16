@@ -53,3 +53,33 @@ def test_t1_acquisition_assist_requires_opt_in_and_proven_return():
     serial["codec_rx_peak"] = 0x0FFF
     weak._maybe_assist_t1_acquisition(serial)
     assert weak.core.writes == []
+
+
+class LoopCore:
+    def __init__(self, pc: int):
+        self.pc = pc
+
+    def state(self) -> dict[str, int]:
+        return {"pc": self.pc}
+
+
+def bridge_at(pc: int, started: bool = True):
+    bridge = CourierDspBridge.__new__(CourierDspBridge)
+    bridge.core = LoopCore(pc)
+    bridge._loader_started = started
+    return bridge
+
+
+def test_rom_loader_armed_only_inside_the_mask_rom_download_loop():
+    # 0x0642 and 0x064c are where real downloads acknowledge from.
+    assert bridge_at(0x0642)._rom_loader_armed()
+    assert bridge_at(0x064C)._rom_loader_armed()
+    assert bridge_at(0x0638)._rom_loader_armed()
+    # The supervisor's bit-walk on port 0x18 lands on 1, 2 and 4 while the
+    # C51 is in resident code, or restarted at a mask-ROM vector.
+    assert not bridge_at(0x810A)._rom_loader_armed()
+    assert not bridge_at(0x0008)._rom_loader_armed()
+    # The exit path has left the poll behind.
+    assert not bridge_at(0x0653)._rom_loader_armed()
+    # Nothing has synchronized the loader yet: the first commit does.
+    assert bridge_at(0x0008, started=False)._rom_loader_armed()

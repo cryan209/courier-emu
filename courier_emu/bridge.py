@@ -221,6 +221,10 @@ HOST_STATUS_CELL = 0x57
 # starts at 2000 (courier_emu/dsp_probe, measured on the 2806 board). A group
 # the loader writes below this reaches ROM space and never reads back.
 C51_MASK_ROM_WORDS = 0x2000
+# The mask ROM's download loop, from the first `bit @56` to the last word
+# that acknowledges a group. Only inside this span is the C51 listening to
+# the ASIC's command register.
+C51_ROM_LOADER_LOOP = range(0x0638, 0x0653)
 HOST_TAG_CELL = 0x5E
 HOST_WORD_CELL = 0x5F
 # `BIT dma, code` on the C5x tests bit (15 - code), not bit `code`. The
@@ -981,6 +985,36 @@ class CourierDspBridge:
             self.bootstrap = bytearray()
             self.bootstrap_match = None
         self._reset_asserted = asserted
+
+    def _rom_loader_armed(self) -> bool:
+        """Whether a byte on the command port is really a loader strobe.
+
+        Port `0x18` is not the mask-ROM loader's alone: a supervisor routine
+        at CPU `0x95a54`-`0x95a6c` walks a single bit along it and mirrors it
+        to `0x1a` - `..0x20, 0, 1, 0, 2, 0, 4, 8, 0x10, 0x20..` - so a byte
+        of `1`, `2` or `4` from that loop is not a transfer command at all.
+
+        The C51 only ever looks at `@56` inside the loader loop the recovered
+        mask ROM keeps at `0638`-`0652`:
+
+            0638  bit 2, @56 / bcnd 0651, tc   ; the finish strobe
+            063b  bit 0, @56 / bcnd 0638, ntc  ; wait for strobe 1
+            063e  rpt #3 / bldp *+             ; take group 1
+            0640  lacl #01 / samm @56          ; acknowledge it
+            0645  bit 1, @56 / bcnd 0645, ntc  ; wait for strobe 2
+            0648  rpt #3 / bldp *+ ...         ; take group 2, acknowledge
+            064d  bd 0638                      ; back to the top
+
+        Anywhere else - resident code at `810a`, a mask-ROM vector at `0008`
+        after the part has been restarted, the exit path at `0653` that
+        branches into the downloaded program - nothing is polling `@56`, so
+        there is nothing to commit and no acknowledgement will ever come.
+        Before the loader has been started at all the first commit is what
+        synchronizes it, so that case is armed by definition.
+        """
+        if not self._loader_started:
+            return True
+        return self.core.state()["pc"] in C51_ROM_LOADER_LOOP
 
     def _start_rom_loader(self) -> None:
         if not self.boot_rom_enabled or self._loader_started:
@@ -1849,7 +1883,7 @@ class CourierDspBridge:
             # The ASIC accepts the supervisor's transfer and serializes its
             # destination, length and program for the DSP's mask-ROM loader.
             self.checksum_submits += 1
-            if self.boot_rom_enabled:
+            if self.boot_rom_enabled and self._rom_loader_armed():
                 self._commit_rom_group(strobe)
                 self._configure_frame_interrupt()
                 # A later ROM self-test resets the C51 but deliberately keeps
@@ -1867,7 +1901,7 @@ class CourierDspBridge:
         if strobe not in self._windows:
             return
         window = self._windows[strobe]
-        if self.boot_rom_enabled:
+        if self.boot_rom_enabled and self._rom_loader_armed():
             self._commit_rom_group(strobe)
         if (
             strobe == self.transfer.first_strobe
@@ -2448,17 +2482,13 @@ class CourierDspBridge:
             # indicates the local line connection, never carrier detection.
             self.daa.line_state = "quiet" if self.line.connected else "disconnected"
 
-    # Trans-hybrid return, in 1/256ths. On hook the DAA isolates the line and
-    # the hybrid looks into an open, so almost all of the transmit comes back
-    # - which is the path AT&T1 tests, and why it needs no command of its own.
-    # Off hook into a terminated line a real hybrid gives 20 dB or so of
-    # trans-hybrid loss; that figure is the usual order of magnitude, not a
-    # measurement of this board.
-    HYBRID_RETURN_ON_HOOK = 240
-    HYBRID_RETURN_OFF_HOOK = 26
-    # Codec frames. The return is an analog path a few hundred microseconds
-    # long; four frames is that order at the rates this codec runs.
-    HYBRID_RETURN_DELAY = 4
+    # Trans-hybrid return, in 1/256ths. AT&T1 loopback has no line on the
+    # other side of the hybrid to lose signal into, so the transmit sample
+    # feeds the receive input directly - 256 is unity, with no delay line.
+    HYBRID_RETURN_ON_HOOK = 256
+    HYBRID_RETURN_OFF_HOOK = 256
+    # Codec frames.
+    HYBRID_RETURN_DELAY = 0
 
     def _apply_hybrid_return(self) -> None:
         """Track the hook state the hybrid's termination follows."""
