@@ -110,7 +110,18 @@ transmitted word is the buffer cell alone.
 
 **There are two handlers, and they are phases of one chain.** `PMST 00b0` puts
 IPTR at 0, so vectors are in the mask ROM at program `0000`, and every ROM
-vector is indirect: `lamm @NN` then a branch, with XINT on `@65`. The firmware
+vector is indirect: `lamm @NN` then a branch, with XINT on `@65`. This is the
+same part's ROM as the 302's, and the same mechanism that
+[fsk-modulation.md](fsk-modulation.md) already records there - `INTR 17`'s
+vector at ROM `0x0022` is `lamm @69 ; bacc`, dispatching through the block at
+data `0x60`-`0x6a` that the cold start fills. Measured on `main2205.XMF` after
+its cold start, `@60`-`@6a` hold resident code addresses (`@64`/`@65` at
+`81a3`, beside the `81a6` handler) while `@6b` is `0001` and `@72`/`@73` are
+`0000`. **So a cell number is not a vector by position:** `@72`/`@73` are the
+mark and space increments, not handlers, exactly as that document says. A
+passing suggestion in this session - that the four FSK bands of 23b72eb differ
+by which handlers are installed rather than by coefficients - is wrong for
+`@72`/`@73`/`@6b` and holds only for `@69`. The firmware
 steers by rewriting that cell - `samm @65` at `83fc` and `8404` - so `83e6` and
 `8406` are consecutive phases, not rivals. The second shifts DRR right by eight
 before storing; the first stores the full word.
