@@ -24,6 +24,7 @@ from typing import Any
 
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, DAA_SAMPLE_RATE, RingSource
+from . import boot_rom
 from .dsp import NativeC5x
 from .ata import SipLine
 from .exchange import LineExchange
@@ -402,12 +403,21 @@ class CourierDspBridge:
             # length it transfers, which differs by family: 0xebb4 bytes on
             # 2.1/2.2, 0xcbc0 on 2.3. Neither is a container constant.
             self.bootstrap_target_size = len(self.expected_bootstrap)
-        # Match the measured 20.16 MHz DSP payloads, not unrelated 25 MHz
-        # ROMs or XMF images whose customer mask ROM has not been captured.
-        self.boot_rom_enabled = sha256(self.expected_bootstrap).hexdigest() in {
-            "b87b2b30e217aed19a3499209b935432707adc1ed7c6e28eb0ec7c2cca92f886",
-            "d0287e33c37ef0af3487cc0a5d613dbd2981aad5bb40d85846a90044116b5b7b",
-        }
+        # Whether the part maps its on-chip ROM is a property of the silicon,
+        # read from the resident's own PMST prologue: the B series leaves MP/MC
+        # at the pin and runs with the ROM's vector table at 0x0000, the C
+        # series forces MP/MC high and carries its own table at 0x1800. This
+        # used to be an allowlist of bootstrap hashes, which had to grow for
+        # every firmware revision of a board whose silicon never changed, and
+        # which silently withheld the ROM from images that need it.
+        #
+        # The dump itself is from the 20.16 MHz board. Its low half is
+        # byte-identical to the 25 MHz 2806 board's, which is the evidence that
+        # it is mask ROM; the upper half has not been compared across parts.
+        from .mailbox_compare import program as _program_words
+        self.boot_rom_enabled = boot_rom.maps_onchip_rom(
+            _program_words(self.image), self.image.dsp_program_segments()[0][0]
+        )
         self.core = NativeC5x(image)
         self._configure_boot_rom()
         self._configure_frame_interrupt()
@@ -961,13 +971,8 @@ class CourierDspBridge:
     def _configure_boot_rom(self) -> None:
         if not self.boot_rom_enabled:
             return
-        rom = (Path(__file__).resolve().parent.parent /
-               "artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin").read_bytes()
-        if sha256(rom).hexdigest() != "d57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9":
-            raise ValueError("recovered DSP boot ROM checksum mismatch")
         self.core.configure_rom_codec()
-        self.core.load_rom(rom)
-        self.core.set_mpmc_pin(0)
+        boot_rom.install(self.core)
         origin, resident = self.image.dsp_program_segments()[0]
         # The boot loader must write the resident, not execute a preloaded copy.
         self.core.load_program(bytes(len(resident)), origin)
