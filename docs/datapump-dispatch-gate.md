@@ -674,45 +674,47 @@ level. This is the analog loopback `AT&T1` names, and it needs no line: the
 `codec_rx` queue is empty (`codec_rx_queued: 0`), so the only thing on the
 analog input is the hybrid's own return.
 
-### But it does not demodulate: the receiver task is never scheduled
+### But it does not demodulate: no receive-side state forms
 
 The returned samples reach the DSP - `drr_reads: 23,988` at `codec_rx_peak:
 24,246`, one read per frame - and the resident serial ISR at `0x8193`
 (`last_drr_pc`) even stores each one into the receive buffer (`0x8194 sacl *+`).
-So the demodulator is not starved of input. It is **never entered**:
+So the demodulator is not starved of input. But nothing forms a receive state:
 
 | indicator | value | reading |
 |---|---|---|
-| distinct `0xc700`-`0xca00` PCs executed | 0 | the overlay receiver never runs |
-| `negotiation_loop_entries` | 0 | no equalizer/training loop |
+| `negotiation_loop_entries` | 0 | the instrumented equalizer/training loop never runs |
 | `v8_dispatches`, `v8_rx_state`, `v8_flags` | 0 | no V.8 handshake |
 | `0x5e`/`0x5f` writes | `0x3d`, `0x04` (2 words) | two control words, no recovered-data stream |
 
-Overlay 6 is a two-task datapump: a transmitter around `0x9d00`-`0xa3ff` and a
-receiver/demodulator around `0xc700`-`0xcbff` (the block `negotiation_loop`
-watches at `0xc7f7`/`0xc81a`; `0xca..0xcb` are its own subroutines, reached only
-from inside it). The scheduler at `0x8767` drives **one** foreground task vector,
-`@6d`. Filtering the data-write trace to `@6d` over a whole `AT&T1` run, every
-value it is ever given is a **transmitter** address:
+**The received content does not change what the datapump does.** Forcing the
+hybrid return off (`HYBRID_RETURN_ON_HOOK = 0`, silence on the ADC) against the
+normal on-hook value (`240`, full carrier) and diffing `serial_state` at 40M:
+only the sample-level registers move - `codec_rx_peak` 24,246 vs 0, `drr` 62,334
+vs 0, and the frame counters drift a little because the two runs reach slightly
+different depths. Every state cell is identical, and `v8_*` and
+`negotiation_loop_entries` are 0 either way. A receiver that was demodulating
+would diverge on carrier-detect, energy or lock between full carrier and
+silence; this one does not.
 
-| `@6d` written | count |
-|---|---|
-| `0x9dcf` | 68 |
-| `0x0000` | 4 |
-| `0x9dd3`, `0x9dd7`, `0xa3ce` | 1 each |
+What *is* scheduled is the transmitter. The `0x8767` scheduler drives one
+foreground vector, `@6d`, and over a whole run every value written to it is a
+transmit-side address - `0x9dcf` x68, `0x9dd3`/`0x9dd7`/`0xa3ce` x1, `0x0000` x4.
+The overlay entry `0x9d00` arms the transmit loop (`0x9d43`: `call 8837` /
+`intr 17` / `call 8767`, resume `@6d = 0x9d56`->`0x9dcf`), and the ISR vector
+`@65` stays at the resident serial handler `0x8189`. So `AT&T1` **modulates,
+loops the carrier back through the hybrid, buffers the return - and runs no
+receive-side processing on it.**
 
-Never a `0xc7xx`. The overlay entry `0x9d00` arms only the transmit loop
-(`0x9d43`: `call 8837` / `intr 17` / `call 8767`, resume `@6d = 0x9d56`->`0x9dcf`),
-and the ISR vector `@65` stays at the resident serial handler `0x8189`. So
-`AT&T1` **modulates, loops the carrier back through the hybrid, buffers the
-return - and never arms the receiver to demodulate it.**
-
-For a real local analog loopback the receiver *should* come up: the modem is
-hearing its own full-level carrier and has no peer to negotiate with. Something
-that normally installs a `0xc7xx` vector into `@6d` (or calls the receiver
-entry) does not run here - the same "receiver condition" the next section hits
-from the transmit side, now located precisely: the demod task is never
-scheduled. That gate is the open question and the place to fix.
+For a real local analog loopback the receiver *should* come up: the modem hears
+its own full-level carrier and has no peer to negotiate with. What arms that
+receive processing, and why it stays dormant here, is not established - the demod
+has **not** been located in overlay 6 from these traces. (`0x8767` scheduling
+only transmit vectors shows the foreground task is the modulator; it does not
+prove where a receiver lives, and `negotiation_loop`'s `0xc7f7`/`0xc81a`
+watchpoints disassemble as a coefficient table in this overlay, so they are
+calibrated for a different datapump, not overlay 6's receiver.) This is the same
+"receiver condition" the next section reaches from the transmit side.
 
 ### Why neither end reports a result code: the DSP never sends
 
