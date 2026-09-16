@@ -473,6 +473,16 @@ so it passes the `retc ntc` and executes the `bacc` into a slot. But that run
 has `overlay_downloads: 0`, so the slot is a resident one, and `0x9d00` is still
 never entered.
 
+> **Superseded (2026-09-16).** The halt described in this subsection no longer
+> reproduces. A live co-simulation trace of standalone `AT&T1` shows the
+> datapump running to steady state, resumed each frame by a scheduler this
+> document had not yet located. The frame-depth fault the following paragraphs
+> chase was resolved by the test-flag routing and overlay-frame work
+> (`4772fbe`, `e30cd0a`, `1e982eb`, `c05645c`). The reading below is kept for
+> the mechanism it documents; see
+> **[The scheduler runs it, and the hybrid loops it back](#the-scheduler-runs-it-and-the-hybrid-loops-it-back)**
+> for the current behaviour.
+
 **And then the DSP dies.** A whole-space snapshot of the last 512 instructions
 of an `AT&T1` run is one address, 512 times:
 
@@ -613,6 +623,76 @@ the ROM left, and halts. Either an intermediate transition should be a `call`
 rather than a `bacc`, or `0x9d00` is the wrong door - the coroutine may be meant
 to be resumed through `@6d` by a scheduler that enters at the right depth, with
 `0x9d00` only its first-time entry.
+
+### The scheduler runs it, and the hybrid loops it back
+
+Traced live rather than statically: `CourierMachine(with_dsp=True)` on the
+`dedicated-line` preset, `AT&T1`, 40M supervisor instructions, reading the C5x
+`pc_trace` (windowed) and `serial_state` from `machine.dsp_bridge.core` just
+before the bridge closes. Three facts overturn the halt above.
+
+**A frame scheduler at `0x8767` resumes the coroutine.** It is the `@6d`
+re-entry the frame finding predicted but did not locate:
+
+```text
+8767  lamm @6e         ; per-datapump frame countdown
+8768  bcnd 876d, eq    ; zero? -> dispatch
+876a  sub #01 / samm @6e / retc neq   ; else keep counting
+876d  lamm @6d         ; load the resume vector
+876e  retc eq          ; none installed -> return
+876f  bacc             ; else RESUME at @6d
+```
+
+Over the last 512 in-window instructions the scheduler shows `0x8767`/`0x8768`
+x102, and `0x876d`/`0x876e`/`0x876f` x102-103: `@6e` is zero so the `bcnd` always
+dispatches, `@6d` is non-zero so `retc eq` never fires, and `0x876f bacc`
+resumes the datapump ~103 times per window. Tags `0x59`/`0x5a` install `@6d`
+this same way (`0x8ddf splk @6d, #8f14`) and **return**, letting the scheduler
+enter their body later; the tag-`0x10` handler at `0x9b58` instead `bacc`s into
+slot 0 once, cold - `0x9b58`->`0x9b60`->`0x9b62`->`0x9b64`->`0x9b65`->`0x9b6b`->
+`0x9d00`, each x1 - and thereafter the body runs only through the `@6d` resumes,
+never back through `0x9d00`. So the cold entry is the first-time door and the
+scheduler is the steady-state driver, exactly hypothesis (b) above.
+
+**No halt.** The DSP tail is live datapump math (`0x9fd6`-`0x9fff`, `mpy @0b` /
+`lta` filter taps), not the `0x065a` spin. The overlay is entered once and kept
+running.
+
+**The hybrid loops the modulated output back to the input.** With the modem on
+hook (`HYBRID_RETURN_ON_HOOK = 240`, `bridge.py`), one `AT&T1` run measures:
+
+| signal | value |
+|---|---|
+| `line_tx_writes` | 23,996 |
+| `line_tx_nonzero` | 14,026 |
+| `hybrid_frames` | 89,967 |
+| `hybrid_peak` | 12,123 |
+
+The datapump modulates (14k non-zero line-TX samples - the QAM/TCM carrier) and
+the trans-hybrid return feeds that DAC output back into the ADC input at full
+level. This is the analog loopback `AT&T1` names, and it needs no line: the
+`codec_rx` queue is empty (`codec_rx_queued: 0`), so the only thing on the
+analog input is the hybrid's own return.
+
+### But it does not demodulate
+
+The returned samples reach the DSP - `drr_reads: 23,988` at `codec_rx_peak:
+24,246`, one read per frame - but the read lands at the **resident serial ISR**
+`0x8193` (`last_drr_pc`), not in an overlay receiver. The receiver DSP chain
+never engages:
+
+| indicator | value | reading |
+|---|---|---|
+| `negotiation_loop_entries` | 0 | no equalizer/training loop |
+| `v8_dispatches`, `v8_rx_state`, `v8_flags` | 0 | no V.8 handshake |
+| `0x5e`/`0x5f` writes | `0x3d`, `0x04` (2 words) | two small control words, no recovered-data stream |
+
+So `AT&T1` **modulates, loops the carrier back through the hybrid, and clocks the
+return in, but does not demodulate it.** Nothing trains, locks, or recovers
+symbols, and the two outbound words are not the `0x1c`/`0x48` reporters the
+supervisor waits on (below). This is the same wall the next section reaches from
+the transmit side: the receiver's stateful processing is dormant. Whatever wakes
+it is the remaining open question.
 
 ### Why neither end reports a result code: the DSP never sends
 
