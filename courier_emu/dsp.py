@@ -261,6 +261,8 @@ class NativeC5x:
         lib.courier_c5x_get_io.restype = ctypes.c_uint16
         lib.courier_c5x_get_program.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_program.restype = ctypes.c_uint16
+        lib.courier_c5x_get_register.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_register.restype = ctypes.c_uint16
         lib.courier_c5x_get_data.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_set_data_trace_filter.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int]
         lib.courier_c5x_set_data_trace_filter.restype = None
@@ -524,6 +526,16 @@ class NativeC5x:
 
     def set_data(self, address: int, value: int) -> None:
         self.library.courier_c5x_set_data(self.handle, address, value)
+
+    def register(self, offset: int) -> int:
+        """A memory-mapped register, read without disturbing it.
+
+        `data()` answers from the raw backing store, which for an address below
+        0x60 is a cell no register keeps up to date: PMST, CBCR and TDXR all
+        read zero through it however the firmware has set them. Reading them
+        needs this instead.
+        """
+        return int(self.library.courier_c5x_get_register(self.handle, offset))
 
     def interrupt(self, irq: int) -> None:
         self.library.courier_c5x_interrupt(self.handle, irq)

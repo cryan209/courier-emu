@@ -527,6 +527,44 @@ void C5xCore::set_data(uint16_t address, uint16_t value)
     else m_data[address] = value;
 }
 
+uint16_t C5xCore::register_value(uint16_t offset) const
+{
+    switch (offset) {
+    case 0x04: return m_imr;
+    case 0x06: return m_ifr;
+    case 0x07: return uint16_t((m_pmst.iptr << 11) | (m_pmst.avis << 7) |
+        (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
+        (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
+    case 0x09: return uint16_t(m_brcr);
+    case 0x0c: return m_treg0;
+    case 0x0d: return m_treg1;
+    case 0x0e: return m_treg2;
+    case 0x0f: return m_dbmr;
+    case 0x10: case 0x11: case 0x12: case 0x13:
+    case 0x14: case 0x15: case 0x16: case 0x17: return m_ar[offset - 0x10];
+    case 0x18: return m_indx; case 0x19: return m_arcr;
+    case 0x1a: return m_cbsr1; case 0x1b: return m_cber1;
+    case 0x1c: return m_cbsr2; case 0x1d: return m_cber2;
+    case 0x1e: return m_cbcr; case 0x1f: return m_bmar;
+    // DRR and TRCV read their held word without consuming it.
+    case 0x20: return m_serial.drr;
+    case 0x21: return m_serial.dxr;
+    case 0x22: return m_serial.spc;
+    case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
+    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) | (m_timer.tddr & 0xf));
+    case 0x28: return m_pdwsr;
+    case 0x29: return m_iowsr;
+    case 0x2a: return m_cwsr;
+    case 0x30: return m_tdm.trcv;
+    case 0x31: return m_tdm.tdxr;
+    case 0x32: return m_tdm.tspc;
+    case 0x33: return m_tdm.tcsr;
+    case 0x34: return m_tdm.trta;
+    case 0x35: return m_tdm.trad;
+    default: return m_data[offset];
+    }
+}
+
 C5xCore::MemoryMap C5xCore::memory_map() const
 {
     m_map.mpmc_pin = m_mpmc_pin;

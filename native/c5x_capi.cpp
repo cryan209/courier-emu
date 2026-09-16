@@ -259,6 +259,11 @@ uint16_t courier_c5x_get_data(void *handle, uint16_t address)
     return handle ? static_cast<C5xCore *>(handle)->data(address) : 0xffff;
 }
 
+uint16_t courier_c5x_get_register(void *handle, uint16_t offset)
+{
+    return handle ? static_cast<C5xCore *>(handle)->register_value(offset) : 0xffff;
+}
+
 void courier_c5x_set_data(void *handle, uint16_t address, uint16_t value)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_data(address, value);

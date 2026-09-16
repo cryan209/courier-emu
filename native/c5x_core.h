@@ -250,6 +250,13 @@ public:
     uint16_t io_output(uint16_t port) const;
     uint16_t program(uint16_t address) const;
     uint16_t data(uint16_t address) const;
+    // Inspection only. data() returns the raw backing store, so for an address
+    // below 0x60 it answers with a cell no memory-mapped register keeps up to
+    // date - a harness reading PMST, CBCR or TDXR through it sees zero however
+    // the firmware has set them. This reads the register itself, and unlike
+    // cpuregs_r it has no side effects: DRR does not pop the codec queue and
+    // TRCV does not clear its ready flag.
+    uint16_t register_value(uint16_t offset) const;
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void nmi();
