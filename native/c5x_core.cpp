@@ -527,6 +527,11 @@ void C5xCore::set_data(uint16_t address, uint16_t value)
     else m_data[address] = value;
 }
 
+uint16_t C5xCore::stack_entry(unsigned index) const
+{
+    return index < 8 ? m_pcstack[(m_pcstack_ptr + index) & 7] : 0;
+}
+
 uint16_t C5xCore::register_value(uint16_t offset) const
 {
     switch (offset) {
@@ -971,8 +976,17 @@ void C5xCore::op_group_bf() { (this->*s_opcode_table_bf[m_op & 0xff])(); }
 
 void C5xCore::delay_slot(uint16_t startpc)
 {
+    // CLRC INTM services interrupts inline. In a delay slot that pushed the
+    // return address and vectored, and then the enclosing delayed branch
+    // overwrote the PC - orphaning one stack entry per execution. The firmware
+    // guards every host-port access with `setc intm ; calld ... ; clrc intm`,
+    // so the stack drifted a level each time and a later RET returned into the
+    // middle of the routine with the wrong ARP.
+    const bool outer = m_in_delay_slot;
+    m_in_delay_slot = true;
     m_op = ROPCODE(); (this->*s_opcode_table[m_op >> 8])();
     while (uint16_t(m_pc - startpc) < 2) { m_op = ROPCODE(); (this->*s_opcode_table[m_op >> 8])(); }
+    m_in_delay_slot = outer;
 }
 
 void C5xCore::save_interrupt_context()
@@ -989,7 +1003,7 @@ void C5xCore::restore_interrupt_context()
 }
 void C5xCore::check_interrupts()
 {
-    if (m_st0.intm || !m_ifr) return;
+    if (m_in_delay_slot || m_st0.intm || !m_ifr) return;
     for (unsigned irq = 0; irq < 16; ++irq) if (m_ifr & (1u << irq)) {
         m_st0.intm = 1; PUSH_STACK(m_pc);
         uint16_t vector = m_interrupt_vectors[irq];

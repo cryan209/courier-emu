@@ -257,6 +257,12 @@ public:
     // cpuregs_r it has no side effects: DRR does not pop the codec queue and
     // TRCV does not clear its ready flag.
     uint16_t register_value(uint16_t offset) const;
+    // The 8-deep hardware stack, newest first. The firmware manipulates it
+    // directly (d876 is `pop ; samm @70`, a coroutine yield that discards a
+    // return address), so a harness that reaches an entry by a different call
+    // depth than the firmware does leaves it skewed, and a later RET underflows
+    // into whatever the C5x's shift-register stack replicates at the bottom.
+    uint16_t stack_entry(unsigned index) const;
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void nmi();
@@ -514,6 +520,9 @@ private:
     void save_interrupt_context();
     void restore_interrupt_context();
     void delay_slot(uint16_t startpc);
+    // SPRU056D 4.9: a delayed branch and its delay slots complete as a
+    // unit; no interrupt is serviced between them.
+    bool m_in_delay_slot = false;
 
     void op_invalid(); void op_abs(); void op_adcb(); void op_add_mem();
     void op_add_simm(); void op_add_limm(); void op_add_s16_mem(); void op_addb();
