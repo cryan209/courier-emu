@@ -90,3 +90,14 @@ def maps_onchip_rom(words, origin: int) -> bool:
     """
     value = pmst_setting(words, origin)
     return value is not None and not value & PMST_MPMC
+
+
+# Circular buffer 2 carries the CPU/DSP character window on AR6, so its extent
+# is the part's, not a constant worth repeating. Both directions share it: the
+# transmit fetch at 82c1 and the receive delivery at 8320.
+def window_first(core) -> int:
+    return core.register(0x1C)          # CBSR2
+
+
+def window_last(core) -> int:
+    return core.register(0x1D)          # CBER2
