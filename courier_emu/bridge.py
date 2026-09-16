@@ -482,6 +482,10 @@ class CourierDspBridge:
         # it through a transfer, so after the first one it is never zero and
         # "nonzero" would pass instantly for every overlay after it.
         self._overlay_destination_mark = 0
+        # Half-block strobes taken since the last `4` on the overlay port.
+        # The loader spends the same value on both ends of a transfer, so
+        # this is what tells the two apart. See the write path.
+        self._overlay_halves_since_start = 0
         self.overlay_destination_waits = 0
         self.overlay_destinations: list[str] = []
         self.transfer_commands = 0
@@ -1841,6 +1845,23 @@ class CourierDspBridge:
             # mid-call overlay pushed its payload through the same windows and
             # nothing ever committed them.
             strobe = value & 0xFF
+            if strobe == self.transfer_start_command and self._overlay_halves_since_start:
+                # The same value brackets a transfer at both ends. The loader
+                # starts one with `out 1e, 4` at 0x8e603 and ends it with the
+                # identical `out 1e, 4` at 0x8e702, one instruction before it
+                # returns, so the value alone cannot say which this is. Only
+                # the start is followed by the tag-02 destination; treating the
+                # closing strobe as another start re-armed the wait below for a
+                # destination the supervisor was never going to send, and the
+                # port-0x1e ready bit stayed low for the rest of the run.
+                #
+                # Position tells them apart: a transfer's half-block strobes
+                # all fall between the two, so a `4` with halves behind it is
+                # the closing one. An abort leaves the loader at 0x8e707
+                # before any half has gone out, which reads as a start again,
+                # the way the next real one does.
+                self._overlay_halves_since_start = 0
+                return
             if strobe == self.transfer_start_command:
                 self._overlay_target = None
                 self._overlay_buffer = bytearray()
@@ -1861,6 +1882,7 @@ class CourierDspBridge:
                 self._overlay_destination_pending = True
                 self._overlay_destination_mark = self.core.data(0xFF62)
             elif self.active and strobe in self._windows:
+                self._overlay_halves_since_start += 1
                 # Measured framing: each acknowledgement commits four bytes -
                 # a half-block - into alternating halves of the first window,
                 # `1` taking lanes 0-3 and `2` lanes 4-7. Both halves live in
