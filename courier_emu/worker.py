@@ -90,6 +90,7 @@ def main() -> int:
     parser.add_argument("--track-executed", action="store_true")
     parser.add_argument("--with-dsp", action="store_true")
     parser.add_argument("--force-online", action="store_true")
+    parser.add_argument("--dsp-acquisition-assist", action="store_true")
     parser.add_argument("--dsp-batch", type=_number, default=256)
     parser.add_argument("--daa-line", choices=DAA_LINE_STATES)
     parser.add_argument("--sip-server")
@@ -262,6 +263,7 @@ def main() -> int:
         line=line,
         exchange=exchange,
         force_online=args.force_online,
+        dsp_acquisition_assist=args.dsp_acquisition_assist,
         dsp_batch=args.dsp_batch,
         console=console,
         cpu_engine=args.cpu_engine,

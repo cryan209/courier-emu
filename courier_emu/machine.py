@@ -436,6 +436,7 @@ class CourierMachine:
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
+        dsp_acquisition_assist: bool = False,
         mem_watch: tuple[int, int] | None = None,
         cpu_engine: str = "interpreter",
     ) -> None:
@@ -652,6 +653,7 @@ class CourierMachine:
                 dsp_trace_range=dsp_trace_range,
                 dsp_peek=dsp_peek,
                 dsp_write_watch=dsp_write_watch,
+                rx_acquisition_assist=dsp_acquisition_assist,
                 # Option switch 5. On a leased pair this is what makes one
                 # end the answerer, so the line model reads it from the same
                 # strap the firmware does.

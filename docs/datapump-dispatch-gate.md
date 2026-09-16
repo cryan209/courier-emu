@@ -697,24 +697,78 @@ different depths. Every state cell is identical, and `v8_*` and
 would diverge on carrier-detect, energy or lock between full carrier and
 silence; this one does not.
 
-What *is* scheduled is the transmitter. The `0x8767` scheduler drives one
-foreground vector, `@6d`, and over a whole run every value written to it is a
-transmit-side address - `0x9dcf` x68, `0x9dd3`/`0x9dd7`/`0xa3ce` x1, `0x0000` x4.
-The overlay entry `0x9d00` arms the transmit loop (`0x9d43`: `call 8837` /
-`intr 17` / `call 8767`, resume `@6d = 0x9d56`->`0x9dcf`), and the ISR vector
-`@65` stays at the resident serial handler `0x8189`. So `AT&T1` **modulates,
-loops the carrier back through the hybrid, buffers the return - and runs no
-receive-side processing on it.**
+**The demodulator runs but is gated off, and the gate is located.** The
+per-frame datapump loop at `0x9daf` calls three routines synchronously -
+`0x8837`, `0xa2a7`, `0x9e6b` - and `0xa2a7` is the receiver: a matched filter
+(`lt @76` / `mpy @14` / `ltp @77` / `mpya` / `apac`) over the sample buffers.
+But it stops at its own gate before the decision stage:
 
-For a real local analog loopback the receiver *should* come up: the modem hears
-its own full-level carrier and has no peer to negotiate with. What arms that
-receive processing, and why it stays dormant here, is not established - the demod
-has **not** been located in overlay 6 from these traces. (`0x8767` scheduling
-only transmit vectors shows the foreground task is the modulator; it does not
-prove where a receiver lives, and `negotiation_loop`'s `0xc7f7`/`0xc81a`
-watchpoints disassemble as a coefficient table in this overlay, so they are
-calibrated for a different datapump, not overlay 6's receiver.) This is the same
-"receiver condition" the next section reaches from the transmit side.
+```text
+a2c4  lar ar1, #6f
+a2c5  bit 3, *        ; @6f bit 3?
+a2c6  retc ntc        ; clear -> return before the decision/equalizer stage
+```
+
+`@6f` (absolute `0x6f`) is `0x40c2` for the whole run; a data-write trace of
+`0x6f` shows every value it is ever given - `0x40c2`, `0x4040`, `0x4042`, `0` -
+and **bit 3 is never set**. Bit 3 has exactly one setter, `0x8ca6 opl *,#0008`,
+reached by exactly one route, `0xa437 call 8ca5`, inside the receiver-enable
+block at `0xa430` (`call a440` / `call a5a5` / `apl @6f,#feff` / `call 8770` /
+`call 8ca5`, then `@6d = 0xa478`). That block traces **x0 - it never runs.**
+
+It never runs because the datapump's coroutine is stuck in acquisition. `@6d`
+holds `0x9dcf` for the whole steady state, and `0x9dcf`'s handler `0x9e56`
+releases only on a joint condition:
+
+```text
+9e5a  lacl @2c / bcnd 9e66, neq        ; countdown not expired -> yield
+9e5d  lacc16 @00 / adds @02
+9e60  sub #445c / bcnd 9e66, lt         ; received level below threshold -> yield
+9e64  lacc @34 / retc lt                ; else advance (return into 0x9dd1..)
+9e66  pop / lacc #9dcf / samm @6d       ; yield: reinstall 0x9dcf, stay put
+```
+
+Every stuck pass reinstalls `0x9dcf`. So the receiver front-end runs, the
+modulator and hybrid deliver it a full-level signal, but the acquisition state
+`0x9e56` never releases to the enable block `0xa430`, `@6f` bit 3 never sets, and
+`0xa2a7` bails before it demodulates. **That is what breaks `AT&T1`:** its own
+loopback carrier does not carry the acquisition state past `0x9e56` to arm the
+decision stage.
+
+The three inputs are now traced too. This routine runs with DP `0x300`, so its
+cells are absolute `0x32c`, `0x300:0x302`, and `0x334`. The firmware initializes
+`0x32c` to zero at `0x9e27`; the periodic path at `0x9f5d..0x9f5f` then explicitly
+subtracts one, so the observed `0xffff`, `0xfffe`, ... sequence is firmware
+behavior rather than a broken decrement opcode. The returned carrier does make
+the level accumulator exceed the threshold (`0x05c2:0xe772` in the assisted
+run), but the quality path at `0x9f87` only raises `0x334` to one or two before
+the conditional clear at `0x9fa0` takes it back to zero. It never reaches the
+negative state required by `0x9e65 retc lt`. Gain, zero-to-eight-frame delay,
+and return-polarity probes did not change that result. The remaining fidelity
+fault is therefore inside the emulated analogue acquisition signal, not the
+located coroutine or the C5x decrement semantics.
+
+For testing the DSP on both sides of the gate without pretending that fidelity
+fault is solved, the harness now has an explicit diagnostic assist:
+
+```sh
+./courier run firmware/legacy-usrobotics/idsdl302/IDSDL302.ROM \
+  --with-dsp --dip-preset dedicated-line --at 'AT&T1' \
+  --dsp-acquisition-assist --instructions 39000000 --summary
+```
+
+It acts only after the command is known to be `&T1` and the run has proved at
+least 64 non-zero TX samples, 64 returned hybrid frames, 1,000 DRR reads, and a
+receive peak of `0x1000`. It then sets only `@6f` bit 3. The normal run remains
+untouched. The report says `rx_acquisition_assisted: true`, `@6f` changes from
+`0x40c2` to `0x40ca`, and a trace of `a2c0:a360` crosses `0xa2c6` into
+`0xa2c7..0xa2cc`; without the option there are zero executions beyond the gate.
+That makes the workaround falsifiable and keeps the matched filter and receive
+decision code under test while the remaining analogue acquisition model is
+being recovered.
+
+This is the same "receiver condition" the next section reaches from the transmit
+side; located here as the `0x9e56` acquisition gate.
 
 ### Why neither end reports a result code: the DSP never sends
 

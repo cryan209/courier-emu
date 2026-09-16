@@ -320,6 +320,8 @@ class BridgeStatus:
     host_messages_delivered: int
     dsp_messages_taken: int
     dsp_stream_acks: int
+    rx_acquisition_assist_enabled: bool
+    rx_acquisition_assisted: bool
     error: str | None
     dsp: dict[str, int | bool]
     dsp_host_ports: dict[str, dict[str, int]]
@@ -373,10 +375,12 @@ class CourierDspBridge:
         dsp_trace_range: tuple[int, int] | None = None,
         dsp_peek: dict[int, str] | None = None,
         dsp_write_watch: int | None = None,
+        rx_acquisition_assist: bool = False,
         legacy_carrier_fallback: bool = False,
         auto_answer: bool = True,
     ) -> None:
         self.image = image
+        self.rx_acquisition_assist = rx_acquisition_assist
         self.expected_bootstrap = image.dsp_program_segments()[0][1]
         # A ROM locates its payload through its own download call site, which
         # an update payload has no need of; that is what tells the two
@@ -461,6 +465,8 @@ class CourierDspBridge:
         self.overlay_id: int | None = None
         self.overlay_heads: list[str] = []
         self.overlay_match: bool | None = None
+        self._t1_requested = False
+        self._rx_acquisition_assisted = False
         self._overlay_status = 0x07
         # Bit 2 of port 0x1e is the C51 overlay loader's idle/ready bit, and
         # the supervisor polls it after the start strobe to learn that the
@@ -1060,7 +1066,33 @@ class CourierDspBridge:
         the terminal typed costs the firmware nothing and is the only way the
         line model learns which end of a leased pair this one was made.
         """
-        self._note_commanded_role(command.decode("ascii", "ignore").upper())
+        text = command.decode("ascii", "ignore").upper()
+        self._note_commanded_role(text)
+        if "&T1" in text:
+            self._t1_requested = True
+            self._rx_acquisition_assisted = False
+        elif "&T0" in text or text in ("H", "H0", "ATH", "ATH0"):
+            self._t1_requested = False
+
+    def _maybe_assist_t1_acquisition(self, serial: dict[str, int]) -> None:
+        """Open only the demod decision gate after the loop path is proven.
+
+        This is an explicit diagnostic escape hatch, not an emulation of the
+        carrier detector.  It leaves the firmware's matched filter and every
+        receive decision after ``0xa2c6`` intact, so TX and RX DSP code can be
+        exercised while the analogue acquisition model is still incomplete.
+        """
+        if (
+            self.rx_acquisition_assist
+            and self._t1_requested
+            and not self._rx_acquisition_assisted
+            and serial.get("line_tx_nonzero", 0) >= 64
+            and serial.get("hybrid_frames", 0) >= 64
+            and serial.get("drr_reads", 0) >= 1_000
+            and serial.get("codec_rx_peak", 0) >= 0x1000
+        ):
+            self.core.set_data(0x006f, self.core.data(0x006f) | 0x0008)
+            self._rx_acquisition_assisted = True
 
     def _note_commanded_role(self, text: str) -> None:
         """Record whether the operator made this end the answerer or the caller.
@@ -2240,6 +2272,8 @@ class CourierDspBridge:
             self._maybe_start_answer_engine()
             if self._call_resume_pending:
                 self._resume_armed_call()
+            serial = self.core.serial_state()
+            self._maybe_assist_t1_acquisition(serial)
             self.core.step(dsp_steps)
             self._collect_dsp_messages()
             if (
@@ -2590,6 +2624,8 @@ class CourierDspBridge:
             host_messages_delivered=self.host_messages_delivered,
             dsp_messages_taken=self.dsp_messages_taken,
             dsp_stream_acks=self.dsp_stream_acks,
+            rx_acquisition_assist_enabled=self.rx_acquisition_assist,
+            rx_acquisition_assisted=self._rx_acquisition_assisted,
             error=self.error,
             dsp=self._core_state(),
             dsp_host_ports=self._core_snapshot("io_port_stats"),

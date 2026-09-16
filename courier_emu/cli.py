@@ -217,6 +217,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.append("--real-delays")
     if args.track_executed:
         command.append("--track-executed")
+    if args.dsp_acquisition_assist:
+        command.append("--dsp-acquisition-assist")
     if (
         args.with_dsp
         or args.daa_line
@@ -1001,6 +1003,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--force-online",
         action="store_true",
         help="diagnostic only: publish CONNECT and enter DTE data mode at main-loop",
+    )
+    run.add_argument(
+        "--dsp-acquisition-assist",
+        action="store_true",
+        help="diagnostic: after AT&T1 has verified TX and analog return activity, "
+        "open the demodulator decision gate even if carrier acquisition stalls",
     )
     run.add_argument(
         "--dsp-batch",
