@@ -283,6 +283,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     if args.sip_server:
         command.extend(("--sip-server", args.sip_server))
         command.extend(("--sip-username", args.sip_username))
+        if args.sip_password:
+            command.extend(("--sip-password", args.sip_password))
         command.extend(("--sip-password-env", args.sip_password_env))
         command.extend(("--sip-local-port", str(args.sip_local_port)))
         command.extend(("--rtp-local-port", str(args.rtp_local_port)))
@@ -404,6 +406,7 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--nvram-fixture", args.nvram_fixture))
     if args.with_dsp:
         command.append("--with-dsp")
+    command.extend(("--daa-line", "quiet"))
     if listen:
         command.append("--line-listen")
     if args.summary:
@@ -1064,6 +1067,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="destination URI template; {number} and {server} are replaced",
     )
     run.add_argument("--sip-username", default="courier")
+    run.add_argument("--sip-password", default="", help="SIP password")
     run.add_argument(
         "--sip-password-env",
         default="COURIER_SIP_PASSWORD",

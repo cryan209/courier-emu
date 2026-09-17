@@ -140,15 +140,17 @@ class CourierDaa:
         `ATA` reaches the same wait at 0x5dbe7 that `ATD` does, and with no
         producer for the detector byte the firmware answers `NO DIAL TONE` to a
         plain `ATA`. An answering seizure has no dial tone to find, so what it
-        qualifies on is a connected line. Treating the byte as the line-side
-        detector rather than a dial-tone-only counter is an inference from that
-        shared wait, not something the image states.
+        qualifies on is a connected line. A leased-line originate has no dial
+        tone either — the detector qualifies on line presence alone.
         """
         if not self.off_hook or not self.line_connected:
             return False
         if self.operation in ("answer", "dialing"):
             return True
-        return self.dial_tone_present
+        if self.dial_tone_present:
+            return True
+        # Leased-line originate: no dial tone, but a connected line is enough.
+        return self.operation == "originate" and self.line_state == "quiet"
 
     @property
     def detector_qualified(self) -> bool:

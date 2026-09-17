@@ -300,6 +300,7 @@ DIAL_TONE_DIGITS = "0123456789#*ABCD"
 @dataclass
 class BridgeStatus:
     active: bool
+    launched: bool
     boot_rom_enabled: bool
     bootstrap_bytes: int
     bootstrap_match: bool | None
@@ -942,6 +943,8 @@ class CourierDspBridge:
         the same atomic call-register publication used by originate: the resident
         overlay is entered on the next frame boundary. This deliberately
         does not report a result code or carrier; those remain firmware-owned.
+        On the ROM path the bridge sends ready signals but lets the CPU
+        firmware drive overlay loading itself.
         """
         if self._audio_only:
             return
@@ -955,8 +958,9 @@ class CourierDspBridge:
         ):
             return
         self._v8_armed = True
-        self._call_resume_pending = True
         self._asic_call_engine_started = True
+        if not self.boot_rom_enabled:
+            self._call_resume_pending = True
         if self._call_overlay is not None and self.asic_registers.get(0x82) == 0x00A0:
             # Answer uses the same ASIC release edge as originate; the
             # supervisor leaves the line held while the detector qualifies.
@@ -967,6 +971,33 @@ class CourierDspBridge:
         # call rather than a bare ATA with no far end.
         if self.line is not None and self.line.connected:
             self._publish_connected_event()
+
+    def _maybe_start_originate_engine(self) -> None:
+        """Start the call engine for a linked-line originate.
+
+        On a leased line there is no exchange and no dialing; the originate
+        side qualifies on line presence alone, mirroring the answer path.
+        On the ROM path the bridge sends the ASIC ready signals but lets
+        the CPU firmware drive overlay loading itself.
+        """
+        if self._audio_only:
+            return
+        if (
+            self._v8_armed
+            or self._call_resume_pending
+            or self._call_overlay_active
+            or self.line is None
+            or self.daa is None
+            or self.daa.operation != "originate"
+            or not self.daa.detector_qualified
+        ):
+            return
+        self._v8_armed = True
+        self._asic_call_engine_started = True
+        self._queue_runtime_message(0x0002, 0x0000)
+        self._queue_runtime_message(0x0003, 0x0000)
+        if not self.boot_rom_enabled:
+            self._call_resume_pending = True
 
     def _configure_boot_rom(self) -> None:
         if not self.boot_rom_enabled:
@@ -1310,6 +1341,9 @@ class CourierDspBridge:
 
     def _queue_runtime_message(self, header: int, data: int) -> None:
         if self._audio_only:
+            return
+        if self.boot_rom_enabled and self.active:
+            self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
             return
         self._runtime_inbound.append((header & 0xFFFF, data & 0xFFFF))
 
@@ -1803,12 +1837,13 @@ class CourierDspBridge:
                         # One delivery per assembled message: a repeated
                         # acknowledgement must not re-send the last one.
                         self._deliver_host_message(*self._runtime_pending)
+                        self._answer_runtime_request(*self._runtime_pending)
                         self._runtime_pending = None
-                    if value & 2 and self._dsp_completion_status() & 2:
-                        self.dsp_messages_taken += 1
-                        header = self.core.io_output(DSP_TAG_PORT) & 0xFFFF
-                        data = self.core.io_output(DSP_WORD_PORT) & 0xFFFF
-                        self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
+                    if value & 2:
+                        if self._runtime_inbound and self._runtime_inbound_seen:
+                            header, data = self._runtime_inbound.popleft()
+                            self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
+                            self._runtime_inbound_seen = False
                     if value & 4:
                         self.dsp_stream_acks += 1
                     self._set_dsp_status(set_bits=value & 6)
@@ -2068,7 +2103,10 @@ class CourierDspBridge:
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
             if self.boot_rom_enabled:
-                return (~self._dsp_status()) & 7
+                status = 1
+                if self._runtime_inbound:
+                    status |= 2
+                return status
             status = int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
             # The DSP's own two completions, reported where the CPU looks for
             # them: bit 1 for a message the sender at 0x83d6 has put on its
@@ -2086,6 +2124,13 @@ class CourierDspBridge:
             # Runtime overlay status is the separate 0x1e case above and does
             # withhold its second-bank bit until the resident writes 0300.
             return (1 << (size * 8)) - 1
+        if port in (0x58, 0x5A) and self._runtime_inbound:
+            header, _ = self._runtime_inbound[0]
+            self._runtime_inbound_seen = True
+            return (header >> (8 if port == 0x5A else 0)) & 0xFF
+        if port in (0x5C, 0x5E) and self._runtime_inbound:
+            _, data = self._runtime_inbound[0]
+            return (data >> (8 if port == 0x5E else 0)) & 0xFF
         if port in (0x58, 0x5A) and (
             self.boot_rom_enabled and self._runtime_mode
             or self._dsp_completion_status() & DSP_SEND_COMPLETE
@@ -2331,6 +2376,7 @@ class CourierDspBridge:
                 ):
                     self.begin_dialing()
             self._maybe_start_answer_engine()
+            self._maybe_start_originate_engine()
             if self._call_resume_pending:
                 self._resume_armed_call()
             serial = self.core.serial_state()
@@ -2652,6 +2698,7 @@ class CourierDspBridge:
             return self._last_status
         status = BridgeStatus(
             active=self.active,
+            launched=self.launched,
             boot_rom_enabled=self.boot_rom_enabled,
             bootstrap_bytes=(len(self.bootstrap) or self._last_bootstrap_bytes),
             bootstrap_match=(

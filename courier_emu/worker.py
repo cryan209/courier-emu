@@ -96,6 +96,7 @@ def main() -> int:
     parser.add_argument("--sip-server")
     parser.add_argument("--sip-target", default="")
     parser.add_argument("--sip-username", default="courier")
+    parser.add_argument("--sip-password", default="")
     parser.add_argument("--sip-password-env", default="COURIER_SIP_PASSWORD")
     parser.add_argument("--sip-local-port", type=_number, default=0)
     parser.add_argument("--rtp-local-port", type=_number, default=0)
@@ -169,7 +170,7 @@ def main() -> int:
             SipConfig(
                 server=args.sip_server,
                 username=args.sip_username,
-                password=os.environ.get(args.sip_password_env, ""),
+                password=args.sip_password or os.environ.get(args.sip_password_env, ""),
                 target=args.sip_target,
                 local_port=args.sip_local_port,
                 rtp_port=args.rtp_local_port,

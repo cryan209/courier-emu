@@ -762,7 +762,7 @@ class CourierMachine:
             self.online_mode = True
             self.serial_trace.append("entered-data-mode")
         if self.console is not None:
-            self.console.write(value)
+            self.console.write(value if self.online_mode else value & 0x7F)
 
     @property
     def _terminal_attached(self) -> bool:
