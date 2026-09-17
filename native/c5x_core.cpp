@@ -740,6 +740,11 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // to invent download-ready bit 9; with NDX working the firmware then
         // consumed nonexistent download words indefinitely.
         m_io[port] &= uint16_t(~value);
+    else if (m_host_mailbox && port == 0x56)
+        // The download-ready bitmap works the same way: the host sets bits
+        // via set_io when overlay data is available at 0x58-0x5b, and the
+        // DSP clears them by writing them back after consumption.
+        m_io[port] &= uint16_t(~value);
     else if (m_rom_codec && port >= 0x50 && port <= 0x5f)
         m_asic_output[port - 0x50] = value;
     else if (m_host_mailbox && port >= 0x5e && port <= 0x60)

@@ -1,0 +1,64 @@
+Installation instructions for International Courier V.Everything flash code
+rev. 12-02-98
+
+USR_XX.zip is a archive containing the flash code for all international
+20mhz Courier models(modems that have any other country besides US\Canada
+in the modem ATI7 screen). Extract the distribution files into an empty 
+sub directory on the hard drive.
+
+There is a file called "V90SDL.EXE" that will execute all the necessary
+commands for the DOS-based flash utility.  If you are installing with the X-modem
+flash method, please refer to the instructions in the Xmodem.txt file included
+with this release.
+
+V90SDL.EXE needs to be executed to the COM port as the only parameter
+from the subdirectory you extracted the files to.  For example:
+
+If your Courier modem is on COM1: execute:
+
+V90SDL /C=1  <Enter>
+
+If your Courier modem is on COM2: execute:
+
+V90SDL /C=2  <Enter>
+
+You will see it establish communication and begin the flash process.
+The process should take approximately 2-3 minutes after which the
+USR.CFG will write changes into NVRAM. You may want to make a screen
+print of your current settings first (ATI4) from within a terminal
+application.
+
+
+USING NON-STANDARD IRQ ON YOUR COM PORT
+
+The standard IRQ for a COM Port is as follows:
+
+COM1: AND COM3:		IRQ4
+COM2: AND COM4:		IRQ3
+
+If you are using any other IRQ than the standards noted above, you must
+manually inform SDL20.EXE of the non-standard IRQ through the "/i="
+parameter. For example, if the Courier V.Everything modem is on COM3,
+IRQ5 the SDL20.EXE command line should be:
+
+V90SDL /C=3 /I=5  <Enter>
+
+NOTE:	For users of internal Courier Modems!
+
+	If you have your Courier modem jumpered to PNP mode or jumpered to
+	to IRQ 9, please update via the XMODEM method
+        (see XMODEM.TXT for more information).
+
+
+
+__________________________________________________________________________________
+Copyright (c) 1997, 3Com Corporation. All rights reserved.
+Unless otherwise indicated, 3Com registered trademarks are registered in the United 
+States and may or may not be registered in other countries.  
+
+3Com, Boundary Routing, LANplex, LinkBuilder, NETBuilder, NETBuilder II, Parallel 
+Tasking, EtherLink, SmartAgent, TokenLink, TokenDisk, SuperStack, Transcend, and ViewBuilder 
+are registered trademarks of 3Com Corporation. EtherDisk, EtherLink II, FDDILink, FMS, and 
+NetProbe are trademarks of 3Com Corporation. 
+
+Other brand and product names may be registered trademarks or trademarks of their respective holders.

@@ -1,0 +1,139 @@
+
+          ----------------------------------------------------
+
+                  Courier V.Everything Xmodem Flash Notes
+
+          ----------------------------------------------------
+
+In order to better support users of non-DOS systems, the Courier can
+now perform flash ROM updates via the Xmodem file transfer protocol
+found in most communications software.
+
+Modems with firmware prior to 7.1.8 must first use V90SDL.EXE to
+install the new firmware code from within DOS. After installing 
+firmware with 7.1.8 revsion or higher, the AT~X! command will be enabled.
+If the flash ROM should ever get corrupted
+or downgraded, the Xmodem SDL feature will be lost, and SDL.EXE will
+have to be used to return the modem to normal operation.
+
+V90xx.XMD is the Xmodem mode flash data file.  (This is the same
+firmware that is in the SDL.EXE file, but in a different format.) This
+is the file that you will send to the modem in Xmodem mode. 
+
+          ----------------------------------------------------
+
+          Sending New Firmware to the Courier using Xmodem SDL
+
+          ----------------------------------------------------
+
+1.  Start a communications software package, such as Quick Link II or
+    MacComCenter.  Adjust the settings, if necessary, so that you can
+    send AT to the Courier and get an OK response.  NOTE:  If you are
+    sending the file from a Macintosh computer, make sure that you do
+    NOT transfer the file in MacBinary format.  In MacComCenter, for
+    example, select Setup -> File Transfer and under MacBinary options,
+    select "Never MacBinary."
+
+2.  Type AT~X! <Enter>.  The Courier will respond as follows:
+
+
+at~x!
+
+SDL Xmodem file transfer - (Y)es (N)o (T)est >
+
+
+    Responding with 'Y' will begin the file transfer process;
+    responding 'N' will abort the process and the modem will return to
+    command mode.
+
+    ***********************************************************************
+    *                                                                     *
+    * Responding with 'T' will begin the file transfer process in a       *
+    * "safe test mode".   Test mode will verify the operation of the file *
+    * transfer process and the integrity of the .XMD flash data file,     *
+    * without actually erasing or re-burning the flash chip.              *
+    *                                                                     *
+    ***********************************************************************
+
+
+3.  Respond with 't' to start an integrity test of the XMD file, or
+    'y' to begin an actual update of the flash ROM.
+
+
+SDL Xmodem file transfer - (Y)es (N)o (T)est >t
+* Test Mode - Flash ROM will not be modified*
+Begin Xmodem file transfer now.
+CC
+
+
+    The Courier will begin sending 'C' characters which are used as
+    part of the Xmodem protocol handshaking.
+    You may now begin sending the SV20.XMD file to the Courier using
+    the XMODEM-CRC or XMODEM-Checksum protocol in your communications
+    software.
+
+4.  After completion of the file transfer, the modem will display a
+    result message.
+
+
+at~x!
+
+SDL Xmodem file transfer - (Y)es (N)o (T)est >t
+Begin Xmodem file transfer now.
+CC
+
+SDL Xmodem file transfer completed.
+Calculating CRC... OK
+Resetting modem...OK
+
+
+    Once you see the OK response to the Calculating CRC and Resetting
+    modem messages, your software upgrade is complete, and the modem
+    will reset and return to command mode.
+
+5. Enter this command string in your terminal application to
+   set all the correct factory-default settings:
+
+    AT&F1S10=14S58=0S59=0S60=0S61=0S69=0&U0&N0&W
+
+
+          ----------------------------------------------------
+
+                       The Bootstrap Downloader
+
+          ----------------------------------------------------
+
+    If the flash ROM should ever become corrupted, or the modem will
+    not respond to Xmodem or SDL.EXE download attempts, follow this
+    procedure to activate the flash ROM bootstrap downloader:
+
+1.  Power the Courier off.
+
+2.  Set DIP switches 1, 5, and 10 on and 8 off. (For internal modems,
+    use 1, 5, and 10 on, and 7 off.) The settings of the other DIP
+    switches are ignored.
+
+3.  Power the Courier on.
+
+4.  Start your communications software package and send the operating
+    software using the XMODEM protocol, or use SDL.EXE as with previous
+    versions of the Courier firmware.
+
+5.  Power the Courier off.
+
+6.  Reset the DIP switches to their previous settings.
+
+7.  Power the Courier on.
+
+
+_______________________________________________________________________________________________
+Copyright © 1997, 3Com Corporation. All rights reserved.
+Unless otherwise indicated, 3Com registered trademarks are registered in the United 
+States and may or may not be registered in other countries.  
+
+3Com, Boundary Routing, LANplex, LinkBuilder, NETBuilder, NETBuilder II, Parallel 
+Tasking, EtherLink, SmartAgent, TokenLink, TokenDisk, SuperStack, Transcend, and ViewBuilder 
+are registered trademarks of 3Com Corporation. EtherDisk, EtherLink II, FDDILink, FMS, and 
+NetProbe are trademarks of 3Com Corporation. 
+
+Other brand and product names may be registered trademarks or trademarks of their respective holders.

@@ -208,7 +208,7 @@ class ImodemDsp(ImodemMailbox):
             return
         if port == 0x1c:
             if self.reset_status:
-                if value == 2:
+                if value & 2:
                     self.reset_status = False
                     if self.core:
                         self.core.set_io(0x57, self.core.io(0x57) | 2)

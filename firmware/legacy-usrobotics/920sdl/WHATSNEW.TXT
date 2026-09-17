@@ -1,0 +1,38 @@
+    Courier V.Everything Maintenance Release Notes
+
+
+    Supervisor date:  09/20/96
+           DSP date:  07/29/96
+      ATI1 checksum:  7629
+
+
+    Changes and enhancements since 4/29/96:
+
+
+1.  Corrected Dial Security dialback number entry in 7 bits+parity mode.
+
+2.  Corrected Remote Access password entry in 7 bits+parity mode.
+
+3.  Corrected operation of CTS signal in V.25bis idle mode, CTS follows DTR.
+
+4.  Corrected billing delay in V.25bis answer mode.
+
+5.  Corrected V.25bis call teardown reset.
+
+6.  Corrected intermittent fax receiver lockup.
+
+7.  Corrected intermittent end-of-page error in fax transmitter.
+
+8.  Corrected intermittent false loop loss detection.
+
+9.  Corrected fax answer handshake failure when Call Selection is active
+    and the caller does not present CNG tone during the first 4 seconds
+    of the answer sequence.
+
+10. Added work-around for certain other modems which incorrectly indicate
+    estimated channel capacity and/or preferred symbol rate during V.34
+    handshaking.
+
+
+
+[End]
