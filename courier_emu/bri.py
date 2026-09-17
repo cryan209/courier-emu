@@ -225,11 +225,12 @@ SETUP_ACKNOWLEDGE = 0x0D
 DISCONNECT = 0x45
 RELEASE = 0x4D
 RELEASE_COMPLETE = 0x5A
+INFORMATION = 0x7B
 STATUS = 0x7D
 STATUS_ENQUIRY = 0x75
 
 MESSAGE_NAMES = {
-    ALERTING: "ALERTING", CALL_PROCEEDING: "CALL_PROCEEDING",
+    ALERTING: "ALERTING", CALL_PROCEEDING: "CALL_PROCEEDING", INFORMATION: "INFORMATION",
     CONNECT: "CONNECT", CONNECT_ACKNOWLEDGE: "CONNECT_ACKNOWLEDGE",
     SETUP: "SETUP", SETUP_ACKNOWLEDGE: "SETUP_ACKNOWLEDGE",
     DISCONNECT: "DISCONNECT", RELEASE: "RELEASE",
@@ -245,6 +246,7 @@ IE_PROGRESS_INDICATOR = 0x1E
 IE_CALLING_PARTY_NUMBER = 0x6C
 IE_KEYPAD_FACILITY = 0x2C
 IE_LOW_LAYER_COMPATIBILITY = 0x7C
+IE_ENDPOINT_IDENTIFIER = 0x3A
 IE_CALLED_PARTY_NUMBER = 0x70
 
 # Bearer capabilities, Q.931 section 4.5.5: the transfer-capability byte, the
@@ -1086,6 +1088,14 @@ class BriNetwork:
             return
         if message.message_type == RELEASE_COMPLETE:
             self._clear_call()
+            return
+        if message.message_type == INFORMATION:
+            spid = message.elements.get(IE_ENDPOINT_IDENTIFIER)
+            if spid is not None:
+                self._note(f"SPID init: {spid.decode('ascii', 'replace')}")
+                self._send_layer3(tei, q931_message(
+                    INFORMATION, 0, False,
+                    element(IE_ENDPOINT_IDENTIFIER, bytes([0x00, 0x00]))))
             return
         if message.message_type == STATUS_ENQUIRY:
             self._send_layer3(tei, q931_message(
