@@ -591,6 +591,9 @@ class CourierDspBridge:
         self.timebase: Timebase = DEFAULT_COURIER
         self.dsp_steps_per_x86 = DEFAULT_COURIER.dsp_steps_per_x86
         self._line_instructions = 0
+        # The last DXR write count the socket line was paced against. The
+        # AC01's frame clock, not the CPU's instruction count.
+        self._line_codec_last = 0
         self._line_tx_index = 0
         self._audio_line_trace: deque[dict[str, Any]] = deque(maxlen=512)
         self._audio_codec_frames = 0
@@ -1980,6 +1983,7 @@ class CourierDspBridge:
             # Output cursors index this core's arrays, which restart at zero.
             self._exchange_tx_index = 0
             self._line_tx_index = 0
+            self._line_codec_last = 0
             self._audio_codec_frames = 0
             self._codec_handed_peak = 0
             self._codec_handed_at = 0
@@ -2601,10 +2605,6 @@ class CourierDspBridge:
                     0.0, self._audio_line_samples_due - LINE_FRAME_SAMPLES)
                 self._service_audio_line()
             return
-        self._line_instructions += self.batch
-        if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
-            return
-        off_hook = self.daa is not None and self.daa.off_hook
         # The codec stream is at the codec's rate, which this firmware runs at
         # 9600 while the line carries 8000. `_queue_line_audio` already
         # converts on the way in; taking the transmit side raw put every tone
@@ -2613,21 +2613,47 @@ class CourierDspBridge:
         # 1800 Hz guard tone 1500 - so neither end could train on the other.
         # `_take_line_audio` is the conversion the audio-only path already
         # uses, and it buffers, because six codec samples are five line ones.
+        produced = self.core.serial_state().get("line_tx_writes", 0)
         self._take_line_audio()
-        available = len(self._exchange_line_buffer)
-        if (
-            off_hook
-            and available < LINE_FRAME_SAMPLES
-            and not self._call_overlay_active
-            and self.daa is not None
-            and self.daa.operation == "originate"
-        ):
-            # Before the call overlay is active, pace seizure from the codec
-            # stream rather than the much faster calibrated supervisor clock.
-            # Once the real datapump is running, the ASIC frame clock must
-            # continue even when its newest block is not complete yet.
+        if produced == self._line_codec_last:
+            # No codec clock: the C50 is not writing DXR - before the
+            # download, or while the datapump is between programs. The peer's
+            # frame clock still has to run, so fall back to the instruction
+            # clock at the same nominal frame. What it ships is the silence
+            # the AC01 would be clocking out anyway.
+            off_hook = self.daa is not None and self.daa.off_hook
+            self._line_instructions += self.batch
+            if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
+                return
+            if (
+                off_hook
+                and not self._call_overlay_active
+                and self.daa is not None
+                and self.daa.operation == "originate"
+            ):
+                # Before the call overlay is active, pace seizure from the
+                # codec stream rather than the much faster calibrated
+                # supervisor clock.
+                return
+            self._line_instructions = 0
+            self._service_line_frame()
             return
+        self._line_codec_last = produced
         self._line_instructions = 0
+        # The AC01 clocks the line continuously and has no buffer to fall
+        # behind with, so every whole frame the codec has produced goes out
+        # now. Shipping one frame per `LINE_FRAME_INSTRUCTIONS` instead let
+        # the backlog grow without bound: the line service only starts once
+        # the ROM has launched, by which time the C50 has already written tens
+        # of seconds of samples from index zero, and draining them a frame at
+        # a time meant each end transmitted audio from the start of the run
+        # for ever. Both ends heard nothing but pre-carrier silence.
+        while len(self._exchange_line_buffer) >= LINE_FRAME_SAMPLES:
+            self._service_line_frame()
+
+    def _service_line_frame(self) -> None:
+        """One socket line frame: ship what the codec clocked, take the peer's."""
+        off_hook = self.daa is not None and self.daa.off_hook
         samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
         del self._exchange_line_buffer[:len(samples)]
         self._line_tx_index = self._exchange_tx_index
