@@ -726,6 +726,7 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
     ++stat.reads;
     stat.last_read = value;
     stat.last_read_pc = static_cast<uint16_t>(m_pc - 1);
+    if (m_io_events.size() >= 8192) m_io_events.pop_front();
     m_io_events.push_back({false, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     return value;
 }
@@ -751,6 +752,7 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     ++stat.writes;
     stat.last_write = value;
     stat.last_write_pc = static_cast<uint16_t>(m_pc - 1);
+    if (m_io_events.size() >= 8192) m_io_events.pop_front();
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
     // resident image uses external port 006a at high program addresses. The

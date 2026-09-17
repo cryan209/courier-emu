@@ -293,7 +293,7 @@ public:
     void clear_data_events() { m_data_events.clear(); }
     State state() const;
     SerialState serial_state() const;
-    const std::vector<IoEvent> &io_events() const { return m_io_events; }
+    const std::deque<IoEvent> &io_events() const { return m_io_events; }
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
     uint64_t data_write_count(uint16_t address) const { return m_data_write_counts[address]; }
     const PortStat &io_port_stat(uint16_t port) const { return m_io_port_stats[port]; }
@@ -348,7 +348,7 @@ private:
     mutable MemoryMap m_map{};
     IoRead m_io_read;
     IoWrite m_io_write;
-    std::vector<IoEvent> m_io_events;
+    std::deque<IoEvent> m_io_events;
     std::vector<DataEvent> m_data_events;
     std::array<uint64_t, 65536> m_data_write_counts{};
     std::array<PortStat, 65536> m_io_port_stats{};
