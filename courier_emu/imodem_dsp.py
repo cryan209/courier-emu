@@ -236,6 +236,14 @@ class ImodemDsp(ImodemMailbox):
         self.core.reset()
         for _ in range(64):
             self.core.step(1)
+        # The core's reset fills every ASIC register with all ones, which is
+        # the right default for a window the CPU has not written. @56 is not
+        # one: it is the download handshake the loader polls at 0638, and bit
+        # 2 of it is the finish strobe. Left at ones the loader reads "done"
+        # on its first poll, takes the 0651 exit, and is out of the download
+        # loop before the CPU has strobed a single group. No strobe latch
+        # comes out of reset asserted, so the register starts clear.
+        self.core.set_io(0x56, 0)
         self.core.set_io(0x58, self.boot_origin)
         self.core.nmi()
         for _ in range(4096):
