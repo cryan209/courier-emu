@@ -964,6 +964,18 @@ class CourierDspBridge:
         self._asic_call_engine_started = True
         if not self.boot_rom_enabled:
             self._call_resume_pending = True
+        else:
+            # The two coprocessor-ready latches. Setting
+            # `_asic_call_engine_started` above suppresses the 0x82
+            # acknowledgement path in `_observe_asic_command`, and the ROM
+            # path does not enter `_resume_armed_call`, which is where the
+            # answer side otherwise publishes them - so without this the
+            # answering end reports neither and waits for a latch that never
+            # arrives. They are the ASIC's acknowledgement of the start
+            # strobe, which does not depend on which end placed the call:
+            # `_maybe_start_originate_engine` publishes the same pair.
+            self._queue_runtime_message(0x0002, 0x0000)
+            self._queue_runtime_message(0x0003, 0x0000)
         if self._call_overlay is not None and self.asic_registers.get(0x82) == 0x00A0:
             # Answer uses the same ASIC release edge as originate; the
             # supervisor leaves the line held while the detector qualifies.
