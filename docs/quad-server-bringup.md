@@ -169,6 +169,12 @@ and `f7c93`, which takes its byte from the chassis request stream -
     f7c8e  jmp f795c              ; >5 rejected
 
 `[0x9c2c]` is the request cursor `quad-bringup-blockers.md` already identified.
+**Corrected 2026-09-17:** calling `f7c93` a chassis-message parser was too
+strong. Its handler block is reached from two front-ends - the table at
+`f7428`, indexed by `letter - 'A'` from the AT `&` parser at `ef1d1`, lands in
+the same routines, and every one of them parses binary TLV (`cmp al,1` on a
+length byte, then a value) from the shared cursor. So `[0x9c2c]` is a common
+back-end, not the chassis's alone.
 `[0xa897]` is set the same way and drives hardware: `>1` sets bit `0x40` in
 `[0xff64]`, `<=1` clears it. A third writer at `ee474` initialises `a895`,
 `a896` and `a897` together from the profile at ~1.3M instructions, which is
@@ -215,3 +221,75 @@ decoded except the first two, and both are the chassis side rather than
 anything in this image. An earlier guess here - that a chassis-presence strap
 gates the interpreter - is wrong: the service is called on schedule and
 declines for want of a session.
+
+## The transport, exercised (2026-09-17)
+
+The receive path is not unreachable - an earlier note here said no caller
+exists for `f4975`, which was a static-scan artifact. Delivery arrives through
+a function pointer. The periodic handler far-calls `[0x8b4a]` every tick, which
+is `ed4d0`:
+
+    ed4d0  test [0xb4b0], 0x10 ; je out     ; the window's status byte
+    ed4da  test al, 4          ; je out
+    ed4de  test al, 0x80       ; jne other
+    ed4e2  si = 0xb6de ; di = 0x8d3d
+    ed4eb  cx = [0xb6e2] + 6                ; the length word
+    ed4f8  rep movsb                        ; copy the frame in
+    ed4fa  or [0x9575], 2                   ; raise the state machine's gate
+
+`0xb4b0` and `0xb6de` sit in the same card RAM window as the `0xbae1` slot
+identity the controller stamps, so writing them is what the chassis does.
+`[0x8b3e]` likewise holds the state machine's next step (`f3b2:000f` at rest);
+the machine advances by rewriting that pointer, and `f43d5` sets it to `0x1d6`
+- `f3cf6`, falling into the cursor seed - when the `[0x9bab]` doorbell is set.
+
+### The frame header
+
+Read off `f3b2f`:
+
+| offset | field | rule |
+| --- | --- | --- |
+| +0 | word, stashed at `[0x9d28]` | low byte bits 3-4 must be clear, else dropped at `f3b7f` |
+| +4 | length word | used as length - 2, covering type + body |
+| +6 | type word | low nibble selects the handler; **bit 14 is the sequence bit** |
+| +8 | body | a first byte of `0xAB` bypasses the sequence check |
+
+The sequence bit must match `[0x9c50]` bit 1 - `f3b4c` chooses the polarity -
+and acceptance does `xor [0x9c50], 2`, flipping the expectation. A mismatch
+falls to `f3b61` and is dropped unless `[0x9c76]` bit 3 is set.
+
+Measured, stamping twelve frames into the window with type low nibbles `0..b`:
+
+| | frames copied | state advanced | dispatched |
+| --- | ---: | ---: | ---: |
+| fixed sequence bit | 64 | 12 | **1** |
+| bit read from `[0x9c50]` each time | 64 | 12 | **12** |
+
+That is the transport working end to end for the first time: stamp, copy,
+sequence check, header decode, dispatch.
+
+### Why the session still does not arm
+
+`[0x9d1e]` stays `00`. The type table at `f46b5` has twelve entries, seven of
+them live (`0,1,3,4,5,6,8`; the rest are the `f46cd` invalid stub), and none
+reaches the resolver that owns the arm parameter:
+
+* type 0 (`f4728`) resolves ids through a table at `f49c0`, 205 live of 256.
+  Entry `0xE6` there is the `0x0bee` filler.
+* types 3 and 4 use `f470f` against their own tables at `0x50e6` and `0x57ae`.
+* the arm handler `f7b13` is entry 230 - id `0xE6` - in a *third* table at
+  `f73d6` (546 entries, 293 filler), and that table is read only by `f4895`,
+  which has no near caller, no far caller and no vector anywhere in the image.
+
+So the arm is dispatched by id, but by an id space nothing in the decoded path
+selects. Either another front-end reaches `f4895`, or the selecting code is
+outside this window. That is the open question; the rest of the chain -
+provision, deliver, sequence, decode, dispatch, arm, service, `a895`, `ATA`'s
+gate at `c7d12` - is mapped and all but that one link is exercised.
+
+### Method
+
+`CourierMachine.run()` is not resumable. Both the window stamp and the
+sequence-bit read are done from a `_code_observer`, and the endpoint is
+subclassed to install traces at core creation, so every measurement above comes
+from inside a single run.
