@@ -1859,6 +1859,13 @@ class CourierDspBridge:
                             header, data = self._runtime_inbound.popleft()
                             self._runtime_inbound_delivered[f"{header:04x}:{data:04x}"] += 1
                             self._runtime_inbound_seen = False
+                        elif self._dsp_completion_status() & DSP_SEND_COMPLETE:
+                            # The bridge's queue owns the data lanes while it
+                            # stands, so an acknowledgement with nothing left
+                            # in it is an acknowledgement of the C50's own
+                            # word. `_set_dsp_status` below returns PA7 bit 1,
+                            # which is what releases the sender's wait.
+                            self.dsp_messages_taken += 1
                     if value & 4:
                         self.dsp_stream_acks += 1
                     self._set_dsp_status(set_bits=value & 6)
@@ -2120,7 +2127,17 @@ class CourierDspBridge:
                 return (1 << (size * 8)) - 1
             if self.boot_rom_enabled:
                 status = 1
-                if self._runtime_inbound:
+                # Bit 1 is "a word is waiting", and the C50's own sender is a
+                # source of one just as the bridge's queue is. Reporting only
+                # the queue left the resident's sender at 0x83d6 spinning on
+                # its four-instruction wait for ever: the CPU never saw the
+                # bit, so it never read the ports and never acknowledged, so
+                # PA7 bit 1 never came back up. No DSP-originated word ever
+                # reached the supervisor, on any call.
+                if (
+                    self._runtime_inbound
+                    or self._dsp_completion_status() & DSP_SEND_COMPLETE
+                ):
                     status |= 2
                 return status
             status = int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
