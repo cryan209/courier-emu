@@ -162,8 +162,32 @@ IO_WATCH_EVENTS = 8192
 # port 0x0a.
 #
 # Bit 0x40 is pulsed by 0x81703 - raised and dropped in the next instruction
-# pair, with interrupts masked around it - and WHAT IT DRIVES IS UNKNOWN. It
-# was called the speaker here, and that is retired:
+# pair, with interrupts masked around it. Most likely the ASIC's watchdog
+# kick, though that is inference from the cadence rather than a measurement:
+#
+#   - it starts at instruction 22,527, immediately after reset, and is still
+#     going at the last moment of a 44 s run: 224 pulses at a flat 151 Hz for
+#     the first 1.48 s, then steady service with a worst case of 536 ms. A
+#     service that never stops and whose interval is bounded is a watchdog;
+#     a status poll would wander and a lamp driver would go quiet when idle.
+#   - interrupts are masked around a two-instruction pulse, so the pulse
+#     width matters - an edge into a retriggerable monostable.
+#   - the ASIC is what resets the CPU, through R1 from ASIC pin 52 into
+#     RESIN, and the ADM707's watchdog is unused with pin 6 not connected
+#     (docs/board-parts.md). So the ASIC is the only part with the means.
+#   - the board resets a halted monitor after about 1.5 s
+#     (courier_emu/probe_transport.py), and board-parts.md retired the
+#     ADM707 explanation for that bound, leaving it unattributed. 536 ms
+#     against ~1.5 s is the margin you would design for.
+#   - the one thing that suppresses the pulse is [0x5a2] bit 7, set by a
+#     single site - an AT parser matching '!' at 0xa629d. "Stop kicking" is
+#     how you reset a modem from the command line.
+#
+# To settle it: type AT! on the board and see whether it resets about 1.5 s
+# later, or put a scope on ASIC pin 52.
+#
+# It is NOT the speaker, which is what this was called here, and that is
+# retired:
 # docs/board-verified-403.md drove this bit directly on the board, slowly
 # enough to hear individual clicks, on hook and off, and it produces no sound.
 # Neither does bit 0x04. The speaker is not a CPU port at all; the audio path
