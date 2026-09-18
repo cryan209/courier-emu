@@ -24,6 +24,7 @@ from typing import Any
 
 from .codec import CodecBringUp
 from .daa import CourierDaa, DAA_FRAME_SAMPLES, DAA_SAMPLE_RATE, RingSource
+from . import asic
 from . import boot_rom
 from .dsp import NativeC5x
 from .ata import SipLine
@@ -141,7 +142,8 @@ C50_CALL_OVERLAY_WORDS = C50_CALL_OVERLAY_DESTINATION - C50_CALL_OVERLAY_SOURCE
 # instruction pair is stable, while the following branch displacement changes
 # between firmware revisions.
 C50_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e3")
-DSP_RUNTIME_PORTS = (0x58, 0x5A, 0x5C, 0x5E)
+# 80186 ports, the tag pair then the word pair.
+DSP_RUNTIME_PORTS = asic.cpu_ports("tag") + asic.cpu_ports("word")
 
 # A supervisor sends the C50 program through one of two transfer protocols,
 # and they are not compatible enough to merge. An update payload's supervisor
@@ -217,7 +219,7 @@ DETECTOR_PRESENT_LEVEL = 0x30
 # 0x5e and the word from 0x5f, acknowledges with bit 0, rejects tags above
 # 0x7f, and vectors through a 128-entry table at program 0x83e9. `lamm`/`samm`
 # mask the address to 0x7f, so these are plain data cells 0x0057/0x005e/0x005f.
-HOST_STATUS_CELL = 0x57
+HOST_STATUS_CELL = asic.dsp_register("status")
 # The C51's 8K of on-chip mask ROM occupies program 0000..1fff; its SARAM
 # starts at 2000 (courier_emu/dsp_probe, measured on the 2806 board). A group
 # the loader writes below this reaches ROM space and never reads back.
@@ -226,8 +228,8 @@ C51_MASK_ROM_WORDS = 0x2000
 # that acknowledges a group. Only inside this span is the C51 listening to
 # the ASIC's command register.
 C51_ROM_LOADER_LOOP = range(0x0638, 0x0653)
-HOST_TAG_CELL = 0x5E
-HOST_WORD_CELL = 0x5F
+HOST_TAG_CELL = asic.dsp_register("tag")
+HOST_WORD_CELL = asic.dsp_register("word")
 # `BIT dma, code` on the C5x tests bit (15 - code), not bit `code`. The
 # dispatcher's poll is `4f7d`, which disassembles as `bit 15, @7d` and tests
 # **bit 0**, so the pending flag the ASIC raises is bit 0 and not bit 15.
@@ -263,9 +265,13 @@ DSP_STREAM_RESUME = 0x0004
 # vector base, so 0x0c above the bank's entry word.
 C50_ROM_FRAME_IRQ = 5
 C50_ROM_FRAME_VECTOR = 0x0C
-DSP_TAG_PORT = 0x5E
-DSP_WORD_PORT = 0x5F
-DSP_STREAM_PORT = 0x60
+# These are C52 register addresses, not 80186 ports. `asic.py` holds the one
+# table that says which CPU port reaches which of them; take them from it so
+# the two numberings cannot drift apart. CPU 0x5e is the high byte of the
+# *word*; DSP 0x5e is the *tag*.
+DSP_TAG_PORT = asic.dsp_register("tag")
+DSP_WORD_PORT = asic.dsp_register("word")
+DSP_STREAM_PORT = asic.dsp_register("stream")
 # The ASIC does not decode the DSP's whole port number. Measured on the board
 # (artifacts/dsp-port-fold-01): A0-A3 and A5 reach the gate array and A4 does
 # not, so ports differing only in bit 4 are one register to it - a mailbox
@@ -2259,17 +2265,20 @@ class CourierDspBridge:
         word = self.core.io(0x50 + lane // 2)
         return (word >> (8 * (lane & 1))) & 0xFF
 
-    # 80186 byte port -> (DSP register, which half). The two sides number
-    # these differently and the same literal means different things in each:
-    # CPU 0x5e is the high byte of the *word*, DSP 0x5e is the *tag*.
+    # 80186 byte port -> (DSP register, which half), from the one table that
+    # holds both numberings. The two sides collide on 0x5e and mean different
+    # things there: CPU 0x5e is the high byte of the *word*, DSP 0x5e is the
+    # *tag*. An older comment here said the resident reads the data from
+    # PA14/PA15, which would be registers 0x0e/0x0f; the image reads 0x5f,
+    # through the 0x23f0 helper with `#ff5f`. CPU 0x1c is DSP 0x57, which the
+    # sender reaches with `#ff57`.
     #
-    # CPU 0x58/0x5a are the tag and read DSP 0x5e; CPU 0x5c/0x5e are the word
-    # and read DSP 0x5f. That is what the resident writes at 0x83eb and
-    # 0x83ee and reads back through the 0x23f0 helper with `#ff5f`. An older
-    # comment here said PA14/PA15, which would be registers 0x0e/0x0f; the
-    # image does not agree. CPU 0x1c is the status the block routines poll,
-    # and it is DSP 0x57 - the register the sender reaches with `#ff57`.
-    MIRROR = {0x58: (0x5E, 0), 0x5A: (0x5E, 1), 0x5C: (0x5F, 0), 0x5E: (0x5F, 1)}
+    # The tag and word pairs only. `asic.CPU_TO_DSP` also carries the status
+    # and stream registers: the status has its own path below - an
+    # acknowledgement sets bits in the DSP's latch rather than replacing it -
+    # and the stream is not mirrored on this path at all. Taking the whole
+    # table here would start mirroring both.
+    MIRROR = asic.mirror("tag", "word")
 
     def _mirror_port(self, port: int, value: int) -> None:
         if port == 0x1C:
