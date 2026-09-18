@@ -1,11 +1,35 @@
-# The DSP's mailbox poll: PA7 and the ARCR compare
+# The DSP's mailbox poll, and what is actually starved
 
-This file opened as "what it takes to make a call complete" and its original
-blocker - the datapump putting nothing on the line - is resolved: see
-[datapump-gate-403-addresses.md](datapump-gate-403-addresses.md), where an
-answered call arms the datapump from the DSP with one message and `&L1`/`&T1`
-arm it by command. What survives is the mailbox poll, which is a separate
-mechanism and still partly modelled by hand.
+This file opened as "what it takes to make a call complete". Two of its
+blockers are now retired. The datapump putting nothing on the line is resolved
+in [datapump-gate-403-addresses.md](datapump-gate-403-addresses.md). And the
+mailbox poll - the blocker this file was renamed for - **is not blocking.**
+Measured, 403 board image, leased-line pair, 400M instructions a side:
+
+| | side A |
+|---|---|
+| DSP reads of the status latch `@57` | 342,624 |
+| CPU->DSP messages delivered | 82 |
+| DSP reads of the tag/word cells `0x5e`/`0x5f` | 35 |
+| DSP acknowledgements (`samm @57` from `0x839d`) | 5,064 |
+| **DSP->CPU messages sent** (`out` to port `0x5e`) | **1** |
+
+The DSP polls constantly, takes every message it is handed, and acknowledges.
+The `ARCR` compare below is satisfied at rest - `ar7` and `arcr` both read
+`0x0bc8` in a live run - so the gated block runs and the whole "messages
+overwrite each other while the DSP is not looking" reading is **wrong**. Keep
+the `NDX` measurement in this file; discard the conclusion that was built on it.
+
+What is starved is the **other direction**. The resident's sender at `0x83bf`
+was traced over its last 128 entries with a carrier up, and exited at `0x83c2`
+- `retc eq`, the ring read and write pointers equal - **every time**. It never
+reaches the host-window gate at `0x83c9`, let alone the `out` at `0x83d3`.
+`@78` and `@79` both read `0xff52` at the end of the run. Nothing is queueing
+into the outbound ring, so the supervisor gets one event per call and no
+negotiation can proceed.
+
+Where that leads is [datapump-gate-403-addresses.md](datapump-gate-403-addresses.md),
+under "Overlay 8 is loaded and never entered".
 
 ## The status register is PA7, and the harness models one bit of it
 
@@ -28,11 +52,14 @@ zero, so `lamm *` with `AR1 = 0xff57` genuinely reads `0x57`.
 status word the ASIC drives.** The mechanism is TI's; the bit meanings are the
 ASIC's, and no TI document has them.
 
-The harness raises `HOST_MESSAGE_PENDING` (`0x0001`) and nothing else. Bits 1, 2
-and 9 are never set, so `0x83d6` and `0x847a` return immediately and whatever
-they would set up - `ARCR` and the `@1a` task pointer among it - never happens.
-`@1a` stays pointing at `0x8139`, a bare `ret`, which is why the main loop
-dispatches to a no-op.
+The harness raises `HOST_MESSAGE_PENDING` (`0x0001`) directly. The other bits
+are not raised by the harness, but they are not unreachable either: the DSP's
+own tag-`0x02` handler at `0x8255` does `lacc #0700 ; samm @57`, writing bits 8,
+9 and 10 itself, and the CPU's `out 0x1c` path raises bits 1 and 2 through
+`_set_dsp_status(set_bits=value & 6)`. An earlier version of this section said
+bits 1, 2 and 9 are "never set" and concluded the polls return immediately. The
+measurement above contradicts that: `0x839b` and its neighbours run hundreds of
+thousands of times and do real work.
 
 **Where to look for the rest.** The DSP's PA0-PA7 are fed from the 80186's
 parallel window at ports `0x40`-`0x5e`, which `_publish_window` already models,
@@ -78,6 +105,11 @@ and lifts the DSP from 103 distinct program addresses to 159. **That is a
 diagnostic, not a fix** - nothing on the board writes it by hand, and the
 mechanism that does is the `@10` reload below.
 
+**In the 403 runs this block runs anyway.** A live pair reads `ar7 = arcr =
+0x0bc8`; the compare matches, the block executes, and the status latch is read
+342,624 times in one run. So whatever the harness does or does not model about
+`ARCR`, it is not what keeps the DSP from being asked to do anything.
+
 ## The mailbox dispatch itself works
 
 Handing the resident one message and diffing the executed addresses:
@@ -90,7 +122,9 @@ Handing the resident one message and diffing the executed addresses:
 The DSP leaves idle, dispatches through the tag table at `0x8480`, runs a
 handler and comes back - `0x86e9` is reached, next door to one of the dozen
 `splk @1a, #8139` sites that put the task pointer back to idle. None of the
-receive path is broken. What is wrong is **how often the DSP looks.**
+receive path is broken, and on the 403 image the DSP looks often enough:
+35 tag/word reads against 82 deliveries in a 400M-instruction run, each one
+acknowledged. The direction that carries nothing is the DSP's own sender.
 
 ## The ARCR compare, and what it actually tests
 
@@ -99,9 +133,13 @@ The poll lives in the block at `0x80c8`, which the main loop reaches only when
 `CBCR = 0x00ef`, selecting `AR7` for circular buffer 1 with `CBSR1 = 0x0bd0` and
 `CBER1 = 0x0bdf`. An `ARCR` anywhere in that ring makes the block run once per
 pass, a few hundred times a second - a sensible mailbox poll rate. With `ARCR` at
-zero it runs **once, during initialisation**, which is why a full run shows 87
-messages delivered and almost nothing consumed: they overwrite each other in the
-two-register window while the DSP is not looking.
+zero it would run **once, during initialisation**.
+
+That second case was once reported as the live behaviour, on a run showing 87
+messages delivered and almost nothing consumed. It is not what the 403 image
+does: `arcr` reads `0x0bc8` alongside `ar7`, the compare matches and the block
+runs. The "almost nothing consumed" figure was the DSP->CPU count being read as
+if it were the CPU->DSP one.
 
 **`@10` is data `0x0390`, and `0x0390` is where `AR7` is kept.** Direct
 addressing is DP-relative and `ldp #007` sits immediately before the
@@ -170,6 +208,9 @@ rescue it.
 problem to explain, not evidence against the mechanism. Re-landing the side
 effect without resolving the `*0+` behaviour would swap a wrong model for a
 broken one, so the emulator is deliberately left unchanged.
+
+This remains a real known-wrong model. It is no longer a **blocker**, because
+the block it was thought to gate runs regardless - see the head of this file.
 
 ## The open measurement
 

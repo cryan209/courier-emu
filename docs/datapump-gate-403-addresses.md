@@ -4,6 +4,11 @@ The datapump used to never start. It does now, by two independent routes, and
 the remaining gap is downstream of arming. This is the whole chain, in 403
 addresses, with the 302 counterparts alongside.
 
+Two later sections carry the downstream work: "Overlay 8 is loaded and never
+entered", which traces one overlay entry to its gate and finds the gate
+**correct**, and the corrected ampersand handler table, which fixes an
+eleven-entry indexing error that had been renaming commands.
+
 ## Answered: an answered call arms it from the DSP, in one message
 
 On a real peer - two `courier run` instances over one line socket, A
@@ -349,6 +354,170 @@ value, when those handlers reply with the constants `#06` and `#04`.
 [table](../artifacts/dispatcher-tag-sweep-312/replying-tags.json),
 [tone capture](../artifacts/atg-tone-offhook-403/tone.json).
 
+## Overlay 8 is loaded and never entered
+
+The overlays download and verify. Overlay 8 does not run. Measured on a
+leased-line pair, 403 image, `--line-audio-only`, 400M instructions a side:
+
+```text
+overlay_destinations      ['9d00', 'dc00']
+overlay_match             True
+overlay_words_verified    20096
+```
+
+Tracing DSP program `dc00:ffff` for the whole run returns **zero** entries. The
+trace records every PC that falls in the band, so this is never-executed, not a
+sampling miss. Overlay 6 meanwhile is busy: the last 512 PCs in `9c00:dbff`
+cover 169 distinct addresses, including a ~130-address straight-line block at
+`0xa0e6-0xa20f` that runs every pass and has the shape of a filter kernel.
+
+### The one door that was traced end to end
+
+Eleven entries in the dispatch table at program `0x83e9` vector into overlay 8
+- tags `0x18`, `0x20`-`0x27` and `0x75` - and the resident has one direct
+branch:
+
+```text
+8fce  481f       bit  7, @1f      ; BIT code 7 tests bit 8
+8fcf  e100 9093  bcnd 9093, tc    ; set   -> overlay 8
+8fd1  ...                         ; clear -> call 96af / call 9705
+8fd5  7980 9d34  b    9d34        ;          ...into overlay 6
+9093  ae4d ae1e  splk @4d, #ae1e
+9095  7a80 90e8  call 90e8
+9097  7980 dc0c  b    dc0c        ; the entry into overlay 8
+```
+
+Bit 8 of that cell is set by exactly one thing - the mailbox handler at
+`0x823d`, `ldp #007 ; opl @1f, #0100`, so **data `0x039f`**, corroborated by the
+`lar ar1, #039f` at `0x9041`. Reverse-mapping the table gives its tag, and the
+two neighbouring handlers that clear the same bit:
+
+| handler | tag | effect on `0x039f` bit 8 |
+|---|---|---|
+| `0x823d` | `0x4f` | **set** |
+| `0x8245` | `0x4e` | cleared |
+| `0x824d` | `0x4d` | cleared |
+
+On the supervisor side those three tags come from one selector, at `0x84749`
+and again at `0x8be6f`:
+
+```text
+8be5f  cmp byte [0x4e9], 5
+8be64  ja   8be6f          ; >5  -> emit
+8be66  cmp byte [0x4e9], 1
+8be6b  je   8be6f          ; ==1 -> emit
+8be6d  jmp  8be8b          ; else -> ret, nothing queued
+8be6f  mov  al, byte [0x4ed]
+8be72  cmp  al, 1 / je -> mov ah, 0x4e
+8be76  cmp  al, 2 / je -> mov ah, 0x4f
+8be7a     (else)           mov ah, 0x4d
+8be84  xor  al, al
+8be86  lcall 8f46:01e8     ; 0x8f648, the outbox at [0x0183]
+```
+
+`AH` = tag, `AL` = data, confirmed live: `0x8f648` was entered 11 times in one
+run with `AX` = `1500`, `433f`, `0100`, `0400`, `463f`, `583f`, matching the
+tags seen on the ports. The pump at `0x8f487` drains `[0x0183]` with `xchg` and
+shifts it out to `0x58`/`0x5a`/`0x5c`/`0x5e`.
+
+### Why it does not fire, and why that is correct
+
+`[0x04e9]` is `&M` and `[0x04ed]` is `&X` - see the corrected table below.
+`[0x04e9]` reads **4**, the factory default written by the defaults block at
+`0x878b7`, i.e. **`&M4`**. The gate wants `1` or above `5`: `&M1`, `&M6`,
+`&M7`. Those are the **synchronous** modes.
+
+So tags `0x4d`/`0x4e`/`0x4f` are the synchronous transmit clock source, `&X`
+picks which, and the message is sent only in sync operation. Overlay 8 is the
+synchronous datapump, and **an async `&M4` call is right not to load it.** An
+earlier reading of this chase called `0x4f` "the missing datapump mode message"
+and treated overlay 8's silence as the bug; that was wrong, and it was wrong
+because the command table was misindexed by eleven entries.
+
+Traced, to be sure it is the gate and not reachability - 120M instructions,
+`--nvram-fixture idsdl403`:
+
+```text
+pc_watch_counts: {'callerB': 1, 'entry': 1}    # 0x8b723 and 0x8be5f
+                                                # 0x8be6f: absent, zero hits
+peek: {'4e9': '04', '4ed': '02'}
+```
+
+The caller runs, the routine is entered, `[0x04ed]` is already `2` meaning tag
+`0x4f`, and the `&M` gate returns before it is read.
+
+### The `&M` and `&X` commands cannot be changed on this board anyway
+
+Both handlers open with `test byte [0x58b], 6 / je <reject>`. `[0x058b]` reads
+`0x29`, and `0x29 & 6 == 0`, so `AT&M1` and `AT&M2` both return `ERROR`
+(measured; `AT&M0` returns `OK` only because 0 is already the value). The
+`--nvram-fixture idsdl403` profile restores `[0x04ed] = 2` wholesale, bypassing
+the command.
+
+`[0x058b]` has one writer, `0x809ee`, fed by a hardware-indexed lookup:
+
+```text
+809cf  mov ax, 0x200a / call 82808
+809d5  mov ax, 0x0804 / call 8283e
+809db  rcl bx, 1                     ; a read bit shifted into the index
+809dd  mov ax, 0x200a / call 827de
+809e3  add bx, 0x9fd                 ; table base
+809e7  mov al, cs:[bx]
+809ec  je  809f6                     ; zero -> [0x58b] = 0, stc
+809ee  mov [0x58b], al
+```
+
+The table is inline at `0x809fd`. Index 2 gives `0x29`, which is what this
+board computes; seven of the twenty-four entries carry the capability:
+
+| index | value | `& 6` |
+|---|---|---|
+| **2** | `0x29` | **0** - this board |
+| 5 | `0x14` | 4 |
+| 7, 11, 13 | `0x22` | 2 |
+| 17 | `0x3e` | 6 |
+| 19 | `0x04` | 4 |
+| 21 | `0x75` | 4 |
+| 23 | `0x33` | 2 |
+
+**Not verified:** the three accessor calls were not traced, so whether index 2
+is right for this board or an artefact of what the emulator returns to them is
+open. That is the question that decides whether this is a firmware gate to
+satisfy or an emulator gap to fix.
+
+### The corrected ampersand handler table
+
+The table is letter-indexed and its base is **`0xa6685`**, not `0xa669b`.
+`0xa669b` is where entry 11 sits, and reading it as entry 0 shifts every letter
+by eleven. Four independent anchors fix the base:
+
+* `&L` (11) writes `[0x04f2]` at `0xa6980` - in the handler at `0xa695e`;
+* `&N` (13) writes `[0x04f8]` at `0xa6a71` - in the handler at `0xa6a11`;
+* `&T` (19) is the router at `0xa6afe`, board-verified by `AT&T2` -> `ERROR`;
+* the four `0xa6780` `stc; ret` rejects land on **E, O, Q, V** - exactly the set
+  this file already records. Under the old base they fell on D, F and K.
+
+| entry | cmd | handler | |
+|---|---|---|---|
+| 11 | `&L` | `a695e` | writes `[0x04f2]`, leased line |
+| **12** | **`&M`** | `a6987` | writes `[0x04e9]`; accepts `al < 6`, or `< 8` when `[0x58c] & 0x10` |
+| 13 | `&N` | `a6a11` | writes `[0x04f8]` |
+| 19 | `&T` | `a6afe` | the test router |
+| 22 | `&W` | `a6c51` | the NVRAM save sequence |
+| **23** | **`&X`** | `a6c88` | writes `[0x04ed]`, range `< 3` - the sync clock source |
+
+4, 14, 16 and 21 (`&E`, `&O`, `&Q`, `&V`) share the reject stub at `0xa6780`.
+
+### What this does and does not settle
+
+It explains overlay 8, and it explains it as correct behaviour. It does **not**
+explain the measured starvation in
+[what-runs-and-what-blocks.md](what-runs-and-what-blocks.md): the outbound ring
+at `0x0bd0` stays empty, `@78 == @79`, and the DSP sends one message per call
+while running overlay 6 the whole time. The async event producer is in overlay
+6 or the resident, and finding it is the open question - the other ten overlay-8
+tags are a distraction for the same reason tag `0x4f` was.
+
 ## What remains
 
 Two stand-ins under the working download, both recorded in
@@ -379,6 +548,10 @@ writes. Tested on the board, the ordinary letters do not reach it - there is no
 `ATL` and no `ATN` on this firmware, and `AT$` is HELP. The table is the
 **ampersand** family, which is what makes entries 11, 13 and 19 `&L`, `&N` and
 `&T`. The positional reading was right and the family was wrong.
+
+**Reading `0xa669b` as the table's base.** It is entry 11, so indexing from it
+shifts every letter by eleven and silently renames handlers - it is what turned
+`&X` into `&M` once. The base is `0xa6685`; see the corrected table above.
 
 **Reading `ATN` as the arming command.** The 403 `7b`/`7c` consumers reach a
 rate-index request through operation `0054`, not any of these flags. The shared
