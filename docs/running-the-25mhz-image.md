@@ -109,9 +109,15 @@ board's image showed was suspect from the start - and the 4.03d capture failing
 at the same instruction count confirms it. Settled by running the other capture
 under the same conditions.
 
-The paging finding itself stands - the ASIC does hold the flash's `CE#` and does
-consume one of the CPU's upper address lines - it simply is not what broke this
-run, and boot evidently does not exercise it.
+**Retracted 2026-09-18.** This used to add that "the paging finding itself
+stands - the ASIC does hold the flash's `CE#`". It does not. Flash `CE#` is on
+CPU `UCS`, and the reset stub quoted above is the proof in this file's own
+bytes: `ba a4 ff b8 00 80` is `mov dx,0xffa4` / `mov ax,0x8000` - programming
+`UCS_START` to the flash's own base before anything else runs. The ASIC does
+consume one upper address line, but `A19` is consumed by the `UCS` decode, which
+is what a flat map looks like. See
+[asic-pinout.md](asic-pinout.md#the-fold-four-address-lines-in-three-out).
+Boot not exercising paging is now the unremarkable case rather than a puzzle.
 
 ## What this leaves
 

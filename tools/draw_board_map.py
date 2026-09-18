@@ -78,12 +78,13 @@ EDGES: list[tuple] = [
     (("cpu", "r", 0.62), ("asic", "l", 0.52), "TXD0 2 -> 51", "dte"),
     # CPU's own memories
     (("cpu", "b", 0.25), ("flash", "t", 0.25), "AD0-AD15 data", "bus"),
-    (("cpu", "b", 0.62), ("sram", "t", 0.62), "LCS or UCS + data", "bus"),
+    (("cpu", "b", 0.62), ("sram", "t", 0.62), "LCS + data", "bus"),
     (("cpu", "r", 0.95), ("eeprom", "b", 0.5), "CS / SK / DI+DO", "mem"),
     (("glue", "l", 0.5), ("sram", "r", 0.5), "A8-A15", "bus"),
     # ASIC -> flash
     (("asic", "l", 0.72), ("flash", "r", 0.30), "A0-A7 latched", "mem"),
-    (("asic", "l", 0.78), ("flash", "r", 0.62), "A15 A16 A17 + CE#", "mem"),
+    (("asic", "l", 0.78), ("flash", "r", 0.62), "A15 A16 A17", "mem"),
+    (("cpu", "b", 0.40), ("flash", "t", 0.40), "UCS \u2192 CE#", "mem"),
     # ASIC <-> DSP
     (("asic", "r", 0.30), ("dsp", "l", 0.34), "D0-D15", "bus"),
     (("asic", "r", 0.38), ("dsp", "l", 0.46), "IS, R/W, STRB, INT2", "bus"),

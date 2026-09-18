@@ -43,8 +43,8 @@
 <rect x="144" y="654" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
 <text x="148" y="666" font-size="10" fill="#1d5fa8">AD0-AD15 data</text>
 <polyline points="229,650 229,725 229,725 229,800" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
-<rect x="233" y="680" width="103" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
-<text x="237" y="692" font-size="10" fill="#1d5fa8">LCS or UCS + data</text>
+<rect x="233" y="680" width="64" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="237" y="692" font-size="10" fill="#1d5fa8">LCS + data</text>
 <polyline points="320,638 475,638 475,626" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
 <rect x="352" y="622" width="92" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
 <text x="398" y="634" text-anchor="middle" font-size="10" fill="#8a4bbf">CS / SK / DI+DO</text>
@@ -55,8 +55,11 @@
 <rect x="490" y="696" width="81" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
 <text x="530" y="707" text-anchor="middle" font-size="10" fill="#8a4bbf">A0-A7 latched</text>
 <polyline points="600,749 460,749 460,741 320,741" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
-<rect x="478" y="734" width="103" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
-<text x="530" y="745" text-anchor="middle" font-size="10" fill="#8a4bbf">A15 A16 A17 + CE#</text>
+<rect x="495" y="734" width="70" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="530" y="745" text-anchor="middle" font-size="10" fill="#8a4bbf">A15 A16 A17</text>
+<polyline points="176,650 176,675 176,675 176,700" fill="none" stroke="#8a4bbf" stroke-width="1.6" stroke-opacity="0.75"/>
+<rect x="180" y="654" width="58" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
+<text x="184" y="666" font-size="10" fill="#8a4bbf">UCS → CE#</text>
 <polyline points="870,442 1035,442 1035,415 1200,415" fill="none" stroke="#1d5fa8" stroke-width="1.6" stroke-opacity="0.75"/>
 <rect x="932" y="427" width="42" height="15" fill="#fbfaf8" fill-opacity="0.92"/>
 <text x="952" y="438" text-anchor="middle" font-size="10" fill="#1d5fa8">D0-D15</text>

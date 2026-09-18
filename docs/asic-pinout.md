@@ -94,7 +94,7 @@ measured ends being contiguous and in order, and is marked so.
 | 6 | 85 | DSP `A5` - `A4` is **not connected** |
 | 7-14 | 84-77 | CPU `AD0`-`AD7` |
 | 15 | 76 | flash pin 35, `A15` (system `A16`) |
-| 16 | 75 | flash pin 12, `CE#` - **the ASIC selects the flash** |
+| 16 | 75 | flash pin 13, `GND` - **not** the flash's `CE#`; see the retraction below |
 | 17 | 74 | flash pin 34 (`A16`, system `A17`) |
 | 18 | 73 | flash pin 3 (`A17`, system `A18`) |
 | 19 | 72 | *unread* |
@@ -255,9 +255,39 @@ arrives latched from the ASIC because `AD0` is multiplexed and nothing else
 holds it, `BHE#` arrives raw from the CPU because on the 80C186EB it is a
 dedicated pin. Gates 1 and 2 of the '32 are unread.
 
-**The CPU does its own SRAM select** - one of `LCS` (pin 60) or `UCS` (pin 61)
-reaches the common `CE#` net; both have one reading each and they are adjacent
-pins, so one is an off-by-one. See the open probes.
+**The CPU does its own SRAM select**, and it is `LCS` (pin 60). Both `LCS` and
+`UCS` were once recorded on the common `CE#` net, which cannot both be true;
+`UCS` turning out to hold the *flash*'s `CE#` (see the retraction below) leaves
+`LCS` on the SRAM and closes that off-by-one. `LCS` is programmed to
+`0x00000`-`0x20000`, low memory from zero, which is where the SRAM belongs.
+
+> **Retracted 2026-09-18. The ASIC does not select the flash; `UCS` does.**
+> ASIC pin 75 goes to flash pin **13**, `GND`, not to flash pin 12. Three
+> things agree and nothing now dissents:
+>
+> * **A second board.** On the 2805 ISA board - same `1-016-905` ASIC, same
+>   `PA28F400` - pin 75 meters to flash 13, flash 13 meters to ground, and
+>   flash 12 (`CE#`) meters to **CPU pin 61, `UCS`**. The rest of the edge
+>   transfers exactly: `70` to flash 11 *and* RAM 10, `73` to flash 3, `74` to
+>   flash 34, `76` to flash 35. Four pins agreeing and one disagreeing is a
+>   slip, not a bond-out difference.
+> * **The firmware.** The reset stub's single job is to program `0xFFA4`
+>   (`UCS_START`) to `0x8000`, giving a `UCS` window of `0x80000`-`0xffc00` -
+>   512 KiB, the flash exactly. Both images do it, stock 7.3.14 and
+>   `IDSDL302.ROM`. Programming `UCS` to the flash's own size and location is
+>   pointless unless `UCS` selects the flash. Read it with
+>   `CourierRom.chip_selects()`.
+> * **This file contradicted itself.** `LCS` (60) and `UCS` (61) were both
+>   recorded on the SRAM pair's common `CE#` net, which cannot both be true.
+>   `UCS` on the flash resolves it: `LCS` takes the SRAM, and the open probe
+>   that asked which of the two answers is closed.
+>
+> The same region already produced one off-by-one - the "74 is pin 3 or pin 34"
+> conflict, recorded above as one miscounted pin. This is the second.
+>
+> The paragraph and table below are left as written, because the reasoning they
+> carry is what the address readings still support; only the `CE#` row and the
+> conclusion drawn from it are withdrawn.
 
 **And the ASIC selects the flash.** Flash pin 12, `CE#`, comes from ASIC pin 75.
 `UCS` is the 80186's upper chip select, the one active at reset that fetches the
@@ -271,12 +301,14 @@ first instruction, and on this board it does not reach the boot device.
 | 35 | `A15` | `A16` | 76 |
 | 34 | `A16` | `A17` | 74 |
 | 3 | `A17` | `A18` | 73 |
-| 12 | `CE#` | - | 75 |
+| 12 | `CE#` | - | ~~75~~ - **CPU pin 61, `UCS`**; ASIC 75 is `GND` |
 
-The ASIC supplies the flash's bottom eight address lines, its top three and its
-chip select; the '573 supplies the middle. Between the two parts the flash's
-entire address bus is accounted for, and only one of them also decides when the
-device is selected. **That is not a bus buffer. That is a memory controller.**
+The ASIC supplies the flash's bottom eight address lines and its top three; the
+'573 supplies the middle. Between the two parts the flash's entire address bus
+is accounted for - but **the select is the CPU's**, so the sentence this
+section used to end on does not follow. What the readings establish is that the
+ASIC is the board's **address latch**, for both memories and across the whole
+bus. Whether it is more than that is the question the next section reopens.
 
 ### The fold: four address lines in, three out
 
@@ -290,19 +322,28 @@ over the corner supply pair at `61`/`60`:
 | 31 | `A18` | 59 |
 | 32 | `A19` | 58 |
 
-**Four in, three out.** One bit of the CPU's upper address space is consumed by
-the ASIC's decision and does not reach the flash. A part that takes four address
-lines and emits three is not buffering and not substituting - it is deciding,
-and that is **paging**: a 512 KiB device reached through a smaller window with
-the ASIC choosing which part of the device is behind it. The ordinary reason a
-1990s board puts a gate array between a CPU and its boot flash.
+**Four in, three out** - and that is exactly what a **flat** map needs, which is
+why this is no longer evidence of paging.
 
-**The harness's flat 512 KiB flash image is therefore a simplification of
-something with a register behind it.** Nothing in `courier_emu` pages anything,
-and if the supervisor switches banks to reach its upper half it is getting away
-with it because the emulator hands it the whole device at once. No port bit has
-been identified as the paging register; this is the largest unmodelled behaviour
-on the board.
+`UCS` decodes `0x80000`-`0xfffff`, so inside the flash's window system `A19` is
+constant at 1. The flash never needs it. In word mode the part's `A0`-`A17`
+carry system `A1`-`A18`, and the ASIC emits precisely those top three: system
+`A16`, `A17`, `A18`. The fourth line in, `A19`, is what tells the ASIC the flash
+region is being addressed; it has no business going out. Four in and three out
+is a **pass-through with `A19` consumed by the decode**, not a fold.
+
+So the argument that ran from "one bit is consumed" to "therefore paging"
+**does not hold**, and with `CE#` on `UCS` rather than the ASIC the memory-
+controller reading loses its other support at the same time.
+
+**This does not disprove paging** - it removes the reason for believing in it.
+The position now is the plain one: no port bit has ever been identified as a
+paging register, nothing in `courier_emu` pages the flash, the harness's flat
+512 KiB image reproduces both boards' behaviour, and the observation that used
+to argue otherwise is explained by the flat map. Something still has to be said
+about why the high address lines are routed through a gate array at all rather
+than latched with the rest; board layout and the ASIC already owning `A0`-`A7`
+are sufficient answers, and neither needs a register.
 
 ### The memories sit on the CPU's raw `AD` bus
 
@@ -948,10 +989,14 @@ In the order they would pay:
    DSP-side analysis treat as a board constant - follows from it. `CLKMD1` (DSP
    pin 71) and `CLKMD2` (pin 103) say what the DSP divides it by, and those are
    meter readings.
-2. **The paging register.** The ASIC consumes one CPU address bit and drives the
-   flash's top three plus its `CE#`, so something chooses what it substitutes.
-   No port bit has been identified and nothing in `courier_emu` pages the flash.
-   **The largest unmodelled behaviour on the board.**
+2. **Whether there is any paging at all.** *Downgraded 2026-09-18.* This used to
+   read "the paging register" and be the largest unmodelled behaviour on the
+   board. The ASIC does **not** drive the flash's `CE#` - `UCS` does - and its
+   four-in/three-out address path is what a flat map needs, with `A19` consumed
+   by the `UCS` decode. Nothing now argues for a paging register, and the flat
+   512 KiB image the harness uses matches both boards. What remains open is the
+   weaker question of why the top three address lines are routed through the
+   ASIC at all.
 3. **The left edge's last two, `112` and `117`**, against the DSP control signals
    still missing. The ASIC has the data bus, `IS`, `R/W`, `STRB`, `INT2` and the
    clock. Four candidates would each change something: **`DS` (DSP pin 89) and
