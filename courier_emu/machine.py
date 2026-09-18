@@ -157,10 +157,24 @@ MEM_WATCH_EVENTS = 96
 # The watched-port log. Bigger than the mem watch: a data lane the
 # supervisor read-modify-writes produces two entries per byte moved.
 IO_WATCH_EVENTS = 8192
-# The ROM builds' port 0 control latch. 0x40 is the speaker (pulsed by
-# 0x81703); 0x08 is the second serial port's receive-pending input, tested at
-# 0x81d45 with the byte itself read from port 0x0a.
-PORT0_SPEAKER = 0x40
+# The ROM builds' port 0 control latch. 0x08 is the second serial port's
+# receive-pending input, tested at 0x81d45 with the byte itself read from
+# port 0x0a.
+#
+# Bit 0x40 is pulsed by 0x81703 - raised and dropped in the next instruction
+# pair, with interrupts masked around it - and WHAT IT DRIVES IS UNKNOWN. It
+# was called the speaker here, and that is retired:
+# docs/board-verified-403.md drove this bit directly on the board, slowly
+# enough to hear individual clicks, on hook and off, and it produces no sound.
+# Neither does bit 0x04. The speaker is not a CPU port at all; the audio path
+# is on the DSP side, and the physical circuit is still unidentified.
+#
+# The line relay is not this either - it is port 0x10 bit 0, attributed by
+# driving single bits on a physical unit and watching the front of the modem
+# (docs/dsp-rom-probe.md). Nor could it be: on a leased-line run this bit is
+# pulsed 223 times at a steady 6.63 ms, which is 151 Hz, and no relay switches
+# at that rate.
+PORT0_STROBE = 0x40
 PORT0_RX_PENDING = 0x08
 # The four bits 0x81703 carries across its read-modify-write are inputs, not
 # latch storage: answering them from the latch instead of their strapped level
@@ -305,7 +319,8 @@ class RunResult:
     io_summary: dict[str, int] = field(default_factory=dict)
     output_latches: dict[str, int] = field(default_factory=dict)
     # Rising edges of port 0 bit 0x40 on the ROM builds: one per speaker click.
-    speaker_pulses: int = 0
+    # Rising edges on port 0 bit 0x40. Not the speaker - see PORT0_STROBE.
+    port0_strobes: int = 0
     mmio_summary: dict[str, int] = field(default_factory=dict)
     hot_addresses: list[tuple[int, int]] = field(default_factory=list)
     pc_watch: list[dict[str, Any]] = field(default_factory=list)
@@ -498,7 +513,7 @@ class CourierMachine:
         # The ROM builds' port 0 control latch, and the speaker hanging off
         # bit 0x40 of it. Powers up clear; the firmware read-modify-writes it.
         self.port0_latch = 0
-        self.speaker_pulses = 0
+        self.port0_strobes = 0
         self.uart_ports = set(uart_ports or set())
         # Physical 80186 addresses to record register state at. `hot_addresses`
         # is a top-20 profile and cannot answer "was this branch taken, and
@@ -2308,11 +2323,11 @@ class CourierMachine:
             value &= mask
             self.output_latches[port] = value
             if self.uart is not None and port == 0 and size == 1:
-                # Bit 0x40 is the speaker: 0x81703 raises it and drops it again
-                # in the next instruction pair, which is one click. Count the
-                # rising edges so a run can show what the board would sound.
-                if value & PORT0_SPEAKER and not self.port0_latch & PORT0_SPEAKER:
-                    self.speaker_pulses += 1
+                # 0x81703 raises bit 0x40 and drops it again in the next
+                # instruction pair. Count the rising edges: the cadence is the
+                # evidence about what it drives, and it is not the speaker.
+                if value & PORT0_STROBE and not self.port0_latch & PORT0_STROBE:
+                    self.port0_strobes += 1
                 self.port0_latch = value
             pc = current_pc()
             self._record_io("out", port, size, value, pc)
@@ -2952,7 +2967,7 @@ class CourierMachine:
             io_event_count=sum(self.io_counts.values()),
             mmio_event_count=sum(self.mmio_counts.values()),
             io_summary=self._summarize(self.io_counts),
-            speaker_pulses=self.speaker_pulses,
+            port0_strobes=self.port0_strobes,
             output_latches={
                 f"{port:#06x}": value for port, value in sorted(self.output_latches.items())
             },
