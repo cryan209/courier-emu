@@ -1000,10 +1000,20 @@ In the order they would pay:
 15. **The codec's `M/S` (pin 18).** The firmware's free-run configuration implies
     the codec is the slave and the DSP drives `SCLK`/`FS`. One meter reading.
     `MCLK` needs no reading - it is 2.880 MHz, solved from the divider registers.
-16. **Whether `&T1` is the codec's analog loopback.** Register 5 `DS01`-`DS00` =
-    `00` is analog loopback and the bring-up writes `0505`, which is not. A
-    `0504` in the payload would tie the `AT` diagnostic to a hardware mode; its
-    absence would say the loopback is arithmetic in the DSP. No hardware needed.
+16. ~~**Whether `&T1` is the codec's analog loopback.**~~ **Answered: yes.** The
+    resident writes register 5 with `0508` at `90c3` and `90e1`, both real code
+    paths under the cell `0x6f` state word, through the register writer at
+    `8770`. `DS01`-`DS00` = `00` is analog loopback, and `0508` has it - so the
+    loop is *inside the AC01*: "In loopback, `OUT+` and `OUT-` are internally
+    connected to `IN+` and `IN-`" (docs/ac01.txt 2.15.2). There is no external
+    switch and the ASIC is not involved; the DSP throws it over `DIN`. The
+    bring-up's `0505` at `80bd` is the normal setting, as this entry said.
+
+    This stayed open because the entry guessed the wrong encoding. It looked
+    for `0504` - `DS02` set - and the firmware writes `0508`, with `DS03` set.
+    Same field, so a literal grep for `0504` found only a coincidence in a
+    byte-pair table at `c269`. Enumerate every `bf80 05xx` and mask `DS01`-`DS00`
+    instead of grepping one value.
 17. **DSP `A6` (61) and `A7` (62), and a second pass on `A4` (59).** The hole in
     the address decode: the firmware writes port `0x60`, which needs `A6`, and
     six lines with a gap at `A4` cannot produce it. At least one more address
