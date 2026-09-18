@@ -161,7 +161,36 @@ thing that stops it - stated here because it restores an attribution
 [board-parts.md](board-parts.md) had to retire, and because one command settles
 it.
 
-`0x816d1` pulses port `0x00` bit `0x40`:
+Two different pieces of code do the kicking, and between them they cover the
+whole run with no gap. The ROM holds the same twelve-byte sequence
+`e4 00 24 33 0c 40 e6 00 24 33 e6 00` three times, at `0x816d3`, `0xa7955` and
+`0xfc314`.
+
+**In an interrupt handler, first thing.** `0xfc314` and `0xa7955` are the same
+routine assembled for two placements - one `cs:`-relative, one absolute - and
+the handler is copied into low RAM, where it runs at `0x0314`:
+
+```
+ 30c  sti
+ 30d  pushaw / push es
+ 30f  mov ax, 0 / mov es, ax
+ 314  in al,0 / and 33 / or 40 / out 0 / and 33 / out 0   <- the kick
+ 320  mov di, cs:[0x100]        ; ring head
+ 325  sub di, cs:[0x102]        ; minus tail
+ 32a  jae .+4 / add di, 0x4000  ; 16K ring, wrap
+ 330  cmp di, 0x2000            ; half full?
+```
+
+It saves registers and kicks **before it looks at its own work** - which is
+what you do with a watchdog and nothing else. The work is a 16 KB ring buffer
+with head and tail at `0x100`/`0x102`.
+
+That the copy lands at `0x0300` is deliberate: the firmware uses only vectors
+`0x00`-`0x15`, so everything above offset `0x58` in the vector table is free
+space, and it stores code there. A run's `interrupt_vectors` dump is therefore
+junk above `0x15` - those entries are this routine being read as pointers.
+
+**And in the foreground**, at `0x816d1`, for when that handler is not running:
 
 ```
 816d1  pushf / cli            ; the pulse must not be interrupted
@@ -172,14 +201,18 @@ it.
 816df  popf / ret
 ```
 
-On a 44.1 s leased-line run of `IDSDL302.ROM` it fires 309 times:
+On a 44.1 s leased-line run of `IDSDL302.ROM` the two sites fire 309 times
+between them, and they hand over cleanly:
 
-| | |
-|---|---|
-| first pulse | instruction 22,527 - immediately after reset |
-| last pulse | instruction 149,887,999 - the last moment of the run |
-| first 1.48 s | 224 pulses at a flat 151 Hz |
-| thereafter | steady, 81 ms to **536 ms**, bounded |
+| site | kicks | span |
+|---|---|---|
+| the ISR copy at `0x316` | 224 | instruction 22,527 - 5,046,271 (1.48 s) |
+| the foreground at `0x816d5` | 85 | instruction 5,342,208 - 149,887,999 (42.5 s) |
+
+
+The first kick is at instruction 22,527, immediately after reset; the last is
+at 149,887,999, the final moment of the run. The handler phase runs at a flat
+151 Hz; the foreground phase is steady between 81 ms and **536 ms**.
 
 A service that begins at reset, never stops, and whose interval has a ceiling
 is a watchdog. A status poll would wander; a lamp driver would go quiet when
