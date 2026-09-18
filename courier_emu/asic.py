@@ -99,6 +99,29 @@ REGISTERS: tuple[AsicRegister, ...] = (
         "and 13 - the ASIC's ready flags - and acknowledges in bits 0, 1 and "
         "2. High half inbound, low half outbound, on one register.",
     ),
+    AsicRegister(
+        "monitor", (), 0x50,
+        "The call-progress monitor audio, DSP to ASIC, with no CPU port at "
+        "all. The frame ISR takes the received codec sample from DRR and "
+        "writes `(sample * @1d) >> 14` here - 0x8193 `lamm @20`, then 0x8196 "
+        "`lacl @1d / bcnd 819e, eq` to skip when the gain is zero, then "
+        "`mpy @1d / pac / bsar 14 / samm @50`. @1d is the gain, set by the "
+        "CPU with mailbox tag 0x0f; docs/board.md reaches the same reading "
+        "from the 2806's M/L trace - \"tag 0x0f sets a gain for a scaled ADC "
+        "sample copy to ASIC I/O 0x50\". A leased ROM pair writes it 539,452 "
+        "times in 150M instructions, once per frame.\n\n"
+        "This is why no CPU port sweep could find the speaker: the audio "
+        "never crosses to the 80186 - the DSP hands it to the ASIC and the "
+        "ASIC drives the circuit. The 80186 could not carry it anyway. What "
+        "that circuit physically is remains unidentified: the reading that "
+        "put it on the codec's MON OUT with register 4 as its volume was "
+        "never measured and is withdrawn in full (docs/board.md), as is the "
+        "optocoupler reading before it.\n\n"
+        "Not a download lane on the ROM path: `_commit_rom_group` publishes "
+        "the window at 0x58 and up. `_publish_window` does write 0x50 and up, "
+        "but that is the XMF profile and it stops once the call overlay is "
+        "active.",
+    ),
     # --- CPU-side only. No DSP path: the part has no reason to see these. ---
     AsicRegister(
         "status-latch", (0x5C, 0x5E), None,
