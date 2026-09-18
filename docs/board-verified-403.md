@@ -223,15 +223,21 @@ port is released")`, and `0x14` is active low - so setting the bit drops CS and
 stops the DTE, clearing it raises CS and lets it send. The lamp and the line
 are one bit, which is what a `CS` lamp is for.
 
-**This contradicts "port `0x14` bit 1 is ring sense"**, which appears in
-[asic-pinout.md](asic-pinout.md), [board-parts.md](board-parts.md) and
-[board.md](board.md). That claim was already hedged where it was made -
-[daa-line-interface-2016mhz.md](daa-line-interface-2016mhz.md) says it "rests
-on a tick-driven cadence machine ... plus the harness's existing model; no
-capture in this repository shows the bit changing while a line rings." A bit
-the firmware drives as an output cannot also be the ring input. Ring detect
-needs a different bit, and the optocoupler on ASIC pin `19` or `22` remains its
-better candidate.
+**This does not displace "port `0x14` bit 1 is ring sense."** The cadence
+machine at `0x1501d` does `in al, 0x14 / test al, 2`, so the same bit number is
+read there and written here - but a latch can carry different signals in each
+direction at one address, and port `0x00` in this firmware is the worked
+example: `0x33` reads as strapped inputs while `0xc4` are outputs.
+`machine.py` already models `0x14`'s read side from the panel and strap inputs
+rather than from the written latch. So the reading is bit 1 out = CS/CTS,
+bit 1 in = ring sense, and the two routines coexist.
+
+That restores the optocouplers as ring detect and loop-current sense.
+[board-parts.md](board-parts.md) reached for them and then hedged on the
+grounds that "ring sense already has a port (`0x14` bit 1)" - it does, on the
+read side, and the opto is what would drive it. `U14` and `U16` have the ASIC
+on their transistor side, so the ASIC receives both, which is the right
+direction for an input the CPU then reads out of a latch.
 
 The periodic handler's remaining work is three 16-bit countdowns at `cs:[0xf8]`,
 `[0xfa]` and `[0xfc]`, decremented when nonzero, then `mov word [0xff02],

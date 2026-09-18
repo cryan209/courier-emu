@@ -94,12 +94,16 @@ The bit meanings are inferred from how the code uses them, not from a probe.
 "Port `0x14` bit 1 is ring sense" rests on a tick-driven cadence machine with
 debounce counters reading that bit and nothing else, plus the harness's
 existing model; no capture in this repository shows the bit changing while a
-line rings. **It is now contradicted.** The serial receive
-interrupt at `0xfc38b` *drives* that bit as CTS hardware flow control - set
-when the 16 KB DTE ring passes `0x3e00`, cleared when it drains to `0x2000` -
-and `panel.py` has `CS` measured on the same bit. See
+line rings. The same bit number is
+*written* by the serial receive path as CTS flow control, and `panel.py` has
+`CS` measured there - see
 [board-verified-403.md](board-verified-403.md#the-ring-is-the-dte-receive-buffer-and-port-0x14-bit-1-is-its-cts).
-A bit the firmware drives cannot be the ring input. The four-bit read at `0x287f9` is called an identity because it is
+That does not contradict this reading: on a latch with independent read and
+write paths the same address carries different signals in each direction, and
+port `0x00` in this firmware is the worked example - `0x33` reads as strapped
+inputs while `0xc4` are outputs. `machine.py` already models `0x14`'s read side
+from the panel and strap inputs rather than from the latch. So bit 1 is
+plausibly CS/CTS out and ring sense in, and the two routines do not conflict. The four-bit read at `0x287f9` is called an identity because it is
 read once, stored, and branched on - the device on the other end of those
 clocks has not been identified, and calling it the DAA rather than an option
 strap or country module is an assumption. Neither routine was executed in the
