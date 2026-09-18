@@ -369,6 +369,9 @@ class BridgeStatus:
     # they happened rather than sampled. `dsp_originated_tags` is a poll and
     # tears message boundaries; this is the ordered truth.
     dsp_mailbox_log: list[dict[str, Any]] | None = None
+    # Writes to the C52's MMR space. 0x00-0x35 are the part's own registers,
+    # 0x50-0x5f the ASIC window, and 0x36-0x4f a gap answered from storage.
+    dsp_mmr_writes: dict[str, int] | None = None
     dsp_cells: dict[str, str] | None = None
     dsp_writes: list[dict[str, int]] | None = None
 
@@ -2855,6 +2858,7 @@ class CourierDspBridge:
             error=self.error,
             dsp=self._core_state(),
             dsp_host_ports=self._dsp_port_census(),
+            dsp_mmr_writes=self._dsp_mmr_census(),
             core_codec=self._core_snapshot("codec_state"),
             dsp_originated_messages=self.dsp_originated_messages,
             dsp_originated_tags=dict(self.dsp_originated_tags),
@@ -3027,6 +3031,34 @@ class CourierDspBridge:
             if entry.get("reads") or entry.get("writes")
         }
         self._last_snapshots["io_port_stats"] = census
+        return census
+
+    def _dsp_mmr_census(self) -> dict[str, int]:
+        """Writes to the C52's memory-mapped register space, 0x00-0x5f.
+
+        That range is not one thing. `cpuregs_w` answers 0x00-0x35 from the
+        part's own registers - IMR, PMST, the ARs, DRR/DXR, the timer and the
+        TDM block - which are inside the DSP and never reach the ASIC.
+        0x50-0x5f falls through to the I/O space and is the ASIC window. The
+        sixteen addresses **between** them, 0x36-0x4f, fall through to
+        `m_data[offset]` and are answered from ordinary storage.
+
+        Whether that is right depends on how wide the ASIC's DSP-side decode
+        is, which no measurement here settles - 0x50 is a constant in the
+        core, not something recovered from the part. So report what the
+        firmware actually touches in that gap rather than assuming it is
+        empty.
+        """
+        if self.core is None or not hasattr(self.core, "data_write_count"):
+            return {}
+        if getattr(self.core, "closed", False):
+            return self._last_snapshots.get("dsp_mmr", {})
+        census = {}
+        for address in range(0x00, 0x60):
+            count = self.core.data_write_count(address)
+            if count:
+                census[f"{address:02x}"] = count
+        self._last_snapshots["dsp_mmr"] = census
         return census
 
     def _core_snapshot(self, name: str) -> Any:
