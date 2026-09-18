@@ -197,14 +197,14 @@ Pin `117` is the only unread one on this edge.
 | 8 | 8 | DIP switch **7** |
 | 9 | 9 | **`DCD`** - `U23` pin 4 (`2A`), the `CD` driver's input; reaches the 2805's UART `DCD` (pin 59) |
 | 10 | 10 | **`CTS`** - drives the `CS` (Clear to Send) lamp here; reaches the 2805's UART `CTS` (pin 60) |
-| 11 | 11 | `U23` pin 10 (`3B`) |
-| 12 | 12 | `U23` pin 2 (`1A`) |
+| 11 | 11 | **`RI`** - `U23` pin 10 (`3B`); reaches the 2805's UART `RI` (pin 61) |
+| 12 | 12 | **`DSR`** - `U23` pin 2 (`1A`); reaches the 2805's UART `DSR` (pin 62) |
 | 13 | 13 | `AA` lamp |
 | 14 | 14 | `ARQ` lamp |
 | 15 | 15 | **Talk/Data** switch |
 | 16 | 16 | `HS` lamp |
 | 17 | 17 | `SYN` lamp |
-| 18 | 18 | `TR` lamp |
+| 18 | 18 | `TR` lamp - **and the 2805's UART `DTR` (pin 50) lands here**, which is a direction conflict; see the 2805 section |
 | 19 | 19 | optocoupler `U14` pin 5 - the line-side barrier |
 | 20 | 20 | DIP switch **6** |
 | 21 | 21 | `AA` lamp, **second pin** |
@@ -931,12 +931,12 @@ revised March 1996 - held here so nobody has to find it again.
 |---|---|---|---|---|
 | 6 | `SIN` | I | ASIC 46 | ASIC 46 to `U22` pin 2 - the `RD` net |
 | 49 | `RTS` | O | CPU 1 (`CTS0`) | `DS1489` `2Y` to CPU 1 |
-| 50 | `DTR` | O | *predicted* ASIC 48 | `DS1489` `4Y` to ASIC 48 |
+| 50 | `DTR` | O | ASIC **18** - *not* the predicted 48 | ASIC 18 is the `TR` lamp; `DS1489` `4Y` goes to ASIC 48 |
 | 51 | `SOUT` | O | CPU 3 (`RXD0`) | `DS1489` `1Y` to CPU 3 |
 | 59 | `DCD` | I | ASIC 9 | ASIC 9 to `U23` pin 4 - the `CD` driver |
 | 60 | `CTS` | I | ASIC 10 | ASIC 10, recorded as "the `CS` lamp" |
-| 61 | `RI` | I | *unread* | one of ASIC 11, 12, 49, 50 |
-| 62 | `DSR` | I | *unread* | one of ASIC 11, 12, 49, 50 |
+| 61 | `RI` | I | ASIC 11 | ASIC 11 to `U23` pin 10 (`3B`) |
+| 62 | `DSR` | I | ASIC 12 | ASIC 12 to `U23` pin 2 (`1A`) |
 
 **Every net lands on the signal the 2806 says it should.** `RD` reaches `SIN`,
 the `CD` driver's source reaches `DCD`, the host's `RTS` reaches `CTS0` and the
@@ -968,30 +968,59 @@ That is the method rule below in miniature - a trace that stops at a part's
 input pin has found one end of a net, not the whole of it - applied to a lamp
 rather than a line driver.
 
+`ASIC 11` and `12` then close the modem-status group the same way, and neither
+needs a correction: both were already recorded as 75188 driver inputs, and they
+reach `RI` and `DSR`. All six of the 2806's driver-fed signals now have names.
+
 Nothing yet says whether the *rest* of the bottom edge transfers. Eight DIP
 switches and a Talk/Data switch have no obvious internal-card equivalent, and
 those readings remain the 2806's alone.
 
-### The `93C66` is probably shared with the PnP controller
+### `DTR` on ASIC 18 does not fit, and the direction is why
+
+Every net above keeps its direction. `ASIC 10` drives the `CS` lamp on the
+external and the UART's `CTS` **input** on the internal - an ASIC output in
+both cases, which is why that one reconciled cleanly.
+
+`ASIC 18` does not. UART pin 50 is `DTR`, an **output** from the 550, so on the
+2805 ASIC 18 is an **input**. On the 2806 it drives the `TR` lamp, which makes
+it an **output**. The same pin cannot be both unless something is being
+reconfigured, and three readings are possible:
+
+1. **The `TR` lamp entry is a destination, not a signal** - the lamp sits on
+   the `DTR` net rather than being driven by a dedicated ASIC output, and ASIC
+   18 is the `DTR` input on both boards. This is the same correction `ASIC 9`
+   and `10` just took, and `TR` is *Terminal Ready*, so the signal name fits.
+2. **The gate array reconfigures the pin** per product variant.
+3. **One of the two readings is wrong.**
+
+Reading 1 is the cheapest to believe and it has a complication: `DS1489` `4Y`
+already goes to **ASIC 48** on the 2806, recorded as "most likely `DTR`" - an
+inference, never confirmed. Both pins cannot be the `DTR` input.
+
+**The probe that separates them: meter ASIC 48 on the 2805.** If it also
+reaches UART pin 50, both pins sit on one `DTR` net and the 2806's pin-48 guess
+survives. If ASIC 48 goes nowhere on this board, then 18 is the `DTR` input, 48
+was misidentified, and the `TR` lamp is hanging on the net rather than driven.
+
+### There are two `93C66`s, so nothing is shared
 
 The 550 has its own serial-EEPROM interface - `CS` (54), `SCLK` (55), `SIO`
-(57) - and the datasheet specifies an **`ST93C56/66` or equivalent**, holding
+(57) - and the datasheet specifies an **`ST93C56/66` or equivalent** holding
 "the clock prescalar divisor and PnP resource data", organised x16 with `ORG`
-tied high or floating. The 2805 carries one `ATMEL 93C66`, and
-[board-parts.md](board-parts.md) records the 2806's as the **CPU's** settings
-NVRAM with `ORG` floating - the same part in the same configuration.
+tied high or floating. That is the same part in the same configuration as the
+2806's settings NVRAM, and pin **58** is an arbitration line that goes low when
+"either the TL16PNP550A **or controller**" is accessing the EEPROM - so TI
+expected the part to be shared, and this section first inferred that it was.
 
-Pin **58**, `EEPROM`, is the tell: a bidirectional access line that "when
-pulled low, either the TL16PNP550A or controller is accessing the EEPROM".
-That is an arbitration signal, and it only exists because TI expected the part
-to be shared with a host controller. So the likely arrangement here is **one
-`93C66` holding both the PnP resource data and the modem's settings**, with the
-550 and the supervisor taking turns.
-
-Unverified, and cheap to check: meter UART 54, 55, 57 and 58 against the
-`93C66`, and against the CPU pins that own it on the 2806 (`CS`/`SK` on 52/57,
-`DI`+`DO` on 79). If it is shared, the settings NVRAM on this board is not the
-supervisor's alone and `nvram.py`'s 256-word map may have company in it.
+**It is not. The 2805 carries two `93C66`s.** One is the PnP controller's
+resource store and one is the supervisor's settings NVRAM, and the arbitration
+pin buys nothing here because the parts are separate. So `nvram.py`'s 256-word
+map still describes a part the supervisor owns alone, and a captured settings
+EEPROM off this board is directly comparable with the 2806's - **provided the
+right one of the two is read.** Tell them apart by metering `CS`: the
+supervisor's answers to a CPU pin (`CS`/`SK` on 52/57, `DI`+`DO` on 79 over
+there), the PnP one to UART pin 54.
 
 ### Three oscillators, and the clock
 
