@@ -140,6 +140,7 @@ void C5xCore::reset()
     m_mailbox_output.fill(0);
     m_asic_output.fill(0xffff);
     m_io_events.clear();
+    m_mailbox_events.clear();
     m_io_port_stats.fill({});
     m_data_events.clear();
     m_data_write_counts.fill(0);
@@ -759,6 +760,13 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     stat.last_write_pc = static_cast<uint16_t>(m_pc - 1);
     if (m_io_events.size() >= 8192) m_io_events.pop_front();
     m_io_events.push_back({true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
+    // The tag, word and stream ports, kept apart from the general log so a
+    // call's worth of mailbox traffic survives the datapump's PCM.
+    if (port >= 0x5e && port <= 0x60) {
+        if (m_mailbox_events.size() >= 8192) m_mailbox_events.pop_front();
+        m_mailbox_events.push_back(
+            {true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
+    }
     // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
     // resident image uses external port 006a at high program addresses. The
     // C52's low-bank TDM ISR also writes 006a, but that is its control slot and

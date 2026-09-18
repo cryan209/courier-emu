@@ -312,6 +312,11 @@ class NativeC5x:
         lib.courier_c5x_get_io_event.argtypes = [
             ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
+        lib.courier_c5x_get_mailbox_event_count.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_mailbox_event_count.restype = ctypes.c_size_t
+        lib.courier_c5x_get_mailbox_event.argtypes = [
+            ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
+        ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
 
@@ -692,6 +697,26 @@ class NativeC5x:
             values = (ctypes.c_uint64 * 2)()
             self.library.courier_c5x_get_pc_trace(self.handle, index, values, 2)
             result.append({"pc": int(values[0]), "op": int(values[1])})
+        return result
+
+    def mailbox_events(self) -> list[dict[str, int]]:
+        """Every DSP write to the tag, word and stream ports, in order.
+
+        `io_events` cannot answer this: it is unfiltered, and the datapump's
+        transmit writes flush it long before anyone reads it. Polling the
+        port stats instead samples an asynchronous stream, which tears
+        message boundaries and pairs one message's tag with another's word.
+        """
+        count = int(self.library.courier_c5x_get_mailbox_event_count(self.handle))
+        result: list[dict[str, int]] = []
+        for index in range(count):
+            values = (ctypes.c_uint64 * 5)()
+            self.library.courier_c5x_get_mailbox_event(
+                self.handle, index, values, len(values))
+            result.append({
+                "port": int(values[1]), "value": int(values[2]),
+                "pc": int(values[3]), "instruction": int(values[4]),
+            })
         return result
 
     def io_events(self, *, limit: int | None = None,

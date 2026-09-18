@@ -372,6 +372,22 @@ void courier_c5x_get_io_event(void *handle, std::size_t index, uint64_t *values,
     std::copy(std::begin(result), std::end(result), values);
 }
 
+std::size_t courier_c5x_get_mailbox_event_count(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->mailbox_events().size() : 0;
+}
+
+void courier_c5x_get_mailbox_event(
+    void *handle, std::size_t index, uint64_t *values, std::size_t count)
+{
+    if (!handle || !values || count < 5) return;
+    const auto &events = static_cast<C5xCore *>(handle)->mailbox_events();
+    if (index >= events.size()) return;
+    const auto &event = events[index];
+    uint64_t result[] = {event.write ? 1u : 0u, event.port, event.value, event.pc, event.instruction};
+    std::copy(std::begin(result), std::end(result), values);
+}
+
 uint16_t courier_c5x_get_line_tx_sample(void *handle, std::size_t index)
 {
     if (!handle) return 0;

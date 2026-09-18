@@ -359,6 +359,10 @@ class BridgeStatus:
     # synthesises for it at call-overlay activation.
     dsp_originated_messages: int = 0
     dsp_originated_tags: dict[str, int] | None = None
+    # Every message the DSP actually sent, decoded from the port writes as
+    # they happened rather than sampled. `dsp_originated_tags` is a poll and
+    # tears message boundaries; this is the ordered truth.
+    dsp_mailbox_log: list[dict[str, Any]] | None = None
     dsp_cells: dict[str, str] | None = None
     dsp_writes: list[dict[str, int]] | None = None
 
@@ -1353,6 +1357,40 @@ class CourierDspBridge:
         # "did it report the tone"; a histogram of tag:word can, by diffing a
         # run that heard a tone against one that heard silence.
         self.dsp_originated_tags[f"{header:04x}:{data:04x}"] += 1
+
+    def _dsp_mailbox_log(self) -> list[dict[str, Any]]:
+        """The DSP's sent messages, decoded from its own port writes.
+
+        The resident's sender writes the tag to 0x5e and then the word to
+        0x5f, and a tag with bit 15 set is followed by further words on 0x5f
+        (`0x83eb`, `0x83ee`, `0x83f6`). Group on that boundary: a write to
+        0x5e opens a message and the 0x5f writes after it are its words.
+        Port 0x60 is the separate stream lane and is recorded as its own row.
+        """
+        if not hasattr(self.core, "mailbox_events"):
+            return []
+        try:
+            events = self.core.mailbox_events()
+        except Exception:  # a closed core answers nothing
+            return []
+        messages: list[dict[str, Any]] = []
+        current: dict[str, Any] | None = None
+        for event in events:
+            port, value = event["port"], event["value"]
+            if port == DSP_TAG_PORT:
+                current = {
+                    "tag": f"{value:04x}", "words": [],
+                    "pc": f"{event['pc']:04x}", "instruction": event["instruction"],
+                }
+                messages.append(current)
+            elif port == DSP_WORD_PORT and current is not None:
+                current["words"].append(f"{value:04x}")
+            elif port == DSP_STREAM_PORT:
+                messages.append({
+                    "stream": f"{value:04x}", "pc": f"{event['pc']:04x}",
+                    "instruction": event["instruction"],
+                })
+        return messages
 
     def _queue_runtime_message(self, header: int, data: int) -> None:
         if self._audio_only:
@@ -2791,6 +2829,7 @@ class CourierDspBridge:
             core_codec=self._core_snapshot("codec_state"),
             dsp_originated_messages=self.dsp_originated_messages,
             dsp_originated_tags=dict(self.dsp_originated_tags),
+            dsp_mailbox_log=self._dsp_mailbox_log(),
             dsp_memory_map=self._core_snapshot("memory_map"),
             asic={
                 "registers": {
