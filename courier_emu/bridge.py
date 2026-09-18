@@ -595,6 +595,9 @@ class CourierDspBridge:
         self.timebase: Timebase = DEFAULT_COURIER
         self.dsp_steps_per_x86 = DEFAULT_COURIER.dsp_steps_per_x86
         self._line_instructions = 0
+        # The ASIC's 16-bit status latch, as the CPU reads it at 0x5c/0x5e.
+        # Not a C50 register: see `_publish_connected_event`.
+        self._status_latch = 0
         # The last DXR write count the socket line was paced against. The
         # AC01's frame clock, not the CPU's instruction count.
         self._line_codec_last = 0
@@ -1808,11 +1811,21 @@ class CourierDspBridge:
         # datapump-up event; make that edge visible before queuing the reply.
         self._runtime_mode = True
         self._runtime_ready = True
-        # At the same completion boundary the working C50 exposes 5e=22 and
-        # 5c=9e.  Publish that ASIC status latch for the answer-side firmware.
-        # leaving it at reset zero makes the valid connected event fail.
-        if hasattr(self.core, "set_io"):
-            self.core.set_io(0x5E, 0x229E)
+        # At the same completion boundary the working C50 exposes the CPU
+        # ports 5e=22 and 5c=9e. Those are the 80186's two halves of one
+        # 16-bit word, and the answer-side firmware reads them; leaving the
+        # latch at reset zero makes the valid connected event fail.
+        #
+        # This used to be published with `set_io(0x5E, 0x229E)`, which writes
+        # the *DSP's* register 0x5e - the tag. CPU 0x5c/0x5e are the word, and
+        # the word is DSP register 0x5f, so that put the value one register
+        # too low and, worse, overwrote a tag the C50 may have placed there
+        # and be waiting for the CPU to read. The read side compensated by
+        # reading 0x5e back, so the two agreed and the value came out right.
+        # Hold it on the bridge instead: it is an ASIC latch the harness
+        # stands in for, not a C50 register, and it has no business in the
+        # part's own address space.
+        self._status_latch = 0x229E
         self._queue_runtime_message(0x0009, 0x0000)
         # The active runtime table carries status completion under 0x44;
         # 0x4d is only present in the fallback table used during bring-up.
@@ -2167,11 +2180,12 @@ class CourierDspBridge:
                 status = 1
                 # Bit 1 is "a word is waiting", and the C50's own sender is a
                 # source of one just as the bridge's queue is. Reporting only
-                # the queue left the resident's sender at 0x83d6 spinning on
-                # its four-instruction wait for ever: the CPU never saw the
-                # bit, so it never read the ports and never acknowledged, so
-                # PA7 bit 1 never came back up. No DSP-originated word ever
-                # reached the supervisor, on any call.
+                # the queue meant the CPU never saw the bit for a word the
+                # C50 had sent, so it never read the ports and never wrote the
+                # acknowledgement that returns PA7 bit 1. No DSP-originated
+                # word reached the supervisor on this path, on any call.
+                # (0x83d6..0x83d9 is the sender's ring-empty test, not a wait;
+                # it returns at once when 0x0078 and 0x0079 agree.)
                 if (
                     self._runtime_inbound
                     or self._dsp_completion_status() & DSP_SEND_COMPLETE
@@ -2226,13 +2240,12 @@ class CourierDspBridge:
             _, data = self._runtime_inbound[0]
             return (data >> (8 if port == 0x5E else 0)) & 0xFF
         if port in (0x5C, 0x5E) and self.active and hasattr(self.core, "io"):
-            # The ASIC exposes the C50's 16-bit status latch as high byte at
-            # 5E and low byte at 5C. These are the ports read by the
-            # supervisor's rate/status routine; they are not download-window
-            # lanes once the call datapump owns the bus.
-            word = self.core.io(0x5E)
-            if self._connected_event_queued and word == 0:
-                word = 0x229E
+            # The ASIC's own 16-bit status latch, high byte at CPU 5e and low
+            # byte at CPU 5c. These are the ports the supervisor's rate/status
+            # routine reads; they are not download-window lanes once the call
+            # datapump owns the bus. The latch lives on the bridge because the
+            # ASIC is not the C50 - see `_publish_connected_event`.
+            word = self._status_latch
             return (word >> (8 if port == 0x5E else 0)) & 0xFF
         if port in DSP_RUNTIME_PORTS and self._runtime_inbound:
             header, data = self._runtime_inbound[0]
@@ -2246,9 +2259,16 @@ class CourierDspBridge:
         word = self.core.io(0x50 + lane // 2)
         return (word >> (8 * (lane & 1))) & 0xFF
 
-    # 80186 byte port -> (DSP I/O port, which half). 0x58/0x5a carry the tag
-    # and 0x5c/0x5e the data, which is what the resident reads from PA14/PA15;
-    # 0x1c is the status word the four block routines poll as PA7.
+    # 80186 byte port -> (DSP register, which half). The two sides number
+    # these differently and the same literal means different things in each:
+    # CPU 0x5e is the high byte of the *word*, DSP 0x5e is the *tag*.
+    #
+    # CPU 0x58/0x5a are the tag and read DSP 0x5e; CPU 0x5c/0x5e are the word
+    # and read DSP 0x5f. That is what the resident writes at 0x83eb and
+    # 0x83ee and reads back through the 0x23f0 helper with `#ff5f`. An older
+    # comment here said PA14/PA15, which would be registers 0x0e/0x0f; the
+    # image does not agree. CPU 0x1c is the status the block routines poll,
+    # and it is DSP 0x57 - the register the sender reaches with `#ff57`.
     MIRROR = {0x58: (0x5E, 0), 0x5A: (0x5E, 1), 0x5C: (0x5F, 0), 0x5E: (0x5F, 1)}
 
     def _mirror_port(self, port: int, value: int) -> None:
