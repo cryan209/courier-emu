@@ -2854,7 +2854,7 @@ class CourierDspBridge:
             rx_acquisition_assisted=self._rx_acquisition_assisted,
             error=self.error,
             dsp=self._core_state(),
-            dsp_host_ports=self._core_snapshot("io_port_stats"),
+            dsp_host_ports=self._dsp_port_census(),
             core_codec=self._core_snapshot("codec_state"),
             dsp_originated_messages=self.dsp_originated_messages,
             dsp_originated_tags=dict(self.dsp_originated_tags),
@@ -3006,6 +3006,28 @@ class CourierDspBridge:
             return self._last_state
         self._last_state = self.core.state()
         return self._last_state
+
+    def _dsp_port_census(self) -> dict[str, dict[str, int]]:
+        """Every ASIC port the C52 has touched, not just the mailbox window.
+
+        `io_port_stats` defaults to 0x50-0x5f, so the harness reported the
+        mailbox and download window and nothing else - the resident's own
+        writes at 0x68, 0x69, 0x6a, 0x6b and 0x6c (its init at 0x8048 and
+        again at 0x8158) were outside what anyone could see. The board decodes
+        no further than 0x7f (docs/asic-port-map.md), so sweep that and report
+        only the ports with traffic.
+        """
+        if self.core is None or not hasattr(self.core, "io_port_stats"):
+            return {}
+        if getattr(self.core, "closed", False):
+            return self._last_snapshots.get("io_port_stats", {})
+        stats = self.core.io_port_stats(range(0x00, 0x80))
+        census = {
+            port: entry for port, entry in stats.items()
+            if entry.get("reads") or entry.get("writes")
+        }
+        self._last_snapshots["io_port_stats"] = census
+        return census
 
     def _core_snapshot(self, name: str) -> Any:
         """The last value `name` reported, kept across the core's destruction.
