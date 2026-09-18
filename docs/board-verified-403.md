@@ -154,6 +154,60 @@ withdrawn as unmeasured - see the correction at
 `ATM` is settable now, so a dial under each `M` setting with the panel watched is
 still the probe worth running.
 
+## The `0x81703` pulse is the ASIC's watchdog kick
+
+Not measured on the board. Inferred from the cadence, the wiring and the one
+thing that stops it - stated here because it restores an attribution
+[board-parts.md](board-parts.md) had to retire, and because one command settles
+it.
+
+`0x816d1` pulses port `0x00` bit `0x40`:
+
+```
+816d1  pushf / cli            ; the pulse must not be interrupted
+816d3  in  al, 0
+816d5  and al, 0x33           ; keep the four strapped input bits
+816d7  or  al, 0x40 / out 0   ; raise
+816db  and al, 0x33 / out 0   ; drop, next instruction pair
+816df  popf / ret
+```
+
+On a 44.1 s leased-line run of `IDSDL302.ROM` it fires 309 times:
+
+| | |
+|---|---|
+| first pulse | instruction 22,527 - immediately after reset |
+| last pulse | instruction 149,887,999 - the last moment of the run |
+| first 1.48 s | 224 pulses at a flat 151 Hz |
+| thereafter | steady, 81 ms to **536 ms**, bounded |
+
+A service that begins at reset, never stops, and whose interval has a ceiling
+is a watchdog. A status poll would wander; a lamp driver would go quiet when
+idle. `cli`/`popf` around a two-instruction pulse says the *width* matters,
+which is an edge into a retriggerable monostable rather than a level a latch
+holds.
+
+The ASIC is the only part that can act on it. It resets the CPU through `R1`
+from ASIC pin 52 into `RESIN`, and the `ADM707`'s watchdog is unused with pin 6
+not connected, so the supervisor cannot. And the board resets a halted monitor
+after about 1.5 s ([probe_transport.py](../courier_emu/probe_transport.py)) - a
+measured bound whose trigger `board-parts.md` left unattributed when it retired
+the `ADM707` explanation. 536 ms worst case against ~1.5 s is the margin you
+would design for.
+
+What suppresses the pulse closes it. `0x816ca` skips the kick when `[0x5a2]`
+bit 7 is set, and exactly one site sets that byte: an `AT` parser matching
+`!` at `0xa629d`. Stopping the kick is how a modem resets itself from the
+command line.
+
+**To settle it:** type `AT!` and see whether the board resets about 1.5 s
+later. A scope on ASIC pin 52 does it the other way round. Either reading also
+gives `board-parts.md` its attribution back.
+
+This bit is not the speaker - see the section above - and not the line relay,
+which is port `0x10` bit 0. Nor could it be: nothing mechanical switches at
+151 Hz.
+
 ## Two port read-backs, measured
 
 | port | board | emulator |
