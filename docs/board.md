@@ -461,7 +461,19 @@ So the argument that ran from "one bit is consumed" to "therefore paging"
 **does not hold**, and with `CE#` on `UCS` rather than the ASIC the memory-
 controller reading loses its other support at the same time.
 
-**This does not disprove paging** - it removes the reason for believing in it.
+**And there is no room for paging.** `UCS` decodes `0x80000`-`0xfffff`: 512 KiB,
+which is the `PA28F400` entire. Paging means reaching a large device through a
+*smaller* window - the retracted text said exactly that, "a 512 KiB device
+reached through a smaller window" - and the window is not smaller. The CPU
+addresses every byte of the part directly. That is not an absence of evidence
+for a paging register, it is an absence of anything for one to do.
+
+**What is still unexplained is `A19`.** It reaches the ASIC on both boards
+(pin 58, CPU pin 32, metered on the 2806 and the 2805), and with `UCS` holding
+`CE#` the ASIC does not need it to gate anything. Qualifying its own address
+outputs so they tri-state outside the flash region is the ordinary answer and
+needs no register. That is a guess about *why* the line is there, not a
+measurement, and it is the one loose end this retraction leaves.
 The position now is the plain one: no port bit has ever been identified as a
 paging register, nothing in `courier_emu` pages the flash, the harness's flat
 512 KiB image reproduces both boards' behaviour, and the observation that used
