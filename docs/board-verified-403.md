@@ -190,6 +190,53 @@ That the copy lands at `0x0300` is deliberate: the firmware uses only vectors
 space, and it stores code there. A run's `interrupt_vectors` dump is therefore
 junk above `0x15` - those entries are this routine being read as pointers.
 
+### The ring is the DTE receive buffer, and port `0x14` bit 1 is its CTS
+
+The two halves of it are next to each other in the ROM. The receive interrupt
+at `0xfc38b` fills the ring; the periodic handler above drains the flow
+control.
+
+```
+ 38b  pushaw / push es / es = 0
+ 392  ax = [0xff68]            ; the 186's serial receive register
+ 395  di = cs:[0x100]          ; head
+ 39a  stosb es:[di]            ; store, di++
+ 39b  cmp di, 0x5975 / jbe
+ 3a1  mov di, 0x1975           ; wrap
+ 3a4  cs:[0x100] = di
+ 3a9  di -= cs:[0x102]         ; occupancy
+ 3b4  cmp di, 0x3e00 / jb      ; 15,872 of 16,384 - 97% full
+ 3ba  ax = 0x020a / al = cs:[0x11c] / or al, ah / out 0x14, al
+```
+
+So the ring is **16 KB at `0x1975`-`0x5975`**, head at `cs:[0x100]`, tail at
+`cs:[0x102]`, and `cs:[0x11c]` is a shadow of port `0x14`.
+
+- **High water**, in the receive interrupt: occupancy >= `0x3e00` **sets**
+  bit `0x02` at port `0x14`.
+- **Low water**, in the periodic handler right after the watchdog kick:
+  occupancy <= `0x2000` (half) **clears** it.
+
+That is CTS hardware flow control with hysteresis, and it identifies the bit.
+`panel.py` already has `Led("CS", 0x14, 0x02, ..., "measured: drops when the
+port is released")`, and `0x14` is active low - so setting the bit drops CS and
+stops the DTE, clearing it raises CS and lets it send. The lamp and the line
+are one bit, which is what a `CS` lamp is for.
+
+**This contradicts "port `0x14` bit 1 is ring sense"**, which appears in
+[asic-pinout.md](asic-pinout.md), [board-parts.md](board-parts.md) and
+[board.md](board.md). That claim was already hedged where it was made -
+[daa-line-interface-2016mhz.md](daa-line-interface-2016mhz.md) says it "rests
+on a tick-driven cadence machine ... plus the harness's existing model; no
+capture in this repository shows the bit changing while a line rings." A bit
+the firmware drives as an output cannot also be the ring input. Ring detect
+needs a different bit, and the optocoupler on ASIC pin `19` or `22` remains its
+better candidate.
+
+The periodic handler's remaining work is three 16-bit countdowns at `cs:[0xf8]`,
+`[0xfa]` and `[0xfc]`, decremented when nonzero, then `mov word [0xff02],
+0x8000` - the 186's end-of-interrupt - and `iret`.
+
 **And in the foreground**, at `0x816d1`, for when that handler is not running:
 
 ```
