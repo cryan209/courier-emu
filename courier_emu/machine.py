@@ -154,6 +154,9 @@ DTE_TYPING_INSTRUCTIONS = DTE_READY_INSTRUCTIONS + 5_000_000
 PC_WATCH_SAMPLES = 64
 MEM_WATCH_EVENTS = 96
 
+# The watched-port log. Bigger than the mem watch: a data lane the
+# supervisor read-modify-writes produces two entries per byte moved.
+IO_WATCH_EVENTS = 8192
 # The ROM builds' port 0 control latch. 0x40 is the speaker (pulsed by
 # 0x81703); 0x08 is the second serial port's receive-pending input, tested at
 # 0x81d45 with the byte itself read from port 0x0a.
@@ -308,6 +311,10 @@ class RunResult:
     pc_watch: list[dict[str, Any]] = field(default_factory=list)
     peek: dict[str, str] = field(default_factory=dict)
     mem_watch: list[dict[str, Any]] = field(default_factory=list)
+    # Every access to the watched I/O ports, with the pc that made it.
+    # `io_events` keeps only the first 128, which on any real run is boot
+    # traffic, so a port that only moves during a call cannot be seen in it.
+    io_watch: list[dict[str, Any]] = field(default_factory=list)
     pc_watch_counts: dict[str, int] = field(default_factory=dict)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
@@ -438,6 +445,7 @@ class CourierMachine:
         dsp_write_watch: int | None = None,
         dsp_acquisition_assist: bool = False,
         mem_watch: tuple[int, int] | None = None,
+        io_watch: tuple[int, ...] = (),
         cpu_engine: str = "interpreter",
     ) -> None:
         if cpu_engine not in ("unicorn", "interpreter"):
@@ -507,6 +515,9 @@ class CourierMachine:
         # of, and nothing else records who fills it.
         self.mem_watch = mem_watch
         self.mem_watch_events: list[dict[str, Any]] = []
+        #: I/O ports to log every access to, with the pc.
+        self.io_watch = tuple(io_watch)
+        self.io_watch_events: list[dict[str, Any]] = []
         self.pc_watch_events: list[dict[str, Any]] = []
         self.pc_watch_counts: Counter[str] = Counter()
         self.max_io_events = max_io_events
@@ -2950,6 +2961,7 @@ class CourierMachine:
             pc_watch=self.pc_watch_events,
             peek=self._peek_values(),
             mem_watch=self.mem_watch_events,
+            io_watch=self.io_watch_events,
             pc_watch_counts=dict(self.pc_watch_counts),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
@@ -2992,6 +3004,12 @@ class CourierMachine:
         self.io_counts[(direction, port, size)] += 1
         if len(self.io_events) < self.max_io_events:
             self.io_events.append(IoEvent(direction, port, size, value, pc))
+        if port in self.io_watch and len(self.io_watch_events) < IO_WATCH_EVENTS:
+            self.io_watch_events.append({
+                "direction": direction, "port": f"{port:02x}", "size": size,
+                "value": f"{value:02x}", "pc": f"{pc:05x}",
+                "instructions": self.instructions,
+            })
 
     @staticmethod
     def _summarize(counts: Counter[tuple[str, int, int]]) -> dict[str, int]:

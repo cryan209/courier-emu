@@ -213,6 +213,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--dsp-write-watch", args.dsp_write_watch))
     if args.mem_watch:
         command.extend(("--mem-watch", args.mem_watch))
+    if args.io_watch:
+        command.extend(("--io-watch", args.io_watch))
     if args.real_delays:
         command.append("--real-delays")
     if args.track_executed:
@@ -939,6 +941,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ADDR[=NAME]",
         help="report this byte cell's final value, hex, repeatable. The board's "
         "own ATGLK2 reads the same addresses, so the two compare directly",
+    )
+    run.add_argument(
+        "--io-watch",
+        default="",
+        metavar="PORTS",
+        help="comma-separated hex 80186 I/O ports to log every access to, "
+        "with the pc; the general io log keeps only the first 128 events",
     )
     run.add_argument(
         "--dsp-trace-range",

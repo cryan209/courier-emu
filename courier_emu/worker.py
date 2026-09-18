@@ -83,6 +83,7 @@ def main() -> int:
     parser.add_argument("--trace-pc", action="append", default=[])
     parser.add_argument("--peek", action="append", default=[])
     parser.add_argument("--dsp-trace-range", default="")
+    parser.add_argument("--io-watch", default="")
     parser.add_argument("--dsp-peek", action="append", default=[])
     parser.add_argument("--dsp-write-watch", default="")
     parser.add_argument("--mem-watch", default="")
@@ -240,6 +241,9 @@ def main() -> int:
         dsp_peek=_pc_watch(args.dsp_peek),
         dsp_write_watch=(int(args.dsp_write_watch, 16) if args.dsp_write_watch else None),
         mem_watch=_trace_range(args.mem_watch),
+        io_watch=tuple(
+            int(entry, 16) for entry in args.io_watch.split(',') if entry
+        ),
         fast_delays=not args.real_delays,
         track_executed=args.track_executed,
         with_dsp=args.with_dsp,
