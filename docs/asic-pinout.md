@@ -994,9 +994,23 @@ reconfigured, and three readings are possible:
 2. **The gate array reconfigures the pin** per product variant.
 3. **One of the two readings is wrong.**
 
-Reading 1 is the cheapest to believe and it has a complication: `DS1489` `4Y`
-already goes to **ASIC 48** on the 2806, recorded as "most likely `DTR`" - an
-inference, never confirmed. Both pins cannot be the `DTR` input.
+**Reading 1 is the one the firmware supports.** `DTR` is a DTE-to-modem signal:
+the terminal drives it and the modem senses it, so an ASIC pin carrying `DTR`
+should be an input on *any* board. And the firmware treats it as one -
+`courier_emu/panel.py` puts `0x12` bit `0x40` in the **input** map as
+`dte-dtr`, sampled at `0x5e375` and re-polled at `0x5e395` and `0x5e3b5`, with a
+low reading posting supervisor events 6 and 7. The supervisor reads `DTR`; it
+never drives it. The panel table above already says pin 18 "follows the DTE's
+`DTR`, read at `0x12` bit `0x40`" - which is a sense input described as a lamp.
+
+So the `TR` lamp is most likely sitting **on** the `DTR` net rather than being
+driven by a dedicated ASIC output, exactly as `CS` turned out to be `CTS`.
+
+That leaves `DS1489` `4Y` to **ASIC 48**, recorded as "most likely `DTR`" - an
+inference, never confirmed, and now the weaker of the two. Both pins cannot be
+the `DTR` input. The 2805 is the argument against 48: it has no EIA receiver,
+so if 48 were the sense pin there was nothing stopping USR routing the 550's
+`DTR` to it, and they routed it to 18 instead.
 
 **The probe that separates them: meter ASIC 48 on the 2805.** If it also
 reaches UART pin 50, both pins sit on one `DTR` net and the 2806's pin-48 guess
