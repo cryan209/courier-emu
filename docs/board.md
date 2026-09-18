@@ -16,6 +16,13 @@ firmware where the firmware can check it.
 > `ALE`, `RD#`, `WR#`, the interrupt lines and the unconnected `INT0` are
 > findings about the 2806 alone.
 >
+> **A third board, the 2805 ISA internal, was metered on 2026-09-18** and is
+> written up in
+> [asic-pinout.md](asic-pinout.md#the-2805-isa-board---a-third-unit-and-the-first-internal-one).
+> It confirms the memory side on a second unit and diverges on the panel side,
+> where an internal card has no lamps and the ASIC's bottom-edge pins are
+> re-used for a host-facing 16550.
+>
 > The pin readings below are the **2806's**. The ASIC marking is the
 > **20.16 MHz** board's - the 2806's ASIC has never been read for a marking, so
 > nothing establishes the two carry the same gate array. Reading it is the

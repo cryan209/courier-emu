@@ -17,7 +17,15 @@ owner's continuity readings.
 > at all**, so nothing establishes that the two boards carry the same gate
 > array. Reading the text off this one is the cheapest outstanding item here.
 
-## Which findings cross between the two boards
+## Which findings cross between the boards
+
+> **A third board joined these on 2026-09-18** - a **2805 ISA internal**, same
+> ASIC, same flash, no slot to run it in. Its readings are kept together in
+> [its own section](#the-2805-isa-board---a-third-unit-and-the-first-internal-one)
+> rather than mixed into the tables below, because it agrees with them on the
+> memory side and diverges on the panel side. It is what retracted the flash
+> `CE#` claim.
+
 
 **The DSP side transfers.** [board-parts.md](board-parts.md) establishes that
 stock 7.3.14 runs on both the 20.16 MHz AC01 board and this 25 MHz AC03 board
@@ -874,6 +882,108 @@ and the monitor reads it - the method
 `0x0c` and `0x0e`**; whichever holds a real far pointer into flash is the edge
 that board's ASIC drives. The 80186's interrupt control registers settle it a
 second way.
+
+## The 2805 ISA board - a third unit, and the first internal one
+
+A **Courier 2805 ISA internal** (barcode `00280500 R:2`) was metered on
+2026-09-18. It carries the same `1-016-905` ASIC - date code **9726**, against
+the 2806's 9948 and the I-modem's 9612 - and the same `PA28F400` flash, so the
+tables above are a hypothesis it can test rather than a map it inherits. It has
+**no ISA slot available**, so nothing here is a live reading; it is continuity
+only.
+
+It has already paid for itself twice: its flash readings caught the `CE#` slip
+retracted above, and its UART nets are the first measurement of what the ASIC's
+panel pins do on a board with no panel.
+
+### What transfers, pin for pin
+
+| ASIC | goes to | same as 2806 |
+|---|---|---|
+| `63` | CPU 29, `A16` | yes |
+| `62` | CPU 30, `A17` | yes |
+| `59` | CPU 31, `A18` | yes |
+| `58` | CPU 32, `A19` | yes |
+| `70` | flash 11 **and** RAM 10 - the split address latch | yes |
+| `73` | flash 3 (`A17`, system `A18`) | yes |
+| `74` | flash 34 (`A16`, system `A17`) | yes |
+| `76` | flash 35 (`A15`, system `A16`) | yes |
+| `75` | flash 13, `GND` | **no** - and the 2806 was wrong, see above |
+
+All four upper address inputs and all three flash address outputs are now
+measured on two boards independently. Four in, three out is not a transcription
+of one board's readings.
+
+### What replaces the EIA section
+
+There are no `SN75188`s and no `DS1489AM`. In their place is a **`TL16PNP550AFN`**
+- a TI Plug-and-Play ISA 16550 in a 68-pin PLCC - facing the host. The DTE is
+the ISA bus, so the part that made TTL into EIA levels on the 2806 makes TTL
+into bus registers here. Everything inboard of that boundary appears unchanged,
+which is why `EbSerial` on CPU serial channel 0 should apply to this board as it
+stands.
+
+| net | 2806 | 2805 |
+|---|---|---|
+| host to modem, data | `DS1489` `1Y` to CPU 3 (`RXD0`) | UART **51** to CPU 3 |
+| host's `RTS` | `DS1489` `2Y` to CPU 1 (`CTS0`) | UART **49** to CPU 1 |
+| modem to host, data (`RD`) | ASIC 46 to `U22` pin 2 | ASIC 46 to UART **6** |
+| `CD` | ASIC 9 to `U23` pin 4 | ASIC 9 to UART **59** |
+| - | ASIC 10 is the **`CS` lamp** | ASIC 10 to UART **60** |
+
+**Those UART pin numbers are positions, not identified signals.** They are
+derived from the owner's descriptions ("right, 6 from bottom") under standard
+JEDEC 68-PLCC numbering - pin 1 top-centre, counter-clockwise from above, so
+top-left is 9, left edge 10-26, bottom 27-43, right edge 44-60. **No
+TL16PNP550A pinout has been obtained**; the TL16C550A/C/D and the 68-pin
+TL16C552 are the nearest family parts and are not the PnP variant. Naming 49
+and 51 as `RTS#` and `SOUT` fits, and is a guess until the datasheet says so.
+
+### The last row is the interesting one
+
+`ASIC 10` is the **`CS` lamp** on the 2806. An internal card has no lamps, and
+here that pin drives a UART line. The ASIC's bottom edge - 30 pins spent on
+eight DIP switches, eight lamps and Talk/Data on the external - is **re-used**
+on the internal rather than left idle. So the bottom-edge map does *not*
+transfer, and the 2805 is the only source for what those pins do on a board
+without a panel. Adjacent ASIC pins (9, 10) reaching adjacent UART pins (59, 60)
+is the shape of the modem-status group, which predicts that ASIC 11, 12, 49 and
+50 - the rest of the six the 75188s carry on the 2806 - land just below.
+
+### Three oscillators, and the clock
+
+| | marking | frequency |
+|---|---|---|
+| X1 | `eb726391` | the CPU's - **50 MHz**, inferred |
+| X2 | 22.118M | the UART's - `12 x 1.8432 MHz` |
+| X3 | `R0730318` | the ASIC's - 40.320 MHz, the product-line constant |
+
+The 80C186EB halves its crystal input to make `CLKOUT`, which is why the
+20.16 MHz board runs the CPU off the ASIC's 40.320 and needs no second can.
+A 25 MHz `CLKOUT` needs 50 MHz in, so a third oscillator is the signature of a
+25 MHz board - and X1 carries a house number rather than a frequency, so the
+50 MHz is arithmetic, not a reading.
+
+X2 settles what the UART is: `22.1184 / 16 = 1,382,400`, so divisor 12 gives
+115200. The 550 makes its own baud rate from its own crystal and is a real
+autonomous UART the host drives, not something the modem's CPU clocks.
+
+### What this board is for
+
+Its DSP is **not** the TI `D17140PQ`. It is a Sierra Semiconductor `SC34350CQ`
+(`HBS-66A4ETW`), alongside a `TLC320AC01CFN` codec, an Atmel `93C66`, two
+`CY62256-70SNC` and a USR flash label dated `11-22-96`. A Sierra datapump will
+not take the four-row C5x overlay table in
+[dsp-overlays.md](dsp-overlays.md), and cannot hold the TI mask-ROM loader at
+`0610` that the supervisor hands its first block to - so this is most likely a
+separate firmware family rather than a strap variant, and `courier_emu`'s C5x
+model does not describe it.
+
+**Dumping its flash decides that**, and `CourierRom.dsp_overlays` runs the test
+as it stands: a four-row table loading at `8000`/`9d00`/`b000`/`dc00` means the
+same lineage, its absence means a separate target. Its `93C66` is SOIC-8 and
+clip-readable, and **no captured 93C66 image exists in this repository from any
+board**.
 
 ## Method rules this board taught
 
