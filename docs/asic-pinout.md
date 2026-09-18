@@ -1012,10 +1012,31 @@ the `DTR` input. The 2805 is the argument against 48: it has no EIA receiver,
 so if 48 were the sense pin there was nothing stopping USR routing the 550's
 `DTR` to it, and they routed it to 18 instead.
 
-**The probe that separates them: meter ASIC 48 on the 2805.** If it also
-reaches UART pin 50, both pins sit on one `DTR` net and the 2806's pin-48 guess
-survives. If ASIC 48 goes nowhere on this board, then 18 is the `DTR` input, 48
-was misidentified, and the `TR` lamp is hanging on the net rather than driven.
+**Measured 2026-09-18: ASIC 48 goes nowhere on the 2805.** That was offered
+here as the probe that separates the two, and it is not - *both* readings
+predict a dead pin 48 on a board with no EIA receiver. The result is consistent
+with either, and the claim that it would decide was wrong.
+
+What the readings actually leave is two sound arguments pointing opposite ways:
+
+* **For 18.** A gate array's pin functions are fixed silicon and do not move
+  between boards. The 2805 puts `DTR` on 18, so if `DTR`-sense is a die
+  function it is on 18 on both. The address-side transfers support the
+  same-silicon premise.
+* **For 48.** The `DS1489` has four receivers and the DTE-to-modem set has
+  exactly three members - data, `RTS`, `DTR`. `1Y` is data and `2Y` is `RTS`,
+  so by elimination `4Y` into ASIC 48 is `DTR`. That is why the entry reads as
+  it does.
+
+Both hold, so their shared premise is the wrong one: **48 and 18 are probably
+not alternatives but two ASIC pins on one net** - `1489` `4Y` feeding 48, 18 and
+the `TR` lamp together, probed from different ends on different days and written
+down as separate facts. This file already carries an unexplained instance of the
+same shape: `AA` on ASIC pins 13 and 21 for one firmware bit.
+
+**The probe that does separate them is on the 2806, not the 2805: meter ASIC 18
+against ASIC 48.** Continuous means one net and both entries stand. Open means
+they are genuinely different pins and the 2805 decides which one carries `DTR`.
 
 ### There are two `93C66`s, so nothing is shared
 
