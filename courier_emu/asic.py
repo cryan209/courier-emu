@@ -83,6 +83,22 @@ REGISTERS: tuple[AsicRegister, ...] = (
         "stream", (0x60, 0x62), 0x60,
         "The stream lane, raised by the sender at 0x849e.",
     ),
+    AsicRegister(
+        "transfer-command", (0x18,), 0x56,
+        "The program-download handshake, and the two sides are exact "
+        "mirrors. The supervisor spins at 0x8e4c3 on `test al, 1`, pushes "
+        "eight bytes into a window, and commits with `out 0x18, 1`; then "
+        "waits on bit 1 and commits the other bank with `out 0x18, 2`. The "
+        "C5x mask ROM's loader at 0x0638 does the same from the other side - "
+        "`bit 0, @56`, `rpt #03 / bldp *+` for FOUR WORDS, `lacl #01 / samm "
+        "@56`, then bit 1 and 2 for the other bank - and finishes with "
+        "`lacl #04 / samm @56`, which is ROM_CHECKSUM_STROBE. Eight bytes in "
+        "and four words out is the 16-to-8 conversion, and the per-bank "
+        "handshake is what makes the two widths agree on a boundary. "
+        "`BIT dma, code` tests bit (15 - code), so the DSP polls bits 15, 14 "
+        "and 13 - the ASIC's ready flags - and acknowledges in bits 0, 1 and "
+        "2. High half inbound, low half outbound, on one register.",
+    ),
     # --- CPU-side only. No DSP path: the part has no reason to see these. ---
     AsicRegister(
         "status-latch", (0x5C, 0x5E), None,
