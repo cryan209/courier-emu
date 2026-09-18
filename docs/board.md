@@ -319,8 +319,8 @@ Pin `117` is the only unread one on this edge.
 | 6 | 6 | DIP switch **9** |
 | 7 | 7 | DIP switch **8** |
 | 8 | 8 | DIP switch **7** |
-| 9 | 9 | `U23` pin 4 (`2A`) - the `CD` driver's input |
-| 10 | 10 | `CS` lamp |
+| 9 | 9 | **`DCD`** - `U23` pin 4 (`2A`), the `CD` driver's input; reaches the 2805's UART `DCD` (pin 59) |
+| 10 | 10 | **`CTS`** - drives the `CS` (Clear to Send) lamp here; reaches the 2805's UART `CTS` (pin 60) |
 | 11 | 11 | `U23` pin 10 (`3B`) |
 | 12 | 12 | `U23` pin 2 (`1A`) |
 | 13 | 13 | `AA` lamp |

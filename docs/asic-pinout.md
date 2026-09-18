@@ -195,8 +195,8 @@ Pin `117` is the only unread one on this edge.
 | 6 | 6 | DIP switch **9** |
 | 7 | 7 | DIP switch **8** |
 | 8 | 8 | DIP switch **7** |
-| 9 | 9 | `U23` pin 4 (`2A`) - the `CD` driver's input |
-| 10 | 10 | `CS` lamp |
+| 9 | 9 | **`DCD`** - `U23` pin 4 (`2A`), the `CD` driver's input; reaches the 2805's UART `DCD` (pin 59) |
+| 10 | 10 | **`CTS`** - drives the `CS` (Clear to Send) lamp here; reaches the 2805's UART `CTS` (pin 60) |
 | 11 | 11 | `U23` pin 10 (`3B`) |
 | 12 | 12 | `U23` pin 2 (`1A`) |
 | 13 | 13 | `AA` lamp |
@@ -923,32 +923,75 @@ into bus registers here. Everything inboard of that boundary appears unchanged,
 which is why `EbSerial` on CPU serial channel 0 should apply to this board as it
 stands.
 
-| net | 2806 | 2805 |
+The pin numbers are the datasheet's, from
+[TL16PNP550A-SLLS190B.pdf](TL16PNP550A-SLLS190B.pdf) - SLLS190B, March 1995,
+revised March 1996 - held here so nobody has to find it again.
+
+| UART pin | datasheet name | dir | 2805 | 2806's same signal |
+|---|---|---|---|---|
+| 6 | `SIN` | I | ASIC 46 | ASIC 46 to `U22` pin 2 - the `RD` net |
+| 49 | `RTS` | O | CPU 1 (`CTS0`) | `DS1489` `2Y` to CPU 1 |
+| 50 | `DTR` | O | *predicted* ASIC 48 | `DS1489` `4Y` to ASIC 48 |
+| 51 | `SOUT` | O | CPU 3 (`RXD0`) | `DS1489` `1Y` to CPU 3 |
+| 59 | `DCD` | I | ASIC 9 | ASIC 9 to `U23` pin 4 - the `CD` driver |
+| 60 | `CTS` | I | ASIC 10 | ASIC 10, recorded as "the `CS` lamp" |
+| 61 | `RI` | I | *unread* | one of ASIC 11, 12, 49, 50 |
+| 62 | `DSR` | I | *unread* | one of ASIC 11, 12, 49, 50 |
+
+**Every net lands on the signal the 2806 says it should.** `RD` reaches `SIN`,
+the `CD` driver's source reaches `DCD`, the host's `RTS` reaches `CTS0` and the
+UART's `SOUT` reaches `RXD0`. The DTE architecture transfers whole: the same
+signals in the same directions, with the 550 doing in bus registers what the
+75188/1489 pair does in EIA levels. `EbSerial` on CPU serial channel 0 describes
+this board as it stands.
+
+### `ASIC 10` is `CTS`, and that corrects the 2806's table
+
+This section first read ASIC 10 as a **repurposed** pin - the `CS` lamp on the
+external, something else on the internal - and concluded that the ASIC's
+bottom edge is re-used on a board with no panel. **That was wrong, and the
+datasheet is what corrects it.** UART pin 60 is `CTS`, and `CS` is the *Clear to
+Send* lamp. It is the same logical signal with a different consumer: on the
+external it lights a lamp, on the internal it drives the host UART's `CTS`
+input.
+
+So the correction runs the other way, and improves the 2806's own map. Two
+bottom-edge entries above name a **destination** where they could name a
+**signal**:
+
+| ASIC pin | recorded as | is |
 |---|---|---|
-| host to modem, data | `DS1489` `1Y` to CPU 3 (`RXD0`) | UART **51** to CPU 3 |
-| host's `RTS` | `DS1489` `2Y` to CPU 1 (`CTS0`) | UART **49** to CPU 1 |
-| modem to host, data (`RD`) | ASIC 46 to `U22` pin 2 | ASIC 46 to UART **6** |
-| `CD` | ASIC 9 to `U23` pin 4 | ASIC 9 to UART **59** |
-| - | ASIC 10 is the **`CS` lamp** | ASIC 10 to UART **60** |
+| 9 | "`U23` pin 4 - the `CD` driver's input" | **`DCD`** |
+| 10 | "`CS` lamp" | **`CTS`** |
 
-**Those UART pin numbers are positions, not identified signals.** They are
-derived from the owner's descriptions ("right, 6 from bottom") under standard
-JEDEC 68-PLCC numbering - pin 1 top-centre, counter-clockwise from above, so
-top-left is 9, left edge 10-26, bottom 27-43, right edge 44-60. **No
-TL16PNP550A pinout has been obtained**; the TL16C550A/C/D and the 68-pin
-TL16C552 are the nearest family parts and are not the PnP variant. Naming 49
-and 51 as `RTS#` and `SOUT` fits, and is a guess until the datasheet says so.
+That is the method rule below in miniature - a trace that stops at a part's
+input pin has found one end of a net, not the whole of it - applied to a lamp
+rather than a line driver.
 
-### The last row is the interesting one
+Nothing yet says whether the *rest* of the bottom edge transfers. Eight DIP
+switches and a Talk/Data switch have no obvious internal-card equivalent, and
+those readings remain the 2806's alone.
 
-`ASIC 10` is the **`CS` lamp** on the 2806. An internal card has no lamps, and
-here that pin drives a UART line. The ASIC's bottom edge - 30 pins spent on
-eight DIP switches, eight lamps and Talk/Data on the external - is **re-used**
-on the internal rather than left idle. So the bottom-edge map does *not*
-transfer, and the 2805 is the only source for what those pins do on a board
-without a panel. Adjacent ASIC pins (9, 10) reaching adjacent UART pins (59, 60)
-is the shape of the modem-status group, which predicts that ASIC 11, 12, 49 and
-50 - the rest of the six the 75188s carry on the 2806 - land just below.
+### The `93C66` is probably shared with the PnP controller
+
+The 550 has its own serial-EEPROM interface - `CS` (54), `SCLK` (55), `SIO`
+(57) - and the datasheet specifies an **`ST93C56/66` or equivalent**, holding
+"the clock prescalar divisor and PnP resource data", organised x16 with `ORG`
+tied high or floating. The 2805 carries one `ATMEL 93C66`, and
+[board-parts.md](board-parts.md) records the 2806's as the **CPU's** settings
+NVRAM with `ORG` floating - the same part in the same configuration.
+
+Pin **58**, `EEPROM`, is the tell: a bidirectional access line that "when
+pulled low, either the TL16PNP550A or controller is accessing the EEPROM".
+That is an arbitration signal, and it only exists because TI expected the part
+to be shared with a host controller. So the likely arrangement here is **one
+`93C66` holding both the PnP resource data and the modem's settings**, with the
+550 and the supervisor taking turns.
+
+Unverified, and cheap to check: meter UART 54, 55, 57 and 58 against the
+`93C66`, and against the CPU pins that own it on the 2806 (`CS`/`SK` on 52/57,
+`DI`+`DO` on 79). If it is shared, the settings NVRAM on this board is not the
+supervisor's alone and `nvram.py`'s 256-word map may have company in it.
 
 ### Three oscillators, and the clock
 
