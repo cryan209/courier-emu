@@ -220,8 +220,9 @@ Bottom-edge local and absolute numbering are the same thing. `23`, `26` and
 
 **`AA` lands on two pins**, 13 and 21, where the firmware drives one bit
 (`0x14` bit `0x10`). Doubled drive for lamp current, a sense return, or two
-`AA`-labelled nets merged in the reading - unresolved, and a continuity check
-between the two settles it.
+`AA`-labelled nets merged in the reading - still unresolved, but the 2805
+section below narrows it: 13 is copper-common with pin **43**, and a SOT-23
+transistor sits between that net and 21.
 
 ## The part is a memory controller
 
@@ -1092,6 +1093,49 @@ same lineage, its absence means a separate target. Its `93C66` is SOIC-8 and
 clip-readable, and **no captured 93C66 image exists in this repository from any
 board**.
 
+### Pin `43`, pin `13`, and four readings the clamp diodes invented
+
+Metered 2026-09-19, continuity and diode mode, board unpowered. It started as a
+question about whether the pinout constrains the I/O port map, and it produced
+one net and a method rule.
+
+**The one confirmed connection: `13`-`43` reads 0.00 V, both boards.** That is
+copper. Pin `43` had been unread - it sits in the `39`-`44` run on the right
+edge - and it is common with a bottom-edge pin on two unrelated layouts.
+
+**A transistor sits on that net.** `Q8`, SOT-23, marked `A12`, with `R20`
+(`561`, 560 Ohm) above it and `R57` (`103`, 10 kOhm) below. One side goes to ASIC
+`21`; the other side's two pads reach `14` and `43`. A 560 Ohm series resistor and
+a 10 kOhm base resistor around a small-signal SOT-23 is an LED driver stage, which
+is the first independent support for `21` being a lamp node driven through a
+transistor rather than from the gate array's own pin. Terminal assignment is
+**not** established - it was guessed from package geometry, and the `A12`
+marking has not been resolved to a part.
+
+**What the clamp diodes invented.** Every other reading in that session fell in
+the 0.6-1.4 V band and conducted both ways:
+
+| pair | reading | was taken to mean | is |
+|---|---|---|---|
+| `14`-`24` (`GND`) | 0.9 / 0.6 | `14` is a ground pin | an ordinary I/O pin clamping to the rail |
+| `14`-`U17` pin 4 | 1.3 / 0.6 | the ASIC holds the opto's emitter | `U17` pin 4 is ground; `14` clamps to it |
+| `14`-`43` | 1.0 / 1.3 | one net across the transistor | two pins, no copper |
+| `13`-`21`-`43` on the 2806 | beep | a three-pin net, or a bonded triple | `13`-`43` copper; `21` through a junction |
+
+Each of those carried a hypothesis that is now retired: a board-ID strap link at
+`43`; an internal bond making `13`/`21`/`43` one node; a ring-detect signal on
+the bottom edge; and a **four-pin DAA** in which the ASIC owned both ends of each
+optocoupler and could bias it. The DAA is the two collector pins it always was,
+`19` and `22`, and the opto emitters are grounded. ASIC `14` and `15` keep their
+2806 attributions (`ARQ` lamp, Talk/Data switch); nothing here touches them.
+
+**What does not follow.** The pin map constrains the *shape* of the port map -
+only `AD0`-`AD7` reach the package, and pin `54` between `RD#` and the first
+interrupt is where the I/O window's decode would be - but it does not attribute
+ports. The DIP switches are the proof: every switch pin is known and the order
+is scrambled relative to pin order, so which port bit reads which switch has to
+come from the firmware. See [asic-port-map.md](asic-port-map.md).
+
 ## Method rules this board taught
 
 **A continuity reading to ground is not evidence that a pin is a ground.** It is
@@ -1117,6 +1161,21 @@ the whole of it.** `CD` and `RD` were both listed as "not on the ASIC" on the
 strength of landing at a 75188's TTL-side input; both are ASIC outputs. The
 claim was about where the probe stopped. `OH` is the only one of that original
 list that is safe, because a relay coil is a terminus rather than an input.
+
+**On an unpowered board, only 0.00 V is a connection.** Every I/O pin on an IC
+carries ESD clamp diodes to its supply rails, so a diode-mode probe between any
+two pins of an unpowered part reads two clamps in series - **0.6-1.4 V, and it
+conducts in both directions**. A pin against ground reads one clamp, ~0.6 V. A
+beep-mode meter beeps at all of it.
+
+The control reading that settles it: ASIC `2` (DIP switch 2) against ASIC `29`
+(CPU `A17`) reads **1.3 / 1.4**. Those two pins cannot be connected, so the band
+belongs to the package, not to any net.
+
+A real junction is ~0.6 V one way and open the other. A real net is 0.00 V both
+ways. Anything between is the die talking, and it says only that both probes
+landed on the same part. See the 2805 section below, where this rule retired
+four readings and a hypothesis built on each.
 
 **Off-by-one pin miscounts happen.** Three have been found: the top edge counted
 from 60 rather than 61 (making one flash line `73` instead of `74`, and hiding
@@ -1202,13 +1261,21 @@ Source: TI `TLC320AC01C` data manual, SLAS057D.
    mislabel, and it has a predicted destination to check against.
 7. **Pin `24`, recorded as `GND`** in the same pass as pin 15, which turned out
    to be a pressed button. Re-read with the panel's switches moved.
+8. **Every entry taken in beep mode.** A beep-mode meter beeps through the
+   package's ESD clamps at 0.6-1.4 V, so any reading taken that way records that
+   two probes landed on the same part rather than on the same net. The entries
+   most exposed are the ones that already needed the destination-versus-signal
+   correction three times, on the bottom edge. Re-read at a 0.00 V threshold in
+   diode mode, noting lead polarity; this is an audit of the method, not of any
+   one pin.
 
 ## What is still unknown
 
-Sixteen of the 120 pins are unread; of the rest, seventeen are inferred middles
+Fifteen of the 120 pins are unread; of the rest, seventeen are inferred middles
 of measured runs (the two DSP data groups and `A2`-`A6`). The top and left edges
 are finished but for one pin each; the bottom edge is at 26 of 30; the right
-edge has eleven unread, `32`-`36` and `39`-`44`.
+edge has ten unread - `32`-`36`, `39`-`42` and `44`, with `43` now read as the
+`13` net.
 
 In the order they would pay:
 
