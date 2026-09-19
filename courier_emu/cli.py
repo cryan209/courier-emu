@@ -395,6 +395,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--board-id",
         args.board_id,
     ]
+    for entry in getattr(args, "peek", []):
+        command.extend(("--peek", entry))
     for entry in getattr(args, "dsp_peek", []):
         command.extend(("--dsp-peek", entry))
     for entry in getattr(args, "trace_pc", []):
@@ -1372,6 +1374,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="COMMAND",
         help="AT command for side B; repeatable (default AT&L1)",
+    )
+    link.add_argument(
+        "--peek",
+        action="append",
+        default=[],
+        metavar="ADDR[=NAME]",
+        help="report an 80186 memory byte on both sides at the end of the run",
     )
     link.add_argument(
         "--trace-pc",

@@ -1364,3 +1364,47 @@ single event: dispatch index 1 never fires.** Not the reset, not the line, not
 the cursors, not the image layer. The next step is to find what drives that
 dispatcher - the table base `0x87622` is not referenced as a literal word
 anywhere, so it is computed, and that computation is what to find.
+
+### Index 1 is not refused - the dispatcher never runs
+
+Following the chain up from `or [0x57c], 1`:
+
+```text
+87626  call 0x876fb ; retf        entry 1 of four-byte thunks based at 87622
+a6b88  lcall 0x8000:0x7626        entry 1 of six-byte thunks based at a6b82
+a6b69  jmp word ptr cs:[bx+0x1d50]   bx = al*2, table at a6b70 in CS a4e2
+a6afe  the command dispatcher, al = the command code
+```
+
+The jump table's entries are `1d62, 1d68, 1d4e, 1d6e, 1d74, ...`, so command 1
+vectors to `0x1d68` - `a6b88` - and command 2 vectors to `0x1d4e`, the
+`stc ; ret` that means "not handled".
+
+The dispatcher screens the code before it vectors:
+
+```text
+a6b05  test byte ptr [0xd93], 1 ; je a6b16
+a6b0c  cmp al, 1 ; je a6b14     ; with that bit set, command 1 is refused
+a6b16  cmp al, 9 ; jae a6b6e
+a6b3b  cmp al, 6 / 7 -> reject
+a6b43  cmp al, 0 / 4 / 5 -> vector immediately
+a6b4f  test [0x57c], 7  ; jne a6b6e
+a6b56  test [0x98a], 0xe ; jne a6b6e
+a6b5d  test [0x49e], 1  ; jne a6b6e
+a6b64  cbw ; mov bx, ax ; shl bx, 1 ; jmp cs:[bx+0x1d50]
+```
+
+Read at the end of a 403 dial, both ends: `[0xd93]` is `00` on the originator
+and `02` on the answerer - bit 0 clear on both - and `[0x57c]`, `[0x98a]` and
+`[0x49e]` are all `00`. So every guard is open and command 1 would vector.
+
+**It never arrives.** Counting execution of `a6afe`, `a6b64`, `a6b6e`, `a6b14`,
+`a6b88` and `87626` over a full call gives **zero on both ends for every one of
+them**. The dispatcher is not rejecting the command; nothing calls the
+dispatcher at all.
+
+So the datapump chain is intact and unreached from its very top. The
+dispatcher is itself entry `0x1cde` in a table of handler offsets in CS `a4e2`,
+around `0xa66ab` - `1ca9, 1cde, 1d94, ...` - and what drives *that* table is
+the next thing to find. No branch or far pointer anywhere in the image targets
+`a6afe` directly, so it is reached through that table rather than by a call.
