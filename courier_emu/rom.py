@@ -346,12 +346,26 @@ class CourierRom:
         return tuple(found)
 
     def dsp_program_segments(self) -> tuple[tuple[int, bytes], ...]:
-        """Return the C52 program-memory origin and bytes the ROM downloads.
+        """Return the C52 program-memory origin and bytes for each image.
 
-        One segment, unlike an XMF's three: a ROM's supervisor makes a single
-        download call, so what it sends is one contiguous run of words at the
-        entry it requests. Whether the rest of the datapump region reaches the
-        DSP by some other path is not established.
+        Every image the supervisor can send, resident first, the way an XMF
+        reports them. This used to return the single download call site's
+        payload alone, on the reasoning that a ROM's supervisor makes one
+        download call - which is true of the call *site*, and not of the
+        images: the loader picks a row of the overlay table by index, and
+        `dsp_overlays` already recovers that table from this same ROM.
+
+        Returning only the resident meant a board-ROM run could never hold
+        anything else. The supervisor pulses the DSP reset from its downloader
+        at `8e43c` a second time when a call needs a datapump, and there was
+        nothing for that load to fetch, so the originating end dialed and then
+        transmitted silence for the rest of the call. See
+        docs/board-verified-403.md.
+
+        The resident stays first because callers index it by position - the
+        frame-interrupt vector and the boot ROM's blank load both want the
+        resident's origin. A ROM whose overlay table is not found reports the
+        resident alone, as before.
         """
         download = self.dsp_download
         if download is None:
@@ -359,7 +373,18 @@ class CourierRom:
                 "no DSP download call site found; this ROM's C52 payload "
                 "cannot be located, so it cannot be attached to a DSP"
             )
-        return ((download.entry_word, self.data[download.offset : download.end]),)
+        resident = (download.entry_word, self.data[download.offset : download.end])
+        overlays = self.dsp_overlays
+        if not overlays:
+            return (resident,)
+        rest = tuple(
+            (overlay.entry_word, self.data[overlay.offset : overlay.offset + overlay.length])
+            for overlay in overlays
+            if (overlay.source_segment, overlay.offset, overlay.length, overlay.entry_word)
+            != (download.source_segment, download.offset, download.length,
+                download.entry_word)
+        )
+        return (resident, *rest)
 
     def at(self, physical: int, count: int) -> bytes:
         """Read from the ROM by physical address."""

@@ -974,12 +974,10 @@ class CourierDspBridge:
         overlay the image declares.
         """
         found: list[int] = []
+        # `dsp_program_segments` reports every image an XMF or a ROM can send,
+        # resident first, so the overlays are already here; appending them
+        # again from `dsp_overlays` listed each one twice.
         banks: list[tuple[int, bytes]] = list(self.image.dsp_program_segments())
-        for overlay in getattr(self.image, "dsp_overlays", ()):
-            if overlay.index == 5:
-                continue
-            payload = self.image.data[overlay.offset : overlay.offset + overlay.length]
-            banks.append((overlay.entry_word, payload))
         for origin, segment in banks:
             first = 0
             while True:
