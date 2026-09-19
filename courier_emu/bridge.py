@@ -1146,6 +1146,21 @@ class CourierDspBridge:
         if asserted and not self._reset_asserted:
             self.float_runtime_bus()
             self.core.reset()
+            # `reset` clears the core's sample arrays. The output cursors index
+            # those arrays, so they restart at zero too - the same rule the
+            # rebuild path below already follows. A call asserts this net two
+            # or three times as the supervisor reloads the datapump, and a
+            # cursor left behind points past everything the new program writes:
+            # `_take_line_audio` then reads an empty slice until the array has
+            # grown past the stale index, so the whole start of each generation
+            # is skipped. That is a silent transmitter on the side whose audio
+            # falls inside the skipped span, and a quiet one on the side whose
+            # audio only partly does.
+            self._exchange_tx_index = 0
+            self._line_tx_index = 0
+            self._sip_tx_index = 0
+            self._line_codec_last = 0
+            self._audio_codec_frames = 0
             self._configure_frame_interrupt()
             self._loader_started = False
             self.launched = False
