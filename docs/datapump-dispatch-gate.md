@@ -1250,3 +1250,117 @@ at every hop. The `32c8` once attributed to a 403 run was read off a 302 run.
 **Three mangled-looking words** - `0032`, `c802`, `0400` - at DSP 40.6M are not a
 corrupted `32c8`. The tag `0x1a` handler does not run until 51.28M; they belong
 to other tags.
+
+## The 403 board ROM: the whole chain, and the flag that is never set
+
+Disassembled from `artifacts/courier-board-21210-capture-403/courier-board.rom`,
+with the branch measured rather than assumed.
+
+**The reset belongs to the downloader.** Every edge of the DSP reset net comes
+from one routine, entered at `0x8e3da`:
+
+```text
+8e429  mov bx, 0xff56
+8e42c  mov ax, [bx]
+8e42e  or  ax, 2          ; bit 1 held HIGH
+8e433  and cx, 0xfff7     ; bit 3 cleared
+8e436  mov [bx], ax
+8e43a  mov [bx], cx       ; assert
+...
+8e43d  or  ax, 8          ; release after a 5-iteration delay
+8e445  mov [0xff56], ax
+8e44a  ...                ; poll 18/1a/1c/1e for all-ones, clc on success
+```
+
+So on this image the pulsed bit is **3**, with bit 1 held high - `machine.py`'s
+`ROM_DSP_RESET_BIT = 0x0008` is right here, and the "bit 1" this repository
+records elsewhere belongs to a different image.
+
+**There is exactly one download call site.** `0x8e4ab` is the transfer body and
+`0x87567` is its only caller:
+
+```text
+87551  mov word ptr [0x192], 0x110
+87558  call 0x8e3a0
+8755b  mov ax, 0x8000      ; the resident's entry
+8755e  call 0x8e3da        ; reset + verify
+87564  mov cx, 0xdd4e      ; 56,654 bytes, the resident's exact length
+87567  call 0x8e4ab
+```
+
+**Overlays go through a different loader**, at `0x8e60c`, driven by a request
+cell:
+
+```text
+8e61c  mov al, byte ptr [0xd28]   ; the overlay index
+8e622  mov bl, 6 ; mul bl         ; six-byte rows at 0xe741
+8e631  mov al, 4 ; out 0x1e, al   ; transfer-start strobe
+8e638  lcall 0x8f46, 0x1e4        ; the destination
+8e63d  mov byte ptr [0xd27], 0xc8 ; 200-tick timeout
+8e642  test [0xd27], 0xff ; jne 8e64c
+8e649  jmp 0x8e73a                ; timed out: abort, and clear 0xd28
+8e64c  in al, 0x1e ; and al, 4 ; cmp al, 4 ; jne 8e642
+```
+
+`[0xd28]` is written at six sites: index 5 at `0x8b7db`, 6 at `0x8bc06` and
+`0x8bc8d`, 7 at `0x8bc99`, 8 at `0x8e616`, and 0 at the abort.
+
+### Measured: the request sites are never reached
+
+A 403 pair, `--answer-on-ring`, counting 80186 addresses:
+
+| address | what it is | A | B |
+|---|---|---:|---:|
+| `8bbf6` | `call 0x8b8a1` | 1 | 1 |
+| `8bc0e` | `call 0x8b88d` | 1 | 1 |
+| `8bc13` | `jmp 0x8bc9e` | **1** | **1** |
+| `8bc06`, `8bc8d`, `8bc99` | request overlay 6/6/7 | **0** | **0** |
+| `8e61c` | the overlay loader | **0** | **0** |
+| `8e73a` | the loader's abort | 0 | 0 |
+
+Both ends take the same path and jump over every overlay request. The loader
+never runs, so it never times out either - nothing is waiting on the port `0x1e`
+ready bit, because nothing ever strobes for it.
+
+### The gate is three flags, and only one of them has a setter
+
+`0x8b88d` returns the zero flag from the last of three tests, and the caller
+loads a datapump only when one is set:
+
+```text
+8b88d  test byte ptr [0x98a], 2 ; jne 8b8a0
+8b894  test byte ptr [0x49e], 1 ; jne 8b8a0
+8b89b  test byte ptr [0x57c], 1
+8b8a0  ret
+```
+
+Searching every write to those three cells in the ROM:
+
+* `[0x98a]` - only `or 0x10` and `and 0xf1`/`0xef`. **Bit 1 is never set.**
+* `[0x49e]` - only `and 0xfe`, twice. **Bit 0 is never set.**
+* `[0x57c]` - bit 0 is set in exactly one place, `0x8770f: or byte ptr [0x57c], 1`.
+
+So one instruction in the image enables a datapump load, and reaching it is
+reached from one place only: `0x87626`, which is entry **1** of a table of
+four-byte `call handler ; retf` thunks based at `0x87622`.
+
+```text
+87622  call 0x87642 ; retf    index 0
+87626  call 0x876fb ; retf    index 1   -> or [0x57c], 1
+8762a  call 0x8771f ; retf    index 2
+8762e  call 0x8773c ; retf    index 3
+```
+
+and `0x876fb` itself branches on one more bit:
+
+```text
+876fb  test byte ptr [0x237], 4
+87700  je 0x8770f              ; clear -> or [0x57c], 1   (datapump)
+87702  or [0x225], 0x80 ; or [0x57c], 0x40                (something else)
+```
+
+**So the question "why does the originating end never transmit" reduces to a
+single event: dispatch index 1 never fires.** Not the reset, not the line, not
+the cursors, not the image layer. The next step is to find what drives that
+dispatcher - the table base `0x87622` is not referenced as a literal word
+anywhere, so it is computed, and that computation is what to find.

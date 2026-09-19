@@ -397,6 +397,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
     ]
     for entry in getattr(args, "dsp_peek", []):
         command.extend(("--dsp-peek", entry))
+    for entry in getattr(args, "trace_pc", []):
+        command.extend(("--trace-pc", entry))
     if args.line_frames is not None:
         command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
@@ -1370,6 +1372,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="COMMAND",
         help="AT command for side B; repeatable (default AT&L1)",
+    )
+    link.add_argument(
+        "--trace-pc",
+        action="append",
+        default=[],
+        metavar="ADDR[=NAME]",
+        help="count how often this 80186 address runs, on both sides",
     )
     link.add_argument(
         "--dsp-peek",
