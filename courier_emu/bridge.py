@@ -524,6 +524,10 @@ class CourierDspBridge:
             "budget_frames": 0,
             "tx_peak_codec": 0,
             "tx_consumed": 0,
+            "ring_frames": 0,
+            "peer_ring_frames": 0,
+            "peer_ring_bursts": 0,
+            "peer_ring_runs": [],
             "tx_index": 0,
             "tx_peak_line": 0,
         }
@@ -676,6 +680,22 @@ class CourierDspBridge:
         # with no exchange on this path, the digits on the wire are the only
         # signal that the firmware has started dialing.
         self._line_dtmf = DtmfDecoder(sample_rate=LINE_RATE)
+        self._last_digit_at: int | None = None
+        self._peer_ring_last = False
+        self._peer_ring_runs: list[int] = []
+        # What the called subscriber's bell does once the switch has the
+        # number. `LineExchange` already models the sequence - collect until
+        # the interdigit timeout, spend `routing_ms` setting the call up, then
+        # ring - and its own defaults are the one source for the timings.
+        #
+        # It has to be a cadence, not a level. The frame below used to assert
+        # ringing for as long as the seizure was a dialing one, which is true
+        # for the rest of the call, and `machine.py` drives the ring detect bit
+        # on port 0x14 straight from it: the answer machine at 0x70fb4 waits on
+        # an edge in every state, so a bit that goes high and stays high parks
+        # it in its first state exactly as a floating one does.
+        self._called_ring = RingSource(
+            start_ms=LineExchange.interdigit_ms + LineExchange.routing_ms)
         # Band-limited rather than a hold: the modem's transmit is tones and
         # modulation, and the images a hold leaves at 6:5 land inside the
         # band the far end demodulates in.
@@ -2871,6 +2891,16 @@ class CourierDspBridge:
             self._line_service["drained_frames"] += 1
             self._service_line_frame()
 
+    def _called_party_ringing(self) -> bool:
+        """Whether the called subscriber's bell is ringing this frame.
+
+        Measured from the last digit the line carried, so it follows the
+        number actually dialed rather than anything read out of the firmware.
+        """
+        if self._last_digit_at is None:
+            return False
+        return self._called_ring.present(self._instructions - self._last_digit_at)
+
     def _service_line_frame(self) -> None:
         """One socket line frame: ship what the codec clocked, take the peer's."""
         off_hook = self.daa is not None and self.daa.off_hook
@@ -2882,6 +2912,19 @@ class CourierDspBridge:
             # callback transition temporarily leaves the datapump without a
             # complete fresh block.
             samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
+        ringing = (off_hook and not self.line.peer_off_hook
+                   and self._called_party_ringing())
+        if ringing:
+            self._line_service["ring_frames"] += 1
+        if self.line.peer_ringing:
+            self._line_service["peer_ring_frames"] += 1
+            if not self._peer_ring_last:
+                self._line_service["peer_ring_bursts"] += 1
+                self._peer_ring_runs.append(1)
+            elif self._peer_ring_runs:
+                self._peer_ring_runs[-1] += 1
+        self._peer_ring_last = bool(self.line.peer_ringing)
+        self._line_service["peer_ring_runs"] = list(self._peer_ring_runs)[:12]
         self.line.exchange(
             LineFrame(
                 instructions=self.line.frames * LINE_FRAME_INSTRUCTIONS,
@@ -2889,8 +2932,9 @@ class CourierDspBridge:
                 # A dialing seizure supplies the network-side ring cadence
                 # to the far subscriber. This is call progress, not modem
                 # carrier audio; the far DAA still has to qualify it.
-                ringing=off_hook and self.daa is not None
-                and self.daa.operation in ("dialing", "trying"),
+                # The far end going off hook trips the ring, as it does on a
+                # switch, so the bell stops the moment the call is answered.
+                ringing=ringing,
                 samples=samples,
             )
         )
@@ -2945,6 +2989,9 @@ class CourierDspBridge:
                 digits = self._line_dtmf.feed(samples)
                 if digits:
                     self.dial_digits += digits
+                    # Routing waits this long after the *last* digit for one
+                    # more, so every digit pushes the ring back.
+                    self._last_digit_at = self._instructions
                     self.begin_dialing()
             if self.daa.operation == "originate":
                 self.daa.line_state = "dial-tone"

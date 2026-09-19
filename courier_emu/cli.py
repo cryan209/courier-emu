@@ -335,6 +335,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     serial_input += b"".join(value.encode("ascii") + b"\r" for value in args.at)
     if serial_input:
         command.extend(("--serial-input-hex", serial_input.hex()))
+    if getattr(args, "serial_input_on_ring", False):
+        command.append("--serial-input-on-ring")
     return command
 
 
@@ -423,6 +425,13 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
     # correctly strapped the ends in opposite roles.
     for text in commands or ["AT&L1"]:
         command.extend(("--at", text))
+    # The answering end waits to be offered the call. Its commands are held
+    # until the ring detector reads high, which is the order a real answering
+    # modem sees: the switch rings it, then the host answers. Typing ATA into
+    # a line nobody has called put the answer tone on the wire before the
+    # originator had finished dialing, and it was never repeated.
+    if not listen and args.answer_on_ring:
+        command.append("--serial-input-on-ring")
     return command
 
 
@@ -1279,6 +1288,12 @@ def build_parser() -> argparse.ArgumentParser:
         "it from, and nothing else",
     )
     run.add_argument(
+        "--serial-input-on-ring",
+        action="store_true",
+        help="hold the AT input until the line rings, the way a host answers "
+        "a call it has been offered rather than typing into a dead line",
+    )
+    run.add_argument(
         "--dsp-rx-pcm",
         metavar="PATH",
         help="feed raw signed 16-bit little-endian samples to the Courier ASIC line input",
@@ -1353,6 +1368,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="COMMAND",
         help="AT command for side B; repeatable (default AT&L1)",
+    )
+    link.add_argument(
+        "--answer-on-ring",
+        action="store_true",
+        help="hold side B's AT commands until the line rings, so the "
+        "answering end is offered the call before it answers it",
     )
     link.add_argument(
         "--dip-preset",

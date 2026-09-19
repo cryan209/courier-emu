@@ -104,6 +104,9 @@ def main() -> int:
     parser.add_argument("--dsp-rx-pcm")
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
+    parser.add_argument(
+        "--serial-input-on-ring", action="store_true",
+        help="hold the AT input until the line rings, as a host answering a call does")
     parser.add_argument("--nvram")
     parser.add_argument("--nvram-fixture", choices=("idsdl302", "idsdl403"))
     parser.add_argument("--board-id", default="")
@@ -254,6 +257,7 @@ def main() -> int:
         dsp_rx_samples=dsp_rx_samples,
         dsp_tx_pcm=args.dsp_tx_pcm,
         serial_input=bytes.fromhex(args.serial_input_hex),
+        serial_input_on_ring=args.serial_input_on_ring,
         daa=CourierDaa(args.daa_line) if args.daa_line else None,
         ring=ring,
         codec=codec,

@@ -458,6 +458,7 @@ class CourierMachine:
         dsp_rx_samples: list[int] | None = None,
         dsp_tx_pcm: str | None = None,
         serial_input: bytes = b"",
+        serial_input_on_ring: bool = False,
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
         codec: CodecBringUp | None = None,
@@ -573,7 +574,15 @@ class CourierMachine:
         self.data_tx_bytes = 0
         self.online_mode = False
         self.force_online = force_online
-        self.serial_rx: deque[int] = deque(serial_input)
+        # A DTE does not type ATA into a line that is not ringing. Holding the
+        # commands back until the ring detector reads high models the host
+        # answering an offered call, which is the only order in which an
+        # answering modem ever sees one.
+        self._serial_input_on_ring = bool(serial_input_on_ring)
+        self._serial_input_pending: deque[int] = deque(
+            serial_input if self._serial_input_on_ring else b"")
+        self.serial_rx: deque[int] = deque(
+            b"" if self._serial_input_on_ring else serial_input)
         self._alternate_line = bytearray()
         self._rom_command_line = bytearray()
         self.console = console
@@ -2313,6 +2322,12 @@ class CourierMachine:
                         or (self.ring is not None and self.ring.present(self.instructions))
                     ):
                         value |= RING_DETECT_BIT
+                        if self._serial_input_pending:
+                            # The line is ringing: the host may answer now.
+                            self.serial_rx.extend(self._serial_input_pending)
+                            self._serial_input_pending.clear()
+                            self._terminal_connected = True
+                            self._trace_serial("ring: released held AT input")
                     else:
                         value &= ~RING_DETECT_BIT
                 if self.nvram is not None and port == 0x10 and size == 1:
