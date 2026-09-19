@@ -256,6 +256,11 @@ C51_MASK_ROM_WORDS = 0x2000
 # that acknowledges a group. Only inside this span is the C51 listening to
 # the ASIC's command register.
 C51_ROM_LOADER_LOOP = range(0x0638, 0x0653)
+# The data cell the mask ROM's NMI vector dispatches through - `lamm @6a`
+# at program 0x0024 - and the entry its own startup puts there, which is the
+# parallel loader at 0x0610. See `_settle_nmi_dispatch`.
+C51_NMI_DISPATCH_CELL = 0x006A
+C51_ROM_NMI_ENTRY = 0x0610
 HOST_TAG_CELL = asic.dsp_register("tag")
 HOST_WORD_CELL = asic.dsp_register("word")
 # `BIT dma, code` on the C5x tests bit (15 - code), not bit `code`. The
@@ -714,6 +719,9 @@ class CourierDspBridge:
         # Whether the exchange has put the two subscribers on the same path.
         # This is not a per-end decision: see `_advance_call_state`.
         self._reset_log: list[dict[str, int]] = []
+        # Power-on is a reset: the mask ROM has its startup to run before the
+        # first NMI can dispatch anywhere useful.
+        self._dsp_restarted = True
         self._call_state = CALL_IDLE
         self._peer_ring_last = False
         self._peer_ring_runs: list[int] = []
@@ -1292,6 +1300,9 @@ class CourierDspBridge:
             self._configure_frame_interrupt()
             self._loader_started = False
             self._loader_nmi_seen = False
+            # The part restarts at program 0x0000 and runs the mask ROM's
+            # startup from there. `_settle_nmi_dispatch` waits for it.
+            self._dsp_restarted = True
             self.launched = False
             self.active = False
             self.bootstrap = bytearray()
@@ -1316,8 +1327,57 @@ class CourierDspBridge:
         self.bootstrap_match = None
         if hasattr(self.core, "nmi"):
             self.core.set_io(0x58, self._download_destination)
+            self._settle_nmi_dispatch()
             self.core.nmi()
             self._loader_nmi_seen = True
+
+    def _settle_nmi_dispatch(self) -> None:
+        """Let the DSP run its post-reset startup before the NMI reaches it.
+
+        The mask ROM's NMI slot at program `0x0024` is `lamm @6a ; bacc`: it
+        dispatches through a *data* cell rather than a fixed address, and the
+        ROM's own startup is what puts the parallel loader's entry `0x0610`
+        there - three instructions after `RS` releases.
+
+        On the board the DSP has been executing since the reset edge and the
+        80186 gets to its NMI write microseconds later, so that cell is always
+        current by the time the pin moves. Here the DSP is stepped in batches
+        driven by the CPU, so at the moment of that write it may not have
+        executed since the reset at all, and the NMI dispatched through a cell
+        that was either zero (cold start) or still holding the *previous*
+        generation's resident handler at `0x81ae` (the mid-call reload - `RS`
+        does not clear DARAM, on the part or here). Either way it branched
+        somewhere that is not the loader, fell through the vector table, and
+        parked at `0x06dc`, which is the mask ROM's *serial* bootstrap spin:
+
+            06d8  xpl  @22, #00c0   ; toggle SPC XRST and RRST
+            06db  clrc tc
+            06dc  bcndd 06dc, ntc   ; spin until TC
+            06de  bit  10, @22      ;   TC = SPC RRDY
+
+        waiting on a serial word nothing was going to send. Every run of this
+        loader ended there.
+
+        So the wait is for the startup, not for a value: it runs only when the
+        part has been reset since the last pulse, and then until the ROM has
+        re-armed the vector. With no reset in between, the cell belongs to
+        whatever is running and must be left alone - a pulse during a call has
+        to dispatch to the resident's own handler.
+        """
+        if not self._dsp_restarted or not hasattr(self.core, "data"):
+            return
+        for _ in range(64):
+            if self.core.data(C51_NMI_DISPATCH_CELL) == C51_ROM_NMI_ENTRY:
+                self._dsp_restarted = False
+                return
+            self.core.step(1)
+        raise RuntimeError(
+            "C51 mask ROM did not arm its NMI vector after reset "
+            f"(@{C51_NMI_DISPATCH_CELL:02x}="
+            f"{self.core.data(C51_NMI_DISPATCH_CELL):04x}, "
+            f"want {C51_ROM_NMI_ENTRY:04x}, "
+            f"pc={self.core.state()['pc']:04x})"
+        )
 
     def _rom_loader_armed(self) -> bool:
         """Whether a byte on the command port is really a loader strobe.
@@ -1356,10 +1416,7 @@ class CourierDspBridge:
         # edge implies the reset release that the complete machine models.
         if self._reset_asserted:
             self.set_reset(False)
-        for _ in range(32):
-            if self.core.io(0x6A) == 0x0610:
-                break
-            self.core.step(1)
+        self._settle_nmi_dispatch()
         self.core.set_io(0x58, self._download_destination)
         if not self._loader_nmi_seen:
             # Standalone bridge users do not have an 80186 latch callback.
@@ -1377,7 +1434,11 @@ class CourierDspBridge:
                 "C51 ROM loader did not reach its ASIC poll "
                 f"(pc={state['pc']:04x}, nmi_seen={self._loader_nmi_seen}, "
                 f"reset={self._reset_asserted}, io56={self.core.io(0x56):04x}, "
-                f"io6a={self.core.io(0x6A):04x}, stack={self.core.stack()[:3]})"
+                # The dispatch cell is data, not an I/O port: this used to
+                # report `io(0x6a)`, which is unseeded and answers 0xffff
+                # whatever the part is doing.
+                f"@6a={self.core.data(C51_NMI_DISPATCH_CELL):04x}, "
+                f"stack={self.core.stack()[:3]})"
             )
         self._loader_started = True
 
