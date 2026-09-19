@@ -373,3 +373,80 @@ machine on 403 and the signature match is a false friend; the overlay copies at
 `0xadf5` and `0xc528` would then be the candidates, and neither can run until an
 overlay is downloaded. That is a static question and should be asked statically
 before another run.
+
+## The next question, answered: `@48` is written, and the dispatcher is still not it
+
+Two faults in the instrument, then the answer.
+
+**The originate gate stopped admitting a dialed call.** `_maybe_start_originate_engine`
+returned unless `daa.operation == "originate"`, which its docstring explains -
+it was written for the leased line, where the originating side never dials.
+Once the socket path grew a digit receiver the operation moves to `"dialing"`
+on the first digit, so the originating end stopped arming at all. A dialing
+seizure now qualifies once the called party has answered, which is when a real
+originating modem starts V.8 rather than putting CM under its own digits.
+
+**`@48` was read from the wrong data page.** The core sampled `m_data[0x48]`.
+A direct operand on the C5x resolves to `(DP << 7) | offset`, so that reading
+asserts `DP == 0`. Measured at the dispatch, **DP is 0x180**, so `@48` is data
+address **0xc048** and `@4a`/`@4d` are `0xc04a`/`0xc04d`. Every previous
+report of a null handler was reading a cell the firmware never uses.
+
+**And the image does write it.** A static scan of the 403 resident segment for
+stores to the direct operands:
+
+| cell | sites |
+|---|---:|
+| `@48` | 57 |
+| `@4a` | 26 |
+| `@4d` | 58 |
+
+Almost every `@48` site is `splk @48, #<the address two words later>` -
+`a688: splk @48, #a68a`, `bb55: splk @48, #bb57`, `e637: splk @48, #e639` -
+so `@48` is a continuation vector and `lacl @48 ; bacc` resumes it. This is
+the same arrangement as 2.1/2.2's `c509`/`c527`/`c54d` sites. The signature
+match is not a false friend for want of writers.
+
+### What the corrected instrument says
+
+A 403 pair with `--answer-on-ring`, 600 line frames:
+
+| | A (originate) | B (answer) |
+|---|---:|---:|
+| `v8_dispatches` | 47,425 | 62,759 |
+| `v8_dispatch_pc` | `0xba0b` | `0xba0b` |
+| `v8_dispatch_dp` | `0x180` | `0x180` |
+| **`v8_handler` (`0xc048`)** | **0** | **0** |
+| `v8_countdown` (`0xc04a`) | 0 | 0 |
+| `v8_flags` (`0xc04d`) | 0 | 0 |
+| `v8_record` | `0xb779` | `0x0194` |
+| line audio produced | DTMF only | answer tone, 2.98 s |
+
+`@48` is zero at every dispatch **on both ends, including the end that works**.
+B emits a full 2.98 s 2100 Hz answer tone in this run while its handler vector
+reads null through 62,759 dispatches of the same routine at the same page.
+
+**So `0xba0b` is not the live V.8 state machine on 403.** That was the doc's
+own stated alternative, and it is now the supported one: a routine whose vector
+is null on the side that is successfully negotiating is not the routine doing
+the negotiating. `v8_dispatches`, `v8_handler`, `v8_countdown` and `v8_flags`
+should not be read as V.8 progress on this target, whatever page they are
+sampled at.
+
+What does separate the two ends is the mailbox stream. Their originated tags
+barely overlap: A produces `0008:*` (`0008:0080` 673 times, `0008:0880` 387,
+`0008:0885` 128) and B produces `0016:*` (`0016:0080` 895, `0016:0088` 116),
+sharing only `0002:0000`, `0008:0000` and `000f:0000`. The two ends are running
+different programs, and the question of why A never transmits belongs to that
+difference rather than to `0xba0b`.
+
+### Also settled since the sections above were written
+
+The transmit-array contradiction at the end of the previous section is
+resolved, and it was not a bookkeeping fault of the kind guessed there. The
+supervisor resets the DSP two or three times per call; `reset()` clears
+`m_line_tx`, and the bridge's output cursors did not restart with it, so the
+start of every generation was skipped. Both measurements were correct and were
+reading different generations of the array. The cursors now reset with the
+core. `a-tx` is no longer silent on that account - it carries the dialed
+digits - and `b-tx` went from 23,841 nonzero samples to 38,914.

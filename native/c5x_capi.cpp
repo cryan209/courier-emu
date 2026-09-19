@@ -427,7 +427,7 @@ void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values,
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 56) return;
+    if (!handle || !values || count < 57) return;
     auto serial = static_cast<C5xCore *>(handle)->serial_state();
     uint64_t result[] = {
         serial.drr, serial.dxr, serial.spc,
@@ -447,6 +447,7 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         uint32_t(serial.negotiation_acc),
         serial.v8_dispatches, serial.v8_record, serial.v8_handler,
         serial.v8_countdown, serial.v8_flags, serial.v8_dispatch_pc,
+        serial.v8_dispatch_dp,
         serial.negotiation_d76, serial.negotiation_d77,
         serial.negotiation_d78, serial.negotiation_d79,
         serial.negotiation_d26, serial.negotiation_indx,

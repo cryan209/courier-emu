@@ -1131,6 +1131,14 @@ class CourierDspBridge:
         side qualifies on line presence alone, mirroring the answer path.
         On the ROM path the bridge sends the ASIC ready signals but lets
         the CPU firmware drive overlay loading itself.
+
+        A dialed call is the other shape of the same seizure, and it was not
+        admitted here: once the line's digit receiver moves the operation to
+        "dialing" this returned on every call and the originating end never
+        armed. What it must not do is arm *during* dialing, which would put CM
+        on the line under the digits. A real originating modem dials, waits,
+        and starts V.8 when the far end is there, so a dialing seizure
+        qualifies once the called party has answered.
         """
         if self._audio_only:
             return
@@ -1140,9 +1148,13 @@ class CourierDspBridge:
             or self._call_overlay_active
             or self.line is None
             or self.daa is None
-            or self.daa.operation != "originate"
             or not self.daa.detector_qualified
         ):
+            return
+        if self.daa.operation == "dialing":
+            if not self.line.peer_off_hook:
+                return
+        elif self.daa.operation != "originate":
             return
         self._v8_armed = True
         self._asic_call_engine_started = True

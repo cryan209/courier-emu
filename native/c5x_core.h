@@ -147,6 +147,7 @@ public:
         int32_t negotiation_acc;
         uint64_t v8_dispatches;
         uint16_t v8_record, v8_handler, v8_countdown, v8_flags, v8_dispatch_pc;
+        uint16_t v8_dispatch_dp;
         uint16_t negotiation_d76, negotiation_d77, negotiation_d78, negotiation_d79;
         uint16_t negotiation_d26, negotiation_indx, negotiation_arp, negotiation_pm;
         // Trans-hybrid return: frames the loop delivered and the loudest one.
@@ -416,6 +417,7 @@ private:
     bool m_call_tdm_active = false;
     std::vector<uint16_t> m_v8_dispatch_pcs{0xc418};
     uint16_t m_v8_dispatch_pc = 0;
+    uint16_t m_v8_dispatch_dp = 0;
     uint16_t m_line_dac_slot = 0xfffd;
     std::vector<uint16_t> m_line_phase_tx[4];
     int m_line_frame_entry = -1;

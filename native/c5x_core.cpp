@@ -1104,9 +1104,18 @@ void C5xCore::step()
             ++m_v8_dispatches;
             m_v8_dispatch_pc = previous_pc;
             m_v8_record = uint16_t(m_acc);
-            m_v8_handler = m_data[0x48];
-            m_v8_countdown = m_data[0x4a];
-            m_v8_flags = m_data[0x4d];
+            // `@48`, `@4a` and `@4d` are direct operands, and a direct
+            // address on the C5x is (DP << 7) | offset. Reading m_data[0x48]
+            // asserts DP is zero, which this firmware's dispatcher does not
+            // guarantee - the ISR at 0x0228 alone runs at DP 0x1ff. Sampling
+            // the wrong page reported a null handler through every dispatch
+            // and made the state machine look like it was spinning on an
+            // unset vector, when the image has 57 sites that splk @48.
+            const uint16_t page = uint16_t((m_st0.dp & 0x1ff) << 7);
+            m_v8_dispatch_dp = uint16_t(m_st0.dp & 0x1ff);
+            m_v8_handler = m_data[uint16_t(page | 0x48)];
+            m_v8_countdown = m_data[uint16_t(page | 0x4a)];
+            m_v8_flags = m_data[uint16_t(page | 0x4d)];
         }
         bool negotiation_loop = previous_pc == 0xc7f7 || previous_pc == 0xc81a ||
             previous_pc == 0xc853;
@@ -1319,7 +1328,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_negotiation_loop_entries, m_negotiation_loop_pc, m_negotiation_source, m_negotiation_pair,
         m_negotiation_source_value, m_negotiation_pair_value, m_negotiation_acc,
         m_v8_dispatches, m_v8_record, m_v8_handler, m_v8_countdown, m_v8_flags,
-        m_v8_dispatch_pc,
+        m_v8_dispatch_pc, m_v8_dispatch_dp,
         m_negotiation_d76, m_negotiation_d77, m_negotiation_d78, m_negotiation_d79,
         m_negotiation_d26, m_negotiation_indx, m_negotiation_arp, m_negotiation_pm,
         m_hybrid_frames, m_hybrid_peak};
