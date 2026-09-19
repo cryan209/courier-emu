@@ -1370,6 +1370,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="AT command for side B; repeatable (default AT&L1)",
     )
     link.add_argument(
+        "--track-executed",
+        action="store_true",
+        help="count how often each address runs on both sides, for hot_addresses",
+    )
+    link.add_argument(
         "--answer-on-ring",
         action="store_true",
         help="hold side B's AT commands until the line rings, so the "

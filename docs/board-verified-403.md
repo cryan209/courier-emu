@@ -697,3 +697,43 @@ produces one: its `ATD` never returns. Its serial output for the whole run is
 `OK`, the reply to `ATX0` - no `CONNECT`, no `NO CARRIER`, no `BUSY`, 50 s
 after dialing. So the dial command is still blocked on something, and that,
 not the reset, is what to find next.
+
+### The reset is the downloader's, and the originator only ever runs it once
+
+Logging the CPU program counter at every edge of the reset net: all of them,
+on both ends, come from one routine.
+
+```text
+8e43c   assert   ff56 <- 0002
+8e448   release  ff56 <- 000a
+```
+
+That is the ROM's DSP downloader. The reset is not a wipe the harness happens
+to apply; it is the front half of a download, pulsed twice per load, which is
+what this document recorded from the board.
+
+Counting entries to it over one dial with `--answer-on-ring`:
+
+| end | downloader entries |
+|---|---|
+| originator | **one**, at 38.3 M instructions - 9.0 s, before the first digit |
+| answerer | **two**, at 85.3 M (22.05 s) and 91.1 M (24.03 s), at answer |
+
+The answering end loads once to answer and again for the datapump, and
+transmits from there. The originating end loads the program it dials with and
+never asks for another, so the datapump is never downloaded to it. It is not
+that a reset stops it starting - it is that nothing ever requests the second
+load.
+
+Its DSP is not idle while this happens. The detector bitmap it reports over
+the mailbox walks `0002 -> 0880 -> 0980 -> 0881 -> 0885 -> 08c5` across the
+call, setting and clearing bit `0x0040` - the detector at cell `03be` - and
+the supervisor takes 1,567 of those messages. So the reports arrive and the
+CPU does not act on them.
+
+The open question is therefore what makes the supervisor enter `8e43c` for the
+datapump on an originating call, and it is a CPU-side question about the path
+that consumes those detector reports.
+
+Note also that `overlay_downloads` stays 0 on both ends while this routine runs
+three times between them, so that counter is not watching this download path.
