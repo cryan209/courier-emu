@@ -118,6 +118,19 @@ instruction, and it is the branch nobody had traced.
 
 Both dispatch sites are three-way, and both publish `[0x0281]` as the data word:
 
+> **The RAM-map collision, resolved 2026-09-19.** `courier_firmware_analysis.md`
+> also claims `[0x0281]`, as the DAA `SI` line-side register read delivered by
+> mailbox tag `0x7e`. That is a different image: its addresses are iModem 2.1.1
+> (`main211.xmf`, physical = file + `0x40000`), where `0x6adb5` is
+> `a3 81 02` - `mov [0x281], ax` right after an `in al, 0x5c` - and `0x5e576`
+> is `f6 06 81 02 01` - `test byte [0x281], 1`, the ring-detect debounce.
+> **`IDSDL302.ROM` contains no store to `[0x281]` at all**, and `main211.xmf`
+> contains no `mov bx, [0x281]`. The two readings never meet; 2.1.1 and 3.0.2
+> simply put different variables at the same offset, and the same is true of
+> `[0x027f]`, which is the capability word here and the unidentified tag-`0x7d`
+> destination there. `SV25.XMD` references the cell in no form whatsoever.
+
+
 ```text
 8bee8  mov  ax, 0x5a
 8beeb  call 8b863          ; the CF gate
