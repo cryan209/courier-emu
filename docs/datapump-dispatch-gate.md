@@ -295,9 +295,60 @@ modulation-capability update, not a start**: it touches `@6f` and returns.
 
 Where `0x10`/`0x11` load a table base into `@7c` and let the selector at `0x9b7e`
 pick a slot from the DSP's own mode flags, `0x17` picks between **two** entries
-directly off bit 14 of the data word. Both are inside overlay 6's span - `0x9d00`
-is slot 0's entry - and `0x9d17` opens on `bit 2, @2f` with a three-way branch,
-so it is a sub-entry rather than a tenth modulation.
+directly off bit 14 of the data word. The polarity is that `splk #9d17` runs
+first and the `xc 2, tc` overwrites it, so **bit 14 set selects `0x9cd4`, bit 14
+clear leaves `0x9d17`**.
+
+The two are not the same kind of address, and this is the part that has to be
+said carefully:
+
+| | `0x9cd4` | `0x9d17` |
+|---|---|---|
+| where | resident bank, below every overlay entry (`0x9d00`, `0xb000`, `0xdc00`) | **23 words inside overlay 6**, whose span is `0x9d00`-`0xc9f5` on 302 |
+| stable? | yes - no overlay can overwrite it | no - what is there depends on whether overlay 6 is loaded |
+
+`0x9cd4` is a frame loop, and it never returns:
+
+```text
+9cd4  call  d5bf ; call d47d
+9cd8  splk  @28, #01ed
+9cda  splk  @2b, #0050      ; <- loop head
+9cdc  call  8771 ; call 9cec ; call d49a
+9ce2  splk  @2b, #0028
+9ce4  call  8771 ; call 9cec ; call d48e
+9cea  b     9cda             ; forever
+```
+
+Two alternating phases with `@2b` loaded `0x50` then `0x28`, each running the
+shared poll at `0x9cec`. That poll is a resume primitive rather than a
+subroutine: `popd @7d` lifts its own return address off the hardware stack,
+bit-tests `@2f` and branches away to a handler if one is set, otherwise
+decrements `@2b`, `retc gt` while the count holds, and on expiry does
+`lacl @7d ; bacc` back to the saved address.
+
+**`0x9d17` is V.34 setup, and only when overlay 6 is resident.** Comparing
+overlay 6's payload against the base image word for word, **52 of 11,510** words
+coincide - the overlay is not a patch, it is different code - and at `0x9d17`
+every word differs:
+
+```text
+9d17  sar   ar1, @51
+9d18  clrc  tc
+9d19  call  a6e2
+9d1b  splk  @17, #9ae4
+9d1d  splk  @16, #4000
+9d1f  splk  @7c, #0000
+9d22  call  a685
+9d24  bldd  @12, #fff0
+9d27  bldd  @45, #ff2e
+9d2c  splk  @1a, #0c80
+```
+
+> **Corrected 2026-09-19.** An earlier revision of this section described
+> `0x9d17` as opening on `bit 2, @2f` with a three-way branch. That is the
+> **base image's** bytes at that address - a dispatcher shaped like `0x9cd4`'s -
+> and it is exactly what overlay 6 overwrites. Any reading of an address at or
+> above `0x9d00` has to say which of the two images it is reading.
 
 All three share the prologue at `0x9b50`, which is worth naming:
 
