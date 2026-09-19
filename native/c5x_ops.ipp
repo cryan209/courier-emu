@@ -1426,7 +1426,10 @@ void C5xCore::op_bldd_slimm()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(pfc);
@@ -1434,15 +1437,18 @@ void C5xCore::op_bldd_slimm()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_bldd_dlimm()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1450,15 +1456,18 @@ void C5xCore::op_bldd_dlimm()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_bldd_sbmar()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(pfc);
@@ -1466,15 +1475,18 @@ void C5xCore::op_bldd_sbmar()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_bldd_dbmar()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1482,15 +1494,18 @@ void C5xCore::op_bldd_dbmar()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_bldp()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1498,15 +1513,18 @@ void C5xCore::op_bldp()
 		pfc++;
 		CYCLES(1);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_blpd_bmar()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = PM_READ16(pfc);
@@ -1514,15 +1532,18 @@ void C5xCore::op_blpd_bmar()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_blpd_imm()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = PM_READ16(pfc);
@@ -1530,8 +1551,8 @@ void C5xCore::op_blpd_imm()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 /*****************************************************************************/
@@ -1555,7 +1576,10 @@ void C5xCore::op_lmmr()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(pfc);
@@ -1563,8 +1587,8 @@ void C5xCore::op_lmmr()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_out()
@@ -1583,7 +1607,10 @@ void C5xCore::op_smmr()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea & 0x7f);
@@ -1591,15 +1618,18 @@ void C5xCore::op_smmr()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_tblr()
 {
 	uint16_t pfc = (uint16_t)(m_acc);
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = PM_READ16(pfc);
@@ -1607,15 +1637,18 @@ void C5xCore::op_tblr()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_tblw()
 {
 	uint16_t pfc = (uint16_t)(m_acc);
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1623,8 +1656,8 @@ void C5xCore::op_tblw()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 /*****************************************************************************/
@@ -1828,7 +1861,10 @@ void C5xCore::op_mac()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1838,15 +1874,18 @@ void C5xCore::op_mac()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_macd()
 {
 	uint16_t pfc = ROPCODE();
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1860,15 +1899,18 @@ void C5xCore::op_macd()
 		pfc++;
 		CYCLES(2);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_madd()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1879,15 +1921,18 @@ void C5xCore::op_madd()
 		pfc++;
 		CYCLES(3);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_mads()
 {
 	uint16_t pfc = m_bmar;
 
-	while (m_rptc > -1)
+	// RPTC reads 0 when no RPT is in force, so an unrepeated
+	// instruction runs once and a repeated one RPTC+1 times, both
+	// leaving RPTC at 0. See the note on m_rptc in c5x_core.h.
+	do
 	{
 		uint16_t ea = GET_ADDRESS();
 		uint16_t data = DM_READ16(ea);
@@ -1897,8 +1942,8 @@ void C5xCore::op_mads()
 		pfc++;
 		CYCLES(3);
 
-		m_rptc--;
-	};
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_mpy_mem()

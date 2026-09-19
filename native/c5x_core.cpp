@@ -81,7 +81,7 @@ void C5xCore::reset()
     m_acc = m_accb = m_preg = 0;
     m_treg0 = m_treg1 = m_treg2 = 0;
     std::fill(std::begin(m_ar), std::end(m_ar), 0);
-    m_rptc = -1;
+    m_rptc = 0;
     m_repeat_active = false;
     m_bmar = 0; m_brcr = 0; m_paer = m_pasr = 0;
     m_indx = m_dbmr = m_arcr = 0;

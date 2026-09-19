@@ -393,7 +393,12 @@ private:
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;
     uint16_t m_treg0 = 0, m_treg1 = 0, m_treg2 = 0;
     uint16_t m_ar[8]{};
-    int32_t m_rptc = -1;
+    // RPTC. The C5x holds 0 here whenever no RPT is in force: an instruction
+    // in the repeatable block-transfer family executes RPTC+1 times, so 0
+    // means once. This was -1, which made every TBLR, TBLW, BLDD, BLPD and
+    // MACD a silent no-op until some RPT had run and left it at 0 - the
+    // loops all read `while (m_rptc > -1)` and simply did not execute.
+    int32_t m_rptc = 0;
     bool m_repeat_active = false;
     uint16_t m_bmar = 0;
     int32_t m_brcr = 0;
