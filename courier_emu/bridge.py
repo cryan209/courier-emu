@@ -527,6 +527,7 @@ class CourierDspBridge:
             "ring_frames": 0,
             "peer_ring_frames": 0,
             "peer_ring_bursts": 0,
+            "cut_through_at": -1,
             "peer_ring_runs": [],
             "tx_index": 0,
             "tx_peak_line": 0,
@@ -681,6 +682,8 @@ class CourierDspBridge:
         # signal that the firmware has started dialing.
         self._line_dtmf = DtmfDecoder(sample_rate=LINE_RATE)
         self._last_digit_at: int | None = None
+        # Whether the exchange has put the two subscribers on the same path.
+        self._cut_through = False
         self._peer_ring_last = False
         self._peer_ring_runs: list[int] = []
         # What the called subscriber's bell does once the switch has the
@@ -2924,6 +2927,20 @@ class CourierDspBridge:
             # callback transition temporarily leaves the datapump without a
             # complete fresh block.
             samples.extend([0] * (LINE_FRAME_SAMPLES - len(samples)))
+        # Through-connection. A subscriber dialing is talking to the switch,
+        # not to the far end: the digits are collected by the exchange, and
+        # the called party is not on the path at all until it answers. Sending
+        # the raw transmit frame across from seizure put A's DTMF into B's
+        # receiver while B was still on hook being rung, which is not a thing
+        # a called subscriber can hear. The exchange cuts through when the
+        # call is answered, and stays through for the rest of it.
+        if not self._cut_through and off_hook and self.line.peer_off_hook:
+            self._cut_through = True
+            self._line_service["cut_through_at"] = self.line.frames
+        # `samples` stays intact below: the exchange is on this loop and
+        # collects the digits from it. Only what crosses to the far
+        # subscriber is cut.
+        wire = samples if self._cut_through else [0] * len(samples)
         ringing = (off_hook and not self.line.peer_off_hook
                    and self._called_party_ringing())
         if ringing:
@@ -2947,7 +2964,7 @@ class CourierDspBridge:
                 # The far end going off hook trips the ring, as it does on a
                 # switch, so the bell stops the moment the call is answered.
                 ringing=ringing,
-                samples=samples,
+                samples=wire,
             )
         )
         if (
@@ -2958,6 +2975,10 @@ class CourierDspBridge:
             self.on_line_frame_budget()
             self.on_line_frame_budget = None
         incoming = self.line.receive_audio()
+        if incoming and not self._cut_through:
+            # Nothing is connected to this end yet; the loop carries only what
+            # the switch puts on it, which the DAA renders locally.
+            incoming = [0] * len(incoming)
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
             if (
