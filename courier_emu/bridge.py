@@ -507,6 +507,13 @@ class CourierDspBridge:
         # originate early return below is the only originate/answer asymmetry
         # in _service_line, and a 69%/99% split between the two ends is what
         # put it under suspicion. See docs/v8-call-overlay-misplacement.md.
+        # Budget the run on line frames, not x86 instructions. Two instances
+        # given the same instruction budget stop at different points in call
+        # time - measured at 22.82 s against 15.89 s on a 403 pair, a 44%
+        # divergence - and the shorter-lived end silently truncates the call
+        # for both. See docs/v8-call-overlay-misplacement.md.
+        self.line_frame_budget: int | None = None
+        self.on_line_frame_budget = None
         self._line_service = {
             "calls": 0,
             "no_codec_clock": 0,
@@ -514,6 +521,7 @@ class CourierDspBridge:
             "fallback_frames": 0,
             "drained_frames": 0,
             "buffer_left": 0,
+            "budget_frames": 0,
         }
         # `out 0x1e, 4` at 0x8e631 starts an overlay transfer.
         self.transfer_start_command = 4
@@ -2833,6 +2841,13 @@ class CourierDspBridge:
                 samples=samples,
             )
         )
+        if (
+            self.line_frame_budget is not None
+            and self.line.frames >= self.line_frame_budget
+            and self.on_line_frame_budget is not None
+        ):
+            self.on_line_frame_budget()
+            self.on_line_frame_budget = None
         incoming = self.line.receive_audio()
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
@@ -2896,6 +2911,7 @@ class CourierDspBridge:
             line_service=dict(
                 self._line_service,
                 buffer_left=len(self._exchange_line_buffer),
+                budget_frames=self.line_frame_budget or 0,
             ),
             overlay_words_verified=self.overlay_words_verified,
             overlay_words_unreadable=self.overlay_words_unreadable,

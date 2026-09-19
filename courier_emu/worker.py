@@ -123,6 +123,10 @@ def main() -> int:
     parser.add_argument("--exchange-hotline", action="store_true")
     parser.add_argument("--line-link")
     parser.add_argument("--line-listen", action="store_true")
+    parser.add_argument(
+        "--line-frames", type=int, default=None,
+        help="stop once this many line frames have been exchanged; the pair's "
+             "real budget, where --instructions is only a ceiling")
     parser.add_argument("--line-audio-only", action="store_true")
     parser.add_argument("--line-record")
     parser.add_argument("--daa-codec", action="store_true")
@@ -273,6 +277,11 @@ def main() -> int:
         console=console,
         cpu_engine=args.cpu_engine,
     )
+    if args.line_frames is not None and machine.dsp_bridge is not None:
+        # Both ends stop at the same point in call time rather than at the
+        # same instruction count, which they reach at different moments.
+        machine.dsp_bridge.line_frame_budget = args.line_frames
+        machine.dsp_bridge.on_line_frame_budget = machine.request_stop
     if console is not None:
         # Detaching the terminal closes its end of the channel, which the
         # console notices; a signal covers the case where the parent goes

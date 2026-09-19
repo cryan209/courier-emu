@@ -254,6 +254,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
             command.extend(("--line-record", str(Path(args.line_record).resolve())))
         if args.line_listen:
             command.append("--line-listen")
+        if args.line_frames is not None:
+            command.extend(("--line-frames", str(args.line_frames)))
     # A linked instance always needs a DAA: the link drives its line state
     # frame by frame, starting from a line with nothing on the far end.
     daa_line = args.daa_line or ("dial-tone" if args.sip_server else None)
@@ -391,6 +393,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--board-id",
         args.board_id,
     ]
+    if args.line_frames is not None:
+        command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
         command.append("--line-audio-only")
     if args.audio_dir:
@@ -1152,6 +1156,15 @@ def build_parser() -> argparse.ArgumentParser:
         "implies --with-dsp and supersedes --daa-line",
     )
     run.add_argument(
+        "--line-frames",
+        type=_number,
+        default=None,
+        metavar="N",
+        help="stop once this many line frames have been exchanged, so a pair "
+        "ends at the same point in call time rather than the same instruction "
+        "count; --instructions becomes a ceiling",
+    )
+    run.add_argument(
         "--exchange",
         action="store_true",
         help="put a modeled central office on the line instead of a fixed DAA "
@@ -1313,6 +1326,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="run the C52 on both sides",
     )
     link.add_argument("--dsp-batch", type=_number, default=256, metavar="N")
+    link.add_argument(
+        "--line-frames",
+        type=_number,
+        default=None,
+        metavar="N",
+        help="stop both sides after this many line frames, so the pair ends at "
+             "the same point in call time; --instructions becomes a ceiling",
+    )
     link.add_argument(
         "--socket",
         default=DEFAULT_LINE_SOCKET,

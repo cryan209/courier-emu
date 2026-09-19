@@ -255,6 +255,66 @@ see above - and that is not explained by the truncation, because the dispatcher
 is entered from the first seconds. Both faults are live; this one has to be
 cleared first, because it makes every run unreadable after 15.89 s.
 
+## Budgeting on line frames: the truncation is fixed, and A is still silent
+
+`--line-frames N` on `run` and `link` stops each side once it has exchanged N
+line frames. `Bridge.line_frame_budget` trips `Machine.request_stop` from
+`_service_line_frame`, so both ends leave at the same point in *call* time and
+`--instructions` is only a ceiling.
+
+`artifacts/v8-line-frames-403-01/`, 300 frames against a 250 M ceiling:
+
+| | A (originate) | B (answer) |
+|---|---:|---:|
+| `line.frames` | 300 | 300 |
+| `line.connected` at exit | **True** | **True** |
+| `line.error` | none | none |
+| `buffer_left` | 2 | 2 |
+| x86 instructions | 97,386,495 | 111,219,711 |
+| codec samples | 216,007 | 216,007 |
+| **codec time** | **30.00 s** | **30.00 s** |
+
+The divergence is gone: identical call time, the instruction counts differing by
+14% as they should, no socket closing under the other end, nothing left in
+either buffer. The mechanism works.
+
+**And it changed nothing about the audio.** Over 30 s, with both ends alive
+throughout:
+
+| wav | frames | peak | nonzero | span |
+|---|---:|---:|---:|---|
+| `b-tx` | 240,000 | 17,188 | 23,841 | 12.03 s - 15.01 s |
+| `a-rx` | 240,000 | 17,188 | 23,841 | 12.03 s - 15.01 s |
+| **`a-tx`** | **240,000** | **0** | **0** | - |
+| **`b-rx`** | **240,000** | **0** | **0** | - |
+
+`line_tx_nonzero` is 5,176 on A, the same figure as the truncated run, and
+`a-tx` is 240,000 zeros.
+
+> **Superseded.** The section above concluded that A's silence followed from
+> the truncation - that every nonzero sample A produced was generated after B
+> had gone. **That is refuted.** Given 30 s with the peer alive the whole time,
+> A produces exactly the same 5,176 nonzero samples and still puts none of them
+> on the wire. The truncation was real and worth fixing, but it was not why A
+> is silent.
+
+### What that leaves
+
+The samples are in the core's own buffer - `m_line_tx` holds 216,007 words of
+which 5,176 are nonzero, and the same array is what `line_tx_samples` hands the
+bridge. `_exchange_tx_index` starts at zero, no core rebuild happened
+(`core_rebuilt_at: 0` on both ends), and essentially the whole array was
+consumed: 240,000 line samples shipped against 216,007 codec samples produced,
+which at 7200-to-8000 is the entire stream. So the nonzero words were read out
+of the array and did not survive to the socket.
+
+Two candidates, neither tested: the codec-to-line conversion in
+`_take_line_audio`, and whichever of the four `m_line_tx.push_back` sites on the
+core side A's nonzero writes come from - `line_dac_writes` is 0, so they are not
+the datapump's DAC slot. B's audio crosses the same conversion intact, which
+argues against the resampler and for the write path, but that is an argument,
+not a measurement.
+
 ### The next question, singular
 
 Does `@48` ever get written on this image - by any site, in any configuration?
