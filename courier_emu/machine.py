@@ -2869,12 +2869,11 @@ class CourierMachine:
                     self.instructions = native_clock.instructions
                 elif self.cpu_engine == "interpreter":
                     self.instructions = interpreter_instruction_base + uc.retired
-                # Unicorn returns after HLT. The Quad modem's scheduler uses
-                # STI/HLT between events; clocks and peripherals continue while
-                # its CPU sleeps. Advance the same bounded simulation clock,
-                # then deliver the interrupt at the instruction after HLT.
-                if (self._quad_profile
-                        and bytes(uc.mem_read((current_pc() - 1) & 0xfffff, 1)) == b"\xf4"
+                # Unicorn returns after HLT. Modem schedulers use STI/HLT
+                # between events; clocks and peripherals (including the DSP)
+                # continue while the host CPU sleeps. Advance the same bounded
+                # simulation clock, then deliver the interrupt after HLT.
+                if (bytes(uc.mem_read((current_pc() - 1) & 0xfffff, 1)) == b"\xf4"
                         and uc.reg_read(UC_X86_REG_FLAGS) & 0x0200):
                     while self.instructions < instruction_limit and not self.stop_requested:
                         if (self._external_interrupt_pending is not None

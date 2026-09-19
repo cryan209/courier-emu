@@ -451,9 +451,11 @@ private:
         uint64_t frames_clocked = 0;
         uint64_t secondary_cycle = 0;
         uint16_t last_control_word = 0, readback = 0;
+        uint16_t dac_sample = 0;
         bool rate_programmed = false, secondary_pending = false;
         bool secondary_now = false, readback_armed = false;
         bool secondary_due = false, rx_ready = false;
+        bool dac_pending = false;
         // DXR is empty out of reset, so the first write need not wait.
         bool tx_ready = true;
     } m_codec;

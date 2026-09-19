@@ -349,18 +349,13 @@ void C5xCore::codec_transmit(uint16_t word)
     default: break;
     }
     if (!m_rom_codec) return;
-    // The sample is the top 14 bits; the low two were never data.
-    const uint16_t sample = ac01_output_sample(
+    // The sample is the top 14 bits; the low two were never data. DXR loads
+    // the word the AC01 will use at the next primary conversion. The DAC is
+    // frame-clocked, not write-clocked: if the DSP does not replace this word
+    // before a later primary frame, the converter holds and emits it again.
+    m_codec.dac_sample = ac01_output_sample(
         uint16_t(word & 0xfffc), m_codec.registers[4]);
-    // Tap the analog output for the trans-hybrid return before the line gets
-    // it. One push per primary frame pairs with one pop in codec_frame, so
-    // the delay line settles at m_hybrid_delay entries and stays there.
-    if (m_hybrid_return) {
-        m_hybrid_line.push_back(int16_t(sample));
-        if (m_hybrid_line.size() > m_hybrid_delay + 64) m_hybrid_line.pop_front();
-    }
-    m_line_tx.push_back(sample);
-    if (sample) ++m_line_tx_nonzero;
+    m_codec.dac_pending = true;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
 }
 
@@ -381,6 +376,18 @@ void C5xCore::codec_frame(bool secondary)
         m_codec.tx_ready = true;
         return;
     }
+    // DIN is converted once per primary interval. DXR is only the loading
+    // mechanism; it is not the DAC clock. In particular, a secondary exchange
+    // or a missed DSP write does not delete time from the analog waveform --
+    // the converter continues to hold the most recent primary sample.
+    const uint16_t output = m_codec.dac_pending ? m_codec.dac_sample : 0;
+    m_codec.dac_pending = false;
+    if (m_hybrid_return) {
+        m_hybrid_line.push_back(int16_t(output));
+        if (m_hybrid_line.size() > m_hybrid_delay + 64) m_hybrid_line.pop_front();
+    }
+    m_line_tx.push_back(output);
+    if (output) ++m_line_tx_nonzero;
     // The ADC converts whether or not the line is doing anything. An empty
     // queue is silence on the line, which is a delivered zero, not a repeat.
     int32_t analog = 0;
