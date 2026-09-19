@@ -1408,3 +1408,57 @@ dispatcher is itself entry `0x1cde` in a table of handler offsets in CS `a4e2`,
 around `0xa66ab` - `1ca9, 1cde, 1d94, ...` - and what drives *that* table is
 the next thing to find. No branch or far pointer anywhere in the image targets
 `a6afe` directly, so it is reached through that table rather than by a call.
+
+### What drives the table: the `AT&` command parser
+
+The handler table is at `cs:0x1865` in CS `a4e2` - physical `0xa6685` - and
+`0xa4f63` is the only thing that indexes it:
+
+```text
+a4f3c  cmp al, 0x26        ; '&'
+a4f3e  jne 0xa4f6c         ; not an & command
+a4f42  lodsb               ; the letter after '&'
+a4f53  cmp al, 0x41 ; jb reject
+a4f57  cmp al, 0x5a ; ja reject
+a4f5e  sub bl, 0x41        ; index = letter - 'A'
+a4f61  shl bl, 1
+a4f63  call word ptr cs:[bx + 0x1865]
+```
+
+So it is the **`AT&` command table**, twenty-six entries, one per letter. It
+reads as one: `&A` `a66b9`, `&D` `a674b`, `&H` `a688e`, `&S` `a6ac9`,
+`&Z` `a6ce0`, with `&E`, `&O`, `&Q` and `&V` sharing the `a6780` stub. A
+sibling table at `cs:0x21ff` covers the lowercase forms.
+
+Entry 19 is `&T`, and entry 19 is `0xa6afe` - the dispatcher this document
+has been tracing. Its `al` is `&T`'s numeric argument, so the chain is:
+
+```text
+AT&T1 -> a6afe -> jmp cs:[bx+0x1d50] entry 1 -> a6b88 -> 87626
+      -> 876fb -> or [0x57c], 1 -> 8b88d passes -> 8bc06 -> [0xd28] = 6
+      -> the overlay loader at 8e60c
+```
+
+**Run with `AT&T1` and it all fires.** One dial's worth of counters on the
+originating end:
+
+| probe | count |
+|---|---:|
+| `a6afe` dispatcher | 1 |
+| `a6b88` thunk index 1 | 1 |
+| `87626` table index 1 | 1 |
+| `8770f` `or [0x57c], 1` | 1 |
+| `8e61c` overlay loader | **2** |
+| `overlay_downloads` | **2**, `overlay_id` **8** |
+
+Overlay 8 is the sync datapump, and it downloads. So nothing in this chain is
+broken, in the firmware or in the harness: the port `0x1e` handshake, the
+destination mailbox, the loader's timeout and the transfer all work when the
+path is taken.
+
+They are simply not taken by `ATDT`. This confirms from the other direction
+what this document records at the top - that a plain dial does not reach the
+loader and only the leased and `&T1`/`&L1` configurations do. The originating
+end's silence on a dialed call is therefore not a missing trigger inside this
+chain; it is that a dialed call loads its datapump some other way, and that
+way has not been found yet.
