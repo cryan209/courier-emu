@@ -28,7 +28,7 @@ from . import asic
 from . import boot_rom
 from .dsp import NativeC5x
 from .ata import SipLine
-from .exchange import LineExchange
+from .exchange import DtmfDecoder, LineExchange
 from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
 from .timebase import DEFAULT_COURIER, Timebase
 from .sip import PolyphaseResampler, SipSession
@@ -672,6 +672,10 @@ class CourierDspBridge:
         self._carrier_best_score = 0.0
         self._rate_trace_enabled = False
         self._sip_tx_index = 0
+        # The socket line's own digit receiver. See `_service_line_frame`:
+        # with no exchange on this path, the digits on the wire are the only
+        # signal that the firmware has started dialing.
+        self._line_dtmf = DtmfDecoder(sample_rate=LINE_RATE)
         # Band-limited rather than a hold: the modem's transmit is tones and
         # modulation, and the images a hold leaves at 6:5 land inside the
         # band the far end demodulates in.
@@ -2919,6 +2923,29 @@ class CourierDspBridge:
             # The socket models the small exchange between the two DAAs. An
             # originating seizure hears dial tone until the firmware starts
             # dialing; after that, loop current follows the far-end hook.
+            if self.daa.operation in ("originate", "dialing"):
+                # "Until the firmware starts dialing" needs something that
+                # notices it has. With an exchange attached that is
+                # `exchange.dialed`; on the socket there is no exchange, and
+                # the supervisor PC hooks that stand in for one do not fire on
+                # this path, so dial tone stayed on the line for the whole
+                # call. The firmware dialed regardless - the digits are on the
+                # wire - and kept hearing dial tone over the far end's answer
+                # tone, so it never left its dial state.
+                #
+                # A central office drops dial tone when it hears the first
+                # digit, and `DtmfDecoder` exists to learn the number that
+                # way rather than reading it out of the firmware. Same
+                # detector, same rule, applied to the frame going out.
+                # Collection continues after the first digit the way the
+                # exchange's own "dial-tone" then "collecting" states do, so
+                # the number on the wire is the whole number, not its first
+                # digit. `begin_dialing` is idempotent once the operation has
+                # moved off "originate".
+                digits = self._line_dtmf.feed(samples)
+                if digits:
+                    self.dial_digits += digits
+                    self.begin_dialing()
             if self.daa.operation == "originate":
                 self.daa.line_state = "dial-tone"
             else:
