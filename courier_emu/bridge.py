@@ -2974,6 +2974,14 @@ class CourierDspBridge:
         if not self._cut_through and off_hook and self.line.peer_off_hook:
             self._cut_through = True
             self._line_service["cut_through_at"] = self.line.frames
+            # The originating end has to learn that its call was answered.
+            # `set_call_progress` had exactly one caller, on the SIP path, so
+            # on the socket the operation stayed "dialing" for the rest of the
+            # call. B pulses the DSP reset at its own answer and its datapump
+            # runs from there; A's last reset was before it dialed, because it
+            # never reached the transition that produces one.
+            if self.daa is not None and self.daa.operation == "dialing":
+                self.daa.set_call_progress("connected")
         # `samples` stays intact below: the exchange is on this loop and
         # collects the digits from it. Only what crosses to the far
         # subscriber is cut.

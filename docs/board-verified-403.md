@@ -623,3 +623,77 @@ be true, but it is unchecked on 302/403.
   which is also what `TR RS CS` lit at power-on is. Reproducing it means modelling
   the panel as following the serial signals; `uart.py` tracks CTS and DTR but no
   lamp is wired to them.
+
+## ff56 is P1LTCH, and the firmware never programs P1 as a port
+
+Confirmed against the 80C186EB manual's peripheral control block map
+(`270830-003`, chapter 11): offsets `50H` `P1DIR`, `52H` `P1PIN`, `54H`
+`P1CON`, `56H` `P1LTCH`. With the block where this firmware puts it, `0xff56`
+is the **Port 1 data latch** and the DSP reset is a CPU pin driven from it -
+`P1.1`, CPU pin 58, to DSP `RS` pin 127, as this document already states.
+
+What a full 403 dial actually touches in that bank:
+
+| register | 80C186EB name | accesses on the originating end |
+|---|---|---:|
+| `ff50` | P1DIR | **none** |
+| `ff52` | P1PIN | **none** |
+| `ff54` | P1CON | **none** |
+| `ff56` | P1LTCH | 36,482 reads, 36,494 writes |
+| `ff58` | P2DIR | 1,044 writes |
+| `ff5a` | P2PIN | 8,360 reads |
+| `ff5c` | P2CON | none |
+| `ff5e` | P2LTCH | 6,252 writes |
+
+Port 2 is used exactly as the manual describes - a direction register, a pin
+register for input and a latch for output. Port 1 is driven read-modify-write
+through the latch alone, and **`P1CON` and `P1DIR` are never written in a
+whole run**. Both reset to `FFH`, which is every pin peripheral-controlled and
+every pin an input, and the manual is explicit about what that means for the
+latch: "This value appears at the pin only if it is programmed as a port."
+
+So as modelled, none of these latch writes would drive any pin on real
+silicon. Either the block is relocated somewhere that makes `ff50`/`ff54`
+something else, or Port 1 is configured in a path this harness never executes.
+Recorded because it bears on every signal attributed to this latch, the DSP
+reset among them.
+
+### The reset bit in the code disagrees with this document
+
+`machine.py` selects `ROM_DSP_RESET_BIT = 0x0008` - bit 3 - for an image with
+no supervisor offset, which is what a board ROM dump is. This document, and
+`board.md`, `asic-pinout.md` and `c51-cpu-loader.md`, all name **bit 1**.
+
+Measured per-bit edge counts on `ff56` over one dial confirm which bits are
+signals and which are attributions:
+
+| bit | edges, originator | edges, answerer | what it is |
+|---:|---:|---:|---|
+| 2 | 29,177 | 29,177 | EEPROM `SK` clock |
+| 5 | 1,043 | 1,043 | EEPROM `CS` |
+| 1 | 12 | 16 | named here as C52 `RS` |
+| 3 | 12 | 16 | what the code resets on |
+| 0, 4, 6, 7 | 1 | 1 | never driven after init |
+
+Bits 1 and 3 carry **the same number of edges** and move within about a
+thousand instructions of each other, so on this image the two attributions
+produce nearly the same reset schedule and changing the constant does not
+change which resets happen. The disagreement is still worth closing, but it is
+not the reason an originating end stays silent.
+
+### What the reset schedule does say
+
+Resets applied, one dial, `--answer-on-ring`:
+
+| end | reset pulses |
+|---|---|
+| originator | 3 at startup, then two pulses at 38.3 M instructions - 9.0 s, **before it dials** |
+| answerer | 3 at startup, two at 85.3 M (22.05 s) and two at 91.1 M (24.03 s) - **at answer** |
+
+The answering end pulses the reset as it goes into data mode and its datapump
+runs from there. The originating end's last reset is before its first digit,
+and it never gets another, because it never reaches the transition that
+produces one: its `ATD` never returns. Its serial output for the whole run is
+`OK`, the reply to `ATX0` - no `CONNECT`, no `NO CARRIER`, no `BUSY`, 50 s
+after dialing. So the dial command is still blocked on something, and that,
+not the reset, is what to find next.
