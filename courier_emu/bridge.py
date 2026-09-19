@@ -142,6 +142,14 @@ C50_CALL_OVERLAY_WORDS = C50_CALL_OVERLAY_DESTINATION - C50_CALL_OVERLAY_SOURCE
 # instruction pair is stable, while the following branch displacement changes
 # between firmware revisions.
 C50_CALL_OVERLAY_SIGNATURE = bytes.fromhex("4a6908e3")
+# The signature alone does not identify a *stored* overlay. 302 and 403 carry
+# the same dispatcher as live resident code at its own address, and an earlier
+# revision published 2,537 words of it over c418..ce00 with every internal
+# branch still pointing back at the original. A stored copy is pre-linked for
+# the destination, so its first branch target is the one word that tells the
+# two apart: 2.1/2.2's c419 reads `bcnd c425`, and a self-linked copy at ba2f
+# reads `bcnd ba3c`. See docs/v8-call-overlay-misplacement.md.
+C50_CALL_OVERLAY_BRANCH = 0x0D
 # 80186 ports, the tag pair then the word pair.
 DSP_RUNTIME_PORTS = asic.cpu_ports("tag") + asic.cpu_ports("word")
 
@@ -452,6 +460,12 @@ class CourierDspBridge:
             self._rate_trace_enabled = True
         self._call_overlay = self._find_call_overlay()
         self._call_overlay_active = False
+        # Aim the core's V.8 dispatcher counter at this image's own copies.
+        # The default is 2.1/2.2's c418, which on a flash ROM names unrelated
+        # resident code. See docs/v8-call-overlay-misplacement.md.
+        self._v8_dispatch_pcs = self._v8_dispatch_addresses()
+        if self._v8_dispatch_pcs and hasattr(self.core, "set_v8_dispatch_pcs"):
+            self.core.set_v8_dispatch_pcs(self._v8_dispatch_pcs)
         self._call_resume_pending = False
         self._call_resume_state: dict[str, int | bool] | None = None
         self.batch = batch
@@ -836,12 +850,40 @@ class CourierDspBridge:
                     continue
                 source = origin + first // 2
                 size = (C50_CALL_OVERLAY_DESTINATION - source) * 2
-                if size > 0 and first + size <= len(segment):
+                target = int.from_bytes(segment[first + 4 : first + 6], "little")
+                linked = target == C50_CALL_OVERLAY_DESTINATION + C50_CALL_OVERLAY_BRANCH
+                if size > 0 and first + size <= len(segment) and linked:
                     matches.append((abs(source - C50_CALL_OVERLAY_SOURCE), segment[first : first + size]))
                 first += 2
         if matches:
             return min(matches, key=lambda item: item[0])[1]
         return None
+
+    def _v8_dispatch_addresses(self) -> tuple[int, ...]:
+        """Every program address holding the V.8 state dispatcher.
+
+        Which copy is live depends on whether an overlay is loaded, so the
+        core is given all of them rather than one guess. Found by the same
+        signature the call overlay uses, over the resident bank and every
+        overlay the image declares.
+        """
+        found: list[int] = []
+        banks: list[tuple[int, bytes]] = list(self.image.dsp_program_segments())
+        for overlay in getattr(self.image, "dsp_overlays", ()):
+            if overlay.index == 5:
+                continue
+            payload = self.image.data[overlay.offset : overlay.offset + overlay.length]
+            banks.append((overlay.entry_word, payload))
+        for origin, segment in banks:
+            first = 0
+            while True:
+                first = segment.find(C50_CALL_OVERLAY_SIGNATURE, first)
+                if first < 0:
+                    break
+                if not first % 2:
+                    found.append(origin + first // 2)
+                first += 2
+        return tuple(sorted(set(found)))
 
     def _activate_call_overlay(self, selector: int) -> None:
         if self._call_overlay_active or self._call_overlay is None:

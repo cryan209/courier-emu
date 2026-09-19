@@ -249,6 +249,8 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_boot.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
+        lib.courier_c5x_set_v8_dispatch_pcs.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t]
         lib.courier_c5x_set_v8_calling.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_v8_answering.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_bio_low.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -500,6 +502,13 @@ class NativeC5x:
         storage = (ctypes.c_uint16 * len(words))(*(word & 0xFFFF for word in words))
         self.library.courier_c5x_queue_codec_boot(self.handle, storage, len(storage))
 
+    def set_v8_dispatch_pcs(self, addresses) -> None:
+        words = tuple(int(address) & 0xFFFF for address in addresses)
+        if not words:
+            return
+        storage = (ctypes.c_uint16 * len(words))(*words)
+        self.library.courier_c5x_set_v8_dispatch_pcs(self.handle, storage, len(storage))
+
     def set_v8_calling(self, enabled: bool) -> None:
         self.library.courier_c5x_set_v8_calling(self.handle, int(enabled))
 
@@ -594,7 +603,7 @@ class NativeC5x:
         return state
 
     def serial_state(self) -> dict[str, int]:
-        values = (ctypes.c_uint64 * 55)()
+        values = (ctypes.c_uint64 * 56)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
         names = (
             "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
@@ -609,6 +618,7 @@ class NativeC5x:
             "negotiation_loop_entries", "negotiation_loop_pc", "negotiation_source", "negotiation_pair", "negotiation_source_value",
             "negotiation_pair_value", "negotiation_acc", "v8_dispatches",
             "v8_record", "v8_handler", "v8_countdown", "v8_flags",
+            "v8_dispatch_pc",
             "negotiation_d76", "negotiation_d77", "negotiation_d78", "negotiation_d79",
             "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
             "hybrid_frames", "hybrid_peak",

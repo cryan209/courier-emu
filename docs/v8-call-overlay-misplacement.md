@@ -115,9 +115,74 @@ the write to `@0306` and the `0x0100` bit in `@039f` are all gated on
 `legacy_carrier_fallback`. In a normal run the firmware owns both cells, as the
 comment there claims.
 
-## The next run
+## The run
 
-Point the two PC tests at the table above - which copy is live depends on
-whether an overlay is loaded, so all four are worth watching - and take one
-originate run. That is one question: does the firmware's V.8 dispatcher run at
-all on 302/403, and if it does, which handler does `@48` hold when it stops.
+Both changes are in. The core takes its dispatcher addresses from the image
+(`Bridge._v8_dispatch_addresses`, the same signature over the resident bank and
+every declared overlay), and `_find_call_overlay` now requires the candidate to
+be **pre-linked for the destination** - its first branch target must be
+`0xc418 + 0x0d`, which 2.1/2.2's stored copy satisfies and a self-linked
+resident copy does not.
+
+A 403 linked pair, `ATX0` + `ATDT5551234` against `ATA`, 85 M instructions
+(`artifacts/v8-dispatcher-403-01/`):
+
+| | A base | A gated | B base | B gated |
+|---|---:|---:|---:|---:|
+| `v8_dispatches` | 22,471 | 22,471 | 21,172 | 21,172 |
+| `v8_dispatch_pc` | `0xba0b` | `0xba0b` | `0xba0b` | `0xba0b` |
+| **`v8_handler` (`@48`)** | **0** | **0** | **0** | **0** |
+| `v8_countdown` (`@4a`) | 0 | 0 | 0 | 0 |
+| `v8_flags` (`@4d`) | 0 | 0 | 0 | 0 |
+| `v8_rx_peak` | 0 | 0 | 0 | 0 |
+| `negotiation_audio.rms` | 0 | 0 | 0 | 0 |
+| `overlay_downloads` | 0 | 0 | 0 | 0 |
+| `call_overlay_available` | True | **False** | True | **False** |
+
+`base` is the same command with the pre-linked test forced true - the old
+behaviour. **Every V.8 number is identical.** Only `call_overlay_available`
+moves, and `call_overlay_active` was already false in both, so the misplaced
+block was found but never published in this run. The gate removed a latent
+hazard and changed nothing observable here; it did not cause any of what
+follows.
+
+### Three things the run says
+
+**1. The dispatcher runs.** `0xba0b` is the 403 resident copy, entered 22,471
+times on the originator. The instrument now reports.
+
+**2. It has no handler.** `@48` is zero, and so are `@4a` and `@4d`, so every
+entry takes the short path - `bcnd ba18, eq` straight to `lacl @48 ; bacc` -
+and branches to program address **0**. In 2.1/2.2 the handlers are installed by
+the `c509`/`c527`/`c54d`/... sites writing into `@48`; nothing installs one
+here. The state machine is spinning on a null vector.
+
+**3. There is no audio at all.** `v8_rx_peak`, `rms` and every tone bin are
+zero on both sides, in the baseline too. The DSP receives no line samples, so
+the V.8 exchange has nothing to detect even if a handler were installed.
+
+### What (3) is downstream of
+
+The codec receive block is gated on `m_call_tdm_active`, which has exactly two
+setters and both sit inside `_activate_call_overlay`, behind
+`self._call_overlay is not None`. With the gate correct that path is now
+properly dead on a flash ROM - and it was never the right trigger for a flash
+ROM anyway, which loads its datapump through the real overlay table over ports
+`0x18`/`0x1e`.
+
+But `overlay_downloads` is **0**, so that does not happen either. This document
+does not get to call that a bug: [datapump-dispatch-gate.md](datapump-dispatch-gate.md)
+records that a plain dial never reaches the loader, because the discriminator
+answers equal - only the leased and `&T1`/`&L1` configurations do. So a plain
+`ATDT` run having no datapump overlay may be the firmware behaving correctly,
+and the line-audio gate being tied to the 2.1/2.2 publication is the modelling
+defect standing behind it.
+
+### The next question, singular
+
+Does `@48` ever get written on this image - by any site, in any configuration?
+If nothing writes it, the dispatcher at `0xba0b` is not the live V.8 state
+machine on 403 and the signature match is a false friend; the overlay copies at
+`0xadf5` and `0xc528` would then be the candidates, and neither can run until an
+overlay is downloaded. That is a static question and should be asked statically
+before another run.

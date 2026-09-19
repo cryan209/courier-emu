@@ -146,7 +146,7 @@ public:
         uint16_t negotiation_loop_pc, negotiation_source, negotiation_pair, negotiation_source_value, negotiation_pair_value;
         int32_t negotiation_acc;
         uint64_t v8_dispatches;
-        uint16_t v8_record, v8_handler, v8_countdown, v8_flags;
+        uint16_t v8_record, v8_handler, v8_countdown, v8_flags, v8_dispatch_pc;
         uint16_t negotiation_d76, negotiation_d77, negotiation_d78, negotiation_d79;
         uint16_t negotiation_d26, negotiation_indx, negotiation_arp, negotiation_pm;
         // Trans-hybrid return: frames the loop delivered and the loudest one.
@@ -276,6 +276,16 @@ public:
     void schedule_call_overlay(uint16_t origin, const uint16_t *words,
         std::size_t count, uint16_t entry, const uint16_t *registers,
         uint16_t selector);
+    // The V.8 state dispatcher's address is per firmware family, not a
+    // constant: 2.1/2.2 runs it at c418, where 302/403 carry copies at their
+    // own addresses and in overlays 6 and 7. Supplied by the caller, which
+    // finds them by signature in the image it actually loaded.
+    void set_v8_dispatch_pcs(const uint16_t *pcs, std::size_t count)
+    {
+        m_v8_dispatch_pcs.clear();
+        for (std::size_t index = 0; index < count; ++index)
+            m_v8_dispatch_pcs.push_back(pcs[index]);
+    }
     void set_call_tdm_active(bool active) { m_call_tdm_active = active; }
     bool call_tdm_active() const { return m_call_tdm_active; }
     void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
@@ -404,6 +414,8 @@ private:
     int64_t m_line_dac_sum = 0;
     unsigned m_line_dac_count = 0;
     bool m_call_tdm_active = false;
+    std::vector<uint16_t> m_v8_dispatch_pcs{0xc418};
+    uint16_t m_v8_dispatch_pc = 0;
     uint16_t m_line_dac_slot = 0xfffd;
     std::vector<uint16_t> m_line_phase_tx[4];
     int m_line_frame_entry = -1;

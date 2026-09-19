@@ -214,6 +214,12 @@ void courier_c5x_set_pc_trace_range(void *handle, unsigned first, unsigned last)
         static_cast<uint16_t>(first), static_cast<uint16_t>(last));
 }
 
+void courier_c5x_set_v8_dispatch_pcs(void *handle, const uint16_t *pcs,
+    std::size_t count)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_v8_dispatch_pcs(pcs, count);
+}
+
 void courier_c5x_set_v8_calling(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_v8_calling(enabled != 0);
@@ -421,7 +427,7 @@ void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values,
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 55) return;
+    if (!handle || !values || count < 56) return;
     auto serial = static_cast<C5xCore *>(handle)->serial_state();
     uint64_t result[] = {
         serial.drr, serial.dxr, serial.spc,
@@ -440,7 +446,7 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.negotiation_source_value, serial.negotiation_pair_value,
         uint32_t(serial.negotiation_acc),
         serial.v8_dispatches, serial.v8_record, serial.v8_handler,
-        serial.v8_countdown, serial.v8_flags,
+        serial.v8_countdown, serial.v8_flags, serial.v8_dispatch_pc,
         serial.negotiation_d76, serial.negotiation_d77,
         serial.negotiation_d78, serial.negotiation_d79,
         serial.negotiation_d26, serial.negotiation_indx,

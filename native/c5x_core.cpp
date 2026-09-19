@@ -127,7 +127,7 @@ void C5xCore::reset()
     m_negotiation_loop_active = false; m_negotiation_loop_entries = 0;
     m_negotiation_loop_pc = m_negotiation_source = m_negotiation_pair = 0;
     m_negotiation_source_value = m_negotiation_pair_value = 0; m_negotiation_acc = 0;
-    m_v8_dispatches = 0; m_v8_record = m_v8_handler = 0;
+    m_v8_dispatches = 0; m_v8_record = m_v8_handler = 0; m_v8_dispatch_pc = 0;
     m_v8_countdown = m_v8_flags = 0;
     m_negotiation_d76 = m_negotiation_d77 = 0;
     m_negotiation_d78 = m_negotiation_d79 = 0;
@@ -1099,8 +1099,10 @@ void C5xCore::step()
             if (--m_brcr <= 0) m_pmst.braf = 0;
         }
         uint16_t previous_pc = m_pc;
-        if (previous_pc == 0xc418) {
+        if (std::find(m_v8_dispatch_pcs.begin(), m_v8_dispatch_pcs.end(),
+                previous_pc) != m_v8_dispatch_pcs.end()) {
             ++m_v8_dispatches;
+            m_v8_dispatch_pc = previous_pc;
             m_v8_record = uint16_t(m_acc);
             m_v8_handler = m_data[0x48];
             m_v8_countdown = m_data[0x4a];
@@ -1317,6 +1319,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_negotiation_loop_entries, m_negotiation_loop_pc, m_negotiation_source, m_negotiation_pair,
         m_negotiation_source_value, m_negotiation_pair_value, m_negotiation_acc,
         m_v8_dispatches, m_v8_record, m_v8_handler, m_v8_countdown, m_v8_flags,
+        m_v8_dispatch_pc,
         m_negotiation_d76, m_negotiation_d77, m_negotiation_d78, m_negotiation_d79,
         m_negotiation_d26, m_negotiation_indx, m_negotiation_arp, m_negotiation_pm,
         m_hybrid_frames, m_hybrid_peak};
