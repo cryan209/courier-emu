@@ -158,6 +158,14 @@ class MailboxTap:
         self._samples: deque[int] = deque(maxlen=keep_samples)
         self._samples_base = 0          # absolute index of _samples[0]
         self._next_sample = 0           # absolute count drained so far
+        # Where that count sits in the *current* array. The supervisor resets
+        # the DSP two or three times a call, and each reset clears
+        # `m_line_tx`, so the array restarts at zero while the absolute count
+        # carries on. Keeping one number for both left the tap reading an
+        # empty slice until the new generation grew past a stale index, which
+        # silently dropped the start of every generation from its own report.
+        self._array_cursor = 0
+        self._generations = 0
         self._header: int | None = None
         self._header_pc: int | None = None
         self._value = 0
@@ -207,7 +215,13 @@ class MailboxTap:
         if core is None or not hasattr(core, "line_tx_samples"):
             return 0
         try:
-            fresh = core.line_tx_samples(self._next_sample)
+            written = core.serial_state().get("line_tx_writes", 0)
+            if written < self._array_cursor:
+                # Shorter than where we were reading: the core was reset and
+                # this is a new array, not a continuation of the last one.
+                self._array_cursor = 0
+                self._generations += 1
+            fresh = core.line_tx_samples(self._array_cursor)
         except (RuntimeError, ValueError):
             return 0
         if not fresh:
@@ -216,6 +230,7 @@ class MailboxTap:
         self._samples.extend(fresh)
         self._samples_base += dropped
         self._next_sample += len(fresh)
+        self._array_cursor += len(fresh)
         return len(fresh)
 
     def _window(self, start: int, length: int) -> list[int]:
