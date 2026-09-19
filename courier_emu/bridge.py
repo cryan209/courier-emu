@@ -320,6 +320,7 @@ class BridgeStatus:
     bootstrap_match: bool | None
     bootstraps: int
     overlay_downloads: int
+    line_service: dict[str, int]
     overlay_words_verified: int
     overlay_words_unreadable: int
     overlay_id: int | None
@@ -502,6 +503,18 @@ class CourierDspBridge:
         self.overlay_words_verified = 0
         self.overlay_words_unreadable = 0
         self.overlay_downloads = 0
+        # Why a side ships fewer line frames than its codec produced. The
+        # originate early return below is the only originate/answer asymmetry
+        # in _service_line, and a 69%/99% split between the two ends is what
+        # put it under suspicion. See docs/v8-call-overlay-misplacement.md.
+        self._line_service = {
+            "calls": 0,
+            "no_codec_clock": 0,
+            "originate_return": 0,
+            "fallback_frames": 0,
+            "drained_frames": 0,
+            "buffer_left": 0,
+        }
         # `out 0x1e, 4` at 0x8e631 starts an overlay transfer.
         self.transfer_start_command = 4
         self.overlay_id: int | None = None
@@ -2756,7 +2769,9 @@ class CourierDspBridge:
         # uses, and it buffers, because six codec samples are five line ones.
         produced = self.core.serial_state().get("line_tx_writes", 0)
         self._take_line_audio()
+        self._line_service["calls"] += 1
         if produced == self._line_codec_last:
+            self._line_service["no_codec_clock"] += 1
             # No codec clock: the C50 is not writing DXR - before the
             # download, or while the datapump is between programs. The peer's
             # frame clock still has to run, so fall back to the instruction
@@ -2775,8 +2790,10 @@ class CourierDspBridge:
                 # Before the call overlay is active, pace seizure from the
                 # codec stream rather than the much faster calibrated
                 # supervisor clock.
+                self._line_service["originate_return"] += 1
                 return
             self._line_instructions = 0
+            self._line_service["fallback_frames"] += 1
             self._service_line_frame()
             return
         self._line_codec_last = produced
@@ -2790,6 +2807,7 @@ class CourierDspBridge:
         # a time meant each end transmitted audio from the start of the run
         # for ever. Both ends heard nothing but pre-carrier silence.
         while len(self._exchange_line_buffer) >= LINE_FRAME_SAMPLES:
+            self._line_service["drained_frames"] += 1
             self._service_line_frame()
 
     def _service_line_frame(self) -> None:
@@ -2875,6 +2893,10 @@ class CourierDspBridge:
             ),
             bootstraps=self.bootstraps,
             overlay_downloads=self.overlay_downloads,
+            line_service=dict(
+                self._line_service,
+                buffer_left=len(self._exchange_line_buffer),
+            ),
             overlay_words_verified=self.overlay_words_verified,
             overlay_words_unreadable=self.overlay_words_unreadable,
             overlay_id=self.overlay_id,

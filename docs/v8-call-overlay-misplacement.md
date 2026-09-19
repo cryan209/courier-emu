@@ -178,6 +178,83 @@ answers equal - only the leased and `&T1`/`&L1` configurations do. So a plain
 and the line-audio gate being tied to the 2.1/2.2 publication is the modelling
 defect standing behind it.
 
+
+## Why there is no audio from the originator: the two ends stop at different times
+
+The audio capture (`artifacts/v8-dispatcher-403-01/audio/`) splits the question
+cleanly. `b-tx` and `a-rx` are **identical** - 23,841 nonzero samples, peak
+17,188, running sample 96,273 to 120,113, which is 12.03 s to 15.01 s: the
+answer tone, delivered to the originator sample for sample. The socket, the
+7200-to-8000 conversion and the framing all work. `a-tx` is 127,200 frames of
+zero, while the core says side A's datapump wrote 5,176 nonzero samples into
+`m_line_tx`. The samples exist and none reached the wire.
+
+### The instrumented answer
+
+`Bridge._line_service` counts each branch of `_service_line`. One 403 pair,
+`artifacts/v8-dispatcher-403-01/run-instrumented.json`:
+
+| | A (originate) | B (answer) |
+|---|---:|---:|
+| `_service_line` calls | 77,786 | 77,786 |
+| `no_codec_clock` | 1 | 1 |
+| **`originate_return`** | **0** | **0** |
+| `fallback_frames` | 0 | 0 |
+| `drained_frames` | **228** | 158 |
+| `buffer_left` | 126 | 737 |
+| `line.frames` shipped | **158** | 158 |
+| `line.connected` | **False** | True |
+| `line.error` | *the far end closed the line* | - |
+
+> **The originate early return was not it.** An earlier revision of this
+> document proposed the `not self._call_overlay_active` guard in
+> `_service_line` as the cause, on the strength of its being the only
+> originate/answer asymmetry in that function and of a 69%/99% shipping split.
+> It fires **zero** times in this run, on both ends. The inference was wrong
+> and the guard is exonerated.
+
+A's buffer is nearly empty at the end - 126 samples - so nothing is stuck. A
+calls `_service_line_frame` **228** times and only **158** of them reach the
+peer. The other **70 frames are exactly 7.00 s**, which is the shortfall the
+previous revision measured and misexplained as an unshipped tail. They are not
+unshipped; they are shipped into a socket that has already closed.
+
+### The two instances diverge by 44 % in line time
+
+Both ends stop at the same 85,000,000 x86 instructions, and that is not the
+same amount of call:
+
+| | A | B |
+|---|---:|---:|
+| x86 instructions | 85,000,000 | 85,000,000 |
+| DSP instructions | 276,637,801 | 243,300,764 |
+| codec samples produced | 164,278 | 114,428 |
+| **codec time** | **22.82 s** | **15.89 s** |
+
+B reaches its budget at 15.89 s of line time and exits; A runs on to 22.82 s
+talking to nothing. And the answer tone A is responding to lands at 12.03 s -
+15.01 s, right at the end of B's life, so **every nonzero sample A produces is
+generated after B has gone.** That is why `a-tx` is silent end to end rather
+than merely late: A had nothing to say until the last second of B's run, and
+said it afterwards.
+
+This is a harness fault, not a firmware one. Pairing two instances on an
+instruction budget each, when their instruction-to-codec-sample ratios differ by
+44 %, gives them different clocks on a shared wire. The line socket pairs them
+frame for frame, so the shorter-lived end silently truncates the call. Nothing
+about V.8 can be concluded from a run that ends mid-exchange.
+
+### What to fix, and what it does not explain
+
+Budget the pair on **line frames** rather than x86 instructions, or run until
+both ends agree they are done. Until then no linked-pair run reaches a
+conclusion about negotiation.
+
+It remains separately true that `@48` is zero through all 22,471 dispatches -
+see above - and that is not explained by the truncation, because the dispatcher
+is entered from the first seconds. Both faults are live; this one has to be
+cleared first, because it makes every run unreadable after 15.89 s.
+
 ### The next question, singular
 
 Does `@48` ever get written on this image - by any site, in any configuration?
