@@ -1243,6 +1243,25 @@ class CourierDspBridge:
             self.bootstrap_match = None
         self._reset_asserted = asserted
 
+    def pulse_nmi(self) -> None:
+        """The CPU's NMI pin into the DSP, on CPU pin 56 / DSP pin 42.
+
+        The supervisor's downloader pulses this to enter the mask ROM's
+        bootstrap loader, with the reset line held released throughout. The
+        part keeps its program, its data, its registers and whatever the
+        codec has clocked into it: an NMI vectors, it does not clear. Only
+        the loader's own bookkeeping restarts, so the next transfer is read
+        as a fresh one.
+
+        This used to arrive as `set_reset`, which tore all of that down two
+        or three times a call. See docs/board-verified-403.md.
+        """
+        self._loader_started = False
+        self.bootstrap = bytearray()
+        self.bootstrap_match = None
+        if hasattr(self.core, "nmi"):
+            self.core.nmi()
+
     def _rom_loader_armed(self) -> bool:
         """Whether a byte on the command port is really a loader strobe.
 

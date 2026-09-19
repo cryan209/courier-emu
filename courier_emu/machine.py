@@ -53,8 +53,26 @@ TIMER_IRQ_INSTRUCTION_PERIOD = 4_096
 # The C52's reset line, in the relocated peripheral control block. Driving it
 # low holds the coprocessor in reset; the ROM pulses it at 8e40c/8e418. Other
 # P1 latch bits are exercised heavily during self-test and must not reset it.
-ROM_DSP_RESET_BIT = 0x0008
+# `0xff56` is the 186's P1LTCH, and its bits are CPU pins. From the part's
+# pinout: pin 58 is `P1.1`, pin 56 is `P1.3` (docs/asic-pinout.md's table).
+# The board puts DSP `RS` (pin 127) on CPU pin 58 and DSP `NMI` (pin 42) on
+# CPU pin 56, so bit 1 is reset and bit 3 is the non-maskable interrupt.
+#
+# The downloader at 8e429 pulses bit 3 while *holding bit 1 high*:
+#
+#     or  ax, 2        ; P1.1 high - reset released
+#     and cx, 0xfff7   ; P1.3 low
+#     mov [bx], ax
+#     mov [bx], cx     ; NMI asserted
+#     or  ax, 8 ...    ; NMI released
+#
+# That is an NMI kick into the mask ROM's bootstrap loader, not a reset. This
+# used to be read as bit 3 = reset, so every download tore the DSP's state
+# down - IMR, vectors, the serial port, the codec FIFO and the transmit array
+# - two or three times a call.
+ROM_DSP_RESET_BIT = 0x0002
 PAYLOAD_DSP_RESET_BIT = 0x0002
+DSP_NMI_BIT = 0x0008
 # How often the board's periodic service runs. Everything it does is an edge
 # the hardware samples rather than something the 80186 produces, so a period
 # models it better than a test after every instruction - a real 80186 does not
@@ -638,6 +656,7 @@ class CourierMachine:
         # The ROM reaches the settings EEPROM over port pins rather than
         # through board latch 0, so it needs its own front end onto the same
         # 93C66 model. This holds the data pin the driver at 0x1401 last drove.
+        self._dsp_nmi_low = False
         self._eeprom_data_in = False
         self.timers = TimerBlock(
             fast=fast_delays, answers_reads=self.emulate_interrupts,
@@ -2598,6 +2617,12 @@ class CourierMachine:
                 asserted = not value & self._dsp_reset_bit
                 self.dsp_bridge.set_reset(asserted)
                 self._dsp_in_reset = asserted
+                # The NMI line is the other CPU pin on this latch. A falling
+                # edge is the kick; the part keeps everything it holds.
+                nmi_low = not value & DSP_NMI_BIT
+                if nmi_low and not self._dsp_nmi_low:
+                    self.dsp_bridge.pulse_nmi()
+                self._dsp_nmi_low = nmi_low
             if self.uart is not None:
                 sent = self.uart.write(address, size, value)
                 if sent is not None:
