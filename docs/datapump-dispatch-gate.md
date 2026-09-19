@@ -241,6 +241,84 @@ means the same thing in each - nothing here reads the bit's meaning out of any o
 the three, only its plumbing. `IE010203.NAC` carries a 386EX ISDN image as well,
 which is a separate processor and is not what any of this addresses.
 
+### Tags 0x17 and 0x1e, read out of the DSP table
+
+Both are real handlers in both images, and the tag-`0x1e` one closes the chain
+this section opened.
+
+| tag | 302 / DSP 3.0.13 (base `0x8401`) | 403 / DSP 3.1.2 (base `0x83e9`) |
+|---|---|---|
+| `0x10` | `0x9b58` | `0x9b34` |
+| `0x11` | `0x9b5c` | `0x9b38` |
+| `0x17` | `0x9bc5` | `0x9ba1` |
+| `0x1e` | `0x9b9d` | `0x9b79` |
+
+(The `0x10`/`0x11` column reproduces `fsk-modulation.md`'s independently read
+`9b34`/`9b38` for 403, which is the check that the table base is right.)
+
+**`0x1e` carries exactly one bit, and it is bit 12.** Six words, 302 `0x9b9d`:
+
+```text
+9b9d  apl   @6f, #efff      ; clear bit 12 of the marker cell
+9b9f  lacl  @7a             ; the inbound data word
+9ba0  and   #00001000       ; keep bit 12 and nothing else
+9ba2  or    @6f
+9ba3  sacl  @6f
+9ba4  ret
+```
+
+That is the same bit `0x8613f` writes into `[0x0281]` from `[0x04ed] & 4`, and
+the supervisor calls `0x8613f` immediately before publishing the tag - `0x8404b`
+`call 8613f`, then `0x8404e` `mov ax, 0x1e`. So the path runs end to end:
+
+> MNP LR parameter `0xc0`, payload bit 2 -> `[0x04ed]` bit 2 -> `[0x027f]` and
+> `[0x0281]` bit 12 -> mailbox tag `0x1e` -> DSP `@6f` bit 12.
+
+`@6f` is the marker cell from [fsk-modulation.md](fsk-modulation.md), the one
+`9b42` sets to `#4040` and each slot entry rewrites. **Tag `0x1e` is a
+modulation-capability update, not a start**: it touches `@6f` and returns.
+
+**`0x17` is a start, but it does not use the nine-slot table.** 302 `0x9bc5`:
+
+```text
+9bc5  smmr  @7a, #03a6       ; park the data word at DSP data 0x03a6
+9bc7  lacl  @7a
+9bc8  and   #00003200        ; bits 9, 12 and 13 survive
+9bca  or    #00000040        ; bit 6 forced
+9bcc  sacl  @6f              ; @6f written wholesale, bit 12 included
+9bcd  bit   1, @7a           ; bit code 1 - that is bit 14
+9bce  splk  @6d, #9d17
+9bd0  xc    2, tc
+9bd1  splk  @6d, #9cd4       ; two fixed entries, chosen by that one bit
+9bd3  b     9b50, *
+```
+
+Where `0x10`/`0x11` load a table base into `@7c` and let the selector at `0x9b7e`
+pick a slot from the DSP's own mode flags, `0x17` picks between **two** entries
+directly off bit 14 of the data word. Both are inside overlay 6's span - `0x9d00`
+is slot 0's entry - and `0x9d17` opens on `bit 2, @2f` with a three-way branch,
+so it is a sub-entry rather than a tenth modulation.
+
+All three share the prologue at `0x9b50`, which is worth naming:
+
+```text
+9b50  ldp   #007
+9b51  lar   ar1, #fea1
+9b53  call  d65f, *
+9b55  retd
+9b56  lacb
+9b57  sacl  @27
+```
+
+`@27` is one of the two cells the slot selector tests, so the prologue
+**refreshes the mode flags** before any dispatch reads them.
+
+On the supervisor side the emitters line up with the gate this document traced:
+`0x8bf0f` sends `0x17` when the CF gate is clear **and** the discriminator is
+equal - the ordinary dial, which is the `0017:5041` already recorded above -
+while `0x8404e` and `0x90f3f` send `0x1e`, each right after the bit-12
+recomputation.
+
 ## On a leased line the same sites publish `0x5a` and `0x59`
 
 The section above answers the dial. `&L1` takes a different branch of the same
