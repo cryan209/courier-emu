@@ -1462,3 +1462,45 @@ loader and only the leased and `&T1`/`&L1` configurations do. The originating
 end's silence on a dialed call is therefore not a missing trigger inside this
 chain; it is that a dialed call loads its datapump some other way, and that
 way has not been found yet.
+
+## The normal call-state route: DSP tag `0x47`
+
+The missing route is downstream of dialing, not in the `AT&` table.  During a
+normal call the supervisor is in its off-hook state (`[0x192] = 0x5742`).  That
+state's event table at `0x94ba2` accepts DSP tag `0x47`; its handler at
+`0x94d83` takes the accompanying byte as the requested overlay number and
+feeds the same loader at `0x8e60c`.  The answer resident emits `0x47:0007`.
+The corresponding originating request is `0x47:0006`, and overlay 6 chains
+to overlay 8 just as it does in the `AT&T1` control path.
+
+The bridge now supplies that missing C51/ASIC event only when the modeled call
+state says all of the following are true:
+
+- the DAA has progressed from seizure to `dialing`;
+- the line has a peer off hook; and
+- the DSP is still running its boot resident.
+
+This deliberately does not inspect the AT command text to choose an overlay.
+It also distinguishes the pre-digit `originate` interval from an established
+leased-line originate, so an already-off-hook answer peer cannot start the
+datapump before the digits have gone out.
+
+Call-start tag `0x17` and ready tags `0x02`/`0x03` are held until overlay 8 is
+installed.  At the final hardware boundary, if the resident has already
+entered its continuous frame loop and does not return to ASIC service routine
+`0x811b`, the bridge performs the pending four-word BLDP transaction itself.
+The source bytes remain the ASIC holding registers, the destination remains
+DSP cell `0xff62`, and the completed program RAM is still checked byte-for-byte
+against the selected ROM overlay.
+
+Verification on the 403 image:
+
+| scenario | requested/installed | destinations | verified words | result |
+|---|---|---|---:|---|
+| `AT&T1` control | 6 then 8 | `0x9d00`, `0xdc00` | 20,096 | exact match |
+| linked `ATDT5551234` / `ATA` | DSP event `0x47:0006`, then 6 and 8 | `0x9d00`, `0xdc00` | 20,096 | exact match; tag `0x17` released |
+| linked leased originate/answer | existing leased route, overlay 8 on both ends | `0x9d00`, `0xdc00` | 20,096 each | exact match; tags `0x59`/`0x5a` preserved |
+
+Thus `AT&T1` remains a control case rather than the implementation path for a
+dialed call: both converge on the supervisor loader, but only the normal
+off-hook state consumes the DSP's `0x47` overlay request.

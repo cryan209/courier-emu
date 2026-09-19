@@ -1,4 +1,5 @@
 from courier_emu.bridge import CourierDspBridge
+from courier_emu.daa import CourierDaa, DAA_FRAME_SAMPLES
 
 
 class DataCore:
@@ -83,3 +84,55 @@ def test_rom_loader_armed_only_inside_the_mask_rom_download_loop():
     assert not bridge_at(0x0653)._rom_loader_armed()
     # Nothing has synchronized the loader yet: the first commit does.
     assert bridge_at(0x0008, started=False)._rom_loader_armed()
+
+
+class AnsweredLine:
+    peer_off_hook = True
+
+
+def bridge_for_originate(operation: str, *, commanded_role=None):
+    bridge = CourierDspBridge.__new__(CourierDspBridge)
+    bridge._audio_only = False
+    bridge._v8_armed = False
+    bridge._call_resume_pending = False
+    bridge._call_overlay_active = False
+    bridge.line = AnsweredLine()
+    bridge.daa = CourierDaa(line_state="quiet")
+    bridge.daa.seize(operation)
+    bridge.daa.qualified_samples = 5 * DAA_FRAME_SAMPLES
+    bridge.boot_rom_enabled = True
+    bridge._asic_call_engine_started = False
+    bridge._originate_ready_pending = False
+    bridge._commanded_role = commanded_role
+    queued = []
+    bridge._queue_runtime_message = lambda tag, word: queued.append((tag, word))
+    return bridge, queued
+
+
+def test_answered_dial_requests_originate_overlay_through_call_state():
+    bridge, queued = bridge_for_originate("dialing", commanded_role="originate")
+
+    bridge._maybe_start_originate_engine()
+
+    assert queued == [(0x0047, 6)]
+    assert bridge._v8_armed is True
+    assert bridge._originate_ready_pending is True
+
+
+def test_leased_originate_keeps_its_firmware_overlay_route():
+    bridge, queued = bridge_for_originate("originate")
+
+    bridge._maybe_start_originate_engine()
+
+    assert queued == [(0x0002, 0), (0x0003, 0)]
+
+
+def test_dial_seizure_waits_for_digits_before_requesting_overlay():
+    bridge, queued = bridge_for_originate(
+        "originate", commanded_role="originate"
+    )
+
+    bridge._maybe_start_originate_engine()
+
+    assert queued == []
+    assert bridge._v8_armed is False

@@ -36,6 +36,15 @@ from .xmf import XmfImage
 
 
 DSP_COMMAND_PORT = 0x1E
+
+# The flash-ROM supervisor's off-hook state accepts tag 0x47 from the C51 as
+# an overlay request.  The word is the overlay-table index: an answering call
+# asks for 7, while the originate datapump is overlay 6 (whose supervisor
+# loader also chains overlay 8).  The native C51 currently reaches the answer
+# request but not the originate request, so the modeled call engine supplies
+# that missing hardware event when the called end answers.
+DSP_OVERLAY_REQUEST_TAG = 0x47
+DSP_ORIGINATE_OVERLAY = 6
 DSP_WINDOW_FIRST = 0x40
 DSP_WINDOW_LAST = 0x4E
 DSP_WINDOW_STRIDE = 2
@@ -584,6 +593,13 @@ class CourierDspBridge:
         # new tag with the previous message's data whenever a 0x1c bit 0
         # landed between the tag writes and the data writes.
         self._runtime_pending: tuple[int, int] | None = None
+        # The ASIC holds an originate start while the C51-requested flash
+        # overlays are being installed.  Without this one-word latch the
+        # modeled host path hands tag 0x17 to the resident first; its handler
+        # enters the datapump loop and can no longer service the loader at
+        # 0x811b when the supervisor answers the following 0x47 request.
+        self._deferred_host_messages: deque[tuple[int, int]] = deque()
+        self._originate_ready_pending = False
         self._runtime_inbound: deque[tuple[int, int]] = deque()
         self._runtime_inbound_delivered: Counter[str] = Counter()
         self._runtime_inbound_seen = False
@@ -1176,15 +1192,39 @@ class CourierDspBridge:
             or not self.daa.detector_qualified
         ):
             return
-        if self.daa.operation == "dialing":
+        dialed_call = self.daa.operation == "dialing"
+        if dialed_call:
             if not self.line.peer_off_hook:
                 return
         elif self.daa.operation != "originate":
             return
+        elif self._commanded_role == "originate":
+            # A dial command has seized the loop but its digits have not gone
+            # out yet.  Do not mistake that interval for a leased originate:
+            # the far end may already be off hook (for example an ATA test
+            # peer), but the switched-call datapump belongs after dialing.
+            return
         self._v8_armed = True
         self._asic_call_engine_started = True
-        self._queue_runtime_message(0x0002, 0x0000)
-        self._queue_runtime_message(0x0003, 0x0000)
+        if self.boot_rom_enabled and dialed_call:
+            # This is the firmware's normal call-state input, not an ATD
+            # shortcut.  At this point the supervisor is in its off-hook
+            # state, the digits have gone over the modeled line, and the far
+            # end has answered.  The real C51 reports 0x47 with the datapump
+            # image it needs; replay the missing originate-side report and
+            # let the supervisor's own 0x94d83 handler and 0x8e60c loader do
+            # the selection, transfer, and overlay-6 -> overlay-8 chaining.
+            self._queue_runtime_message(
+                DSP_OVERLAY_REQUEST_TAG, DSP_ORIGINATE_OVERLAY
+            )
+            # Ready belongs after the overlay transfer. Publishing it here
+            # lets the supervisor send ordinary runtime words while the C51
+            # is inside 0x811b; one of those diverts the resident partway
+            # through the image and strands the loader.
+            self._originate_ready_pending = True
+        else:
+            self._queue_runtime_message(0x0002, 0x0000)
+            self._queue_runtime_message(0x0003, 0x0000)
         if not self.boot_rom_enabled:
             self._call_resume_pending = True
 
@@ -1767,7 +1807,9 @@ class CourierDspBridge:
             self._dial_tone_digit = DIAL_TONE_DIGITS[index]
             self._dial_digits_commanded += self._dial_tone_digit
 
-    def _deliver_host_message(self, header: int, data: int) -> bool:
+    def _deliver_host_message(
+        self, header: int, data: int, *, allow_defer: bool = True
+    ) -> bool:
         """Hand a mailbox message to the DSP the way the ASIC does.
 
         Writing the two cells and raising bit 15 is the whole of the board's
@@ -1778,6 +1820,16 @@ class CourierDspBridge:
         core = self.core
         if not self.active or not hasattr(core, "set_data") or not hasattr(core, "data"):
             return False
+        if (
+            allow_defer
+            and self.boot_rom_enabled
+            and header == 0x0017
+            and self.daa is not None
+            and self.daa.operation == "dialing"
+            and self.overlay_id != 8
+        ):
+            self._deferred_host_messages.append((header, data))
+            return True
         self._write_host_cell(HOST_TAG_CELL, header & 0xFFFF)
         self._write_host_cell(HOST_WORD_CELL, data & 0xFFFF)
         self._write_host_cell(
@@ -1932,6 +1984,16 @@ class CourierDspBridge:
                 self.overlay_words_unreadable += unreadable
         if self.overlay_match:
             self.overlay_downloads += 1
+            if target.index == 8:
+                if self._originate_ready_pending:
+                    self._queue_runtime_message(0x0002, 0x0000)
+                    self._queue_runtime_message(0x0003, 0x0000)
+                    self._originate_ready_pending = False
+                while self._deferred_host_messages:
+                    header, data = self._deferred_host_messages.popleft()
+                    self._deliver_host_message(
+                        header, data, allow_defer=False
+                    )
         self._overlay_buffer = bytearray()
         self._overlay_groups = []
         self._overlay_target = None
@@ -1978,6 +2040,18 @@ class CourierDspBridge:
         present(block)
         self._overlay_status &= ~0x02
         if settle(destination):
+            self._overlay_status |= 0x02
+            return
+        # Once a dial has entered the continuous frame datapump, the native
+        # core can remain in that loop instead of returning to the ASIC service
+        # poll that calls 0x811b.  Finish the same four BLDP writes in the ASIC
+        # model at that boundary: the destination still comes from ff62, the
+        # bytes still come from the holding registers, and verification below
+        # still compares program RAM with the ROM's selected overlay.
+        if self.boot_rom_enabled and self._v8_armed:
+            self.core.load_program(block, destination)
+            self.core.set_data(0xFF62, (destination + 4) & 0xFFFF)
+            self._overlay_groups.append((destination, bytes(block)))
             self._overlay_status |= 0x02
             return
         # ff62 is also the supervisor's download-destination register: mailbox
