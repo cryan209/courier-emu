@@ -395,6 +395,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         "--board-id",
         args.board_id,
     ]
+    for entry in getattr(args, "dsp_peek", []):
+        command.extend(("--dsp-peek", entry))
     if args.line_frames is not None:
         command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
@@ -1368,6 +1370,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="COMMAND",
         help="AT command for side B; repeatable (default AT&L1)",
+    )
+    link.add_argument(
+        "--dsp-peek",
+        action="append",
+        default=[],
+        metavar="NAME=ADDR",
+        help="report a C5x data cell on both sides at the end of the run",
     )
     link.add_argument(
         "--track-executed",

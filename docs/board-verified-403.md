@@ -737,3 +737,58 @@ that consumes those detector reports.
 
 Note also that `overlay_downloads` stays 0 on both ends while this routine runs
 three times between them, so that counter is not watching this download path.
+
+### The interrupt wiring, and the one segment the board ROM can serve
+
+Pin wiring, from the board:
+
+| DSP pin | interrupt | driven by |
+|---|---|---|
+| 38 | INT1 | CPU pin 50 |
+| 39 | INT2 | ASIC pin 109 |
+| 40 | INT3 | AC01 `FS` |
+| 42 | NMI | CPU pin 56 |
+
+The mask ROM's vector table dispatches each of these through a B2 scratch cell
+rather than branching directly - `0000` is `b 0670`, then `0002: lamm @60`,
+`0004: lamm @61`, `0006: lamm @62`, `000a: lamm @64`, `000c: lamm @65` and so
+on - so the firmware installs a handler by writing its address into `@60`-`@69`.
+Those are scratch-pad RAM, not memory-mapped registers, which is why no write
+to them appears in `dsp_mmr_writes`.
+
+Read at the end of a 403 dial, both ends identical:
+
+| cell | interrupt | value |
+|---|---|---|
+| `@60` | INT1 (CPU) | **`f7fe`** |
+| `@61` | INT2 (ASIC) | `819d` |
+| `@62` | INT3 (AC01 `FS`) | `819d` |
+| `@64` | RINT | `819d` |
+| `@65` | XINT | **`8178`** |
+| `@68` | TINT | **`81fb`** |
+| `@69` | INTR17 | **`81a6`** |
+
+`819d` is `rete`: the shared do-nothing stub, which seven vectors point at.
+So the firmware does **not** service the AC01's frame-sync interrupt, and the
+harness firing the codec frame as XINT - `C50_ROM_FRAME_IRQ = 5`, which is
+`(irq+1)<<1` = the XINT slot - lands on `8178`, a real handler. That choice is
+confirmed rather than a guess.
+
+`@60` is the exception. INT1 is the CPU's own line into the DSP, it carries a
+handler address distinct from the stub, and **the harness never asserts it** -
+`core.nmi()` in `_start_rom_loader` is the only DSP interrupt the host side
+ever raises, and everything else is polled.
+
+`f7fe` is also outside anything this run downloads. `CourierRom` serves the
+DSP exactly one segment - `0x8000`, 28,327 words, ending at `0xeea7` - and
+says so itself: "One segment, unlike an XMF's three... Whether the rest of the
+datapump region reaches the DSP by some other path is not established." The
+flash's overlay table, overlay 6 at `0x9d00`, 7 at `0xb000` and 8 at `0xdc00`,
+is parsed by `XmfImage.dsp_segments` and by nothing else.
+
+So on a board-ROM run the DSP can only ever hold the resident. The answering
+end can raise an answer tone from it, which is why B transmits. When the
+supervisor enters `8e43c` for a second load there is nothing to serve it,
+which is what `overlay_downloads: 0` has been reporting all along. That is why
+the originating end never gets a datapump, and it is an image-layer gap rather
+than anything about resets, cursors or the line.
