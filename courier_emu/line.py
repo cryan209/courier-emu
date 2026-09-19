@@ -26,8 +26,29 @@ LINE_TIMEOUT_SECONDS = 30.0
 # terminator, Linux 108).
 MAX_SOCKET_PATH = 100
 
-_HEADER = struct.Struct("<IBBH")
+_HEADER = struct.Struct("<IBBBH")
 _AUDIO_HEADER = struct.Struct("<H")
+
+
+# The switched call has one state, and it lives on the line rather than in
+# either subscriber. Each end advertises the furthest point it knows the call
+# has reached and adopts the later of its own view and the peer's, so both
+# arrive at the same value within one frame. Every transition has exactly one
+# end that can make it - only the calling end can seize and only the called
+# end can answer - which is why this converges instead of oscillating.
+CALL_IDLE = 0
+CALL_SEIZED = 1      # the calling end has the loop; the switch is collecting
+CALL_RINGING = 2     # the switch has the number and is ringing the called end
+CALL_ANSWERED = 3    # the called end went off hook: the path is through
+CALL_CLEARED = 4     # one end hung up
+
+CALL_STATE_NAMES = {
+    CALL_IDLE: "idle",
+    CALL_SEIZED: "seized",
+    CALL_RINGING: "ringing",
+    CALL_ANSWERED: "answered",
+    CALL_CLEARED: "cleared",
+}
 
 
 @dataclass
@@ -36,6 +57,7 @@ class LineFrame:
     off_hook: bool
     ringing: bool
     samples: list[int]
+    call_state: int = CALL_IDLE
 
     def encode(self) -> bytes:
         body = b"".join(
@@ -45,18 +67,20 @@ class LineFrame:
             self.instructions & 0xFFFFFFFF,
             int(self.off_hook),
             int(self.ringing),
+            int(self.call_state),
             len(self.samples),
         )
         return header + body
 
     @classmethod
     def decode(cls, header: bytes, body: bytes) -> "LineFrame":
-        instructions, off_hook, ringing, count = _HEADER.unpack(header)
+        instructions, off_hook, ringing, call_state, count = _HEADER.unpack(header)
         samples = [
             int.from_bytes(body[index : index + 2], "little", signed=True)
             for index in range(0, 2 * count, 2)
         ]
-        return cls(instructions, bool(off_hook), bool(ringing), samples)
+        return cls(instructions, bool(off_hook), bool(ringing), samples,
+                   int(call_state))
 
 
 @dataclass
@@ -79,6 +103,8 @@ class LineLink:
     frames: int = 0
     peer_off_hook: bool = False
     peer_ringing: bool = False
+    # The shared state above, as the far end last advertised it.
+    peer_call_state: int = CALL_IDLE
     peer_instructions: int = 0
     closed: bool = False
     error: str | None = None
@@ -154,14 +180,18 @@ class LineLink:
                 if self._tx_record is not None:
                     self._tx_record.writeframesraw(encoded[_HEADER.size:])
                 count, = _AUDIO_HEADER.unpack(self._receive(_AUDIO_HEADER.size))
+                # An audio-only peer carries no supervision. Both ends are
+                # simply connected, which is the answered state.
                 instructions, off_hook, ringing = 0, False, False
-                header = _HEADER.pack(0, 0, 0, count)
+                call_state = CALL_ANSWERED
+                header = _HEADER.pack(0, 0, 0, call_state, count)
             else:
                 self._socket.sendall(encoded)
                 if self._tx_record is not None:
                     self._tx_record.writeframesraw(encoded[_HEADER.size:])
                 header = self._receive(_HEADER.size)
-                instructions, off_hook, ringing, count = _HEADER.unpack(header)
+                instructions, off_hook, ringing, call_state, count = (
+                    _HEADER.unpack(header))
             body = self._receive(2 * count)
             if self._rx_record is not None:
                 self._rx_record.writeframesraw(body)
@@ -176,6 +206,7 @@ class LineLink:
         self.peer_instructions = instructions
         self.peer_off_hook = bool(off_hook)
         self.peer_ringing = bool(ringing)
+        self.peer_call_state = int(call_state)
         peer = LineFrame.decode(header, body)
         self._inbound.extend(peer.samples)
         self.received_samples += len(peer.samples)
@@ -205,6 +236,7 @@ class LineLink:
         self.closed = True
         self.peer_off_hook = False
         self.peer_ringing = False
+        self.peer_call_state = CALL_CLEARED
         for handle in (self._socket, self._server):
             if handle is not None:
                 try:
@@ -228,6 +260,8 @@ class LineLink:
             "frames": self.frames,
             "connected": self.connected,
             "peer_off_hook": self.peer_off_hook,
+            "peer_call_state": CALL_STATE_NAMES.get(
+                self.peer_call_state, self.peer_call_state),
             "peer_instructions": self.peer_instructions,
             "samples_sent": self.sent_samples,
             "samples_received": self.received_samples,

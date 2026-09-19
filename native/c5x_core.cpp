@@ -99,6 +99,7 @@ void C5xCore::reset()
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
     m_line_frame_interrupts = 0;
+    m_serial_rint_suppressed = 0;
     m_line_frame_next_cycle = 0;
     m_line_frame_phase = 0;
     m_line_sample_phase = 0;
@@ -117,7 +118,27 @@ void C5xCore::reset()
     // On this board RS is shared with the AC01.  configure_rom_codec() opts
     // into that board wiring; later DSP resets must therefore return the
     // external codec's control registers and frame state to power-up too.
-    if (m_rom_codec) m_codec = Ac01{};
+    //
+    // Two things here are the board, not the part, and a reset pin cannot
+    // change either: the oscillator the ASIC divides MCLK from, and the fact
+    // that the codec is on the net at all.  Carry the configured MCLK across
+    // and restart the codec at it.  Without this a reset silently returned
+    // the clock to the 2.88 MHz default, so every generation after the first
+    // ran at a rate the board never presents.
+    //
+    // The frame rate has to come back with the registers.  fs = MCLK/(2*A*B)
+    // and the reset above puts A and B back to their power-up 18, so leaving
+    // m_line_frame_period at the rate the *previous* generation programmed
+    // left the model clocking frames at a rate its own divider registers no
+    // longer said.  A call asserts this net two or three times, so that is
+    // most of the call.
+    if (m_rom_codec) {
+        const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
+        m_codec = Ac01{};
+        m_codec.nominal_mclk_hz = nominal_mclk;
+        m_codec.mclk_hz = nominal_mclk;
+        m_line_frame_period = AC01_POWERUP_FRAME_PERIOD_CYCLES;
+    }
     // Both wait-state registers come out of reset at maximum.
     m_pdwsr = m_iowsr = 0xffff; m_cwsr = 0x000e;
     m_codec_rx.clear();
@@ -255,7 +276,8 @@ void C5xCore::configure_rom_codec(bool enabled)
     // the part at 4444 Hz, which is a rate this board never runs at; nothing
     // here knows what the ASIC clocks the port at before programming, so this
     // stands in for it rather than claiming to model it.
-    m_line_frame_period = enabled ? 2800 : 258;
+    m_line_frame_period = enabled
+        ? AC01_POWERUP_FRAME_PERIOD_CYCLES : TDM_FRAME_PERIOD_CYCLES;
 }
 
 void C5xCore::set_codec_mclk(uint32_t hz)
@@ -1080,6 +1102,36 @@ bool C5xCore::check_nmi()
     return true;
 }
 
+// The receive interrupt is the serial port's, not the frame scheduler's.
+//
+// SPRU056D 5.3: RINT is raised when RSR transfers into DRR - that is, when a
+// word has actually been received - and a receiver held in reset (SPC RRST
+// low) shifts nothing and therefore raises nothing. The frame clock itself is
+// genuinely external on this board, because the ASIC/AC01 is the frame master
+// and keeps running while the DSP is inside an overlay; what was wrong was
+// firing the interrupt from that scheduler directly, so IRQ5 arrived on a
+// timer regardless of whether the port was running or had taken a word.
+// Every site that loads DRR now ends here instead.
+void C5xCore::serial_receive_interrupt()
+{
+    if (m_line_frame_irq < 0) return;
+    if (!(m_serial.spc & SPC_RRST)) {
+        // Counted rather than silent. A receiver left in reset shows up as a
+        // datapump that never gets a frame, and nothing else distinguishes
+        // that from a model whose frame clock simply stopped, so say which it
+        // was. This gate has not been exercised against a completed call: the
+        // C51 ROM loader does not currently reach its ASIC poll on either the
+        // 302 or the 403 image, which is a separate fault ahead of it.
+        ++m_serial_rint_suppressed;
+        return;
+    }
+    // Counted where it is recognised rather than where it is latched: IFR is
+    // set either way, but this counter has always meant "taken".
+    if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq)))
+        ++m_line_frame_interrupts;
+    interrupt(unsigned(m_line_frame_irq));
+}
+
 void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
 {
     if (irq >= 16) throw std::out_of_range("C5x line-frame interrupt number");
@@ -1196,8 +1248,7 @@ void C5xCore::step()
         && m_cycles >= m_codec.secondary_cycle) {
         m_codec.secondary_due = false;
         codec_frame(true);
-        if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;
-        interrupt(unsigned(m_line_frame_irq));
+        serial_receive_interrupt();
         return;
     }
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
@@ -1226,15 +1277,12 @@ void C5xCore::step()
             }
             m_codec.rx_ready = true;
             m_codec.tx_ready = true;
-            if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq)))
-                ++m_line_frame_interrupts;
-            interrupt(unsigned(m_line_frame_irq));
+            serial_receive_interrupt();
             return;
         }
         if (m_rom_codec) {
             codec_frame(false);
-            if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))) ++m_line_frame_interrupts;
-            interrupt(unsigned(m_line_frame_irq));
+            serial_receive_interrupt();
             return;
         }
         // LAMM @52 at the ISR entry masks this ASIC word to two bits and
@@ -1323,9 +1371,7 @@ void C5xCore::step()
                 m_line_tx_last_pc = 0x8c25;
             }
         }
-        unsigned irq = unsigned(m_line_frame_irq);
-        if (!m_st0.intm && (m_imr & (1u << irq))) ++m_line_frame_interrupts;
-        interrupt(irq);
+        serial_receive_interrupt();
     }
 }
 
@@ -1357,6 +1403,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
+        m_serial_rint_suppressed,
         m_line_dac_writes, m_line_dac_frames,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
         m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak,

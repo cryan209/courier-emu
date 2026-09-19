@@ -79,6 +79,12 @@ constexpr uint16_t C5X_SHARED_FIRST = 0x8000, C5X_SHARED_LAST = 0xFEFF;
 // window is disabled rather than guessed at, and its data space behaves as it
 // did before the window existed.
 
+// The ASIC's TDM slot rate with no codec on the port, and the stand-in the
+// board's AC01 runs at until the firmware programs its A and B dividers.
+// Both are frame periods in C5x cycles.
+inline constexpr unsigned TDM_FRAME_PERIOD_CYCLES = 258;
+inline constexpr unsigned AC01_POWERUP_FRAME_PERIOD_CYCLES = 2800;
+
 class C5xCore {
 public:
     struct State {
@@ -137,6 +143,10 @@ public:
         uint64_t trcv_reads, tdxr_writes, tspc_writes;
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
         uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
+        // Receive interrupts the serial port did not raise because RRST was
+        // low. A non-zero count against a stalled datapump says the port was
+        // never taken out of reset, rather than that the frame clock stopped.
+        uint64_t serial_rint_suppressed;
         // How often the datapump wrote the line DAC slot, and how many
         // codec frames collected those writes. Their ratio is how many
         // datapump samples the model folds into one line sample.
@@ -267,6 +277,7 @@ public:
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void nmi();
+    void serial_receive_interrupt();
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
     void configure_rom_codec(bool enabled);
     void set_codec_mclk(uint32_t hz);
@@ -407,13 +418,14 @@ private:
     std::array<uint16_t, 16> m_interrupt_vectors{};
     int m_line_frame_irq = -1;
     uint64_t m_line_frame_interrupts = 0;
+    uint64_t m_serial_rint_suppressed = 0;
     uint64_t m_line_frame_next_cycle = 0;
     bool m_rom_codec = false;
     bool m_host_mailbox = false;
     uint64_t m_xf_falling_edges = 0;
     bool m_digital_pcm = false;
     uint16_t m_g711_idle = 0x00ff;
-    unsigned m_line_frame_period = 258;
+    unsigned m_line_frame_period = TDM_FRAME_PERIOD_CYCLES;
     uint16_t m_line_frame_phase = 0;
     uint32_t m_line_sample_phase = 0;
     bool m_line_sample_due = false;

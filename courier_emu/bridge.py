@@ -29,7 +29,18 @@ from . import boot_rom
 from .dsp import NativeC5x
 from .ata import SipLine
 from .exchange import DtmfDecoder, LineExchange
-from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineFrame, LineLink
+from .line import (
+    CALL_ANSWERED,
+    CALL_CLEARED,
+    CALL_IDLE,
+    CALL_RINGING,
+    CALL_SEIZED,
+    CALL_STATE_NAMES,
+    LINE_FRAME_INSTRUCTIONS,
+    LINE_FRAME_SAMPLES,
+    LineFrame,
+    LineLink,
+)
 from .timebase import DEFAULT_COURIER, Timebase
 from .sip import PolyphaseResampler, SipSession
 from .xmf import XmfImage
@@ -538,6 +549,7 @@ class CourierDspBridge:
             "peer_ring_frames": 0,
             "peer_ring_bursts": 0,
             "cut_through_at": -1,
+            "call_state": CALL_STATE_NAMES[CALL_IDLE],
             "peer_ring_runs": [],
             "tx_index": 0,
             "tx_peak_line": 0,
@@ -700,8 +712,9 @@ class CourierDspBridge:
         self._line_dtmf = DtmfDecoder(sample_rate=LINE_RATE)
         self._last_digit_at: int | None = None
         # Whether the exchange has put the two subscribers on the same path.
+        # This is not a per-end decision: see `_advance_call_state`.
         self._reset_log: list[dict[str, int]] = []
-        self._cut_through = False
+        self._call_state = CALL_IDLE
         self._peer_ring_last = False
         self._peer_ring_runs: list[int] = []
         # What the called subscriber's bell does once the switch has the
@@ -3047,6 +3060,75 @@ class CourierDspBridge:
             return False
         return self._called_ring.present(self._instructions - self._last_digit_at)
 
+    def _advance_call_state(self, off_hook: bool, ringing: bool) -> None:
+        """Advance the one call state the two subscribers share.
+
+        A switched call has a single state, and it belongs to the exchange
+        rather than to either end. Both ends used to decide for themselves
+        whether the path was through, from counters only one of them could
+        have: the calling end watched the rings it was sending, the answering
+        end watched the ring bursts it was receiving, and a leased pair
+        matched neither rule on the answering side. The two could therefore
+        disagree about whether the call was up, which is a half-connected
+        call - one end transmitting into a cut loop.
+
+        Every transition here has exactly one end that is able to make it.
+        Only the calling end holds the loop before the call exists, so only it
+        can seize and only it can ring; only the called end can answer. Each
+        end advertises the furthest point it knows of in its frame and adopts
+        `max(mine, the peer's)`, so the state is monotonic and both ends hold
+        the same value one frame after it changes.
+        """
+        state = max(self._call_state, self.line.peer_call_state)
+        if state == CALL_CLEARED:
+            self._call_state = state
+            return
+        if off_hook and state < CALL_SEIZED and self._last_digit_at is None:
+            # The loop is closed and nothing has been dialed yet: the calling
+            # end has the switch's attention. The answering end reaches this
+            # too on a leased pair, where there is no switch to seize and the
+            # distinction does not matter.
+            state = CALL_SEIZED
+        if ringing and state < CALL_RINGING:
+            # Only the end that collected the digits models the switch that
+            # rings the other one.
+            state = CALL_RINGING
+        if off_hook and self.line.peer_off_hook and state < CALL_ANSWERED:
+            if self._last_digit_at is not None:
+                # This end dialed. It does not get to decide that its call was
+                # answered - it learns that from the frame the called end
+                # sends back, the way answer supervision comes back down the
+                # line.
+                pass
+            elif self._commanded_role == "answer":
+                # An answering subscriber going off hook against a ringing
+                # line is the answer. That is the whole transition.
+                if state == CALL_RINGING:
+                    state = CALL_ANSWERED
+            else:
+                # A leased pair: no switch between the two ends, so closing
+                # both loops is the connection.
+                state = CALL_ANSWERED
+        if state >= CALL_ANSWERED and not (off_hook and self.line.peer_off_hook):
+            state = CALL_CLEARED
+        if state == CALL_ANSWERED and self._call_state != CALL_ANSWERED:
+            self._line_service["cut_through_at"] = self.line.frames
+            # The originating end has to learn that its call was answered.
+            # `set_call_progress` had exactly one caller, on the SIP path, so
+            # on the socket the operation stayed "dialing" for the rest of the
+            # call. B pulses the DSP reset at its own answer and its datapump
+            # runs from there; A's last reset was before it dialed, because it
+            # never reached the transition that produces one.
+            if self.daa is not None and self.daa.operation == "dialing":
+                self.daa.set_call_progress("connected")
+        self._call_state = state
+        self._line_service["call_state"] = CALL_STATE_NAMES.get(state, state)
+
+    @property
+    def _cut_through(self) -> bool:
+        """Whether the exchange has the two subscribers on the same path."""
+        return self._call_state == CALL_ANSWERED
+
     def _service_line_frame(self) -> None:
         """One socket line frame: ship what the codec clocked, take the peer's."""
         off_hook = self.daa is not None and self.daa.off_hook
@@ -3065,40 +3147,13 @@ class CourierDspBridge:
         # receiver while B was still on hook being rung, which is not a thing
         # a called subscriber can hear. The exchange cuts through when the
         # call is answered, and stays through for the rest of it.
-        switched_origin_ready = (
-            self._last_digit_at is not None
-            and self._line_service["ring_frames"] > 0
-        )
-        switched_answer_ready = (
-            self._commanded_role == "answer"
-            and self._line_service["peer_ring_bursts"] > 0
-        )
-        leased_ready = (
-            self._last_digit_at is None
-            and self._commanded_role != "answer"
-        )
-        if (
-            not self._cut_through
-            and off_hook
-            and self.line.peer_off_hook
-            and (switched_origin_ready or switched_answer_ready or leased_ready)
-        ):
-            self._cut_through = True
-            self._line_service["cut_through_at"] = self.line.frames
-            # The originating end has to learn that its call was answered.
-            # `set_call_progress` had exactly one caller, on the SIP path, so
-            # on the socket the operation stayed "dialing" for the rest of the
-            # call. B pulses the DSP reset at its own answer and its datapump
-            # runs from there; A's last reset was before it dialed, because it
-            # never reached the transition that produces one.
-            if self.daa is not None and self.daa.operation == "dialing":
-                self.daa.set_call_progress("connected")
+        ringing = (off_hook and not self.line.peer_off_hook
+                   and self._called_party_ringing())
+        self._advance_call_state(off_hook, ringing)
         # `samples` stays intact below: the exchange is on this loop and
         # collects the digits from it. Only what crosses to the far
         # subscriber is cut.
         wire = samples if self._cut_through else [0] * len(samples)
-        ringing = (off_hook and not self.line.peer_off_hook
-                   and self._called_party_ringing())
         if ringing:
             self._line_service["ring_frames"] += 1
         if self.line.peer_ringing:
@@ -3121,6 +3176,7 @@ class CourierDspBridge:
                 # switch, so the bell stops the moment the call is answered.
                 ringing=ringing,
                 samples=wire,
+                call_state=self._call_state,
             )
         )
         if (
