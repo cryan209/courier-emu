@@ -201,6 +201,46 @@ Note that `0x4ed - 0x3e5` is `0x108` where `0x281 - 0x17b` is `0x106`: the two
 RAM maps are reshuffled, not uniformly shifted, so no 302 cell may be carried to
 403 by adding a constant.
 
+### And on the ISDN I-modem and the quad server, at their own cells
+
+The mechanism is not Courier-specific. The same LR parameter, the same decode,
+the same `0x1000` override and the same dispatch idiom are in every USR image
+in this tree that carries an 80186 modem side:
+
+| | analog Courier | ISDN I-modem | quad server |
+|---|---|---|---|
+| image | `IDSDL302.ROM` | `Ie030002.nac` | `position-0-channel-0-flash.bin` |
+| `0xc0` decode | `0x85924` | `0x7bfe7` | `0x5e99` |
+| received pair | `[0x04ed]`/`[0x04ee]` | `[0xd0a3]`/`[0xd0a4]` | `[0x84fd]`/`[0x84fe]` |
+| bit-2 override | `0x8614d` | `0x7c9e5` | `0x6b97` |
+| capability pair | `[0x0281]`/`[0x027f]` | `[0xc995]`/`[0xc993]` | `[0x820c]`/`[0x820a]` |
+| `0xc0` emitter | `0x85cd8` | `0x7c48b` | `0x65d3` |
+
+The override is byte-identical in all three - `test byte [cell], 4 ; je +0f ;
+or word [pair0], 0x1000 ; or word [pair1], 0x1000 ; mov al, 0x10 ; ret` - and so
+is the emitter, `mov al, 0xc0 ; stosb ; mov al, 2 ; stosb ; pop ax ; stosw ;
+add byte [len], 4`, skipped when the local word is zero.
+
+The dispatch idiom carries over unchanged. Where 302 has
+`mov ax, 0x5a ; ... ; mov bx, [0x281] ; lcall 8f43:0224`, the I-modem has three
+sites and the quad five, each `mov ax, <tag> ; mov bx, [cell] ; lcall`:
+
+| image | tags seen at the dispatch sites |
+|---|---|
+| I-modem `Ie030002.nac` | `0x11`, `0x10`, `0x17` |
+| quad `position-0-channel-0` | `0x1e`, `0x11`, `0x10`, `0x17`, `0x1e` |
+
+So `0x10`/`0x11` are the same commands there, and `0x17` and `0x1e` are two more
+that publish the same word - neither of which appears at the two 302 sites this
+document traced. That is a loose end, not a conclusion.
+
+Two limits on the above. The `.nac` images interleave record headers into the
+byte stream, so the sequences above are read across those boundaries rather than
+from an unpacked image; and this says the **mechanism** is shared, not that bit 2
+means the same thing in each - nothing here reads the bit's meaning out of any of
+the three, only its plumbing. `IE010203.NAC` carries a 386EX ISDN image as well,
+which is a separate processor and is not what any of this addresses.
+
 ## On a leased line the same sites publish `0x5a` and `0x59`
 
 The section above answers the dial. `&L1` takes a different branch of the same
@@ -210,7 +250,7 @@ Both dispatch sites are three-way, and both publish `[0x0281]` as the data word:
 
 > **The RAM-map collision, resolved 2026-09-19.** `courier_firmware_analysis.md`
 > also claims `[0x0281]`, as the DAA `SI` line-side register read delivered by
-> mailbox tag `0x7e`. That is a different image: its addresses are iModem 2.1.1
+> mailbox tag `0x7e`. That is a different image: its addresses are Courier 3453B v2.1.1
 > (`main211.xmf`, physical = file + `0x40000`), where `0x6adb5` is
 > `a3 81 02` - `mov [0x281], ax` right after an `in al, 0x5c` - and `0x5e576`
 > is `f6 06 81 02 01` - `test byte [0x281], 1`, the ring-detect debounce.

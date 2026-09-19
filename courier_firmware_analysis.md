@@ -1035,7 +1035,7 @@ those fields, if one is ever found, plugs into the same object.
 ### The DAA identity arrives as mailbox tag 0x7b
 
 > **This section is `main211.xmf`, not `SV25.XMD`. Corrected 2026-09-19.**
-> Every address here is a physical address in the iModem 2.1.1 supervisor,
+> Every address here is a physical address in the Courier 3453B v2.1.1 supervisor (analog: the image contains no "ISDN" string),
 > which loads at **file + `0x40000`** - `0x5c6b6` is file `0x1c6b6`, `0x6ad5b`
 > is file `0x2ad5b`, `0x82b64` is file `0x42b64`. All of them are **zero** in
 > `SV25.XMD`, which contains no reference to `[0x281]`, `[0x283]`, `[0x285]`
