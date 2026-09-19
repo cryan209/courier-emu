@@ -448,6 +448,164 @@ The one `host_write` the bridge does perform writes DSP data cells directly and
 is labelled in its own comment as "a convenience for seeding the modelled C52's
 call registers, not a model of the board's write path".
 
+## The consumer side: what the supervisor does with an event
+
+Everything above traces events out of the DSP. This traces them into the
+supervisor, on the 403 board image, and the short answer is that the two events
+the DSP actually emits are both discarded on arrival.
+
+### The dispatcher, and the segment `[0x192]` is read in
+
+```text
+8f4b4  test word [0x17f], 2
+8f4ba  je   8f4cd
+8f4bc  in al, 0x5a / mov ah, al
+8f4c0  in al, 0x58                    ; AL = tag
+8f4c2  cmp al, 0x76 / jb 8f4c8        ; tags >= 0x76 dropped
+8f4c9  call word ptr [0x192]          ; the state machine
+```
+
+`[0x192]` is a **near** pointer, so its segment is the caller's: **CS
+`0x8f46`**. Both values the board capture recorded then resolve, which the
+`a4e2` reading could not do:
+
+| `[0x192]` | under `0x8f46` | |
+|---|---|---|
+| `0110` | `0x8f570` | idle |
+| `5742` | `0x94ba2` | off-hook |
+
+Every state is the same four-instruction stub - `mov bx, <handler table>`,
+`mov cx, <count>`, `mov di, <tag table>`, `jmp 8f77a`. The shared dispatcher
+sets `ES = CS`, scans the `CX`-byte table at `DI` for `AL`, and does
+`jmp word ptr cs:[bx+di]`; no match falls through to `clc; ret` and the message
+is silently dropped. About 140 sites write `[0x192]`, so this is the
+supervisor's main call state machine.
+
+The off-hook state accepts 36 tags, table at `0x94b30` with the handler words
+immediately after at `0x94b54`:
+
+```text
+83 07 3a 21 08 3d 3a 28 29 2a 2b 2c 2d 2f 47 0b 2e 23 45 46 48 30
+34 35 36 37 6a 6c 6d 70 71 73 74 6b 6e 44
+```
+
+The mapping checks out against work done independently: tag `0x2f` lands on
+`0x94d83`, the overlay-request consumer named in
+[datapump-gate-403-addresses.md](datapump-gate-403-addresses.md).
+
+### The two events the DSP emits are both no-ops
+
+```text
+93e32  in al, 0x5e / mov ah, al / in al, 0x5c / ret          ; tag 0x34
+93cbe  in al, 0x5e / mov ah, al / in al, 0x5c
+93cc4  mov byte ptr [0xa1a], al / ret                        ; tag 0x6b
+```
+
+Tag `0x34` drains the word and keeps nothing; `0x6b` keeps one byte. Neither
+sets a flag or moves `[0x192]`. In a 400M-instruction leased-line call these
+are the only two messages the DSP sends, so **nothing the DSP currently says
+can advance the supervisor.**
+
+### Tag `0x2c` is the connect, and it is the one that is missing
+
+Scanning the off-hook handlers for `[0x192]` writes gives the transitions -
+`0x28`/`0x3a`, `0x29`, `0x2b`, `0x2c`, `0x2d`. Tag `0x2c`'s is unmistakable:
+
+```text
+94cd8  test byte [0x225], 0x80 / jne -> stc; ret   ; already up -> reject
+94cdf  call 94d2c                                  ; reads 0x5e/0x5c, indexes cs:0x58e3
+94ce2  mov byte [0x230], 1
+94ce7  mov word [0x175], 0x3a7d
+94ced  mov word [0x177], 0x3965
+94cf3  mov word [0x138], 0x32e3
+94cf9  mov word [0x30],  0x38cc       ; INT 0x0c vector
+94cff  mov word [0x3c],  0x0ae0       ; INT 0x0f vector
+94d05  mov word [0x192], 0x2d1d       ; the state advances
+94d0b  mov [0x2bc], al ...            ; the DSP's word, kept in four places
+94d17  mov ah, 0x18 / mul ah          ; AL * 24 - a rate-table index
+94d1e  or  byte [0x225], 0x40         ; connected
+94d28  clc; ret
+```
+
+It installs the data-mode interrupt vectors, records a rate index, sets the
+connected flag and moves the state machine on. That is what the call is
+blocked on.
+
+Its DSP producers are `0xda19` and `0xda97`, which emit the pair the handler's
+two `in` reads expect:
+
+```text
+da11  bcnd daa8, gt        ; bail
+da13  banz daaa, *-        ; bail
+da16  opl  @6f, #0008
+da18  lacl #2c
+da19  call 83b1            ; queue the tag
+da1b  lacl #02
+da1c  call 83b1            ; queue the second word
+```
+
+The two differ only in a constant afterwards (`@6e` = `0x02d0` against
+`0x032a`), so they are two connect outcomes. Both sit in resident
+`0xcf00-0xdbff`, and **that band executes nothing but `0xd593-0xd5a3` in a whole
+call** - tag `0x50`'s parameter loader. The gate is the pair of bails at
+`0xda11`/`0xda13`, on `@70` and the cell `@44` points at.
+
+### Every site that can queue an event
+
+Found by scanning for references to `0x83a6` and `0x83b1` across the resident
+and overlay 6 as they sit in memory, and reading back the immediate loaded into
+ACC within six instructions of each:
+
+| band | sites | tags |
+|---|---|---|
+| resident below overlay 6 | 16 | `31 05 04 0e 3d 02 06 47 34 08` |
+| overlay 6 | 16 | `3c 04 42 44 75 03 35 20` |
+| resident between the overlays | 44 | `07 12 13 14 15 68 67 06 03 49 48 4a 1b 2c 02` |
+
+76 references, 38 with a decodable immediate. Two measurements over a
+400M-instruction call:
+
+* **overlay 6's entire enqueue cluster `a2c0:a5e0` executes zero times**, while
+  the block at `0xa0e6-0xa20f` runs every pass - four FIR filters
+  (`rpt #11 ; mac *0+, fe5e` and three more). The DSP demodulates the line and
+  never reports.
+* the resident band `cf00:dbff` executes only `0xd593-0xd5a3`, as above.
+
+The async path *is* entered: the fall-through at `0x8fd1` runs
+`call 96af ; call 9705 ; b 9d34`, and `0x9707`/`0x970a` inside `0x9705` are what
+queue tag `0x34` - one of the two messages that do arrive.
+
+Doors into the dormant code, by tag-table entry: overlay 6 takes `0x54` and
+`0x56`; the resident band takes `0x28`, `0x29`, `0x2e`, `0x2f`. The supervisor
+sends none of them.
+
+### A trap: tags are per-direction
+
+Tag numbers are **not** a shared namespace. `0x2c` is a configuration word the
+supervisor sends to the DSP (`002c:0409`) *and* the connect event the DSP sends
+back; they are unrelated. The same is true of `0x28`, `0x29`, `0x2e`, `0x2f`,
+`0x34` and `0x48`. The inbound table is the DSP's at program `0x83e9`; the
+outbound one is the supervisor's per-state table above. Reading a tag against
+the wrong table is a silent mistake.
+
+### What this does not establish
+
+The `[0x192]` segment is settled by both recorded values decoding as the same
+four-instruction stub, not by tracing a call. The bail conditions at `0xda11`
+were not traced to what sets `@70` or `@44`. And the linear disassembly of
+overlay 6 is not reliable - a scan reported `a179  b a3f7`, an unconditional
+branch from the running block into the dormant band, which cannot be right
+because the trace shows `a179` and `a17b` each executing three times. Execution
+counts and table reads in this section are trustworthy; caller lists derived
+from linear decoding of overlay 6 are not.
+
+> **Note, 2026-09-19.** The sections above on the DSP never reaching its service
+> loop - parked in `idle`, `@57` stuck at `a000`, "the message is delivered and
+> never consumed" - describe an earlier path and do **not** hold for the 403
+> board image. There the DSP reads the status latch 342,624 times in one run,
+> consumes every message it is handed and acknowledges 5,064 times. See
+> [what-runs-and-what-blocks.md](what-runs-and-what-blocks.md).
+
 ## What this does not establish
 
 Two `out` sites is what a scan for `out` against those port numbers finds; an

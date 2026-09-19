@@ -261,12 +261,22 @@ it gives the emulator a baseline: **a 403 dial should reach `5742` and return to
 `0110`.** `[0x03ff]` stays `0000` throughout, so the router is never installed on
 this path, consistent with the gate cells never moving.
 
-> The capture labelled each pointer with a linear address computed as
-> `a4e2:value`, on the strength of the installers writing `a4e2` offsets. That
-> holds for the idle state - `a4e20 + 0110 = a4f30` disassembles as real code -
-> but **not** for `5742`, whose implied `aa562` is garbage. The segment varies
-> with the state; read the linear column as a hypothesis per row. The observed
-> values and transitions are unaffected.
+> **Resolved 2026-09-19.** The capture labelled each pointer as `a4e2:value`,
+> on the strength of the installers writing `a4e2` offsets, and that failed for
+> `5742` - the implied `aa562` is garbage. The segment is not `a4e2` and does
+> not vary: `[0x192]` is called with `call word ptr [0x192]` at `0x8f4c9`, a
+> **near** call, so it is read in the caller's **CS `0x8f46`**. Both recorded
+> values then decode as the same four-instruction state stub:
+>
+> | `[0x192]` | under `0x8f46` | |
+> |---|---|---|
+> | `0110` | `0x8f570` | `mov bx,0x121 / mov cx,5 / mov di,0x11c / jmp 8f77a` |
+> | `5742` | `0x94ba2` | `mov bx,0x56f4 / mov cx,0x24 / mov di,0x56d0 / jmp 8f77a` |
+>
+> So the board's `5742`/`0110` capture is directly usable as a state trace, and
+> `0x94ba2` is the off-hook state. Its 36-tag dispatch table and what the
+> supervisor does with each event are in
+> [who-produces-the-events.md](who-produces-the-events.md#the-consumer-side-what-the-supervisor-does-with-an-event).
 
 **`&L1` alone is inert.** Sampled for 20 s with the setting live:
 
