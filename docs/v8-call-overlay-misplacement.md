@@ -450,3 +450,69 @@ start of every generation was skipped. Both measurements were correct and were
 reading different generations of the array. The cursors now reset with the
 core. `a-tx` is no longer silent on that account - it carries the dialed
 digits - and `b-tx` went from 23,841 nonzero samples to 38,914.
+
+## The mailbox tag difference is one report from two detector banks
+
+The previous section left the two ends "running different programs" on the
+strength of their originated tags barely overlapping - A produces `0008:*`,
+B `0016:*`. That reading is too strong, and the code says so.
+
+**Both tags leave from the same instruction.** Every originated message on
+both ends is emitted at `pc 83d4`, in a generic sender at `0x83bf`:
+
+```text
+83c0  lacc  @79 ; sub @78 ; retc eq     ; ring empty, nothing to send
+83cd  lar   ar1, @79                    ; read pointer into the ring at ff60
+83ce  bit   15, *                       ; does a data word follow?
+83cf  lacl  *+ ; and #7fff
+83d3  out   @7d, 005e                   ; the tag
+83d6  out   @7d, 005f                   ; high word, always 0000
+83de  out   *+, 005f                    ; the data word, if bit 15 was set
+```
+
+So the "tag" is just the first word the caller queued, masked to 15 bits, and
+bit 15 means one word follows. It carries no role of its own. The enqueue is
+the routine above it at `0x83b0`, and the image has **118 call sites**.
+
+**The two sites are the same report.** `0x9c93` and `0x9f02` are structurally
+identical - tag, then the same payload:
+
+```text
+9c93  lacc  #00008008        9f02  lacc  #00008016
+9c95  call  83b1             9f04  call  83b1
+9c97  lacl  @2f              9f06  lacl  @2f
+9c98  and   #00008fff        9f07  and   #00008fff
+9c9a  call  83b1             9f09  call  83b1
+```
+
+Both send `@2f & 0x8fff`. Not two subsystems - one status word, reported from
+two places.
+
+**What differs is the detector bank above each one.** `a09b` is a threshold
+compare: the caller points `ar1` at a measurement cell, puts a constant in the
+accumulator, and `xc 2, leq` sets a bit in `@2f` on the result.
+
+| site | cell | threshold | bit set |
+|---|---|---|---|
+| `9c7e` | `03be` | `2adb` | `0x0040` |
+| `9c87` | `01fe` | `59d8` | `0x0080` |
+| `9c90` | `01fa` | `61d7` | `0x0100` |
+| `9ef0` | `03b8` | `47a2` | `0x0010` |
+| `9ef9` | `03b6` | sum > `1f40` | `0x0400` |
+
+So `@2f` is a bitmap of detector results and the tag identifies which bank
+filled it. A runs the bank at `0x9c78`, B the one at `0x9ee8`, which is what
+an originating and an answering end should do. The tag difference is a
+consequence of the two roles, not evidence of a fault, and the payload
+histograms read as that bitmap: A's commonest value is `0x0080`, exactly the
+bit `9c87` sets, and B's is also `0x0080` with `0x0400` and `0x0008` added,
+the bits its own bank sets.
+
+**One asymmetry worth keeping.** After reporting, B calls `a0b3`
+unconditionally (`9f0b`); A calls it only when bit 10 of `@2f` is clear
+(`9c9c: bit 10, @2f ; cc a0b3, ntc`). Bit 10 is `0x0400`, which is the bit
+`9ef9` sets from the energy sum at `03b6` - and it appears in B's payloads
+(`0016:0408`, `0016:0448`) and in none of A's. On this run A therefore always
+takes that call. Whether `a0b3` is what acts on a detection is not established
+here, and no claim is made about what any of these banks detect; the cells and
+thresholds are recorded above so the question can be asked directly.
