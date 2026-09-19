@@ -82,6 +82,7 @@ void C5xCore::reset()
     m_treg0 = m_treg1 = m_treg2 = 0;
     std::fill(std::begin(m_ar), std::end(m_ar), 0);
     m_rptc = -1;
+    m_repeat_active = false;
     m_bmar = 0; m_brcr = 0; m_paer = m_pasr = 0;
     m_indx = m_dbmr = m_arcr = 0;
     m_st0 = {}; m_st1 = {}; m_pmst = {};
@@ -94,6 +95,7 @@ void C5xCore::reset()
     m_st1.c = 1; m_st1.hm = 1; m_st1.sxm = 1; m_st1.xf = 1;
     m_xf_falling_edges = 0;
     m_ifr = m_imr = 0;
+    m_nmi_pending = false;
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
     m_line_frame_interrupts = 0;
@@ -112,6 +114,10 @@ void C5xCore::reset()
     m_rpt_start = m_rpt_end = 0;
     m_cbcr = m_cbsr1 = m_cber1 = m_cbsr2 = m_cber2 = 0;
     m_timer = {}; m_serial = {}; m_tdm = {}; m_shadow = {};
+    // On this board RS is shared with the AC01.  configure_rom_codec() opts
+    // into that board wiring; later DSP resets must therefore return the
+    // external codec's control registers and frame state to power-up too.
+    if (m_rom_codec) m_codec = Ac01{};
     // Both wait-state registers come out of reset at maximum.
     m_pdwsr = m_iowsr = 0xffff; m_cwsr = 0x000e;
     m_codec_rx.clear();
@@ -1025,8 +1031,9 @@ void C5xCore::restore_interrupt_context()
 }
 void C5xCore::check_interrupts()
 {
-    if (m_in_delay_slot || m_st0.intm || !m_ifr) return;
-    for (unsigned irq = 0; irq < 16; ++irq) if (m_ifr & (1u << irq)) {
+    const uint16_t enabled = uint16_t(m_ifr & m_imr);
+    if (m_in_delay_slot || m_st0.intm || !enabled) return;
+    for (unsigned irq = 0; irq < 16; ++irq) if (enabled & (1u << irq)) {
         m_st0.intm = 1; PUSH_STACK(m_pc);
         uint16_t vector = m_interrupt_vectors[irq];
         m_pc = vector != 0xffff
@@ -1038,10 +1045,11 @@ void C5xCore::check_interrupts()
 void C5xCore::interrupt(unsigned irq)
 {
     if (irq >= 16) throw std::out_of_range("C5x interrupt number");
+    // SPRU056D 4.8.2: the source sets IFR whether the interrupt is enabled or
+    // disabled. IMR and INTM govern recognition, not latching. An enabled
+    // source also wakes IDLE while INTM is set, leaving IFR pending.
+    m_ifr |= uint16_t(1u << irq);
     if (m_imr & (1u << irq)) {
-        m_ifr |= uint16_t(1u << irq);
-        // SPRU056D 4.10.1: an enabled interrupt wakes IDLE even with
-        // INTM set; in that case execution resumes after IDLE, without ISR.
         m_idle = false;
     }
     check_interrupts();
@@ -1049,15 +1057,27 @@ void C5xCore::interrupt(unsigned irq)
 
 void C5xCore::nmi()
 {
-    // The 'C51's NMI vector is the fixed slot at 0x0024.  Unlike the maskable
-    // inputs it is accepted regardless of IMR/INTM.  The Courier ASIC uses
-    // this entry after releasing reset; the mask ROM dispatches it through
-    // @6a to its resident-download service at 0x0610.
+    // The pin is asynchronous but the core completes its pipeline before
+    // taking the trap. Keep it pending until step() reaches an eligible
+    // instruction boundary instead of changing PC in the host callback.
+    m_nmi_pending = true;
+    m_idle = false;
+}
+
+bool C5xCore::check_nmi()
+{
+    if (
+        !m_nmi_pending || m_in_delay_slot
+        || m_repeat_active || m_pmst.braf
+    ) return false;
+    m_nmi_pending = false;
+    // NMI is fixed at 0x0024 and ignores IMR/INTM. SPRU056D 4.8.6 explicitly
+    // says the key registers are not copied to the context shadow for NMI.
     PUSH_STACK(m_pc);
     m_st0.intm = 1;
-    save_interrupt_context();
     m_pc = 0x0024;
     m_idle = false;
+    return true;
 }
 
 void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
@@ -1071,6 +1091,7 @@ void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
 void C5xCore::step()
 {
     m_step_cycles = 0;
+    check_nmi();
     if (m_idle) consume_cycles(1);
     else {
         // The customer-ROM dispatcher publishes call state at the boundary
@@ -1149,8 +1170,15 @@ void C5xCore::step()
         }
         (this->*s_opcode_table[m_op >> 8])();
         if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;
-        if (m_rptc > 0 && previous_pc == m_rpt_end) { CHANGE_PC(m_rpt_start); --m_rptc; }
-        else if (m_rptc <= 0) m_rptc = 0;
+        if (m_repeat_active && previous_pc == m_rpt_end) {
+            if (m_rptc > 0) {
+                CHANGE_PC(m_rpt_start);
+                --m_rptc;
+            } else {
+                m_rptc = 0;
+                m_repeat_active = false;
+            }
+        }
     }
     ++m_instructions;
     if (--m_timer.psc <= 0) {

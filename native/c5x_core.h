@@ -383,6 +383,7 @@ private:
     uint16_t m_treg0 = 0, m_treg1 = 0, m_treg2 = 0;
     uint16_t m_ar[8]{};
     int32_t m_rptc = -1;
+    bool m_repeat_active = false;
     uint16_t m_bmar = 0;
     int32_t m_brcr = 0;
     uint16_t m_paer = 0, m_pasr = 0, m_indx = 0, m_dbmr = 0, m_arcr = 0;
@@ -399,6 +400,10 @@ private:
 
     pmst_t m_pmst{};
     uint16_t m_ifr = 0, m_imr = 0;
+    // External NMI is sampled at an instruction boundary.  It cannot be
+    // serviced in the middle of a delayed branch or a repeated instruction,
+    // and unlike a maskable interrupt it does not use the context shadow.
+    bool m_nmi_pending = false;
     std::array<uint16_t, 16> m_interrupt_vectors{};
     int m_line_frame_irq = -1;
     uint64_t m_line_frame_interrupts = 0;
@@ -541,6 +546,7 @@ private:
     bool GET_ZLVC_CONDITION(int zlvc, int zlvc_mask);
     bool GET_TP_CONDITION(int tp);
     int32_t PREG_PSCALER(int32_t preg);
+    bool check_nmi();
     void check_interrupts();
     void save_interrupt_context();
     void restore_interrupt_context();

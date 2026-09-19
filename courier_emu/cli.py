@@ -436,7 +436,11 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
     # modem sees: the switch rings it, then the host answers. Typing ATA into
     # a line nobody has called put the answer tone on the wire before the
     # originator had finished dialing, and it was never repeated.
-    if not listen and args.answer_on_ring:
+    dialed_pair = (
+        any("D" in text.upper().removeprefix("AT") for text in args.a_at)
+        and any(text.upper() in ("A", "ATA") for text in commands)
+    )
+    if not listen and (args.answer_on_ring or dialed_pair):
         command.append("--serial-input-on-ring")
     return command
 

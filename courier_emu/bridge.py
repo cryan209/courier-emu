@@ -455,6 +455,7 @@ class CourierDspBridge:
         self._configure_frame_interrupt()
         self._reset_asserted = True
         self._loader_started = False
+        self._loader_nmi_seen = False
         self._download_destination = image.dsp_program_segments()[0][0]
         if dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
             # A third C50 trace window, for a handler the two compiled-in
@@ -1277,6 +1278,7 @@ class CourierDspBridge:
             self._audio_line_samples_due = 0.0
             self._configure_frame_interrupt()
             self._loader_started = False
+            self._loader_nmi_seen = False
             self.launched = False
             self.active = False
             self.bootstrap = bytearray()
@@ -1300,7 +1302,9 @@ class CourierDspBridge:
         self.bootstrap = bytearray()
         self.bootstrap_match = None
         if hasattr(self.core, "nmi"):
+            self.core.set_io(0x58, self._download_destination)
             self.core.nmi()
+            self._loader_nmi_seen = True
 
     def _rom_loader_armed(self) -> bool:
         """Whether a byte on the command port is really a loader strobe.
@@ -1344,13 +1348,24 @@ class CourierDspBridge:
                 break
             self.core.step(1)
         self.core.set_io(0x58, self._download_destination)
-        self.core.nmi()
+        if not self._loader_nmi_seen:
+            # Standalone bridge users do not have an 80186 latch callback.
+            # The complete machine reaches here after pulse_nmi(), so firing
+            # another NMI would interrupt the ROM entry with itself.
+            self.core.nmi()
+            self._loader_nmi_seen = True
         for _ in range(4096):
             if self.core.state()["pc"] in (0x0638, 0x0639, 0x063B):
                 break
             self.core.step(1)
         else:
-            raise RuntimeError("C51 ROM loader did not reach its ASIC poll")
+            state = self.core.state()
+            raise RuntimeError(
+                "C51 ROM loader did not reach its ASIC poll "
+                f"(pc={state['pc']:04x}, nmi_seen={self._loader_nmi_seen}, "
+                f"reset={self._reset_asserted}, io56={self.core.io(0x56):04x}, "
+                f"io6a={self.core.io(0x6A):04x}, stack={self.core.stack()[:3]})"
+            )
         self._loader_started = True
 
     def _commit_rom_group(self, strobe: int) -> None:
@@ -2040,18 +2055,6 @@ class CourierDspBridge:
         present(block)
         self._overlay_status &= ~0x02
         if settle(destination):
-            self._overlay_status |= 0x02
-            return
-        # Once a dial has entered the continuous frame datapump, the native
-        # core can remain in that loop instead of returning to the ASIC service
-        # poll that calls 0x811b.  Finish the same four BLDP writes in the ASIC
-        # model at that boundary: the destination still comes from ff62, the
-        # bytes still come from the holding registers, and verification below
-        # still compares program RAM with the ROM's selected overlay.
-        if self.boot_rom_enabled and self._v8_armed:
-            self.core.load_program(block, destination)
-            self.core.set_data(0xFF62, (destination + 4) & 0xFFFF)
-            self._overlay_groups.append((destination, bytes(block)))
             self._overlay_status |= 0x02
             return
         # ff62 is also the supervisor's download-destination register: mailbox
@@ -3062,7 +3065,24 @@ class CourierDspBridge:
         # receiver while B was still on hook being rung, which is not a thing
         # a called subscriber can hear. The exchange cuts through when the
         # call is answered, and stays through for the rest of it.
-        if not self._cut_through and off_hook and self.line.peer_off_hook:
+        switched_origin_ready = (
+            self._last_digit_at is not None
+            and self._line_service["ring_frames"] > 0
+        )
+        switched_answer_ready = (
+            self._commanded_role == "answer"
+            and self._line_service["peer_ring_bursts"] > 0
+        )
+        leased_ready = (
+            self._last_digit_at is None
+            and self._commanded_role != "answer"
+        )
+        if (
+            not self._cut_through
+            and off_hook
+            and self.line.peer_off_hook
+            and (switched_origin_ready or switched_answer_ready or leased_ready)
+        ):
             self._cut_through = True
             self._line_service["cut_through_at"] = self.line.frames
             # The originating end has to learn that its call was answered.

@@ -26,3 +26,11 @@ def test_link_preserves_explicit_per_side_commands():
 
     assert _at_commands(_link_side(args, args.a_at, listen=True)) == ["ATI4"]
     assert _at_commands(_link_side(args, args.b_at, listen=False)) == ["ATZ"]
+
+
+def test_link_holds_answer_until_ring_for_a_dialed_pair():
+    args = _link_args("--a-at", "ATDT5551234", "--b-at", "ATA")
+
+    answer = _link_side(args, args.b_at, listen=False)
+
+    assert "--serial-input-on-ring" in answer

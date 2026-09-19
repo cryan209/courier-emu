@@ -2155,6 +2155,7 @@ void C5xCore::op_rpt_mem()
 	m_rptc = data;
 	m_rpt_start = m_pc;
 	m_rpt_end = m_pc;
+	m_repeat_active = true;
 
 	CYCLES(1);
 }
@@ -2164,6 +2165,7 @@ void C5xCore::op_rpt_limm()
 	m_rptc = (uint16_t)ROPCODE();
 	m_rpt_start = m_pc;
 	m_rpt_end = m_pc;
+	m_repeat_active = true;
 
 	CYCLES(2);
 }
@@ -2173,6 +2175,7 @@ void C5xCore::op_rpt_simm()
 	m_rptc = (m_op & 0xff);
 	m_rpt_start = m_pc;
 	m_rpt_end = m_pc;
+	m_repeat_active = true;
 
 	CYCLES(1);
 }
@@ -2194,6 +2197,7 @@ void C5xCore::op_rptz()
 	m_rptc = uint16_t(ROPCODE());
 	m_rpt_start = m_pc;
 	m_rpt_end = m_pc;
+	m_repeat_active = true;
 	CYCLES(2);
 }
 
