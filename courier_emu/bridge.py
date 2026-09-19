@@ -522,6 +522,10 @@ class CourierDspBridge:
             "drained_frames": 0,
             "buffer_left": 0,
             "budget_frames": 0,
+            "tx_peak_codec": 0,
+            "tx_consumed": 0,
+            "tx_index": 0,
+            "tx_peak_line": 0,
         }
         # `out 0x1e, 4` at 0x8e631 starts an overlay transfer.
         self.transfer_start_command = 4
@@ -703,6 +707,21 @@ class CourierDspBridge:
         """
         return float(getattr(self.core, "codec_sample_rate", 0.0) or 0.0)
 
+    def _final_line_tx_scan(self) -> dict[str, int]:
+        """Nonzero count and peak over the core's entire line transmit array."""
+        try:
+            samples = self.core.line_tx_samples(0)
+        except Exception:
+            return {"final_tx_total": 0, "final_tx_nonzero": 0,
+                    "final_tx_peak": 0, "final_tx_first_nonzero": -1}
+        nonzero = [index for index, value in enumerate(samples) if value]
+        return {
+            "final_tx_total": len(samples),
+            "final_tx_nonzero": len(nonzero),
+            "final_tx_peak": max((abs(value) for value in samples), default=0),
+            "final_tx_first_nonzero": nonzero[0] if nonzero else -1,
+        }
+
     def _take_line_audio(self) -> None:
         """Move the codec's new output onto the line, at the line's rate.
 
@@ -715,10 +734,25 @@ class CourierDspBridge:
             return
         self._exchange_tx_index += len(produced)
         rate = self.codec_sample_rate()
-        self._exchange_line_buffer.extend(
+        converted = (
             self._codec_to_line.convert(produced, rate, LINE_RATE)
             if rate else produced
         )
+        # Peak either side of the conversion. A stream that is nonzero going in
+        # and zero coming out is a resampler fault; one that is near zero going
+        # in is a datapump that is not transmitting, which is a different
+        # question entirely.
+        self._line_service["tx_consumed"] += len(produced)
+        self._line_service["tx_index"] = self._exchange_tx_index
+        self._line_service["tx_peak_codec"] = max(
+            self._line_service["tx_peak_codec"],
+            max((abs(sample) for sample in produced), default=0),
+        )
+        self._line_service["tx_peak_line"] = max(
+            self._line_service["tx_peak_line"],
+            max((abs(sample) for sample in converted), default=0),
+        )
+        self._exchange_line_buffer.extend(converted)
 
     def _queue_line_audio(self, samples: list[int]) -> None:
         """Hand line audio to the codec at the codec's rate, not the line's."""
@@ -2912,6 +2946,9 @@ class CourierDspBridge:
                 self._line_service,
                 buffer_left=len(self._exchange_line_buffer),
                 budget_frames=self.line_frame_budget or 0,
+                # Read the core's whole transmit array once, at the end, so the
+                # count cannot depend on when the bridge happened to sample it.
+                **self._final_line_tx_scan(),
             ),
             overlay_words_verified=self.overlay_words_verified,
             overlay_words_unreadable=self.overlay_words_unreadable,

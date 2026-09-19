@@ -315,6 +315,56 @@ the datapump's DAC slot. B's audio crosses the same conversion intact, which
 argues against the resampler and for the write path, but that is an argument,
 not a measurement.
 
+## The transmit array and the bridge's reading of it disagree
+
+The datasheets are not what is missing here. Following A's silence down to the
+sample gives a contradiction inside the harness.
+
+`Bridge._final_line_tx_scan` reads the core's entire `m_line_tx` once, at the
+end of the run, so the answer cannot depend on when it was sampled. Beside it,
+`_take_line_audio` now records how much it consumed and the peak it saw:
+
+| | A (silent) | B (audible) |
+|---|---:|---:|
+| core counter `line_tx_writes` | 216,007 | 216,007 |
+| core counter `line_tx_nonzero` | 5,176 | 29,375 |
+| final scan total | 216,007 | 216,007 |
+| final scan nonzero | 5,176 | 29,375 |
+| final scan peak | **22,748** | **28,040** |
+| final scan first nonzero | 27,412 (3.81 s) | 20,406 (2.83 s) |
+| bridge consumed | 216,003 | 216,003 |
+| bridge index reached | 216,003 | 216,003 |
+| **peak the bridge saw** | **0** | **17,188** |
+
+The final scan agrees with the core's own counters exactly, on both ends. And
+the bridge consumed indices 0 to 216,002 - which **includes** index 27,412,
+where A's first nonzero sample sits - and came away with a peak of zero.
+
+The same disagreement is on the audible end, in smaller print: B's array peaks
+at 28,040 and the bridge only ever saw 17,188, which is also the peak in
+`b-tx.wav`. So the bridge's view is self-consistent with what reached the wire
+in both cases; it is the *array* that has values the bridge never read.
+
+Ruled out, each by measurement rather than by reading:
+
+* **Not a core rebuild.** `core_rebuilt_at` is 0 on both ends, and `bootstraps`
+  is 1.
+* **Not trimming.** `m_line_tx` has exactly one `clear()`, in `reset()`, and no
+  `erase`, `resize` or `pop_front` anywhere.
+* **Not the resampler.** The peak is zero *before* the codec-to-line
+  conversion, not after it.
+* **Not an out-of-range read.** The accessor returns 0 past the end, but every
+  index in question is well inside an array the same call reports as 216,007
+  long.
+* **Not the truncation**, and **not the originate early return** - both settled
+  above.
+
+A `std::vector` does not change a value at an index that has already been
+written, so one of these two measurements is not measuring what it appears to.
+That is the next thing to find, and it is a bookkeeping fault in the harness
+rather than anything about the AC01, the ASIC or V.8. **No conclusion about the
+firmware should be drawn from a transmit path in this state.**
+
 ### The next question, singular
 
 Does `@48` ever get written on this image - by any site, in any configuration?
