@@ -111,6 +111,96 @@ that register at all, and its `0x1f` commit fallback sees six messages all
 carrying data `0000`. Hence `call_overlay_available: true`,
 `call_overlay_active: false`.
 
+## Bit 12 of the dispatch word comes off the wire: MNP LR parameter 0xC0
+
+The data word's bit 12 is the one bit in `[0x0281]` that is not built from the
+local configuration. It is written by `0x8614d`, which sets or clears it in
+`[0x027f]` and `[0x0281]` together from `[0x04ed] & 4`:
+
+```text
+8614d  test byte [0x4ed], 4
+86154  or  [0x281], 0x1000 ; or  [0x27f], 0x1000 ; mov al, 0x10 ; ret
+86163  and [0x281], 0xefff ; and [0x27f], 0xefff ; mov al, 0x18 ; ret
+```
+
+**`[0x04ed]` is a byte the far end sent.** It has exactly two writers that put
+anything but zero in it, and both are the same decode in the MNP Link Request
+parser at `0x858bf`:
+
+```text
+85924  cmp  al, 0xc0        ; parameter type
+85926  jne  85953
+85928  call 84e80           ; next byte - the length
+8592b  cmp  al, 2
+8592d  jne  85950           ; not length 2 -> reject the LR
+8592f  call 84e80
+85932  mov  byte [0x4ed], al
+85935  call 84e80
+85938  and  al, 0xfc
+8593a  mov  byte [0x4ee], al
+```
+
+`0x84e80` is a ring reader - `lodsb`, wrapping `0x1b00` back to `0x1a80` - and
+`0x8d370` is the same decode over the second ring, `0xb000`-`0xc000`.
+
+The frame is MNP, which the parser's own parameter set settles: type 3 length 1
+with the value range 1-15 (the outstanding-LT-frame count `k`), type 4 length 2
+capped at `0xf4` with a dead `cmp dx, 0x104` comparing against 260 beside it,
+type 8, type 9 rejected at 3 or above, and type `0xc0` - the proprietary slot.
+The transmitted template at `0x85bde` is the canonical LR header byte for byte:
+
+```text
+01 06 01 00 00 00 00 ff  02 01 03  03 01 08  04 02 40 00
+```
+
+The modem advertises its own word through the same parameter, at `0x85cd3`:
+
+```text
+85cd3  or   al, al
+85cd5  je   85ce5          ; zero -> emit nothing, a plain MNP peer sees no 0xc0
+85cd8  mov  al, 0xc0 ; stosb
+85cdb  mov  al, 0x02 ; stosb
+85cdf  stosw               ; the local capability word
+85ce0  add  byte [0xc17], 4
+```
+
+Its only LR-side caller is `0x85bc3`, reached only when `0x85c67` answers 3, and
+the word itself is built by `0x85f70`.
+
+**So bit 12 of the datapump data word is a negotiated property, not a
+configured one.** Everything else in `[0x0281]` is a permutation of `[0x027f]`
+built at `0x8bc85` from the config bytes; this bit is the far end's answer.
+Three sites read it - `0x860c6`, `0x8614d` and `0x9b024` (as `0x05`) - and
+`0x860ad` returns `4` only when `[0x5a4] & 4` is clear, `[0x5f1]` is at least 4,
+`[0xb8a] & 1` is clear **and** this bit is set.
+
+### The same holds on 403, at `[0x03e5]`
+
+The 403 board ROM carries the identical code with the cell renumbered:
+
+| | 302 (`IDSDL302.ROM`) | 403 (`courier-board.rom`) |
+|---|---|---|
+| LR template | `0x85bde` | `0x85c28`, byte-identical |
+| `0xc0` decode and store | `0x85924` / `0x85932` | `0x8596e` / `0x8597c` |
+| second ring's store | `0x8d370` | `0x8d384` |
+| the cell pair | `[0x04ed]` / `[0x04ee]` | `[0x03e5]` / `[0x03e6]` |
+| bit-12 override | `0x8614d` | `0x86197` |
+
+The correspondence is one-to-one and not a guess: both images have **30** `test
+byte` sites against the cell carrying the same masks in the same order, the same
+two byte stores out of the LR decode, the same four word-wide clears, the same
+two literal-`1` writes at `0x910b1`/`0x910c2`, and **no** `or`, `and` or `xor`
+against it anywhere.
+
+> Scope of that scan: it covers direct `disp16` addressing only. A write reached
+> through a pointer would not appear in it. Nothing suggests one - the LR decode
+> accounts for the cell completely - but the claim is "no direct writer", not
+> "no writer".
+
+Note that `0x4ed - 0x3e5` is `0x108` where `0x281 - 0x17b` is `0x106`: the two
+RAM maps are reshuffled, not uniformly shifted, so no 302 cell may be carried to
+403 by adding a constant.
+
 ## On a leased line the same sites publish `0x5a` and `0x59`
 
 The section above answers the dial. `&L1` takes a different branch of the same
