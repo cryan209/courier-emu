@@ -683,6 +683,7 @@ class CourierDspBridge:
         self._line_dtmf = DtmfDecoder(sample_rate=LINE_RATE)
         self._last_digit_at: int | None = None
         # Whether the exchange has put the two subscribers on the same path.
+        self._reset_log: list[dict[str, int]] = []
         self._cut_through = False
         self._peer_ring_last = False
         self._peer_ring_runs: list[int] = []
@@ -742,11 +743,34 @@ class CourierDspBridge:
             return {"final_tx_total": 0, "final_tx_nonzero": 0,
                     "final_tx_peak": 0, "final_tx_first_nonzero": -1}
         nonzero = [index for index, value in enumerate(samples) if value]
+        # The array's own burst structure, so a gap on the wire can be told
+        # from a gap the datapump actually produced. Indices are codec
+        # samples of the current generation.
+        bursts: list[tuple[int, int, int]] = []
+        start = None
+        silence = 0
+        for index, value in enumerate(samples):
+            if value:
+                if start is None:
+                    start = index
+                silence = 0
+            elif start is not None:
+                silence += 1
+                if silence > 200:
+                    bursts.append((start, index - silence,
+                                   max(abs(v) for v in samples[start:index - silence] or [0])))
+                    start = None
+                    silence = 0
+        if start is not None:
+            bursts.append((start, len(samples),
+                           max(abs(v) for v in samples[start:] or [0])))
         return {
             "final_tx_total": len(samples),
             "final_tx_nonzero": len(nonzero),
             "final_tx_peak": max((abs(value) for value in samples), default=0),
             "final_tx_first_nonzero": nonzero[0] if nonzero else -1,
+            "final_tx_bursts": [list(b) for b in bursts[:20]],
+            "final_tx_burst_count": len(bursts),
         }
 
     def _take_line_audio(self) -> None:
@@ -1183,6 +1207,11 @@ class CourierDspBridge:
             window = self._windows[self.transfer.first_strobe]
             self._download_destination = window[0] | (window[1] << 8)
         if asserted and not self._reset_asserted:
+            self._reset_log.append({
+                "frame": self.line.frames if self.line is not None else -1,
+                "instructions": self._instructions,
+                "tx_written": self._exchange_tx_index,
+            })
             self.float_runtime_bus()
             self.core.reset()
             # `reset` clears the core's sample arrays. The output cursors index
@@ -1200,6 +1229,14 @@ class CourierDspBridge:
             self._sip_tx_index = 0
             self._line_codec_last = 0
             self._audio_codec_frames = 0
+            # Converted audio downstream of those cursors belongs to the
+            # datapump that has just been reset. Keeping it meant the line
+            # carried the old program's output after the new one had started:
+            # on the answering end it put a stale 0.79 s of tone bursts in
+            # front of the answer tone, which is audible as the tone starting,
+            # breaking off and starting again.
+            self._exchange_line_buffer.clear()
+            self._audio_line_samples_due = 0.0
             self._configure_frame_interrupt()
             self._loader_started = False
             self.launched = False
@@ -3070,6 +3107,7 @@ class CourierDspBridge:
                 budget_frames=self.line_frame_budget or 0,
                 # Read the core's whole transmit array once, at the end, so the
                 # count cannot depend on when the bridge happened to sample it.
+                resets=list(self._reset_log),
                 **self._final_line_tx_scan(),
             ),
             overlay_words_verified=self.overlay_words_verified,
