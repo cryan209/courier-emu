@@ -148,6 +148,12 @@ class LineToCodec(Resampler):
         return super().convert(samples, self.fixed_input, output_rate)
 
 
+# Not confirmed against an IMR. The 2.1.1 resident's own init writes IMR =
+# 0x002a at 0x80cb, which leaves bit 7 (TXNT) masked, so nothing dispatched
+# here can be taken; what actually services the frame on that build is the
+# primary port's XINT, which the core now latches on the same edge whatever
+# line a caller names. Treat this number as the vector this path installs,
+# not as evidence about the board.
 C50_TDM_IRQ = 7
 # A word offset into the resident segment, not an absolute program address:
 # the 2.1/2.2 resident loads at 8000, so the handler is at 8228.
@@ -291,11 +297,19 @@ DSP_STREAM_READY = 0x04
 # and by the same inversion `bit 13, @7d` (`4d7d`) tests **bit 2**.
 DSP_STREAM_RESUME = 0x0004
 
-# A ROM build's frame interrupt. Firing each candidate at the core is what
-# picks 5: 4 and 6 leave it in `idle` and 5 takes it out, which agrees with
-# the IRQ armed for an update payload and with the ISR that zeroes @6b, the
-# cell the idle wait at 0x813b spins on. The slot is (irq + 1) * 2 from the
-# vector base, so 0x0c above the bank's entry word.
+# A ROM build's frame interrupt, and the firmware says which one. The 403 and
+# 302 residents write IMR exactly once - `samm @04` appears once in each, at
+# 0x809e, with 0x002a - enabling INT2, TINT and XINT. RINT (bit 4) is never
+# enabled, and a cold start leaves the mask ROM's XINT dispatch cell @65
+# holding the resident's own handler at 0x8178 while @64, RINT's, still holds
+# the unused stub. So the frame service runs on the *transmit* interrupt: 5.
+# That agrees with the ISR that zeroes @6b, the cell the idle wait at 0x813b
+# spins on. The slot is (irq + 1) * 2 from the vector base, so 0x0c above the
+# bank's entry word.
+#
+# This replaces an empirical reading - "4 and 6 leave it in idle and 5 takes
+# it out" - which reached the same number without saying why, and which read
+# the interrupt as the receiver's.
 C50_ROM_FRAME_IRQ = 5
 C50_ROM_FRAME_VECTOR = 0x0C
 # These are C52 register addresses, not 80186 ports. `asic.py` holds the one

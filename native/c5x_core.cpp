@@ -33,6 +33,12 @@ static constexpr uint16_t SPC_XRST = 1u << 6;   // transmitter out of reset
 static constexpr uint16_t SPC_RRST = 1u << 7;   // receiver out of reset
 static constexpr uint16_t SPC_RRDY = 1u << 10;  // a received word is waiting
 static constexpr uint16_t SPC_XRDY = 1u << 11;  // DXR can take another word
+// IFR/IMR bit numbers, which are also this core's irq indices: the hardware
+// vector for irq n sits at (n + 1) * 2 words above the table base, so these
+// double as the vector-table ordering. SPRU056D Table 4-3.
+static constexpr unsigned IRQ_TINT = 3;   // on-chip timer
+static constexpr unsigned IRQ_RINT = 4;   // primary port: RSR -> DRR
+static constexpr unsigned IRQ_XINT = 5;   // primary port: DXR -> XSR
 
 // Register 4 applies gain in the analog half of the AC01, between the phone
 // line and the converter. DOUT carries all sixteen ADC bits; only DIN's DAC
@@ -95,11 +101,12 @@ void C5xCore::reset()
     m_st1.c = 1; m_st1.hm = 1; m_st1.sxm = 1; m_st1.xf = 1;
     m_xf_falling_edges = 0;
     m_ifr = m_imr = 0;
+    m_timer.tss = false;
     m_nmi_pending = false;
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
     m_line_frame_interrupts = 0;
-    m_serial_rint_suppressed = 0;
+    m_serial_frame_suppressed = 0;
     m_line_frame_next_cycle = 0;
     m_line_frame_phase = 0;
     m_line_sample_phase = 0;
@@ -592,7 +599,8 @@ uint16_t C5xCore::register_value(uint16_t offset) const
     case 0x21: return m_serial.dxr;
     case 0x22: return m_serial.spc;
     case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
-    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) | (m_timer.tddr & 0xf));
+    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) |
+        (m_timer.tss ? 0x10 : 0) | (m_timer.tddr & 0xf));
     case 0x28: return m_pdwsr;
     case 0x29: return m_iowsr;
     case 0x2a: return m_cwsr;
@@ -929,7 +937,8 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         return value;
     }
     case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
-    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) | (m_timer.tddr & 0xf));
+    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) |
+        (m_timer.tss ? 0x10 : 0) | (m_timer.tddr & 0xf));
     case 0x28: return m_pdwsr;
     case 0x29: return m_iowsr;
     case 0x2a: return m_cwsr;
@@ -997,6 +1006,7 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x24: m_timer.tim = value; return; case 0x25: m_timer.prd = value; return;
     case 0x26:
         m_timer.tddr = value & 0xf; m_timer.psc = (value >> 6) & 0xf;
+        m_timer.tss = (value & 0x10) != 0;
         if (value & 0x20) { m_timer.tim = m_timer.prd; m_timer.psc = m_timer.tddr; }
         return;
     case 0x30: m_tdm.trcv = value; return;
@@ -1052,18 +1062,30 @@ void C5xCore::restore_interrupt_context()
     m_treg0 = m_shadow.treg0; m_treg1 = m_shadow.treg1; m_treg2 = m_shadow.treg2;
     note_dp(4);
 }
-void C5xCore::check_interrupts()
+// Recognition, as opposed to latching. Called at every instruction boundary
+// from step(), because every way INTM or IMR can change has to be able to
+// release an already-latched flag: RETE clears INTM on its way out of a
+// handler, and the 2.x residents rewrite IMR at 0x10bc with INTM already
+// clear. Hanging this off interrupt() alone meant a flag that became eligible
+// without a fresh source edge waited for the next edge instead.
+bool C5xCore::check_interrupts()
 {
     const uint16_t enabled = uint16_t(m_ifr & m_imr);
-    if (m_in_delay_slot || m_st0.intm || !enabled) return;
+    // A repeated instruction is not interruptible: RPTC and the repeat's
+    // source/destination pointers are not in the context shadow, so taking a
+    // vector out of the middle of one loses the rest of the block. check_nmi()
+    // has always refused for the same reason.
+    if (m_in_delay_slot || m_repeat_active || m_st0.intm || !enabled) return false;
     for (unsigned irq = 0; irq < 16; ++irq) if (enabled & (1u << irq)) {
         m_st0.intm = 1; PUSH_STACK(m_pc);
         uint16_t vector = m_interrupt_vectors[irq];
         m_pc = vector != 0xffff
             ? vector
             : uint16_t((m_pmst.iptr << 11) | ((irq + 1) << 1));
-        m_ifr &= ~(1u << irq); m_idle = false; save_interrupt_context(); return;
+        m_ifr &= ~(1u << irq); m_idle = false; save_interrupt_context();
+        return true;
     }
+    return false;
 }
 void C5xCore::interrupt(unsigned irq)
 {
@@ -1094,43 +1116,91 @@ bool C5xCore::check_nmi()
         || m_repeat_active || m_pmst.braf
     ) return false;
     m_nmi_pending = false;
-    // NMI is fixed at 0x0024 and ignores IMR/INTM. SPRU056D 4.8.6 explicitly
-    // says the key registers are not copied to the context shadow for NMI.
+    // NMI ignores IMR/INTM, but not IPTR: its slot is offset 0x24 inside the
+    // same relocatable vector table as every other vector (SPRU056D Figure
+    // 4-3), and the mask ROM's own table is only at 0x0024 because IPTR is
+    // zero out of reset. SPRU056D 4.8.6 explicitly says the key registers are
+    // not copied to the context shadow for NMI.
     PUSH_STACK(m_pc);
     m_st0.intm = 1;
-    m_pc = 0x0024;
+    m_pc = uint16_t((m_pmst.iptr << 11) | 0x0024);
     m_idle = false;
     return true;
 }
 
-// The receive interrupt is the serial port's, not the frame scheduler's.
+// One external frame edge raises both of the primary port's interrupts.
 //
-// SPRU056D 5.3: RINT is raised when RSR transfers into DRR - that is, when a
-// word has actually been received - and a receiver held in reset (SPC RRST
-// low) shifts nothing and therefore raises nothing. The frame clock itself is
-// genuinely external on this board, because the ASIC/AC01 is the frame master
-// and keeps running while the DSP is inside an overlay; what was wrong was
-// firing the interrupt from that scheduler directly, so IRQ5 arrived on a
-// timer regardless of whether the port was running or had taken a word.
-// Every site that loads DRR now ends here instead.
-void C5xCore::serial_receive_interrupt()
+// Every Courier-family C5x resident programs this port the same way, and the
+// sequence settles what the model has to do. From the 403 resident at 0x8090
+// (identically 302 at 0x8090, 2.1.1 at 0x80bd and 2.3.31 at 0x109d):
+//
+//     lar  ar1, #22        ; SPC
+//     splk *,   #0008      ; both halves into reset, FSM on
+//     splk *,   #40c8      ; RRST and XRST released; MCM = 0, TXM = 0
+//     lacl #01 ; samm @21  ; prime DXR
+//     bit  11, *           ; spin on XRDY - wait for an *external* frame
+//     bcnd back, ntc
+//     samm @21             ; reload DXR
+//     lamm @06 ; samm @06  ; write-1-clear whatever latched during the spin
+//     lacl #2a ; samm @04  ; IMR = INT2 | TINT | XINT
+//     clrc intm
+//
+// MCM = 0 and TXM = 0 make the DSP a slave on this port: the AC01/ASIC owns
+// CLKX and FSX, so the frame edge is the model's to generate - that part was
+// already right. What was wrong is which interrupt the edge raises.
+//
+// IMR = 0x002a is bits 1, 3 and 5: INT2, TINT and **XINT**. RINT (bit 4) is
+// not enabled, and on the 403 and 302 residents IMR is never written again -
+// `samm @04` appears exactly once in each, at 0x809e. So the 403's frame
+// service runs on the *transmit* interrupt, and gating the edge on RRST, the
+// receiver's reset bit, was gating it on a register the 403 never consults.
+//
+// The 2.x server-side residents then show why picking one bit is wrong at all.
+// After enabling 0x002a they test data 0x012f and, when it is set, do
+//
+//     lamm @04 ; and #ffcf ; or #0010 ; samm @04
+//
+// which clears XINT and enables RINT instead - the same frame, the other
+// interrupt, chosen by configuration. A model that latches only one of the
+// two cannot run both variants.
+//
+// So latch both, each behind its own half of the port's reset, and leave
+// recognition to IMR and INTM where the part leaves it. `interrupt()` already
+// sets IFR whether or not the source is enabled (SPRU056D 4.8.2), so the
+// disabled one simply accumulates a flag the firmware clears, exactly as on
+// the board.
+void C5xCore::serial_frame_interrupt()
 {
     if (m_line_frame_irq < 0) return;
-    if (!(m_serial.spc & SPC_RRST)) {
-        // Counted rather than silent. A receiver left in reset shows up as a
+    // A half held in reset shifts nothing and therefore raises nothing.
+    const bool receive = (m_serial.spc & SPC_RRST) != 0;
+    const bool transmit = (m_serial.spc & SPC_XRST) != 0;
+    if (!receive && !transmit) {
+        // Counted rather than silent. A port left in reset shows up as a
         // datapump that never gets a frame, and nothing else distinguishes
         // that from a model whose frame clock simply stopped, so say which it
-        // was. This gate has not been exercised against a completed call: the
-        // C51 ROM loader does not currently reach its ASIC poll on either the
-        // 302 or the 403 image, which is a separate fault ahead of it.
-        ++m_serial_rint_suppressed;
+        // was.
+        ++m_serial_frame_suppressed;
         return;
     }
     // Counted where it is recognised rather than where it is latched: IFR is
-    // set either way, but this counter has always meant "taken".
-    if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq)))
+    // set either way, but this counter has always meant "taken", and it
+    // tracks whichever of the two the caller pointed the vector at.
+    if (!m_st0.intm && (m_imr & (1u << m_line_frame_irq))
+        && ((m_line_frame_irq == int(IRQ_RINT) && receive)
+            || (m_line_frame_irq == int(IRQ_XINT) && transmit)
+            || (m_line_frame_irq != int(IRQ_RINT)
+                && m_line_frame_irq != int(IRQ_XINT))))
         ++m_line_frame_interrupts;
-    interrupt(unsigned(m_line_frame_irq));
+    // RSR -> DRR first: RINT is the higher-priority vector of the pair, and
+    // check_interrupts() scans IFR in that order anyway.
+    if (receive) interrupt(IRQ_RINT);
+    if (transmit) interrupt(IRQ_XINT);
+    // A caller that named some other line (the TDM port's TRNT/TXNT, or an
+    // external INTn the board wires to the frame) still gets the edge it
+    // asked for; the two primary-port flags above are the port's own.
+    if (m_line_frame_irq != int(IRQ_RINT) && m_line_frame_irq != int(IRQ_XINT))
+        interrupt(unsigned(m_line_frame_irq));
 }
 
 void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
@@ -1145,6 +1215,10 @@ void C5xCore::step()
 {
     m_step_cycles = 0;
     check_nmi();
+    // Taking a vector is this step's work: PC is left at the handler's first
+    // word for the next one, the way the part spends its own cycles getting
+    // there rather than fetching the handler in the same instruction slot.
+    if (check_interrupts()) { consume_cycles(4); return; }
     if (m_idle) consume_cycles(1);
     else {
         // The customer-ROM dispatcher publishes call state at the boundary
@@ -1241,9 +1315,9 @@ void C5xCore::step()
         }
     }
     ++m_instructions;
-    if (--m_timer.psc <= 0) {
+    if (!m_timer.tss && --m_timer.psc <= 0) {
         m_timer.psc = m_timer.tddr;
-        if (--m_timer.tim == 0) { m_timer.tim = m_timer.prd; interrupt(3); }
+        if (--m_timer.tim == 0) { m_timer.tim = m_timer.prd; interrupt(IRQ_TINT); }
     }
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
@@ -1256,7 +1330,7 @@ void C5xCore::step()
         && m_cycles >= m_codec.secondary_cycle) {
         m_codec.secondary_due = false;
         codec_frame(true);
-        serial_receive_interrupt();
+        serial_frame_interrupt();
         return;
     }
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
@@ -1285,12 +1359,12 @@ void C5xCore::step()
             }
             m_codec.rx_ready = true;
             m_codec.tx_ready = true;
-            serial_receive_interrupt();
+            serial_frame_interrupt();
             return;
         }
         if (m_rom_codec) {
             codec_frame(false);
-            serial_receive_interrupt();
+            serial_frame_interrupt();
             return;
         }
         // LAMM @52 at the ISR entry masks this ASIC word to two bits and
@@ -1379,7 +1453,7 @@ void C5xCore::step()
                 m_line_tx_last_pc = 0x8c25;
             }
         }
-        serial_receive_interrupt();
+        serial_frame_interrupt();
     }
 }
 
@@ -1411,7 +1485,7 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
-        m_serial_rint_suppressed,
+        m_serial_frame_suppressed,
         uint16_t(m_shadow.st0.dp >> 7),
         m_last_dp_pc, m_last_dp_value, m_last_dp_source,
         m_stray_cala_pc, m_stray_cala_target, m_stray_cala_dp,

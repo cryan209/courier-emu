@@ -143,10 +143,11 @@ public:
         uint64_t trcv_reads, tdxr_writes, tspc_writes;
         uint16_t last_trcv_pc, last_tdxr_pc, last_tspc_pc;
         uint64_t line_tx_writes, line_tx_nonzero, line_frame_interrupts;
-        // Receive interrupts the serial port did not raise because RRST was
-        // low. A non-zero count against a stalled datapump says the port was
-        // never taken out of reset, rather than that the frame clock stopped.
-        uint64_t serial_rint_suppressed;
+        // Frame edges that raised neither RINT nor XINT because both halves
+        // of the primary port were still in reset. A non-zero count against a
+        // stalled datapump says the port was never released, rather than that
+        // the frame clock stopped.
+        uint64_t serial_frame_suppressed;
         // DP as the one-deep interrupt shadow currently holds it. RETE and
         // RETI restore ST0 wholesale, so this is the page an interrupt return
         // is about to reinstate.
@@ -289,7 +290,7 @@ public:
     void set_data(uint16_t address, uint16_t value);
     void interrupt(unsigned irq);
     void nmi();
-    void serial_receive_interrupt();
+    void serial_frame_interrupt();
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
     void configure_rom_codec(bool enabled);
     void set_codec_mclk(uint32_t hz);
@@ -452,7 +453,7 @@ private:
     std::array<uint16_t, 16> m_interrupt_vectors{};
     int m_line_frame_irq = -1;
     uint64_t m_line_frame_interrupts = 0;
-    uint64_t m_serial_rint_suppressed = 0;
+    uint64_t m_serial_frame_suppressed = 0;
     uint64_t m_line_frame_next_cycle = 0;
     bool m_rom_codec = false;
     bool m_host_mailbox = false;
@@ -481,7 +482,13 @@ private:
     int m_pcstack_ptr = 0;
     uint16_t m_rpt_start = 0, m_rpt_end = 0;
     uint16_t m_cbcr = 0, m_cbsr1 = 0, m_cber1 = 0, m_cbsr2 = 0, m_cber2 = 0;
-    struct { int tddr = 0, psc = 0; uint16_t tim = 0, prd = 0; } m_timer;
+    // TSS is the timer's stop bit, not a mode flag: with it set the counter
+    // does not run at all, and TINT cannot be raised. Out of reset it is
+    // clear, which is why the residents' `splk @26, #0020` (TRB alone) leaves
+    // the timer counting.
+    struct {
+        int tddr = 0, psc = 0; uint16_t tim = 0, prd = 0; bool tss = false;
+    } m_timer;
     struct {
         uint16_t drr = 0, dxr = 0, spc = 0;
         uint64_t drr_reads = 0, dxr_writes = 0, spc_writes = 0, rx_consumed = 0;
@@ -593,7 +600,7 @@ private:
     bool GET_TP_CONDITION(int tp);
     int32_t PREG_PSCALER(int32_t preg);
     bool check_nmi();
-    void check_interrupts();
+    bool check_interrupts();
     void save_interrupt_context();
     void restore_interrupt_context();
     void delay_slot(uint16_t startpc);

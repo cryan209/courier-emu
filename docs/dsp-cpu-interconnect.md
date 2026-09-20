@@ -197,6 +197,71 @@ The wide window at `0x40`-`0x4e` is on the **CPU** side only. Note also that
 sixteen 16-bit registers to the DSP" is too narrow - those are ordinary I/O
 addresses that happen not to alias into data space.
 
+## What the primary port's interrupt actually is
+
+Settled from the residents themselves, and the same sequence appears in all of
+them - 403 and 302 at `0x8090`, 2.1.1 at `0x80bd`, 2.3.31 at `0x109d`:
+
+```
+lar  ar1, #22        ; SPC
+splk *,   #0008      ; both halves into reset, FSM on
+splk *,   #40c8      ; RRST and XRST released; MCM = 0, TXM = 0
+lacl #01 ; samm @21  ; prime DXR
+bit  11, *           ; spin on XRDY - wait for an *external* frame edge
+bcnd back, ntc
+samm @21             ; reload DXR
+lamm @06 ; samm @06  ; write-1-clear whatever latched during the spin
+lacl #2a ; samm @04  ; IMR = INT2 | TINT | XINT
+clrc intm
+```
+
+`MCM = 0` and `TXM = 0` make the DSP a slave: the AC01/ASIC owns `CLKX` and
+`FSX`, so the frame edge is external, which is what the emulator's frame
+scheduler models. `IMR = 0x002a` is bits 1, 3 and 5 - and bit 5 is **`XINT`**,
+the transmit interrupt. `RINT` is bit 4 and is not enabled.
+
+A cold start of the 403 resident confirms it end to end. Parked at `0x813c`
+the part has `IMR = 002a`, `SPC = 40c8`, and the mask ROM's dispatch cells hold
+`@65 = 8178` (`XINT`) against `@64 = 819d` (`RINT`), which is the same unused
+stub `@6a` holds for NMI. Only `XINT` has a handler.
+
+So the frame service is the *transmitter's* interrupt, not the receiver's, and
+what `@6b`/`@6c` at `0x8138` are for is now plain:
+
+```
+8138: samm @6c    ; the word to hand the codec
+8139: lacl #03
+813a: samm @6b    ; three frames' worth
+813b: idle        ; wait for the frame interrupt
+813c: lamm @6b
+813d: bcnd 813b, neq
+813f: ret
+```
+
+The resident's whole AC01 register-load path (`lacc #010a ; call 8138`, then
+`#0214`, `#0300`, `#0409`, `#0505`, `#0620` - register in the high byte, value
+in the low) runs through that `IDLE`. Suppress the frame interrupt and the part
+stops there forever.
+
+### And the 2.x builds can move it to `RINT`
+
+Immediately after enabling `0x002a`, the 2.1.1 and 2.3.x residents test data
+`0x012f` and, when it is set, do
+
+```
+lamm @04 ; and #ffcf ; or #0010 ; samm @04
+```
+
+- clear `XINT`, enable `RINT`. Same frame, the other interrupt, chosen by
+configuration. The 403 and 302 dropped this branch and are `XINT`-only.
+
+Hence the model: **one external frame edge latches both `RINT` and `XINT`**,
+each behind its own half of `SPC`'s reset (`RRST`/`XRST`), with `IMR` and
+`INTM` left to decide recognition the way the part leaves them. Latching only
+one of the pair cannot run both variants, and gating the edge on `RRST` - the
+receiver's reset bit - gated the 403's service on a register the 403 never
+consults.
+
 ## If the link is serial, it is the *primary* port, not the second one
 
 The natural guess - the C50 has two serial ports, one is the codec's, so the
@@ -208,7 +273,10 @@ never does:
 
 * `IMR` is written exactly once, at `0x809e`, with `0x002a`. `TRNT` is bit 6 and
   `TXNT` bit 7; neither is enabled anywhere in the 27,710-word resident, so an
-  arriving word cannot interrupt.
+  arriving word cannot interrupt. (`samm @04` is the only write that is certain
+  to reach `IMR`: `splk @04` is DP-relative, and every one of those in these
+  images is on a non-zero page. A raw opcode scan for `8804` finds one hit in
+  each of the 302 and 403 residents, both at `0x809e`.)
 * `TSPC` is touched exactly twice through MMR addressing, both at reset
   (`samm @32` at `0x808a` and `0x808c`), and never read - so `RRDY` is never
   polled either.

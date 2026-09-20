@@ -439,7 +439,7 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.trcv_reads, serial.tdxr_writes, serial.tspc_writes,
         serial.last_trcv_pc, serial.last_tdxr_pc, serial.last_tspc_pc,
         serial.line_tx_writes, serial.line_tx_nonzero, serial.line_frame_interrupts,
-        serial.serial_rint_suppressed,
+        serial.serial_frame_suppressed,
         serial.shadow_dp,
         serial.last_dp_pc, serial.last_dp_value, serial.last_dp_source,
         serial.stray_cala_pc, serial.stray_cala_target, serial.stray_cala_dp,

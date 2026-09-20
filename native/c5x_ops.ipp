@@ -2119,6 +2119,8 @@ void C5xCore::op_clrc_cnf()
 
 void C5xCore::op_clrc_intm()
 {
+	// step() checks again at the next boundary; doing it here as well lets a
+	// flag that is already pending vector without one instruction of slack.
 	m_st0.intm = 0;
 
 	check_interrupts();
@@ -2300,8 +2302,6 @@ void C5xCore::op_setc_cnf()
 void C5xCore::op_setc_intm()
 {
 	m_st0.intm = 1;
-
-	check_interrupts();
 
 	CYCLES(1);
 }

@@ -613,7 +613,7 @@ class NativeC5x:
             "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
             "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
             "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
-            "serial_rint_suppressed", "shadow_dp",
+            "serial_frame_suppressed", "shadow_dp",
             "last_dp_pc", "last_dp_value", "last_dp_source",
             "stray_cala_pc", "stray_cala_target", "stray_cala_dp",
             "line_dac_writes", "line_dac_frames",
