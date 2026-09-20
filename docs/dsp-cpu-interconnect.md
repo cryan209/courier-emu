@@ -252,7 +252,7 @@ dispatches through a data cell, and the resident fills them from the table at
 | cell | vector | 403 value |
 |---|---|---|
 | `@60` | `INT1` | `81ba` - bare `rete` |
-| `@61` | `INT2` | `819d` - bare `rete` |
+| `@61` | `INT2` | `819d` at cold start - but see below |
 | `@62`-`@64`, `@66`, `@67`, `@6a` | `INT3`, `INT4`, `RINT`, `TRNT`, `TXNT`, `NMI` | `819d` |
 | `@65` | `XINT` | **`8178`** - the frame ISR |
 | `@68` | `TINT` | **`81fb`** |
@@ -295,7 +295,51 @@ and the DSP still gets there, but only when something else happens to wake it
 - the codec frame or the timer - so a transfer advances at the frame rate
 instead of when the host actually has a group ready.
 
-`INT1` (`@60`) has the same shape and is masked: an armed second doorbell.
+#### `INT2` is not always the do-nothing stub
+
+`819d` is only the cold-start value of `@61`. Three routines swap it:
+
+```
+823d: splk @61, #819d ; splk @68, #81fb ; opl @1f, #0100   ; wake-only
+8245: splk @61, #81bb ; splk @68, #81fb ; apl @1f, #feff   ; DAC mode
+824d: splk @61, #819d ; splk @68, #81fb ; apl @1f, #feff   ; wake-only
+```
+
+`0x81bb` reads the ASIC's phase word at `@52`, masks it to two bits, indexes
+the four-entry table at `0x81e0`, runs a multiply-accumulate chain and writes
+port `0x6a`. So in that mode **every `INT2` edge is a polyphase DAC slot**, and
+the same pin is both the mailbox doorbell and the output tick. The same idiom
+is in every build: 302 swaps `@61` between `81ae` and `81cc` at `0x824e`,
+2.1.1 between `8224` and `8228` at `0x8293`.
+
+An earlier version of this section said `INT2`'s handler was a bare `rete` "on
+purpose". That is true of the wake-only mode and of the cold start, and not of
+the part in general.
+
+#### `INT1`: nothing drives it
+
+`@60` holds `81ba`, which is also a bare `rete` - a second stub, one word
+ahead of `0x81bb`. Both ends say the line is dead in this firmware:
+
+* **The DSP never enables it.** `IMR` bit 0 is not set by anything. The only
+  writes certain to reach `IMR` are `samm @04`, which is `0x002a` once in the
+  403 and 302, and in the 2.x builds the `and #ffcf ; or #0010` pair that
+  touches bits 4 and 5 only. `@60` is never written after the init table copy
+  at `0x812d` either: every apparent `splk @60` in the images is DP-relative
+  and lands on ordinary data.
+* **The CPU never asserts it.** The pin is 80186 **P1.7** (CPU pin 50,
+  `P1.7/GCS7`), on the same `P1LTCH` at `0xff56` whose bit 1 is DSP `RS` and
+  bit 3 is DSP `NMI`. Across the whole 403 supervisor that latch is only ever
+  touched by `AND`/`OR` on bits 2, 5 and 6, by `AND AX,00ff ; OR AX,0020`
+  (the EEPROM), by `AND AX,fffd` at `0x8e3f1` (reset) and by `OR AX,0008` at
+  `0x8e445` (NMI). Bit 7 is never driven low, and the latch is initialised to
+  `0xdb` with it high.
+
+So `INT1` is wired, idles deasserted and is masked at both ends. The `f7fe`
+that [board-verified-403.md](board-verified-403.md) reads out of `@60` at the
+end of a dial is an overlay reusing the cell as B2 scratch - the same reuse
+that puts the codec handoff's counter and word in `@6b` and `@6c`, which are
+the `INTR 12` and `INTR 13` cells.
 
 ### And the 2.x builds can move it to `RINT`
 

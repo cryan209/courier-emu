@@ -1991,10 +1991,17 @@ class CourierDspBridge:
         the codec frame or the timer - so a transfer advanced at the frame
         rate rather than when the host actually had a group ready.
 
-        The flag is what the firmware reads; the pin only ends the IDLE. The
-        resident's INT2 vector is a bare `rete`, so an edge with nothing
-        behind it costs a push and a pop and changes nothing, which is why
-        ringing on every ready bit is safe as well as accurate.
+        The flag is what the firmware reads; the pin ends the IDLE. In the
+        resident's wake-only mode `@61` holds the bare `rete` at 0x819d, so an
+        edge with nothing behind it costs a push and a pop and changes
+        nothing.
+
+        Open: the routine at 0x8245 re-points `@61` at 0x81bb, which turns
+        every INT2 edge into a polyphase DAC slot off the ASIC's phase word at
+        `@52`. In that mode an extra edge is not free. Whether the board really
+        rings the same pin for the mailbox while the DAC mode is selected, or
+        the ASIC withholds it, is not established - only that pin 109 reaches
+        DSP INT2 and that the firmware gives that line both meanings.
         """
         core = self.core
         if not hasattr(core, "set_io"):

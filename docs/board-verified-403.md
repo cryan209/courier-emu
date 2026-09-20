@@ -774,10 +774,20 @@ harness firing the codec frame as XINT - `C50_ROM_FRAME_IRQ = 5`, which is
 `(irq+1)<<1` = the XINT slot - lands on `8178`, a real handler. That choice is
 confirmed rather than a guess.
 
-`@60` is the exception. INT1 is the CPU's own line into the DSP, it carries a
-handler address distinct from the stub, and **the harness never asserts it** -
-`core.nmi()` in `_start_rom_loader` is the only DSP interrupt the host side
-ever raises, and everything else is polled.
+`@60` looked like the exception, and is not one. **Resolved 2026-09-20:**
+INT1 is dead at both ends in this firmware, so `@60` is not a vector at all -
+it is B2 scratch an overlay reuses, the same way the codec handoff at `0x8138`
+puts its counter and word in `@6b` and `@6c`, which are the `INTR 12` and
+`INTR 13` cells.
+
+The DSP never enables it: `IMR` bit 0 is set by nothing, and the only writes
+certain to reach `IMR` are the `samm @04` at `0x809e` (`0x002a`) and, in the
+2.x builds, an `and #ffcf ; or #0010` that touches bits 4 and 5. `@60` is
+never written after the init table copy at `0x812d`. And the CPU never
+asserts it: the pin is 80186 **P1.7**, CPU pin 50, on this same `P1LTCH` at
+`0xff56` - and across the whole supervisor bit 7 is never driven low, the
+latch idling at `0xdb`. See
+[dsp-cpu-interconnect.md](dsp-cpu-interconnect.md).
 
 `f7fe` is also outside anything this run downloads. `CourierRom` serves the
 DSP exactly one segment - `0x8000`, 28,327 words, ending at `0xeea7` - and
