@@ -216,6 +216,10 @@ class NativeC5x:
         lib.courier_c5x_get_io_output.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io_output.restype = ctypes.c_uint16
         lib.courier_c5x_set_io.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16]
+        lib.courier_c5x_queue_io_rx.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16,
+            ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t,
+        ]
         lib.courier_c5x_configure_host_mailbox.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_get_xf_falling_edges.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_xf_falling_edges.restype = ctypes.c_uint64
@@ -366,6 +370,16 @@ class NativeC5x:
 
     def set_io(self, port: int, value: int) -> None:
         self.library.courier_c5x_set_io(self.handle, port, value)
+
+    def queue_io_rx(self, port: int, words: list[int] | tuple[int, ...]) -> None:
+        if not words:
+            return
+        storage = (ctypes.c_uint16 * len(words))(
+            *(word & 0xFFFF for word in words)
+        )
+        self.library.courier_c5x_queue_io_rx(
+            self.handle, port & 0xFFFF, storage, len(words)
+        )
 
     def set_mpmc_pin(self, level: int) -> None:
         """Drive the pin that decides what the C52's program 0x0000 is."""

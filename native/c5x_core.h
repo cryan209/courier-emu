@@ -205,7 +205,7 @@ public:
     // which appears at the bottom of program space only in microcomputer
     // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
     // 0xfe00. Everything else is off-chip or reserved.
-    enum class Region { Rom, Daram, Saram, Registers, Reserved, Shared, External };
+    enum class Region { Rom, Daram, Saram, Registers, Reserved, Shared, Global, External };
 
     struct MemoryMap {
         // Sampled from the pin and the mode bits, so a run can report which
@@ -237,6 +237,7 @@ public:
     MemoryMap memory_map() const;
     void set_io_callbacks(IoRead read, IoWrite write);
     void set_io(uint16_t port, uint16_t value);
+    void queue_io_rx(uint16_t port, const uint16_t *words, std::size_t count);
     void configure_host_mailbox(bool enabled) { m_host_mailbox = enabled; }
     uint64_t xf_falling_edges() const { return m_xf_falling_edges; }
     void host_write(uint16_t address, uint16_t value);
@@ -391,6 +392,8 @@ private:
     mutable MemoryMap m_map{};
     IoRead m_io_read;
     IoWrite m_io_write;
+    uint16_t m_io_rx_port = 0xffff;
+    std::deque<uint16_t> m_io_rx;
     std::deque<IoEvent> m_io_events;
     std::deque<IoEvent> m_mailbox_events;
     std::vector<DataEvent> m_data_events;
@@ -433,6 +436,11 @@ private:
     uint16_t m_bmar = 0;
     int32_t m_brcr = 0;
     uint16_t m_paer = 0, m_pasr = 0, m_indx = 0, m_dbmr = 0, m_arcr = 0;
+    // Global memory allocation register. Values 0x80..0xff make the data
+    // range GREG<<8..0xffff global and assert BR alongside DS. Keep global
+    // storage separate: board glue may route the same address differently.
+    uint8_t m_greg = 0;
+    std::array<uint16_t, 65536> m_global_data{};
     st0_t m_st0{};
     st1_t m_st1{};
     // Program-space SARAM addresses translate into their data-space address:

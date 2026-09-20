@@ -133,6 +133,12 @@ void courier_c5x_set_io(void *handle, uint16_t port, uint16_t value)
     if (handle) static_cast<C5xCore *>(handle)->set_io(port, value);
 }
 
+void courier_c5x_queue_io_rx(
+    void *handle, uint16_t port, const uint16_t *words, std::size_t count)
+{
+    if (handle && words) static_cast<C5xCore *>(handle)->queue_io_rx(port, words, count);
+}
+
 void courier_c5x_configure_host_mailbox(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->configure_host_mailbox(enabled != 0);

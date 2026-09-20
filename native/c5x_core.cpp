@@ -90,6 +90,7 @@ void C5xCore::reset()
     m_rptc = 0;
     m_repeat_active = false;
     m_bmar = 0; m_brcr = 0; m_paer = m_pasr = 0;
+    m_greg = 0;
     m_indx = m_dbmr = m_arcr = 0;
     m_st0 = {}; m_st1 = {}; m_pmst = {};
     // MP/MC comes out of reset at the pin's level. This firmware's reset code
@@ -502,6 +503,14 @@ void C5xCore::set_io(uint16_t port, uint16_t value)
     m_io[port] = value;
     if (m_rom_codec && port == 0x006b) codec_apply_asic_timing(value);
 }
+void C5xCore::queue_io_rx(uint16_t port, const uint16_t *words, std::size_t count)
+{
+    if (m_io_rx_port != port) {
+        m_io_rx.clear();
+        m_io_rx_port = port;
+    }
+    for (std::size_t index = 0; index < count; ++index) m_io_rx.push_back(words[index]);
+}
 void C5xCore::host_write(uint16_t address, uint16_t value)
 {
     // NOT the board's protocol.  A real mailbox tag is a command index into
@@ -561,12 +570,15 @@ uint16_t C5xCore::program(uint16_t address) const
 // array while the DSP read the program one - two arrays for one RAM.
 uint16_t C5xCore::data(uint16_t address) const
 {
-    return data_region(address) == Region::Shared ? m_program[address]
-                                                  : m_data[address];
+    const Region region = data_region(address);
+    if (region == Region::Global) return m_global_data[address];
+    return region == Region::Shared ? m_program[address] : m_data[address];
 }
 void C5xCore::set_data(uint16_t address, uint16_t value)
 {
-    if (data_region(address) == Region::Shared) m_program[address] = value;
+    const Region region = data_region(address);
+    if (region == Region::Global) m_global_data[address] = value;
+    else if (region == Region::Shared) m_program[address] = value;
     else m_data[address] = value;
 }
 
@@ -579,6 +591,7 @@ uint16_t C5xCore::register_value(uint16_t offset) const
 {
     switch (offset) {
     case 0x04: return m_imr;
+    case 0x05: return uint16_t(0xff00 | m_greg);
     case 0x06: return m_ifr;
     case 0x07: return uint16_t((m_pmst.iptr << 11) | (m_pmst.avis << 7) |
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
@@ -663,6 +676,10 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
     if (m_pmst.ovly && address >= C5X_SARAM_DATA_FIRST
         && address < C5X_SARAM_DATA_FIRST + C5X_SARAM_WORDS)
         return Region::Saram;
+    // SPRU056D table 8-14: values below 0x80 allocate no global memory;
+    // otherwise the upper data-space range beginning at GREG<<8 is global.
+    if (m_greg >= 0x80 && address >= (uint16_t(m_greg) << 8))
+        return Region::Global;
     // The board's external RAM answers both spaces. See the shared-window
     // constants in c5x_core.h.
     if (address >= m_shared_first && address <= m_shared_last)
@@ -716,9 +733,11 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     case Region::Saram: ++m_map.data_saram; break;
     case Region::Reserved: ++m_map.data_reserved; break;
     case Region::Shared: ++m_map.data_shared; break;
+    case Region::Global: ++m_map.data_external; break;
     default: ++m_map.data_external; break;
     }
     uint16_t value = address < 0x60 ? cpuregs_r(address)
+                   : region == Region::Global ? m_global_data[address]
                    : region == Region::Shared ? m_program[address]
                    : m_data[address];
     // The read side traces a fixed set of cells. A caller watching one cell
@@ -739,6 +758,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     if (address < 0x60) cpuregs_w(address, value);
+    else if (data_region(address) == Region::Global) m_global_data[address] = value;
     else if (data_region(address) == Region::Shared) m_program[address] = value;
     else m_data[address] = value;
     // Which ASIC slot the line datapump's output word lands in. The ISR at
@@ -765,7 +785,14 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
         m_line_rx.pop_front();
         ++m_line_rx_consumed;
     }
-    uint16_t value = m_io_read ? m_io_read(port) : m_io[port];
+    uint16_t value;
+    if (port == m_io_rx_port && !m_io_rx.empty()) {
+        value = m_io_rx.front();
+        m_io_rx.pop_front();
+        m_io[port] = value;
+    } else {
+        value = m_io_read ? m_io_read(port) : m_io[port];
+    }
     PortStat &stat = m_io_port_stats[port];
     ++stat.reads;
     stat.last_read = value;
@@ -855,6 +882,7 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
 {
     switch (offset) {
     case 0x04: return m_imr;
+    case 0x05: return uint16_t(0xff00 | m_greg);
     case 0x06: return m_ifr;
     case 0x07: return uint16_t((m_pmst.iptr << 11) | (m_pmst.avis << 7) |
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
@@ -961,7 +989,8 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
 void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 {
     switch (offset) {
-    case 0x00: case 0x05: return;
+    case 0x00: return;
+    case 0x05: m_greg = uint8_t(value); return;
     // The wait-state registers say which regions the firmware expects to be
     // off-chip, which is worth recording even though this core runs every
     // access in one cycle.
