@@ -40,3 +40,18 @@ request `separate_global_memory=True` on either Python constructor, or use
 contiguous allocations 80, C0, E0, F0, F8, FC, FE, FF from TI table 8-14.
 Fragmented allocations for other values and BR/READY arbitration timing remain
 unmodelled. GREG resets to zero and reads unused high bits as ones.
+
+## Program interrupt/vector area
+
+Program 0000–003F contains executable vector slots and reserved slots, not a
+separate RAM or data-register window. Each vector reserves two words for a
+branch instruction. This area follows MP/MC just like the rest of low program
+memory: ROM when MP/MC=0, external program storage when MP/MC=1. Reserved
+labels describe intended use; the emulator does not make those words unreadable.
+
+Reset clears IPTR and starts execution at program 0000. Subsequent interrupts
+use their slot offset within the 2K-word page selected by PMST.IPTR (for example,
+INT2 at `(IPTR << 11) | 0004`, NMI at `(IPTR << 11) | 0024`). The processor
+executes the instruction at that address rather than reading a handler pointer.
+See SPRU056D section 8.2.2 and table 8-7. Diagnostic line-frame vector overrides
+can bypass normal vector selection when explicitly configured by the harness.

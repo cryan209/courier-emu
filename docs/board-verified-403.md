@@ -769,10 +769,13 @@ Read at the end of a 403 dial, both ends identical:
 | `@69` | INTR17 | **`81a6`** |
 
 `819d` is `rete`: the shared do-nothing stub, which seven vectors point at.
-So the firmware does **not** service the AC01's frame-sync interrupt, and the
-harness firing the codec frame as XINT - `C50_ROM_FRAME_IRQ = 5`, which is
-`(irq+1)<<1` = the XINT slot - lands on `8178`, a real handler. That choice is
-confirmed rather than a guess.
+In this observed state the firmware does **not** service INT3, but that does
+not remove the AC01 FS connection. Each codec frame-sync edge must still latch
+INT3 in IFR, independently of IMR/INTM and serial-port reset. Serial receive and
+transmit activity additionally produces RINT/XINT; XINT's handler at `8178`
+does not substitute for the physical INT3 input. The previous claim that this
+handler justified generating XINT alone was incorrect. The analog codec model
+now latches INT3 for both primary and secondary frame syncs.
 
 `@60` looked like the exception, and is not one. **Resolved 2026-09-20:**
 INT1 is dead at both ends in this firmware, so `@60` is not a vector at all -

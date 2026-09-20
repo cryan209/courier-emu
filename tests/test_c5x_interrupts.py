@@ -117,3 +117,45 @@ def test_nmi_vectors_through_iptr_rather_than_a_fixed_0x0024():
         core.step(1)
         assert core.state()["pc"] == 0x0825
         assert core.stack()[0] == 2
+
+
+def test_analog_codec_fs_latches_int3_with_serial_port_reset_and_imr_masked():
+    with NativeC5x.from_program(0, program(*([0x8B00] * 8192))) as core:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.step(3000)
+        assert core.register(0x04) == 0
+        assert core.register(0x06) & (1 << 2)
+        assert not core.register(0x06) & ((1 << 4) | (1 << 5))
+        # Enable the already-latched INT3 and allow service through slot 0006.
+        core.load_program(program(0xAE04, 4, 0xBE40), 0x6000)
+        core.set_pc(0x6000)
+        core.step(2)
+        assert core.state()['pc'] == 6
+        assert not core.register(0x06) & 4
+
+
+def test_analog_frame_latches_external_and_serial_interrupts_together():
+    # Release receiver and transmitter; leave all interrupts masked.
+    code = [0xAE22, 0x00C0] + [0x8B00] * 8192
+    with NativeC5x.from_program(0, program(*code)) as core:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.step(3000)
+        expected = (1 << 2) | (1 << 4) | (1 << 5)
+        assert core.register(6) & expected == expected
+
+
+def test_cpu_int1_latches_while_masked():
+    from courier_emu.bridge import CourierDspBridge
+
+    with NativeC5x.from_program(0, program(0xAE04, 1, 0xBE40)) as core:
+        bridge = CourierDspBridge.__new__(CourierDspBridge)
+        bridge.core = core
+        bridge._reset_asserted = False
+        bridge.set_cpu_int1(True)
+        assert core.register(6) & 1
+        assert core.state()['pc'] == 0
+        core.step(2)
+        assert core.state()['pc'] == 2  # INT1 slot
+        assert not core.register(6) & 1

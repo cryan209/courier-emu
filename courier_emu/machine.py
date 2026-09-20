@@ -2617,6 +2617,8 @@ class CourierMachine:
                 asserted = not value & self._dsp_reset_bit
                 self.dsp_bridge.set_reset(asserted)
                 self._dsp_in_reset = asserted
+                # Measured P1.7 -> DSP INT1. Masking is the DSP's decision.
+                self.dsp_bridge.set_cpu_int1(not bool(value & 0x0080))
                 # The NMI line is the other CPU pin on this latch. A falling
                 # edge is the kick; the part keeps everything it holds.
                 nmi_low = not value & DSP_NMI_BIT

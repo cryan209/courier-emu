@@ -590,6 +590,7 @@ class CourierDspBridge:
         # it through a transfer, so after the first one it is never zero and
         # "nonzero" would pass instantly for every overlay after it.
         self._overlay_destination_mark = 0
+        self._overlay_destination_write_mark = 0
         # Half-block strobes taken since the last `4` on the overlay port.
         # The loader spends the same value on both ends of a transfer, so
         # this is what tells the two apart. See the write path.
@@ -1321,6 +1322,13 @@ class CourierDspBridge:
             self.bootstrap = bytearray()
             self.bootstrap_match = None
         self._reset_asserted = asserted
+
+    def set_cpu_int1(self, asserted: bool) -> None:
+        """CPU P1.7 (pin 50) drives active-low DSP INT1 (pin 38)."""
+        was_asserted = getattr(self, "_cpu_int1_asserted", False)
+        self._cpu_int1_asserted = bool(asserted)
+        if asserted and not was_asserted and not self._reset_asserted:
+            self.core.interrupt(0)
 
     def pulse_nmi(self) -> None:
         """The CPU's NMI pin into the DSP, on CPU pin 56 / DSP pin 42.
@@ -2185,7 +2193,15 @@ class CourierDspBridge:
             if settle(repointed):
                 self._overlay_status |= 0x02
                 return
-        raise RuntimeError("C51 resident loader did not acknowledge overlay block")
+        state = self.core.state()
+        raise RuntimeError(
+            "C51 resident loader did not acknowledge overlay block: "
+            f"pc={state['pc']:04x}, destination={destination:04x}, "
+            f"ff62={self.core.data(0xFF62):04x}, "
+            f"pa7={self.core.io(0x57):04x}, "
+            f"imr={self.core.register(0x04):04x}, "
+            f"ifr={self.core.register(0x06):04x}"
+        )
 
     def _answer_runtime_request(self, header: int, _data: int) -> None:
         """Answer a poll the supervisor's countdown chain has just sent.
@@ -2400,6 +2416,7 @@ class CourierDspBridge:
                 self._overlay_status = 0x07 & ~0x04
                 self._overlay_destination_pending = True
                 self._overlay_destination_mark = self.core.data(0xFF62)
+                self._overlay_destination_write_mark = self.core.data_write_count(0xFF62)
             elif self.active and strobe in self._windows:
                 self._overlay_halves_since_start += 1
                 # Measured framing: each acknowledgement commits four bytes -
@@ -2560,7 +2577,10 @@ class CourierDspBridge:
         ):
             if self._overlay_destination_pending:
                 destination = self.core.data(0xFF62)
-                if destination != self._overlay_destination_mark:
+                # A tag-02 write acknowledges the destination even when it
+                # repeats the previous value. Value-change detection deadlocks
+                # that transaction before the CPU sends its first data group.
+                if self.core.data_write_count(0xFF62) != self._overlay_destination_write_mark:
                     self._overlay_destination_pending = False
                     self._overlay_status |= 0x04
                     self.overlay_destinations.append(f"{destination:04x}")

@@ -409,6 +409,11 @@ void C5xCore::codec_transmit(uint16_t word)
 // whose receive queue was empty returned the same stale word every frame.
 void C5xCore::codec_frame(bool secondary)
 {
+    // Analog Courier: AC01 FS is also wired to DSP pin 40 / INT3.
+    // Latch independently of serial-port reset and interrupt masks. Defer
+    // recognition until the frame's serial events have also been latched.
+    // docs/board-verified-403.md, measured interrupt pin table.
+    m_ifr |= 1u << 2;
     if (secondary) {
         // Datasheet 2.4: during secondary communications DOUT carries the
         // addressed register when a read was requested, and is otherwise zero.

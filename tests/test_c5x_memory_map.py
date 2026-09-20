@@ -93,3 +93,53 @@ def test_cnf_program_writes_reach_physical_b0():
         assert core.program(0xFE00) == 0x1234
         core.step(1)
         assert core.data(0x100) == 0x1234
+
+
+@pytest.mark.parametrize('model', ['c51', 'c53'])
+@pytest.mark.parametrize('mpmc', [0, 1])
+def test_vector_page_uses_program_memory_not_data_registers(model, mpmc):
+    with NativeC5x.from_program(0, b'', model=model) as core:
+        # Distinct executable words across the entire vector/reserved area.
+        core.load_rom(words(*([0xB911] * 0x40)))
+        core.load_program(words(*([0xB922] * 0x40)), 0)
+        core.set_mpmc_pin(mpmc)
+        core.reset()
+        assert core.state()['pc'] == 0
+        assert core.register(7) >> 11 == 0
+        assert all(core.program(a) == (0xB922 if mpmc else 0xB911)
+                   for a in range(0x40))
+        core.step(1)
+        assert core.state()['acc'] == (0x22 if mpmc else 0x11)
+        # Program 0005 is executable memory, distinct from data GREG at 0005.
+        core.set_pc(5)
+        core.step(1)
+        assert core.register(5) == 0xFF00
+        assert core.state()['acc'] == (0x22 if mpmc else 0x11)
+        core.nmi()
+        core.step(1)
+        assert core.state()['pc'] == 0x25
+        assert core.state()['acc'] == (0x22 if mpmc else 0x11)
+
+
+@pytest.mark.parametrize('model', ['c51', 'c53'])
+def test_relocated_interrupt_executes_branch_and_reset_returns_to_zero(model):
+    with NativeC5x.from_program(0x6000, b'', model=model) as core:
+        core.set_mpmc_pin(0)
+        core.load_rom(words(0xB911))
+        # Relocate to external page 5800, enable INT2, clear INTM.
+        core.load_program(words(0xAE07, 0x5800, 0xAE04, 2, 0xBE40), 0x6000)
+        core.load_program(words(0x7980, 0x6100), 0x5804)  # B 6100
+        core.load_program(words(0xB933), 0x6100)
+        core.set_pc(0x6000)
+        core.step(3)
+        core.interrupt(1)
+        assert core.state()['pc'] == 0x5804
+        core.step(1)
+        assert core.state()['pc'] == 0x6100
+        core.step(1)
+        assert core.state()['acc'] == 0x33
+        core.reset()
+        assert core.state()['pc'] == 0
+        assert core.register(7) >> 11 == 0
+        core.step(1)
+        assert core.state()['acc'] == 0x11

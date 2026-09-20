@@ -172,3 +172,50 @@ def test_presenting_a_host_word_raises_pa7_and_rings_int2():
     bridge._present_to_dsp(0x0002)
     assert bridge.core.io(0x57) == 0x0202
     assert bridge.core.irqs == [1, 1]
+
+
+def test_cpu_int1_pin_edges_and_reset():
+    bridge = CourierDspBridge.__new__(CourierDspBridge)
+    bridge.core = DoorbellCore()
+    bridge._reset_asserted = False
+    bridge.set_cpu_int1(False)
+    bridge.set_cpu_int1(True)
+    bridge.set_cpu_int1(True)
+    assert bridge.core.irqs == [0]
+    bridge.set_cpu_int1(False)
+    bridge.set_cpu_int1(True)
+    assert bridge.core.irqs == [0, 0]
+    bridge._reset_asserted = True
+    bridge.set_cpu_int1(False)
+    bridge.set_cpu_int1(True)
+    assert bridge.core.irqs == [0, 0]
+
+
+def test_overlay_destination_acknowledges_a_same_value_dsp_write():
+    import struct
+    from courier_emu.dsp import NativeC5x
+    from courier_emu.bridge import DSP_COMMAND_PORT
+    from types import SimpleNamespace
+
+    # LDP #1fe; SPLK @62,#b000: the guest writes data ff62.
+    code = struct.pack('<3H', 0xBDFE, 0xAE62, 0xB000)
+    with NativeC5x.from_program(0x6000, code) as core:
+        core.set_data(0xFF62, 0xB000)
+        core.set_pc(0x6000)
+        bridge = CourierDspBridge.__new__(CourierDspBridge)
+        bridge.core = core
+        bridge.transfer = SimpleNamespace(command_port=0x18)
+        bridge.active = True
+        bridge._overlay_destination_pending = True
+        bridge._overlay_destination_mark = core.data(0xFF62)
+        bridge._overlay_destination_write_mark = core.data_write_count(0xFF62)
+        bridge._overlay_status = 3
+        bridge.overlay_destinations = []
+        bridge.overlay_destination_waits = 0
+        assert bridge.read(DSP_COMMAND_PORT, 1) == 3
+        assert bridge._overlay_destination_pending
+        core.step(2)
+        assert core.data(0xFF62) == 0xB000
+        assert bridge.read(DSP_COMMAND_PORT, 1) == 7
+        assert not bridge._overlay_destination_pending
+        assert bridge.overlay_destinations == ['b000']

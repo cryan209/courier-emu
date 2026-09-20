@@ -205,3 +205,14 @@ One defect this also caught: the first version of the publish set
 a different mechanism located by signature in `_find_call_overlay`. A flash
 overlay is not that, and it now reports itself through `overlay_downloads`,
 `overlay_id` and `overlay_match` alone.
+
+## Destination handshake correction, 2026-09-21
+
+The start strobe holds CPU port 1e bit 2 low until the DSP handles the tag-02
+destination. Detect this through the guest write count at data FF62, not by
+waiting for its value to change: a valid destination command can repeat the
+value already there. The former value-change test stalled such a transfer
+before its first payload group. A native-core regression executes the same-value
+store and checks that the CPU status becomes ready only after that write.
+This establishes the handshake defect, not the cause of every reported overlay
+stall; reproducing a particular stall still requires its image and run command.
