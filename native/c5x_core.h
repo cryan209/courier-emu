@@ -496,6 +496,10 @@ private:
     // the timer counting.
     struct {
         int tddr = 0, psc = 0; uint16_t tim = 0, prd = 0; bool tss = false;
+        // TIM is clocked by CLKOUT, so it advances by an instruction's cycle
+        // count, not by one per instruction. This is the cycle the timer has
+        // been serviced up to.
+        uint64_t serviced_cycle = 0;
     } m_timer;
     struct {
         uint16_t drr = 0, dxr = 0, spc = 0;

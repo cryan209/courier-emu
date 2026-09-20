@@ -1344,10 +1344,24 @@ void C5xCore::step()
         }
     }
     ++m_instructions;
-    if (!m_timer.tss && --m_timer.psc <= 0) {
-        m_timer.psc = m_timer.tddr;
-        if (--m_timer.tim == 0) { m_timer.tim = m_timer.prd; interrupt(IRQ_TINT); }
-    }
+    // The on-chip timer counts CLKOUT, not retired instructions: a three-cycle
+    // instruction advances TIM by three. Ticking it once per instruction ran
+    // it slow by the average cycles-per-instruction, roughly 2.5x. Firmware
+    // that measures a hardware period against TIM sees the wrong answer - the
+    // MICA portware's frame-rate check at program 0x80cd reloads TIM from
+    // PRD, waits one serial frame and averages 256 readings, and rejected
+    // every clock rate because of this.
+    const uint64_t elapsed = m_cycles - m_timer.serviced_cycle;
+    m_timer.serviced_cycle = m_cycles;
+    if (!m_timer.tss)
+        for (uint64_t tick = 0; tick < elapsed; ++tick) {
+            if (--m_timer.psc > 0) continue;
+            m_timer.psc = m_timer.tddr;
+            if (--m_timer.tim == 0) {
+                m_timer.tim = m_timer.prd;
+                interrupt(IRQ_TINT);
+            }
+        }
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
     // must come from elapsed C5x cycles rather than from observing an OUT.
