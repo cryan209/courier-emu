@@ -401,6 +401,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--dsp-peek", entry))
     for entry in getattr(args, "trace_pc", []):
         command.extend(("--trace-pc", entry))
+    if getattr(args, "dsp_trace_range", None):
+        command.extend(("--dsp-trace-range", args.dsp_trace_range))
     if args.line_frames is not None:
         command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
@@ -1404,6 +1406,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--track-executed",
         action="store_true",
         help="count how often each address runs on both sides, for hot_addresses",
+    )
+    link.add_argument(
+        "--dsp-trace-range",
+        metavar="FIRST:LAST",
+        default=None,
+        help="record the C5x program counter over this address range on both "
+        "sides, for dsp_pc_trace. The originating end only exists in a pair, "
+        "so this is the only way to trace it",
     )
     link.add_argument(
         "--answer-on-ring",
