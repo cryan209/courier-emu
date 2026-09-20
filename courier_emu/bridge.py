@@ -1,18 +1,8 @@
 from __future__ import annotations
 
-# The DSP on this board is a **TMS320C50 or LC50**, not the 'C52 this code was
-# named after for a long time: docs/board-parts.md infers it from the firmware's
-# memory use against the C5x guide's tables, and docs/firmware-lineage.md lists
-# the Quad as 80186 + TMS320C50. The identification is inference from memory
-# use, not from the part marking, which is a custom USR number.
-#
-# The old name is kept in exactly two places, both quotations of superseded
-# claims that would be falsified by editing them: the "20 MHz 80186 / 25 MHz
-# C52" comment quoted below, and the attributed split at _advance_dsp.
-#
-# The misnomer had a cost worth recording. It invites treating the Quad's DSP as
-# a different device needing its own boot model, when it is the same part and
-# the boot path here already applies (docs/quad-bringup-blockers.md).
+# Observed Courier boards use a TMS320C51; MICA uses a C53.
+# Board wiring and firmware layout do not identify the DSP model. The older
+# C50 inference was superseded by the probes in docs/board-parts.md.
 
 from collections import Counter, deque
 from dataclasses import dataclass

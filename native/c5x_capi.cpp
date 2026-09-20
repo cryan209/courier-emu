@@ -25,6 +25,19 @@ void *courier_c5x_create()
     try { return new C5xCore(); } catch (...) { return nullptr; }
 }
 
+// Keep the original constructor ABI for existing Courier clients.
+void *courier_c5x_create_model(int model)
+{
+    if (model != 51 && model != 53) return nullptr;
+    try { return new C5xCore(model == 53 ? C5xCore::Model::C53 : C5xCore::Model::C51); }
+    catch (...) { return nullptr; }
+}
+
+void courier_c5x_set_separate_global_memory(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_separate_global_memory(enabled != 0);
+}
+
 void courier_c5x_destroy(void *handle) { delete static_cast<C5xCore *>(handle); }
 
 void courier_c5x_reset(void *handle)

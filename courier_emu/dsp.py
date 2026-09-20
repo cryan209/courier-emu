@@ -69,7 +69,7 @@ def build_library(*, force: bool = False) -> Path:
     return LIBRARY
 
 
-# The C52's wait-state generator, from sections 9.4.1 to 9.4.3 of the C5x
+# The C5x's wait-state generator, from sections 9.4.1 to 9.4.3 of the C5x
 # User's Guide. PDWSR gives each 16K block of program and data space a two-bit
 # field; IOWSR gives each pair of I/O ports one, or each 8K block when CWSR's
 # BIG bit is set. CWSR also chooses what the two-bit values mean.
@@ -127,14 +127,19 @@ SHARED_WINDOW = (0x8000, 0xFEFF)
 
 
 class NativeC5x:
-    """Incrementally stepped C52 instance used by the dual-processor harness."""
+    """Incrementally stepped C5x instance used by the dual-processor harness."""
 
-    def __init__(self, image: XmfImage, *, rebuild: bool = False) -> None:
+    def __init__(self, image: XmfImage, *, rebuild: bool = False, model: str = "c51",
+                 separate_global_memory: bool = False) -> None:
         self.library = ctypes.CDLL(str(build_library(force=rebuild)))
         self._configure_api()
-        self._handle = self.library.courier_c5x_create()
+        self.model = model.lower()
+        if self.model not in ("c51", "c53"):
+            raise ValueError(f"unsupported DSP model: {model}")
+        self._handle = self.library.courier_c5x_create_model(int(self.model[1:]))
         if not self._handle:
             raise RuntimeError("failed to create C5x core")
+        self.library.courier_c5x_set_separate_global_memory(self.handle, separate_global_memory)
         try:
             origins = [origin for origin, _ in image.dsp_program_segments()]
             # The board's external RAM answers both spaces at 0x8000-0xfeff,
@@ -161,7 +166,8 @@ class NativeC5x:
             raise
 
     @classmethod
-    def from_program(cls, origin: int, program: bytes, *, rebuild: bool = False) -> "NativeC5x":
+    def from_program(cls, origin: int, program: bytes, *, rebuild: bool = False,
+                     model: str = "c51", separate_global_memory: bool = False) -> "NativeC5x":
         """A core holding one raw program image, with no XMF container.
 
         The Quad streams its datapump code word by word over the CPU link, so
@@ -170,9 +176,13 @@ class NativeC5x:
         self = cls.__new__(cls)
         self.library = ctypes.CDLL(str(build_library(force=rebuild)))
         self._configure_api()
-        self._handle = self.library.courier_c5x_create()
+        self.model = model.lower()
+        if self.model not in ("c51", "c53"):
+            raise ValueError(f"unsupported DSP model: {model}")
+        self._handle = self.library.courier_c5x_create_model(int(self.model[1:]))
         if not self._handle:
             raise RuntimeError("failed to create C5x core")
+        self.library.courier_c5x_set_separate_global_memory(self.handle, separate_global_memory)
         try:
             self.load_program(program, origin)
         except Exception:
@@ -183,6 +193,9 @@ class NativeC5x:
     def _configure_api(self) -> None:
         lib = self.library
         lib.courier_c5x_create.restype = ctypes.c_void_p
+        lib.courier_c5x_create_model.argtypes = [ctypes.c_int]
+        lib.courier_c5x_create_model.restype = ctypes.c_void_p
+        lib.courier_c5x_set_separate_global_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_destroy.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_reset.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_load_program.argtypes = [
@@ -382,7 +395,7 @@ class NativeC5x:
         )
 
     def set_mpmc_pin(self, level: int) -> None:
-        """Drive the pin that decides what the C52's program 0x0000 is."""
+        """Drive the pin that decides what the C5x's program 0x0000 is."""
         self.library.courier_c5x_set_mpmc_pin(self.handle, int(level))
 
     def load_program(self, image: bytes, origin: int) -> None:
@@ -401,7 +414,7 @@ class NativeC5x:
         """Publish and enter a call overlay at the recovered idle-frame ABI."""
         storage = (ctypes.c_uint8 * len(image)).from_buffer_copy(image)
         if len(registers) != 7:
-            raise ValueError("call overlay requires seven C52 registers")
+            raise ValueError("call overlay requires seven C5x registers")
         register_words = (ctypes.c_uint16 * 7)(*registers)
         error = ctypes.create_string_buffer(512)
         if self.library.courier_c5x_schedule_call_overlay(
@@ -430,6 +443,7 @@ class NativeC5x:
             "data_shared", "data_external", "rom_holes",
         )
         state: dict[str, Any] = dict(zip(names, map(int, values), strict=True))
+        state["model"] = self.model
         state["rom_present"] = bool(state["rom_present"])
         state["wait_states"] = decode_wait_states(
             state["pdwsr"], state["iowsr"], state["cwsr"]
@@ -826,11 +840,13 @@ def run_dsp(
     trace_start: int = 0,
     ports: dict[int, int] | None = None,
     rebuild: bool = False,
+    model: str = "c51",
 ) -> dict[str, object]:
     runner = build_runner(force=rebuild)
     command = [
         str(runner),
         str(image.path),
+        "--model", model,
         # The resident alone, as at reset. An overlay only reaches the DSP
         # once the running resident asks the supervisor for it.
         *[

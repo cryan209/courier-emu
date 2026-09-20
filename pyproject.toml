@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "courier-emu"
 version = "0.1.0"
-description = "Instrumented Intel 80186 and TMS320C52 harness for USRobotics Courier XMF firmware"
+description = "Instrumented Intel 80186 and TMS320C51 harness for USRobotics Courier XMF firmware"
 requires-python = ">=3.10"
 dependencies = []
 

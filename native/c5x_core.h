@@ -14,8 +14,9 @@
 
 namespace courier {
 
-// TMS320C51 on-chip memory: 1056 words of DARAM, 1K of SARAM and 8K of ROM.
+// Default Courier TMS320C51 on-chip memory: 1056 words of DARAM, 1K of SARAM and 8K of ROM.
 // The map is confirmed by the board probes in artifacts/dsp-memory-test-2806.
+// Model::C53 instead selects 16K ROM and 3K SARAM at program 4000/data 0800.
 //
 // The guide's three maps, checked region by region against what follows:
 //
@@ -47,7 +48,6 @@ namespace courier {
 // 0x0000-0x1FFF and 1K of SARAM. See artifacts/dsp-memory-test-2806. MP/MC
 // reads 0, so this window is mapped on the real board and is not the fixture
 // it used to be - artifacts/dsp-onchip-rom-20mhz-8k has its contents.
-constexpr uint16_t C5X_ROM_WORDS = 0x2000;
 constexpr uint16_t C5X_B2_FIRST = 0x0060, C5X_B2_WORDS = 0x0020;
 constexpr uint16_t C5X_B0_FIRST = 0x0100, C5X_B0_WORDS = 0x0200;
 constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
@@ -57,11 +57,8 @@ constexpr uint16_t C5X_B1_FIRST = 0x0300, C5X_B1_WORDS = 0x0200;
 // different addresses**. Measured: writing data 0x0800 and data 0x0A00 reads
 // back from program 0x2000 and program 0x2200
 // (artifacts/dsp-memory-test-2806/sweep). So the two windows are separate
-// constants and program access translates into the data-space address, which
-// is the storage. Still one memory, still the point of OVLY.
-constexpr uint16_t C5X_SARAM_WORDS = 0x0400;
+// windows into independent physical SARAM storage, isolated from external RAM.
 constexpr uint16_t C5X_SARAM_DATA_FIRST = 0x0800;
-constexpr uint16_t C5X_SARAM_PROGRAM_FIRST = 0x2000;
 // CNF moves B0 out of data space and into the top of program space.
 constexpr uint16_t C5X_B0_PROGRAM_FIRST = 0xFE00;
 constexpr uint16_t C5X_DATA_EXTERNAL_FIRST = 0x0800;
@@ -201,7 +198,7 @@ public:
         uint8_t input_gain, output_gain, monitor_gain, input_select;
     };
 
-    // Where a C52 address lands. The two parts that move are the boot ROM,
+    // Where a C5x address lands. The two parts that move are the boot ROM,
     // which appears at the bottom of program space only in microcomputer
     // mode, and DARAM B0, which CNF swaps between data 0x0100 and program
     // 0xfe00. Everything else is off-chip or reserved.
@@ -227,7 +224,9 @@ public:
     using IoRead = std::function<uint16_t(uint16_t)>;
     using IoWrite = std::function<void(uint16_t, uint16_t)>;
 
-    C5xCore();
+    enum class Model { C51, C53 };
+    explicit C5xCore(Model model = Model::C51);
+    void set_separate_global_memory(bool enabled) { m_separate_global_memory = enabled; }
     void reset();
     void load_program(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
@@ -379,7 +378,10 @@ private:
     // CPU-facing ASIC inputs and DSP-facing outputs are separate holding
     // registers even where they share a C51 port number.
     std::array<uint16_t, 16> m_asic_output{};
-    std::array<uint16_t, C5X_ROM_WORDS> m_rom{};
+    std::array<uint16_t, 0x4000> m_rom{};
+    const uint16_t m_rom_words, m_saram_program_first, m_saram_words;
+    std::array<uint16_t, 0x0c00> m_saram{};
+    bool m_separate_global_memory = false;
     bool m_rom_present = false;
     // PMST.MPMC is preserved by this firmware's reset code rather than
     // written, because on hardware it comes from a pin. Nothing in an image
@@ -438,18 +440,16 @@ private:
     uint16_t m_paer = 0, m_pasr = 0, m_indx = 0, m_dbmr = 0, m_arcr = 0;
     // Global memory allocation register. Values 0x80..0xff make the data
     // range GREG<<8..0xffff global and assert BR alongside DS. Keep global
-    // storage separate: board glue may route the same address differently.
+    // storage separate only when the board explicitly decodes BR that way.
     uint8_t m_greg = 0;
     std::array<uint16_t, 65536> m_global_data{};
     st0_t m_st0{};
     st1_t m_st1{};
-    // Program-space SARAM addresses translate into their data-space address:
-    // the 'C51 sees one physical kilo-word at program 0x2000 and data 0x0800,
-    // and m_data is where it is stored.
-    static constexpr uint16_t saram_data_address(uint16_t program_address)
+    // Translate program-space SARAM to its physical RAM offset.
+    // C51: 2000..23ff; C53: 4000..4bff. Both data windows start at 0800.
+    uint16_t saram_data_address(uint16_t program_address) const
     {
-        return uint16_t(program_address - C5X_SARAM_PROGRAM_FIRST
-                        + C5X_SARAM_DATA_FIRST);
+        return uint16_t(program_address - m_saram_program_first);
     }
 
     pmst_t m_pmst{};

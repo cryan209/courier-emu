@@ -55,6 +55,7 @@ int main(int argc, char **argv)
         if (argc < 2) throw std::runtime_error(
             "usage: c5x_runner IMAGE [--offset N] [--bytes N] [--instructions N] [--trace N]");
         std::string path = argv[1];
+        auto model = courier::C5xCore::Model::C51;
         // The image's own supervisor names every segment, so the caller
         // passes them in as --segment OFFSET:BYTES:ORIGIN. Nothing here knows
         // a layout: 2.1/2.2 load at 8000 and up, 2.3 at 0000..7fff, and a
@@ -68,6 +69,13 @@ int main(int argc, char **argv)
             std::string option = argv[i];
             if (i + 1 >= argc) throw std::runtime_error("missing value for " + option);
             const char *argument = argv[++i];
+            if (option == "--model") {
+                const std::string name = argument;
+                if (name == "c51") model = courier::C5xCore::Model::C51;
+                else if (name == "c53") model = courier::C5xCore::Model::C53;
+                else throw std::runtime_error("unsupported DSP model: " + name);
+                continue;
+            }
             if (option == "--port") {
                 std::string assignment = argument;
                 auto separator = assignment.find('=');
@@ -111,7 +119,7 @@ int main(int argc, char **argv)
         input.seekg(0, std::ios::end);
         uint64_t size = uint64_t(input.tellg());
 
-        courier::C5xCore core;
+        courier::C5xCore core(model);
         // Segments are loaded in the order given and the part enters the
         // first. Overlays land over the top of resident code, so pass one only
         // when that is the state being probed: at reset the board has

@@ -156,7 +156,7 @@ def daa_codec_wanted(args: argparse.Namespace, image: object) -> bool:
     """Resolve the codec's three-state flag against what the image can host.
 
     The board has a DAA, so modelling it is the default. It rides on the DSP
-    bridge, though, and a flash ROM carries no separable C52 payload, so the
+    bridge, though, and a flash ROM carries no separable C51 payload, so the
     default gives way there rather than turning a plain `run` into an error.
     An explicit `--daa-codec` still asks for the impossible and still says so.
     """
@@ -166,7 +166,7 @@ def daa_codec_wanted(args: argparse.Namespace, image: object) -> bool:
         return True
     if args.daa_codec:
         raise ValueError(
-            f"{Path(args.image).name} carries no separable C52 payload for the "
+            f"{Path(args.image).name} carries no separable C51 payload for the "
             "DSP bridge the codec rides on"
         )
     return False
@@ -181,7 +181,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     image = load_image(args.image)
     if args.with_dsp and not hasattr(image, "dsp_program_segments"):
         raise ValueError(
-            f"{Path(args.image).name} carries no separable C52 payload for the "
+            f"{Path(args.image).name} carries no separable C51 payload for the "
             "DSP bridge to load"
         )
     daa_codec = daa_codec_wanted(args, image)
@@ -233,7 +233,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.append("--with-dsp")
     if args.force_online:
         command.append("--force-online")
-    # A live SIP call has to keep up with an external clock. The native C52
+    # A live SIP call has to keep up with an external clock. The native C51
     # runner is insensitive to a four-frame scheduling batch on the complete
     # ROM path, and this leaves ample real-time headroom. Keep the smaller
     # diagnostic default everywhere else so existing trace boundaries do not
@@ -980,7 +980,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dsp-trace-range",
         default="",
         metavar="FIRST:LAST",
-        help="also trace C52 program addresses in this range, hex. Two windows "
+        help="also trace C51 program addresses in this range, hex. Two windows "
         "are compiled in; this is a third, for a handler neither covers",
     )
     run.add_argument(
@@ -988,13 +988,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="ADDR[=NAME]",
-        help="report this C52 data cell at the end of the run, hex, repeatable",
+        help="report this C51 data cell at the end of the run, hex, repeatable",
     )
     run.add_argument(
         "--dsp-write-watch",
         default="",
         metavar="ADDR",
-        help="record every write to this C52 data cell, hex, with the program "
+        help="record every write to this C51 data cell, hex, with the program "
         "address that made it. Unfiltered the trace fills in milliseconds",
     )
     run.add_argument(
@@ -1036,7 +1036,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--with-dsp",
         action="store_true",
-        help="lock-step the native TMS320C52 core through the Courier host-port bridge",
+        help="lock-step the native TMS320C51 core through the Courier host-port bridge",
     )
     run.add_argument(
         "--force-online",
@@ -1054,7 +1054,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=_number,
         default=256,
         metavar="N",
-        help="80186 instructions per native C52 scheduling batch (diagnostic; default 256)",
+        help="80186 instructions per native C51 scheduling batch (diagnostic; default 256)",
     )
     run.add_argument(
         "--daa-line",
@@ -1315,7 +1315,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--dsp-tx-pcm",
         metavar="PATH",
-        help="capture raw signed 16-bit little-endian C52 line output samples",
+        help="capture raw signed 16-bit little-endian C51 line output samples",
     )
     run.add_argument(
         "--at",
@@ -1352,7 +1352,7 @@ def build_parser() -> argparse.ArgumentParser:
     link.add_argument(
         "--with-dsp",
         action="store_true",
-        help="run the C52 on both sides",
+        help="run the C51 on both sides",
     )
     link.add_argument("--dsp-batch", type=_number, default=256, metavar="N")
     link.add_argument(
@@ -1496,8 +1496,9 @@ def build_parser() -> argparse.ArgumentParser:
         "what makes ATY15 print the switch page (default 0x08)",
     )
 
-    dsp_run = subparsers.add_parser("dsp-run", help="execute the TMS320C52 firmware")
+    dsp_run = subparsers.add_parser("dsp-run", help="execute C5x firmware")
     dsp_run.add_argument("image")
+    dsp_run.add_argument("--model", choices=("c51", "c53"), default="c51")
     dsp_run.add_argument("--instructions", type=_number, default=1_000_000)
     dsp_run.add_argument("--trace", type=_number, default=0, help="trace this many instructions")
     dsp_run.add_argument("--trace-start", type=_number, default=0)
@@ -1768,6 +1769,7 @@ def main(argv: list[str] | None = None) -> int:
             _print_json(
                 run_dsp(
                     image,
+                    model=args.model,
                     instructions=args.instructions,
                     trace=args.trace,
                     trace_start=args.trace_start,

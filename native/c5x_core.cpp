@@ -14,7 +14,7 @@ namespace courier {
 
 // Serial port control register bits. The firmware writes 0x40c8 at program
 // 0x00c0: receiver and transmitter out of reset, burst frame sync, and both
-// TXM and MCM clear, which makes the C52 a slave to an externally supplied
+// TXM and MCM clear, which makes the C5x a slave to an externally supplied
 // clock and frame sync. That is the arrangement the DAA chipset's own
 // documentation describes, with the board clocking the bus.
 //
@@ -79,7 +79,15 @@ static uint16_t ac01_output_sample(uint16_t sample, uint8_t register4)
     throw std::runtime_error(buffer);
 }
 
-C5xCore::C5xCore() { reset(); }
+C5xCore::C5xCore(Model model)
+    : m_rom_words(model == Model::C53 ? 0x4000 : 0x2000),
+      m_saram_program_first(model == Model::C53 ? 0x4000 : 0x2000),
+      m_saram_words(model == Model::C53 ? 0x0c00 : 0x0400)
+{
+    // Courier external RAM wiring is a board setting, not a C53 property.
+    if (model == Model::C53) set_shared_window(0xffff, 0);
+    reset();
+}
 
 void C5xCore::reset()
 {
@@ -214,8 +222,8 @@ void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origi
 
 void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin)
 {
-    if (origin > C5X_ROM_WORDS || count > std::size_t(C5X_ROM_WORDS - origin))
-        throw std::out_of_range("boot ROM image exceeds the C51's on-chip ROM");
+    if (origin > m_rom_words || count > std::size_t(m_rom_words - origin))
+        throw std::out_of_range("boot ROM image exceeds the selected DSP's on-chip ROM");
     std::copy_n(words, count, m_rom.begin() + origin);
     m_rom_present = true;
 }
@@ -559,7 +567,7 @@ uint16_t C5xCore::program(uint16_t address) const
     // Inspect the mapped bus view without changing execution counters.
     switch (program_region(address)) {
     case Region::Rom: return m_rom_present ? m_rom[address] : m_program[address];
-    case Region::Saram: return m_data[saram_data_address(address)];
+    case Region::Saram: return m_saram[saram_data_address(address)];
     case Region::Daram: return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
     default: return m_program[address];
     }
@@ -571,13 +579,15 @@ uint16_t C5xCore::program(uint16_t address) const
 uint16_t C5xCore::data(uint16_t address) const
 {
     const Region region = data_region(address);
+    if (region == Region::Saram) return m_saram[address - C5X_SARAM_DATA_FIRST];
     if (region == Region::Global) return m_global_data[address];
     return region == Region::Shared ? m_program[address] : m_data[address];
 }
 void C5xCore::set_data(uint16_t address, uint16_t value)
 {
     const Region region = data_region(address);
-    if (region == Region::Global) m_global_data[address] = value;
+    if (region == Region::Saram) m_saram[address - C5X_SARAM_DATA_FIRST] = value;
+    else if (region == Region::Global) m_global_data[address] = value;
     else if (region == Region::Shared) m_program[address] = value;
     else m_data[address] = value;
 }
@@ -650,14 +660,12 @@ void C5xCore::consume_cycles(unsigned cycles)
 
 C5xCore::Region C5xCore::program_region(uint16_t address) const
 {
-    // Microcomputer mode puts the 8K boot ROM at the bottom of program space;
-    // microprocessor mode exposes external memory in that window. CNF brings B0 in
-    // at the top. The 'C51's 1K of SARAM appears at 0x2000, above the ROM,
-    // not at the 0x0800 the 9K part uses.
-    if (!m_pmst.mpmc && address < C5X_ROM_WORDS) return Region::Rom;
+    // SPRU056D figures 8-2 and 8-4: model-specific ROM and SARAM windows.
+    // MP/MC removes ROM; RAM controls SARAM; CNF maps B0 at the top.
+    if (!m_pmst.mpmc && address < m_rom_words) return Region::Rom;
     if (m_st1.cnf && address >= C5X_B0_PROGRAM_FIRST) return Region::Daram;
-    if (m_pmst.ram && address >= C5X_SARAM_PROGRAM_FIRST
-        && address < C5X_SARAM_PROGRAM_FIRST + C5X_SARAM_WORDS)
+    if (m_pmst.ram && address >= m_saram_program_first
+        && address < m_saram_program_first + m_saram_words)
         return Region::Saram;
     return Region::External;
 }
@@ -674,11 +682,13 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
     if (address >= C5X_B1_FIRST && address < C5X_B1_FIRST + C5X_B1_WORDS)
         return Region::Daram;
     if (m_pmst.ovly && address >= C5X_SARAM_DATA_FIRST
-        && address < C5X_SARAM_DATA_FIRST + C5X_SARAM_WORDS)
+        && address < C5X_SARAM_DATA_FIRST + m_saram_words)
         return Region::Saram;
-    // SPRU056D table 8-14: values below 0x80 allocate no global memory;
-    // otherwise the upper data-space range beginning at GREG<<8 is global.
-    if (m_greg >= 0x80 && address >= (uint16_t(m_greg) << 8))
+    // For the contiguous allocations in SPRU056D table 8-14, BR is asserted
+    // from GREG<<8 upward. Only boards decoding BR into a separate bank
+    // should select separate storage. Undocumented fragmented allocations
+    // are not modelled by this range decoder.
+    if (m_separate_global_memory && m_greg >= 0x80 && address >= (uint16_t(m_greg) << 8))
         return Region::Global;
     // The board's external RAM answers both spaces. See the shared-window
     // constants in c5x_core.h.
@@ -704,7 +714,7 @@ uint16_t C5xCore::fetch(uint16_t address)
     case Region::Daram: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
     // SARAM is one memory in both spaces, so a fetch reads what data stores
     // put there - which is how the firmware's own block moves get executed.
-    case Region::Saram: ++m_map.program_saram; return m_data[saram_data_address(address)];
+    case Region::Saram: ++m_map.program_saram; return m_saram[saram_data_address(address)];
     default: ++m_map.program_external; break;
     }
     return m_program[address];
@@ -719,7 +729,8 @@ void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
     case Region::Rom:
         // Mask ROM ignores guest writes, including TBLW and BLPD.
         return;
-    case Region::Saram: m_data[saram_data_address(address)] = value; return;
+    case Region::Saram: m_saram[saram_data_address(address)] = value; return;
+    case Region::Daram: m_data[C5X_B0_FIRST + address - C5X_B0_PROGRAM_FIRST] = value; return;
     default: break;
     }
     m_program[address] = value;
@@ -737,6 +748,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     default: ++m_map.data_external; break;
     }
     uint16_t value = address < 0x60 ? cpuregs_r(address)
+                   : region == Region::Saram ? m_saram[address - C5X_SARAM_DATA_FIRST]
                    : region == Region::Global ? m_global_data[address]
                    : region == Region::Shared ? m_program[address]
                    : m_data[address];
@@ -758,9 +770,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     if (address < 0x60) cpuregs_w(address, value);
-    else if (data_region(address) == Region::Global) m_global_data[address] = value;
-    else if (data_region(address) == Region::Shared) m_program[address] = value;
-    else m_data[address] = value;
+    else set_data(address, value);
     // Which ASIC slot the line datapump's output word lands in. The ISR at
     // 0x0228 keeps a 32-bit phase accumulator in @7c/@7d - 0xfffc/0xfffd at
     // DP 0x1ff - and reading 0xfffd gives that phase, which is a linear ramp
@@ -837,9 +847,9 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         m_mailbox_events.push_back(
             {true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
-    // The C52 firmware writes its ASIC line-DAC sink at b2e5. The older C51
+    // The downloaded firmware writes its ASIC line-DAC sink at b2e5. The older C51
     // resident image uses external port 006a at high program addresses. The
-    // C52's low-bank TDM ISR also writes 006a, but that is its control slot and
+    // downloaded firmware's low-bank TDM ISR also writes 006a, but that is its control slot and
     // must not be interleaved with line PCM.
     uint16_t write_pc = uint16_t(m_pc - 1);
     if (port == 0x006a && write_pc >= 0x8000) {
@@ -1462,7 +1472,7 @@ void C5xCore::step()
                         m_data[0x0306] = m_v8_rx_state;
                         // Stop the native V.8 bootstrap tone once the peer's
                         // opposite indicator is present. From this edge on,
-                        // the downloaded C52 overlay owns CM/JM and later
+                        // the downloaded C5x overlay owns CM/JM and later
                         // negotiation; keeping the bootstrap generator active
                         // would mask the firmware's own DAC output.
                         if ((m_v8_mode == V8Mode::Calling && (detected & 2)) ||
@@ -1477,7 +1487,7 @@ void C5xCore::step()
                     }
                 }
                 // The line slot carries the datapump's own DAC accumulation
-                // and nothing else. Whatever V.8 the call needs is the C52
+                // and nothing else. Whatever V.8 the call needs is the C5x
                 // overlay's to emit.
                 if (m_line_dac_count) {
                     ++m_line_dac_frames;

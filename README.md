@@ -47,7 +47,7 @@ and stream assumptions must not be applied to this firmware unchanged.
 This repository contains a reproducible dual-core firmware harness for
 `main211.xmf`. It validates and splits the update image, executes the Intel
 80186 supervisor in a 1 MiB instrumented address space, and runs the recovered
-TMS320C52 program with a standalone 16-bit fixed-point DSP core.
+TMS320C51 program with a standalone 16-bit fixed-point DSP core.
 
 For the older `SV25.XMD`, `./courier recovery-run SV25.XMD` runs a separate,
 read-only 80188 recovery-loader harness from flash `0x7dbc0` to the complete
@@ -87,7 +87,7 @@ loopback shows no CPU port carrying samples, so the 80186 is not in the audio
 path; where it goes on the DSP side is still open, and an earlier claim here
 that it arrives on the C5x serial port is withdrawn — at run time the DSP polls
 `DRR`, `TRCV` and the ASIC's own ports together, and never transmits on either
-serial port after reset. And the C52's mask ROM is not what the modem
+serial port after reset. And the C51's mask ROM is not what the modem
 executes - the firmware supplies program words `0000..75d9`, including the
 reset code, and programs external-memory wait states — and the supervisor's own
 download stream, which the bridge checks rather than assumes, matches that
@@ -143,7 +143,7 @@ possible mirroring, without writing test patterns.
 | File range | Contents |
 |---|---|
 | `0x00000..0x001ff` | 512-byte product text header |
-| `0x00200..0x1b5df` | 55,792 little-endian TMS320C52 words |
+| `0x00200..0x1b5df` | 55,792 little-endian TMS320C51 words |
 | `0x1b5e0..0xb7fff` | Intel 80186 supervisor plus erased flash padding |
 
 The image is mapped at physical `0x40000`. The normal supervisor initializer is
@@ -154,7 +154,7 @@ update payload, so the harness starts at the recovered supervisor initializer.
 
 The DSP area is a segmented program image rather than one flat load:
 
-| File range | C52 program words | Role |
+| File range | C51 program words | Role |
 |---|---:|---|
 | `0x002f0..0x0eea3` | `0000..75d9` | reset and boot block |
 | `0x0eea4..0x101ff` | `de83..e830` | service overlay; entry at `de89` |
@@ -211,7 +211,12 @@ Execution uses Unicorn's 16-bit x86 core and runs in an isolated child process:
 ./courier run main211.xmf --instructions 7000000 --with-dsp --at AT --summary
 ```
 
-The C52 runner has no third-party runtime dependency; it builds with the system
+The DSP defaults to C51 for Courier. Select `--model c53` for a C53 image;
+raw MICA harnesses can use `NativeC5x.from_program(..., model="c53")`.
+See [DSP memory models](docs/c5x-memory-models.md) for on-chip maps and GREG
+board configuration.
+
+The C5x runner has no third-party runtime dependency; it builds with the system
 C++17 compiler on first use:
 
 ```sh
@@ -395,7 +400,7 @@ firmware's `NO DIAL TONE` path. DSP results separate completed `bootstraps` and
 `transfer_commands` from runtime
 `mailbox_commands`, with a `mailbox_windows` histogram of the latter.
 
-The line-audio endpoint is the Courier ASIC's external C52 I/O frame, separate
+The line-audio endpoint is the Courier ASIC's external C51 I/O frame, separate
 from both on-chip serial ports and the 80186 download window. Firmware reads
 the held ADC word twice from external I/O port `0x54` at program `0xb300` and
 `0xb304`; the second read is copied into active sample cell `0x007f`. Its
@@ -413,7 +418,7 @@ after dial/answer activation with:
 `dsp_bridge.serial_port` reports the register values, access counts, last
 firmware PCs, queued/consumed input frames, and line-output counts. The modeled
 missing board-to-DSP dial-command handoff recognizes the firmware's parsed
-`D` command and drives 9.6 kHz DTMF frames through the C52's real `OUT`
+`D` command and drives 9.6 kHz DTMF frames through the C51's real `OUT`
 instruction. `ATDT123` produces 697+1209, 697+1336, and 697+1477 Hz bursts.
 This establishes bidirectional waveform transport and reproducible tone output;
 the original datapump's internal command mailbox remains to be recovered.
@@ -422,7 +427,7 @@ The behavioral DAA can attach a disconnected, quiet, dial-tone, or ringing
 line. A dial-tone line seizes the hook relay, supplies 350+440 Hz audio to the
 recovered ASIC ADC, qualifies the supervisor's five-hit detector at RAM
 `0x0649`, removes central-office tone, and starts the parsed digits on the
-already-active C52. `--daa-line` enables the DSP bridge automatically:
+already-active C51. `--daa-line` enables the DSP bridge automatically:
 
 ```sh
 ./courier run main211.xmf --instructions 9000000 \
@@ -454,9 +459,9 @@ investigation.
 The line-interface chipset itself is modeled as registers rather than behavior,
 and it is **on by default** — the board has a DAA, and `ATI7` reports a failure
 without one (below). `--no-daa-codec` turns it off; it also drops out on its own
-for a flash ROM, which carries no separable C52 payload for the DSP bridge the
+for a flash ROM, which carries no separable C51 payload for the DSP bridge the
 codec rides on. Modelling it costs about 20% of a run's wall time, since it
-brings the native C52 bridge up on runs that would not otherwise need it.
+brings the native C51 bridge up on runs that would not otherwise need it.
 
 The board carries an Si3021 and an Si3014; `docs/SI3038.PDF` is the AC'97
 sibling of that pair and is the only published register map here, so the model
@@ -464,7 +469,7 @@ uses its addresses for the shared line-side fields.
 
 That attribution is about the **line interface**. The part on the DSP's own
 serial port is a different one: a TI `TLC320AC0x`, identified from the board and
-confirmed by the C52's firmware, which uses bit 0 of each transmitted word to
+confirmed by the C51's firmware, which uses bit 0 of each transmitted word to
 request the secondary frame that carries a control register — the AC0x
 protocol. See [what is actually on the board](docs/board-parts.md). So
 `CodecBringUp`, which runs an `SI3038` register sequence, models a part the DSP
@@ -490,7 +495,7 @@ and the assembled line status:
 The seven steps are the datasheet's initialization procedure, including its
 readiness poll, and nothing in the Courier's firmware performs them: the 80186
 writes ports `0x40`..`0x4e` thousands of times and never reads them, and the
-C52's only external reads are the host mailbox window and the line ADC, so
+C51's only external reads are the host mailbox window and the line ADC, so
 neither processor can see the readiness byte step 4 waits on. The sequence
 belongs to the interposed ASIC — the arrangement AN16 section 1.3 describes —
 and `CodecBringUp` stands in for it, one service frame per 100 ms.
@@ -1084,7 +1089,7 @@ audio the modem transmits**, and routes the call:
 ```
 
 Nothing hands it that number. The supervisor qualifies its line detector on the
-exchange's 350+440 Hz dial tone, the C52 puts DTMF on the line, and a Goertzel
+exchange's 350+440 Hz dial tone, the C51 puts DTMF on the line, and a Goertzel
 receiver in the exchange reads it back off the transmit stream. That is the
 difference from `--daa-line dial-tone`, which supplies a line state the harness
 chose and removes dial tone as soon as the model decides dialing has started -
@@ -1147,7 +1152,7 @@ actually heard - stays empty while `ATDT5551212` is dialed. This was recorded
 here as "the tone generator is the ASIC's", and that is wrong: the three
 constant lanes the dial path sends alongside each digit, `0x19`, `0x1a` and
 `0x1b`, are host-write tags whose handlers store into **DSP data memory** at
-`0x03ad`, `0x0392` and `0x03f1`. The tone parameters go to the C52, so the
+`0x03ad`, `0x0392` and `0x03f1`. The tone parameters go to the C51, so the
 synthesiser is the datapump's, and what is missing is the harness reaching that
 code rather than an unmodelled generator elsewhere. See
 [what the ASIC does](docs/what-the-asic-does.md). What the run does report is the sequence
@@ -1164,19 +1169,19 @@ on the line.
 
 One bug had to be fixed for any of it to run. The receive handler at `0x6ad6e`
 takes a message tag from ports `0x58`/`0x5a` and then its word from
-`0x5e`/`0x5c`, and the bridge was serving the C52 status latch on those two
+`0x5e`/`0x5c`, and the bridge was serving the C51 status latch on those two
 ports even while a reply stood queued. The detector consumer at `0x5e4c4` read
 `0xffff` for a reading the bridge had already answered, counted it as
 out-of-band, and hung up. Queued replies now own the data lanes.
 
-### What the C52 puts on the line
+### What the C51 puts on the line
 
 The core has no tone generator of its own. It once carried hand-written
 `sin()` in C++ - a DTMF pair generator, a 1300 Hz calling indicator and a
 2100 Hz ANSam approximation - which substituted for the datapump's DAC output
 and *discarded* its accumulation to make room. That stand-in is gone, along
 with `set_dtmf_digits` and `set_synthetic_line`. The line now carries what the
-C52 computes through its AC01, and only that: on 3.0.13 that is the firmware's
+C51 computes through its AC01, and only that: on 3.0.13 that is the firmware's
 own DTMF, which the modeled exchange decodes as the dialed number
 (`artifacts/dtmf-emulator-302-01`).
 
@@ -1274,7 +1279,7 @@ call over the link is not available.
 
 ### The window word `0x50` is not the datapump's command port
 
-The C52 has no external `IN` for `0x50` at all. Data addresses `0x50..0x5f` are
+The C51 has no external `IN` for `0x50` at all. Data addresses `0x50..0x5f` are
 reserved on a C5x, this core decodes them as external I/O, and the site at
 program `0x8c1f` is a `BIT @50, 6` inside the per-sample service routine. Its
 `TC` result is discarded by the `CLRC TC` at `0x8c3d` with no consumer in
@@ -1282,23 +1287,23 @@ between, so the word is read and thrown away. Three checks say the same thing
 from the other side:
 
 - Presenting each of the twelve header values the supervisor actually sends at
-  window words `0x50`/`0x51` leaves a 3.4 M-instruction C52 run byte-identical
+  window words `0x50`/`0x51` leaves a 3.4 M-instruction C51 run byte-identical
   in every counter, including where it stops.
-- The C52's `IMR` is zero after boot, so no host interrupt can reach it either.
+- The C51's `IMR` is zero after boot, so no host interrupt can reach it either.
 - Applying all 2,274 of a run's runtime messages as `host_write(header, data)`
-  into C52 data space changes nothing.
+  into C51 data space changes nothing.
 
 So there is no host-to-datapump command path in the resident program, and
-"recover the `0x58..0x5e` to C52 `0x50/0x51` valid/ack timing", which earlier
+"recover the `0x58..0x5e` to C51 `0x50/0x51` valid/ack timing", which earlier
 notes named as the next step, is not it. The supervisor's runtime traffic is a
 real channel — 2,274 two-word messages with a valid/ack handshake on port
 `0x1c`, and the `0x40..0x4e` window used only for the two program downloads —
-but whatever consumes it on the board is not the C52 code these images run.
+but whatever consumes it on the board is not the C51 code these images run.
 
 ### What the datapump is doing instead
 
 Taking instruction boundaries from a run rather than decoding statically, the
-whole of what the C52 executes in steady state is 167 instructions, one pass is
+whole of what the C51 executes in steady state is 167 instructions, one pass is
 169, and the loop head is at `0x0cb1` — inside the bank the supervisor
 downloads. The datapump is resident and idle, not un-entered, and it uses about
 6% of the cycles a 25 MHz part has per 9.6 kHz sample.
@@ -1314,7 +1319,7 @@ Interrupts are enabled — the reset code sets `IMR = 0x002a` and clears `INTM` 
 and of the sixteen, only number 7 changes anything when raised. That is not the
 datapump waking up: `PMST.IPTR` is zero, so the vector is program `0x0010`,
 which is inside the reset code, and driving the interrupt partially reboots the
-C52. Almost 6,000 of the instructions it adds are below `0x00d0`.
+C51. Almost 6,000 of the instructions it adds are below `0x00d0`.
 
 There is no vector table in this image to point it anywhere better. `IPTR` can
 only place one on 32 two-kiloword boundaries; the longest run of consecutive
@@ -1334,21 +1339,21 @@ against `0x000a`). So the vector area holding reset code is a property of every
 build in the tree, not a quirk of one image, and those wait-state values are
 the one direct statement about the memory map available here.
 
-The reading that fits is that the C52 is in microcomputer mode, its program
+The reading that fits is that the C51 is in microcomputer mode, its program
 `0x0000..0x0fff` is on-chip ROM holding both the vector table and the bootstrap
 that receives the download, and neither is in this image — so the assumption
 that the downloaded segment begins at program `0x0000` puts the downloaded init
 on top of the vectors.
 
-### The C52 memory map, and what the wait states say
+### The C51 memory map, and what the wait states say
 
 The core used to parse `MP/MC`, `OVLY` and `RAM` out of `PMST` and act on none
-of them. It now decodes both spaces as the C52 actually lays them out: program
+of them. It now decodes both spaces as the C51 actually lays them out: program
 is on-chip ROM below `0x1000` when `MP/MC` is low, DARAM B0 at `0xfe00` under
 `CNF`, external otherwise; data is registers below `0x0060`, DARAM at B2
 `0x0060`, B0 `0x0100` (unless `CNF` moves it) and B1 `0x0300`, external from
 `0x0800` up, and **reserved** in the gaps at `0x0080..0x00ff` and
-`0x0500..0x07ff`. The C52 has no SARAM at all, so `PMST.RAM` and `PMST.OVLY`
+`0x0500..0x07ff`. The C51 has no SARAM at all, so `PMST.RAM` and `PMST.OVLY`
 are don't-cares on this part.
 
 The wait-state registers are decoded too, and they answer the `MP/MC` question
@@ -1372,7 +1377,7 @@ data space instead.
 
 Every run reports `dsp_bridge.dsp_memory_map` with the mode bits, the
 wait-state decode and per-region access counts. One of those counts is worth
-reading on its own: **about 700,000 data accesses a run land in the C52's
+reading on its own: **about 700,000 data accesses a run land in the C51's
 reserved windows**, and they are the frame-block cells `[0x00ca]`–`[0x00cd]`,
 including the line-DAC source and the gate above. On silicon those addresses
 hold no storage. `courier_firmware_analysis.md` has the rest.
@@ -1384,7 +1389,7 @@ the DAA and DSP automatically. Parsed `ATD` digits become the destination URI;
 the client supports an unauthenticated INVITE or one MD5 Digest retry after
 `401`/`407`, SDP with PCMU payload 0, ACK/BYE, and bidirectional RTP. The modem's
 9.6 kHz line stream is converted to/from 8 kHz PCMU. The current DTMF assist is
-inserted at the recovered C52 DAC write, so it travels as ordinary in-band
+inserted at the recovered C51 DAC write, so it travels as ordinary in-band
 audio; it is not yet evidence that the firmware datapump entered originate
 mode.
 
@@ -1426,14 +1431,14 @@ signals into a clean CLI failure rather than crashing the controlling process.
 
 ## Current boundary
 
-The 80186 and C52 are lock-stepped at their recovered 20/25 MHz ratio. The
+The 80186 and C51 are lock-stepped at their recovered 20/25 MHz ratio. The
 supervisor's DSP bootstrap is reconstructed from ports `0x40..0x4e`, verified
-byte-for-byte against the XMF C52 boot segment, and published to the native DSP
+byte-for-byte against the XMF C51 boot segment, and published to the native DSP
 through the recovered mailbox. The DTE serial path can inject commands and
 capture firmware-generated result text. The ASIC line frame now transports
 9.6 kHz input/output samples and captures dial tones. Remaining device work is
 the original datapump command mailbox, complete 80186 peripheral timing, and
-unexercised C52 opcode forms. The silicon DAA's ring, loop-current, and frame
+unexercised C51 opcode forms. The silicon DAA's ring, loop-current, and frame
 lock state is modeled at register level under `--daa-codec`; its revision
 reaches the firmware through mailbox tag `0x7b` and `ATI7`, but no read path to
 the line-side status fields has been found, so those are still unconsumed. The
