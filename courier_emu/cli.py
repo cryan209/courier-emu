@@ -403,6 +403,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--trace-pc", entry))
     if getattr(args, "dsp_trace_range", None):
         command.extend(("--dsp-trace-range", args.dsp_trace_range))
+    if getattr(args, "dsp_write_watch", None):
+        command.extend(("--dsp-write-watch", args.dsp_write_watch))
     if args.line_frames is not None:
         command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
@@ -1406,6 +1408,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--track-executed",
         action="store_true",
         help="count how often each address runs on both sides, for hot_addresses",
+    )
+    link.add_argument(
+        "--dsp-write-watch",
+        metavar="ADDR",
+        default=None,
+        help="record every write to this C5x data cell on both sides, with "
+        "the program counter that made it, for dsp_data_events",
     )
     link.add_argument(
         "--dsp-trace-range",
