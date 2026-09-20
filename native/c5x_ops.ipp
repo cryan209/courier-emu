@@ -856,7 +856,18 @@ void C5xCore::op_sfr()
 
 void C5xCore::op_sfrb()
 {
-	fatalerror("TMS320C5x: unimplemented op sfrb at %08X\n", m_pc-1);
+	// The mirror of op_sflb: ACC:ACCB shifts right as one 64-bit value, so
+	// ACC's LSB becomes ACCB's MSB and the bit leaving the bottom of ACCB
+	// becomes the carry. ACC itself shifts as SFR does, sign-extending under
+	// SXM.
+	uint32_t acc = m_acc;
+	uint32_t accb = m_accb;
+
+	m_accb = (accb >> 1) | ((acc & 1) << 31);
+	m_acc = m_st1.sxm ? uint32_t(int32_t(acc) >> 1) : (acc >> 1);
+	m_st1.c = accb & 1;
+
+	CYCLES(1);
 }
 
 void C5xCore::op_sub_mem()
@@ -1186,8 +1197,18 @@ void C5xCore::op_banz()
 void C5xCore::op_banzd()
 {
 	uint16_t pma = ROPCODE();
+	const bool branch = m_ar[m_st0.arp] != 0;
 
-	if (m_ar[m_st0.arp] != 0)
+	// The modify belongs to this instruction, so it has to be taken before
+	// the delay slots run: delay_slot() overwrites m_op, and GET_ADDRESS()
+	// reads its addressing mode out of m_op. Taken afterwards it applied the
+	// last delay-slot instruction's field instead - for MICA's scheduler,
+	// `banzd 4f6e, *` (no modify) followed by `lar ar7, *+` (post-increment)
+	// left AR2 one word high, and the task restore read its resume PC out of
+	// the forward link. op_bd and op_calld already order it this way.
+	GET_ADDRESS();      // modify AR/ARP
+
+	if (branch)
 	{
 		delay_slot(m_pc);
 		CHANGE_PC(pma);
@@ -1197,8 +1218,6 @@ void C5xCore::op_banzd()
 	{
 		CYCLES(2);
 	}
-
-	GET_ADDRESS();      // modify AR/ARP
 }
 
 void C5xCore::op_bcnd()
