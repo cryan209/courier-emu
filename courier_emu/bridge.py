@@ -254,6 +254,15 @@ DETECTOR_PRESENT_LEVEL = 0x30
 # 0x7f, and vectors through a 128-entry table at program 0x83e9. `lamm`/`samm`
 # mask the address to 0x7f, so these are plain data cells 0x0057/0x005e/0x005f.
 HOST_STATUS_CELL = asic.dsp_register("status")
+# The ASIC's doorbell into the DSP, measured: ASIC pin 109 goes to DSP pin 39,
+# which is INT2 (docs/asic-pinout.md). It is also the only external interrupt
+# any resident arms - IMR = 0x002a is INT2, TINT and XINT - and the resident's
+# INT2 handler is a bare `rete` at 0x819d, reached through the mask ROM's
+# dispatch cell @61. A handler that does nothing is the whole point: the part
+# sleeps in the IDLE at 0x80fa, the pin ends the IDLE, and the poll of PA7 on
+# the way back round is what actually finds the work. See
+# docs/dsp-cpu-interconnect.md.
+DSP_HOST_DOORBELL_IRQ = 1
 # The C51's 8K of on-chip mask ROM occupies program 0000..1fff; its SARAM
 # starts at 2000 (courier_emu/dsp_probe, measured on the 2806 board). A group
 # the loader writes below this reaches ROM space and never reads back.
@@ -1972,6 +1981,28 @@ class CourierDspBridge:
         port = core.io(cell) & 0xFFFF if hasattr(core, "io") else 0
         return low | high | port
 
+    def _present_to_dsp(self, bits: int) -> None:
+        """Raise a ready flag in PA7 and ring the doorbell that goes with it.
+
+        The two are one event on the board. PA7 is an ASIC latch, and the
+        chip that sets a bit in it is the chip whose pin 109 is wired to the
+        DSP's INT2. Setting the flag without asserting the pin left the DSP
+        to find the work only when something else happened to end its IDLE -
+        the codec frame or the timer - so a transfer advanced at the frame
+        rate rather than when the host actually had a group ready.
+
+        The flag is what the firmware reads; the pin only ends the IDLE. The
+        resident's INT2 vector is a bare `rete`, so an edge with nothing
+        behind it costs a push and a pop and changes nothing, which is why
+        ringing on every ready bit is safe as well as accurate.
+        """
+        core = self.core
+        if not hasattr(core, "set_io"):
+            return
+        core.set_io(0x57, core.io(0x57) | bits)
+        if hasattr(core, "interrupt"):
+            core.interrupt(DSP_HOST_DOORBELL_IRQ)
+
     def _dsp_status(self) -> int:
         core = self.core
         if not self.active or not hasattr(core, "data"):
@@ -2113,8 +2144,7 @@ class CourierDspBridge:
             # Bit 9 is the ASIC's four-word-ready event. The resident clears
             # it by writing 0300 only after all four BLDP operations have
             # completed.
-            self.core.set_io(HOST_STATUS_CELL,
-                             self.core.io(HOST_STATUS_CELL) | 0x0200)
+            self._present_to_dsp(0x0200)
 
         def settle(base: int) -> bool:
             """Step the resident until it has taken the four words from `base`."""
@@ -2663,7 +2693,7 @@ class CourierDspBridge:
             # 0x1c bit 1, reads the pair, and writes 2 to 0x1c. Both wait for
             # the bit *set*, so it is one flag read with opposite sense from
             # each side, not a shared word to copy.
-            self.core.set_io(0x57, self.core.io(0x57) | (value & 0xFF))
+            self._present_to_dsp(value & 0xFF)
             return
         target = self.MIRROR.get(port)
         if target is None:

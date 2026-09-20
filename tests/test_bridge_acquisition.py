@@ -136,3 +136,39 @@ def test_dial_seizure_waits_for_digits_before_requesting_overlay():
 
     assert queued == []
     assert bridge._v8_armed is False
+
+
+class DoorbellCore:
+    """Enough of the C5x surface for PA7 and the ASIC's interrupt pin."""
+
+    def __init__(self) -> None:
+        self.ports: dict[int, int] = {0x57: 0x0000}
+        self.irqs: list[int] = []
+
+    def io(self, port: int) -> int:
+        return self.ports.get(port, 0)
+
+    def set_io(self, port: int, value: int) -> None:
+        self.ports[port] = value & 0xFFFF
+
+    def interrupt(self, irq: int) -> None:
+        self.irqs.append(irq)
+
+
+def test_presenting_a_host_word_raises_pa7_and_rings_int2():
+    # One event on the board: the ASIC latches the ready bit in PA7 and its
+    # pin 109 - the DSP's INT2 - goes with it. Without the pin the resident
+    # only notices on whatever else next ends its IDLE.
+    bridge = CourierDspBridge.__new__(CourierDspBridge)
+    bridge.core = DoorbellCore()
+
+    bridge._present_to_dsp(0x0200)
+    assert bridge.core.io(0x57) == 0x0200
+    assert bridge.core.irqs == [1]
+
+    # A second ready bit ORs in rather than replacing the latch, and rings
+    # again: the resident's INT2 handler is a bare RETE, so a spurious edge
+    # costs a push and a pop.
+    bridge._present_to_dsp(0x0002)
+    assert bridge.core.io(0x57) == 0x0202
+    assert bridge.core.irqs == [1, 1]

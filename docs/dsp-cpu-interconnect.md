@@ -243,6 +243,60 @@ The resident's whole AC01 register-load path (`lacc #010a ; call 8138`, then
 in the low) runs through that `IDLE`. Suppress the frame interrupt and the part
 stops there forever.
 
+### `INT2` is the host's doorbell, and its handler does nothing on purpose
+
+The mask ROM's whole vector table is `lamm @6x ; bacc` - every vector
+dispatches through a data cell, and the resident fills them from the table at
+`0x812d`:
+
+| cell | vector | 403 value |
+|---|---|---|
+| `@60` | `INT1` | `81ba` - bare `rete` |
+| `@61` | `INT2` | `819d` - bare `rete` |
+| `@62`-`@64`, `@66`, `@67`, `@6a` | `INT3`, `INT4`, `RINT`, `TRNT`, `TXNT`, `NMI` | `819d` |
+| `@65` | `XINT` | **`8178`** - the frame ISR |
+| `@68` | `TINT` | **`81fb`** |
+| `@69` | - | **`81a6`** - packs two bytes into `TDXR` |
+
+So of the three bits `0x002a` enables, `XINT` and `TINT` have handlers and
+**`INT2` is enabled with a handler that only returns**. That is not an
+oversight, and the board says what it is for: ASIC pin 109 goes to DSP pin 39,
+which is `INT2` ([asic-pinout.md](asic-pinout.md), measured).
+
+The CPU-to-DSP path is *polled*, not interrupt-driven. `0x80ea`:
+
+```
+80ea: setc intm
+80eb: calld 80e8, * ; lar ar1, #57   ; read PA7 through the 80e8 gadget
+80ee: clrc intm
+80ef: and #0200 ; bcnd 80fc, neq     ; bit 9 -> the host has a group
+80f6: lar ar0, @10 ; cmpr eq
+80f9: xc 1, tc ; idle                ; otherwise sleep
+80fb: ret
+```
+
+and the transfer itself at `0x80fc`:
+
+```
+810e: lar ar1, #58                   ; the ASIC's four-word window
+8110: splk @09, #0003                ; BRCR = 3
+8112: rptb #811e
+8114:   calld 80e8 ... ; mar *+ ; sacl @7d
+811a:   bldp @7d                     ; into PROGRAM memory at BMAR
+811b:   lamm @1f ; add #01 ; samm @1f
+8120: lacc #0300 ; samm @57          ; ack in PA7
+8127: intr 17
+```
+
+That is the firmware download, and the command path is the same shape. The
+handler has nothing to do because the work is in the loop; the pin's whole job
+is to **end the `IDLE` at `0x80fa`**. Set the flag without asserting the pin
+and the DSP still gets there, but only when something else happens to wake it
+- the codec frame or the timer - so a transfer advances at the frame rate
+instead of when the host actually has a group ready.
+
+`INT1` (`@60`) has the same shape and is masked: an armed second doorbell.
+
 ### And the 2.x builds can move it to `RINT`
 
 Immediately after enabling `0x002a`, the 2.1.1 and 2.3.x residents test data
