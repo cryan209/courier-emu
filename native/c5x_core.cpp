@@ -1050,6 +1050,7 @@ void C5xCore::restore_interrupt_context()
     m_indx = m_shadow.indx; m_pmst = m_shadow.pmst; m_preg = m_shadow.preg;
     m_st0 = m_shadow.st0; m_st1 = m_shadow.st1;
     m_treg0 = m_shadow.treg0; m_treg1 = m_shadow.treg1; m_treg2 = m_shadow.treg2;
+    note_dp(4);
 }
 void C5xCore::check_interrupts()
 {
@@ -1191,8 +1192,15 @@ void C5xCore::step()
             // the wrong page reported a null handler through every dispatch
             // and made the state machine look like it was spinning on an
             // unset vector, when the image has 57 sites that splk @48.
-            const uint16_t page = uint16_t((m_st0.dp & 0x1ff) << 7);
-            m_v8_dispatch_dp = uint16_t(m_st0.dp & 0x1ff);
+            // m_st0.dp is held pre-shifted - LDP stores DP<<7 and
+            // GET_ADDRESS ORs it straight in - so the page IS m_st0.dp. This
+            // masked it with 0x1ff and shifted it left 7 again, which keeps
+            // only (DP & 3) << 7 and then shifts that into a page the
+            // dispatcher never runs on. Every handler, countdown and flag
+            // read here came back 0 for that reason, through 133,790
+            // dispatches on the answering end alone.
+            const uint16_t page = uint16_t(m_st0.dp & 0xff80);
+            m_v8_dispatch_dp = uint16_t(m_st0.dp >> 7);
             m_v8_handler = m_data[uint16_t(page | 0x48)];
             m_v8_countdown = m_data[uint16_t(page | 0x4a)];
             m_v8_flags = m_data[uint16_t(page | 0x4d)];
@@ -1383,7 +1391,7 @@ void C5xCore::run(uint64_t instruction_limit)
 C5xCore::State C5xCore::state() const
 {
     State result{m_pc, m_op, m_acc, m_accb, m_preg, m_treg0, m_treg1, m_treg2, {},
-        m_st0.dp, m_st0.arp, m_arcr, m_indx,
+        uint16_t(m_st0.dp >> 7), m_st0.arp, m_arcr, m_indx,
         uint16_t((m_st0.intm << 7) | (m_st0.ovm << 6) | (m_st0.ov << 5) |
                  (m_st1.sxm << 4) | (m_st1.c << 3) | (m_st1.tc << 2) |
                  (m_st1.xf << 1) | m_st1.cnf),
@@ -1404,6 +1412,9 @@ C5xCore::SerialState C5xCore::serial_state() const
         m_tdm.last_trcv_pc, m_tdm.last_tdxr_pc, m_tdm.last_tspc_pc,
         m_line_tx.size(), m_line_tx_nonzero, m_line_frame_interrupts,
         m_serial_rint_suppressed,
+        uint16_t(m_shadow.st0.dp >> 7),
+        m_last_dp_pc, m_last_dp_value, m_last_dp_source,
+        m_stray_cala_pc, m_stray_cala_target, m_stray_cala_dp,
         m_line_dac_writes, m_line_dac_frames,
         m_line_tx.empty() ? uint16_t(0) : m_line_tx.back(), m_line_tx_last_pc, m_imr,
         m_v8_rx_state, m_v8_rx_peak, m_codec_rx_peak,

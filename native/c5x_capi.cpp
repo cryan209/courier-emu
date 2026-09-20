@@ -427,7 +427,7 @@ void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values,
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 58) return;
+    if (!handle || !values || count < 65) return;
     auto serial = static_cast<C5xCore *>(handle)->serial_state();
     uint64_t result[] = {
         serial.drr, serial.dxr, serial.spc,
@@ -440,6 +440,9 @@ void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t co
         serial.last_trcv_pc, serial.last_tdxr_pc, serial.last_tspc_pc,
         serial.line_tx_writes, serial.line_tx_nonzero, serial.line_frame_interrupts,
         serial.serial_rint_suppressed,
+        serial.shadow_dp,
+        serial.last_dp_pc, serial.last_dp_value, serial.last_dp_source,
+        serial.stray_cala_pc, serial.stray_cala_target, serial.stray_cala_dp,
         serial.line_dac_writes, serial.line_dac_frames,
         serial.line_tx_last, serial.line_tx_last_pc, serial.imr,
         serial.v8_rx_state, serial.v8_rx_peak, serial.codec_rx_peak,

@@ -1099,12 +1099,14 @@ void C5xCore::op_ldp_mem()
 {
 	uint16_t ea = GET_ADDRESS();
 	m_st0.dp = (DM_READ16(ea) & 0x01ff) << 7;
+	note_dp(2);
 	CYCLES(2);
 }
 
 void C5xCore::op_ldp_imm()
 {
 	m_st0.dp = (m_op & 0x1ff) << 7;
+	note_dp(1);
 	CYCLES(2);
 }
 
@@ -1250,6 +1252,7 @@ void C5xCore::op_bd()
 
 void C5xCore::op_cala()
 {
+	note_stray_cala(uint16_t(m_acc));
 	PUSH_STACK(m_pc);
 
 	CHANGE_PC(m_acc);
@@ -2150,6 +2153,7 @@ void C5xCore::op_lst_st0()
 	// INTM is deliberately unaffected by LST #0.
 	// m_st0.dp is held pre-shifted, as LDP stores it and GET_ADDRESS uses it.
 	m_st0.dp = (value & 0x1ff) << 7;
+	note_dp(3);
 	CYCLES(2);
 }
 

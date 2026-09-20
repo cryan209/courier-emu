@@ -147,6 +147,18 @@ public:
         // low. A non-zero count against a stalled datapump says the port was
         // never taken out of reset, rather than that the frame clock stopped.
         uint64_t serial_rint_suppressed;
+        // DP as the one-deep interrupt shadow currently holds it. RETE and
+        // RETI restore ST0 wholesale, so this is the page an interrupt return
+        // is about to reinstate.
+        uint64_t shadow_dp;
+        // Where DP was last written, and by what: 1 LDP #k, 2 LDP @mem,
+        // 3 LST #0, 4 an interrupt return's context restore, 5 reset.
+        uint64_t last_dp_pc, last_dp_value, last_dp_source;
+        // The first CALA whose target left the loaded program images, with
+        // the DP and ACC it ran with. A computed call into low memory is how
+        // this part loses itself, and after it the ROM rewrites DP, so the
+        // state has to be latched where it happens.
+        uint64_t stray_cala_pc, stray_cala_target, stray_cala_dp;
         // How often the datapump wrote the line DAC slot, and how many
         // codec frames collected those writes. Their ratio is how many
         // datapump samples the model folds into one line sample.
@@ -399,6 +411,23 @@ private:
     // MACD a silent no-op until some RPT had run and left it at 0 - the
     // loops all read `while (m_rptc > -1)` and simply did not execute.
     int32_t m_rptc = 0;
+    uint16_t m_last_dp_pc = 0, m_last_dp_value = 0, m_last_dp_source = 0;
+    uint16_t m_stray_cala_pc = 0, m_stray_cala_target = 0, m_stray_cala_dp = 0;
+    bool m_stray_cala_seen = false;
+    void note_stray_cala(uint16_t target)
+    {
+        if (m_stray_cala_seen || target >= 0x8000) return;
+        m_stray_cala_seen = true;
+        m_stray_cala_pc = uint16_t(m_pc - 1);
+        m_stray_cala_target = target;
+        m_stray_cala_dp = uint16_t(m_st0.dp >> 7);
+    }
+    void note_dp(unsigned source)
+    {
+        m_last_dp_pc = uint16_t(m_pc - 1);
+        m_last_dp_value = uint16_t(m_st0.dp >> 7);
+        m_last_dp_source = uint16_t(source);
+    }
     bool m_repeat_active = false;
     uint16_t m_bmar = 0;
     int32_t m_brcr = 0;
