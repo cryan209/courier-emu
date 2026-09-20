@@ -1,5 +1,7 @@
 import struct
 
+import pytest
+
 from courier_emu.dsp import NativeC5x
 
 
@@ -144,6 +146,41 @@ def test_analog_frame_latches_external_and_serial_interrupts_together():
         core.step(3000)
         expected = (1 << 2) | (1 << 4) | (1 << 5)
         assert core.register(6) & expected == expected
+
+
+@pytest.mark.parametrize("control, reply", [(0x2400, 0x05), (0x0405, 0)])
+def test_secondary_fs_latches_int3_without_consuming_an_adc_sample(control, reply):
+    # A secondary exchange is another FS/INT3 edge, not another conversion.
+    # Check the word at the edge, rather than relying on a DRR read to clock it.
+    with NativeC5x.from_program(0, program(*([0x8B00] * 32768))) as core:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        core.queue_codec_rx([0x1234, 0x5678])
+        period = core.codec_state()["frame_period"]
+        core.step(period)
+        assert core.register(0x20) == 0x1234
+        assert core.serial_state()["codec_rx_consumed"] == 1
+        assert core.codec_state()["frames_clocked"] == 1
+
+        core.load_program(program(
+            0xAE21, 3,        # Request a secondary exchange.
+            0xAE21, control,  # Register read or write, not DAC audio.
+            0xAE06, 0xFFFF,   # Clear the previous primary's IFR latch.
+        ), 0x6000)
+        core.set_pc(0x6000)
+        core.step(3)
+        assert core.register(0x06) == 0
+        core.step(period // 2)
+        assert core.register(0x06) & 4
+        assert core.register(0x20) == reply
+        assert core.serial_state()["codec_rx_consumed"] == 1
+        assert core.codec_state()["frames_clocked"] == 1
+
+        # The following primary still delivers the next queued conversion.
+        core.step(period // 2)
+        assert core.register(0x20) == 0x5678
+        assert core.serial_state()["codec_rx_consumed"] == 2
+        assert core.codec_state()["frames_clocked"] == 2
 
 
 def test_cpu_int1_latches_while_masked():
