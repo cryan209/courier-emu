@@ -96,6 +96,31 @@ void courier_c5x_set_shared_window(void *handle, uint16_t first, uint16_t last)
     if (handle) static_cast<C5xCore *>(handle)->set_shared_window(first, last);
 }
 
+// The core has always carried I/O callbacks; only the C entry point was
+// missing, so a harness outside C++ could not install a device. The MICA board
+// needs one: its host port is at forced MMRs 0x50..0x52, which this core
+// already routes into the I/O space, and what answers there is a window onto
+// i960 memory rather than anything the Courier has.
+//
+// A null callback restores the default, which is the core's own port storage.
+// The read callback is asked about every port, so a device that claims only
+// some of them should return the stored value for the rest -
+// courier_c5x_get_io answers that.
+void courier_c5x_set_io_hooks(
+    void *handle, uint16_t (*read)(void *user, uint16_t port),
+    void (*write)(void *user, uint16_t port, uint16_t value), void *user)
+{
+    if (!handle) return;
+    C5xCore *core = static_cast<C5xCore *>(handle);
+    C5xCore::IoRead on_read;
+    C5xCore::IoWrite on_write;
+    if (read)
+        on_read = [read, user](uint16_t port) { return read(user, port); };
+    if (write)
+        on_write = [write, user](uint16_t port, uint16_t value) { write(user, port, value); };
+    core->set_io_callbacks(std::move(on_read), std::move(on_write));
+}
+
 void courier_c5x_get_memory_map(void *handle, uint64_t *values, std::size_t count)
 {
     if (!handle || !values || count < 21) return;
