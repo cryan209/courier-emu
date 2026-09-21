@@ -405,6 +405,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--dsp-trace-range", args.dsp_trace_range))
     if getattr(args, "dsp_write_watch", None):
         command.extend(("--dsp-write-watch", args.dsp_write_watch))
+    if getattr(args, "track_executed", False):
+        command.append("--track-executed")
     if args.line_frames is not None:
         command.extend(("--line-frames", str(args.line_frames)))
     if args.line_audio_only:
