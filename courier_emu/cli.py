@@ -1403,8 +1403,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--dsp-peek",
         action="append",
         default=[],
-        metavar="NAME=ADDR",
-        help="report a C5x data cell on both sides at the end of the run",
+        metavar="ADDR[=NAME]",
+        help="report a C5x data cell on both sides at the end of the run, "
+        "hex address first, as `run --dsp-peek` and _pc_watch parse it",
     )
     link.add_argument(
         "--track-executed",
