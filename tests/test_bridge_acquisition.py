@@ -102,21 +102,20 @@ def bridge_for_originate(operation: str, *, commanded_role=None):
     bridge.daa.qualified_samples = 5 * DAA_FRAME_SAMPLES
     bridge.boot_rom_enabled = True
     bridge._asic_call_engine_started = False
-    bridge._originate_ready_pending = False
     bridge._commanded_role = commanded_role
     queued = []
     bridge._queue_runtime_message = lambda tag, word: queued.append((tag, word))
     return bridge, queued
 
 
-def test_answered_dial_requests_originate_overlay_through_call_state():
+def test_answered_dial_leaves_the_overlay_request_to_the_resident():
     bridge, queued = bridge_for_originate("dialing", commanded_role="originate")
 
     bridge._maybe_start_originate_engine()
 
-    assert queued == [(0x0047, 6)]
+    # 0x47,6 is the resident's own report from its JM decoder (0x8e3e).
+    assert queued == []
     assert bridge._v8_armed is True
-    assert bridge._originate_ready_pending is True
 
 
 def test_leased_originate_keeps_its_firmware_overlay_route():
