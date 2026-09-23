@@ -675,6 +675,32 @@ C5xCore::Region C5xCore::program_region(uint16_t address) const
     return Region::External;
 }
 
+// MAC and MACD, SPRU056D 6-150 and 6-155, with no wait states (p = d = 0,
+// which is all this core models). Repeated, the multiply retires one tap per
+// cycle behind a two-cycle pipeline start: n + 2. It costs a cycle per tap
+// more only when both operands queue for one bus - both off-chip, or both in
+// one SARAM block - or, for MACD, when the delay-line write lands in SARAM.
+// A single execution is n = 1 of the same formula, floored at 3.
+unsigned C5xCore::mac_cycles(uint16_t pma, uint16_t dma, unsigned count,
+                             bool data_move) const
+{
+    const Region op1 = program_region(pma), op2 = data_region(dma);
+    const bool op1_external = op1 == Region::External;
+    const bool op2_external = op2 != Region::Daram && op2 != Region::Registers
+                              && op2 != Region::Saram;
+    const unsigned n = count;
+    unsigned cycles;
+    if (op1_external && op2_external)
+        cycles = 2 * n + 2;
+    else if (op2 == Region::Saram && data_move)
+        cycles = 2 * n;
+    else if (op2 == Region::Saram && op1 == Region::Saram)
+        cycles = 2 * n + 2;
+    else
+        cycles = n + 2;
+    return cycles < 3 ? 3 : cycles;
+}
+
 C5xCore::Region C5xCore::data_region(uint16_t address) const
 {
     if (address < 0x60) return Region::Registers;
