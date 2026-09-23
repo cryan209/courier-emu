@@ -2232,6 +2232,16 @@ class CourierDspBridge:
         self._connected_event_queued = True
         self._carrier_source = "forced-diagnostic" if diagnostic else "legacy-host-fallback"
 
+    def _record_runtime_message(self, words: tuple[int, int], pc: int | None) -> None:
+        self.runtime_words_queued += len(words)
+        message = f"{words[0]:04x}:{words[1]:04x}"
+        self.runtime_messages.append(message)
+        self.runtime_message_counts[message] += 1
+        self.runtime_message_first_seen.setdefault(message, self._instructions)
+        self._observe_asic_command(*words)
+        if pc is not None:
+            self.runtime_message_first_pc.setdefault(message, f"{pc:05x}")
+
     def handles(self, port: int) -> bool:
         return (
             port in (0x1C, DSP_COMMAND_PORT, self.transfer.command_port,
@@ -2258,21 +2268,16 @@ class CourierDspBridge:
                 self._runtime_data = (self._runtime_data & 0x00FF) | ((value & 0xFF) << 8)
                 if self.active:
                     words = (self._runtime_header, self._runtime_data)
-                    self.runtime_words_queued += len(words)
-                    message = f"{words[0]:04x}:{words[1]:04x}"
-                    self.runtime_messages.append(message)
-                    self.runtime_message_counts[message] += 1
-                    self.runtime_message_first_seen.setdefault(message, self._instructions)
-                    self._observe_asic_command(*words)
-                    if pc is not None:
-                        self.runtime_message_first_pc.setdefault(message, f"{pc:05x}")
                     if not self.boot_rom_enabled:
+                        self._record_runtime_message(words, pc)
                         self._deliver_host_message(*words)
                         self._answer_runtime_request(*words)
                     else:
-                        # The ROM protocol commits with 0x1c bit 0. Hold the
-                        # completed pair for it rather than letting it read
-                        # the half-updated latch.
+                        # The ROM protocol commits with 0x1c bit 0, and the
+                        # latches are read then, not here: the supervisor's
+                        # one-word sender (93a02) writes the word before the
+                        # tag, so a pair taken at this write carries the
+                        # previous message's tag - 0a01 arrived as 0057:0001.
                         self._runtime_pending = words
             return
         if self.asic_transparent and self._runtime_mode and size == 1:
@@ -2310,8 +2315,10 @@ class CourierDspBridge:
                     if value & 1 and self._runtime_pending is not None:
                         # One delivery per assembled message: a repeated
                         # acknowledgement must not re-send the last one.
-                        self._deliver_host_message(*self._runtime_pending)
-                        self._answer_runtime_request(*self._runtime_pending)
+                        words = (self._runtime_header, self._runtime_data)
+                        self._record_runtime_message(words, pc)
+                        self._deliver_host_message(*words)
+                        self._answer_runtime_request(*words)
                         self._runtime_pending = None
                     if value & 2:
                         if self._runtime_inbound and self._runtime_inbound_seen:
