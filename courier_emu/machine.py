@@ -665,8 +665,8 @@ class CourierMachine:
         self.timebase = self.timers.timebase
         if self._quad_profile:
             self.timers.controller = EbInterruptController()
-        self._quad_irq_in_service = False
-        self._quad_interrupt_stack: list[int] = []
+        self._int0_in_service = False
+        self._interrupt_stack: list[int] = []
         self._timer_interrupt_pending: int | None = None
         self._external_interrupt_pending: int | None = None
         # A ROM reaches its DTE through the integrated serial unit in the
@@ -1873,7 +1873,7 @@ class CourierMachine:
                     self.quad_usart.advance()
                     if (interrupts_on and self.quad_usart.irq_pending
                             and self.timers.controller.enabled("int0")
-                            and not self._quad_irq_in_service
+                            and not self._int0_in_service
                             and self._int0_pending is None):
                         self._int0_pending = INT0_VECTOR
                 # The modem's C50 timer pulses XF (8467..847f). Route those
@@ -1881,12 +1881,18 @@ class CourierMachine:
                 # Retain in-service through EOI: the modem ISR also uses STI.
                 if (self.quad_c50 is not None and self.quad_c50.irq_pending
                         and interrupts_on and self.timers.controller.enabled("int0")
-                        and not self._quad_irq_in_service and self._int0_pending is None):
+                        and not self._int0_in_service and self._int0_pending is None):
                     self._int0_pending = INT0_VECTOR
                     self.quad_c50.irq_pending = False
+                # The frame ISR at 93a34 opens with STI too, so the 80186's
+                # in-service bit is what stops the next edge re-entering it
+                # before its EOI; without it each frame nested 0x1a bytes deeper
+                # until the stack reached the vector table. The edge that
+                # arrives meanwhile is kept by `_last_frame` and fires once.
                 if (
                     not self._quad_profile
                     and self._int0_pending is None
+                    and not self._int0_in_service
                     and interrupts_on
                     and self.instructions - self._last_frame >= self.frame_instructions
                     and self._int0_vector_installed(_uc)
@@ -2516,8 +2522,8 @@ class CourierMachine:
                 # A CPU fault is not a controller request: nothing will EOI
                 # it, so entering it here would leave a stale number for the
                 # next EOI write to pop.
-                if self._quad_profile and not fault:
-                    self._quad_interrupt_stack.append(number)
+                if not fault:
+                    self._interrupt_stack.append(number)
                 uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0200)
             uc.reg_write(UC_X86_REG_CS, segment)
             uc.reg_write(UC_X86_REG_IP, offset)
@@ -2592,15 +2598,15 @@ class CourierMachine:
             if self.quad_board is not None:
                 self.quad_board.write_register(address, size, value)
             self.timers.write(address, size, value, self.instructions)
-            if address == 0xFF02 and self._quad_interrupt_stack:
+            if address == 0xFF02 and self._interrupt_stack:
                 if value & 0x8000:
-                    completed = self._quad_interrupt_stack.pop()
+                    completed = self._interrupt_stack.pop()
                 else:
                     completed = value & 0x1f
-                    if completed in self._quad_interrupt_stack:
-                        self._quad_interrupt_stack.remove(completed)
+                    if completed in self._interrupt_stack:
+                        self._interrupt_stack.remove(completed)
                 if completed == INT0_VECTOR:
-                    self._quad_irq_in_service = False
+                    self._int0_in_service = False
             if address == self.hardware_map.dsp_reset_port and self.dsp_bridge is not None:
                 # The board holds the C52 in reset through this bit, and a part
                 # in reset drives nothing: its transfer interface reads back as
@@ -2910,8 +2916,7 @@ class CourierMachine:
                     self._external_interrupt_pending = None
                     continue
                 if self._int0_pending is not None:
-                    if self.quad_usart is not None or self.quad_c50 is not None:
-                        self._quad_irq_in_service = True
+                    self._int0_in_service = True
                     begin = dispatch_interrupt(self._int0_pending, software=False)
                     self._int0_pending = None
                     continue
