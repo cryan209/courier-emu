@@ -768,18 +768,17 @@ void C5xCore::op_samm()
 	CYCLES(1);
 }
 
+// SPRU056D 6-229: right by 16 if TREG1 bit 4 is set, otherwise untouched;
+// SXM picks the fill, and neither C nor OV is affected. SATL supplies the
+// 0-15 half of the same 0-31 bit shift.
 void C5xCore::op_sath()
 {
-	int count = m_treg1 & 0xf;
-	int64_t shifted = int64_t(m_acc) * (int64_t(1) << count);
-	if (shifted > INT32_MAX) {
-		m_st0.ov = 1;
-		m_acc = INT32_MAX;
-	} else if (shifted < INT32_MIN) {
-		m_st0.ov = 1;
-		m_acc = INT32_MIN;
-	} else {
-		m_acc = int32_t(shifted);
+	if (m_treg1 & 0x10)
+	{
+		if (m_st1.sxm)
+			m_acc = (int32_t)(m_acc) >> 16;
+		else
+			m_acc = (uint32_t)(m_acc) >> 16;
 	}
 	CYCLES(1);
 }
