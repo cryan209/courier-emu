@@ -255,7 +255,11 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 // cancels out of MCLK / (2 x A x B), but the DSP got that much more compute
 // per sample than it has.
 static constexpr uint64_t BOARD_OSCILLATOR_HZ = 40'320'000;
-static constexpr uint64_t C5X_CLOCK_HZ = BOARD_OSCILLATOR_HZ / 2;
+// The oscillator itself, not half of it. Unmeasured: at 20.16 MHz the V.34
+// answerer's 70-tap echo-canceller update alone (~2080 instructions a sample)
+// overruns the 1964-cycle sample budget, so no cost model lets that clock run
+// it. TCLKX (DSP pin 96, 5.04 vs 10.08 MHz) or CLKMD1/CLKMD2 would settle it.
+static constexpr uint64_t C5X_CLOCK_HZ = BOARD_OSCILLATOR_HZ;
 static constexpr uint16_t ASIC_CODEC_TIMING_BASE = 0x0078;
 
 void C5xCore::set_hybrid_return(uint32_t return_scale, uint32_t delay)
@@ -1374,7 +1378,8 @@ void C5xCore::step()
             (previous_pc >= 0x0200 && previous_pc < 0x0300) ||
             (previous_pc >= m_trace_first && previous_pc <= m_trace_last)) {
             if (m_pc_trace.size() >= 512) m_pc_trace.pop_front();
-            m_pc_trace.push_back((uint32_t(previous_pc) << 16) | m_op);
+            m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) |
+                                 uint32_t(m_acc));
         }
         (this->*s_opcode_table[m_op >> 8])();
         if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;

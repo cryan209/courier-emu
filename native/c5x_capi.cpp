@@ -465,8 +465,9 @@ void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values,
     if (!handle || !values || count < 2) return;
     const auto &trace = static_cast<C5xCore *>(handle)->pc_trace();
     if (index >= trace.size()) return;
-    values[0] = trace[index] >> 16;
-    values[1] = trace[index] & 0xffff;
+    values[0] = trace[index] >> 48;
+    values[1] = (trace[index] >> 32) & 0xffff;
+    if (count >= 3) values[2] = trace[index] & 0xffffffff;
 }
 
 void courier_c5x_get_serial_state(void *handle, uint64_t *values, std::size_t count)

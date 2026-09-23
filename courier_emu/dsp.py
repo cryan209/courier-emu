@@ -735,9 +735,9 @@ class NativeC5x:
         count = int(self.library.courier_c5x_get_pc_trace_count(self.handle))
         result = []
         for index in range(count):
-            values = (ctypes.c_uint64 * 2)()
-            self.library.courier_c5x_get_pc_trace(self.handle, index, values, 2)
-            result.append({"pc": int(values[0]), "op": int(values[1])})
+            values = (ctypes.c_uint64 * 3)()
+            self.library.courier_c5x_get_pc_trace(self.handle, index, values, 3)
+            result.append({"pc": int(values[0]), "op": int(values[1]), "acc": int(values[2])})
         return result
 
     def mailbox_events(self) -> list[dict[str, int]]:

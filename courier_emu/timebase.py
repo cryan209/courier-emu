@@ -111,7 +111,7 @@ class Timebase:
 
 # The 40.320 MHz can feeds the ASIC on both 186 boards, and the ASIC clocks the
 # C52 from it. Stated once because it is the one figure the two boards share.
-ASIC_DSP_CLOCK_HZ = 20_160_000
+ASIC_DSP_CLOCK_HZ = 40_320_000  # inferred, not measured: see C5X_CLOCK_HZ
 
 COURIER_20MHZ = Timebase(
     name="courier-20.16",

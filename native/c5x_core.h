@@ -80,7 +80,7 @@ constexpr uint16_t C5X_SHARED_FIRST = 0x8000, C5X_SHARED_LAST = 0xFEFF;
 // board's AC01 runs at until the firmware programs its A and B dividers.
 // Both are frame periods in C5x cycles.
 inline constexpr unsigned TDM_FRAME_PERIOD_CYCLES = 258;
-inline constexpr unsigned AC01_POWERUP_FRAME_PERIOD_CYCLES = 2800;
+inline constexpr unsigned AC01_POWERUP_FRAME_PERIOD_CYCLES = 5600;  // 7200 Hz at 40.32 MHz
 
 class C5xCore {
 public:
@@ -340,7 +340,8 @@ public:
     const std::vector<DataEvent> &data_events() const { return m_data_events; }
     uint64_t data_write_count(uint16_t address) const { return m_data_write_counts[address]; }
     const PortStat &io_port_stat(uint16_t port) const { return m_io_port_stats[port]; }
-    const std::deque<uint32_t> &pc_trace() const { return m_pc_trace; }
+    // Each entry: pc << 48 | opcode << 32 | ACC before the instruction.
+    const std::deque<uint64_t> &pc_trace() const { return m_pc_trace; }
     // The trace windows. Two are compiled in for the call overlay and the
     // low-page stub; a third is settable so a caller can watch a handler
     // elsewhere - 3.1.2's mailbox tag 0x13 enters ee20, which neither
@@ -401,7 +402,7 @@ private:
     std::vector<DataEvent> m_data_events;
     std::array<uint64_t, 65536> m_data_write_counts{};
     std::array<PortStat, 65536> m_io_port_stats{};
-    std::deque<uint32_t> m_pc_trace;
+    std::deque<uint64_t> m_pc_trace;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_trace_data_writes = false;
     uint16_t m_trace_filter = 0;
