@@ -3033,7 +3033,13 @@ class CourierDspBridge:
     # other side of the hybrid to lose signal into, so the transmit sample
     # feeds the receive input directly - 256 is unity, with no delay line.
     HYBRID_RETURN_ON_HOOK = 256
-    HYBRID_RETURN_OFF_HOOK = 256
+    # Off hook the hybrid is terminated by a line and returns only part of the
+    # transmit. 26 (-20 dB) is a STAND-IN for the DAA's trans-hybrid loss,
+    # which has not been measured. Unity is measured to be wrong: the
+    # answerer hears its own 2100 Hz answer tone at full level, its 1800 Hz
+    # band (@2f bit 6, tested at 0x9f84 before the CM band) trips, and
+    # 0x9fa3 abandons V.8 for the non-V.8 task at 0xb07c before CM arrives.
+    HYBRID_RETURN_OFF_HOOK = 26
     # Codec frames.
     HYBRID_RETURN_DELAY = 0
 

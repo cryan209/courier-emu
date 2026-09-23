@@ -100,6 +100,14 @@ class LineLink:
     listen: bool = False
     audio_only: bool = False
     record_prefix: str | None = None
+    # Amplitude the loop keeps between the two ends. A STAND-IN, not a
+    # measurement: 0.1 is 20 dB, inside the usual 10-30 dB of a real line,
+    # and nothing here is calibrated against the board. What is measured is
+    # that 1.0 cannot be right: a lossless line lands the far end's CM near
+    # full scale, the answerer's V.21 receiver assembles garbage (fec8/fec9 =
+    # 2d ae where e0 c1 belongs), and V.8 never completes. The -rx recording
+    # is the far end's transmit as it left, before this loss.
+    loss_gain: float = 0.1
     frames: int = 0
     peer_off_hook: bool = False
     peer_ringing: bool = False
@@ -208,7 +216,7 @@ class LineLink:
         self.peer_ringing = bool(ringing)
         self.peer_call_state = int(call_state)
         peer = LineFrame.decode(header, body)
-        self._inbound.extend(peer.samples)
+        self._inbound.extend(int(sample * self.loss_gain) for sample in peer.samples)
         self.received_samples += len(peer.samples)
 
     def receive_audio(self, count: int | None = None) -> list[int]:
