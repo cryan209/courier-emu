@@ -857,8 +857,12 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // via set_io when overlay data is available at 0x58-0x5b, and the
         // DSP clears them by writing them back after consumption.
         m_io[port] &= uint16_t(~value);
-    else if (m_rom_codec && port >= 0x50 && port <= 0x5f)
+    else if (m_rom_codec && port >= 0x50 && port <= 0x5f) {
         m_asic_output[port - 0x50] = value;
+        // PA6 is the data lanes' handshake, and the resident clears a bit by
+        // writing it back (82de, 8332), as it does PA7's.
+        if (port == 0x56) m_io[port] &= uint16_t(~value);
+    }
     else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
         // The CPU and DSP each own a holding register. A DSP reply must not
         // overwrite an incoming CPU word, or vice versa.

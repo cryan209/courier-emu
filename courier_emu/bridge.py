@@ -176,6 +176,22 @@ DSP_RUNTIME_PORTS = asic.cpu_ports("tag") + asic.cpu_ports("word")
 # mailbox. That is the order the hardware runs them in.
 ROM_COMMAND_PORT = 0x18
 ROM_CHECKSUM_STROBE = 4
+
+# Once the resident runs, the same window is six data lanes each way, one word
+# per bank: CPU ports 0x40+4i (low) and 0x42+4i (high) are the C5x's PA 0x58+i.
+# The resident walks them with AR6 circular over 0x58..0x5d (CBSR2/CBER2 at
+# 8038) and keeps its handshake in PA6: bit i is a CPU word waiting in bank i,
+# which 82c1 takes; bit 8+i is room for a word to the CPU, which 8320 fills.
+# It writes each bit back to clear it. The CPU commits a bank with
+# `out 0x18, bit` and acknowledges one with `out 0x1a, bit`, and reads both
+# ports as the opposite sense - bank free, word waiting - above a constant
+# 0xc0 (the board reads c0/c6/c7 under &T8, ff idle; docs/asic-port-map.md).
+LANE_BANKS = 6
+LANE_RX_ACK_PORT = 0x1A
+LANE_FIRST_PORT = 0x40
+LANE_DSP_FIRST = 0x58
+LANE_DSP_STATUS = 0x56
+LANE_MASK = (1 << LANE_BANKS) - 1
 # The value e3aa writes to 0x1c as it leaves, on both its paths.
 ENTRY_REQUEST_COMPLETE = 2
 
@@ -2259,6 +2275,20 @@ class CourierDspBridge:
             return
         if self.asic_transparent and self._runtime_mode and size == 1:
             self._mirror_port(port, value)
+        if (
+            port in (self.transfer.command_port, LANE_RX_ACK_PORT)
+            and size == 1
+            and self._lanes_live()
+        ):
+            bits = value & LANE_MASK
+            if port == self.transfer.command_port:
+                for bank in range(LANE_BANKS):
+                    if bits & (1 << bank):
+                        self.core.set_io(LANE_DSP_FIRST + bank, self._lane_word(bank))
+            else:
+                bits <<= 8
+            self.core.set_io(LANE_DSP_STATUS, self.core.io(LANE_DSP_STATUS) | bits)
+            return
         if port == 0x1C:
             if (
                 self.transfer.checksum_strobe is not None
@@ -2523,7 +2553,40 @@ class CourierDspBridge:
             self.mailbox_windows[self.window.hex()] += 1
             self._publish_window()
 
+    def _lanes_live(self) -> bool:
+        """Whether the transfer window is the resident's data lanes.
+
+        Only the ROM protocol shares its window with them, and only once the
+        mask-ROM loader has handed over and is no longer polling for groups.
+        """
+        return (
+            self.boot_rom_enabled
+            and self.active
+            and self.launched
+            and not self._rom_loader_armed()
+        )
+
+    def _lane_word(self, bank: int) -> int:
+        """The word the CPU has written into one bank's pair of lane ports."""
+        word = 0
+        for half in (0, 1):
+            strobe, lane = self._lanes[LANE_FIRST_PORT + 4 * bank + 2 * half]
+            word |= self._windows[strobe][lane] << (8 * half)
+        return word
+
     def read(self, port: int, size: int) -> int | None:
+        if size == 1 and (
+            port in (self.transfer.command_port, LANE_RX_ACK_PORT)
+            or LANE_FIRST_PORT <= port < LANE_FIRST_PORT + 4 * LANE_BANKS
+        ) and self._lanes_live():
+            status = self.core.io(LANE_DSP_STATUS)
+            if port == self.transfer.command_port:
+                return 0xC0 | (~status & LANE_MASK)
+            if port == LANE_RX_ACK_PORT:
+                return 0xC0 | (~(status >> 8) & LANE_MASK)
+            offset = port - LANE_FIRST_PORT
+            word = self.core.io_output(LANE_DSP_FIRST + offset // 4)
+            return (word >> (8 if offset & 2 else 0)) & 0xFF
         if (
             port == DSP_COMMAND_PORT
             and self.transfer.command_port != DSP_COMMAND_PORT
