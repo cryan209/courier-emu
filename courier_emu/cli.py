@@ -405,6 +405,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
         command.extend(("--dsp-trace-range", args.dsp_trace_range))
     if getattr(args, "dsp_write_watch", None):
         command.extend(("--dsp-write-watch", args.dsp_write_watch))
+    if getattr(args, "mem_watch", ""):
+        command.extend(("--mem-watch", args.mem_watch))
     if getattr(args, "track_executed", False):
         command.append("--track-executed")
     if args.line_frames is not None:
@@ -1418,6 +1420,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="record every write to this C5x data cell on both sides, with "
         "the program counter that made it, for dsp_data_events",
+    )
+    link.add_argument(
+        "--mem-watch",
+        default="",
+        metavar="FIRST:LAST",
+        help="record 80186 memory writes in this physical range on both sides, "
+        "hex, with the program address that made each",
     )
     link.add_argument(
         "--dsp-trace-range",
