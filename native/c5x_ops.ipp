@@ -1006,8 +1006,10 @@ void C5xCore::op_xorb()
 
 void C5xCore::op_zalr()
 {
-	// Zero the low accumulator after rounding it into the high word.
-	m_acc = int32_t((uint32_t(m_acc) + 0x00008000U) & 0xffff0000U);
+	// SPRU056D 6-287: (dma) -> ACC(31-16), 8000h -> ACC(15-0). A memory load
+	// with a rounding half-LSB, not a rounding of what the accumulator held.
+	uint16_t data = DM_READ16(GET_ADDRESS());
+	m_acc = int32_t((uint32_t(data) << 16) | 0x8000U);
 	CYCLES(1);
 }
 
