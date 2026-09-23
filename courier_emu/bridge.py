@@ -66,7 +66,7 @@ LINE_RATE = DAA_SAMPLE_RATE
 # do not share this ratio - 5.93 against 4.63 - which is why it is asked of
 # the board rather than written out here.
 DSP_CLOCK_RATIO = 1
-DSP_STEPS_PER_X86 = DEFAULT_COURIER.dsp_steps_per_x86
+DSP_CYCLES_PER_X86 = DEFAULT_COURIER.dsp_cycles_per_x86
 
 
 class Resampler:
@@ -688,14 +688,16 @@ class CourierDspBridge:
         self._dial_tone_digit: str | None = None
         self._dial_digits_commanded = ""
         self._codec_instructions = 0
-        # Fractional DSP steps carried between batches, so the average ratio
-        # stays exact rather than truncating once per batch.
-        self._dsp_step_debt = 0.0
+        # DSP cycles owed, carried between batches so the average ratio stays
+        # exact. It goes negative when a batch's last instruction overshoots.
+        self._dsp_cycle_debt = 0.0
+        # Recent cycles per instruction, to size each step call.
+        self._dsp_cpi = 1.35
         # The board's own ratio, so a re-pin reaches the scheduler. It starts
         # at the 302/403's and `set_timebase` moves it when the firmware's
         # timer constant identifies a different board.
         self.timebase: Timebase = DEFAULT_COURIER
-        self.dsp_steps_per_x86 = DEFAULT_COURIER.dsp_steps_per_x86
+        self.dsp_cycles_per_x86 = DEFAULT_COURIER.dsp_cycles_per_x86
         self._line_instructions = 0
         # The ASIC's 16-bit status latch, as the CPU reads it at 0x5c/0x5e.
         # Not a C50 register: see `_publish_connected_event`.
@@ -2553,6 +2555,29 @@ class CourierDspBridge:
             self.mailbox_windows[self.window.hex()] += 1
             self._publish_window()
 
+    def _run_dsp_cycles(self) -> None:
+        """Run the C5x for the cycles it is owed, not a count of instructions.
+
+        Its codec frames and timers run on cycles, and an instruction costs
+        anywhere from one to dozens of them, so this is what keeps its sample
+        clock on the line's. Every step costs at least a cycle (IDLE included),
+        so the loop always ends.
+        """
+        if self._dsp_cycle_debt < 1:
+            return
+        state = self.core.state()
+        start_cycles, start_instructions = state["cycles"], state["instructions"]
+        target = start_cycles + int(self._dsp_cycle_debt)
+        cycles = start_cycles
+        while cycles < target:
+            self.core.step(max(1, int((target - cycles) / self._dsp_cpi)))
+            state = self.core.state()
+            cycles = state["cycles"]
+        self._dsp_cycle_debt -= cycles - start_cycles
+        ran = state["instructions"] - start_instructions
+        if ran > 0:
+            self._dsp_cpi = 0.9 * self._dsp_cpi + 0.1 * max(1.0, (cycles - start_cycles) / ran)
+
     def _lanes_live(self) -> bool:
         """Whether the transfer window is the resident's data lanes.
 
@@ -2796,9 +2821,7 @@ class CourierDspBridge:
         #
         # The remainder is carried rather than truncated, so the average ratio
         # stays exact instead of losing a fraction of a step per batch.
-        self._dsp_step_debt += self._x86_ticks * self.dsp_steps_per_x86
-        dsp_steps = int(self._dsp_step_debt)
-        self._dsp_step_debt -= dsp_steps
+        self._dsp_cycle_debt += self._x86_ticks * self.dsp_cycles_per_x86
         self._x86_ticks = 0
         try:
             if self.sip is not None and self._sip_line is None:
@@ -2918,7 +2941,7 @@ class CourierDspBridge:
                 self._resume_armed_call()
             serial = self.core.serial_state()
             self._maybe_assist_t1_acquisition(serial)
-            self.core.step(dsp_steps)
+            self._run_dsp_cycles()
             self._collect_dsp_messages()
             if (
                 not self._call_overlay_active
@@ -2947,7 +2970,7 @@ class CourierDspBridge:
         is carried across is an ordinary scheduling batch, not a discontinuity.
         """
         self.timebase = timebase
-        self.dsp_steps_per_x86 = timebase.dsp_steps_per_x86
+        self.dsp_cycles_per_x86 = timebase.dsp_cycles_per_x86
 
     def _service_codec(self) -> None:
         """Advance the silicon DAA by one ASIC service frame.

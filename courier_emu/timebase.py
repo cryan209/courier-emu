@@ -38,7 +38,7 @@ and call-heavy (23% Jcc, 10% RET, 8% CALL) and is not the mix a call runs at.
 The DSP's clock is **not** the CPU's on every board. `docs/asic-pinout.md`
 traces the C5x's `X2/CLKIN` to the ASIC, which runs from the shared 40.320 MHz
 can on both 186 boards - so the 2806's faster crystal is the CPU's alone and
-the DSP runs at the same rate either way. That is why `dsp_steps_per_x86`
+the DSP runs at the same rate either way. That is why `dsp_cycles_per_x86`
 differs between two boards that share a `cycles_per_instruction`.
 """
 from __future__ import annotations
@@ -81,8 +81,15 @@ class Timebase:
         return self.cycles_per_instruction / self.timer_divisor
 
     @property
-    def dsp_steps_per_x86(self) -> float:
-        """C5x instructions to each 80186 one. The C5x is single-cycle."""
+    def dsp_cycles_per_x86(self) -> float:
+        """C5x clock cycles to each 80186 instruction.
+
+        Cycles, not instructions: the core charges what each instruction
+        costs (1.35 a call's mix, n+2 for a repeated MAC), and its codec
+        frames and timers run on those cycles. Stepping this many
+        instructions ran the DSP's sample clock 5-35% fast against the line,
+        by however much its current code happened to cost.
+        """
         if self.dsp_clock_hz is None:
             return 0.0
         # Taken from the clocks rather than through instructions_per_second,
@@ -98,7 +105,7 @@ class Timebase:
             "instructions_per_second": self.instructions_per_second,
             "timer_clock_hz": self.timer_clock_hz,
             "dsp_clock_hz": self.dsp_clock_hz,
-            "dsp_steps_per_x86": round(self.dsp_steps_per_x86, 4),
+            "dsp_cycles_per_x86": round(self.dsp_cycles_per_x86, 4),
         }
 
 

@@ -151,7 +151,7 @@ ROM_SHA256 = "d57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9"
 # Both processors run from the board's 20.16 MHz clock, so the C5x advances at
 # the 80186's cycles-per-instruction, exactly as bridge.py derives it for the
 # 302/403. Reused rather than restated so the two cannot drift apart.
-from .bridge import DSP_STEPS_PER_X86  # noqa: E402
+from .bridge import DSP_CYCLES_PER_X86  # noqa: E402
 
 
 @dataclass
@@ -446,7 +446,7 @@ class QuadC50Endpoint:
         """Advance the C5x by its share of `cpu_instructions`."""
         if self.core is None:
             return
-        self._debt += cpu_instructions * DSP_STEPS_PER_X86
+        self._debt += cpu_instructions * DSP_CYCLES_PER_X86
         budget = int(self._debt)
         if budget <= 0:
             return

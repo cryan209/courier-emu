@@ -139,7 +139,7 @@ KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
 # handler and counting the ring's wraps.
 #
 # The harness could not run at it until the DSP/CPU instruction ratio was fixed
-# (bridge.DSP_STEPS_PER_X86). While that ratio was six times too small the C52
+# (bridge.DSP_CYCLES_PER_X86). While that ratio was six times too small the C52
 # could not fill the intervals the supervisor was timing, so the supervisor's
 # dial ran 4.46x slower than the audio it produced, and this constant had to
 # absorb the difference - it stood at 391, then 536, both of them that one error
