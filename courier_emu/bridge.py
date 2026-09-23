@@ -2645,7 +2645,17 @@ class CourierDspBridge:
             if not self._runtime_mode:
                 return (1 << (size * 8)) - 1
             if self.boot_rom_enabled:
-                status = 1
+                # Room for a host word is the inverse of the DSP's pending flag:
+                # the dispatcher at 8387 clears PA7 bit 0 once it has read the
+                # tag and word. Reporting room unconditionally let the
+                # supervisor queue a second word over one the DSP had not yet
+                # taken - 000a:0003 landed on 0057:0001 one millisecond after
+                # it, and the resident never saw the 0057.
+                pending = (
+                    self.core.io(HOST_STATUS_CELL) & HOST_MESSAGE_PENDING
+                    or self._runtime_pending is not None
+                )
+                status = 0 if pending else 1
                 # Bit 1 is "a word is waiting", and the C50's own sender is a
                 # source of one just as the bridge's queue is. Reporting only
                 # the queue meant the CPU never saw the bit for a word the
