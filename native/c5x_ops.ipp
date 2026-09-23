@@ -343,14 +343,14 @@ void C5xCore::op_invalid()
 
 void C5xCore::op_abs()
 {
+	// SPRU056D ABS: 0 -> C always; 8000 0000h sets OV and saturates under OVM.
+	m_st1.c = 0;
 	if (m_acc < 0) {
 		if (uint32_t(m_acc) == 0x80000000U) {
 			m_st0.ov = 1;
-			m_st1.c = 0;
 			m_acc = m_st0.ovm ? 0x7fffffff : int32_t(0x80000000U);
 		} else {
 			m_acc = -m_acc;
-			m_st1.c = (m_acc == 0) ? 1 : 0;
 		}
 	}
 	CYCLES(1);
@@ -894,7 +894,9 @@ void C5xCore::op_sub_s16_mem()
 {
 	uint16_t data = DM_READ16(GET_ADDRESS());
 	uint32_t value = uint32_t(data) << 16;
-	m_acc = SUB(uint32_t(m_acc), value, false);
+	// SPRU056D 6-260: with a 16-bit shift, a borrow clears C and no borrow
+	// leaves it alone, so a 32-bit subtraction can chain its borrow.
+	m_acc = SUB(uint32_t(m_acc), value, true);
 	CYCLES(1);
 }
 
