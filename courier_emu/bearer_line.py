@@ -41,6 +41,29 @@ CPU_INSTRUCTIONS_PER_SAMPLE = INSTRUCTIONS_PER_SECOND // LINE_SAMPLE_RATE
 # clock: one frame, so a far end blocked on this one waits no longer than that.
 HIGHWAY_STALL_SAMPLES = LINE_FRAME_SAMPLES
 PCMU_SILENCE = 0xFF
+
+# Where each end's full scale sits, so a sample crosses at its real level. The
+# same figures MicaEmu's courier_line_peer uses, so the 403 hears an I-modem
+# at the levels it hears MICA:
+#   - AC01 data manual: a full-scale digital sine is 6 V peak to peak
+#     differential into 600 ohms at 0 dB gain - 2.121 V rms, +8.75 dBm.
+#   - G.711 mu-law: full scale is +3.17 dBm0; decoded to 32124 as sip.py
+#     does, the same PCM16 sine is +3.21 dBm0.
+#   - The Courier's DAA loses 11.4 dB on transmit: the manual gives
+#     "Transmit level: -9 dBm maximum" (docs/1154-00.pdf), and the 4.03
+#     datapump writes its V.8 CM 6.38 dB under the DAC's full-scale sine at
+#     0 dB output gain, +2.37 dBm at the AC01's pins. Its receive loss is
+#     taken as none.
+# The mu-law side is taken to be at the Courier's line terminals: no loop
+# loss beyond the DAA's. The AC01's register 4 gains are not here - the core
+# applies them, and the firmware changes them mid-call.
+AC01_FULL_SCALE_DBM = 8.75
+ULAW_FULL_SCALE_DBM0 = 3.21
+DAA_TX_LOSS_DB = 11.4
+DAA_RX_LOSS_DB = 0.0
+# Courier codec -> mu-law, and mu-law -> Courier codec.
+TO_ULAW_DB = AC01_FULL_SCALE_DBM - ULAW_FULL_SCALE_DBM0 - DAA_TX_LOSS_DB
+FROM_ULAW_DB = ULAW_FULL_SCALE_DBM0 - AC01_FULL_SCALE_DBM - DAA_RX_LOSS_DB
 LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // LINE_SAMPLE_RATE
 
 
@@ -56,15 +79,16 @@ class BearerLineLink:
     # before the switch connects the call.
     awaits_answer = True
 
-    def __init__(self, line: LineLink, *, gain_db: float = 0.0) -> None:
+    def __init__(self, line: LineLink) -> None:
+        # The line carries the Courier's codec samples untouched, so the
+        # Courier must run its end digital too (COURIER_LINE_DIGITAL=1): this
+        # end sets both directions' levels.
+        if not line.digital:
+            raise ValueError("BearerLineLink sets the levels itself; the "
+                             "line must be digital")
         self.line = line
-        # Between the exchange's codec and the analogue Courier's line units.
-        # Nothing measures it: mu-law full scale is mapped to 16-bit full
-        # scale, and the analogue board's codec is modelled against its own
-        # full scale, so the two ends' levels are only as comparable as those
-        # two conventions are. Applied both ways, like the loop it stands in
-        # for.
-        self.gain = 10 ** (gain_db / 20)
+        self.from_line = 10 ** (TO_ULAW_DB / 20)       # Courier -> mu-law
+        self.into_courier = 10 ** (FROM_ULAW_DB / 20)  # mu-law -> Courier
         self.answered = False
         self.cleared = False
         self._offered = False
@@ -200,7 +224,7 @@ class BearerLineLink:
             * CPU_INSTRUCTIONS_PER_SAMPLE,
             off_hook=off_hook,
             ringing=ringing,
-            samples=([self._clip(ulaw_to_linear(value) * self.gain)
+            samples=([self._clip(ulaw_to_linear(value) * self.into_courier)
                       for value in octets] if through
                      else [0] * len(octets)),
             call_state=state,
@@ -221,7 +245,7 @@ class BearerLineLink:
             self._primed = True
         if through and channel in (1, 2) and incoming:
             dsc.queue_bearer(channel, bytes(
-                linear_to_ulaw(self._clip(sample / self.gain))
+                linear_to_ulaw(self._clip(sample * self.from_line))
                 for sample in incoming))
             self.octets_from_line += len(incoming)
 

@@ -779,29 +779,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--bri-line",
         metavar="PATH",
         help="put the B channel on a `link` line socket, so an analogue "
-             "Courier (`run --line-link PATH`) is the far end: when it dials "
-             "and the line rings, the I-modem is offered a 3.1 kHz mu-law "
-             "call on --bri-call-to, and once it answers the two datapumps "
-             "talk through G.711",
-    )
-    isdn_run.add_argument(
-        "--bri-line-gain",
-        type=float,
-        default=0.0,
-        metavar="DB",
-        help="gain from the I-modem's mu-law to the analogue Courier's line "
-             "units, and its inverse the other way (default 0: mu-law full "
-             "scale is 16-bit full scale). The two codec models share no "
-             "measured calibration",
-    )
-    isdn_run.add_argument(
-        "--bri-line-loss",
-        type=float,
-        default=20.0,
-        metavar="DB",
-        help="loss the line puts on the analogue Courier's signal on its way "
-             "to the I-modem (default 20, the stand-in `link` uses; the "
-             "analogue end applies its own to what the I-modem sends)",
+             "Courier (`COURIER_LINE_DIGITAL=1 run --line-link PATH`) is the "
+             "far end: when it dials and the line rings, the I-modem is "
+             "offered a 3.1 kHz mu-law call on --bri-call-to, and once it "
+             "answers the two datapumps talk through G.711 at the levels in "
+             "bearer_line.py",
     )
     isdn_run.add_argument(
         "--bri-line-listen",
@@ -1696,8 +1678,7 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     bri.media_peer = BearerLineLink(
                         LineLink(args.bri_line, listen=args.bri_line_listen,
-                                 loss_gain=10 ** (-args.bri_line_loss / 20)),
-                        gain_db=args.bri_line_gain)
+                                 digital=True))
                 if args.bri_v120:
                     bri.v120 = V120Link(
                         lli=(LLI_DEFAULT if args.bri_v120_lli is None
