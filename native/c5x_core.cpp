@@ -246,11 +246,10 @@ void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
 }
 
 // The board's 40.320 MHz source reaches the C5x through the ASIC and the
-// external X2/CLKIN path. The C50/51/52 divides that input by two to form
-// CLKOUT1 and its machine cycle (SPRU056D 9.2.1), so the effective core clock
-// used by m_line_frame_period is 20.16 MHz. The 25 MHz this used to carry was
-// chosen to reproduce a
-// shipped constant of 3472 cycles, and it made every frame 24% longer in DSP
+// external X2/CLKIN path. In divide-by-two mode the C50/51/52 would halve it
+// for CLKOUT1 (SPRU056D 9.2.1); the model assumes the PLL x1 strap instead,
+// which only CLKMD1/CLKMD2 can confirm. The 25 MHz this once carried was
+// chosen to reproduce a shipped constant of 3472 cycles, and it made every frame 24% longer in DSP
 // cycles than the board's - the sample rate is unaffected, since the clock
 // cancels out of MCLK / (2 x A x B), but the DSP got that much more compute
 // per sample than it has.
@@ -274,9 +273,8 @@ void C5xCore::configure_digital_pcm(bool enabled, uint16_t idle_codeword,
 {
     m_digital_pcm = enabled;
     m_g711_idle = idle_codeword & 0xff;
-    // A DS0 presents exactly one octet every 125 us. The Quad clocks both its
-    // 80186 and C50 at 20.16 MHz; this is intentionally not the 25 MHz clock
-    // used by the analog Courier's codec model.
+    // A DS0 presents exactly one octet every 125 us, counted in whatever
+    // clock the caller's board runs its C5x at.
     m_line_frame_period = enabled ? unsigned(clock_hz / 8'000) : 258;
     m_codec.tx_ready = true;
 }

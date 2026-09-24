@@ -5,6 +5,7 @@ import time
 
 from .dsp import NativeC5x
 from .imodem_mailbox import ImodemMailbox
+from .timebase import ASIC_DSP_CLOCK_HZ
 
 # Eight-bit time slots in one peripheral-port frame. Two, because the DSP's
 # serial port is in sixteen-bit word format: see _sync_pcm.
@@ -13,12 +14,13 @@ PP_SLOTS = 2
 # nothing on that channel.
 IDLE_CODEWORD = 0xff
 
-# The ASIC clocks the I-modem's C51 and its digital PCM highway. The model uses
-# 20.16 MHz for both sides of the ratio; the PCM result is still exactly 8 kHz.
-# CPU instruction throughput is not a usable substitute for that clock during
-# a live call: Unicorn may run faster or slower than real time, while RTP
-# continues to deliver one sample every 125 us.
-DIGITAL_PCM_CLOCK_HZ = 20_160_000
+# The ASIC clocks the I-modem's C51 and its digital PCM highway from the same
+# 40.32 MHz can as the analogue boards, so the model uses that figure for both
+# sides of the ratio; the PCM result is still exactly 8 kHz. CPU instruction
+# throughput is not a usable substitute for that clock during a live call:
+# Unicorn may run faster or slower than real time, while RTP continues to
+# deliver one sample every 125 us.
+DIGITAL_PCM_CLOCK_HZ = ASIC_DSP_CLOCK_HZ
 REALTIME_STEP_BATCH = 65_536
 
 ROM_SHA256 = 'd57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9'
@@ -99,7 +101,7 @@ class ImodemDsp(ImodemMailbox):
         The ordinary harness couples C51 progress to 386 instructions.  That
         remains useful and deterministic for offline runs.  A live SIP bearer
         is different: its far end has an independent 8 kHz clock, so while the
-        B channel is active we advance the modeled C51 clock at 20.16 MHz
+        B channel is active we advance the modeled C51 clock at 40.32 MHz
         directly from elapsed wall time.  This keeps both directions at one
         codeword per 125 us without changing firmware timers elsewhere.
         """

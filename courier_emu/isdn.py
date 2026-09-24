@@ -10,6 +10,7 @@ from .am79c30 import Am79C30
 from .flash_device import FLASH_BASE, FLASH_SIZE, FlashDevice
 from .imodem_config import NVRAM_BASE
 from .bri import BriNetwork
+from .timebase import ASIC_DSP_CLOCK_HZ
 from . import imodem_trace
 from .pic import InterruptControllers
 from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
@@ -240,17 +241,17 @@ RTOS_SERVICE_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // 50   # 20 ms
 # scheduling convenience, and the board carries both halves of it on two
 # oscillators (docs/imodem-board-map.md): the ECLIPTEK 40.320M that clocks the
 # ASIC - the same part and frequency both analogue boards carry - and the
-# ECLIPTEK 50.000M that is the 386EX's own. The DSP runs at half the first,
-# 20.16 MHz, and is single-cycle, so it retires 20,160,000 instructions a
-# second; the 386EX runs at half the second, 25 MHz. The ratio is therefore
+# ECLIPTEK 50.000M that is the 386EX's own. The DSP runs at the first, 40.32
+# MHz, as the analogue boards' C52 does (timebase.ASIC_DSP_CLOCK_HZ, inferred,
+# not measured); the 386EX runs at half the second, 25 MHz. The ratio is
 #
-#   20.16 / 25 = 0.8064 DSP instructions per CPU *cycle*
+#   40.32 / 25 = 1.6128 DSP instructions per CPU *cycle*
 #
 # times the 386's cycles per instruction, which pit.py states once for the
 # whole harness: five, putting the CPU at 5M instructions a second. So the
-# ratio is 4.03, and it is taken from there rather than written out, because
+# ratio is 8.06, and it is taken from there rather than written out, because
 # the two are the same statement about the same pair of parts.
-DSP_INSTRUCTION_RATE = 20_160_000          # 40.320 MHz / 2, and single-cycle
+DSP_INSTRUCTION_RATE = ASIC_DSP_CLOCK_HZ
 DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = round(
     DSP_INSTRUCTION_RATE / INSTRUCTIONS_PER_SECOND
 )

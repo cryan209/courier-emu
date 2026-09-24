@@ -148,10 +148,12 @@ from .bridge import C50_ROM_FRAME_IRQ as ROM_FRAME_IRQ  # noqa: E402
 
 ROM_SHA256 = "d57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9"
 
-# Both processors run from the board's 20.16 MHz clock, so the C5x advances at
-# the 80186's cycles-per-instruction, exactly as bridge.py derives it for the
-# 302/403. Reused rather than restated so the two cannot drift apart.
+# The C50 is clocked from the same 40.32 MHz can through the same ASIC as the
+# 302/403's C52, so it advances against the 80186 exactly as bridge.py derives
+# it, and its DS0 period is counted in that clock. Both are reused rather than
+# restated so the two boards cannot drift apart. Inferred, not measured.
 from .bridge import DSP_CYCLES_PER_X86  # noqa: E402
+from .timebase import ASIC_DSP_CLOCK_HZ  # noqa: E402
 
 
 @dataclass
@@ -409,7 +411,8 @@ class QuadC50Endpoint:
 
     def _activate_pcm(self) -> None:
         if self.digital_call:
-            self.core.configure_digital_pcm(idle_codeword=self.g711_idle)
+            self.core.configure_digital_pcm(
+                idle_codeword=self.g711_idle, clock_hz=ASIC_DSP_CLOCK_HZ)
             self.core.configure_line_frame_interrupt(ROM_FRAME_IRQ, 0xFFFF)
             self._pcm_active = True
             if self._g711_rx:

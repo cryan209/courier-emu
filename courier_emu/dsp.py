@@ -493,7 +493,7 @@ class NativeC5x:
 
     def configure_digital_pcm(self, enabled: bool = True, *,
                               idle_codeword: int = 0xff,
-                              clock_hz: int = 20_160_000) -> None:
+                              clock_hz: int) -> None:
         """Clock the C50 serial port as one 8-bit, 8 kHz DS0 timeslot."""
         if not 0 <= idle_codeword <= 0xff:
             raise ValueError("G.711 idle codeword must be an octet")
