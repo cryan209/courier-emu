@@ -296,6 +296,10 @@ class Am79C30:
     bearer_tx: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
     bearer_frames: int = 0
     bearer_routed: Counter = field(default_factory=Counter)
+    # Frames a channel had no network octet for, once any had been queued:
+    # each one is an idle codeword spliced into the far end's audio.
+    bearer_underruns: Counter = field(default_factory=Counter)
+    bearer_rx_fed: dict = field(default_factory=lambda: {1: False, 2: False})
 
     def bearer_routes(self) -> list[tuple[int, int]]:
         routes = []
@@ -330,6 +334,8 @@ class Am79C30:
         if channel not in (1, 2):
             raise ValueError('bearer channel must be 1 or 2')
         self.bearer_rx[channel].extend(octets)
+        if octets:
+            self.bearer_rx_fed[channel] = True
 
     def clock_bearer(self, peripheral: dict[int, int], idle: int = 0xff) -> dict[int, int]:
         """Exchange one 8 kHz frame through the programmed MUX connections.
@@ -338,11 +344,18 @@ class Am79C30:
         numbers. No default connection bypasses the firmware's MCR writes.
         """
         inputs = {port: value & 0xff for port, value in peripheral.items()}
+        routes = self.bearer_routes()
         for channel in (1, 2):
             queue = self.bearer_rx[channel]
-            inputs[channel] = queue.popleft() if queue and self.activated else idle
+            if queue and self.activated:
+                inputs[channel] = queue.popleft()
+            else:
+                inputs[channel] = idle
+                if (self.activated and self.bearer_rx_fed[channel]
+                        and any(channel in route for route in routes)):
+                    self.bearer_underruns[channel] += 1
         outputs = {port: idle for port in range(1, 9)}
-        for left, right in self.bearer_routes():
+        for left, right in routes:
             if not self.activated and (left in (1, 2) or right in (1, 2)):
                 continue
             outputs[left] = inputs.get(right, idle)
@@ -629,6 +642,7 @@ class Am79C30:
                 "peripheral_slots": self.peripheral_slots(2),
                 "routes": self.bearer_routes(),
                 "routed_frames": dict(self.bearer_routed),
+                "underruns": dict(self.bearer_underruns),
                 "rx_pending": {channel: len(q) for channel, q in self.bearer_rx.items()},
             },
             "d_channel": {

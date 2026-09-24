@@ -545,6 +545,7 @@ class BriNetwork:
     _setup_retransmissions: int = 0
     _setup: bytes = b""
     _call_originated_by_network: bool = False
+    _awaiting_answer: bool = False
     call_reference: int | None = None
     call_state: str = "null"
     events: list[tuple[int, str]] = field(default_factory=list)
@@ -599,7 +600,7 @@ class BriNetwork:
                 and self.media_peer is not None \
                 and hasattr(self.media_peer, "remote_ended") \
                 and self.media_peer.remote_ended():
-            self._note("the SIP peer cleared the call: sending DISCONNECT")
+            self._note("the far end cleared the call: sending DISCONNECT")
             if self.call_reference is not None:
                 self._send_layer3(self._call_link_tei(), q931_message(
                     DISCONNECT, self.call_reference,
@@ -628,9 +629,18 @@ class BriNetwork:
                 # call media, and the cursor keeps it from appearing as such.
                 self.media_tx.extend(fresh)
             self._media_tx_cursor[channel] = len(stream)
+        peer = self.v120 if self.v120 is not None else self.media_peer
+        if peer is not None and hasattr(peer, "clock"):
+            # A far end with a frame clock of its own - a socket line - takes
+            # the bearer whole, idle or not, because it has to keep time
+            # whether or not a call is up.
+            if active:
+                peer.start()
+            peer.clock(dsc, self.media_channel if active else None,
+                       self.instructions)
+            return
         if not active:
             return
-        peer = self.v120 if self.v120 is not None else self.media_peer
         if peer is not None:
             # The bearer is a conversation rather than a recording: what the
             # modem sent decides what goes back, one octet for one octet.
@@ -721,6 +731,7 @@ class BriNetwork:
         self.call_state = "null"
         self.call_reference = None
         self.call_tei = None
+        self._awaiting_answer = False
         self._t303_expiry = None
         self.media_channel = None
         for peer in (self.v120, self.media_peer):
@@ -970,7 +981,7 @@ class BriNetwork:
                 # the I-modem rather than the CLI's data-bearer default.
                 self.bearer = audio_bearer(CAPABILITY_AUDIO_31KHZ, LAW_MU)
                 self._note(
-                    f"inbound SIP call from {self.call_from or '(unknown)'}"
+                    f"inbound call from {self.call_from or '(unknown)'}"
                 )
                 self._place_call()
         if (self.call_at is not None and not self._call_placed
@@ -978,6 +989,14 @@ class BriNetwork:
             self._place_call()
         if self._t303_expiry is not None and self.instructions >= self._t303_expiry:
             self._t303()
+        if (self._awaiting_answer and self.call_reference is not None
+                and self.media_peer is not None
+                and self.media_peer.far_end_answered()):
+            self._awaiting_answer = False
+            self._note("the far end answered: CONNECT to the modem")
+            self._send_layer3(self._call_link_tei(), q931_message(
+                CONNECT, self.call_reference, False))
+            self.call_state = "connect-request"
 
     def _establish(self) -> None:
         self.state = AWAITING_ESTABLISH
@@ -1121,6 +1140,12 @@ class BriNetwork:
                 CALL_PROCEEDING, reference, False,
                 channel_identification(self.media_channel)))
             self._send_layer3(tei, q931_message(ALERTING, reference, False))
+            if peer is not None and getattr(peer, "awaits_answer", False):
+                # A far end that has to be rung first: the switch holds
+                # CONNECT until it answers, as a real one does.
+                self.call_state = "delivered"
+                self._awaiting_answer = True
+                return
             self._send_layer3(tei, q931_message(CONNECT, reference, False))
             self.call_state = "connect-request"
             return

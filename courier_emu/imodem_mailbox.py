@@ -4,7 +4,7 @@ The default endpoint captures commands; it does not execute DSP firmware or
 invent replies. A DSP endpoint can consume committed commands with on_command
 and publish replies with offer_reply. See docs/imodem-mailbox-service.md.
 """
-from collections import deque
+from collections import Counter, deque
 from typing import Callable
 
 
@@ -20,6 +20,10 @@ class ImodemMailbox:
         self.commands: deque[tuple[int, int]] = deque(maxlen=256)
         self.committed = 0
         self.replies_acked = 0
+        # What the DSP told the host, in order and by value: the datapump's
+        # progress through a call is only visible here.
+        self.replies: deque[tuple[int, int]] = deque(maxlen=512)
+        self.reply_counts: Counter = Counter()
 
     def read(self, port: int) -> int:
         if port == 0x1C:
@@ -51,10 +55,15 @@ class ImodemMailbox:
         if self.rx is not None:
             return False
         self.rx = (tag & 0xFFFF, value & 0xFFFF)
+        self.replies.append(self.rx)
+        self.reply_counts[f'{self.rx[0]:04x}:{self.rx[1]:04x}'] += 1
         return True
 
     def status(self) -> dict:
         return {'endpoint': 'callback' if self.on_command else 'capture-only',
                 'tx_ready': self.tx_ready, 'committed': self.committed,
                 'replies_acked': self.replies_acked, 'reply_pending': self.rx,
-                'recent_commands': list(self.commands)}
+                'recent_commands': list(self.commands),
+                'recent_replies': [f'{tag:04x}:{value:04x}'
+                                   for tag, value in self.replies],
+                'reply_counts': dict(sorted(self.reply_counts.items()))}

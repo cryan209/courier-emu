@@ -13,7 +13,7 @@ from .parameters import FEATURE_BITS, ParameterSector, features_value
 from .codec import DAA_REVISION
 from .daa import RING_OFF_MS, RING_ON_MS, RING_START_MS
 from .exchange import EXCHANGE_OUTCOMES
-from .line import MAX_SOCKET_PATH
+from .line import MAX_SOCKET_PATH, LineLink
 from .panel import (
     BOARD_CAPABILITY,
     FRONT_PANEL_LEDS,
@@ -32,6 +32,7 @@ from .bri import (
     BriNetwork, audio_bearer,
 )
 from .bearer_sip import BearerSipLine
+from .bearer_line import BearerLineLink
 from .sip import SipConfig, SipSession
 from .v120 import LLI_DEFAULT, V120Link
 from .isdn_console import (
@@ -773,6 +774,39 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="save the RTP payload the far end sends, as mu-law at 8 kHz - "
              "what the modem actually heard",
+    )
+    isdn_run.add_argument(
+        "--bri-line",
+        metavar="PATH",
+        help="put the B channel on a `link` line socket, so an analogue "
+             "Courier (`run --line-link PATH`) is the far end: when it dials "
+             "and the line rings, the I-modem is offered a 3.1 kHz mu-law "
+             "call on --bri-call-to, and once it answers the two datapumps "
+             "talk through G.711",
+    )
+    isdn_run.add_argument(
+        "--bri-line-gain",
+        type=float,
+        default=0.0,
+        metavar="DB",
+        help="gain from the I-modem's mu-law to the analogue Courier's line "
+             "units, and its inverse the other way (default 0: mu-law full "
+             "scale is 16-bit full scale). The two codec models share no "
+             "measured calibration",
+    )
+    isdn_run.add_argument(
+        "--bri-line-loss",
+        type=float,
+        default=20.0,
+        metavar="DB",
+        help="loss the line puts on the analogue Courier's signal on its way "
+             "to the I-modem (default 20, the stand-in `link` uses; the "
+             "analogue end applies its own to what the I-modem sends)",
+    )
+    isdn_run.add_argument(
+        "--bri-line-listen",
+        action="store_true",
+        help="bind the --bri-line socket instead of connecting to it",
     )
     isdn_run.add_argument(
         "--bri-v120",
@@ -1654,6 +1688,16 @@ def main(argv: list[str] | None = None) -> int:
                         record=(open(args.bri_sip_record, "wb")
                                 if args.bri_sip_record else None),
                     )
+                if args.bri_line:
+                    if args.bri_sip or args.bri_v120:
+                        raise ValueError(
+                            "--bri-line is a far end for the B channel; use "
+                            "it without --bri-sip or --bri-v120"
+                        )
+                    bri.media_peer = BearerLineLink(
+                        LineLink(args.bri_line, listen=args.bri_line_listen,
+                                 loss_gain=10 ** (-args.bri_line_loss / 20)),
+                        gain_db=args.bri_line_gain)
                 if args.bri_v120:
                     bri.v120 = V120Link(
                         lli=(LLI_DEFAULT if args.bri_v120_lli is None
