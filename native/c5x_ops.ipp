@@ -684,7 +684,9 @@ void C5xCore::op_or_limm()
 
 void C5xCore::op_or_s16_limm()
 {
-	fatalerror("TMS320C5x: unimplemented op or s16 limm at %08X\n", m_pc-1);
+	uint16_t imm = ROPCODE();
+	m_acc |= uint32_t(imm) << 16;
+	CYCLES(2);
 }
 
 void C5xCore::op_orb()
@@ -997,7 +999,9 @@ void C5xCore::op_xor_limm()
 
 void C5xCore::op_xor_s16_limm()
 {
-	fatalerror("TMS320C5x: unimplemented op xor s16 limm at %08X\n", m_pc-1);
+	uint16_t imm = ROPCODE();
+	m_acc ^= uint32_t(imm) << 16;
+	CYCLES(2);
 }
 
 void C5xCore::op_xorb()
