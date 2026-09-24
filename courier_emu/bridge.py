@@ -32,6 +32,7 @@ from .line import (
     LineLink,
 )
 from .timebase import DEFAULT_COURIER, Timebase
+from .resample import BandLimitedResampler
 from .sip import PolyphaseResampler, SipSession
 from .xmf import XmfImage
 
@@ -69,54 +70,22 @@ DSP_CLOCK_RATIO = 1
 DSP_CYCLES_PER_X86 = DEFAULT_COURIER.dsp_cycles_per_x86
 
 
-class Resampler:
-    """Streaming linear resampler between the line's rate and the codec's.
+class Resampler(BandLimitedResampler):
+    """Streaming conversion between the line's rate and the codec's.
 
     The AC01's conversion rate is its own, from the A and B registers off MCLK,
     and the firmware retunes B at runtime for each V.34 symbol rate - 7200,
-    7578.95 or 8000 Hz. Carrying audio across that boundary at a fixed rate
-    makes every frequency wrong by the ratio, in whichever direction it is
-    neglected.
+    7578.95 or 8000 Hz, and 9600 Hz in a call. Carrying audio across that
+    boundary at a fixed rate makes every frequency wrong by the ratio, in
+    whichever direction it is neglected.
+
+    It is band-limited because the line between the exchange codec and the
+    AC01 is. This used to interpolate linearly, which carried a band-limited
+    signal from 8 kHz to 9600 Hz at 9.4 dB SNR across 300-3800 Hz - 25 dB at
+    1 kHz, 5.5 dB at 3.3 kHz - on every call, in both directions. The x2
+    client's rate chooser measured a channel too poor for any PCM rate. See
+    courier_emu/resample.py.
     """
-
-    def __init__(self) -> None:
-        self.input_rate = 0.0
-        self.output_rate = 0.0
-        self.converted = 0
-        self._position = 1.0
-        self._previous = 0
-
-    def convert(self, samples: list[int], input_rate: float,
-                output_rate: float) -> list[int]:
-        if not samples:
-            return []
-        if input_rate <= 0 or output_rate <= 0 or output_rate == input_rate:
-            # Nothing has programmed the codec yet, or the rates agree.
-            self._previous = samples[-1]
-            return list(samples)
-        if output_rate != self.output_rate or input_rate != self.input_rate:
-            # A rate change restarts the phase. Carrying a fractional position
-            # across it would mean nothing at the new step size.
-            self.input_rate, self.output_rate = input_rate, output_rate
-            self._position = 1.0
-        step = input_rate / output_rate
-        # Index 0 is the sample carried over from the last batch, so a value
-        # interpolated across the seam has both of its neighbours.
-        window = [self._previous, *samples]
-        limit = len(window) - 1
-        position = max(self._position, 0.0)
-        result: list[int] = []
-        while position <= limit:
-            index = int(position)
-            fraction = position - index
-            first = window[index]
-            second = window[index + 1] if index < limit else first
-            result.append(int(round(first + (second - first) * fraction)))
-            position += step
-        self._position = position - len(samples)
-        self._previous = samples[-1]
-        self.converted += len(result)
-        return result
 
 
 class LineToCodec(Resampler):

@@ -22,18 +22,23 @@ def test_transmit_audio_is_converted_once_from_codec_to_line_rate():
     bridge._exchange_tx_index = 0
     bridge._exchange_line_buffer = []
     bridge._codec_to_line = Resampler()
+    bridge._line_service = {
+        "tx_consumed": 0, "tx_index": 0, "tx_peak_codec": 0, "tx_peak_line": 0,
+    }
 
     bridge._take_line_audio()
 
     assert bridge._exchange_tx_index == 720
-    # The streaming interpolator holds one startup sample until it has a
-    # neighbour across the first block boundary.  It must not apply the
-    # datapump's separate timing ratio and shrink this to roughly 667.
-    assert len(bridge._exchange_line_buffer) == LINE_FRAME_SAMPLES - 1
+    # 720 codec samples at 7.2 kHz are one 100 ms line frame. The converter
+    # emits the instant that closes the block as well, so the first block is
+    # one over; what matters is that it must not apply the datapump's separate
+    # timing ratio and shrink this to roughly 667.
+    assert len(bridge._exchange_line_buffer) == LINE_FRAME_SAMPLES + 1
 
     bridge.core.samples.extend(range(720))
     bridge._take_line_audio()
-    assert len(bridge._exchange_line_buffer) == 2 * LINE_FRAME_SAMPLES - 1
+    # And from then on exactly one line frame per 720 codec samples.
+    assert len(bridge._exchange_line_buffer) == 2 * LINE_FRAME_SAMPLES + 1
 
 
 def test_audio_line_frames_are_paced_at_codec_rate():
