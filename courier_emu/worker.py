@@ -286,12 +286,12 @@ def main() -> int:
         # same instruction count, which they reach at different moments.
         machine.dsp_bridge.line_frame_budget = args.line_frames
         machine.dsp_bridge.on_line_frame_budget = machine.request_stop
-    if console is not None:
-        # Detaching the terminal closes its end of the channel, which the
-        # console notices; a signal covers the case where the parent goes
-        # away without that, so either way the run still reports itself.
-        for number in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(number, lambda *_: machine.request_stop())
+    # Detaching the terminal closes its end of the console's channel, which the
+    # console notices; a signal covers the case where the parent goes away
+    # without that, and a batch run whose driver is done with it early (a line
+    # peer at the end of its call), so either way the run still reports itself.
+    for number in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(number, lambda *_: machine.request_stop())
     print(json.dumps(machine.run(args.instructions).to_dict(), sort_keys=True))
     return 0
 
