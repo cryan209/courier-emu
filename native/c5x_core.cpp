@@ -614,9 +614,15 @@ uint16_t C5xCore::register_value(uint16_t offset) const
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
         (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
     case 0x09: return uint16_t(m_brcr);
+    // TREG1 is a 5-bit shift count and TREG2 a 4-bit bit pointer (SPRU056D
+    // 3.4); only those bits exist, so a read sees nothing above them.  A
+    // bit pump that steps TREG2 with `lamm @0e / sub #01 / samm @0e` and
+    // SXM clear - MICA's INFO CRC at 0x43A6 - relies on the -1 it stores
+    // reading back as 15; the full sixteen bits read back as 0xffff, the
+    // borrow never comes, and every word after the first is skipped.
     case 0x0c: return m_treg0;
-    case 0x0d: return m_treg1;
-    case 0x0e: return m_treg2;
+    case 0x0d: return uint16_t(m_treg1 & 0x1f);
+    case 0x0e: return uint16_t(m_treg2 & 0x0f);
     case 0x0f: return m_dbmr;
     case 0x10: case 0x11: case 0x12: case 0x13:
     case 0x14: case 0x15: case 0x16: case 0x17: return m_ar[offset - 0x10];
@@ -947,8 +953,8 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     // back, and never reaches the count it is watching for - which is how the
     // I-modem's HDLC receiver came to sit in one loop for a whole call.
     case 0x0c: return m_treg0;
-    case 0x0d: return m_treg1;
-    case 0x0e: return m_treg2;
+    case 0x0d: return uint16_t(m_treg1 & 0x1f);
+    case 0x0e: return uint16_t(m_treg2 & 0x0f);
     case 0x0f: return m_dbmr;
     case 0x10: case 0x11: case 0x12: case 0x13:
     case 0x14: case 0x15: case 0x16: case 0x17: return m_ar[offset - 0x10];
