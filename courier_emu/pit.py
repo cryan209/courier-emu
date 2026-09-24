@@ -84,9 +84,8 @@ CLOCK_HZ = IMODEM_386EX.timer_clock_hz   # 892,857
 # fixes everything around it: the 386EX is 25 MHz and the DSP's C5x is
 # single-cycle at 20.16 MHz. Five cycles an instruction is what real-mode code
 # on this part costs, and it is the figure taken here; it puts the CPU at 5M
-# instructions a second, and the DSP at 4.03 of its instructions to each of
-# those, which is where isdn.DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION's 4 comes
-# from. That constant is derived from this one now rather than stated twice.
+# instructions a second, and isdn.DSP_CYCLES_PER_CPU_INSTRUCTION is derived
+# from this one rather than stated twice.
 #
 # This used to be 2,500,000 - ten cycles an instruction - while sio.py carried
 # 20,160,000 for the same CPU, which is 1.24. Neither is a 386EX, and having

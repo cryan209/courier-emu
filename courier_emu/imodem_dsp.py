@@ -49,6 +49,10 @@ class ImodemDsp(ImodemMailbox):
         self._realtime_origin = None
         self.realtime_cycles = 0
         self._loader_started = False
+        # Cycles owed to the C51 and not yet run, and its running cost per
+        # instruction, which sizes each step so it does not overshoot.
+        self._cycle_debt = 0.0
+        self._cpi = 1.35
 
     def close(self):
         if self.core is not None:
@@ -94,6 +98,35 @@ class ImodemDsp(ImodemMailbox):
             self.error = str(exc)
             self.tx_ready = False
             raise
+
+    def step_cycles(self, cycles):
+        """Run the C51 for the clock cycles it is owed, not an instruction count.
+
+        Its PCM highway and timers run on cycles, and an instruction costs one
+        to dozens of them, so stepping instructions ran the B channel's 8 kHz
+        fast against the 386 by whatever the DSP's load made its CPI.
+        """
+        if self.core is None or self.error is not None:
+            self._cycle_debt = 0.0
+            return
+        self._cycle_debt += cycles
+        if self._cycle_debt < 1:
+            return
+        state = self.core.state()
+        start_cycles, start_instructions = state['cycles'], state['instructions']
+        target = start_cycles + int(self._cycle_debt)
+        current = start_cycles
+        while current < target and self.core is not None and self.error is None:
+            self.step(max(1, int((target - current) / self._cpi)))
+            if self.core is None:
+                break
+            state = self.core.state()
+            current = state['cycles']
+        self._cycle_debt -= current - start_cycles
+        ran = state['instructions'] - start_instructions
+        if ran > 0:
+            self._cpi = 0.9 * self._cpi + 0.1 * max(
+                1.0, (current - start_cycles) / ran)
 
     def pace_realtime(self, active, now=None):
         """Advance the digital PCM clock against monotonic wall time.

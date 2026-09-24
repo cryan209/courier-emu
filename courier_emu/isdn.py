@@ -237,7 +237,7 @@ MAILBOX_SERVICE_INSTRUCTIONS = 2048
 # 46bc:0002 subtracts 14h per call. Treat this as a modeled 20 ms period;
 # the oscillator/divider of the board timer has not been recovered.
 RTOS_SERVICE_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // 50   # 20 ms
-# DSP instructions per CPU instruction. This is a board fact now rather than a
+# DSP clock cycles per CPU instruction. This is a board fact now rather than a
 # scheduling convenience, and the board carries both halves of it on two
 # oscillators (docs/imodem-board-map.md): the ECLIPTEK 40.320M that clocks the
 # ASIC - the same part and frequency both analogue boards carry - and the
@@ -245,16 +245,14 @@ RTOS_SERVICE_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // 50   # 20 ms
 # MHz, as the analogue boards' C52 does (timebase.ASIC_DSP_CLOCK_HZ, inferred,
 # not measured); the 386EX runs at half the second, 25 MHz. The ratio is
 #
-#   40.32 / 25 = 1.6128 DSP instructions per CPU *cycle*
+#   40.32 / 25 = 1.6128 DSP cycles per CPU *cycle*
 #
 # times the 386's cycles per instruction, which pit.py states once for the
 # whole harness: five, putting the CPU at 5M instructions a second. So the
-# ratio is 8.06, and it is taken from there rather than written out, because
-# the two are the same statement about the same pair of parts.
-DSP_INSTRUCTION_RATE = ASIC_DSP_CLOCK_HZ
-DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION = round(
-    DSP_INSTRUCTION_RATE / INSTRUCTIONS_PER_SECOND
-)
+# ratio is 8.064, taken from there rather than written out. It is cycles, not
+# DSP instructions: the C51's PCM highway and timers count cycles, and
+# stepping instructions ran the B channel's 8 kHz fast by the DSP's CPI.
+DSP_CYCLES_PER_CPU_INSTRUCTION = ASIC_DSP_CLOCK_HZ / INSTRUCTIONS_PER_SECOND
 
 # Which 8254 counter drives which IRQ line.
 #
@@ -733,7 +731,7 @@ class IsdnMachine:
                 if realtime:
                     return
             if elapsed:
-                self.mailbox.step(elapsed * DSP_INSTRUCTIONS_PER_CPU_INSTRUCTION)
+                self.mailbox.step_cycles(elapsed * DSP_CYCLES_PER_CPU_INSTRUCTION)
 
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
