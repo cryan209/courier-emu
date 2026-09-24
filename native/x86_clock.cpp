@@ -102,6 +102,16 @@ extern "C" uint64_t courier_x86_clock_instructions(void *handle) {
     return static_cast<CourierX86Clock *>(handle)->instructions;
 }
 
+// Time that passed with the CPU not executing - halted, with the harness
+// running the board forward - moves the clock and its service schedule alike,
+// so the next block does not read the count from before the halt.
+extern "C" void courier_x86_clock_advance(void *handle, uint64_t count) {
+    auto *clock = static_cast<CourierX86Clock *>(handle);
+    clock->instructions += count;
+    clock->last_service += count;
+    clock->next_service += count;
+}
+
 extern "C" void courier_x86_clock_destroy(void *handle) {
     auto *clock = static_cast<CourierX86Clock *>(handle);
     if (clock == nullptr) {

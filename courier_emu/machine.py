@@ -2916,6 +2916,18 @@ class CourierMachine:
                         service_chunk(uc, elapsed)
                         self._last_service = self.instructions
                         self._next_service = self.instructions + SERVICE_INSTRUCTIONS
+                    # Both counting clocks only see executed instructions, and
+                    # the next service sets self.instructions from them, so
+                    # without this every halt rewound the 80186's timers and
+                    # frame edges while the DSP kept the time. The Quad halts
+                    # hundreds of times a run on the interpreter.
+                    if native_clock is not None:
+                        native_clock.advance(self.instructions - native_clock.instructions)
+                    elif self.cpu_engine == "interpreter":
+                        halted = self.instructions - (interpreter_instruction_base + uc.retired)
+                        if halted > 0:
+                            instruction_base += halted
+                            interpreter_instruction_base += halted
                 if self._service_resume:
                     # A flash service was answered in place of the boot
                     # block; resume at the instruction after its call.

@@ -58,6 +58,7 @@ class NativeX86Clock:
         self.library.courier_x86_clock_create.restype = ctypes.c_void_p
         self.library.courier_x86_clock_instructions.argtypes = [ctypes.c_void_p]
         self.library.courier_x86_clock_instructions.restype = ctypes.c_uint64
+        self.library.courier_x86_clock_advance.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
         self.library.courier_x86_clock_destroy.argtypes = [ctypes.c_void_p]
         error = ctypes.create_string_buffer(512)
         self._handle = self.library.courier_x86_clock_create(
@@ -69,6 +70,11 @@ class NativeX86Clock:
     @property
     def instructions(self) -> int:
         return int(self.library.courier_x86_clock_instructions(self._handle))
+
+    def advance(self, count: int) -> None:
+        """Count instructions that passed without the CPU executing them."""
+        if count > 0:
+            self.library.courier_x86_clock_advance(self._handle, count)
 
     def close(self) -> None:
         if self._handle:
