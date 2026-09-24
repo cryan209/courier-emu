@@ -108,6 +108,12 @@ class LineLink:
     # 2d ae where e0 c1 belongs), and V.8 never completes. The -rx recording
     # is the far end's transmit as it left, before this loss.
     loss_gain: float = 0.1
+    # A far end that sets the line's levels itself (MicaEmu's
+    # courier_line_peer, which scales from the AC01 datasheet): the socket
+    # carries the codec's samples untouched, and the bridge opens the hybrid,
+    # whose -20 dB return is as much a stand-in as the loss above.
+    # COURIER_LINE_DIGITAL=1 selects it for `run`.
+    digital: bool = False
     frames: int = 0
     peer_off_hook: bool = False
     peer_ringing: bool = False
@@ -123,6 +129,10 @@ class LineLink:
     _inbound: list[int] = field(default_factory=list, repr=False)
     _tx_record: Any = field(default=None, repr=False)
     _rx_record: Any = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.digital:
+            self.loss_gain = 1.0
 
     def open(self) -> None:
         """Bind or connect the socket. The listening side binds first."""
@@ -263,6 +273,7 @@ class LineLink:
             "path": self.path,
             "listen": self.listen,
             "audio_only": self.audio_only,
+            "digital": self.digital,
             "sample_rate": DAA_SAMPLE_RATE,
             "record_prefix": self.record_prefix,
             "frames": self.frames,

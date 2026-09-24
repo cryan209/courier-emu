@@ -188,7 +188,8 @@ def main() -> int:
     line = None
     if args.line_link:
         line = LineLink(path=args.line_link, listen=args.line_listen,
-                        audio_only=args.line_audio_only, record_prefix=args.line_record)
+                        audio_only=args.line_audio_only, record_prefix=args.line_record,
+                        digital=os.environ.get("COURIER_LINE_DIGITAL") == "1")
         line.open()
 
     exchange = None

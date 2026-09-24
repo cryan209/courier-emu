@@ -5,7 +5,7 @@ from __future__ import annotations
 # C50 inference was superseded by the probes in docs/board-parts.md.
 
 from collections import Counter, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import os
 from hashlib import sha256
@@ -408,6 +408,10 @@ class BridgeStatus:
     # queue is fed but nothing is consumed" has to be answered, and nothing
     # else reported it.
     core_codec: dict[str, Any] | None = None
+    # Each change of the AC01's registers, sampled once per line frame: the
+    # gains in register 4 and the rate in 1-2 move during a call, and the
+    # final snapshot above cannot say when.
+    codec_register_history: list[dict[str, Any]] = field(default_factory=list)
     line_rx_peak: int = 0
     codec_queue_peak: int = 0
     codec_in_peak: int = 0
@@ -665,6 +669,9 @@ class CourierDspBridge:
         self.sip = sip
         self.line = line
         self._audio_only = bool(line is not None and line.audio_only)
+        self._codec_registers_seen: list[int] | None = None
+        self._codec_register_history: list[dict[str, Any]] = []
+        self._line_digital = bool(line is not None and line.digital)
         self.codec = codec
         self.ring = ring
         self.exchange = exchange
@@ -3118,6 +3125,7 @@ class CourierDspBridge:
 
     def _service_audio_line(self) -> None:
         """Exchange PCM at the common line rate, without call-state signalling."""
+        self._note_codec_registers()
         self._take_line_audio()
         samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
         del self._exchange_line_buffer[:len(samples)]
@@ -3170,6 +3178,9 @@ class CourierDspBridge:
         off_hook = self.daa is not None and self.daa.off_hook
         scale = (self.HYBRID_RETURN_OFF_HOOK if off_hook
                  else self.HYBRID_RETURN_ON_HOOK)
+        if off_hook and self._line_digital:
+            # A digital far end has no two-wire loop to reflect anything.
+            scale = 0
         if scale == self._hybrid_return_applied:
             return
         self.core.set_hybrid_return(scale, self.HYBRID_RETURN_DELAY)
@@ -3331,8 +3342,26 @@ class CourierDspBridge:
         """Whether the exchange has the two subscribers on the same path."""
         return self._call_state == CALL_ANSWERED
 
+    def _note_codec_registers(self) -> None:
+        if not hasattr(self.core, "codec_state") or getattr(self.core, "closed", False):
+            return
+        state = self.core.codec_state()
+        registers = list(state.get("registers", []))
+        if registers == self._codec_registers_seen:
+            return
+        self._codec_registers_seen = registers
+        self._codec_register_history.append({
+            "line_frame": self.line.frames if self.line is not None else None,
+            "instructions": self._instructions,
+            "registers": [f"{value:02x}" for value in registers],
+            "output_gain": state.get("output_gain"),
+            "input_gain": state.get("input_gain"),
+            "sample_rate": state.get("sample_rate"),
+        })
+
     def _service_line_frame(self) -> None:
         """One socket line frame: ship what the codec clocked, take the peer's."""
+        self._note_codec_registers()
         off_hook = self.daa is not None and self.daa.off_hook
         samples = self._exchange_line_buffer[:LINE_FRAME_SAMPLES]
         del self._exchange_line_buffer[:len(samples)]
@@ -3514,6 +3543,7 @@ class CourierDspBridge:
             dsp_host_ports=self._dsp_port_census(),
             dsp_mmr_writes=self._dsp_mmr_census(),
             core_codec=self._core_snapshot("codec_state"),
+            codec_register_history=list(self._codec_register_history),
             dsp_originated_messages=self.dsp_originated_messages,
             dsp_originated_tags=dict(self.dsp_originated_tags),
             dsp_mailbox_log=self._dsp_mailbox_log(),
