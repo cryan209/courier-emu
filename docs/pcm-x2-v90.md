@@ -289,7 +289,9 @@ be86  lcall 0x8f46, 0x1e8
 
 `courier_emu.datapumps.receiver_selector` finds both sites that do this:
 
-* **`0xbe6f`**, a bare sender guarded by `[0x4e9] <= 5` and `!= 1`. Its caller
+* **`0xbe6f`**, a bare sender that runs only when `[0x4e9] > 5` or `== 1`
+  (`be5f` skips it for modes 0 and 2-5) - the complement of the x2 and V.90
+  eligibility test, so no call that can train x2 ever sends a tag. Its caller
   is the datapump bring-up, and the instruction before the call is the overlay
   loader: `b620 cmp byte [0xd28], 0 ; jne ; call e60a` then `b62d call be5f`.
   The receiver family is armed in the same breath as the image that holds it.
