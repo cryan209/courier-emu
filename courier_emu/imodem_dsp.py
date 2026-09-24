@@ -49,6 +49,7 @@ class ImodemDsp(ImodemMailbox):
         self._realtime_origin = None
         self.realtime_cycles = 0
         self._loader_started = False
+        self.latch_writes = 0
         # Cycles owed to the C51 and not yet run, and its running cost per
         # instruction, which sizes each step so it does not overshoot.
         self._cycle_debt = 0.0
@@ -211,6 +212,18 @@ class ImodemDsp(ImodemMailbox):
         if 0x40 <= port <= 0x5e and port % 2 == 0:
             self.lanes[port] = value & 0xff
         if port == 0x18:
+            if not self._loader_started and value & 0xff != 0xff:
+                # No download is open, so this is not a strobe. Once the
+                # resident runs, the supervisor also uses 18h/1ah as a plain
+                # 16-bit latch - b3d9:060a writes a device's register value
+                # low byte to 18h, high byte to 1ah - and the resident, idle
+                # rather than polling @56, would never acknowledge it. The
+                # value still reaches the DSP's @56, the same input the mask
+                # ROM loader reads its strobes from.
+                if self.core is not None:
+                    self.core.set_io(0x56, value & 0xff)
+                self.latch_writes += 1
+                return
             if value & 0xff == 0xff:
                 self.boot_origin = self._word(0x40)
                 self.boot_words = []
@@ -306,9 +319,18 @@ class ImodemDsp(ImodemMailbox):
             self.core.step(1)
             if self.core.io_port_stats([0x56])['0x56']['writes'] > before:
                 return
-        raise RuntimeError(f'C51 ROM loader did not acknowledge strobe {strobe}')
+        state = self.core.state()
+        raise RuntimeError(
+            f'C51 ROM loader did not acknowledge strobe {strobe} '
+            f'(pc {state["pc"]:04x}, idle {state["idle"]}, '
+            f'@56 {self.core.io(0x56):04x}, cycles {state["cycles"]}, '
+            f'instructions {state["instructions"]}, '
+            f'bootstrap words {self.bootstrap_words})')
 
     def _finish_boot(self):
+        # The completion strobe closes the download; later 18h writes are
+        # the latch, not the loader's.
+        self._loader_started = False
         self.core.configure_rom_codec(False)
         self.core.configure_host_mailbox()
         # The peripheral port clocks a DS0 even when its MUX is disconnected.
@@ -334,6 +356,7 @@ class ImodemDsp(ImodemMailbox):
         result = super().status()
         result.update(endpoint='native-c5x', bootstrap_words=self.bootstrap_words,
                       consumed=self.consumed, download_blocks=self.download_blocks,
+                      latch_writes=self.latch_writes,
                       error=self.error, core=self.core.state() if self.core else None,
                       dsp_status=self.core.io(0x57) if self.core else None)
         names = {3: 'Ba', 4: 'Bb', 5: 'Bc', 6: 'Bd', 7: 'Be', 8: 'Bf'}
