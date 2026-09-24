@@ -1942,8 +1942,18 @@ class CourierDspBridge:
         nothing reads: the `lacc` half loads it and the `lamm` half immediately
         overwrites the accumulator with the register. Both data views are still
         written, for any reader that takes the `lacc` value.
+
+        Not under the ROM protocol: there PA7 and the tag and word registers
+        are ASIC ports only, as `_read_host_cell` already reads them, and data
+        0xff50-0xff5f is the resident's own DSP-to-host ring (`lar ar0, #ff60`
+        at 83b3 and 83cb). The mirror write put PA7's 0002 over a queued `8020`
+        header, so a 0020:0005 quality report reached the host as tag 0005 -
+        carrier lost - and the MNP link cleared down.
         """
         core = self.core
+        if self.boot_rom_enabled and hasattr(core, "set_io"):
+            core.set_io(cell, value & 0xFFFF)
+            return
         core.set_data(cell, value & 0xFFFF)
         core.set_data(HOST_MIRROR | cell, value & 0xFFFF)
         if hasattr(core, "set_io"):
@@ -2796,6 +2806,13 @@ class CourierDspBridge:
         `count` does not divide it.
         """
         self._instructions += count
+        if self._instructions - getattr(self, "_probe_clock_last", 0) >= 200_000:  # PROBE
+            self._probe_clock_last = self._instructions
+            try:
+                self.__dict__.setdefault("probe_clock", []).append(
+                    (self.core.state()["instructions"], self._instructions, self.core.state()["cycles"]))
+            except Exception:
+                pass
         if self.exchange is not None:
             # The loop and the exchange behind it exist from board reset, the
             # same as the codec and before any DSP program is downloaded. A
@@ -3583,10 +3600,11 @@ class CourierDspBridge:
                 self.core.io_events(limit=64, ports=(0x50, 0x52, 0x54, 0x56, 0x58, 0x5A, 0x5C, 0x5E))
                 if hasattr(self.core, "io_events") else []
             ),
-            dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else []),
+            dsp_pc_trace=(self.core.pc_trace() if hasattr(self.core, "pc_trace") else [])
+            + [{"probe_clock": getattr(self, "probe_clock", [])}],  # PROBE
             dsp_writes=[
                 event for event in self.core.data_events()
-            ][-64:] if self.dsp_write_watch is not None and hasattr(self.core, "data_events") else [],
+            ][-4096:] if self.dsp_write_watch is not None and hasattr(self.core, "data_events") else [],
             dsp_cells={
                 name: f"{self.core.data(address):04x}"
                 for address, name in self.dsp_peek.items()

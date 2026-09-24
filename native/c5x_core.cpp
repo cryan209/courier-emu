@@ -800,7 +800,8 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
 void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 {
     ++m_data_write_counts[address];
-    if (m_trace_data_writes && (!m_trace_filtered || address == m_trace_filter)) {
+    if (m_trace_data_writes && (!m_trace_filtered || address == m_trace_filter)
+        && !(m_trace_filtered && !m_data_events.empty() && m_data_events.back().value == value)) {  // PROBE: changes only
         if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
@@ -882,7 +883,7 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     // The tag, word and stream ports, kept apart from the general log so a
     // call's worth of mailbox traffic survives the datapump's PCM.
     if (port >= 0x5e && port <= 0x60) {
-        if (m_mailbox_events.size() >= 8192) m_mailbox_events.pop_front();
+        if (m_mailbox_events.size() >= 262144) m_mailbox_events.pop_front();  // PROBE: was 8192
         m_mailbox_events.push_back(
             {true, port, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
@@ -1374,12 +1375,22 @@ void C5xCore::step()
             m_negotiation_arp = m_st0.arp; m_negotiation_pm = m_st1.pm;
         }
         m_op = ROPCODE();
+        {   // PROBE: first-ever execution of each PC after 1.6G instructions
+            static std::vector<uint8_t> seen(65536, 0);
+            if (!seen[previous_pc]) {
+                seen[previous_pc] = 1;
+                if (m_instructions > 1600000000ULL && m_pc_trace.size() < 65536)
+                    m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) | 0xFEEDu);
+            }
+        }
         if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
             (previous_pc >= 0x0200 && previous_pc < 0x0300) ||
             (previous_pc >= m_trace_first && previous_pc <= m_trace_last)) {
-            if (m_pc_trace.size() >= 512) m_pc_trace.pop_front();
+            if (m_pc_trace.size() >= 4096) m_pc_trace.pop_front();
             m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) |
-                                 uint32_t(m_acc));
+                                 (previous_pc == m_trace_first  // PROBE: caller | acc
+                                  ? (uint32_t(m_pcstack[m_pcstack_ptr]) << 16 | uint32_t((m_cycles >> 8) & 0xffff))
+                                  : uint32_t(m_acc)));
         }
         (this->*s_opcode_table[m_op >> 8])();
         if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;
