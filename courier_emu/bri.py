@@ -456,6 +456,46 @@ AWAITING_RELEASE = "awaiting-release"
 
 
 @dataclass
+class DataLink:
+    """One TEI's multiple-frame link: Q.921 keeps these per data link.
+
+    A BRI is a bus, and the I-modem puts two endpoints on it - one TEI per
+    directory number, the second requested only once a call arrives. Sharing
+    one V(S)/V(R) between them let the second endpoint's SABME reset the
+    counters of the first while its call was ringing, so the modem's next
+    acknowledgement on the call's link read as invalid and the call was torn
+    down.
+    """
+
+    established: bool = False
+    vs: int = 0                      # the next N(S) the network will send
+    vr: int = 0                      # the next N(S) it expects from the modem
+    # Q.921 5.9.5: basic-access signalling has a default window of one.
+    queue: deque = field(default_factory=deque)
+    outstanding: tuple[int, bytes] | None = None
+    i_expiry: int | None = None
+    i_retries: int = 0
+    remote_busy: bool = False
+
+    def reset(self) -> None:
+        self.vs = self.vr = 0
+        self.queue.clear()
+        self.outstanding = None
+        self.i_expiry = None
+        self.i_retries = 0
+        self.remote_busy = False
+
+    def status(self) -> dict[str, object]:
+        return {
+            "established": self.established,
+            "vs": self.vs,
+            "vr": self.vr,
+            "pending_layer3": len(self.queue),
+            "unacknowledged_ns": self.outstanding[0] if self.outstanding else None,
+        }
+
+
+@dataclass
 class BriNetwork:
     """An NT and a switch, on the far side of the modem's S interface.
 
@@ -488,14 +528,10 @@ class BriNetwork:
 
     # -- state, none of which is configuration -----------------------------
     state: str = TEI_UNASSIGNED
-    vs: int = 0                      # the next N(S) the network will send
-    vr: int = 0                      # the next N(S) it expects from the modem
-    # Q.921 5.9.5: basic-access signalling has a default window of one.
-    _send_queue: deque = field(default_factory=deque)
-    _outstanding: tuple[int, int, bytes] | None = None
-    _i_expiry: int | None = None
-    _i_retries: int = 0
-    _remote_busy: bool = False
+    links: dict[int, DataLink] = field(default_factory=dict)
+    # The TEI whose data link carries the call, which need not be `tei`
+    # once a second endpoint has one.
+    call_tei: int | None = None
     assigned_teis: dict[int, int] = field(default_factory=dict)
     activated_at: int | None = None
     _line_walk: list = field(default_factory=list)
@@ -565,7 +601,7 @@ class BriNetwork:
                 and self.media_peer.remote_ended():
             self._note("the SIP peer cleared the call: sending DISCONNECT")
             if self.call_reference is not None:
-                self._send_layer3(self.tei, q931_message(
+                self._send_layer3(self._call_link_tei(), q931_message(
                     DISCONNECT, self.call_reference,
                     self._call_originated_by_network,
                     cause(CAUSE_NORMAL_CLEARING),
@@ -666,17 +702,25 @@ class BriNetwork:
     def _note(self, text: str) -> None:
         self.events.append((self.instructions, text))
 
-    def _reset_link(self) -> None:
-        self.vs = self.vr = 0
-        self._send_queue.clear()
-        self._outstanding = None
-        self._i_expiry = None
-        self._i_retries = 0
-        self._remote_busy = False
+    def _link(self, tei: int) -> DataLink:
+        return self.links.setdefault(tei, DataLink())
+
+    def _call_link_tei(self) -> int:
+        return self.tei if self.call_tei is None else self.call_tei
+
+    def _reset_link(self, tei: int | None = None) -> None:
+        """Reset one TEI's link, or every link when the line itself went."""
+        if tei is not None:
+            self._link(tei).reset()
+            return
+        for link in self.links.values():
+            link.reset()
+            link.established = False
 
     def _clear_call(self) -> None:
         self.call_state = "null"
         self.call_reference = None
+        self.call_tei = None
         self._t303_expiry = None
         self.media_channel = None
         for peer in (self.v120, self.media_peer):
@@ -717,7 +761,8 @@ class BriNetwork:
             # The terminal is establishing - a multipoint line, or one where
             # it got there first. Either way the answer is UA and both ends
             # reset their counters.
-            self._reset_link()
+            self._reset_link(frame.tei)
+            self._link(frame.tei).established = True
             self.state = MULTIPLE_FRAME
             self._t200_expiry = None
             self._pending_sabme = False
@@ -728,15 +773,19 @@ class BriNetwork:
         if modifier == _u(U_UA, False):
             if self.state == AWAITING_ESTABLISH:
                 self.state = MULTIPLE_FRAME
-                self._reset_link()
+                self._reset_link(self.tei)
+                self._link(self.tei).established = True
                 self._t200_expiry = None
                 self._retransmissions = 0
                 self._note("UA for the network's SABME: layer 2 established")
             return
         if modifier == _u(U_DISC, False):
-            self.state = TEI_ASSIGNED
-            self._reset_link()
-            self._clear_call()
+            self._reset_link(frame.tei)
+            self._link(frame.tei).established = False
+            if not any(link.established for link in self.links.values()):
+                self.state = TEI_ASSIGNED
+            if frame.tei == self._call_link_tei():
+                self._clear_call()
             self._note(f"DISC from TEI {frame.tei}, answering UA")
             self._send(u_frame(SAPI_CALL_CONTROL, frame.tei, U_UA, False,
                                frame.pf))
@@ -754,38 +803,40 @@ class BriNetwork:
 
     def _supervisory(self, frame: Lapd) -> None:
         base = frame.control & 0x0F
-        self._remote_busy = base == S_RNR
-        if not self._acknowledge(frame.nr):
+        link = self._link(frame.tei)
+        link.remote_busy = base == S_RNR
+        if not self._acknowledge(link, frame.nr):
             return
         if base == S_RR:
             if frame.command and frame.pf:
                 # An RR command with P set is a poll; the response is an RR
                 # with F set carrying the network's own N(R).
                 self._send(s_frame(SAPI_CALL_CONTROL, frame.tei, S_RR, False,
-                                   self.vr, True))
-            self._flush_layer3()
+                                   link.vr, True))
+            self._flush_layer3(frame.tei)
             return
         if base == S_REJ:
             self._note(f"REJ N(R)={frame.nr}, retransmitting from there")
-            if self._outstanding:
-                self._transmit_outstanding()
+            if link.outstanding:
+                self._transmit_outstanding(frame.tei)
             else:
-                self._flush_layer3()
+                self._flush_layer3(frame.tei)
             return
         if base == S_RNR:
             self._note(f"RNR from TEI {frame.tei}")
 
     def _information(self, frame: Lapd) -> None:
-        if not self._acknowledge(frame.nr):
+        link = self._link(frame.tei)
+        if not self._acknowledge(link, frame.nr):
             return
-        if frame.ns != self.vr:
+        if frame.ns != link.vr:
             # Out of sequence: Q.921 says reject and ask for the one expected.
-            self._note(f"I frame N(S)={frame.ns}, expected {self.vr}")
+            self._note(f"I frame N(S)={frame.ns}, expected {link.vr}")
             self._send(s_frame(SAPI_CALL_CONTROL, frame.tei, S_REJ, False,
-                               self.vr, frame.pf))
+                               link.vr, frame.pf))
             return
-        self.vr = (self.vr + 1) % 128
-        self._send(s_frame(SAPI_CALL_CONTROL, frame.tei, S_RR, False, self.vr,
+        link.vr = (link.vr + 1) % 128
+        self._send(s_frame(SAPI_CALL_CONTROL, frame.tei, S_RR, False, link.vr,
                            frame.pf))
         message = decode_q931(frame.info)
         if message is None:
@@ -793,35 +844,37 @@ class BriNetwork:
                        f"{frame.info.hex()}")
             return
         self._call_control(message, frame.tei)
-        self._flush_layer3()
+        self._flush_layer3(frame.tei)
 
     def _send_layer3(self, tei: int, info: bytes) -> None:
-        self._send_queue.append((tei, info))
-        self._flush_layer3()
+        self._link(tei).queue.append(info)
+        self._flush_layer3(tei)
 
-    def _acknowledge(self, nr: int | None) -> bool:
-        if self._outstanding is not None and nr == self.vs:
-            self._outstanding = None
-            self._i_expiry = None
-            self._i_retries = 0
-        elif nr != (self._outstanding[1] if self._outstanding else self.vs):
-            self._note(f"invalid acknowledgement N(R)={nr}, V(S)={self.vs}")
+    def _acknowledge(self, link: DataLink, nr: int | None) -> bool:
+        if link.outstanding is not None and nr == link.vs:
+            link.outstanding = None
+            link.i_expiry = None
+            link.i_retries = 0
+        elif nr != (link.outstanding[0] if link.outstanding else link.vs):
+            self._note(f"invalid acknowledgement N(R)={nr}, V(S)={link.vs}")
             return False
         return True
 
-    def _flush_layer3(self) -> None:
-        if (self.state != MULTIPLE_FRAME or self._remote_busy
-                or self._outstanding is not None or not self._send_queue):
+    def _flush_layer3(self, tei: int) -> None:
+        link = self._link(tei)
+        if (not link.established or link.remote_busy
+                or link.outstanding is not None or not link.queue):
             return
-        tei, info = self._send_queue.popleft()
-        self._outstanding = (tei, self.vs, info)
-        self.vs = (self.vs + 1) % 128
-        self._transmit_outstanding()
+        info = link.queue.popleft()
+        link.outstanding = (link.vs, info)
+        link.vs = (link.vs + 1) % 128
+        self._transmit_outstanding(tei)
 
-    def _transmit_outstanding(self) -> None:
-        tei, ns, info = self._outstanding
-        self._send(i_frame(SAPI_CALL_CONTROL, tei, ns, self.vr, False, info))
-        self._i_expiry = self.instructions + T200_INSTRUCTIONS
+    def _transmit_outstanding(self, tei: int) -> None:
+        link = self._link(tei)
+        ns, info = link.outstanding
+        self._send(i_frame(SAPI_CALL_CONTROL, tei, ns, link.vr, False, info))
+        link.i_expiry = self.instructions + T200_INSTRUCTIONS
 
     def _tei_management(self, frame: Lapd) -> None:
         info = frame.info
@@ -849,8 +902,11 @@ class BriNetwork:
                                    tei_message(ID_DENIED, reference, ai)))
                 return
             self._note(f"ID_REQUEST ref {reference}: assigning TEI {assigned}")
-            self.tei = assigned
-            self.state = TEI_ASSIGNED
+            # The network keeps offering calls to the first endpoint; a
+            # second TEI on the bus is another data link, not a replacement.
+            if self.state == TEI_UNASSIGNED:
+                self.tei = assigned
+                self.state = TEI_ASSIGNED
             self._send(u_frame(SAPI_MANAGEMENT, TEI_BROADCAST, U_UI, True,
                                False,
                                tei_message(ID_ASSIGNED, reference, assigned)))
@@ -872,19 +928,25 @@ class BriNetwork:
         return None
 
     def _timers(self) -> None:
-        if self._i_expiry is not None and self.instructions >= self._i_expiry:
-            if self._i_retries >= N200:
-                self._note("T200 exhausted awaiting I-frame acknowledgement")
-                self._reset_link()
-                self._clear_call()
-                self.state = TEI_ASSIGNED
+        for tei, link in list(self.links.items()):
+            if link.i_expiry is None or self.instructions < link.i_expiry:
+                continue
+            if link.i_retries >= N200:
+                self._note(f"T200 exhausted awaiting I-frame acknowledgement "
+                           f"from TEI {tei}")
+                link.reset()
+                link.established = False
+                if tei == self._call_link_tei():
+                    self._clear_call()
+                if not any(other.established for other in self.links.values()):
+                    self.state = TEI_ASSIGNED
             else:
-                self._i_retries += 1
-                if self._remote_busy:
-                    self._send(s_frame(0, self.tei, S_RR, True, self.vr, True))
-                    self._i_expiry = self.instructions + T200_INSTRUCTIONS
+                link.i_retries += 1
+                if link.remote_busy:
+                    self._send(s_frame(0, tei, S_RR, True, link.vr, True))
+                    link.i_expiry = self.instructions + T200_INSTRUCTIONS
                 else:
-                    self._transmit_outstanding()
+                    self._transmit_outstanding(tei)
         if (self.establish == "network" and self.state == TEI_UNASSIGNED
                 and self.activated_at is not None
                 and self.instructions >= self.activated_at
@@ -949,6 +1011,7 @@ class BriNetwork:
         self._call_originated_by_network = True
         self.call_reference = 1
         self.call_state = "call-present"
+        self.call_tei = None
         self.media_channel = 1
         elements = (element(IE_BEARER_CAPABILITY, self.bearer)
                     + channel_identification(1)
@@ -967,7 +1030,7 @@ class BriNetwork:
         self._setup = q931_message(SETUP, self.call_reference, True, elements)
         self._setup_retransmissions = 0
         self._t303_expiry = self.instructions + T303_INSTRUCTIONS
-        if self.state == MULTIPLE_FRAME:
+        if self._link(self.tei).established:
             self._note(f"SETUP to the modem from {self.call_from}")
             self._send_setup()
             return
@@ -1003,7 +1066,7 @@ class BriNetwork:
         self._t303_expiry = self.instructions + T303_INSTRUCTIONS
 
     def _send_setup(self) -> None:
-        if self.state == MULTIPLE_FRAME:
+        if self._link(self.tei).established:
             self._send_layer3(self.tei, self._setup)
             return
         self._send(u_frame(SAPI_CALL_CONTROL, TEI_BROADCAST, U_UI, True,
@@ -1024,6 +1087,12 @@ class BriNetwork:
         # Any layer 3 answer at all means the SETUP was taken, so T303 stops.
         self._t303_expiry = None
         reference = message.call_reference
+        if message.message_type == SETUP or (
+                self.call_reference is not None
+                and reference == self.call_reference):
+            # Whichever link the terminal answers or originates on is the
+            # call's from here on.
+            self.call_tei = tei
         if message.message_type == SETUP:
             # The modem is placing a call. Take the number it dialled, accept
             # the channel, and walk the call up the way a switch does.
@@ -1137,10 +1206,8 @@ class BriNetwork:
             "frames_from_modem": self.frames_in,
             "frames_to_modem": self.frames_out,
             "undecodable": self.undecodable,
-            "vs": self.vs,
-            "vr": self.vr,
-            "pending_layer3": len(self._send_queue),
-            "unacknowledged_ns": self._outstanding[1] if self._outstanding else None,
+            "call_tei": self.call_tei,
+            "links": {str(tei): link.status() for tei, link in self.links.items()},
             "events": [{"instructions": at, "event": text}
                        for at, text in self.events],
         }
