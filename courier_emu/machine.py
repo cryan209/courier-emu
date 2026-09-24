@@ -2190,6 +2190,7 @@ class CourierMachine:
 
 
         def on_in(_uc: Any, port: int, size: int, _data: Any) -> int:
+            sync_device_time()
             if self.quad_c50 is not None:
                 answered = self.quad_c50.read(port, size)
                 if answered is not None:
@@ -2375,6 +2376,7 @@ class CourierMachine:
             return value
 
         def on_out(_uc: Any, port: int, size: int, value: int, _data: Any) -> None:
+            sync_device_time()
             if self.quad_c50 is not None:
                 self.quad_c50.write(port, size, value)
             if self.quad_board is not None and self.quad_board.write(port, size, value):
@@ -2530,6 +2532,7 @@ class CourierMachine:
             return (segment * 16 + offset) & 0xFFFFF
 
         def on_mmio_read(_uc: Any, _access: int, address: int, size: int, _value: int, _data: Any) -> None:
+            sync_device_time()
             self.mmio_counts[("read", address, size)] += 1
             # The hook runs before the read is satisfied, so a timer register
             # is answered by putting the modelled value where the read will
@@ -2594,6 +2597,7 @@ class CourierMachine:
                 self.mmio_events.append(MmioEvent("read", address, size, value, current_pc()))
 
         def on_mmio_write(_uc: Any, _access: int, address: int, size: int, value: int, _data: Any) -> None:
+            sync_device_time()
             self.mmio_counts[("write", address, size)] += 1
             if self.quad_board is not None:
                 self.quad_board.write_register(address, size, value)
@@ -2802,6 +2806,23 @@ class CourierMachine:
             )
             if fast_rom_clock else None
         )
+        def sync_device_time() -> None:
+            """Bring the instruction clock up to the access a device sees.
+
+            The fast clocks only publish the count at each service, up to
+            NATIVE_ROM_SERVICE_INSTRUCTIONS apart, so a register read between
+            services was answered from the last one. The 80186 timer counts
+            then stood still for up to 1024 instructions (~300 us): a pair of
+            reads a few instructions apart returned the same count, and the
+            403's V.42 link setup failed on it (A cleared down with reason
+            0e). The per-instruction diagnostic hooks hid this by servicing
+            every 64.
+            """
+            if native_clock is not None:
+                self.instructions = native_clock.instructions
+            elif self.cpu_engine == "interpreter":
+                self.instructions = interpreter_instruction_base + uc.retired
+
         if self.cpu_engine == "interpreter":
             # Keep the scheduler deadline inside the interpreter's dispatch
             # loop. Crossing into Python once per instruction made normal ROM
