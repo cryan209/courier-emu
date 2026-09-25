@@ -156,6 +156,12 @@ ROM_CHECKSUM_STROBE = 4
 # ports as the opposite sense - bank free, word waiting - above a constant
 # 0xc0 (the board reads c0/c6/c7 under &T8, ff idle; docs/asic-port-map.md).
 LANE_BANKS = 6
+# Codec samples the receive queue must hold when a frame of line audio
+# arrives. Only a margin against the few samples by which delivery and
+# consumption wobble (it holds 30-34 through a call): a whole frame, 100 ms
+# each way, put enough delay on a 403 pair that it stopped training at all.
+# See _queue_line_audio.
+RX_CUSHION_SAMPLES = 32
 LANE_RX_ACK_PORT = 0x1A
 LANE_FIRST_PORT = 0x40
 LANE_DSP_FIRST = 0x58
@@ -740,6 +746,10 @@ class CourierDspBridge:
         self._sip_tx_rate = PolyphaseResampler(LINE_RATE, 8_000)
         self._sip_rx_rate = PolyphaseResampler(8_000, LINE_RATE)
         self._line_to_codec = LineToCodec(LINE_RATE)
+        # The codec rate the receive queue's cushion was last laid at; None
+        # until the first delivery, and again after anything empties the
+        # queue or changes its rate. See _queue_line_audio.
+        self._rx_cushion_rate: float | None = None
         # The other direction: what the datapump clocks out is at the codec's
         # rate, and the exchange, the peer link and SIP all speak the line's.
         self._codec_to_line = Resampler()
@@ -844,6 +854,24 @@ class CourierDspBridge:
             self._codec_in_peak, max(abs(sample) for sample in samples))
         rate = self.codec_sample_rate()
         converted = self._line_to_codec.convert(samples, rate)
+        if converted and rate > 0 and rate != self._rx_cushion_rate:
+            # The line arrives a frame at a time and the AC01 takes a sample
+            # every period, so what the queue holds when a frame lands is its
+            # low point - and where that settles depends only on where the two
+            # streams happened to start. At 0-3 samples one read finds it
+            # empty, the DSP takes a sample that was never on the line, and
+            # every symbol after it is late by one: a dialled 403 pair lost its
+            # answerer-to-caller data that way (A's queue underran 3.7M
+            # instructions into data mode, and B's MNP reply decoded as noise
+            # until a renegotiation), depending only on when it was dialled.
+            # Top it up to RX_CUSHION_SAMPLES whenever the stream restarts -
+            # first delivery, reset, rebuild, rate change - and never
+            # mid-stream, where padding would be the same slip.
+            serial = self.core.serial_state()
+            pending = serial.get("codec_rx_queued", 0) - serial.get("codec_rx_consumed", 0)
+            if pending < RX_CUSHION_SAMPLES:
+                self.core.queue_codec_rx([0] * (RX_CUSHION_SAMPLES - max(0, pending)))
+            self._rx_cushion_rate = rate
         if converted:
             # Measured *after* conversion and *after* the last core rebuild,
             # which is what makes it answerable. The core's own codec_rx_peak
@@ -1258,6 +1286,7 @@ class CourierDspBridge:
             })
             self.float_runtime_bus()
             self.core.reset()
+            self._rx_cushion_rate = None
             # `reset` clears the core's sample arrays. The output cursors index
             # those arrays, so they restart at zero too - the same rule the
             # rebuild path below already follows. A call asserts this net two
@@ -2452,6 +2481,7 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            self._rx_cushion_rate = None
             # Output cursors index this core's arrays, which restart at zero.
             self._exchange_tx_index = 0
             self._line_tx_index = 0
