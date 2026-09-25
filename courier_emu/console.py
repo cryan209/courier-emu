@@ -38,13 +38,18 @@ class SerialConsole:
         self._pending = bytearray()
         os.set_blocking(fd, False)
 
-    def poll(self) -> bytes:
-        """Return whatever the terminal has typed since the last call."""
+    def poll(self, limit: int = 4096) -> bytes:
+        """Return what the terminal has typed since the last call, at most `limit`.
+
+        Bytes left unread stay in the pty, and once it fills the program
+        writing to it blocks - the backpressure a serial line's own baud rate
+        gives a real terminal.
+        """
         self._drain()
-        if self.closed:
+        if self.closed or limit <= 0:
             return b""
         try:
-            data = os.read(self.fd, 4096)
+            data = os.read(self.fd, limit)
         except BlockingIOError:
             return b""
         except OSError as exc:

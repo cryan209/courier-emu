@@ -38,7 +38,7 @@ class Console:
     def __init__(self):
         self.polls = 0
 
-    def poll(self):
+    def poll(self, limit=4096):
         self.polls += 1
         self.closed = self.polls == 5
         return b"AT\r" if self.polls == 1 else b""

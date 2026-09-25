@@ -151,6 +151,9 @@ FRAME_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // FRAME_HZ
 # The terminal's bit period. The ROM measures the start bit to find the rate,
 # so this is the DTE's own timing and not a figure the firmware is handed.
 DTE_BAUD = 9_600
+# Bytes of terminal input the modelled DTE port takes ahead of the wire. The
+# rest stays in the pty, so a program writing to it is held to the line rate.
+CONSOLE_INPUT_FIFO = 16
 DTE_BIT_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // DTE_BAUD
 # How long a character sits on the wire before the receiver takes it. One
 # whole 8N1 frame, which is what the wire actually holds.
@@ -1650,7 +1653,13 @@ class CourierMachine:
                 self._console_owed -= elapsed
                 if self._console_owed <= 0:
                     self._console_owed += self.console.poll_instructions
-                    typed = self.console.poll()
+                    # Take only what a small input FIFO has room for. Reading
+                    # everything the pty offered let `sz` hand 84 KB to the
+                    # modem in two seconds and then time out waiting for an
+                    # acknowledgement the 9600-baud line was still minutes
+                    # from delivering.
+                    typed = self.console.poll(
+                        CONSOLE_INPUT_FIFO - len(self.serial_rx))
                     if typed:
                         self.serial_rx.extend(typed)
                         # Input that lands mid-cooldown would otherwise wait
