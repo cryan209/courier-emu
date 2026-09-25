@@ -342,6 +342,8 @@ public:
     const PortStat &io_port_stat(uint16_t port) const { return m_io_port_stats[port]; }
     // Each entry: pc << 48 | opcode << 32 | ACC before the instruction.
     const std::deque<uint64_t> &pc_trace() const { return m_pc_trace; }
+    // Empty it, so a harness draining it between runs sees each entry once.
+    void clear_pc_trace() { m_pc_trace.clear(); }
     // The trace windows. Two are compiled in for the call overlay and the
     // low-page stub; a third is settable so a caller can watch a handler
     // elsewhere - 3.1.2's mailbox tag 0x13 enters ee20, which neither
