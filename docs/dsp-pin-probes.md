@@ -338,7 +338,7 @@ the DSP; `M/S` is **pin 18** on the AC01. Whether they are connected is a
 continuity check between two named pins - much better than any waveform
 argument. But the waveform settles the *consequence* either way.
 
-### `XF` is a static high with a glitch every eight seconds
+### `XF` pulses low on every fourth frame
 
 There are exactly **two** `XF` sites in the whole 3.1.2 resident, both inside
 the codec ISR:
@@ -350,67 +350,66 @@ the codec ISR:
 817b  sacl @19            ; decrement, every frame
 817c  f788   xc  2, eq    ; ...only when it reaches zero:
 817d  be4c   clrc xf      ;    XF low
+817e  7718   dmov @18     ;    and reload: DMOV copies 0x0398 into 0x0399
 ...
 8192  be4d   setc xf      ; XF high, every frame, unconditionally
 ```
 
-The decisive detail: **`0x0399` is never reloaded.** The only write to it in the
-entire image is the ISR's own decrement at `0x817b`, and the prologue's
-`rptz #03ff` from `0x0100` zeroes it at reset. So it is a free-running 16-bit
-counter, and `XF` goes low once every **65536 frames**:
+`0x0399` is reloaded. An earlier reading of this listing left out `0x817e` and
+took `0x0399` for a free-running 16-bit counter, with `XF` low once every 65536
+frames (about eight seconds). But `DMOV` writes the cell *after* its operand, so
+each time the count reaches zero it is refilled from `0x0398`, and `0x0398` is
+set to **3** once at start-up (`0x8087`) and never written again. Watching both
+cells through a dialled 403 call (2026-09-26): `0x0399` runs 3, 2, 1, 0 and
+reloads, the only writers being `0x817b` and `0x817e`.
 
-| frame rate | interval between `XF` low pulses |
+So `XF` goes low on **every fourth codec frame**, for the whole run:
+
+| frame rate | `XF` low pulses |
 |---|---|
-| 8000 Hz | **8.19 s** |
-| 7578.95 Hz | 8.65 s |
-| 7200 Hz | 9.10 s |
+| 7200 Hz | 1800 per second |
+| 8000 Hz | 2000 per second |
+| 9600 Hz | 2400 per second |
 
-and the low lasts from `0x817d` to `0x8192` - about 21 instructions, so roughly
+and each low lasts from `0x817d` to `0x8192` - about 21 instructions, so roughly
 **2-4 us**.
-
-So `XF` is, to any practical measurement, **held high**, with a microsecond
-glitch about every eight seconds.
 
 ### What that means for each candidate
 
-* **A pin observed toggling continuously is not `XF`.** `EOC` (17... no, **19**)
-  and `FSD` (**17**) pulse *every* frame, at 7200-8000 Hz. That is the signature
-  of continuous switching, and both are immediate neighbours of `M/S` (18).
-* **`XF` cannot be bus arbitration.** Two microseconds every eight seconds
-  cannot hand a serial bus over; a 16-bit frame at 720 kHz alone takes 22 us.
-  So the time-shared-bus idea sketched in the previous section is **dead** if
-  `XF` is the driver.
-* **If `XF` does drive `M/S`, then `M/S` is high** - and a high `M/S` means the
-  **AC01 is the master**, generating `SCLK` and `FS`. The ASIC would then not be
-  on the primary serial bus at all, and the retraction in
-  [second-serial-port.md](second-serial-port.md) stands rather than being
-  overturned.
+* **`XF` does toggle continuously**, but at a quarter of the frame rate and with
+  a duty cycle of a few percent. `EOC` (**19**) and `FSD` (**17**) pulse on
+  *every* frame, at 7200-9600 Hz, so a scope still tells them apart: every
+  frame, or every fourth frame with a short low.
+* **`XF` cannot be bus arbitration.** A 2-4 us low cannot hand a serial bus
+  over; a 16-bit frame at 720 kHz alone takes 22 us. So the time-shared-bus idea
+  sketched in the previous section is **dead** if `XF` is the driver.
+* **`XF` is unlikely to drive `M/S`.** It would switch the AC01 between master
+  and slave for a few microseconds on every fourth frame, which no working
+  serial link survives. If the continuity check below does find `XF` on `M/S`,
+  this reading of the firmware is wrong somewhere.
 
-That last point is the useful one: the hypothesis, if true, **confirms** the
-codec as bus master rather than undermining it.
-
-### It also makes the `slaa006` reading unlikely
+### It also rules out the `slaa006` reading
 
 [dsp-boot-transport.md](dsp-boot-transport.md) says "`XF` is wired to the
-codec's `RESET`", taken from TI's `slaa006` reference design. That does not fit
-this firmware: pulsing the AC01's `RESET` every eight seconds would reinitialise
-its registers to defaults - a 16 kHz rate for a 10.368 MHz MCLK - and the
-firmware would have to reprogram all six control registers each time. It sends
-them **once**, at reset. So either `XF` does not drive `RESET` on this board, or
-that eight-second pulse is a latent bug nobody has hit.
+codec's `RESET`", taken from TI's `slaa006` reference design. That cannot be
+this board: pulsing the AC01's `RESET` every fourth frame would return its
+registers to their defaults - a 16 kHz rate for a 10.368 MHz MCLK - hundreds of
+times a second, and the firmware programs them **once**, at reset.
 
 `XF`'s other known use is as the request half of the boot ROM's `XF`/`BIO`
 handshake at `0x0775`, which pairs it with **`BIO` (pin 130)**. If `XF` goes
-anywhere other than the codec, the ASIC is the candidate.
+anywhere other than the codec, the ASIC is the candidate. A strobe at a quarter
+of the frame rate is also the right shape for a sample-block tick to the ASIC
+or the CPU; the harness wires `XF` to nothing on the Courier board.
 
 ### The test
 
-> Continuity: **DSP pin 109 (`XF`)** to **AC01 pin 18 (`M/S`)**. Two named pins,
-> one meter.
+> Continuity: **DSP pin 109 (`XF`)** to **AC01 pin 18 (`M/S`)**, and to the
+> ASIC. Two named pins, one meter.
 >
-> And on the waveform: a pin switching at **7200-8000 Hz** is `EOC` or `FSD`. A
-> pin sitting high with a **~2-4 us dip every ~8 seconds** is `XF`. Nothing on
-> this board should look like anything in between.
+> And on the waveform: a pin switching on every frame, at **7200-9600 Hz**, is
+> `EOC` or `FSD`. A pin sitting high with a **~2-4 us dip on every fourth
+> frame** is `XF`.
 
 ## The data and address buses, anchored (2026-09-07)
 
