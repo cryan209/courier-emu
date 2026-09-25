@@ -22,6 +22,9 @@ from __future__ import annotations
 from typing import Any
 
 from .line import (
+    AC01_FULL_SCALE_DBM,
+    DAA_RX_LOSS_DB,
+    DAA_TX_LOSS_DB,
     CALL_ANSWERED,
     CALL_CLEARED,
     CALL_IDLE,
@@ -42,25 +45,13 @@ CPU_INSTRUCTIONS_PER_SAMPLE = INSTRUCTIONS_PER_SECOND // LINE_SAMPLE_RATE
 HIGHWAY_STALL_SAMPLES = LINE_FRAME_SAMPLES
 PCMU_SILENCE = 0xFF
 
-# Where each end's full scale sits, so a sample crosses at its real level. The
-# same figures MicaEmu's courier_line_peer uses, so the 403 hears an I-modem
-# at the levels it hears MICA:
-#   - AC01 data manual: a full-scale digital sine is 6 V peak to peak
-#     differential into 600 ohms at 0 dB gain - 2.121 V rms, +8.75 dBm.
-#   - G.711 mu-law: full scale is +3.17 dBm0; decoded to 32124 as sip.py
-#     does, the same PCM16 sine is +3.21 dBm0.
-#   - The Courier's DAA loses 11.4 dB on transmit: the manual gives
-#     "Transmit level: -9 dBm maximum" (docs/1154-00.pdf), and the 4.03
-#     datapump writes its V.8 CM 6.38 dB under the DAC's full-scale sine at
-#     0 dB output gain, +2.37 dBm at the AC01's pins. Its receive loss is
-#     taken as none.
-# The mu-law side is taken to be at the Courier's line terminals: no loop
-# loss beyond the DAA's. The AC01's register 4 gains are not here - the core
-# applies them, and the firmware changes them mid-call.
-AC01_FULL_SCALE_DBM = 8.75
+# Where each end's full scale sits, so a sample crosses at its real level:
+# the Courier's figures in line.py, the same ones MicaEmu's courier_line_peer
+# uses, so the 403 hears an I-modem at the levels it hears MICA. G.711 mu-law
+# full scale is +3.17 dBm0; decoded to 32124 as sip.py does, the same PCM16
+# sine is +3.21 dBm0. The mu-law side is taken to be at the Courier's line
+# terminals: no loop loss beyond the DAA's.
 ULAW_FULL_SCALE_DBM0 = 3.21
-DAA_TX_LOSS_DB = 11.4
-DAA_RX_LOSS_DB = 0.0
 # Courier codec -> mu-law, and mu-law -> Courier codec.
 TO_ULAW_DB = AC01_FULL_SCALE_DBM - ULAW_FULL_SCALE_DBM0 - DAA_TX_LOSS_DB
 FROM_ULAW_DB = ULAW_FULL_SCALE_DBM0 - AC01_FULL_SCALE_DBM - DAA_RX_LOSS_DB

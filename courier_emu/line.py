@@ -26,6 +26,27 @@ LINE_TIMEOUT_SECONDS = 30.0
 # terminator, Linux 108).
 MAX_SOCKET_PATH = 100
 
+# The Courier's line levels, shared by every far end so a sample crosses at
+# its real level:
+#   - AC01 data manual: a full-scale digital sine is 6 V peak to peak
+#     differential into 600 ohms at 0 dB gain - 2.121 V rms, +8.75 dBm - in
+#     both directions, so two AC01s share one full scale.
+#   - The Courier's DAA loses 11.4 dB on transmit: the manual gives
+#     "Transmit level: -9 dBm maximum" (docs/1154-00.pdf), and the 4.03
+#     datapump writes its V.8 CM 6.38 dB under the DAC's full-scale sine at
+#     0 dB output gain, +2.37 dBm at the AC01's pins. Its receive loss is
+#     taken as none.
+# The AC01's register 4 gains are not here - the core applies them, and the
+# firmware changes them mid-call.
+AC01_FULL_SCALE_DBM = 8.75
+DAA_TX_LOSS_DB = 11.4
+DAA_RX_LOSS_DB = 0.0
+# Between two Couriers' line terminals. A STAND-IN, not a measurement: the
+# bottom of the 3-6 dB a switched call loses end to end.
+COURIER_PAIR_LOOP_LOSS_DB = 3.0
+# One Courier's codec to the other's: its DAA, the loop, the far DAA.
+COURIER_PAIR_LOSS_DB = DAA_TX_LOSS_DB + COURIER_PAIR_LOOP_LOSS_DB + DAA_RX_LOSS_DB
+
 _HEADER = struct.Struct("<IBBBH")
 _AUDIO_HEADER = struct.Struct("<H")
 
@@ -100,19 +121,20 @@ class LineLink:
     listen: bool = False
     audio_only: bool = False
     record_prefix: str | None = None
-    # Amplitude the loop keeps between the two ends. A STAND-IN, not a
-    # measurement: 0.1 is 20 dB, inside the usual 10-30 dB of a real line,
-    # and nothing here is calibrated against the board. What is measured is
-    # that 1.0 cannot be right: a lossless line lands the far end's CM near
-    # full scale, the answerer's V.21 receiver assembles garbage (fec8/fec9 =
-    # 2d ae where e0 c1 belongs), and V.8 never completes. The -rx recording
-    # is the far end's transmit as it left, before this loss.
-    loss_gain: float = 0.1
+    # Amplitude the far Courier's codec samples keep on the way to this one's:
+    # COURIER_PAIR_LOSS_DB. Each end sends its codec's samples untouched, so
+    # the receiver applies both DAAs and the loop. Unity cannot be right - it
+    # drops the DAA's transmit loss, lands the far end's CM near full scale,
+    # the answerer's V.21 receiver assembles garbage (fec8/fec9 = 2d ae where
+    # e0 c1 belongs), and V.8 never completes. The -rx recording is the far
+    # end's transmit as it left, before this loss.
+    loss_gain: float = 10 ** (-COURIER_PAIR_LOSS_DB / 20)
     # A far end that sets the line's levels itself (MicaEmu's
-    # courier_line_peer, which scales from the AC01 datasheet): the socket
-    # carries the codec's samples untouched, and the bridge opens the hybrid,
-    # whose -20 dB return is as much a stand-in as the loss above.
-    # COURIER_LINE_DIGITAL=1 selects it for `run`.
+    # courier_line_peer, or bearer_line's I-modem): the socket carries the
+    # codec's samples untouched both ways, and the bridge opens the hybrid.
+    # COURIER_LINE_DIGITAL=1 selects it for `run`. Not for a Courier pair:
+    # neither end would apply the DAAs, and each would hear the other 14 dB
+    # hot.
     digital: bool = False
     frames: int = 0
     peer_off_hook: bool = False
