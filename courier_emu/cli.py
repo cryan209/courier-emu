@@ -333,7 +333,15 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
     if args.dsp_tx_pcm:
         command.extend(("--dsp-tx-pcm", str(Path(args.dsp_tx_pcm).resolve())))
     serial_input = b"".join(value.encode("latin-1") for value in args.serial_input)
-    serial_input += b"".join(value.encode("ascii") + b"\r" for value in args.at)
+    typed = [value.encode("ascii") + b"\r" for value in args.at]
+    schedule = getattr(args, "serial_input_after", [])
+    if schedule:
+        # The Nth time types the Nth command; the last covers any left over.
+        for index, text in enumerate(typed):
+            when = schedule[min(index, len(schedule) - 1)]
+            command.extend(("--serial-schedule", f"{when}:{text.hex()}"))
+    else:
+        serial_input += b"".join(typed)
     if serial_input:
         command.extend(("--serial-input-hex", serial_input.hex()))
     if getattr(args, "serial_input_on_ring", False):
@@ -1356,6 +1364,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="TEXT",
         help="queue literal Latin-1 terminal input after boot",
+    )
+    run.add_argument(
+        "--serial-input-after",
+        type=_number,
+        action="append",
+        default=[],
+        metavar="INSTRUCTIONS",
+        help="type the Nth --at command once this many instructions have run, "
+        "as a terminal that types later than boot; repeatable, one per "
+        "command, the last covering the rest",
     )
     run.add_argument(
         "--send-after-connect",

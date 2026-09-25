@@ -478,6 +478,7 @@ class CourierMachine:
         serial_input: bytes = b"",
         serial_input_on_ring: bool = False,
         serial_input_after_connect: bytes = b"",
+        serial_input_schedule: list[tuple[int, bytes]] | None = None,
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
         codec: CodecBringUp | None = None,
@@ -602,6 +603,10 @@ class CourierMachine:
             serial_input if self._serial_input_on_ring else b"")
         self.serial_rx: deque[int] = deque(
             b"" if self._serial_input_on_ring else serial_input)
+        # A terminal that types later than boot, command by command: each
+        # chunk waits for its instruction count, so a session is repeatable.
+        self._serial_input_schedule: deque[tuple[int, bytes]] = deque(
+            sorted(serial_input_schedule or []))
         # Data a terminal sends once the call is up. Typed any earlier it
         # would abort the dial, so it waits for the CONNECT line to end.
         self._serial_input_after_connect: deque[int] = deque(
@@ -781,7 +786,8 @@ class CourierMachine:
             locate_rom_serial(image.data, self._serial_callbacks)
             if self.uart is not None else None
         )
-        self._terminal_connected = (bool(serial_input or serial_input_after_connect)
+        self._terminal_connected = (bool(serial_input or serial_input_after_connect
+                                         or serial_input_schedule)
                                     or console is not None)
         self._alternate_supervisor = supervisor_offset == 0x1B600
         self._supervisor_23 = supervisor_offset == 0x17BB0
@@ -1653,6 +1659,12 @@ class CourierMachine:
                         self._serial_cooldown = min(self._serial_cooldown, 64)
                     if self.console.closed:
                         self.stop_requested = True
+            while (self._serial_input_schedule
+                   and self.instructions >= self._serial_input_schedule[0][0]):
+                _, typed = self._serial_input_schedule.popleft()
+                self.serial_rx.extend(typed)
+                self._serial_cooldown = min(self._serial_cooldown, 64)
+                self.serial_trace.append(f"typed at {self.instructions}")
             if self.stop_requested:
                 _uc.emu_stop()
             if self.dsp_bridge is not None and not self.stop_requested:
