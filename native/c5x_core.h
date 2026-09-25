@@ -598,6 +598,7 @@ private:
     unsigned m_step_cycles = 0;
 
     void consume_cycles(unsigned cycles);
+    uint64_t advance_timer(uint64_t elapsed);
     Region program_region(uint16_t address) const;
     Region data_region(uint16_t address) const;
     unsigned mac_cycles(uint16_t pma, uint16_t dma, unsigned count,

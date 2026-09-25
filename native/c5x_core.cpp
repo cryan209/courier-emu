@@ -1190,6 +1190,37 @@ bool C5xCore::check_interrupts()
     }
     return false;
 }
+// Run the timer on by `elapsed` CLKOUT cycles and return how many times TIM
+// reached zero, reloading PSC from TDDR and TIM from PRD as it goes. This is
+// the tick-by-tick countdown worked out in closed form - it was a loop per
+// cycle, run after every instruction, and the costliest line in step(). The
+// caller raises TINT once per expiry, in order; nothing interrupt() does
+// reads the timer, so the final state can be set first.
+uint64_t C5xCore::advance_timer(uint64_t elapsed)
+{
+    // The prescaler underflows when a tick takes PSC to zero or below: after
+    // max(PSC, 1) ticks, then every max(TDDR, 1).
+    const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
+    if (elapsed < first) {
+        m_timer.psc -= int(elapsed);
+        return 0;
+    }
+    const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
+    const uint64_t decrements = 1 + (elapsed - first) / period;
+    m_timer.psc = m_timer.tddr - int((elapsed - first) % period);
+    // Each underflow decrements TIM, which reaches zero after TIM of them
+    // (65536 from zero) and then every PRD (65536 when PRD is zero).
+    const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
+    if (decrements < to_zero) {
+        m_timer.tim = uint16_t(m_timer.tim - decrements);
+        return 0;
+    }
+    const uint64_t reload = m_timer.prd ? m_timer.prd : 0x10000;
+    const uint64_t after = decrements - to_zero;
+    m_timer.tim = uint16_t(m_timer.prd - after % reload);
+    return 1 + after / reload;
+}
+
 void C5xCore::interrupt(unsigned irq)
 {
     if (irq >= 16) throw std::out_of_range("C5x interrupt number");
@@ -1317,11 +1348,13 @@ void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
 void C5xCore::step()
 {
     m_step_cycles = 0;
-    check_nmi();
+    // Both checks refuse at once with nothing pending, which is nearly every
+    // step, so the calls are skipped then.
+    if (m_nmi_pending) check_nmi();
     // Taking a vector is this step's work: PC is left at the handler's first
     // word for the next one, the way the part spends its own cycles getting
     // there rather than fetching the handler in the same instruction slot.
-    if (check_interrupts()) { consume_cycles(4); return; }
+    if ((m_ifr & m_imr) && check_interrupts()) { consume_cycles(4); return; }
     if (m_idle) consume_cycles(1);
     else {
         // The customer-ROM dispatcher publishes call state at the boundary
@@ -1438,14 +1471,8 @@ void C5xCore::step()
     const uint64_t elapsed = m_cycles - m_timer.serviced_cycle;
     m_timer.serviced_cycle = m_cycles;
     if (!m_timer.tss)
-        for (uint64_t tick = 0; tick < elapsed; ++tick) {
-            if (--m_timer.psc > 0) continue;
-            m_timer.psc = m_timer.tddr;
-            if (--m_timer.tim == 0) {
-                m_timer.tim = m_timer.prd;
-                interrupt(IRQ_TINT);
-            }
-        }
+        for (uint64_t expiry = advance_timer(elapsed); expiry; --expiry)
+            interrupt(IRQ_TINT);
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
     // must come from elapsed C5x cycles rather than from observing an OUT.
