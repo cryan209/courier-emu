@@ -1222,6 +1222,30 @@ side is told to do, and `run` takes
 two processes yourself. The link implies `--with-dsp` and supersedes
 `--daa-line`: the far end's hook state is the line state.
 
+### A dialled 403 pair that carries data
+
+```sh
+./courier link artifacts/courier-board-21210-capture-403/courier-board.rom \
+  --with-dsp --nvram-fixture idsdl403 --board-id 7 --dip-preset default --tick-ms 5 \
+  --a-at ATS27=1 --a-at ATX0 --a-at ATDT5551234 --b-at ATA \
+  --a-send 'the quick brown fox' --b-send 'jumps over the lazy dog' \
+  --instructions 900000000 --summary
+```
+
+A prints `CONNECT/ARQ` and then B's text, and B prints `CONNECT 33600/ARQ/V34/MNP/MNP5`
+and then A's, byte for byte. The call holds to the end of the run (about 260 s of line
+audio). `--a-send`/`--b-send` (`run --send-after-connect`) hold their data until the
+modem's CONNECT line ends, as a terminal does: typed earlier, it would abort the dial.
+
+`ATS27=1` on the caller is required. The `idsdl403` fixture carries S27=48, the real
+answering unit's value. At 48 the caller goes straight to LAPM, but the answerer only
+tests bit 0x20 and waits for an MNP frame. The caller retries its XID three times and
+hangs up (reason `0e`), and B is left with `CONNECT 33600/V34/NONE`. The real pair failed
+the same way when an `AT&W` drift put both ends at 048; the originator's own value is 001.
+`--b-at ATS27=0` instead gives LAPM.
+
+### The 211 pair
+
 The call comes up at the line layer. Each side reports the other off hook, both
 qualify the line detector, and each exchanges the same frame count:
 

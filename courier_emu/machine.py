@@ -477,6 +477,7 @@ class CourierMachine:
         dsp_tx_pcm: str | None = None,
         serial_input: bytes = b"",
         serial_input_on_ring: bool = False,
+        serial_input_after_connect: bytes = b"",
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
         codec: CodecBringUp | None = None,
@@ -601,6 +602,10 @@ class CourierMachine:
             serial_input if self._serial_input_on_ring else b"")
         self.serial_rx: deque[int] = deque(
             b"" if self._serial_input_on_ring else serial_input)
+        # Data a terminal sends once the call is up. Typed any earlier it
+        # would abort the dial, so it waits for the CONNECT line to end.
+        self._serial_input_after_connect: deque[int] = deque(
+            serial_input_after_connect)
         self._alternate_line = bytearray()
         self._rom_command_line = bytearray()
         self.console = console
@@ -776,7 +781,8 @@ class CourierMachine:
             locate_rom_serial(image.data, self._serial_callbacks)
             if self.uart is not None else None
         )
-        self._terminal_connected = bool(serial_input) or console is not None
+        self._terminal_connected = (bool(serial_input or serial_input_after_connect)
+                                    or console is not None)
         self._alternate_supervisor = supervisor_offset == 0x1B600
         self._supervisor_23 = supervisor_offset == 0x17BB0
         # main2205 keeps the same supervisor ABI but relocates several
@@ -839,6 +845,11 @@ class CourierMachine:
         if not self.online_mode and b"CONNECT" in recent.upper():
             self.online_mode = True
             self.serial_trace.append("entered-data-mode")
+        if (self.online_mode and self._serial_input_after_connect
+                and value & 0x7F == 0x0A):
+            self.serial_rx.extend(self._serial_input_after_connect)
+            self._serial_input_after_connect.clear()
+            self.serial_trace.append("connect: released held data")
         if self.console is not None:
             self.console.write(value if self.online_mode else value & 0x7F)
 

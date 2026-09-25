@@ -338,6 +338,10 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--serial-input-hex", serial_input.hex()))
     if getattr(args, "serial_input_on_ring", False):
         command.append("--serial-input-on-ring")
+    after_connect = b"".join(value.encode("latin-1")
+                             for value in getattr(args, "send_after_connect", []))
+    if after_connect:
+        command.extend(("--serial-after-connect-hex", after_connect.hex()))
     return command
 
 
@@ -440,6 +444,8 @@ def _link_side(args: argparse.Namespace, commands: list[str], listen: bool) -> l
     # correctly strapped the ends in opposite roles.
     for text in commands or ["AT&L1"]:
         command.extend(("--at", text))
+    for text in args.a_send if listen else args.b_send:
+        command.extend(("--send-after-connect", text))
     # The answering end waits to be offered the call. Its commands are held
     # until the ring detector reads high, which is the order a real answering
     # modem sees: the switch rings it, then the host answers. Typing ATA into
@@ -1351,6 +1357,14 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="TEXT",
         help="queue literal Latin-1 terminal input after boot",
     )
+    run.add_argument(
+        "--send-after-connect",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="literal Latin-1 data to send once the modem has printed its "
+        "CONNECT line, as a terminal does; repeatable",
+    )
 
     link = subparsers.add_parser(
         "link",
@@ -1402,6 +1416,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="COMMAND",
         help="AT command for side B; repeatable (default AT&L1)",
+    )
+    link.add_argument(
+        "--a-send",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="data side A sends once it has printed CONNECT; repeatable",
+    )
+    link.add_argument(
+        "--b-send",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="data side B sends once it has printed CONNECT; repeatable",
     )
     link.add_argument(
         "--peek",
