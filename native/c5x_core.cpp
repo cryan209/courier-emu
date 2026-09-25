@@ -614,6 +614,15 @@ uint16_t C5xCore::register_value(uint16_t offset) const
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
         (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
     case 0x09: return uint16_t(m_brcr);
+    // PASR and PAER are memory-mapped beside BRCR (SPRU056D Table 4-2), and a
+    // task switch that saves 0x07..0x1e and restores it relies on them: MICA's
+    // worker scheduler preempts an FFT inside its RPTB block, another task
+    // runs its own RPTB, and without these the FFT resumed with the other
+    // loop's bounds, never met its own end, and ran its pointers through the
+    // scheduler's task blocks. PAER holds the block's last instruction; the
+    // core keeps the address after it.
+    case 0x0a: return m_pasr;
+    case 0x0b: return uint16_t(m_paer - 1);
     // TREG1 is a 5-bit shift count and TREG2 a 4-bit bit pointer (SPRU056D
     // 3.4); only those bits exist, so a read sees nothing above them.  A
     // bit pump that steps TREG2 with `lamm @0e / sub #01 / samm @0e` and
@@ -942,6 +951,15 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         (m_pmst.ovly << 5) | (m_pmst.ram << 4) | (m_pmst.mpmc << 3) |
         (m_pmst.ndx << 2) | (m_pmst.trm << 1) | m_pmst.braf);
     case 0x09: return uint16_t(m_brcr);
+    // PASR and PAER are memory-mapped beside BRCR (SPRU056D Table 4-2), and a
+    // task switch that saves 0x07..0x1e and restores it relies on them: MICA's
+    // worker scheduler preempts an FFT inside its RPTB block, another task
+    // runs its own RPTB, and without these the FFT resumed with the other
+    // loop's bounds, never met its own end, and ran its pointers through the
+    // scheduler's task blocks. PAER holds the block's last instruction; the
+    // core keeps the address after it.
+    case 0x0a: return m_pasr;
+    case 0x0b: return uint16_t(m_paer - 1);
     // TREG0 is memory-mapped at 0x0c, next to TREG1 and TREG2. Leaving it out
     // splits it in two: LT and its relatives write the register while a read
     // through the data space sees a cell nothing keeps up to date.
@@ -1061,6 +1079,8 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         m_pmst.mpmc = (value >> 3) & 1; m_pmst.ndx = (value >> 2) & 1;
         m_pmst.trm = (value >> 1) & 1; m_pmst.braf = value & 1; return;
     case 0x09: m_brcr = value; return;
+    case 0x0a: m_pasr = value; return;
+    case 0x0b: m_paer = uint16_t(value + 1); return;
     case 0x0c: m_treg0 = value; return;
     case 0x0d: m_treg1 = value; return; case 0x0e: m_treg2 = value; return;
     case 0x0f: m_dbmr = value; return;
@@ -1387,8 +1407,7 @@ void C5xCore::step()
                     m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) | 0xFEEDu);
             }
         }
-        if ((previous_pc >= 0xc700 && previous_pc < 0xca00) ||
-            (previous_pc >= 0x0200 && previous_pc < 0x0300) ||
+        if ((previous_pc >= 0x0200 && previous_pc < 0x0300) ||
             (previous_pc >= m_trace_first && previous_pc <= m_trace_last)) {
             if (m_pc_trace.size() >= 4096) m_pc_trace.pop_front();
             m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) |
