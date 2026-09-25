@@ -1357,7 +1357,7 @@ void C5xCore::step()
             if (--m_brcr <= 0) m_pmst.braf = 0;
         }
         uint16_t previous_pc = m_pc;
-        if (std::find(m_v8_dispatch_pcs.begin(), m_v8_dispatch_pcs.end(),
+        if (m_step_probes && std::find(m_v8_dispatch_pcs.begin(), m_v8_dispatch_pcs.end(),
                 previous_pc) != m_v8_dispatch_pcs.end()) {
             ++m_v8_dispatches;
             m_v8_dispatch_pc = previous_pc;
@@ -1382,8 +1382,8 @@ void C5xCore::step()
             m_v8_countdown = m_data[uint16_t(page | 0x4a)];
             m_v8_flags = m_data[uint16_t(page | 0x4d)];
         }
-        bool negotiation_loop = previous_pc == 0xc7f7 || previous_pc == 0xc81a ||
-            previous_pc == 0xc853;
+        bool negotiation_loop = m_step_probes && (previous_pc == 0xc7f7 ||
+            previous_pc == 0xc81a || previous_pc == 0xc853);
         if (negotiation_loop && !m_negotiation_loop_active) {
             m_negotiation_loop_active = true;
             ++m_negotiation_loop_entries;
@@ -1399,7 +1399,7 @@ void C5xCore::step()
             m_negotiation_arp = m_st0.arp; m_negotiation_pm = m_st1.pm;
         }
         m_op = ROPCODE();
-        {   // PROBE: first-ever execution of each PC after 1.6G instructions
+        if (m_step_probes) {   // PROBE: first-ever execution of each PC after 1.6G instructions
             static std::vector<uint8_t> seen(65536, 0);
             if (!seen[previous_pc]) {
                 seen[previous_pc] = 1;
@@ -1407,7 +1407,7 @@ void C5xCore::step()
                     m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) | 0xFEEDu);
             }
         }
-        if ((previous_pc >= 0x0200 && previous_pc < 0x0300) ||
+        if ((m_step_probes && previous_pc >= 0x0200 && previous_pc < 0x0300) ||
             (previous_pc >= m_trace_first && previous_pc <= m_trace_last)) {
             if (m_pc_trace.size() >= 4096) m_pc_trace.pop_front();
             m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) |

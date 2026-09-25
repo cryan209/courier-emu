@@ -352,6 +352,14 @@ public:
         m_trace_last = last;
     }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
+    // The per-instruction probes in step(): the V.8 dispatch record, the
+    // negotiation-loop capture, the first-execution record and the built-in
+    // 0x0200..0x02FF trace window. They are on by default, as they always
+    // were. A harness that reads none of them - MICA's native board - turns
+    // them off, which is about a tenth of step()'s cost; the window set by
+    // set_pc_trace_range() is traced either way.
+    void set_step_probes(bool enabled) { m_step_probes = enabled; }
+    bool step_probes() const { return m_step_probes; }
 
 private:
     struct pmst_t { uint16_t iptr, avis, ovly, ram, mpmc, ndx, trm, braf; };
@@ -404,6 +412,7 @@ private:
     std::array<PortStat, 65536> m_io_port_stats{};
     std::deque<uint64_t> m_pc_trace;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
+    bool m_step_probes = true;
     bool m_trace_data_writes = false;
     uint16_t m_trace_filter = 0;
     bool m_trace_filtered = false;
