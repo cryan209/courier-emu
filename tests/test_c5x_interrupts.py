@@ -125,7 +125,7 @@ def test_analog_codec_fs_latches_int3_with_serial_port_reset_and_imr_masked():
     with NativeC5x.from_program(0, program(*([0x8B00] * 8192))) as core:
         core.configure_rom_codec()
         core.configure_line_frame_interrupt(5, 0xFFFF)
-        core.step(3000)
+        core.step(core.codec_state()["frame_period"])
         assert core.register(0x04) == 0
         assert core.register(0x06) & (1 << 2)
         assert not core.register(0x06) & ((1 << 4) | (1 << 5))
@@ -143,7 +143,7 @@ def test_analog_frame_latches_external_and_serial_interrupts_together():
     with NativeC5x.from_program(0, program(*code)) as core:
         core.configure_rom_codec()
         core.configure_line_frame_interrupt(5, 0xFFFF)
-        core.step(3000)
+        core.step(core.codec_state()["frame_period"])
         expected = (1 << 2) | (1 << 4) | (1 << 5)
         assert core.register(6) & expected == expected
 
