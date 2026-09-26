@@ -1495,7 +1495,7 @@ void C5xCore::step()
             // octets are the time slots as they sit on the wire. How many of
             // them a frame carries is SPC's to say, not this code's.
             auto next_octet = [&]() -> uint16_t {
-                if (m_g711_rx.empty()) return m_g711_idle;
+                if (m_g711_rx.empty()) { ++m_g711_rx_underruns; return m_g711_idle; }
                 const uint16_t octet = m_g711_rx.front();
                 m_g711_rx.pop_front();
                 return octet;

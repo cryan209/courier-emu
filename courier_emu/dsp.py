@@ -251,6 +251,10 @@ class NativeC5x:
         lib.courier_c5x_configure_digital_pcm.argtypes = [
             ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16, ctypes.c_uint32
         ]
+        lib.courier_c5x_get_g711_rx_underruns.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_g711_rx_underruns.restype = ctypes.c_uint64
+        lib.courier_c5x_get_g711_rx_pending.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_g711_rx_pending.restype = ctypes.c_size_t
         lib.courier_c5x_queue_g711_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t
         ]
@@ -503,6 +507,13 @@ class NativeC5x:
             raise ValueError("digital PCM clock must be at least 8 kHz")
         self.library.courier_c5x_configure_digital_pcm(
             self.handle, int(enabled), idle_codeword, clock_hz)
+
+    def g711_rx_underruns(self) -> int:
+        """Serial frames that found the network receive queue empty."""
+        return int(self.library.courier_c5x_get_g711_rx_underruns(self.handle))
+
+    def g711_rx_pending(self) -> int:
+        return int(self.library.courier_c5x_get_g711_rx_pending(self.handle))
 
     def queue_g711_rx(self, codewords: bytes) -> None:
         """Queue opaque G.711 octets; companding is the call's concern."""

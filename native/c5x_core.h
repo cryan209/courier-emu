@@ -254,6 +254,8 @@ public:
     void configure_digital_pcm(bool enabled, uint16_t idle_codeword = 0xff,
         uint32_t clock_hz = 20'160'000);
     void queue_g711_rx(const uint8_t *codewords, std::size_t count);
+    uint64_t g711_rx_underruns() const { return m_g711_rx_underruns; }
+    std::size_t g711_rx_pending() const { return m_g711_rx.size(); }
     const std::vector<uint8_t> &g711_tx() const { return m_g711_tx; }
     // The boot table the ASIC clocks into the same serial port before the
     // codec matters. It is not audio and must not be consumed by a frame sync,
@@ -560,6 +562,9 @@ private:
     uint16_t m_hybrid_peak = 0;
     uint32_t m_hybrid_delay = 0;
     std::deque<uint8_t> m_g711_rx;
+    // Serial frames that found no network octet queued: each is an idle
+    // codeword spliced in, and every later octet arrives one frame late.
+    uint64_t m_g711_rx_underruns = 0;
     std::vector<uint8_t> m_g711_tx;
     std::deque<uint16_t> m_codec_boot;
     std::deque<int16_t> m_v8_rx_window;

@@ -221,6 +221,16 @@ void courier_c5x_configure_digital_pcm(void *handle, int enabled,
         enabled != 0, idle_codeword, clock_hz);
 }
 
+uint64_t courier_c5x_get_g711_rx_underruns(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->g711_rx_underruns() : 0;
+}
+
+std::size_t courier_c5x_get_g711_rx_pending(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->g711_rx_pending() : 0;
+}
+
 void courier_c5x_queue_g711_rx(void *handle, const uint8_t *codewords, std::size_t count)
 {
     if (handle && codewords) static_cast<C5xCore *>(handle)->queue_g711_rx(codewords, count);
