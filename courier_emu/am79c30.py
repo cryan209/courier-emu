@@ -300,6 +300,11 @@ class Am79C30:
     # each one is an idle codeword spliced into the far end's audio.
     bearer_underruns: Counter = field(default_factory=Counter)
     bearer_rx_fed: dict = field(default_factory=lambda: {1: False, 2: False})
+    # What each channel actually clocked in once fed, idle fills included:
+    # the far end as the modem heard it.
+    bearer_rx_heard: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
+    # Offsets into bearer_rx_heard where an underrun spliced in an idle fill.
+    bearer_underrun_at: dict = field(default_factory=lambda: {1: [], 2: []})
 
     def bearer_routes(self) -> list[tuple[int, int]]:
         routes = []
@@ -354,6 +359,10 @@ class Am79C30:
                 if (self.activated and self.bearer_rx_fed[channel]
                         and any(channel in route for route in routes)):
                     self.bearer_underruns[channel] += 1
+                    self.bearer_underrun_at[channel].append(
+                        len(self.bearer_rx_heard[channel]))
+            if self.activated and self.bearer_rx_fed[channel]:
+                self.bearer_rx_heard[channel].append(inputs[channel])
         outputs = {port: idle for port in range(1, 9)}
         for left, right in routes:
             if not self.activated and (left in (1, 2) or right in (1, 2)):
@@ -643,6 +652,7 @@ class Am79C30:
                 "routes": self.bearer_routes(),
                 "routed_frames": dict(self.bearer_routed),
                 "underruns": dict(self.bearer_underruns),
+                "underrun_at": {c: at[:2000] for c, at in self.bearer_underrun_at.items() if at},
                 "rx_pending": {channel: len(q) for channel, q in self.bearer_rx.items()},
             },
             "d_channel": {

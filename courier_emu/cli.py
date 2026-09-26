@@ -874,6 +874,12 @@ def build_parser() -> argparse.ArgumentParser:
              "virtual-switch call is active",
     )
     isdn_run.add_argument(
+        "--bri-rx-heard",
+        metavar="FILE",
+        help="save the B1 octets the modem clocked in, idle fills from "
+             "receive underruns included",
+    )
+    isdn_run.add_argument(
         "--flash-overlay",
         metavar="ADDR=FILE",
         help="lay a file over the flash window before the run, e.g. "
@@ -1798,6 +1804,9 @@ def main(argv: list[str] | None = None) -> int:
                 Path(args.flash_save).write_bytes(bytes(machine.flash.contents))
             if args.bri_tx_g711:
                 Path(args.bri_tx_g711).write_bytes(bytes(bri.media_tx))
+            if args.bri_rx_heard:
+                Path(args.bri_rx_heard).write_bytes(
+                    bytes(machine.dsc.bearer_rx_heard[1]))
             if args.flash_nvram:
                 # After the run, not during: the firmware erases the sector
                 # before it rewrites it, so a store written mid-erase would
