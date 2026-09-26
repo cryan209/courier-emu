@@ -927,6 +927,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print the diagnostic JSON report after a terminal session",
     )
+    isdn_run.add_argument(
+        "--hot-addresses",
+        action="store_true",
+        help="count every executed address for the report's hot_addresses; "
+             "about 3x slower, since it disables native batches",
+    )
 
     extract = subparsers.add_parser(
         "extract",
@@ -1766,9 +1772,9 @@ def main(argv: list[str] | None = None) -> int:
                 serial_pace=args.serial_pace,
                 serial_signals=args.serial_signals,
                 product_type=args.product_type,
-                # Per-address tracing is opt-in: it disables native batches.
-                # The report requests it to populate hot_addresses.
-                profile=args.report,
+                # Per-address tracing is opt-in: it disables native batches
+                # and is the only thing that fills the report's hot_addresses.
+                profile=args.hot_addresses,
                 product_modem=args.product_modem,
                 line_activate=args.line_activate,
                 flash_overlay=overlay,
