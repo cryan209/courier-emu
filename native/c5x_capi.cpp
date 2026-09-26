@@ -460,6 +460,11 @@ std::size_t courier_c5x_get_pc_trace_count(void *handle)
     return handle ? static_cast<C5xCore *>(handle)->pc_trace().size() : 0;
 }
 
+void courier_c5x_clear_pc_trace(void *handle)
+{
+    if (handle) static_cast<C5xCore *>(handle)->clear_pc_trace();
+}
+
 void courier_c5x_get_pc_trace(void *handle, std::size_t index, uint64_t *values, std::size_t count)
 {
     if (!handle || !values || count < 2) return;

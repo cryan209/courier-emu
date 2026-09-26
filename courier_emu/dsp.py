@@ -289,6 +289,8 @@ class NativeC5x:
         lib.courier_c5x_set_data_trace_filter.restype = None
         lib.courier_c5x_set_pc_trace_range.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint]
         lib.courier_c5x_set_pc_trace_range.restype = None
+        lib.courier_c5x_clear_pc_trace.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_clear_pc_trace.restype = None
         lib.courier_c5x_get_pc_trace_count.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_pc_trace_count.restype = ctypes.c_size_t
         lib.courier_c5x_get_pc_trace.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
@@ -730,6 +732,10 @@ class NativeC5x:
         handler neither covers - 3.1.2's tag 0x13 enters ee20.
         """
         self.library.courier_c5x_set_pc_trace_range(self.handle, first, last)
+
+    def clear_pc_trace(self) -> None:
+        """Empty the trace window, so each drain sees an entry once."""
+        self.library.courier_c5x_clear_pc_trace(self.handle)
 
     def pc_trace(self) -> list[dict[str, int]]:
         count = int(self.library.courier_c5x_get_pc_trace_count(self.handle))
