@@ -24,6 +24,9 @@ class ImodemMailbox:
         # progress through a call is only visible here.
         self.replies: deque[tuple[int, int]] = deque(maxlen=512)
         self.reply_counts: Counter = Counter()
+        # Both directions against the B1 octets the modem has clocked in
+        # (0 before the call), so an exchange lines up with the far end's audio.
+        self.timeline: list[tuple[int, str, int, int]] = []
 
     def read(self, port: int) -> int:
         if port == 0x1C:
@@ -47,6 +50,7 @@ class ImodemMailbox:
                        int.from_bytes(self.tx[2:], 'little'))
             self.commands.append(command)
             self.committed += 1
+            self._stamp('cmd', *command)
             if self.on_command is not None:
                 self.on_command(*command)
 
@@ -57,7 +61,14 @@ class ImodemMailbox:
         self.rx = (tag & 0xFFFF, value & 0xFFFF)
         self.replies.append(self.rx)
         self.reply_counts[f'{self.rx[0]:04x}:{self.rx[1]:04x}'] += 1
+        self._stamp('reply', *self.rx)
         return True
+
+    def _stamp(self, kind: str, tag: int, value: int) -> None:
+        dsc = getattr(self, 'dsc', None)
+        heard = len(dsc.bearer_rx_heard[1]) if dsc is not None else 0
+        if heard and len(self.timeline) < 4000:
+            self.timeline.append((heard, kind, tag, value))
 
     def status(self) -> dict:
         return {'endpoint': 'callback' if self.on_command else 'capture-only',
@@ -66,4 +77,6 @@ class ImodemMailbox:
                 'recent_commands': list(self.commands),
                 'recent_replies': [f'{tag:04x}:{value:04x}'
                                    for tag, value in self.replies],
-                'reply_counts': dict(sorted(self.reply_counts.items()))}
+                'reply_counts': dict(sorted(self.reply_counts.items())),
+                'timeline': [f'{at / 8000:.4f} {kind} {tag:04x}:{value:04x}'
+                             for at, kind, tag, value in self.timeline]}
