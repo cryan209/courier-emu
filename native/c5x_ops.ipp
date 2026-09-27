@@ -358,8 +358,19 @@ void C5xCore::op_abs()
 
 void C5xCore::op_adcb()
 {
-	uint32_t addend = uint32_t(m_accb) + (m_st1.c ? 1u : 0u);
-	m_acc = ADD(uint32_t(m_acc), addend, false);
+	// ACC + ACCB + C as one sum: folding C into ACCB first wraps FFFFFFFF+1
+	// to zero and loses the carry out.
+	const uint32_t acc = uint32_t(m_acc), accb = uint32_t(m_accb), c = m_st1.c & 1;
+	const uint64_t sum = uint64_t(acc) + accb + c;
+	uint32_t res = uint32_t(sum);
+	m_st1.c = (sum >> 32) & 1;
+	const int64_t exact = int64_t(int32_t(acc)) + int32_t(accb) + c;
+	if (exact != int32_t(res))
+	{
+		if (m_st0.ovm) res = exact < 0 ? 0x80000000u : 0x7fffffffu;
+		m_st0.ov = 1;
+	}
+	m_acc = int32_t(res);
 	CYCLES(1);
 }
 
@@ -814,8 +825,11 @@ void C5xCore::op_sbb()
 
 void C5xCore::op_sbbb()
 {
-	uint32_t subtrahend = uint32_t(m_accb) + (m_st1.c ? 0u : 1u);
-	m_acc = SUB(uint32_t(m_acc), subtrahend, false);
+	// Like SBB this affects C only: no OV and no saturation under OVM.
+	const uint32_t acc = uint32_t(m_acc), accb = uint32_t(m_accb);
+	const uint64_t subtrahend = uint64_t(accb) + (m_st1.c ? 0u : 1u);
+	m_st1.c = uint64_t(acc) >= subtrahend ? 1 : 0;
+	m_acc = int32_t(uint32_t(uint64_t(acc) - subtrahend));
 	CYCLES(1);
 }
 
@@ -948,18 +962,17 @@ void C5xCore::op_subc()
 	// instruction. ACC - (dma << 15): a non-negative result is shifted up
 	// with a one shifted in, a negative one leaves ACC shifted up alone,
 	// which is what makes a repeated SUBC a restoring division.
-	uint32_t value = DM_READ16(GET_ADDRESS());
-	int32_t difference = int32_t(uint32_t(m_acc) - (value << 15));
-	if (difference >= 0)
-	{
-		m_acc = int32_t((uint32_t(difference) << 1) | 1u);
-		m_st1.c = 1;
-	}
+	// It affects OV but OVM does not saturate it, and C is the borrow:
+	// cleared if the subtraction borrows, set otherwise.
+	uint32_t acc = uint32_t(m_acc);
+	uint32_t divisor = uint32_t(DM_READ16(GET_ADDRESS())) << 15;
+	uint32_t difference = acc - divisor;
+	m_st1.c = acc >= divisor ? 1 : 0;
+	if ((acc ^ divisor) & (acc ^ difference) & 0x80000000u) m_st0.ov = 1;
+	if (int32_t(difference) >= 0)
+		m_acc = int32_t((difference << 1) | 1u);
 	else
-	{
-		m_acc = int32_t(uint32_t(m_acc) << 1);
-		m_st1.c = 0;
-	}
+		m_acc = int32_t(acc << 1);
 	CYCLES(1);
 }
 
@@ -1595,10 +1608,17 @@ void C5xCore::op_dmov()
 
 void C5xCore::op_in()
 {
+	// Under RPT the port address steps by one per repetition (SPRU056D
+	// IN), so a repeated IN reads consecutive ports.
 	uint16_t port = ROPCODE();
-	uint16_t ea = GET_ADDRESS();
-	DM_WRITE16(ea, IO_READ16(port));
-	CYCLES(3);
+	do
+	{
+		uint16_t ea = GET_ADDRESS();
+		DM_WRITE16(ea, IO_READ16(port));
+		port++;
+		CYCLES(3);
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_lmmr()
@@ -1622,14 +1642,16 @@ void C5xCore::op_lmmr()
 
 void C5xCore::op_out()
 {
+	// As IN: a repeated OUT writes consecutive ports.
 	uint16_t port = ROPCODE();
-	uint16_t ea = GET_ADDRESS();
-
-	uint16_t data = DM_READ16(ea);
-	IO_WRITE16(port, data);
-
-	// TODO: handle repeat
-	CYCLES(3);
+	do
+	{
+		uint16_t ea = GET_ADDRESS();
+		IO_WRITE16(port, DM_READ16(ea));
+		port++;
+		CYCLES(3);
+	} while (m_rptc-- > 0);
+	m_rptc = 0;
 }
 
 void C5xCore::op_smmr()
@@ -1903,6 +1925,9 @@ void C5xCore::op_mac()
 		uint16_t data = DM_READ16(ea);
 		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
 		m_treg0 = data;
+		// MAC is a 'C2x instruction, so with TRM clear it loads TREG1 and
+		// TREG2 as well (SPRU056D PMST.TRM); MADS and MADD are 'C5x-only.
+		if (!m_pmst.trm) m_treg1 = m_treg2 = data;
 		m_preg = int32_t(int16_t(PM_READ16(pfc))) * int32_t(int16_t(data));
 		pfc++;
 		++count;
@@ -1929,6 +1954,7 @@ void C5xCore::op_macd()
 		uint16_t data = DM_READ16(ea);
 		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
 		m_treg0 = data;
+		if (!m_pmst.trm) m_treg1 = m_treg2 = data;   // 'C2x-compatible, as MAC
 		m_preg = int32_t(int16_t(PM_READ16(pfc))) * int32_t(int16_t(data));
 		// MACD also builds the delay line: the data operand is copied to the
 		// next higher data address. Address-register modification has already
