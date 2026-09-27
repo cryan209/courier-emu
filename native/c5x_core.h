@@ -322,6 +322,10 @@ public:
     // Restrict the write trace to one cell. Unfiltered it records every
     // write and the 4096-event buffer covers a few milliseconds of a run,
     // which is no use for watching one cell across a whole dial.
+    // A filtered trace records changes only by default: a cell polled with
+    // the same value would otherwise fill the buffer. A stream of words (a
+    // bitstream, say) needs every write, repeats included.
+    void set_data_trace_changes_only(bool enabled) { m_trace_changes_only = enabled; }
     void set_data_trace_filter(uint16_t address, bool enabled)
     {
         m_trace_filter = address;
@@ -418,6 +422,7 @@ private:
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_step_probes = true;
     bool m_trace_data_writes = false;
+    bool m_trace_changes_only = true;
     uint16_t m_trace_filter = 0;
     bool m_trace_filtered = false;
 
