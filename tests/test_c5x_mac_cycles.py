@@ -53,3 +53,78 @@ def test_imodem_advance_collects_state_with_the_cycle_run():
         assert (status, tag, value, writes, pcm) == (
             0xFFFF, 0xFFFF, 0xFFFF, 0, b""
         )
+
+
+def test_cycle_budget_fast_forwards_idle_without_changing_state():
+    cores = [
+        NativeC5x.from_program(0x8000, program(0xBE22), rebuild=True)
+        for _ in range(2)
+    ]
+    try:
+        slow, fast = cores
+        slow.set_pc(0x8000)
+        fast.set_pc(0x8000)
+        slow.step(1)
+        fast.step(1)
+        slow.step(20_000)
+        instructions, cycles = fast.step_cycles(20_000)
+
+        assert instructions == 20_000
+        assert cycles == 20_000
+        assert slow.state() == fast.state()
+        assert slow.serial_state() == fast.serial_state()
+    finally:
+        for core in cores:
+            core.close()
+
+
+def test_idle_fast_forward_stops_at_pcm_frame_boundaries():
+    cores = [
+        NativeC5x.from_program(0x8000, program(0xBE22), rebuild=True)
+        for _ in range(2)
+    ]
+    try:
+        slow, fast = cores
+        for core in cores:
+            core.set_pc(0x8000)
+            core.configure_digital_pcm(clock_hz=40_320_000)
+            core.configure_line_frame_interrupt(5, 0xFFFF)
+            core.queue_g711_rx(bytes(range(16)))
+            core.step(1)
+
+        slow.step(20_000)
+        fast.step_cycles(20_000)
+
+        assert slow.state() == fast.state()
+        assert slow.serial_state() == fast.serial_state()
+        assert slow.g711_tx() == fast.g711_tx()
+        assert slow.g711_rx_pending() == fast.g711_rx_pending()
+        assert slow.g711_rx_underruns() == fast.g711_rx_underruns()
+    finally:
+        for core in cores:
+            core.close()
+
+
+def test_idle_fast_forward_stops_at_timer_expiry():
+    # PRD=TIM=100, timer running with a one-cycle prescaler, then IDLE.
+    code = program(0xAE25, 100, 0xAE24, 100, 0xAE26, 0, 0xBE22)
+    cores = [
+        NativeC5x.from_program(0x8000, code, rebuild=True)
+        for _ in range(2)
+    ]
+    try:
+        slow, fast = cores
+        for core in cores:
+            core.set_pc(0x8000)
+            core.step(4)
+
+        slow.step(1_000)
+        fast.step_cycles(1_000)
+
+        assert slow.state() == fast.state()
+        assert slow.register(0x24) == fast.register(0x24)
+        assert slow.register(0x26) == fast.register(0x26)
+        assert slow.register(0x06) == fast.register(0x06)
+    finally:
+        for core in cores:
+            core.close()

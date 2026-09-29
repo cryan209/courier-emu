@@ -1620,7 +1620,40 @@ void C5xCore::run(uint64_t instruction_limit)
 void C5xCore::run_cycles(uint64_t cycle_limit)
 {
     const uint64_t target = m_cycles + cycle_limit;
-    while (m_cycles < target) step();
+    while (m_cycles < target) {
+        // IDLE stops instruction fetch while the clocks and peripherals keep
+        // running. Skip only cycles on which no modeled event can occur, then
+        // use the ordinary step() for the event boundary itself. This keeps
+        // timer, serial-frame and interrupt recognition in one implementation.
+        if (m_idle && !m_nmi_pending && !(m_ifr & m_imr)) {
+            uint64_t distance = target - m_cycles;
+            if (!m_timer.tss) {
+                const uint64_t first = m_timer.psc > 1
+                    ? uint64_t(m_timer.psc) : 1;
+                const uint64_t period = m_timer.tddr > 1
+                    ? uint64_t(m_timer.tddr) : 1;
+                const uint64_t decrements = m_timer.tim
+                    ? uint64_t(m_timer.tim) : 0x10000;
+                distance = std::min(distance,
+                    first + (decrements - 1) * period);
+            }
+            if (m_line_frame_irq >= 0 && m_line_frame_next_cycle > m_cycles)
+                distance = std::min(distance,
+                    m_line_frame_next_cycle - m_cycles);
+            if (m_rom_codec && m_codec.secondary_due
+                && m_codec.secondary_cycle > m_cycles)
+                distance = std::min(distance,
+                    m_codec.secondary_cycle - m_cycles);
+            if (distance > 1) {
+                const uint64_t skipped = distance - 1;
+                m_cycles += skipped;
+                // Preserve the core's historical accounting: an idle clock
+                // was represented as one retired idle step per cycle.
+                m_instructions += skipped;
+            }
+        }
+        step();
+    }
 }
 
 C5xCore::State C5xCore::state() const
