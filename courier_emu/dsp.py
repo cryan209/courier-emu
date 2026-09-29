@@ -23,6 +23,7 @@ SOURCES = (
     NATIVE_DIRECTORY / "c5x_ops.ipp",
 )
 LIBRARY_SOURCES = SOURCES[:2] + (NATIVE_DIRECTORY / "c5x_capi.cpp",) + SOURCES[3:]
+_LIBRARY_HANDLE = None
 
 
 def build_runner(*, force: bool = False) -> Path:
@@ -67,6 +68,17 @@ def build_library(*, force: bool = False) -> Path:
         detail = process.stderr.strip() or process.stdout.strip()
         raise RuntimeError(f"failed to build the C5x library: {detail}")
     return LIBRARY
+
+
+def load_library(*, rebuild: bool = False):
+    """Reuse the production native-core handle; keep forced rebuilds explicit."""
+    global _LIBRARY_HANDLE
+    path = build_library(force=rebuild)
+    if rebuild:
+        return ctypes.CDLL(str(path))
+    if _LIBRARY_HANDLE is None:
+        _LIBRARY_HANDLE = ctypes.CDLL(str(path))
+    return _LIBRARY_HANDLE
 
 
 # The C5x's wait-state generator, from sections 9.4.1 to 9.4.3 of the C5x
@@ -131,7 +143,7 @@ class NativeC5x:
 
     def __init__(self, image: XmfImage, *, rebuild: bool = False, model: str = "c51",
                  separate_global_memory: bool = False) -> None:
-        self.library = ctypes.CDLL(str(build_library(force=rebuild)))
+        self.library = load_library(rebuild=rebuild)
         self._configure_api()
         self.model = model.lower()
         if self.model not in ("c51", "c53"):
@@ -174,7 +186,7 @@ class NativeC5x:
         what the emulator has is a program image and an origin, not a file.
         """
         self = cls.__new__(cls)
-        self.library = ctypes.CDLL(str(build_library(force=rebuild)))
+        self.library = load_library(rebuild=rebuild)
         self._configure_api()
         self.model = model.lower()
         if self.model not in ("c51", "c53"):
