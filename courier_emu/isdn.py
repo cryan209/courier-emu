@@ -735,6 +735,10 @@ class IsdnMachine:
 
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
+        if self.bri is not None:
+            # Deliver newly arrived B octets before advancing the independent
+            # DSP serial clock in this scheduler pass.
+            self.bri.service(self.dsc, self.instructions)
         self._advance_dsp()
         if self.rtos_service and self.instructions >= self._next_rtos_service:
             self._next_rtos_service = self.instructions + RTOS_SERVICE_INSTRUCTIONS
@@ -751,10 +755,6 @@ class IsdnMachine:
                 and self.instructions >= self.offhook_at):
             self._offhook_done = True
             self.dsc.set_hook(False)
-        if self.bri is not None:
-            # Before the interrupt check, so a frame the peer delivers in
-            # this pass raises the line in the same pass rather than the next.
-            self.bri.service(self.dsc, self.instructions)
         if self.dsc.interrupting():
             self.pic.raise_irq(DSC_IRQ)
         if self.mailbox_service and self.instructions >= self._next_mailbox_service:

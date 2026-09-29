@@ -22,6 +22,9 @@ IDLE_CODEWORD = 0xff
 # deliver one sample every 125 us.
 DIGITAL_PCM_CLOCK_HZ = ASIC_DSP_CLOCK_HZ
 REALTIME_STEP_BATCH = 65_536
+# Return each serial frame to the receive FIFO before the C51 can clock the
+# next one. A 1024-instruction slice is shorter than a 5040-cycle PCM frame.
+PCM_STEP_BATCH = 1024
 
 ROM_SHA256 = 'd57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9'
 
@@ -92,9 +95,12 @@ class ImodemDsp(ImodemMailbox):
         if self.core is None or self.error is not None:
             return
         try:
-            self.core.step(count)
-            self._sync()
-            self._sync_pcm()
+            while count > 0:
+                batch = min(count, PCM_STEP_BATCH)
+                self.core.step(batch)
+                self._sync()
+                self._sync_pcm()
+                count -= batch
         except RuntimeError as exc:
             self.error = str(exc)
             self.tx_ready = False
@@ -157,12 +163,10 @@ class ImodemDsp(ImodemMailbox):
             # from running materially ahead of the RTP clock; the final few
             # instructions close any difference caused by multi-cycle ops.
             count = min(REALTIME_STEP_BATCH, target - cycles)
-            self.core.step(max(1, count))
+            self.step(max(1, count))
             new_cycles = self.core.state()['cycles']
             self.realtime_cycles += new_cycles - cycles
             cycles = new_cycles
-            self._sync()
-            self._sync_pcm()
 
     def _sync_pcm(self):
         octets = self.core.g711_tx(self._pcm_cursor)
@@ -336,6 +340,9 @@ class ImodemDsp(ImodemMailbox):
         # The peripheral port clocks a DS0 even when its MUX is disconnected.
         self.core.configure_digital_pcm(
             idle_codeword=IDLE_CODEWORD, clock_hz=DIGITAL_PCM_CLOCK_HZ)
+        # The first serial interrupt arrives before any transmit frame can be
+        # observed and returned by _sync_pcm.
+        self.core.queue_g711_rx(bytes((IDLE_CODEWORD,)) * PP_SLOTS)
         self.core.configure_line_frame_interrupt(5, 0xffff)
         self._reply_writes = 0
         self._pcm_cursor = 0
@@ -367,5 +374,9 @@ class ImodemDsp(ImodemMailbox):
                          'slots': [names.get(port) for port in slots],
                          'attached': self.dsc is not None,
                          'realtime_cycles': self.realtime_cycles,
+                         'rx_empty_frames': (self.core.g711_rx_underruns()
+                                             if self.core else None),
+                         'rx_pending_octets': (self.core.g711_rx_pending()
+                                               if self.core else None),
                          'serial': self.core.serial_state() if self.core else None}
         return result
