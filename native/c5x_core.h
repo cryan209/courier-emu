@@ -318,6 +318,9 @@ public:
     void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
     void step();
     void run(uint64_t instruction_limit);
+    void run_cycles(uint64_t cycle_limit);
+    uint64_t instruction_count() const { return m_instructions; }
+    uint64_t cycle_count() const { return m_cycles; }
     void set_data_trace(bool enabled) { m_trace_data_writes = enabled; }
     // Restrict the write trace to one cell. Unfiltered it records every
     // write and the 4096-event buffer covers a few milliseconds of a run,

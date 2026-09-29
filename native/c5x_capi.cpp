@@ -161,6 +161,58 @@ int courier_c5x_step(void *handle, uint64_t count, char *error, std::size_t erro
     }
 }
 
+int courier_c5x_step_cycles(void *handle, uint64_t count,
+    uint64_t *instructions, uint64_t *cycles,
+    char *error, std::size_t error_size)
+{
+    try {
+        if (!handle) throw std::runtime_error("null C5x handle");
+        C5xCore *core = static_cast<C5xCore *>(handle);
+        const uint64_t before_instructions = core->instruction_count();
+        const uint64_t before_cycles = core->cycle_count();
+        core->run_cycles(count);
+        if (instructions)
+            *instructions = core->instruction_count() - before_instructions;
+        if (cycles) *cycles = core->cycle_count() - before_cycles;
+        return 0;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return -1;
+    }
+}
+
+std::size_t courier_c5x_advance_imodem(void *handle, uint64_t count,
+    std::size_t tx_start, uint8_t *tx, std::size_t tx_capacity,
+    uint64_t *values, std::size_t value_count,
+    char *error, std::size_t error_size)
+{
+    try {
+        if (!handle || !values || value_count < 6)
+            throw std::runtime_error("invalid I-modem advance arguments");
+        C5xCore *core = static_cast<C5xCore *>(handle);
+        const uint64_t before_instructions = core->instruction_count();
+        const uint64_t before_cycles = core->cycle_count();
+        core->run_cycles(count);
+        const auto &words = core->g711_tx();
+        tx_start = std::min(tx_start, words.size());
+        const std::size_t available = words.size() - tx_start;
+        if (tx)
+            std::copy_n(words.begin() + tx_start,
+                std::min(available, tx_capacity), tx);
+        const auto &port = core->io_port_stat(0x5f);
+        values[0] = core->instruction_count() - before_instructions;
+        values[1] = core->cycle_count() - before_cycles;
+        values[2] = core->io(0x57);
+        values[3] = core->io_output(0x5e);
+        values[4] = core->io_output(0x5f);
+        values[5] = port.writes;
+        return available;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return std::size_t(-1);
+    }
+}
+
 uint16_t courier_c5x_get_io_output(void *handle, uint16_t port)
 {
     return handle ? static_cast<C5xCore *>(handle)->io_output(port) : 0;

@@ -119,6 +119,23 @@ class ImodemDsp(ImodemMailbox):
         self._cycle_debt += cycles
         if self._cycle_debt < 1:
             return
+        native_step_cycles = getattr(self.core, 'step_cycles', None)
+        if native_step_cycles is not None:
+            native_advance = getattr(self.core, 'advance_imodem', None)
+            if native_advance is not None:
+                ran, elapsed, status, tag, value, writes, octets = native_advance(
+                    int(self._cycle_debt), self._pcm_cursor)
+                self._sync_values(status, tag, value, writes)
+                if octets:
+                    self._sync_pcm(octets)
+            else:
+                ran, elapsed = native_step_cycles(int(self._cycle_debt))
+                self._sync()
+                self._sync_pcm()
+            self._cycle_debt -= elapsed
+            if ran > 0:
+                self._cpi = 0.9 * self._cpi + 0.1 * max(1.0, elapsed / ran)
+            return
         state = self.core.state()
         start_cycles, start_instructions = state['cycles'], state['instructions']
         target = start_cycles + int(self._cycle_debt)
@@ -157,6 +174,21 @@ class ImodemDsp(ImodemMailbox):
         target = origin_cycles + int(
             max(0.0, current_time - origin_time) * DIGITAL_PCM_CLOCK_HZ
         )
+        native_step_cycles = getattr(self.core, 'step_cycles', None)
+        if cycles < target and native_step_cycles is not None:
+            native_advance = getattr(self.core, 'advance_imodem', None)
+            if native_advance is not None:
+                _, elapsed, status, tag, value, writes, octets = native_advance(
+                    target - cycles, self._pcm_cursor)
+                self._sync_values(status, tag, value, writes)
+                if octets:
+                    self._sync_pcm(octets)
+            else:
+                _, elapsed = native_step_cycles(target - cycles)
+                self._sync()
+                self._sync_pcm()
+            self.realtime_cycles += elapsed
+            return
         while cycles < target:
             # Every instruction consumes at least one C5x cycle.  Limiting a
             # batch to the remaining cycle deficit prevents a large burst
@@ -168,8 +200,18 @@ class ImodemDsp(ImodemMailbox):
             self.realtime_cycles += new_cycles - cycles
             cycles = new_cycles
 
-    def _sync_pcm(self):
-        octets = self.core.g711_tx(self._pcm_cursor)
+    def _sync_values(self, status, tag, value, writes):
+        if self.host_pending and not status & 1:
+            self.consumed += 1
+            self.host_pending = False
+        self.tx_ready = not bool(status & 1)
+        if not status & 2 and self.rx is None and writes > self._reply_writes:
+            self.offer_reply(tag, value)
+            self._reply_writes = writes
+
+    def _sync_pcm(self, octets=None):
+        if octets is None:
+            octets = self.core.g711_tx(self._pcm_cursor)
         self._pcm_cursor += len(octets)
         self.pcm_tx.extend(octets)
         if self.dsc is None or not octets:

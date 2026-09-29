@@ -34,7 +34,7 @@ def build_runner(*, force: bool = False) -> Path:
     command = [
         "c++",
         "-std=c++17",
-        "-O2",
+        "-O3",
         "-Wall",
         "-Wextra",
         "-Wpedantic",
@@ -57,7 +57,7 @@ def build_library(*, force: bool = False) -> Path:
     BUILD_DIRECTORY.mkdir(parents=True, exist_ok=True)
     link_flags = ["-dynamiclib"] if sys.platform == "darwin" else ["-shared", "-fPIC"]
     command = [
-        "c++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Wpedantic",
+        "c++", "-std=c++17", "-O3", "-Wall", "-Wextra", "-Wpedantic",
         *link_flags,
         *(str(source) for source in LIBRARY_SOURCES[:3]),
         "-o", str(LIBRARY),
@@ -210,6 +210,18 @@ class NativeC5x:
         lib.courier_c5x_step.argtypes = [
             ctypes.c_void_p, ctypes.c_uint64, ctypes.c_char_p, ctypes.c_size_t,
         ]
+        lib.courier_c5x_step_cycles.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint64,
+            ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64),
+            ctypes.c_char_p, ctypes.c_size_t,
+        ]
+        lib.courier_c5x_advance_imodem.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t,
+            ctypes.c_char_p, ctypes.c_size_t,
+        ]
+        lib.courier_c5x_advance_imodem.restype = ctypes.c_size_t
         lib.courier_c5x_load_rom.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
             ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
@@ -383,6 +395,43 @@ class NativeC5x:
         result = self.library.courier_c5x_step(self.handle, count, error, len(error))
         if result:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
+
+    def step_cycles(self, count: int) -> tuple[int, int]:
+        """Run until at least ``count`` additional clock cycles have elapsed."""
+        instructions = ctypes.c_uint64()
+        cycles = ctypes.c_uint64()
+        error = ctypes.create_string_buffer(512)
+        result = self.library.courier_c5x_step_cycles(
+            self.handle, count, ctypes.byref(instructions), ctypes.byref(cycles),
+            error, len(error),
+        )
+        if result:
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+        return instructions.value, cycles.value
+
+    def advance_imodem(
+        self, count: int, tx_start: int
+    ) -> tuple[int, int, int, int, int, int, bytes]:
+        """Advance and collect the I-modem's hot-path state in one native call."""
+        capacity = 64
+        buffers = getattr(self, "_imodem_advance_buffers", None)
+        if buffers is None:
+            buffers = (
+                (ctypes.c_uint8 * capacity)(),
+                (ctypes.c_uint64 * 6)(),
+                ctypes.create_string_buffer(512),
+            )
+            self._imodem_advance_buffers = buffers
+        output, values, error = buffers
+        available = self.library.courier_c5x_advance_imodem(
+            self.handle, count, tx_start, output, capacity,
+            values, len(values), error, len(error),
+        )
+        if available == ctypes.c_size_t(-1).value:
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+        if available > capacity:
+            return (*map(int, values), self.g711_tx(tx_start))
+        return (*map(int, values), bytes(output[:available]))
 
     def configure_rom_codec(self, enabled: bool = True) -> None:
         self.library.courier_c5x_configure_rom_codec(self.handle, int(enabled))

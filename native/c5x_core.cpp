@@ -1617,6 +1617,12 @@ void C5xCore::run(uint64_t instruction_limit)
     for (uint64_t i = 0; i < instruction_limit; ++i) step();
 }
 
+void C5xCore::run_cycles(uint64_t cycle_limit)
+{
+    const uint64_t target = m_cycles + cycle_limit;
+    while (m_cycles < target) step();
+}
+
 C5xCore::State C5xCore::state() const
 {
     State result{m_pc, m_op, m_acc, m_accb, m_preg, m_treg0, m_treg1, m_treg2, {},

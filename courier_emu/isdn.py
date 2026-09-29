@@ -635,7 +635,13 @@ class IsdnMachine:
             self.machine.emu_stop()
 
     def read_port(self, port: int) -> int:
-        self._advance_dsp()
+        dsp_port = (
+            port in (0x18, 0x1a, 0x1c, 0x1e)
+            or port in self.mailbox.LANES
+            or self.dsc.handles(port)
+        )
+        if self.with_dsp and dsp_port:
+            self._advance_dsp()
         self.io_counts[("in", port)] += 1
         if self.pit.handles(port):
             return self.pit.read(port, self.instructions)
@@ -669,7 +675,14 @@ class IsdnMachine:
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:
-        self._advance_dsp()
+        # The 40h..5eh lanes only stage a download word in the host-side
+        # bridge. The C5x cannot observe it until a later 18h/1eh strobe, so
+        # advancing before every staged byte adds thousands of scheduler
+        # crossings without changing device-visible timing.
+        if self.with_dsp and (
+            port in (0x18, 0x1c, 0x1e) or self.dsc.handles(port)
+        ):
+            self._advance_dsp()
         self.io_counts[("out", port)] += 1
         if self.with_dsp and (port in (0x18, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
             self.mailbox.write(port, value)
