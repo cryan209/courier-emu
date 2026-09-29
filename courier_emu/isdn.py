@@ -1025,6 +1025,25 @@ class IsdnMachine:
 
         instruction_base = self.instructions
         if self.cpu_engine == "interpreter" and not profile and observer is None:
+            def apply_native_outputs(events: memoryview, count: int) -> None:
+                for offset in range(0, count * 4, 4):
+                    port = events[offset] | events[offset + 1] << 8
+                    value = events[offset + 2]
+                    self.io_counts[("out", port)] += 1
+                    if self.pic.handles(port):
+                        self.pic.write(port, value)
+                    elif self.with_dsp:
+                        self.mailbox.lanes[port] = value
+                        if port in self.mailbox.LANES:
+                            self.mailbox.tx[self.mailbox.LANES.index(port)] = value
+                        elif len(self.download) < MAX_SERIAL_BYTES:
+                            self.download.append(value)
+
+            native_output_ports = [0xF020, 0xF021, 0xF0A0, 0xF0A1]
+            if self.with_dsp:
+                native_output_ports.extend(range(DOWNLOAD_PORTS.start, 0x60, 2))
+            uc.native_out_batch_add(native_output_ports, apply_native_outputs)
+
             def service(_uc: Any, retired: int, _data: Any) -> None:
                 self.instructions = instruction_base + retired
                 self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS

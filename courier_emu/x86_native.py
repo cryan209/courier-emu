@@ -48,6 +48,11 @@ class NativeInterpreter:
         self.profile = os.environ.get("COURIER_X86_PROFILE", "0") == "1"
         self.exits = Counter()
         self.handled_io = False
+        self.fast_out = bytearray(65536)
+        for port in cpu._native_fast_out_ports:
+            self.fast_out[port] = 1
+        self.io_events = bytearray(65536 * 4)
+        self.out_batch_callback = cpu._native_out_batch_callback
 
     def statistics(self):
         return {"native_retired": self.retired, "batches": self.batches,
@@ -70,8 +75,8 @@ class NativeInterpreter:
                     first, last = max(0, first), min(len(self.guard) - 1, last)
                     self.guard[first:last+1] = self.guard[first:last+1].translate(bytes(v | bit for v in range(256)))
             self.signature = signature
-        done, reason, direction, port, size, value = self.run(
-            cpu.regs, cpu.memory, self.guard, count
+        done, reason, direction, port, size, value, event_count = self.run(
+            cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count
         )
         self.handled_io = reason == 8
         self.batches += 1
@@ -81,6 +86,8 @@ class NativeInterpreter:
             names = ("budget", "unsupported", "boundary", "read-watch", "write-watch",
                      "wide-registers", "code-hook", "system", "io")
             self.exits[(names[reason], hex(pc), hex(cpu.memory[pc]))] += 1
+        if event_count and self.out_batch_callback is not None:
+            self.out_batch_callback(memoryview(self.io_events), event_count)
         if self.handled_io:
             # Publish the progress preceding this I/O instruction while its
             # callback runs. Device hooks use the retired count to synchronize

@@ -79,6 +79,34 @@ def test_native_retires_port_io_before_device_callback(profile):
     assert fast._native.retired == 10
 
 
+def test_native_batches_timing_inert_output_ports_in_order():
+    slow, fast = pair("386ex")
+    logs = [[], []]
+    code = bytes.fromhex("b0 7a e6 40 e6 42 e6 44 e6 20")
+    for cpu, log in zip((slow, fast), logs):
+        cpu.memory[0x100:0x100 + len(code)] = code
+
+        def flush(events, count, output=log):
+            for offset in range(0, count * 4, 4):
+                output.append((
+                    events[offset] | events[offset + 1] << 8,
+                    events[offset + 2] | events[offset + 3] << 8,
+                ))
+
+        def on_out(_cpu, port, _size, value, output):
+            output.append((port, value))
+
+        if cpu.native_enabled:
+            cpu.native_out_batch_add((0x40, 0x42, 0x44), flush)
+        cpu.hook_add(x86.UC_HOOK_INSN, on_out, log, 1, 0, x86.UC_X86_INS_OUT)
+        cpu.emu_start(0x100, 0, count=5)
+
+    assert logs[0] == logs[1] == [
+        (0x40, 0x7A), (0x42, 0x7A), (0x44, 0x7A), (0x20, 0x7A)
+    ]
+    assert fast._native.retired == 5
+
+
 @pytest.mark.parametrize("kind", [x86.UC_HOOK_MEM_READ, x86.UC_HOOK_MEM_WRITE])
 def test_watched_string_instruction_falls_back_without_partial_effects(kind):
     slow, fast = pair()

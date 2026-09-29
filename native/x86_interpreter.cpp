@@ -9,6 +9,9 @@ constexpr uint32_t CF=1, PF=4, AF=16, ZF=64, SF=128, IF=512, DF=1024, OF=2048;
 struct Core {
     uint32_t r[14], saved[14], done=0, reason=0;
     uint32_t io_direction=0, io_port=0, io_size=0, io_value=0;
+    const uint8_t *fast_out=nullptr;
+    uint8_t *io_events=nullptr;
+    uint32_t io_event_count=0, io_event_capacity=0;
     std::jmp_buf exit;
     [[noreturn]] void yield(uint32_t why=1) { reason=why; std::longjmp(exit, 1); }
     uint8_t *mem; const uint8_t *guard; uint32_t mask;
@@ -177,8 +180,18 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         if(c.guard[pc]&8){c.reason=6;break;}
         uint8_t opcode=c.mem[pc];
         if(opcode==0xec||opcode==0xed||opcode==0xee||opcode==0xef||
-           opcode==0xe4||opcode==0xe5||opcode==0xe6||opcode==0xe7)
-            {c.prepare_io(opcode);break;}
+           opcode==0xe4||opcode==0xe5||opcode==0xe6||opcode==0xe7) {
+            c.prepare_io(opcode);
+            if(c.io_direction==2&&c.fast_out&&c.fast_out[c.io_port]&&
+               c.io_event_count<c.io_event_capacity) {
+                uint8_t *event=c.io_events+4*c.io_event_count++;
+                event[0]=c.io_port;event[1]=c.io_port>>8;
+                event[2]=c.io_value;event[3]=c.io_value>>8;
+                c.reason=0;
+                continue;
+            }
+            break;
+        }
         if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
         std::memcpy(c.saved,c.r,sizeof(c.r));
         c.step();
@@ -194,11 +207,14 @@ extern "C" uint32_t courier_x86_run(uint32_t *regs,uint8_t *mem,const uint8_t *g
 
 #include <Python.h>
 static PyObject *run_python(PyObject *, PyObject *args) {
-    PyObject *registers, *memory, *guard;
+    PyObject *registers, *memory, *guard, *fast_out, *io_events;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOI", &registers, &memory, &guard, &count)) return nullptr;
+    if (!PyArg_ParseTuple(args, "OOOOOI", &registers, &memory, &guard,
+        &fast_out, &io_events, &count)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
+        !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
+        !PyByteArray_Check(io_events) || (PyByteArray_GET_SIZE(io_events)&3) ||
         PyByteArray_GET_SIZE(memory)!=PyByteArray_GET_SIZE(guard) ||
         (PyByteArray_GET_SIZE(memory)!=0x100000 && PyByteArray_GET_SIZE(memory)!=0x1000000)) {
         PyErr_SetString(PyExc_ValueError,"invalid native CPU buffers"); return nullptr;
@@ -211,6 +227,9 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     }
     c.mem=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(memory));
     c.guard=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(guard));
+    c.fast_out=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(fast_out));
+    c.io_events=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(io_events));
+    c.io_event_capacity=uint32_t(PyByteArray_GET_SIZE(io_events)/4);
     c.mask=uint32_t(PyByteArray_GET_SIZE(memory)-1);
     c.is386=c.mask==0xffffff;
     uint32_t done=run_batch(c,count);
@@ -222,8 +241,8 @@ static PyObject *run_python(PyObject *, PyObject *args) {
             PyList_SetItem(registers,i,v);
         }
     }
-    return Py_BuildValue("IIIIII",done,c.reason,c.io_direction,c.io_port,
-        c.io_size,c.io_value);
+    return Py_BuildValue("IIIIIII",done,c.reason,c.io_direction,c.io_port,
+        c.io_size,c.io_value,c.io_event_count);
 }
 static PyMethodDef methods[]={{"run",run_python,METH_VARARGS,"Execute guarded interpreter instructions."},{nullptr,nullptr,0,nullptr}};
 static PyModuleDef module={PyModuleDef_HEAD_INIT,"_x86_native",nullptr,-1,methods,nullptr,nullptr,nullptr,nullptr};

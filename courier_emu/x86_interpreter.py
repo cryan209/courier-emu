@@ -230,10 +230,20 @@ class Uc:
         self.halted = False
         self.retired = 0
         self._native = None
+        self._native_fast_out_ports: tuple[int, ...] = ()
+        self._native_out_batch_callback: Callable[[memoryview, int], None] | None = None
         # A watched write can schedule device updates after the instruction
         # commits, before another native batch reads the affected memory.
         self._after_instruction: Callable[[], None] | None = None
         self.native_enabled = os.environ.get("COURIER_X86_NATIVE", "1") != "0"
+
+    def native_out_batch_add(
+        self, ports, callback: Callable[[memoryview, int], None]
+    ) -> None:
+        """Batch timing-inert port writes retired by the native engine."""
+        self._native_fast_out_ports = tuple(int(port) & 0xFFFF for port in ports)
+        self._native_out_batch_callback = callback
+
 
     def instruction_clock_add(
         self,
