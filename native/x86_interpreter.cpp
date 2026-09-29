@@ -244,6 +244,47 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     return Py_BuildValue("IIIIIII",done,c.reason,c.io_direction,c.io_port,
         c.io_size,c.io_value,c.io_event_count);
 }
-static PyMethodDef methods[]={{"run",run_python,METH_VARARGS,"Execute guarded interpreter instructions."},{nullptr,nullptr,0,nullptr}};
+
+static PyObject *inject_interrupt_python(PyObject *, PyObject *args) {
+    PyObject *registers, *memory;
+    unsigned int vector;
+    if (!PyArg_ParseTuple(args, "OOI", &registers, &memory, &vector)) return nullptr;
+    if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
+        !PyByteArray_Check(memory) || vector>255) {
+        PyErr_SetString(PyExc_ValueError,"invalid native interrupt state");
+        return nullptr;
+    }
+    uint32_t r[14];
+    for (int i=0;i<14;++i) {
+        r[i]=PyLong_AsUnsignedLong(PyList_GET_ITEM(registers,i));
+        if(PyErr_Occurred())return nullptr;
+    }
+    auto *mem=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(memory));
+    const std::size_t length=std::size_t(PyByteArray_GET_SIZE(memory));
+    const uint32_t table=vector*4;
+    const uint16_t offset=uint16_t(mem[table]|uint16_t(mem[table+1])<<8);
+    const uint16_t segment=uint16_t(mem[table+2]|uint16_t(mem[table+3])<<8);
+    if(!offset&&!segment)Py_RETURN_FALSE;
+    uint16_t sp=uint16_t(r[SP]);
+    const uint16_t values[]={uint16_t(r[F]),uint16_t(r[CS]),uint16_t(r[IP])};
+    for(uint16_t value:values) {
+        sp=uint16_t(sp-2);
+        const uint32_t address=((r[SS]&65535)*16+sp)%length;
+        mem[address]=uint8_t(value);mem[(address+1)%length]=uint8_t(value>>8);
+    }
+    r[SP]=sp;r[F]=uint16_t(r[F])&~IF;r[CS]=segment;r[IP]=offset;
+    for(int i=0;i<14;++i) {
+        PyObject *value=PyLong_FromUnsignedLong(r[i]);
+        if(!value)return nullptr;
+        PyList_SetItem(registers,i,value);
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyMethodDef methods[]={
+    {"run",run_python,METH_VARARGS,"Execute guarded interpreter instructions."},
+    {"inject_interrupt",inject_interrupt_python,METH_VARARGS,"Enter a real-mode interrupt."},
+    {nullptr,nullptr,0,nullptr}
+};
 static PyModuleDef module={PyModuleDef_HEAD_INIT,"_x86_native",nullptr,-1,methods,nullptr,nullptr,nullptr,nullptr};
 PyMODINIT_FUNC PyInit__x86_native(){return PyModule_Create(&module);}

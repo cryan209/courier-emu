@@ -107,6 +107,29 @@ def test_native_batches_timing_inert_output_ports_in_order():
     assert fast._native.retired == 5
 
 
+def test_native_interrupt_entry_pushes_real_mode_frame():
+    from courier_emu.x86_native import NativeInterpreter
+
+    cpu = x86.Uc(0, 0, profile="386ex")
+    cpu.mem_map(0, len(cpu.memory))
+    cpu.regs[x86.UC_X86_REG_CS] = 0x1234
+    cpu.regs[x86.UC_X86_REG_IP] = 0x5678
+    cpu.regs[x86.UC_X86_REG_SS] = 0x0200
+    cpu.regs[x86.UC_X86_REG_SP] = 0x0100
+    cpu.regs[x86.UC_X86_REG_FLAGS] = 0x0202
+    cpu.memory[0x84:0x88] = bytes.fromhex("bc 9a f0 de")
+
+    native = NativeInterpreter(cpu)
+    assert native.inject_interrupt(cpu, 0x21)
+
+    assert cpu.regs[x86.UC_X86_REG_CS] == 0xDEF0
+    assert cpu.regs[x86.UC_X86_REG_IP] == 0x9ABC
+    assert cpu.regs[x86.UC_X86_REG_SP] == 0x00FA
+    assert not cpu.regs[x86.UC_X86_REG_FLAGS] & 0x0200
+    stack = cpu.memory[0x2000 + 0xFA:0x2000 + 0x100]
+    assert stack == bytes.fromhex("78 56 34 12 02 02")
+
+
 @pytest.mark.parametrize("kind", [x86.UC_HOOK_MEM_READ, x86.UC_HOOK_MEM_WRITE])
 def test_watched_string_instruction_falls_back_without_partial_effects(kind):
     slow, fast = pair()

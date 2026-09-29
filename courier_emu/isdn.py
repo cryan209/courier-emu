@@ -912,6 +912,9 @@ class IsdnMachine:
 
         def push_far(vector: int) -> bool:
             """Take a real-mode interrupt through the vector table."""
+            native = getattr(uc, "_native", None)
+            if native is not None:
+                return native.inject_interrupt(uc, vector)
             cs = uc.reg_read(UC_X86_REG_CS)
             ip = uc.reg_read(UC_X86_REG_IP)
             ss = uc.reg_read(UC_X86_REG_SS)
