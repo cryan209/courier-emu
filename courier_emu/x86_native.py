@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 
-from .x86_interpreter import UC_X86_REG_CS, UC_X86_REG_IP
+from .x86_interpreter import UC_X86_REG_AX, UC_X86_REG_CS, UC_X86_REG_IP
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "native" / "x86_interpreter.cpp"
@@ -47,6 +47,7 @@ class NativeInterpreter:
         self.zero_batches = 0
         self.profile = os.environ.get("COURIER_X86_PROFILE", "0") == "1"
         self.exits = Counter()
+        self.handled_io = False
 
     def statistics(self):
         return {"native_retired": self.retired, "batches": self.batches,
@@ -69,13 +70,36 @@ class NativeInterpreter:
                     first, last = max(0, first), min(len(self.guard) - 1, last)
                     self.guard[first:last+1] = self.guard[first:last+1].translate(bytes(v | bit for v in range(256)))
             self.signature = signature
-        done, reason = self.run(cpu.regs, cpu.memory, self.guard, count)
+        done, reason, direction, port, size, value = self.run(
+            cpu.regs, cpu.memory, self.guard, count
+        )
+        self.handled_io = reason == 8
         self.batches += 1
         self.zero_batches += done == 0
         if self.profile and reason:
             pc = cpu._physical(cpu.regs[UC_X86_REG_CS], cpu.regs[UC_X86_REG_IP])
             names = ("budget", "unsupported", "boundary", "read-watch", "write-watch",
-                     "wide-registers", "code-hook", "io-or-system")
+                     "wide-registers", "code-hook", "system", "io")
             self.exits[(names[reason], hex(pc), hex(cpu.memory[pc]))] += 1
+        if self.handled_io:
+            # Publish the progress preceding this I/O instruction while its
+            # callback runs. Device hooks use the retired count to synchronize
+            # timers and the DSP at the exact instruction boundary.
+            original_retired = cpu.retired
+            cpu.retired += done
+            try:
+                if direction == 1:
+                    answer = cpu._io(1, port, size)
+                    if size == 1:
+                        cpu.regs[UC_X86_REG_AX] = (
+                            cpu.regs[UC_X86_REG_AX] & ~0xFF
+                        ) | (answer & 0xFF)
+                    else:
+                        cpu.reg_write(UC_X86_REG_AX, answer)
+                else:
+                    cpu._io(2, port, size, value)
+            finally:
+                cpu.retired = original_retired
+            done += 1
         self.retired += done
         return done

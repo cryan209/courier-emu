@@ -851,6 +851,8 @@ class Uc:
                     self.retired += done
                     if count and retired >= count:
                         break
+                    if native.handled_io:
+                        continue
             start_ip = cpu_regs[REG_IP]
             code_base = cpu_regs[UC_X86_REG_CS] * 16
             physical = (code_base + start_ip) & address_mask

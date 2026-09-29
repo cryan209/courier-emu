@@ -8,6 +8,7 @@ enum { AX,CX,DX,BX,SP,BP,SI,DI,ES,CS,SS,DS,IP,F };
 constexpr uint32_t CF=1, PF=4, AF=16, ZF=64, SF=128, IF=512, DF=1024, OF=2048;
 struct Core {
     uint32_t r[14], saved[14], done=0, reason=0;
+    uint32_t io_direction=0, io_port=0, io_size=0, io_value=0;
     std::jmp_buf exit;
     [[noreturn]] void yield(uint32_t why=1) { reason=why; std::longjmp(exit, 1); }
     uint8_t *mem; const uint8_t *guard; uint32_t mask;
@@ -47,6 +48,15 @@ struct Core {
     bool cond(int c){uint32_t f=r[F];switch(c){case 0:return f&OF;case 1:return !(f&OF);case 2:return f&CF;case 3:return !(f&CF);case 4:return f&ZF;case 5:return !(f&ZF);case 6:return f&(CF|ZF);case 7:return !(f&(CF|ZF));case 8:return f&SF;case 9:return !(f&SF);case 10:return f&PF;case 11:return !(f&PF);case 12:return bool(f&SF)!=bool(f&OF);case 13:return bool(f&SF)==bool(f&OF);case 14:return (f&ZF)||bool(f&SF)!=bool(f&OF);default:return !(f&ZF)&&bool(f&SF)==bool(f&OF);}}
     void push(uint32_t v){r[SP]=(r[SP]-2)&65535;store(phys(r[SS],r[SP]),2,v);}
     uint32_t pop(){uint32_t v=load(phys(r[SS],r[SP]),2);r[SP]=(r[SP]+2)&65535;return v;}
+    void prepare_io(uint8_t op) {
+        io_direction=(op==0xe4||op==0xe5||op==0xec||op==0xed)?1:2;
+        io_size=(op==0xe4||op==0xe6||op==0xec||op==0xee)?1:2;
+        r[IP]=(r[IP]+1)&65535;
+        if(op>=0xe4&&op<=0xe7){io_port=mem[phys(r[CS],r[IP])];r[IP]=(r[IP]+1)&65535;}
+        else io_port=r[DX]&65535;
+        if(io_direction==2)io_value=io_size==1?r[AX]&255:r[AX]&65535;
+        reason=8;
+    }
     void step(){
         uint32_t start=r[IP];int op=fetch(),rep=0;seg=-1;nw=0;width=2;
         for(int prefixes=0;;++prefixes){
@@ -167,9 +177,9 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         if(c.guard[pc]&8){c.reason=6;break;}
         uint8_t opcode=c.mem[pc];
         if(opcode==0xec||opcode==0xed||opcode==0xee||opcode==0xef||
-           opcode==0xe4||opcode==0xe5||opcode==0xe6||opcode==0xe7||
-           opcode==0xcd||opcode==0x0f||opcode==0xf4)
-            {c.reason=7;break;}
+           opcode==0xe4||opcode==0xe5||opcode==0xe6||opcode==0xe7)
+            {c.prepare_io(opcode);break;}
+        if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
         std::memcpy(c.saved,c.r,sizeof(c.r));
         c.step();
         for(int j=0;j<c.nw;++j){const auto &w=c.writes[j];for(int i=0;i<w.size;++i)c.mem[w.address+i]=w.value>>(8*i);}
@@ -206,13 +216,14 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.
     // Running directly on Core also avoids two redundant full-state copies.
-    if(done)for(int i=0;i<14;++i){
+    if(done||c.reason==8)for(int i=0;i<14;++i){
         if(c.r[i]!=original[i]){
             PyObject *v=PyLong_FromUnsignedLong(c.r[i]);if(!v)return nullptr;
             PyList_SetItem(registers,i,v);
         }
     }
-    return Py_BuildValue("II",done,c.reason);
+    return Py_BuildValue("IIIIII",done,c.reason,c.io_direction,c.io_port,
+        c.io_size,c.io_value);
 }
 static PyMethodDef methods[]={{"run",run_python,METH_VARARGS,"Execute guarded interpreter instructions."},{nullptr,nullptr,0,nullptr}};
 static PyModuleDef module={PyModuleDef_HEAD_INIT,"_x86_native",nullptr,-1,methods,nullptr,nullptr,nullptr,nullptr};

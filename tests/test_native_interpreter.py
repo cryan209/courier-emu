@@ -53,6 +53,32 @@ def test_native_randomized_instruction_equivalence(profile):
     assert fast._native.retired > 3000  # exercise the native implementation
 
 
+@pytest.mark.parametrize("profile", ["186eb", "386ex"])
+def test_native_retires_port_io_before_device_callback(profile):
+    slow, fast = pair(profile)
+    logs = [[], []]
+    code = bytes.fromhex(
+        "ba 34 12 b8 cd ab e6 20 e7 21 ee ef e4 22 e5 23 ec ed"
+    )
+    for cpu, log in zip((slow, fast), logs):
+        cpu.memory[0x100:0x100 + len(code)] = code
+
+        def on_out(_cpu, port, size, value, events):
+            events.append(("out", port, size, value))
+
+        def on_in(_cpu, port, size, events):
+            events.append(("in", port, size))
+            return (port ^ 0x5A5A) & ((1 << (size * 8)) - 1)
+
+        cpu.hook_add(x86.UC_HOOK_INSN, on_out, log, 1, 0, x86.UC_X86_INS_OUT)
+        cpu.hook_add(x86.UC_HOOK_INSN, on_in, log, 1, 0, x86.UC_X86_INS_IN)
+        cpu.emu_start(0x100, 0, count=10)
+
+    assert logs[0] == logs[1]
+    assert slow.regs == fast.regs
+    assert fast._native.retired == 10
+
+
 @pytest.mark.parametrize("kind", [x86.UC_HOOK_MEM_READ, x86.UC_HOOK_MEM_WRITE])
 def test_watched_string_instruction_falls_back_without_partial_effects(kind):
     slow, fast = pair()
