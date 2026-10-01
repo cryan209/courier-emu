@@ -564,7 +564,8 @@ void C5xCore::set_v8_answering(bool enabled)
 uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
 uint16_t C5xCore::io_output(uint16_t port) const
 {
-    if (m_rom_codec && port >= 0x50 && port <= 0x5f)
+    if ((m_rom_codec && port >= 0x50 && port <= 0x5f)
+        || (m_host_mailbox && port >= 0x58 && port <= 0x5d))
         return m_asic_output[port - 0x50];
     return (m_rom_codec || m_host_mailbox) && port >= 0x5e && port <= 0x60
         ? m_mailbox_output[port - 0x5e] : m_io[port];
@@ -716,6 +717,34 @@ unsigned C5xCore::mac_cycles(uint16_t pma, uint16_t dma, unsigned count,
     else
         cycles = n + 2;
     return cycles < 3 ? 3 : cycles;
+}
+
+// MADD/MADS have a one-word opcode and a one-cycle pipeline start, unlike
+// MAC/MACD's two-word opcode. SPRU056D 6-159/160 and 6-163/164 (zero waits).
+unsigned C5xCore::bmar_mac_cycles(uint16_t pma, uint16_t dma, unsigned n,
+                                  bool data_move) const
+{
+    const Region op1 = program_region(pma), op2 = data_region(dma);
+    const bool external1 = op1 == Region::External;
+    const bool external2 = op2 != Region::Daram && op2 != Region::Registers
+                            && op2 != Region::Saram;
+    const bool same_saram = op1 == Region::Saram && op2 == Region::Saram;
+    unsigned cycles;
+    if (external1 && external2) cycles = 2 * n + 1;
+    else if (op2 == Region::Saram && data_move)
+        cycles = (same_saram ? 3 * n : 2 * n) - 1;
+    else if (same_saram) cycles = 2 * n + 1;
+    else cycles = n + 1;
+    // A single MADD accessing both operands in SARAM takes three cycles;
+    // adding code in that same block takes four. Repeated data moves add
+    // two cycles when their delay line shares SARAM with the instruction.
+    if (n == 1 && same_saram && cycles < 3) cycles = 3;
+    if (data_move && op2 == Region::Saram
+        && program_region(uint16_t(m_pc - 1)) == Region::Saram) {
+        if (n > 1) cycles += 2;
+        else if (same_saram) ++cycles;
+    }
+    return cycles < 2 ? 2 : cycles;
 }
 
 C5xCore::Region C5xCore::data_region(uint16_t address) const
@@ -882,6 +911,8 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // writing it back (82de, 8332), as it does PA7's.
         if (port == 0x56) m_io[port] &= uint16_t(~value);
     }
+    else if (m_host_mailbox && port >= 0x58 && port <= 0x5d)
+        m_asic_output[port - 0x50] = value;
     else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
         // The CPU and DSP each own a holding register. A DSP reply must not
         // overwrite an incoming CPU word, or vice versa.

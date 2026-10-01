@@ -618,6 +618,8 @@ private:
     Region data_region(uint16_t address) const;
     unsigned mac_cycles(uint16_t pma, uint16_t dma, unsigned count,
                         bool data_move) const;
+    unsigned bmar_mac_cycles(uint16_t pma, uint16_t dma, unsigned count,
+                             bool data_move) const;
     uint16_t fetch(uint16_t address);
     uint16_t ROPCODE();
     void CHANGE_PC(uint16_t new_pc);

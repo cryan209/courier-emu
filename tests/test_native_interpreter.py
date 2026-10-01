@@ -116,7 +116,7 @@ def test_native_interrupt_entry_pushes_real_mode_frame():
     cpu.regs[x86.UC_X86_REG_IP] = 0x5678
     cpu.regs[x86.UC_X86_REG_SS] = 0x0200
     cpu.regs[x86.UC_X86_REG_SP] = 0x0100
-    cpu.regs[x86.UC_X86_REG_FLAGS] = 0x0202
+    cpu.regs[x86.UC_X86_REG_FLAGS] = 0x0302
     cpu.memory[0x84:0x88] = bytes.fromhex("bc 9a f0 de")
 
     native = NativeInterpreter(cpu)
@@ -125,9 +125,20 @@ def test_native_interrupt_entry_pushes_real_mode_frame():
     assert cpu.regs[x86.UC_X86_REG_CS] == 0xDEF0
     assert cpu.regs[x86.UC_X86_REG_IP] == 0x9ABC
     assert cpu.regs[x86.UC_X86_REG_SP] == 0x00FA
-    assert not cpu.regs[x86.UC_X86_REG_FLAGS] & 0x0200
+    assert not cpu.regs[x86.UC_X86_REG_FLAGS] & 0x0300
     stack = cpu.memory[0x2000 + 0xFA:0x2000 + 0x100]
-    assert stack == bytes.fromhex("78 56 34 12 02 02")
+    assert stack == bytes.fromhex("78 56 34 12 02 03")
+
+
+def test_native_interrupt_rejects_an_undersized_vector_table():
+    from courier_emu.x86_native import NativeInterpreter
+
+    cpu = x86.Uc(0, 0, profile="386ex")
+    cpu.memory = bytearray(32)
+    native = NativeInterpreter(cpu)
+
+    with pytest.raises(ValueError, match="invalid native interrupt state"):
+        native.inject_interrupt(cpu, 0x21)
 
 
 @pytest.mark.parametrize("kind", [x86.UC_HOOK_MEM_READ, x86.UC_HOOK_MEM_WRITE])

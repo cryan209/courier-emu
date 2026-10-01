@@ -1,0 +1,32 @@
+{
+  "originate": {
+    "instructions": 220000000,
+    "call_state": "active",
+    "channel": 1,
+    "frames": 338,
+    "rx_underruns": 0,
+    "serial": "\r\nOK\r\n",
+    "handoff": [
+      "19.5395 reply 0071:0007",
+      "19.5396 reply 0047:0006",
+      "19.5405 cmd 0002:a000"
+    ],
+    "overlay_status": "0402",
+    "passed": true
+  },
+  "answer": {
+    "instructions": 220000000,
+    "call_state": "active",
+    "channel": 1,
+    "frames": 338,
+    "rx_underruns": 0,
+    "serial": "",
+    "handoff": [
+      "19.6141 reply 0071:0006",
+      "19.6142 reply 0047:0006",
+      "19.6150 cmd 0002:a000"
+    ],
+    "overlay_status": "0402",
+    "passed": true
+  }
+}

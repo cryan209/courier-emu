@@ -250,7 +250,8 @@ static PyObject *inject_interrupt_python(PyObject *, PyObject *args) {
     unsigned int vector;
     if (!PyArg_ParseTuple(args, "OOI", &registers, &memory, &vector)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
-        !PyByteArray_Check(memory) || vector>255) {
+        !PyByteArray_Check(memory) || PyByteArray_GET_SIZE(memory)<1024 ||
+        vector>255) {
         PyErr_SetString(PyExc_ValueError,"invalid native interrupt state");
         return nullptr;
     }
@@ -272,7 +273,10 @@ static PyObject *inject_interrupt_python(PyObject *, PyObject *args) {
         const uint32_t address=((r[SS]&65535)*16+sp)%length;
         mem[address]=uint8_t(value);mem[(address+1)%length]=uint8_t(value>>8);
     }
-    r[SP]=sp;r[F]=uint16_t(r[F])&~IF;r[CS]=segment;r[IP]=offset;
+    // A hardware interrupt clears both the interrupt and trap flags. Leaving
+    // TF set would single-step the first instruction of the handler and can
+    // recursively enter INT 1 before the device ISR has saved its context.
+    r[SP]=sp;r[F]=uint16_t(r[F])&~(IF|0x100);r[CS]=segment;r[IP]=offset;
     for(int i=0;i<14;++i) {
         PyObject *value=PyLong_FromUnsignedLong(r[i]);
         if(!value)return nullptr;

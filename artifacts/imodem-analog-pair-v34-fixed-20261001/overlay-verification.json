@@ -1,0 +1,11 @@
+{
+  "image": 6,
+  "origin": "0xa000",
+  "words": 13909,
+  "mismatched_words": 2133,
+  "expected_sha256": "577e8280b68ae40287acb1b93f25900645161db3ec008652462ff229174c870d",
+  "actual_sha256": "9dbd9cb62fa5229194594fbccd6a27505ff5d68cef9b1272829f6b2249bc97f8",
+  "comparison_time": "end of 220M-instruction run",
+  "changed_range": "ce00..d654",
+  "note": "End-state comparison, not a transfer checksum. The earlier default-protocol run matched all image-6 words; this later V.34 state has changed words in one contiguous range. Runtime reuse or corruption is not yet distinguished."
+}

@@ -67,3 +67,29 @@ def test_asic_timing_row_scales_codec_clock_from_board_source():
         assert core.codec_state()["mclk_hz"] == 3_456_000
     finally:
         core.close()
+
+
+def test_codec_history_records_clock_change_with_unchanged_dividers():
+    class Core:
+        closed = False
+        state = {"registers": [0, 10, 18], "mclk_hz": 3_456_000,
+                 "sample_rate": 9_600.0}
+
+        def codec_state(self):
+            return self.state
+
+    bridge = CourierDspBridge.__new__(CourierDspBridge)
+    bridge.core = Core()
+    bridge.line = None
+    bridge._instructions = 0
+    bridge._codec_registers_seen = None
+    bridge._codec_clock_seen = None
+    bridge._codec_register_history = []
+    bridge._note_codec_registers()
+    bridge.core.state.update(mclk_hz=3_696_000, sample_rate=10_266.666)
+    bridge._note_codec_registers()
+    bridge._note_codec_registers()
+
+    assert [entry["mclk_hz"] for entry in bridge._codec_register_history] == [
+        3_456_000, 3_696_000,
+    ]

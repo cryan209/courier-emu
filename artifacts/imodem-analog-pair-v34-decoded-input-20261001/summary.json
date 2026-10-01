@@ -1,0 +1,89 @@
+{
+  "protocol": "v34",
+  "speed_index": 0,
+  "disable_v34": false,
+  "analog_settings": "S27=48",
+  "imodem_settings": "",
+  "connected": false,
+  "imodem": {
+    "serial": "\r\nOK\r\n",
+    "carrier_connected": false,
+    "isdn_call_state": "active",
+    "dsp": {
+      "pc": 33454,
+      "op": 48674,
+      "acc": 0,
+      "accb": 135665578,
+      "preg": 3719168,
+      "dp": 7,
+      "arp": 7,
+      "flags": 62,
+      "idle": true,
+      "instructions": 1245344570,
+      "cycles": 1325235209,
+      "io_events": 8192,
+      "ar0": 3034,
+      "ar1": 2186,
+      "ar2": 280,
+      "ar3": 65535,
+      "ar4": 32,
+      "ar5": 916,
+      "ar6": 88,
+      "ar7": 3034,
+      "arcr": 3034,
+      "indx": 3034
+    },
+    "recent_mailbox": [
+      "4.0619 reply 0016:0008",
+      "4.0819 reply 0016:0018",
+      "4.0831 reply 0048:00c1",
+      "4.0835 reply 0048:0145",
+      "4.0840 reply 0048:0213",
+      "4.0842 reply 0048:0310",
+      "4.0847 reply 0048:040a",
+      "4.0851 reply 0048:058d",
+      "4.0856 reply 0048:0600",
+      "5.2015 reply 0071:0006",
+      "5.2016 reply 0047:0006",
+      "5.2025 cmd 0002:a000"
+    ],
+    "error": null
+  },
+  "analog": {
+    "serial": "",
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-1ruoqa2z/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "record_prefix": null,
+      "frames": 328,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 142179600,
+      "samples_sent": 262400,
+      "samples_received": 262400,
+      "error": null
+    },
+    "call_state": "answered",
+    "answered": true,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 62400,
+      "from_line": 62400,
+      "pending": 461
+    },
+    "silence_frames": 250,
+    "events": [
+      "the line is ringing us at frame 188: offering the I-modem a 3.1 kHz call",
+      "the I-modem answered at frame 250: off hook"
+    ]
+  }
+}

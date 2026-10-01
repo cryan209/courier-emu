@@ -19,6 +19,12 @@ running without racing hours ahead of the terminal. See
 and [I-modem terminal framing](docs/imodem-terminal-framing.md) for how the
 external board's attention receiver makes consecutive AT commands independent.
 
+The [I-modem/analogue Courier pair](docs/imodem-analog-pair.md) establishes
+native Bell 103 carrier at 300 bps and transfers terminal data in both
+directions with the paired probe's `--protocol bell103` preset. The I-modem's
+six-word ASIC data window and acknowledgements now carry the payload through
+the original DSP firmware. V.34 carrier remains unresolved.
+
 The captured 20.16 MHz DSP boot ROM is now integrated for the 302/403
 firmware under `--with-dsp`. The DSP executes reset and downloads its resident
 through the ROM loader, with corrected PMST vector decoding and IDLE wakeup.

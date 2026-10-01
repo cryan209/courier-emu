@@ -637,7 +637,7 @@ class IsdnMachine:
     def read_port(self, port: int) -> int:
         dsp_port = (
             port in (0x18, 0x1a, 0x1c, 0x1e)
-            or port in self.mailbox.LANES
+            or port in self.mailbox.LANES or 0x40 <= port < 0x58
             or self.dsc.handles(port)
         )
         if self.with_dsp and dsp_port:
@@ -649,7 +649,8 @@ class IsdnMachine:
             return self.pic.read(port)
         if self.dsc.handles(port):
             return self.dsc.read(port)
-        if self.with_dsp and port in (0x18, 0x1a, 0x1c, 0x1e, *self.mailbox.LANES):
+        if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e, *self.mailbox.LANES)
+                              or 0x40 <= port < 0x58):
             return self.mailbox.read(port)
         if port == DSP_HANDSHAKE_PORT:
             return self.dsp_handshake
@@ -680,11 +681,11 @@ class IsdnMachine:
         # advancing before every staged byte adds thousands of scheduler
         # crossings without changing device-visible timing.
         if self.with_dsp and (
-            port in (0x18, 0x1c, 0x1e) or self.dsc.handles(port)
+            port in (0x18, 0x1a, 0x1c, 0x1e) or self.dsc.handles(port)
         ):
             self._advance_dsp()
         self.io_counts[("out", port)] += 1
-        if self.with_dsp and (port in (0x18, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
+        if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
             self.mailbox.write(port, value)
             if port not in DOWNLOAD_PORTS:
                 return
@@ -929,7 +930,8 @@ class IsdnMachine:
                 sp = (sp - 2) & 0xFFFF
                 uc.mem_write(ss * 16 + sp, value.to_bytes(2, "little"))
             uc.reg_write(UC_X86_REG_SP, sp)
-            uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0200)
+            # Real-mode hardware interrupt entry clears IF and TF.
+            uc.reg_write(UC_X86_REG_FLAGS, flags & ~0x0300)
             uc.reg_write(UC_X86_REG_CS, segment)
             uc.reg_write(UC_X86_REG_IP, offset)
             return True

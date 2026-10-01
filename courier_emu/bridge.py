@@ -645,6 +645,7 @@ class CourierDspBridge:
         self.line = line
         self._audio_only = bool(line is not None and line.audio_only)
         self._codec_registers_seen: list[int] | None = None
+        self._codec_clock_seen: tuple[Any, Any] | None = None
         self._codec_register_history: list[dict[str, Any]] = []
         self._line_digital = bool(line is not None and line.digital)
         self.codec = codec
@@ -3346,9 +3347,11 @@ class CourierDspBridge:
             return
         state = self.core.codec_state()
         registers = list(state.get("registers", []))
-        if registers == self._codec_registers_seen:
+        clock = (state.get("mclk_hz"), state.get("sample_rate"))
+        if registers == self._codec_registers_seen and clock == self._codec_clock_seen:
             return
         self._codec_registers_seen = registers
+        self._codec_clock_seen = clock
         self._codec_register_history.append({
             "line_frame": self.line.frames if self.line is not None else None,
             "instructions": self._instructions,
@@ -3356,6 +3359,7 @@ class CourierDspBridge:
             "output_gain": state.get("output_gain"),
             "input_gain": state.get("input_gain"),
             "sample_rate": state.get("sample_rate"),
+            "mclk_hz": state.get("mclk_hz"),
         })
 
     def _service_line_frame(self) -> None:

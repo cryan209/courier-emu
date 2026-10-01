@@ -1,0 +1,8 @@
+{
+  "image": 6,
+  "origin": "0xa000",
+  "words": 13909,
+  "mismatched_words": 0,
+  "expected_sha256": "577e8280b68ae40287acb1b93f25900645161db3ec008652462ff229174c870d",
+  "actual_sha256": "577e8280b68ae40287acb1b93f25900645161db3ec008652462ff229174c870d"
+}

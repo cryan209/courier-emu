@@ -378,6 +378,7 @@ class RunResult:
     pc_watch_counts: dict[str, int] = field(default_factory=dict)
     last_addresses: list[int] = field(default_factory=list)
     serial_text: str = ""
+    serial_hex: str = ""
     data_rx_bytes: int = 0
     data_tx_bytes: int = 0
     online_mode: bool = False
@@ -3115,6 +3116,7 @@ class CourierMachine:
             pc_watch_counts=dict(self.pc_watch_counts),
             last_addresses=list(self.last_addresses),
             serial_text=self.serial.decode("ascii", "backslashreplace"),
+            serial_hex=self.serial.hex(),
             data_rx_bytes=self.data_rx_bytes,
             data_tx_bytes=self.data_tx_bytes,
             online_mode=self.online_mode,

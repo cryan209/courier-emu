@@ -42,6 +42,11 @@ class ImodemDsp(ImodemMailbox):
         self.host_pending = False
         self.consumed = 0
         self.download_blocks = 0
+        self.overlay_reads = 0
+        self.overlay_writes = {1: 0, 2: 0, 4: 0}
+        self.overlay_recent = []
+        self.overlay_control = []
+        self._call_overlay_mode = False
         self.bootstrap_words = 0
         self.error = None
         self._reply_writes = 0
@@ -63,14 +68,49 @@ class ImodemDsp(ImodemMailbox):
             self.core.close()
             self.core = None
         self.tx_ready = False
+        # Foreground overlay ownership belongs to this DSP instance. A new
+        # mask-ROM bootstrap must use the resident dispatcher even if its
+        # first command is not the usual 0002:d100 recovery command.
+        self._call_overlay_mode = False
         self._realtime_origin = None
 
     def _command(self, tag, value):
         if self.core is None:
             return
+        # Image 6 is the first call-time overlay in every supported I-modem
+        # build and is loaded at a000. Startup's image 10/11 destinations are
+        # d100/9260 and continue through the ordinary idle dispatcher.
+        if tag == 2 and value == 0xA000:
+            self._call_overlay_mode = True
+        elif tag == 2 and value == 0xD100:
+            # A failed call reloads the startup pair. Let the resident handle
+            # those commands again after reset, rather than retaining the
+            # foreground call-overlay shortcut across a new bootstrap.
+            self._call_overlay_mode = False
+        active_overlay_request = tag == 2 and self._call_overlay_mode
+        if tag == 2:
+            self.overlay_control.append(("command", value,
+                                         int(active_overlay_request)))
         self.core.set_io(0x5e, tag)
         self.core.set_io(0x5f, value)
         self.core.set_io(0x57, self.core.io(0x57) | 1)
+        # The resident polls PA7 while idle, but the V.8 handler that requests
+        # a mid-call datapump owns the foreground until that datapump replaces
+        # it. Apply command 2's tiny native handler (840f..8414) at this exact
+        # boundary: copy its argument to the BLDP destination cell and
+        # acknowledge the command. Without that acknowledgement the x86 waits
+        # for mailbox room before it enters the overlay sender, while the C5x
+        # waits for the overlay: neither side can make progress. The ordinary
+        # idle path still executes the firmware handler instruction by
+        # instruction during startup.
+        if active_overlay_request:
+            self.core.set_data(0x0BFF, value)
+            # The supervisor strobes bit 10 *before* sending command 2 and
+            # waits for it to clear before publishing any overlay words.
+            # Match 8411..8413's acknowledgement of all three download bits,
+            # as well as the command-consumed bit. Clearing only bit 0 leaves
+            # the CPU stuck at b1545 until its two-second reload timeout.
+            self.core.set_io(0x57, self.core.io(0x57) & ~0x0701)
         self.host_pending = True
         self.tx_ready = False
 
@@ -240,6 +280,16 @@ class ImodemDsp(ImodemMailbox):
             self.core.queue_g711_rx(bytes(incoming))
 
     def read(self, port):
+        if self.core and not self.reset_status and not self._loader_started:
+            status = self.core.io(0x56)
+            if port == 0x18:
+                return 0xc0 | (~status & 0x3f)
+            if port == 0x1a:
+                return 0xc0 | (~(status >> 8) & 0x3f)
+            if 0x40 <= port < 0x58 and port % 2 == 0:
+                offset = port - 0x40
+                word = self.core.io_output(0x58 + offset // 4)
+                return (word >> (8 if offset & 2 else 0)) & 0xff
         if port == 0x18:
             return self.boot_status
         if port == 0x1a:
@@ -247,7 +297,12 @@ class ImodemDsp(ImodemMailbox):
         if port == 0x1e:
             if self.reset_status:
                 return 0xff
-            return ((~self.core.io(0x57) >> 8) & 7) if self.core else 7
+            result = ((~self.core.io(0x57) >> 8) & 7) if self.core else 7
+            self.overlay_reads += 1
+            if len(self.overlay_recent) >= 32:
+                self.overlay_recent.pop(0)
+            self.overlay_recent.append(("read", result))
+            return result
         if port == 0x1c and self.reset_status:
             return 0xff
         self._sync()
@@ -257,15 +312,25 @@ class ImodemDsp(ImodemMailbox):
         value &= 0xffff
         if 0x40 <= port <= 0x5e and port % 2 == 0:
             self.lanes[port] = value & 0xff
+        if (self.core and not self.reset_status and not self._loader_started
+                and port in (0x18, 0x1a) and not (port == 0x18 and value == 0xff)):
+            # Six directional holding registers share the boot download
+            # window. PA6 low bits mean an incoming word is occupied; high
+            # bits mean the corresponding outgoing word has been taken.
+            bits = value & 0x3f
+            if port == 0x18:
+                for bank in range(6):
+                    if bits & (1 << bank):
+                        self.core.set_io(0x58 + bank, self._word(0x40 + 4 * bank))
+            else:
+                bits <<= 8
+            self.core.set_io(0x56, self.core.io(0x56) | bits)
+            self.latch_writes += 1
+            return
         if port == 0x18:
             if not self._loader_started and value & 0xff != 0xff:
-                # No download is open, so this is not a strobe. Once the
-                # resident runs, the supervisor also uses 18h/1ah as a plain
-                # 16-bit latch - b3d9:060a writes a device's register value
-                # low byte to 18h, high byte to 1ah - and the resident, idle
-                # rather than polling @56, would never acknowledge it. The
-                # value still reaches the DSP's @56, the same input the mask
-                # ROM loader reads its strobes from.
+                # Keep the completion latch until the CPU releases reset
+                # status with port 1c bit 1; the runtime banks open after it.
                 if self.core is not None:
                     self.core.set_io(0x56, value & 0xff)
                 self.latch_writes += 1
@@ -291,6 +356,15 @@ class ImodemDsp(ImodemMailbox):
             return
         if port == 0x1e:
             if self.core and not self.reset_status:
+                masked = value & 7
+                if masked in self.overlay_writes:
+                    self.overlay_writes[masked] += 1
+                    if len(self.overlay_control) >= 32:
+                        self.overlay_control.pop(0)
+                    self.overlay_control.append(("strobe", masked))
+                if len(self.overlay_recent) >= 32:
+                    self.overlay_recent.pop(0)
+                self.overlay_recent.append(("write", masked))
                 if value & 3:
                     base = 0x40 if value & 1 else 0x48
                     dsp_base = 0x58 if value & 1 else 0x5a
@@ -405,8 +479,13 @@ class ImodemDsp(ImodemMailbox):
         result = super().status()
         result.update(endpoint='native-c5x', bootstrap_words=self.bootstrap_words,
                       consumed=self.consumed, download_blocks=self.download_blocks,
+                      overlay_reads=self.overlay_reads,
+                      overlay_writes=self.overlay_writes,
+                      overlay_recent=self.overlay_recent,
+                      overlay_control=self.overlay_control,
                       latch_writes=self.latch_writes,
                       error=self.error, core=self.core.state() if self.core else None,
+                      core_stack=self.core.stack() if self.core else None,
                       dsp_status=self.core.io(0x57) if self.core else None)
         names = {3: 'Ba', 4: 'Bb', 5: 'Bc', 6: 'Bd', 7: 'Be', 8: 'Bf'}
         slots = (self.dsc.peripheral_slots(PP_SLOTS) if self.dsc

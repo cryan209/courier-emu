@@ -44,7 +44,7 @@ class G711Peer:
         self.error: str | None = None
 
     def start(self) -> None:
-        if self.handle is not None:
+        if self.handle is not None or self.error is not None:
             return
         if self.listen:
             self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -78,6 +78,12 @@ class G711Peer:
         return bytes(result)
 
     def exchange(self, octets: bytes) -> bytes:
+        # Once the far emulator reaches its instruction limit the bearer is
+        # permanently closed. BriNetwork continues polling until this side
+        # reaches its own limit, so retain the terminal error instead of
+        # trying to reopen (and, for the listener, re-bind) the same socket.
+        if self.error is not None or self.handle is None:
+            return b""
         self.pending.extend(octets)
         reply = bytearray()
         while len(self.pending) >= FRAME_OCTETS:
@@ -127,6 +133,9 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--image", type=Path, default=DEFAULT_IMAGE)
     parser.add_argument("--instructions", type=int, default=150_000_000)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--profile", action="store_true")
+    parser.add_argument("--check-keepalive", action="store_true",
+                        help="fail unless both calls survive the V.8 overlay handoff and old clearing window")
     parser.add_argument("--worker", choices=("originate", "answer"),
                         help=argparse.SUPPRESS)
     parser.add_argument("--socket", help=argparse.SUPPRESS)
@@ -149,7 +158,7 @@ def run_side(args: argparse.Namespace) -> int:
     machine = IsdnMachine(
         NacImage.load(args.image),
         with_dsp=True,
-        profile=False,
+        profile=args.profile,
         bri=bri,
         flash_nvram=None,
         serial_pump=scripted_pump(
@@ -177,6 +186,33 @@ def serial_text(result: dict[str, Any]) -> str:
     )
 
 
+def check_keepalive(result: dict[str, Any]) -> None:
+    """Assert call survival, independently of eventual modem carrier training.
+
+    The connect-fix control cleared after 220 media frames, following the
+    two-second image-6 loader timeout. Require at least 250 exchanged frames
+    and a completed overlay handshake so a short/idle run cannot pass.
+    Socket errors at worker shutdown are deliberately checked through call
+    state and guest events, since one worker necessarily finishes first.
+    """
+    assert result["error"] is None, result["error"]
+    assert result["bri"]["call_state"] == "active", "ISDN call cleared"
+    assert result["bri"]["media"]["channel"] == 1, "B1 disconnected"
+    assert result["g711_peer"]["frames"] >= 250, "run did not cross the old clearing window"
+    assert "NO CARRIER" not in serial_text(result), "supervisor lost carrier"
+    assert not any("DISCONNECT call reference 1" in event["event"]
+                   for event in result["bri"]["events"]), "guest requested clearing"
+    mailbox = result["mailbox"]
+    assert mailbox["error"] is None, mailbox["error"]
+    assert mailbox["pcm"]["rx_empty_frames"] == 0, "PCM receive underrun"
+    assert any("cmd 0002:a000" in event for event in mailbox["timeline"]), "no V.8 handoff"
+    assert not any("cmd 0083:0083" in event for event in mailbox["timeline"]), "DSP loader timed out"
+    assert mailbox["overlay_writes"]["4"] >= 3, "call overlay never finished"
+    # The final completion strobe may remain set while the datapump owns
+    # foreground execution; clearing it here would hide the native signal.
+    assert mailbox["dsp_status"] & 1 == 0, "overlay command still pending"
+
+
 def main() -> int:
     args = arguments()
     if args.worker:
@@ -195,6 +231,8 @@ def main() -> int:
                 "--instructions", str(args.instructions),
                 "--result", str(output / f"{role}.json"),
             ]
+            if args.profile:
+                command.append("--profile")
             processes.append((role, subprocess.Popen(command, cwd=ROOT)))
         failures = []
         for role, process in processes:
@@ -222,6 +260,9 @@ def main() -> int:
         json.dumps(summary, indent=2, sort_keys=True) + "\n"
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
+    if args.check_keepalive:
+        for result in (originate, answer):
+            check_keepalive(result)
     return 0
 
 

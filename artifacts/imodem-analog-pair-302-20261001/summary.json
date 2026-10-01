@@ -1,0 +1,73 @@
+{
+  "protocol": "v34",
+  "speed_index": 0,
+  "disable_v34": false,
+  "analog_settings": "S27=48",
+  "imodem_settings": "",
+  "connected": false,
+  "imodem": {
+    "serial": "\r\nOK\r\n",
+    "carrier_connected": false,
+    "isdn_call_state": "null",
+    "dsp": {
+      "pc": 36059,
+      "op": 43920,
+      "acc": 0,
+      "accb": 0,
+      "preg": 0,
+      "dp": 7,
+      "arp": 1,
+      "flags": 50,
+      "idle": false,
+      "instructions": 2716091825,
+      "cycles": 3220277799,
+      "io_events": 8192,
+      "ar0": 3024,
+      "ar1": 410,
+      "ar2": 952,
+      "ar3": 1016,
+      "ar4": 0,
+      "ar5": 954,
+      "ar6": 88,
+      "ar7": 3038,
+      "arcr": 3024,
+      "indx": 3024
+    },
+    "recent_mailbox": [],
+    "error": null
+  },
+  "analog": {
+    "serial": "\\x8d\nN\\xcf\\xa0\\xc3A\\xd2\\xd2\\xc9\\xc5\\xd2\\x8d\n",
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-in2em36_/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "record_prefix": null,
+      "frames": 798,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 346535600,
+      "samples_sent": 638400,
+      "samples_received": 638400,
+      "error": null
+    },
+    "call_state": "seized",
+    "answered": false,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 0,
+      "from_line": 0,
+      "pending": 461
+    },
+    "silence_frames": 798,
+    "events": []
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "protocol": "v34",
+  "speed_index": 0,
+  "connected": false,
+  "imodem": {
+    "serial": "\r\nOK\r\n",
+    "carrier_connected": false,
+    "isdn_call_state": "active",
+    "dsp": {
+      "pc": 33394,
+      "op": 35818,
+      "acc": -50051662,
+      "accb": -11064982,
+      "preg": -92545,
+      "dp": 7,
+      "arp": 2,
+      "flags": 58,
+      "idle": false,
+      "instructions": 2787731703,
+      "cycles": 3220277790,
+      "io_events": 8192,
+      "ar0": 30,
+      "ar1": 35040,
+      "ar2": 281,
+      "ar3": 1016,
+      "ar4": 0,
+      "ar5": 916,
+      "ar6": 88,
+      "ar7": 3034,
+      "arcr": 30,
+      "indx": 30
+    },
+    "recent_mailbox": [
+      "4.4419 reply 0016:0008",
+      "4.4619 reply 0016:0008",
+      "4.4819 reply 0016:0018",
+      "4.4831 reply 0048:00c1",
+      "4.4834 reply 0048:0145",
+      "4.4836 reply 0048:0213",
+      "4.4840 reply 0048:0310",
+      "4.4845 reply 0048:048d",
+      "4.4850 reply 0048:0500",
+      "5.5074 reply 0071:0006",
+      "5.5077 reply 0047:0006",
+      "5.5085 cmd 0002:a000"
+    ],
+    "error": null
+  },
+  "analog": {
+    "serial": "\r\nNO CARRIER\r\n",
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-q6znmyoq/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "record_prefix": null,
+      "frames": 798,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 346535600,
+      "samples_sent": 638400,
+      "samples_received": 638400,
+      "error": null
+    },
+    "call_state": "answered",
+    "answered": true,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 438400,
+      "from_line": 438400,
+      "pending": 461
+    },
+    "silence_frames": 250,
+    "events": [
+      "the line is ringing us at frame 188: offering the I-modem a 3.1 kHz call",
+      "the I-modem answered at frame 250: off hook"
+    ]
+  }
+}

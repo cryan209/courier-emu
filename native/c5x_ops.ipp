@@ -1956,10 +1956,11 @@ void C5xCore::op_macd()
 		m_treg0 = data;
 		if (!m_pmst.trm) m_treg1 = m_treg2 = data;   // 'C2x-compatible, as MAC
 		m_preg = int32_t(int16_t(PM_READ16(pfc))) * int32_t(int16_t(data));
-		// MACD also builds the delay line: the data operand is copied to the
-		// next higher data address. Address-register modification has already
-		// happened in GET_ADDRESS and does not change the copy destination.
-		DM_WRITE16(uint16_t(ea + 1), data);
+		// The delay-line move is available only in on-chip data RAM.
+		// External data and registers behave as MAC (SPRU056D 6-154).
+		const Region region = data_region(ea);
+		if (region == Region::Daram || region == Region::Saram)
+			DM_WRITE16(uint16_t(ea + 1), data);
 		pfc++;
 		++count;
 
@@ -1971,6 +1972,9 @@ void C5xCore::op_macd()
 void C5xCore::op_madd()
 {
 	uint16_t pfc = m_bmar;
+	const uint16_t pma = pfc;
+	uint16_t dma = 0;
+	unsigned count = 0;
 
 	// RPTC reads 0 when no RPT is in force, so an unrepeated
 	// instruction runs once and a repeated one RPTC+1 times, both
@@ -1978,21 +1982,28 @@ void C5xCore::op_madd()
 	do
 	{
 		uint16_t ea = GET_ADDRESS();
+		if (count == 0) dma = ea;
 		uint16_t data = DM_READ16(ea);
 		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
 		m_treg0 = data;
 		m_preg = int32_t(int16_t(data)) * int32_t(int16_t(PM_READ16(pfc)));
-		DM_WRITE16(uint16_t(ea + 1), data);
+		const Region region = data_region(ea);
+		if (region == Region::Daram || region == Region::Saram)
+			DM_WRITE16(uint16_t(ea + 1), data);
 		pfc++;
-		CYCLES(3);
+		++count;
 
 	} while (m_rptc-- > 0);
 	m_rptc = 0;
+	CYCLES(bmar_mac_cycles(pma, dma, count, true));
 }
 
 void C5xCore::op_mads()
 {
 	uint16_t pfc = m_bmar;
+	const uint16_t pma = pfc;
+	uint16_t dma = 0;
+	unsigned count = 0;
 
 	// RPTC reads 0 when no RPT is in force, so an unrepeated
 	// instruction runs once and a repeated one RPTC+1 times, both
@@ -2000,15 +2011,17 @@ void C5xCore::op_mads()
 	do
 	{
 		uint16_t ea = GET_ADDRESS();
+		if (count == 0) dma = ea;
 		uint16_t data = DM_READ16(ea);
 		m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
 		m_treg0 = data;
 		m_preg = int32_t(int16_t(data)) * int32_t(int16_t(PM_READ16(pfc)));
 		pfc++;
-		CYCLES(3);
+		++count;
 
 	} while (m_rptc-- > 0);
 	m_rptc = 0;
+	CYCLES(bmar_mac_cycles(pma, dma, count, false));
 }
 
 void C5xCore::op_mpy_mem()
