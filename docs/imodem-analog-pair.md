@@ -19,7 +19,7 @@ socket-close error follows that failure, rather than causing it.
 The October analogue pair reaches the same image-6 request earlier,
 at 5.4229 seconds, and repeats the timeout/reset sequence from 7.4150
 seconds onward. Its I-modem call remains active at the capture limit,
-despite those resets; the analogue end eventually reports `NO CARRIER`.
+despite those resets; this capture ends without a Hayes result on either end.
 The zero `bri.media.rx_delivered` counter in that capture does not mean
 the digital endpoint received no samples: this peer feeds the DSC directly,
 and its `from_line` counter records 277,600 octets. The mailbox trace
@@ -47,7 +47,7 @@ bits. The paired-firmware regression is:
 the image-6 handoff and final download strobe, no DSP reset/timeouts, no
 receive underruns, and no guest clearing or `NO CARRIER`. Both September
 control sides fail this check. The corrected
-[paired verification](../artifacts/imodem-pair-keepalive-20261002/summary.json)
+[paired regression](../artifacts/imodem-pair-keepalive-regression-20261002/keepalive-check.json)
 passes on both sides at 220M instructions with 338 exchanged frames and
 zero underruns. This verifies survival past the original teardown window;
 it does not claim V.34 carrier acquisition. The Bell 103 evidence below
