@@ -1,0 +1,22 @@
+{
+  "command_consumed": true,
+  "off_hook": true,
+  "daa_operation": "dialing",
+  "verified_bootstrap": true,
+  "verified_overlay_words": 4096,
+  "native_codec_rate_programmed": false,
+  "native_codec_sample_rate": 0.0,
+  "native_codec_register_writes": 0,
+  "waveform": {
+    "analog-tx.wav": {
+      "samples": 105920,
+      "rate": 8000,
+      "peak": 0
+    },
+    "analog-rx.wav": {
+      "samples": 105920,
+      "rate": 8000,
+      "peak": 0
+    }
+  }
+}

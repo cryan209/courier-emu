@@ -638,6 +638,23 @@ extern "C" void courier_c5x_configure_rom_codec(void *handle, int enabled)
     if (handle) static_cast<C5xCore *>(handle)->configure_rom_codec(enabled != 0);
 }
 
+extern "C" void courier_c5x_configure_si3034_codec(void *handle)
+{
+    if (handle) static_cast<C5xCore *>(handle)->configure_si3034_codec();
+}
+
+extern "C" void courier_c5x_set_si3034_line(void *handle, int connected, int off_hook, int ringing)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_si3034_line(connected != 0, off_hook != 0, ringing != 0);
+}
+
+extern "C" void courier_c5x_get_codec_registers(void *handle, uint16_t *values, std::size_t count)
+{
+    if (!handle || !values) return;
+    for (std::size_t index = 0; index < std::min(count, std::size_t(32)); ++index)
+        values[index] = static_cast<C5xCore *>(handle)->codec_register(unsigned(index));
+}
+
 extern "C" void courier_c5x_set_codec_mclk(void *handle, uint32_t hz)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_codec_mclk(hz);

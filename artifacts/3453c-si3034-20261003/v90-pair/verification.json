@@ -1,0 +1,32 @@
+{
+  "connected": false,
+  "command_consumed": true,
+  "off_hook": true,
+  "operation": "dialing",
+  "errors": {
+    "analog": null,
+    "imodem": null,
+    "dsp": null
+  },
+  "sample_rate": 7200.0,
+  "native_register_writes": 36,
+  "primary_frames_clocked": 244305,
+  "rx_samples_pending": 104,
+  "waveforms": {
+    "analog-tx.wav": {
+      "samples": 275040,
+      "rate": 8000,
+      "peak": 0
+    },
+    "analog-rx.wav": {
+      "samples": 275040,
+      "rate": 8000,
+      "peak": 0
+    }
+  },
+  "bridge_events": [],
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": false
+  }
+}

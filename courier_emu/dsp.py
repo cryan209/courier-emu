@@ -248,6 +248,9 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
         lib.courier_c5x_configure_rom_codec.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_configure_si3034_codec.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_set_si3034_line.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        lib.courier_c5x_get_codec_registers.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t]
         lib.courier_c5x_set_codec_mclk.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
         lib.courier_c5x_get_codec_state.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
@@ -462,6 +465,14 @@ class NativeC5x:
 
     def configure_rom_codec(self, enabled: bool = True) -> None:
         self.library.courier_c5x_configure_rom_codec(self.handle, int(enabled))
+        self._si3034_codec = False
+
+    def configure_si3034_codec(self) -> None:
+        self.library.courier_c5x_configure_si3034_codec(self.handle)
+        self._si3034_codec = True
+
+    def set_si3034_line(self, connected: bool, off_hook: bool, ringing: bool) -> None:
+        self.library.courier_c5x_set_si3034_line(self.handle, connected, off_hook, ringing)
 
     def set_io(self, port: int, value: int) -> None:
         self.library.courier_c5x_set_io(self.handle, port, value)
@@ -790,6 +801,20 @@ class NativeC5x:
             value = int(values[offset])
             state[name] = bool(value) if name in self._CODEC_FLAGS else value
         state["sample_rate"] = state["sample_rate_millihz"] / 1000.0
+        if getattr(self, "_si3034_codec", False):
+            registers = (ctypes.c_uint16 * 32)()
+            self.library.courier_c5x_get_codec_registers(self.handle, registers, len(registers))
+            state["model"] = "si3034"
+            state["registers"] = list(registers)
+            state["sixteen_bit"] = bool(registers[1] & 1)
+            state["force_secondary"] = False
+            state["free_run"] = False
+            state["loopback"] = bool(registers[1] & 2 or registers[2] & 8)
+            state["input_select"] = None
+            state["input_gain_db"] = 6 if registers[13] & 2 else 3 * min(4, registers[15] & 7)
+            state["output_gain_db"] = -3 if registers[13] & 1 else -3 * min(4, (registers[15] >> 4) & 7)
+            for name in ("input_gain", "output_gain", "monitor_gain", "high_pass_enabled"):
+                state.pop(name)
         return state
 
     @property

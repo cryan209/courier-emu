@@ -297,6 +297,9 @@ public:
     void serial_frame_interrupt();
     void configure_line_frame_interrupt(unsigned irq, uint16_t vector);
     void configure_rom_codec(bool enabled);
+    void configure_si3034_codec();
+    void set_si3034_line(bool connected, bool off_hook, bool ringing);
+    uint16_t codec_register(unsigned index) const { return m_codec.registers[index & 31]; }
     void set_codec_mclk(uint32_t hz);
     CodecState codec_state() const;
     // Conversion rate in milli-hertz, so 7578.947 Hz survives the trip.
@@ -512,6 +515,8 @@ private:
     uint64_t m_serial_frame_suppressed = 0;
     uint64_t m_line_frame_next_cycle = 0;
     bool m_rom_codec = false;
+    bool m_si3034_codec = false;
+    bool m_si_line_connected = false, m_si_off_hook = false, m_si_ringing = false;
     bool m_host_mailbox = false;
     uint64_t m_xf_falling_edges = 0;
     bool m_digital_pcm = false;
@@ -558,7 +563,7 @@ private:
     // 0x05 (0 dB in and out, monitor squelched), analog configuration 0x01
     // (IN+/IN-, high-pass in the path), frame-sync number 1.
     struct Ac01 {
-        uint16_t registers[9] = {0, 18, 18, 0, 0x05, 0x01, 0x00, 0x00, 0x01};
+        uint16_t registers[32] = {0, 18, 18, 0, 0x05, 0x01, 0x00, 0x00, 0x01};
         // Nominal MCLK derived by the ASIC from the board oscillator. Runtime
         // rate rows can scale the clock presented to the codec.
         uint32_t nominal_mclk_hz = 2'880'000;

@@ -1,0 +1,85 @@
+{
+  "analog_board": "3453c",
+  "analog_image": "/Users/scottcryan/courier-emu/2_3_33.XMF",
+  "protocol": "v90",
+  "speed_index": 0,
+  "disable_v34": false,
+  "analog_settings": "S27=1",
+  "analog_result_mode": 1,
+  "imodem_settings": "",
+  "foreground_overlay_assist": false,
+  "connected": false,
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": false
+  },
+  "imodem": {
+    "serial": "\r\nOK\r\n",
+    "connect_rate_bps": null,
+    "carrier_connected": false,
+    "isdn_call_state": "null",
+    "dsp": {
+      "pc": 36060,
+      "op": 48644,
+      "acc": 0,
+      "accb": 0,
+      "preg": 0,
+      "dp": 7,
+      "arp": 1,
+      "flags": 50,
+      "idle": false,
+      "instructions": 2850594396,
+      "cycles": 3220277724,
+      "io_events": 8192,
+      "ar0": 3024,
+      "ar1": 494,
+      "ar2": 954,
+      "ar3": 1016,
+      "ar4": 0,
+      "ar5": 954,
+      "ar6": 88,
+      "ar7": 3038,
+      "arcr": 3024,
+      "indx": 3024
+    },
+    "recent_mailbox": [],
+    "error": null
+  },
+  "analog": {
+    "serial": "",
+    "connect_rate_bps": null,
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-b2u1dowr/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "frame_samples": 160,
+      "frame_ms": 20,
+      "record_prefix": null,
+      "frames": 1719,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 149397280,
+      "samples_sent": 275040,
+      "samples_received": 275040,
+      "error": "the far end closed the line"
+    },
+    "call_state": "seized",
+    "answered": false,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 0,
+      "from_line": 0,
+      "pending": 0
+    },
+    "silence_frames": 1720,
+    "events": []
+  }
+}

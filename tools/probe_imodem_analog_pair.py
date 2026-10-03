@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -124,7 +125,12 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--imodem", type=Path, default=DEFAULT_IMODEM)
     result.add_argument("--imodem-nvram", type=Path,
                         help="boot the I-modem from a saved flash configuration")
-    result.add_argument("--analog", type=Path, default=DEFAULT_ANALOG)
+    result.add_argument("--analog", type=Path,
+                        help="firmware image (defaults to the selected analogue board)")
+    result.add_argument("--analog-board", choices=("403", "3453c"), default="403",
+                        help="select the analogue board's boot and peripheral configuration")
+    result.add_argument("--analog-parameter-flash", type=Path,
+                        help="3453C parameter capture; copied privately for this run")
     result.add_argument("--instructions", type=int, default=300_000_000)
     result.add_argument("--analog-instructions", type=int,
                         help="separate analogue CPU limit for inspecting training before timeout")
@@ -182,6 +188,10 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = parser().parse_args()
+    if args.analog is None:
+        args.analog = ROOT / "2_3_33.XMF" if args.analog_board == "3453c" else DEFAULT_ANALOG
+    if args.analog_parameter_flash and args.analog_board != "3453c":
+        raise ValueError("--analog-parameter-flash requires --analog-board 3453c")
     if args.protocol == "bell103":
         args.speed_index = 1
         args.disable_v34 = True
@@ -217,6 +227,21 @@ def main() -> int:
             "--at", analog_dial,
             "--serial-input-after", "5000000", "--summary",
         ]
+        if args.analog_board == "3453c":
+            # Match the recovered-ROM boot comparison. The public CLI's
+            # legacy strap validator rejects code 0, so use the worker here.
+            analog_command = [
+                sys.executable, "-m", "courier_emu.worker", str(args.analog.resolve()),
+                "--instructions", str(args.analog_instructions or args.instructions),
+                "--line-link", socket_path, "--line-listen", "--with-dsp",
+                "--board-id", "0", "--tick-ms", "5", "--daa-codec",
+                "--daa-codec-revision", "19", "--daa-line", "disconnected",
+                "--serial-input-hex", (analog_dial + "\r").encode("ascii").hex(),
+            ]
+            if args.analog_parameter_flash:
+                private_flash = Path(temporary) / "parameters.sav"
+                shutil.copyfile(args.analog_parameter_flash, private_flash)
+                analog_command.extend(("--parameter-flash", str(private_flash)))
         if output:
             analog_command.extend(("--line-record", str(output / "analog")))
         if args.analog_dsp_trace_range:
@@ -224,12 +249,16 @@ def main() -> int:
         for address in args.analog_dsp_peek:
             analog_command.extend(("--dsp-peek", address))
         if args.analog_send:
-            analog_command.extend(("--send-after-connect", args.analog_send))
+            if args.analog_board == "3453c":
+                analog_command.extend(("--serial-after-connect-hex", args.analog_send.encode("ascii").hex()))
+            else:
+                analog_command.extend(("--send-after-connect", args.analog_send))
         analog_environment = os.environ.copy()
         analog_environment["COURIER_LINE_DIGITAL"] = "1"
         analog = subprocess.Popen(
             analog_command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env=analog_environment,
+            stderr=(cleanup.enter_context((output / "analog-stderr.log").open("w"))
+                    if output else subprocess.PIPE), env=analog_environment,
         )
         cleanup.callback(stop_child, analog)
 
@@ -403,13 +432,23 @@ def main() -> int:
             machine.mailbox.close()
 
         analog_stdout, analog_stderr = analog.communicate(timeout=60)
+        if output:
+            (output / "analog-result.json").write_text(analog_stdout)
         if analog.returncode:
+            failure = (output / "analog-stderr.log").read_text() if output else (analog_stderr or "")
             raise RuntimeError(
-                f"analog process exited {analog.returncode}: {analog_stderr.strip()}"
+                f"analog process exited {analog.returncode}: {failure.strip()}"
             )
         analog_result = json.loads(analog_stdout)
 
     result = {
+        "analog_board": args.analog_board,
+        "analog_image": str(args.analog.resolve()),
+        "instruction_limits": {
+            "imodem": args.instructions,
+            "analog": args.analog_instructions or args.instructions,
+        },
+        "analog_dial_command": analog_dial,
         "protocol": args.protocol,
         "speed_index": args.speed_index,
         "disable_v34": args.disable_v34,
@@ -439,6 +478,8 @@ def main() -> int:
                                if direction == "received")
         analog_serial = analog_terminal_text(analog_result)
         summary = {
+            "analog_board": args.analog_board,
+            "analog_image": str(args.analog.resolve()),
             "protocol": args.protocol,
             "speed_index": args.speed_index,
             "disable_v34": args.disable_v34,

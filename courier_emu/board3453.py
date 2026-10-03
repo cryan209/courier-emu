@@ -22,6 +22,7 @@ class Board3453:
         self.overlay_mark = 0
         self.overlay_groups = 0
         self.core.configure_host_mailbox()
+        self.core.configure_si3034_codec()
         self.core.set_host_io_base(0x8000)
         self.core.library.courier_c5x_set_shared_window(self.core.handle, 0x1000, 0x7fff)
         self.core.load_rom(boot_rom.mask_rom_3453c())

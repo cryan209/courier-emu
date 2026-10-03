@@ -152,7 +152,8 @@ void C5xCore::reset()
     // most of the call.
     if (m_rom_codec) {
         const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
-        m_codec = Ac01{};
+        if (m_si3034_codec) configure_si3034_codec();
+        else m_codec = Ac01{};
         m_codec.nominal_mclk_hz = nominal_mclk;
         m_codec.mclk_hz = nominal_mclk;
         m_line_frame_period = AC01_POWERUP_FRAME_PERIOD_CYCLES;
@@ -295,6 +296,7 @@ void C5xCore::queue_g711_rx(const uint8_t *codewords, std::size_t count)
 
 void C5xCore::configure_rom_codec(bool enabled)
 {
+    m_si3034_codec = false;
     m_rom_codec = enabled;
     m_codec = Ac01{};
     // Until the firmware programs the A and B registers the harness keeps the
@@ -306,6 +308,36 @@ void C5xCore::configure_rom_codec(bool enabled)
         ? AC01_POWERUP_FRAME_PERIOD_CYCLES : TDM_FRAME_PERIOD_CYCLES;
 }
 
+void C5xCore::configure_si3034_codec()
+{
+    const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
+    m_rom_codec = true;
+    m_si3034_codec = true;
+    m_codec = Ac01{};
+    m_codec.nominal_mclk_hz = nominal_mclk;
+    m_codec.mclk_hz = nominal_mclk;
+    std::fill(std::begin(m_codec.registers), std::end(m_codec.registers), 0);
+    // Si3034 rev 2.02, serial mode 0/1 reset values, registers 1..19.
+    m_codec.registers[2] = 3;
+    m_codec.registers[6] = 0x70;
+    m_codec.registers[11] = 3;
+    // Board profile inference from DAA identity 0013: international line
+    // side, revision C (not a direct read of the serial revision register).
+    // The serial register places CBID at bit 6 and REVB at bits 5:2.
+    m_codec.registers[13] = 0x4c;
+    m_codec.registers[14] = 2;
+    m_codec.registers[16] = 8;
+    // Keep the existing pre-programming clock until the guest writes PLL2.
+    m_line_frame_period = AC01_POWERUP_FRAME_PERIOD_CYCLES;
+}
+
+void C5xCore::set_si3034_line(bool connected, bool off_hook, bool ringing)
+{
+    m_si_line_connected = connected;
+    m_si_off_hook = off_hook;
+    m_si_ringing = ringing;
+}
+
 void C5xCore::set_codec_mclk(uint32_t hz)
 {
     m_codec.nominal_mclk_hz = hz;
@@ -315,6 +347,7 @@ void C5xCore::set_codec_mclk(uint32_t hz)
 
 void C5xCore::codec_apply_asic_timing(uint16_t word)
 {
+    if (m_si3034_codec) return;
     const uint16_t timing = word & 0x00ff;
     // Word 2 of each firmware rate-table row. Relative to the 0x78 base,
     // this models an ASIC-selected codec clock rather than a second PCM
@@ -334,6 +367,23 @@ void C5xCore::codec_apply_asic_timing(uint16_t word)
 // fs = MCLK / (2 x A x B), datasheet equations 11 and 20.
 void C5xCore::codec_recompute_rate()
 {
+    if (m_si3034_codec) {
+        // Si3034 5.21: Fs = MCLK*M1*M2/(N1*N2*5120).
+        // Register fields store divisor/multiplier minus one. CGM adds 16/25
+        // only when PLL2 is not bypassed (register 9 is nonzero).
+        uint64_t numerator = uint64_t(m_codec.mclk_hz)
+            * (m_codec.registers[8] + 1) * ((m_codec.registers[9] & 15) + 1);
+        uint64_t denominator = uint64_t(m_codec.registers[7] + 1)
+            * ((m_codec.registers[9] >> 4) + 1) * 5120;
+        if ((m_codec.registers[10] & 1) && m_codec.registers[9]) {
+            numerator *= 16;
+            denominator *= 25;
+        }
+        m_codec.sample_rate_millihz = numerator * 1000 / denominator;
+        m_codec.rate_programmed = true;
+        m_line_frame_period = unsigned(C5X_CLOCK_HZ * denominator / numerator);
+        return;
+    }
     const uint64_t a = m_codec.registers[1], b = m_codec.registers[2];
     if (!a || !b) return;  // an unusable divider leaves the last good rate
     const uint64_t divisor = 2 * a * b;
@@ -354,12 +404,47 @@ void C5xCore::codec_apply_register(uint16_t word)
     ++m_codec.secondary_frames;
     const unsigned address = (word >> 8) & 0x1f;
     const bool read = (word >> 13) & 1;
-    if (address == 0 || address > 8) return;  // register 0 is the no-op
+    if (address == 0 || address > (m_si3034_codec ? 20u : 8u)) return;
     if (read) {
         // Read mode returns the register in the low byte and writes nothing.
         m_codec.readback = m_codec.registers[address] & 0xff;
+        if (m_si3034_codec && address == 5)
+            m_codec.readback = (m_codec.readback & 0x1b) | (m_si_ringing ? 0x64 : 0);
+        if (m_si3034_codec && address == 12) {
+            const bool linked = m_codec.rate_programmed && !(m_codec.registers[6] & 0x18);
+            const bool hook = (m_codec.registers[5] & 1)
+                || ((m_codec.registers[5] & 2) && m_si_off_hook);
+            // The modeled connected loop supplies 25 mA: four 6 mA steps.
+            m_codec.readback = linked ? uint16_t(0x40 | (m_si_line_connected && hook ? 4 : 0)) : 0;
+        }
         m_codec.readback_armed = true;
         ++m_codec.register_reads;
+        return;
+    }
+    if (m_si3034_codec) {
+        if (address == 11) return;
+        if (address == 3 || address == 4) return;
+        if (address == 12) {
+            m_codec.registers[12] &= (word & 0x80);
+            return;
+        }
+        if (address == 13) {
+            m_codec.registers[13] = (m_codec.registers[13] & 0xfc) | (word & 3);
+            ++m_codec.register_writes;
+            return;
+        }
+        if (address == 1 && (word & 0x80)) {
+            configure_si3034_codec();
+            return;
+        }
+        m_codec.registers[address] = word & 0xff;
+        if (address == 1) m_codec.registers[address] &= 3;
+        if (address == 2) m_codec.registers[address] &= 0x0b;
+        if (address == 5) m_codec.registers[address] &= 0x1b;
+        if (address == 10) m_codec.registers[address] &= 1;
+        ++m_codec.register_writes;
+        // PLL/CGM changes latch only when PLL2 is written (5.21.1).
+        if (address == 9) codec_recompute_rate();
         return;
     }
     m_codec.registers[address] = word & 0xff;
@@ -381,16 +466,19 @@ void C5xCore::codec_apply_register(uint16_t word)
 void C5xCore::codec_transmit(uint16_t word)
 {
     const bool secondary = m_codec.secondary_now
-        || (m_codec.registers[6] & 0x04);  // register 6 DS02 forces every frame
+        || (!m_si3034_codec && (m_codec.registers[6] & 0x04));
     m_codec.secondary_now = false;
     if (secondary) {
         codec_apply_register(word);
         // DS15:DS14 carry the same request encoding as a primary word.
-        m_codec.secondary_now = (word >> 14) == 3;
+        m_codec.secondary_now = !m_si3034_codec && (word >> 14) == 3;
         return;
     }
     ++m_codec.primary_frames;
-    switch (word & 3) {
+    const unsigned request = m_si3034_codec
+        ? ((word & 1) && !(m_codec.registers[1] & 1) ? 3 : 0)
+        : word & 3;
+    switch (request) {
     case 3:
         m_codec.secondary_now = true;
         // Half a frame period after this one - (B/2) FCLK periods, which is
@@ -407,8 +495,9 @@ void C5xCore::codec_transmit(uint16_t word)
     // the word the AC01 will use at the next primary conversion. The DAC is
     // frame-clocked, not write-clocked: if the DSP does not replace this word
     // before a later primary frame, the converter holds and emits it again.
-    m_codec.dac_sample = ac01_output_sample(
-        uint16_t(word & 0xfffc), m_codec.registers[4]);
+    m_codec.dac_sample = m_si3034_codec
+        ? uint16_t(word & (m_codec.registers[1] & 1 ? 0xffff : 0xfffe))
+        : ac01_output_sample(uint16_t(word & 0xfffc), m_codec.registers[4]);
     m_codec.dac_pending = true;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
 }
@@ -423,7 +512,7 @@ void C5xCore::codec_frame(bool secondary)
     // Latch independently of serial-port reset and interrupt masks. Defer
     // recognition until the frame's serial events have also been latched.
     // docs/board-verified-403.md, measured interrupt pin table.
-    m_ifr |= 1u << 2;
+    if (!m_si3034_codec) m_ifr |= 1u << 2;
     if (secondary) {
         // Datasheet 2.4: during secondary communications DOUT carries the
         // addressed register when a read was requested, and is otherwise zero.
@@ -439,7 +528,14 @@ void C5xCore::codec_frame(bool secondary)
     // mechanism; it is not the DAC clock. In particular, a secondary exchange
     // or a missed DSP write does not delete time from the analog waveform --
     // the converter continues to hold the most recent primary sample.
-    const uint16_t output = m_codec.dac_sample;
+    const bool si_link = !(m_codec.registers[6] & 0x18) && m_codec.rate_programmed;
+    uint16_t output = m_si3034_codec && !si_link ? 0 : m_codec.dac_sample;
+    if (m_si3034_codec) {
+        const unsigned attenuation = m_codec.registers[13] & 1
+            ? 1 : std::min(4u, unsigned((m_codec.registers[15] >> 4) & 7));
+        output = (m_codec.registers[15] & 0x80) ? 0
+            : uint16_t(int16_t(std::lround(int16_t(output) * std::pow(10.0, -3.0 * attenuation / 20))));
+    }
     m_codec.dac_pending = false;
     if (m_hybrid_return) {
         m_hybrid_line.push_back(int16_t(output));
@@ -478,10 +574,17 @@ void C5xCore::codec_frame(bool secondary)
     }
     uint16_t sample = 0;
     if (present) {
+        if (m_si3034_codec) {
+            const unsigned gain = m_codec.registers[13] & 2
+                ? 2 : std::min(4u, unsigned(m_codec.registers[15] & 7));
+            analog = (m_codec.registers[15] & 8) ? 0
+                : int32_t(std::lround(analog * std::pow(10.0, 3.0 * gain / 20)));
+        }
         if (analog > 32767) analog = 32767;
         if (analog < -32768) analog = -32768;
-        sample = ac01_input_sample(uint16_t(int16_t(analog)),
-            m_codec.registers[4]);
+        sample = m_si3034_codec
+            ? (si_link && (m_codec.registers[2] & 1) ? uint16_t(int16_t(analog)) : 0)
+            : ac01_input_sample(uint16_t(int16_t(analog)), m_codec.registers[4]);
         m_codec_rx_peak = std::max<uint16_t>(m_codec_rx_peak,
             uint16_t(std::abs(int(int16_t(sample)))));
     }
@@ -653,6 +756,8 @@ uint16_t C5xCore::io(uint16_t port) const { return m_io[host_port(port)]; }
 uint16_t C5xCore::io_output(uint16_t port) const
 {
     port = host_port(port);
+    if (m_host_mailbox && port >= 0x5e && port <= 0x60)
+        return m_mailbox_output[port - 0x5e];
     if ((m_rom_codec && port >= 0x50 && port <= 0x5f)
         || (m_host_mailbox && port >= 0x58 && port <= 0x5d))
         return m_asic_output[port - 0x50];
@@ -997,6 +1102,8 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         // via set_io when overlay data is available at 0x58-0x5b, and the
         // DSP clears them by writing them back after consumption.
         m_io[port] &= uint16_t(~value);
+    else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
+        m_mailbox_output[port - 0x5e] = value;
     else if (m_rom_codec && port >= 0x50 && port <= 0x5f) {
         m_asic_output[port - 0x50] = value;
         // PA6 is the data lanes' handshake, and the resident clears a bit by
@@ -1005,10 +1112,6 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
     }
     else if (m_host_mailbox && port >= 0x58 && port <= 0x5d)
         m_asic_output[port - 0x50] = value;
-    else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
-        // The CPU and DSP each own a holding register. A DSP reply must not
-        // overwrite an incoming CPU word, or vice versa.
-        m_mailbox_output[port - 0x5e] = value;
     else m_io[port] = value;
     if (m_rom_codec && port == 0x006b) codec_apply_asic_timing(value);
     PortStat &stat = m_io_port_stats[port];

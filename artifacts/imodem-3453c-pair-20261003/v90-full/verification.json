@@ -1,0 +1,46 @@
+{
+  "connected": false,
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": false
+  },
+  "instruction_limits": {
+    "imodem": 400000000,
+    "analog": 150000000
+  },
+  "instructions_executed": {
+    "imodem": 400000000,
+    "analog": 150000000
+  },
+  "analog_serial": "",
+  "imodem_serial": "\r\nOK\r\n",
+  "command_consumed": true,
+  "off_hook": true,
+  "daa_operation": "dialing",
+  "verified_bootstrap": true,
+  "verified_overlay_words": 4096,
+  "native_codec_rate_programmed": false,
+  "native_codec_sample_rate": 0.0,
+  "native_codec_register_writes": 0,
+  "waveform": {
+    "analog-tx.wav": {
+      "samples": 532800,
+      "rate": 8000,
+      "peak": 0,
+      "seconds": 66.6
+    },
+    "analog-rx.wav": {
+      "samples": 532800,
+      "rate": 8000,
+      "peak": 0,
+      "seconds": 66.6
+    }
+  },
+  "errors": {
+    "analog": null,
+    "imodem": null,
+    "dsp_bridge": null
+  },
+  "bridge_events": [],
+  "outcome": "Call never reaches training; protocol and payload compatibility remain untested."
+}

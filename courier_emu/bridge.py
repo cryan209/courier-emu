@@ -3084,6 +3084,9 @@ class CourierDspBridge:
             present = self.ring.present(self._instructions)
             part.set_ring(present, present)
         self.codec.service()
+        if self.is3453:
+            self.core.set_si3034_line(part.line_connected, part.off_hook,
+                                     part.ring_positive or part.ring_negative)
 
     def _service_exchange(self) -> None:
         """Advance the modeled line by one ASIC frame.
