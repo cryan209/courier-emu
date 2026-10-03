@@ -41,9 +41,9 @@ response, decoded point pairs, phasor magnitudes). Routine names are
 | 01C0–02BF | 256 packed points: full 16×16 odd-coordinate square, scaled ×4 |
 | 02C0–055F | 672 packed points on a rotated lattice in groups of four, ordered by increasing energy (V.34-style ordering) |
 | 0560–058F | Small index/bitmask tables |
-| 0590–068F | Trellis-decoder squared-distance table, 16×16 words of byte pairs; see below |
-| 0690–06AF | Side-bit map for the 0590 table (1 bit per cell, two 16×16 halves); see below |
-| 06B0–06B7 | Fallback metrics for saturated 0590 cells; see below |
+| 0590–068F | V.34 point-label lookup, high bits (16×16 words of byte pairs); see below |
+| 0690–06AF | Point-label LSB map for 0590 (1 bit per cell); see below |
+| 06B0–06B7 | Labels of the six outermost points (and sentinel); see below |
 | 06C4–06DB | 12 unit-circle points at 30° steps, radius 11585 (0.707 in Q14) |
 | 0700–099F | Four 168-word V.34 transmit-scale tables (0700, 07A8, 0850, 08F8); see below |
 | 09A0–09ED | Unit-magnitude (16384) phasors: four full-period rotations with steps −68.57°, −72°, −80°, −90° (17/21, 4/5, 7/9, 3/4 cycle); assignment unknown |
@@ -61,7 +61,7 @@ Only 0A4C, 0CC1, 0DAF and 0E5E are direct call targets within the ROM.
 | 0B0D | interrupt handler: saturates two values, packs bytes into MMR `@31`, `rete` |
 | 0B21–0BB6 | complex MAC / coefficient-update kernels; 0E13–0E70 wraps them for 64/32/16 taps, then jumps via `@48` |
 | 0BB7 | table builder using binomial kernel 0C1E (8, −28, 56, −70, …); possibly V.34 shell-mapping tables |
-| 0CEE–0DAE | possibly V.34 shell mapper (`mpyu` over data 5440/5470/54C0); 0DAF writes bits into a 128-bit ring at `@28` |
+| 0CEE–0DAE | V.34 receive-side inverse shell mapper and deframer (`mpyu` over data 5440/5470/54C0); 0DAF writes bits into a 128-bit ring at `@28`. Firmware equivalent: 302 overlay 6 BCAF (0D17 = BCD8) |
 | 0DFF | transmit-scale table lookup (see below); firmware copy at 302 overlay 6 A7C0 |
 | 0E71 | scrambler-like step, 4 bits per call |
 | 0E86 | complex autocorrelation over three lags into `@68–@77` |
@@ -142,55 +142,39 @@ both M values agree at low indices, where the shaped and unshaped tables are
 identical, and where they differ the shaped scale is smaller. The low-rate
 agreement is qualitative; the A7EC index was not recomputed per cell.
 
-### Squared-distance table, 0590–068F
+### Point-label lookup, 0590 / 0690 / 06B0
 
-16 rows × 16 words; each word holds two bytes. Both bytes are a quantized
-squared distance to the nearest lattice point, periodic in 16 steps on both
-axes and saturating at 255:
+Together these three tables map a received point to its label in the
+V.34 constellation: an index 0–415 into one quarter of the 1664-point
+superconstellation, in the energy order that shell mapping uses. (An
+earlier revision of this README called 0590 a Viterbi squared-distance
+table; that was wrong. Labels grow roughly with energy, which made it look
+like a distance.)
 
-* separable: `T[r][c] ≈ T[r][0] + T[0][c]` (e.g. 32 + 28 = 60 vs 61 at 3,3);
-  each axis grows as ~3·n², with rows ~10% steeper than columns;
-* the high byte is sampled on the step grid (0 at 0,0); the low byte is the
-  same surface offset by half a step (1.5–2 at 0,0; 7.5–9 at 0.5,1.5),
-  i.e. one extra bit of resolution.
+Firmware copies: C3B8, C4B8 and C4D8 in `IDSDL302.ROM` overlay 6. The lookup is
+BAC8–BB44, once per 2D half of a 4D symbol (inputs `@4c/@4d` and `@4e/@4f`):
 
-The firmware copy is `IDSDL302.ROM` overlay 6 C3B8, read twice at BAC8–BB44,
-once per 2D half of a 4D symbol (inputs `@4c/@4d` and `@4e/@4f`, data
-034C–034F; outputs `@58`/`@59`):
+    row  = bits 10–13 of x + y,  col = bits 10–13 of x − y   ; signed 4-bit, so the four corners are the origin
+    d    = 0590[16·row + col]          ; byte chosen by bit 9 of x − y
+    b    = (0690[row (+16 for high byte)] >> col) & 1   ; satl, TREG1 = col
+    m    = 2·d + b
+    if m == 0x1FE: m = 06B0[2·(row & 3) + sign(x − y)]
 
-* row = bits 10–13 of `x + y`, column = bits 10–13 of `x − y` (axes rotated
-  45°, so the 2D subsets form a rectangular lattice);
-* bit 9 of `x − y` (`bsar 7 ; and #4`) picks the byte, the half step below the 4-bit column index;
-* a second term from C4B8 (+16 for the other byte) is added, and a total of
-  0x1FE is replaced from C4D8.
+Evidence: across all 512 cells the 410 non-saturated cells give **410
+distinct values**, covering 0–415 except 401, 404, 406, 407, 412 and 413.
+Those six are exactly the 06B0 entries 191 194 196 197 19C 19D (the other
+two are 1FF). Every saturated cell has b = 0, so 0x1FE is an exact sentinel.
+416 = 1664 / 4.
 
-This gives one Viterbi branch metric per 2D half, which fits the V.34 4D
-trellis decoder. The roles of C4B8 and C4D8 were not traced. No routine in
-the ROM code region was found reading this table.
+Consumer, BB58–BB74 (`@54` = q, `@55` = M − 1, as V.34 splits a label):
 
-### Side-bit map 0690 and fallback 06B0
+* ring = `min(m >> q, M − 1)` → data 0250 + 2n, read by the inverse shell
+  mapper at BCAF (ROM 0CEE);
+* the q low bits of each half (`@58` + `@59 << q`) are shifted left 3, ORed
+  with 3 bits from the C3A8 nibble table, and stored at 0260 + n.
 
-Firmware copies: C4B8 and C4D8 (same overlay). Per 2D half, BAE4–BB02:
-
-    d   = C3B8[16·row + col]             ; byte chosen by bit 9 of x − y
-    b   = (C4B8[row + (16 if high byte)] >> col) & 1   ; satl, TREG1 (MMR 0Dh) = col
-    m   = 2·d + b
-    if m == 0x1FE: m = C4D8[2·(row & 3) + sign(x − y)]  ; rolb pulls the sign from ACCB
-
-* **0690–06AF** is a 1-bit map: words 0–15 go with the low byte, 16–31 with
-  the high byte; word = row, bit = column. Every saturated (255) cell has
-  b = 0, so the sentinel is exactly 0x1FE.
-* **06B0–06B7** = 194 191 19D 19C 1FF 1FF 197 196: finite replacements
-  (metric ≈ C8–CE, two at FF) for saturated cells, keyed by row mod 4 and the
-  sign of x − y. Their LSBs are side bits in the same format.
-* b is **not** a rounding bit of d: it does not make the distance surface any
-  smoother, in any arrangement of the map (rows/columns swapped, halves swapped).
-
-Consumer, BB58–BB74: the metric stored at data 0250 + 2n is
-`min(m >> @54, @55)` (`satl` with TREG1 = `@54`, then `crlt`). The bits that
-shift drops (`m & ((1 << @54) − 1)`, b among them) are combined for both
-halves (`@58` low bits + `@59 << @54`), shifted left 3 and ORed with a 3-bit
-value from the C3A8 table into data 0260 + n. So b is carried with the
-stored decision word, not the metric. It looks like a per-cell decision
-(for example, which of two candidate points is nearest), but what it selects
-was not traced; nor were the values of `@54`/`@55`.
+0260 is read at BD01 and BD18: each word gives 2q + 3 bits (`@7e =
+2·@54 + 3`, BCFD) to the bit writer B542, i.e. the 2q uncoded Q bits and the
+three 4D-subset bits of each 4D symbol. ROM 0D17 is the same deframing code.
+The C3A8 table (16 words before C3B8) differs from ROM 0580–058F and was not
+traced.
