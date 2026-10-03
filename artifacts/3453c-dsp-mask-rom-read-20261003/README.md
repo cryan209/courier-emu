@@ -158,7 +158,7 @@ once per 2D half of a 4D symbol (inputs `@4c/@4d` and `@4e/@4f`, data
 
 * row = bits 10–13 of `x + y`, column = bits 10–13 of `x − y` (axes rotated
   45°, so the 2D subsets form a rectangular lattice);
-* bit 7 of `x − y` (via `& 4` on the shifted value) picks the byte;
+* bit 9 of `x − y` (`bsar 7 ; and #4`) picks the byte, the half step below the 4-bit column index;
 * a second term from C4B8 (+16 for the other byte) is added, and a total of
   0x1FE is replaced from C4D8.
 
