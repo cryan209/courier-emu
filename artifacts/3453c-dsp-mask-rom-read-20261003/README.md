@@ -41,7 +41,7 @@ response, decoded point pairs, phasor magnitudes). Routine names are
 | 01C0–02BF | 256 packed points: full 16×16 odd-coordinate square, scaled ×4 |
 | 02C0–055F | 672 packed points on a rotated lattice in groups of four, ordered by increasing energy (V.34-style ordering) |
 | 0560–058F | Small index/bitmask tables |
-| 0590–068F | 16×16 packed-byte table, symmetric, saturating to FF at centre; purpose unknown |
+| 0590–068F | Trellis-decoder squared-distance table, 16×16 words of byte pairs; see below |
 | 06C4–06DB | 12 unit-circle points at 30° steps, radius 11585 (0.707 in Q14) |
 | 0700–099F | Four 168-word V.34 transmit-scale tables (0700, 07A8, 0850, 08F8); see below |
 | 09A0–09ED | Unit-magnitude (16384) phasors: four full-period rotations with steps −68.57°, −72°, −80°, −90° (17/21, 4/5, 7/9, 3/4 cycle); assignment unknown |
@@ -139,3 +139,29 @@ tables (0850 without precoder, 08F8 with). Consistent with the scale data:
 both M values agree at low indices, where the shaped and unshaped tables are
 identical, and where they differ the shaped scale is smaller. The low-rate
 agreement is qualitative; the A7EC index was not recomputed per cell.
+
+### Squared-distance table, 0590–068F
+
+16 rows × 16 words; each word holds two bytes. Both bytes are a quantized
+squared distance to the nearest lattice point, periodic in 16 steps on both
+axes and saturating at 255:
+
+* separable: `T[r][c] ≈ T[r][0] + T[0][c]` (e.g. 32 + 28 = 60 vs 61 at 3,3);
+  each axis grows as ~3·n², with rows ~10% steeper than columns;
+* the high byte is sampled on the step grid (0 at 0,0); the low byte is the
+  same surface offset by half a step (1.5–2 at 0,0; 7.5–9 at 0.5,1.5),
+  i.e. one extra bit of resolution.
+
+The firmware copy is `IDSDL302.ROM` overlay 6 C3B8, read twice at BAC8–BB44,
+once per 2D half of a 4D symbol (inputs `@4c/@4d` and `@4e/@4f`, data
+034C–034F; outputs `@58`/`@59`):
+
+* row = bits 10–13 of `x + y`, column = bits 10–13 of `x − y` (axes rotated
+  45°, so the 2D subsets form a rectangular lattice);
+* bit 7 of `x − y` (via `& 4` on the shifted value) picks the byte;
+* a second term from C4B8 (+16 for the other byte) is added, and a total of
+  0x1FE is replaced from C4D8.
+
+This gives one Viterbi branch metric per 2D half, which fits the V.34 4D
+trellis decoder. The roles of C4B8 and C4D8 were not traced. No routine in
+the ROM code region was found reading this table.
