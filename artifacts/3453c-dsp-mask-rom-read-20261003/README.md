@@ -91,7 +91,7 @@ The consumer is ROM 0DFF, identical to `IDSDL302.ROM` overlay 6 A7C0
 | `@7c` | data-rate index 1–14 (base = table − 12) | caller A77B loops it over all 14 rates, writing a per-rate result to data 0836 |
 | +168 | precoder taps non-zero | the six ORed words are data 0850–0855, which the precoder solve (B64A) fills or zeroes at B6F6 |
 | FF38 bit 10 | auxiliary channel (MP bit 28) | A5C5 clears it locally unless the far end's MP (0340) has it |
-| FF38 bit 14 | constellation shaping (MP bit 32) | MP layout below; which polarity selects the shaped pair is not traced |
+| FF38 bit 14 | constellation shaping (MP bit 32); set = shaped tables 0850/08F8 | A74B, below |
 
 ### MP layout (302 overlay 6)
 
@@ -120,3 +120,22 @@ Each buffer word is one 16-bit block after a start bit (MP bit 18 onward):
 | 15 | 33 | acknowledge | A554 waits for it |
 
 Word 1 is MP bits 34–49: start bit, then the 15-bit data-rate mask (`& 7FFF`).
+
+### Shaping polarity
+
+A70E computes per-direction frame parameters (once for the local MP at 0344,
+once for the remote at 0340). At A74B it tests MP bit 14 and reads a packed
+byte pair from the table at A7EC: high byte when clear, low byte when set,
+stored minus one as the shell mapper's ring count M.
+
+| Index | 0 | 1–7 | 8 | 12 | 15 | 18 | 20 | 24 | 28 | 31 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bit 14 clear | 1 | 2 | 2 | 3 | 4 | 5 | 6 | 8 | 12 | 15 |
+| bit 14 set | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 14 | 18 |
+
+Set never gives fewer rings and gives up to ~1.2× more: the expanded
+(shaped) constellation. So bit 14 = 1 is shaping on, selecting the +336
+tables (0850 without precoder, 08F8 with). Consistent with the scale data:
+both M values agree at low indices, where the shaped and unshaped tables are
+identical, and where they differ the shaped scale is smaller. The low-rate
+agreement is qualitative; the A7EC index was not recomputed per cell.
