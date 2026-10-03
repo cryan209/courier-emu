@@ -23,6 +23,7 @@ answered one call), and `AT~C#0` (country switched to US/Canada in RAM).
 | `ATI1` | `13D9` |
 | serial | `5MBSXA6P0183` (also at parameter-sector offset `0x11`) |
 | DAA | Si3034 chipset, Si3021 + Si3014 - datasheet now at [SI3034.PDF](SI3034.PDF) |
+| DSP | marked `TI 16.0036.00 (C) US ROBOTICS D172B1PJ92` (read off the board) |
 
 Physical address = file offset + `0x40000` throughout. The XMF covers `0x40000..0xf7fff`
 only; the parameter sectors and the boot block above it are on the board and now captured
@@ -137,12 +138,24 @@ recovery loader and the reset vector `cli; mov dx,ffa4; mov ax,8000; out dx,ax; 
    bit 9, `rpt #3 ; in *+, #8058` (four words from I/O `0x8058`), `bldp`, then acknowledge
    with `out 0300 -> 0x8057`. One four-word group per handshake, through I/O space, where the
    recovered ROM uses the memory-mapped cells `@56`/`@58..5f`. A 3453 mask ROM that performs
-   the first download would have to speak this protocol. **The same failure now stops `main211`**: it was introduced by `f01e9d8` ("Gate
+   the first download would have to speak this protocol.
+
+   **The same failure now stops `main211`**: it was introduced by `f01e9d8` ("Gate
    the DSP mask ROM on the part"), which first mapped that ROM for B-series XMF images;
-   `f01e9d8~1` boots `3453Bv2.1.1.xmf` cleanly, `f01e9d8` and `HEAD` do not. Either the 3453
-   DSP has a different mask ROM, or its ASIC turns the `0x1e` protocol into the loader's 1/2
-   alternation. Settling it needs the 3453 DSP's part marking and, ultimately, its own ROM - a
-   [ROM probe](dsp-rom-probe.md) on this board, which is invasive.
+   `f01e9d8~1` boots `3453Bv2.1.1.xmf` cleanly, `f01e9d8` and `HEAD` do not.
+
+   The part says it is different silicon. The 302/403/2806 DSP is `TI DSP 16-912 (C) US
+   ROBOTICS D17140PQ`, a 'C51 by write-readback ([board.md](board.md)); this one is
+   `TI 16.0036.00 (C) US ROBOTICS D172B1PJ92` - another USR part number, another TI mask code,
+   and the **PJ** suffix, which board.md gives as the 'C52's package (PQ is the 'C50/'C51's).
+   A 'C52 has 4K of ROM at `0000..0fff`, no SARAM, one serial port and no TDM, and the C
+   series fits: its block at program `0000..0ff9` is 4,090 words, filling the 4K window that
+   `MP/MC = 1` turns into external RAM, and its `PMST.RAM` bit has no SARAM to map. So the
+   first download is the D172B1 mask ROM's, which the repo does not have. It is visible only
+   while `MP/MC = 0` - from reset until the resident's prologue sets it - so recovering it
+   needs a [ROM probe](dsp-rom-probe.md) that clears `MP/MC` and reads `0000..0fff` on this
+   board, which is invasive. That the part is a 'C52 rests on the suffix and the map; nothing
+   here measured it.
 2. **A parameter-sector path for 2.3.33.** `courier_emu/parameters.py` is the 3453B layout
    at RAM `0x0a06`; this image reads it at `0x0a36`, and a real sector now exists to feed it.
    Untestable until item 1 lets 2.3.33 boot.
