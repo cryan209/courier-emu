@@ -112,6 +112,8 @@ recovery loader and the reset vector `cli; mov dx,ffa4; mov ax,8000; out dx,ax; 
 
 ## What is still needed
 
+**2026-10-03 ROM recovery update:** The 3453C’s own DSP mask ROM has now been recovered with a temporary PMST.MP/MC mapping probe. It is **4,096 words at 0000..0FFF**, captured twice identically; live PMST was 18B8 before and after. The 1000..1FFF mapped-window tail matches downloaded RAM. Bootstrap 0F46..0F7C uses I/O 8057 and 8058..805B, confirming the different first-download protocol described below. [Capture, binary, disassembly, and verification](../artifacts/3453c-dsp-mask-rom-read-20261003/README.md). The older “ROM not available” observations below describe the investigation before this recovery; the recovered boot loader is now integrated. The ROM downloads the resident, the resident loads its low overlay, and the CPU reaches command mode. [Idle comparison and remaining peripheral gaps](../artifacts/3453c-emulator-boot-20261003/README.md).
+
 1. **The DSP's first download - the 3453 family's own loader.** `./courier run 2_3_33.XMF`
    stops at "C51 mask ROM did not arm its NMI vector", because the bridge maps the mask ROM
    only when the resident leaves `MP/MC` alone (`boot_rom.maps_onchip_rom`). The C resident

@@ -1,0 +1,63 @@
+{
+  "older_rom": "/Users/scottcryan/courier-emu/artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin",
+  "old_words": 8192,
+  "new_words": 4096,
+  "same_address_matching_words_in_first_4096": 157,
+  "vector_words_matching_in_first_48": 43,
+  "relocated_exact_blocks_ge_16_words": [
+    {
+      "old_start": "0250",
+      "new_start": "00D0",
+      "words": 496
+    },
+    {
+      "old_start": "1F7D",
+      "new_start": "0F7D",
+      "words": 42
+    },
+    {
+      "old_start": "0012",
+      "new_start": "0012",
+      "words": 30
+    },
+    {
+      "old_start": "1FDF",
+      "new_start": "0FDF",
+      "words": 27
+    },
+    {
+      "old_start": "05C9",
+      "new_start": "0A1D",
+      "words": 23
+    },
+    {
+      "old_start": "05EE",
+      "new_start": "0A46",
+      "words": 18
+    },
+    {
+      "old_start": "1FB9",
+      "new_start": "0FB9",
+      "words": 18
+    },
+    {
+      "old_start": "1FA8",
+      "new_start": "0FA8",
+      "words": 16
+    }
+  ],
+  "metric_limitation": "Address equality is not a code-relatedness percentage; ROM layout changed and tables/routines relocated.",
+  "older_reset_target": "0670",
+  "new_reset_target": "0F46",
+  "older_loader": "0610..0659; memory-mapped 0056 status and 0058..005F payload; alternate four-word groups/strobes 1 and 2, finish 4",
+  "new_loader": "0F46..0F7C; I/O 8057 status and 8058..805B payload; one four-word window, acknowledge 0100, finish 0200",
+  "mica_evidence": {
+    "source": "/Users/scottcryan/MicaEmu/tools/mica_dsp_boot.py",
+    "part_from_board_notes": "TMS320LBC53SPZ, C53 family",
+    "dsp_runtime_pmst": "003A (MP/MC=1)",
+    "diagnostic_and_downloader_program_origin": "4000",
+    "loader_host_registers": "0050..0052",
+    "rom_contents_comparison": "Impossible without a physical MICA DSP ROM dump; no claim of binary compatibility.",
+    "separate_missing_board_rom": "The MICA i960 board boot ROM is not in downloaded Portware and is unrelated to this TI DSP binary."
+  }
+}

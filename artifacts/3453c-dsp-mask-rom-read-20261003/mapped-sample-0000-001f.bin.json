@@ -1,0 +1,15 @@
+{
+  "space": "rom",
+  "start_word": "0000",
+  "end_word": "001F",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 32,
+  "completed_words": 32,
+  "complete": true,
+  "transport": "ATGE ROM stream",
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 64,
+  "sha256": "93106629975d6e4ccdae79c0e045259847655de2cc113031ec3fb8e2a2f94211",
+  "elapsed_seconds": 0.254
+}

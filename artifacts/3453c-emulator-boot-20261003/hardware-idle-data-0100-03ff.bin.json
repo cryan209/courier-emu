@@ -1,0 +1,15 @@
+{
+  "space": "data",
+  "start_word": "0100",
+  "end_word": "03FF",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 768,
+  "completed_words": 768,
+  "complete": true,
+  "transport": "individual ATG/ATGU requests",
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 1536,
+  "sha256": "dbe81576234a5d90b15b304c37b1a9d99d88365144140c2eee964046103f54b8",
+  "elapsed_seconds": 408.158
+}

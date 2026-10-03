@@ -1,0 +1,15 @@
+{
+  "space": "program",
+  "start_word": "0000",
+  "end_word": "001F",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 32,
+  "completed_words": 32,
+  "complete": true,
+  "transport": "ATGD stream",
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 64,
+  "sha256": "321612835d42bdc7ac3fdbbe3abe7b1ce3a8852ddfb7265a0252b4aa6e6c11a8",
+  "elapsed_seconds": 0.257
+}

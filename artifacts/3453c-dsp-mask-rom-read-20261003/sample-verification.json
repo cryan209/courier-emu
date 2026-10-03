@@ -1,0 +1,9 @@
+{
+  "pmst_before": "18B8",
+  "different": true,
+  "external_hex": "90bf06007fa67f6980792b11110967095609340923096909890906bc17ae002200ef06bc17ae000000ef7a09ad0300ef7a0992037a09ef7f00ef7a09f10300ef",
+  "mapped_hex": "8079460f600820be610820be620820be680820be640820be650820be3abe008b3abe008b630820be41be90be40be00ef6b0820be6c0820be6d0820be6e0820be",
+  "pmst_after": "18B8",
+  "pmst_restored": true,
+  "post_capture_identification": "D541"
+}

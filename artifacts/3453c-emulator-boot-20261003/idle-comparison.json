@@ -1,0 +1,78 @@
+{
+  "pmst_hardware": "18B8",
+  "pmst_emulator": "18B8",
+  "registers_emulator": {
+    "04": "002A",
+    "06": "0010",
+    "07": "18B8",
+    "22": "40C8",
+    "25": "4B05",
+    "26": "0000",
+    "28": "2000",
+    "29": "0101",
+    "2A": "0010"
+  },
+  "words_compared": 768,
+  "matching_words": 763,
+  "differing_addresses": [
+    "038D",
+    "038E",
+    "0390",
+    "0391",
+    "0399"
+  ],
+  "dsp_state": {
+    "pc": 4415,
+    "op": 49072,
+    "acc": 0,
+    "accb": 0,
+    "preg": 0,
+    "dp": 0,
+    "arp": 1,
+    "flags": 30,
+    "idle": false,
+    "instructions": 15383628,
+    "cycles": 24386103,
+    "io_events": 8192,
+    "ar0": 32666,
+    "ar1": 32595,
+    "ar2": 0,
+    "ar3": 0,
+    "ar4": 0,
+    "ar5": 0,
+    "ar6": 0,
+    "ar7": 32666,
+    "arcr": 32666,
+    "indx": 32666
+  },
+  "monitor_note": "Hardware has the diagnostic DSP hook installed; snapshots are sequential live reads.",
+  "serial_text": "",
+  "differences": [
+    {
+      "address": "038D",
+      "hardware": "04A4",
+      "emulator": "0000"
+    },
+    {
+      "address": "038E",
+      "hardware": "B000",
+      "emulator": "0000"
+    },
+    {
+      "address": "0390",
+      "hardware": "7F80",
+      "emulator": "7F9A"
+    },
+    {
+      "address": "0391",
+      "hardware": "7F8E",
+      "emulator": "7F98"
+    },
+    {
+      "address": "0399",
+      "hardware": "0002",
+      "emulator": "0001"
+    }
+  ],
+  "hardware_pmst_note": "Read through ATG008C after the live RAM capture."
+}
