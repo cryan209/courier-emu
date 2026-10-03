@@ -90,10 +90,33 @@ The consumer is ROM 0DFF, identical to `IDSDL302.ROM` overlay 6 A7C0
 | `@5b` | symbol-rate index 0–5 | same cell indexes the baud and carrier tables (`docs/codec-sample-rates.md`) |
 | `@7c` | data-rate index 1–14 (base = table − 12) | caller A77B loops it over all 14 rates, writing a per-rate result to data 0836 |
 | +168 | precoder taps non-zero | the six ORed words are data 0850–0855, which the precoder solve (B64A) fills or zeroes at B6F6 |
-| FF38 bit 10 | negotiated V.34 option | A5C5 clears it unless the remote's word `@40` has it |
-| FF38 bit 14 | negotiated V.34 option | kept with bits 13–10 and 1 by `apl #7c02` at A33C |
+| FF38 bit 10 | auxiliary channel (MP bit 28) | A5C5 clears it locally unless the far end's MP (0340) has it |
+| FF38 bit 14 | constellation shaping (MP bit 32) | MP layout below; which polarity selects the shaped pair is not traced |
 
-FF38/FF39 is the local V.34 mode word; FF39 & 0x7FFF is the data-rate mask.
-Bits 14–10 are five contiguous options, matching the MP run auxiliary
-channel / trellis select (2) / nonlinear encoding / shaping. Bits 10 and 14
-are probably shaping and auxiliary channel in some order; **unproven**.
+### MP layout (302 overlay 6)
+
+FF38–FF3F is the **outgoing** MP, built at A2F5: FF38 keeps bit 15, takes
+bits 14/13/10 from local options (0345 << 10 & 6400), always sets bit 12,
+and sets bit 0 (type 1) when it carries the local precoder taps 0850–0855
+into FF3A–FF3F. FF39 is the data-rate mask from A35E. The A7C0 lookup
+therefore follows what this modem sends.
+
+The **received** MP is collected by the coroutine A4D8–A522: bits shift
+LSB-first into FF48+ with a reflected CRC-16 (poly 0x8408, init FFFF); 0x30
+bits, or 0x90 when bit 0 (type) is set; then 16 CRC bits compared at A521.
+On a match A533–A552 copies FF48 → 0340, FF49 → 0341, and for type 1 the six
+coefficient words to the remote precoder at 0856–085B.
+
+Each buffer word is one 16-bit block after a start bit (MP bit 18 onward):
+
+| Word 0 bit | MP bit | Field | Evidence |
+|---|---|---|---|
+| 0 | 18 | type (1 = precoding coefficients) | adds 96 bits = six coefficient words |
+| 2–9 | 20–27 | max rates, 4 bits each direction | `and #03fc` at A560/A565 |
+| 10 | 28 | auxiliary channel | both ends required (A5C5) |
+| 11–12 | 29–30 | trellis encoder select | bit 12 always set on transmit |
+| 13 | 31 | nonlinear encoder | |
+| 14 | 32 | constellation shaping | |
+| 15 | 33 | acknowledge | A554 waits for it |
+
+Word 1 is MP bits 34–49: start bit, then the 15-bit data-rate mask (`& 7FFF`).
