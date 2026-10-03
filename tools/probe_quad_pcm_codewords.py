@@ -15,13 +15,16 @@ OUT = ROOT / "artifacts/quad-pcm-codewords-20260910"
 
 # QF060003 overlay rows recovered in docs/quad-c50-overlay-loader.md.
 RESIDENT = (0x449B0, 0xF450, 0x8000)
-PCM_CORE = (0x53E00, 0x42E0, 0xA180)
-PCM_MODE = (0x5C1F0, 0x15D6, 0xC300)
-CONSTRUCTOR = 0xC9C0
+# Offsets verified against the stock controller's four RAM copies, rather
+# than extrapolated from the resident's source-to-flat offset. The overlay
+# store has a two-byte displacement. See verify_quad_pcm_placement.py.
+PCM_CORE = (0x53E02, 0x42E0, 0xA180)
+PCM_MODE = (0x5C1F2, 0x15D6, 0xC300)
+CONSTRUCTOR = 0xC9BF
 MODE_FLAGS = 0xFFD9
 DESTINATION = 0x0500
-SELECTORS = (0xC995, 0xC9A6, 0xC9B7)
-PARAMETER_SETUP = 0xC7AE
+SELECTORS = (0xC994, 0xC9A5, 0xC9B6)
+PARAMETER_SETUP = 0xC7AD
 
 
 def execute(image: QuadImage, flag: int) -> tuple[bytes, int]:

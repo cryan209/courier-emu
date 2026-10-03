@@ -1,0 +1,98 @@
+{
+  "controller_instructions": 8000000,
+  "error": null,
+  "flat_sha256": "61a8f031c7cdf94daad748cded191f8287757254bc3a3657609a7426ca2dca2d",
+  "overlays": [
+    {
+      "source_paragraph": "0x2f45",
+      "bytes": 17120,
+      "dsp_origin": "0xa180",
+      "flat_offset": "0x53e02",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "4966f4de5276dce416b99b70047a507cf3df43619756c8aa1c6cf4b5d5e29da2"
+    },
+    {
+      "source_paragraph": "0x3373",
+      "bytes": 9516,
+      "dsp_origin": "0xb400",
+      "flat_offset": "0x580e2",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "ac5a39246212c129cbd2234b9701252fb77e8358df4e4edd34e3a07e5a9763c0"
+    },
+    {
+      "source_paragraph": "0x35c6",
+      "bytes": 3864,
+      "dsp_origin": "0xd900",
+      "flat_offset": "0x5a612",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "3ac786586737cf3299750aec3ea4073b8f83e79968b4bc803c1eea235c6a79d3"
+    },
+    {
+      "source_paragraph": "0x36b8",
+      "bytes": 3254,
+      "dsp_origin": "0xc300",
+      "flat_offset": "0x5b532",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "b1de1aa28219ed6d78ce141986844aed1bcd586869fd22a07056497ce4a68875"
+    },
+    {
+      "source_paragraph": "0x3784",
+      "bytes": 5590,
+      "dsp_origin": "0xc300",
+      "flat_offset": "0x5c1f2",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "532804ea5397dd9b451e16bf7321814837f168cc64337b77e0b3bc1c3817f61b"
+    },
+    {
+      "source_paragraph": "0x38e2",
+      "bytes": 2290,
+      "dsp_origin": "0xc800",
+      "flat_offset": "0x5d7d2",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "c3706bc82beedeb03a122dcc68e526917ee4e8081f871bb6f025754514c6be56"
+    },
+    {
+      "source_paragraph": "0x3972",
+      "bytes": 6152,
+      "dsp_origin": "0x9440",
+      "flat_offset": "0x5e0d2",
+      "matches_all_four_stock_ram_copies": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "sha256": "032169c56e47ce8042efd30f69e80d474375683cd75c4cd02c6b19e23f9a2045"
+    }
+  ]
+}

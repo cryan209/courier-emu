@@ -1,0 +1,49 @@
+{
+  "archive": "docs/x2/im020104.zip",
+  "member": "IM020104.NAC",
+  "flat_base": 262144,
+  "flat_sha256": "e92a53f87b188911fb5961bf7ba4d219c7a4ade9627aa760813228b0a7b6ad8f",
+  "images": [
+    {
+      "index": 5,
+      "segment": 57349,
+      "bytes": 8994,
+      "program_origin": 32768
+    },
+    {
+      "index": 11,
+      "segment": 55372,
+      "bytes": 31622,
+      "program_origin": 37268
+    },
+    {
+      "index": 10,
+      "segment": 54511,
+      "bytes": 13762,
+      "program_origin": 53248
+    }
+  ],
+  "checks": {
+    "server_tag70": 128,
+    "server_tag71": 128,
+    "octet_reversal": 256,
+    "mode_family_dispatch": 8,
+    "startup_probe_source": 4096,
+    "capability_selection": 128,
+    "info0_capability_packing": 128,
+    "scrambler": 288,
+    "descrambler": 288,
+    "width_setup": 2,
+    "training_words": 512,
+    "tx_callback": 256,
+    "rx_callback": 256,
+    "quad_pcm_helpers": 88
+  },
+  "c_lift_verified": true,
+  "quad": {
+    "archive": "docs/x2/Qf060003.zip",
+    "flat_sha256": "61a8f031c7cdf94daad748cded191f8287757254bc3a3657609a7426ca2dca2d",
+    "scope": "Shared x2/V.90 parameter/table helpers"
+  },
+  "total_cases": 6562
+}

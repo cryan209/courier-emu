@@ -1,0 +1,36 @@
+{
+  "profile": "QF060003",
+  "alignment_status": "stock controller RAM source copies verified by verify_quad_pcm_placement.py",
+  "checks": {
+    "six_position_count": 4096,
+    "size_distribution": 4096,
+    "six_descriptor_expansion": 192,
+    "negotiated_parameter_unpacking": 512,
+    "received_parameter_transfer": 512
+  },
+  "tables": {
+    "0": [
+      "0xa5",
+      "0xa7",
+      "0xad",
+      "0xaf",
+      "0xb7",
+      "0xbd",
+      "0xc5",
+      "0xcf",
+      "0xe5"
+    ],
+    "4": [
+      "0x95",
+      "0x97",
+      "0x9d",
+      "0x9f",
+      "0xa7",
+      "0xad",
+      "0xb5",
+      "0xbf",
+      "0xd5"
+    ]
+  },
+  "total_cases": 9408
+}
