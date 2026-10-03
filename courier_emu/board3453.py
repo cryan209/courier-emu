@@ -123,7 +123,12 @@ class Board3453:
                 break
         else:
             raise RuntimeError(f"3453C overlay did not acknowledge at {destination:04X}, PC={core.state()['pc']:04X}")
-        actual = b''.join((core.program(destination + n).to_bytes(2, 'little') for n in range(4)))
+        # The loader restores BMAR from its saved pointer at 1158, then
+        # records the completed transfer's end in 7F62 at 116B. Foreground
+        # code can use BMAR meanwhile, so its pre-interrupt value is unrelated.
+        destination = (core.data(0x7f62) - 4) & 0xffff
+        actual = b''.join(core.program((destination + n) & 0xffff).to_bytes(2, 'little')
+                          for n in range(4))
         if actual != payload:
             raise RuntimeError(f'3453C overlay mismatch at {destination:04X}')
         self.overlay_groups += 1

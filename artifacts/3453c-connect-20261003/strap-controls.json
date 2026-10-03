@@ -1,0 +1,72 @@
+[
+  {
+    "board_id": 0,
+    "serial": "\r\nERROR\r\n",
+    "peek": {
+      "terminal-capability": "00",
+      "hardware-options": "ef",
+      "S54": "00",
+      "S58": "20"
+    },
+    "error": null,
+    "milestones": [
+      "main-loop"
+    ]
+  },
+  {
+    "board_id": 7,
+    "serial": "\r\nOK\r\n",
+    "peek": {
+      "terminal-capability": "22",
+      "hardware-options": "ef",
+      "S54": "00",
+      "S58": "20"
+    },
+    "error": null,
+    "milestones": [
+      "main-loop"
+    ]
+  },
+  {
+    "board_id": 2,
+    "serial": "\r\nOK\r\n",
+    "peek": {
+      "terminal-capability": "29",
+      "hardware-options": "ef",
+      "S54": "00",
+      "S58": "20"
+    },
+    "error": null,
+    "milestones": [
+      "main-loop"
+    ]
+  },
+  {
+    "board_id": 13,
+    "serial": "\r\nOK\r\n",
+    "peek": {
+      "terminal-capability": "22",
+      "hardware-options": "ef",
+      "S54": "00",
+      "S58": "20"
+    },
+    "error": null,
+    "milestones": [
+      "main-loop"
+    ]
+  },
+  {
+    "board_id": 9,
+    "serial": "\r\nOK\r\n",
+    "peek": {
+      "terminal-capability": "28",
+      "hardware-options": "ef",
+      "S54": "00",
+      "S58": "20"
+    },
+    "error": null,
+    "milestones": [
+      "main-loop"
+    ]
+  }
+]

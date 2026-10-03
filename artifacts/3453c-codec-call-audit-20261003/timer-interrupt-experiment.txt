@@ -1,0 +1,2 @@
+instruction pc    ax   bx   cx   dx flags  instruction
+

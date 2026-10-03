@@ -574,6 +574,9 @@ private:
         uint64_t frames_clocked = 0;
         uint64_t rx_empty_frames = 0;
         uint64_t secondary_cycle = 0;
+        uint64_t receive_cycle = 0;
+        uint16_t receive_word = 0;
+        bool receive_due = false;
         uint16_t last_control_word = 0, readback = 0;
         uint16_t dac_sample = 0;
         bool rate_programmed = false, secondary_pending = false;
@@ -584,6 +587,7 @@ private:
         bool tx_ready = true;
     } m_codec;
     void codec_frame(bool secondary);
+    void si3034_serial_frame(bool secondary);
     void codec_transmit(uint16_t word);
     void codec_apply_register(uint16_t word);
     void codec_apply_asic_timing(uint16_t word);

@@ -5,8 +5,29 @@ from courier_emu import boot_rom
 from courier_emu.bridge import CourierDspBridge
 from courier_emu.dsp import NativeC5x
 from courier_emu.xmf import XmfImage
+from courier_emu.machine import CourierMachine
+from courier_emu.codec import CodecBringUp, SiliconDaa
+from courier_emu.daa import CourierDaa
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_3453c_terminal_straps_accept_settings_through_original_firmware():
+    machine = CourierMachine(
+        XmfImage.load(ROOT / '2_3_33.XMF'), with_dsp=True, board_id=7,
+        tick_ms=5, serial_input=b'ATS54=0S58=32\r',
+        daa=CourierDaa('disconnected'),
+        codec=CodecBringUp(SiliconDaa(1, revision=19)),
+    )
+    try:
+        result = machine.run(3_000_000).to_dict()
+        assert result['error'] is None
+        assert result['serial_text'] == '\r\nOK\r\n'
+        assert bytes(machine.uc.mem_read(0xa32, 1)) == b'\x22'
+        assert bytes(machine.uc.mem_read(0x936, 1)) == b'\x00'
+        assert bytes(machine.uc.mem_read(0x93c, 1)) == b'\x20'
+    finally:
+        machine.dsp_bridge.core.close()
 
 
 def test_recovered_rom_executes_download_into_shared_external_ram():
@@ -55,3 +76,45 @@ def test_3453c_guest_mailbox_alias_resets_free_slots_and_acknowledges_input():
         core.step(3)
         assert core.data(0x7E) == 0x0088
         assert core.io(0x8057) == 6
+
+
+def test_3453c_calibration_command_does_not_start_legacy_asic_engine():
+    bridge = CourierDspBridge(XmfImage.load(ROOT / '2_3_33.XMF'))
+    try:
+        bridge._record_runtime_message((0x82, 0xF8), None)
+        assert bridge.asic_registers[0x82] == 0xF8
+        assert not bridge._asic_call_engine_started
+        assert bridge.pending_runtime_message() is None
+        status = bridge.status().asic
+        assert status['command_protocol'] == 'si3034'
+        assert status['start_strobe'] is None
+        assert status['engine_hold'] is None
+        assert status['line_phase'] is None
+    finally:
+        bridge.core.close()
+
+
+def test_3453c_overlay_verification_uses_resident_transfer_pointer():
+    bridge = CourierDspBridge(XmfImage.load(ROOT / '2_3_33.XMF'))
+    core = bridge.core
+    try:
+        origin, resident = bridge.image.dsp_program_segments()[0]
+        core.load_program(resident, origin)
+        core.set_pc(origin)
+        core.set_io(0x57, 6)
+        core.step(500_000)
+        core.host_write(4, 0)  # isolate the loader from serial interrupts
+        core.host_write(0x1f, 0x3b21)  # foreground's unrelated BMAR
+        core.set_data(0x7f62, 0x7658)  # resident's saved overlay destination
+        # Enter the original loader with its required data page.
+        core.load_program(struct.pack('<3H', 0xbc00, 0x7980, 0x1150), 0x6000)
+        core.set_pc(0x6000)
+        payload = bytes.fromhex('0080fb3a3514d02c')
+        bridge.window[:] = payload
+        bridge.board3453.overlay_commit()
+        assert core.data(0x7f62) == 0x765c
+        assert b''.join(core.program(0x7658 + i).to_bytes(2, 'little')
+                        for i in range(4)) == payload
+        assert bridge.overlay_words_verified == 4
+    finally:
+        core.close()

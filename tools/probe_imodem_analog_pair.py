@@ -136,6 +136,10 @@ def parser() -> argparse.ArgumentParser:
                         help="separate analogue CPU limit for inspecting training before timeout")
     result.add_argument("--analog-dsp-trace-range", metavar="FIRST:LAST",
                         help="trace an analogue C51 program range, hexadecimal")
+    result.add_argument("--analog-trace-pc", action="append", default=[], metavar="ADDRESS",
+                        help="observe an analogue supervisor instruction address, hexadecimal")
+    result.add_argument("--analog-peek", action="append", default=[], metavar="ADDRESS",
+                        help="report an analogue supervisor data word, hexadecimal")
     result.add_argument("--analog-dsp-peek", action="append", default=[], metavar="ADDRESS",
                         help="report an analogue C51 data cell, hexadecimal, repeatable")
     result.add_argument(
@@ -228,13 +232,14 @@ def main() -> int:
             "--serial-input-after", "5000000", "--summary",
         ]
         if args.analog_board == "3453c":
-            # Match the recovered-ROM boot comparison. The public CLI's
-            # legacy strap validator rejects code 0, so use the worker here.
+            # The terminal-interface strap must decode to capability 0x22.
+            # Code 0 boots, but leaves A32 unset and the firmware rejects AT
+            # command completion (and cannot establish the terminal link).
             analog_command = [
                 sys.executable, "-m", "courier_emu.worker", str(args.analog.resolve()),
                 "--instructions", str(args.analog_instructions or args.instructions),
                 "--line-link", socket_path, "--line-listen", "--with-dsp",
-                "--board-id", "0", "--tick-ms", "5", "--daa-codec",
+                "--board-id", "7", "--tick-ms", "5", "--daa-codec",
                 "--daa-codec-revision", "19", "--daa-line", "disconnected",
                 "--serial-input-hex", (analog_dial + "\r").encode("ascii").hex(),
             ]
@@ -246,6 +251,10 @@ def main() -> int:
             analog_command.extend(("--line-record", str(output / "analog")))
         if args.analog_dsp_trace_range:
             analog_command.extend(("--dsp-trace-range", args.analog_dsp_trace_range))
+        for address in args.analog_trace_pc:
+            analog_command.extend(("--trace-pc", address))
+        for address in args.analog_peek:
+            analog_command.extend(("--peek", address))
         for address in args.analog_dsp_peek:
             analog_command.extend(("--dsp-peek", address))
         if args.analog_send:
@@ -262,7 +271,8 @@ def main() -> int:
         )
         cleanup.callback(stop_child, analog)
 
-        peer = BearerLineLink(LineLink(socket_path, digital=True))
+        peer = BearerLineLink(LineLink(socket_path, digital=True),
+                              codec="si3034" if args.analog_board == "3453c" else "ac01")
         peer.from_line *= 10 ** (args.analog_to_imodem_db / 20)
         peer.into_courier *= 10 ** (args.imodem_to_analog_db / 20)
         bri = BriNetwork(

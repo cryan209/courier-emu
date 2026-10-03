@@ -34,7 +34,7 @@ from .timers import (
     SUGGESTED_TICK_MS, TICK_SOURCES,
     TIMER_POLL_INSTRUCTIONS, TimerBlock,
 )
-from .uart import DteTransmitLine, EbSerial
+from .uart import DteTransmitLine, EbSerial, S0STS, TRANSMIT_READY
 from .rom_serial import locate_rom_serial
 from .x86_clock import NativeX86Clock
 from .machine_map import courier_machine_map
@@ -677,7 +677,9 @@ class CourierMachine:
             on_timebase_change=self._adopt_timebase,
         )
         self.timebase = self.timers.timebase
-        if self._quad_profile:
+        if self._quad_profile or supervisor_offset == 0x17BB0:
+            # The EB leaves IMASK bit 1 reserved: INT3 is bit 7, not the
+            # legacy DMA-equipped controller's bit 6. The 2.3.x tick uses it.
             self.timers.controller = EbInterruptController()
         self._int0_in_service = False
         self._interrupt_stack: list[int] = []
@@ -1631,10 +1633,6 @@ class CourierMachine:
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 if not value & 0x08:
                     _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
-            if hot and (self._supervisor_23 and address == 0x59435):
-                value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
-                if not value & 0x08:
-                    _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
             if hot and (self.fast_delays and address == 0x5CE19):
                 value = int.from_bytes(_uc.mem_read(0xFF66, 2), "little")
                 _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
@@ -2185,7 +2183,9 @@ class CourierMachine:
                 self._serial_in_handler = False
                 self._serial_irq_mode = None
                 self._serial_cooldown = 128 if self.serial_rx else 512
-            if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8):
+            if self._timer_in_handler and self._previous_address in (0x6ADF1, 0x6ADF8, 0x677F1):
+                # 677F1 is the 2.3.x mailbox ISR's IRET. Keeping this latch
+                # set after it returns suppresses the separate board tick.
                 self._timer_in_handler = False
                 self._timer_cooldown = TIMER_IRQ_INSTRUCTION_PERIOD
                 if self.tick_source == "dsp":
@@ -2602,6 +2602,12 @@ class CourierMachine:
             )
             if modelled is None and self.uart is not None:
                 modelled = self.uart.read(address, size)
+            if modelled is None and self._supervisor_23 and address == S0STS:
+                # Update-payload TX is captured synchronously by the existing
+                # DTE path. Its holding register is therefore empty on every
+                # status read, including the dialer's flush at 593E2. Answer
+                # the device register, not just the printf poll at 59435.
+                modelled = int.from_bytes(_uc.mem_read(address, size), "little") | TRANSMIT_READY
             if modelled is not None:
                 _uc.mem_write(address, modelled.to_bytes(size, "little"))
             elif (

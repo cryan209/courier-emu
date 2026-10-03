@@ -1676,7 +1676,7 @@ class CourierDspBridge:
     def set_line_hook(self, off_hook: bool) -> None:
         """Follow the firmware's own hook relay.
 
-        The supervisor drives the relay through board latch 0 bit 0x04, and
+        The supervisor drives the modeled relay through port 0x10 bit 0x01, and
         `CourierPanel` decodes it. Taking the hook from there rather than from
         a parsed `ATD` is what makes the seizure the firmware's: nothing here
         decides when the line is taken, only what the line does about it.
@@ -1869,6 +1869,12 @@ class CourierDspBridge:
         previous = self.asic_registers.get(header, 0)
         self.asic_registers[header] = data
         self.asic_writes[header] += 1
+        if self.is3453:
+            # The 2.3.x resident translates 7d/82/83 to Si3034 registers
+            # 16/17/18, and 84 carries a raw serial control. In particular,
+            # 82 bit 6 is manual calibration, not the older ASIC start
+            # strobe. The DSP owns these commands and their replies.
+            return
         self._observe_dial_tone(header, data)
         if self._audio_only:
             # Observe host commands, but let the DSP execute their handlers.
@@ -3674,7 +3680,8 @@ class CourierDspBridge:
                     )
                 } if hasattr(self.core, "data") else {},
                 "control_82": self.asic_registers.get(0x82, 0),
-                "line_phase": {
+                "command_protocol": "si3034" if self.is3453 else "asic-call-engine",
+                "line_phase": None if self.is3453 else {
                     0x00: "idle",
                     0x20: "enabled",
                     0x60: "start-strobe",
@@ -3683,10 +3690,10 @@ class CourierDspBridge:
                 # Names describe the sequencing recovered from the firmware.
                 # C50 reset is controlled by a separate 0xff56/download path;
                 # this hold belongs to the ASIC's line/call engine.
-                "line_enable": bool(self.asic_registers.get(0x82, 0) & 0x20),
-                "start_strobe": bool(self.asic_registers.get(0x82, 0) & 0x40),
-                "engine_hold": bool(self.asic_registers.get(0x82, 0) & 0x80),
-                "ring_indicate": bool(self.asic_registers.get(0x83, 0) & 1),
+                "line_enable": None if self.is3453 else bool(self.asic_registers.get(0x82, 0) & 0x20),
+                "start_strobe": None if self.is3453 else bool(self.asic_registers.get(0x82, 0) & 0x40),
+                "engine_hold": None if self.is3453 else bool(self.asic_registers.get(0x82, 0) & 0x80),
+                "ring_indicate": None if self.is3453 else bool(self.asic_registers.get(0x83, 0) & 1),
             },
             serial_port=self.core.serial_state(),
             # The two ends of the line-audio path, so "the DSP heard nothing"

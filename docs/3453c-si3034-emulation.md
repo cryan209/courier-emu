@@ -51,6 +51,48 @@ remaining call-control/ASIC gap, not a successful interoperability test.
 The run and raw captures are in
 [the evidence bundle](../artifacts/3453c-si3034-20261003/).
 
+The subsequent [codec/hook audit](../artifacts/3453c-codec-call-audit-20261003/README.md)
+identified an earlier call-control abort: INT0 trips the supervisor watchdog
+because the board tick is not resetting its counter.
+The abort path then stalled on a missing UART TX-empty status bit. That
+status read is now fixed, so the hook releases and cleanup completes; the
+pair still does not connect. The subsequent
+[watchdog fix](../artifacts/3453c-watchdog-20261003/README.md) selects the
+80C186EB interrupt masks and recognizes the 2.3.x mailbox ISR return,
+restoring the external tick at vector 0F. Internal CPU timer interrupts
+are not the missing watchdog-reset source. The earlier timer-delivery
+experiments are not enabled by default.
+
+The audit also recovers host tags 7D/82/83 as Si3034 registers 16/17/18,
+including termination, calibration and dialing controls. The bridge now
+leaves their execution and replies to the C52, and no longer interprets
+3453C tag 82 as the older ASIC's call-engine start/hold control.
+
+## Serial readback timing
+
+The active Si3034 port now moves DXR into its transmit shifter at FSYNC
+and raises XINT then. It delivers the received word to DRR and raises RINT
+16 SCLKs later. Section 5.22 specifies SCLK = 256 × Fs, so this interval
+is one sixteenth of a primary period. The secondary exchange occurs halfway
+through that period and returns its addressed register in the same exchange.
+The following primary XINT handler can therefore read the completed secondary
+reply before the new primary receive word replaces it.
+
+The unchanged resident's `7C:0000` request sends `2CFF`, receives `0044`
+for a connected off-hook line, and builds pending reply `0244` in data cell
+`012F`. With no modeled loop current it receives `0040`. These results are
+covered by guest-execution tests, alongside a serial word-completion test.
+The timing applies to the active clocked port; synchronous control probes
+with the transmitter in reset retain their direct-control API.
+
+The subsequent pair retest completes without CPU/DSP or overlay errors and
+now exchanges nonzero audio. The I-modem reports RING and answers the bearer,
+but training ends in NO CARRIER, with no payload delivery. The detailed
+[readback retest](../artifacts/3453c-watchdog-20261003/README.md) also records
+the corrected overlay verifier: the resident restores BMAR from its saved
+pointer before transferring, so verification uses its completed `7F62`
+marker rather than the foreground's earlier BMAR value.
+
 ## Remaining model limits
 
 This implements the guest's serial mode 0/1 setup and ordinary PCM path.

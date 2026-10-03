@@ -1,0 +1,105 @@
+{
+  "analog_board": "3453c",
+  "analog_image": "/Users/scottcryan/courier-emu/2_3_33.XMF",
+  "protocol": "bell103",
+  "speed_index": 1,
+  "disable_v34": true,
+  "analog_settings": "S27=1S54=192B1&M0&B0",
+  "analog_result_mode": 1,
+  "imodem_settings": "S54=192B1&M0&B0",
+  "foreground_overlay_assist": false,
+  "connected": false,
+  "data_delivery": {
+    "analog_to_imodem": null,
+    "imodem_to_analog": null
+  },
+  "imodem": {
+    "serial": "\r\nOK\r\n\r\nRING\r\n\r\nNO CARRIER\r\n",
+    "connect_rate_bps": null,
+    "carrier_connected": false,
+    "isdn_call_state": "null",
+    "dsp": {
+      "pc": 33454,
+      "op": 48674,
+      "acc": 0,
+      "accb": 128,
+      "preg": 0,
+      "dp": 7,
+      "arp": 7,
+      "flags": 62,
+      "idle": true,
+      "instructions": 1532015454,
+      "cycles": 1607477724,
+      "io_events": 8192,
+      "ar0": 3032,
+      "ar1": 2186,
+      "ar2": 950,
+      "ar3": 1016,
+      "ar4": 0,
+      "ar5": 954,
+      "ar6": 88,
+      "ar7": 3032,
+      "arcr": 3032,
+      "indx": 3032
+    },
+    "recent_mailbox": [
+      "9.7453 cmd 005e:0001",
+      "9.7650 cmd 000f:0000",
+      "9.7654 cmd 0002:d100",
+      "9.7822 cmd 0002:9260",
+      "9.8183 cmd 0001:003f",
+      "10.0152 cmd 005b:0001",
+      "10.0324 cmd 005e:0001",
+      "10.0550 cmd 000f:0000",
+      "10.0554 cmd 0002:d100",
+      "10.0721 cmd 0002:9260",
+      "10.1081 cmd 0001:003f",
+      "10.1090 cmd 005b:0000"
+    ],
+    "error": null
+  },
+  "analog": {
+    "serial": "",
+    "connect_rate_bps": null,
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-d4l54ap0/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "frame_samples": 160,
+      "frame_ms": 20,
+      "record_prefix": null,
+      "frames": 1719,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 149397280,
+      "samples_sent": 275040,
+      "samples_received": 275040,
+      "error": "the far end closed the line"
+    },
+    "analog_codec": "si3034",
+    "analog_to_ulaw_db": -4.001812460476249,
+    "ulaw_to_analog_db": 3.101812460476249,
+    "call_state": "answered",
+    "answered": true,
+    "dialled": "",
+    "cleared": true,
+    "octets": {
+      "to_line": 74720,
+      "from_line": 74560,
+      "pending": 0
+    },
+    "silence_frames": 1253,
+    "events": [
+      "the line is ringing us at frame 492: offering the I-modem a 3.1 kHz call",
+      "the I-modem answered at frame 1253: off hook",
+      "the ISDN call cleared at frame 1719: on hook"
+    ]
+  }
+}

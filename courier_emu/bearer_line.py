@@ -20,6 +20,7 @@ stands in so the far end is never left waiting for a frame.
 from __future__ import annotations
 
 from typing import Any
+import math
 
 from .line import (
     AC01_FULL_SCALE_DBM,
@@ -55,6 +56,10 @@ ULAW_FULL_SCALE_DBM0 = 3.21
 # Courier codec -> mu-law, and mu-law -> Courier codec.
 TO_ULAW_DB = AC01_FULL_SCALE_DBM - ULAW_FULL_SCALE_DBM0 - DAA_TX_LOSS_DB
 FROM_ULAW_DB = ULAW_FULL_SCALE_DBM0 - AC01_FULL_SCALE_DBM - DAA_RX_LOSS_DB
+# Si3034 rev 2.02 electrical characteristics: 1 V peak at TIP/RING
+# into 600 ohms, in each direction; its ADC adds 0.9 dB attenuation.
+SI3034_TX_FULL_SCALE_DBM = 10 * math.log10((1 / math.sqrt(2)) ** 2 / 600 * 1000)
+SI3034_RX_FULL_SCALE_DBM = SI3034_TX_FULL_SCALE_DBM + 0.9
 LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // LINE_SAMPLE_RATE
 
 
@@ -70,16 +75,23 @@ class BearerLineLink:
     # before the switch connects the call.
     awaits_answer = True
 
-    def __init__(self, line: LineLink) -> None:
+    def __init__(self, line: LineLink, *, codec: str = "ac01") -> None:
         # The line carries the Courier's codec samples untouched, so the
         # Courier must run its end digital too (COURIER_LINE_DIGITAL=1): this
         # end sets both directions' levels.
         if not line.digital:
             raise ValueError("BearerLineLink sets the levels itself; the "
                              "line must be digital")
+        if codec not in ("ac01", "si3034"):
+            raise ValueError(f"unsupported analog codec: {codec}")
         self.line = line
-        self.from_line = 10 ** (TO_ULAW_DB / 20)       # Courier -> mu-law
-        self.into_courier = 10 ** (FROM_ULAW_DB / 20)  # mu-law -> Courier
+        self.codec = codec
+        to_ulaw = (SI3034_TX_FULL_SCALE_DBM - ULAW_FULL_SCALE_DBM0
+                   if codec == "si3034" else TO_ULAW_DB)
+        from_ulaw = (ULAW_FULL_SCALE_DBM0 - SI3034_RX_FULL_SCALE_DBM
+                     if codec == "si3034" else FROM_ULAW_DB)
+        self.from_line = 10 ** (to_ulaw / 20)       # Courier -> mu-law
+        self.into_courier = 10 ** (from_ulaw / 20)  # mu-law -> Courier
         self.answered = False
         self.cleared = False
         self._offered = False
@@ -250,6 +262,9 @@ class BearerLineLink:
     def status(self) -> dict[str, Any]:
         return {
             "line": self.line.status(),
+            "analog_codec": self.codec,
+            "analog_to_ulaw_db": 20 * math.log10(self.from_line),
+            "ulaw_to_analog_db": 20 * math.log10(self.into_courier),
             "call_state": CALL_STATE_NAMES.get(self._call_state,
                                                self._call_state),
             "answered": self.answered,

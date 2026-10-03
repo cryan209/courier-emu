@@ -1,0 +1,1448 @@
+{
+  "error": "3453C overlay did not acknowledge at 00B4, PC=1134",
+  "instructions": 2300390,
+  "timers": {
+    "fast": true,
+    "modelled": false,
+    "interrupts": 12,
+    "reads": 9788,
+    "writes": 9847,
+    "accelerated_waits": 0,
+    "granted_ticks": 0,
+    "controller": {
+      "writes": 36,
+      "masked": {
+        "timer": false,
+        "dma0": false,
+        "dma1": false,
+        "int0": false,
+        "int1": false,
+        "int2": true,
+        "int3": true
+      }
+    },
+    "timers": [
+      {
+        "control": "0x8021",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 32256,
+        "compare_b": 0,
+        "count": 22705,
+        "max_counts": 105
+      },
+      {
+        "control": "0xa021",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 40624,
+        "compare_b": 0,
+        "count": 22304,
+        "max_counts": 32
+      },
+      {
+        "control": "0xa001",
+        "enabled": true,
+        "continuous": true,
+        "compare_a": 65535,
+        "compare_b": 0,
+        "count": 21254,
+        "max_counts": 16
+      }
+    ]
+  },
+  "bridge": {
+    "active": true,
+    "launched": true,
+    "boot_rom_enabled": true,
+    "bootstrap_bytes": 52160,
+    "bootstrap_match": true,
+    "bootstraps": 1,
+    "overlay_downloads": 0,
+    "line_service": {
+      "calls": 0,
+      "no_codec_clock": 0,
+      "originate_return": 0,
+      "fallback_frames": 0,
+      "drained_frames": 0,
+      "buffer_left": 0,
+      "budget_frames": 0,
+      "tx_peak_codec": 0,
+      "tx_consumed": 0,
+      "ring_frames": 0,
+      "peer_ring_frames": 0,
+      "peer_ring_bursts": 0,
+      "cut_through_at": -1,
+      "call_state": "idle",
+      "peer_ring_runs": [],
+      "tx_index": 0,
+      "tx_peak_line": 0,
+      "resets": [
+        {
+          "frame": -1,
+          "instructions": 1415616,
+          "tx_written": 0
+        }
+      ],
+      "final_tx_total": 1467,
+      "final_tx_nonzero": 0,
+      "final_tx_peak": 0,
+      "final_tx_first_nonzero": -1,
+      "final_tx_bursts": [],
+      "final_tx_burst_count": 0
+    },
+    "overlay_words_verified": 180,
+    "overlay_words_unreadable": 0,
+    "overlay_id": null,
+    "overlay_match": null,
+    "overlay_heads": [],
+    "overlay_destinations": [],
+    "overlay_destination_waits": 0,
+    "transfer_commands": 6520,
+    "mailbox_commands": 0,
+    "mailbox_windows": {},
+    "runtime_messages": [
+      "007d:002c",
+      "0001:0000",
+      "0001:0000",
+      "000f:0600",
+      "0001:0000",
+      "000f:1200",
+      "0082:00b8",
+      "0083:0002",
+      "0084:1468",
+      "0084:1408",
+      "000f:1200",
+      "0067:0009",
+      "0002:0000",
+      "0001:0000"
+    ],
+    "runtime_message_counts": {
+      "0001:0000": 4,
+      "000f:1200": 2,
+      "007d:002c": 1,
+      "000f:0600": 1,
+      "0082:00b8": 1,
+      "0083:0002": 1,
+      "0084:1468": 1,
+      "0084:1408": 1,
+      "0067:0009": 1,
+      "0002:0000": 1
+    },
+    "runtime_inbound_delivered": {},
+    "runtime_message_first_seen": {
+      "007d:002c": 2229824,
+      "0001:0000": 2231616,
+      "000f:0600": 2250176,
+      "000f:1200": 2270592,
+      "0082:00b8": 2287360,
+      "0083:0002": 2289152,
+      "0084:1468": 2291008,
+      "0084:1408": 2292864,
+      "0067:0009": 2296576,
+      "0002:0000": 2298432
+    },
+    "runtime_message_first_pc": {
+      "007d:002c": "677c3",
+      "0001:0000": "677c3",
+      "000f:0600": "677c3",
+      "000f:1200": "677c3",
+      "0082:00b8": "677c3",
+      "0083:0002": "677c3",
+      "0084:1468": "677c3",
+      "0084:1408": "677c3",
+      "0067:0009": "677c3",
+      "0002:0000": "677c3"
+    },
+    "runtime_words_queued": 28,
+    "detector_replies": 0,
+    "host_messages_delivered": 14,
+    "dsp_messages_taken": 0,
+    "dsp_stream_acks": 0,
+    "rx_acquisition_assist_enabled": false,
+    "rx_acquisition_assisted": false,
+    "error": null,
+    "dsp": {
+      "pc": 4404,
+      "op": 48674,
+      "acc": 1,
+      "accb": 0,
+      "preg": 0,
+      "dp": 7,
+      "arp": 1,
+      "flags": 22,
+      "idle": true,
+      "instructions": 8050199,
+      "cycles": 8220599,
+      "io_events": 6729,
+      "ar0": 32650,
+      "ar1": 303,
+      "ar2": 0,
+      "ar3": 0,
+      "ar4": 0,
+      "ar5": 0,
+      "ar6": 0,
+      "ar7": 32640,
+      "arcr": 32650,
+      "indx": 32650
+    },
+    "dsp_host_ports": {
+      "0x50": {
+        "reads": 0,
+        "writes": 27,
+        "last_read": 0,
+        "last_write": 0,
+        "last_read_pc": 0,
+        "last_write_pc": 4498
+      },
+      "0x51": {
+        "reads": 426,
+        "writes": 0,
+        "last_read": 65535,
+        "last_write": 0,
+        "last_read_pc": 4660,
+        "last_write_pc": 0
+      },
+      "0x56": {
+        "reads": 0,
+        "writes": 6,
+        "last_read": 0,
+        "last_write": 65535,
+        "last_read_pc": 0,
+        "last_write_pc": 4147
+      },
+      "0x57": {
+        "reads": 5961,
+        "writes": 66,
+        "last_read": 519,
+        "last_write": 1,
+        "last_read_pc": 4787,
+        "last_write_pc": 4799
+      },
+      "0x58": {
+        "reads": 46,
+        "writes": 0,
+        "last_read": 31360,
+        "last_write": 0,
+        "last_read_pc": 4446,
+        "last_write_pc": 0
+      },
+      "0x59": {
+        "reads": 45,
+        "writes": 0,
+        "last_read": 4819,
+        "last_write": 0,
+        "last_read_pc": 4446,
+        "last_write_pc": 0
+      },
+      "0x5a": {
+        "reads": 45,
+        "writes": 0,
+        "last_read": 31104,
+        "last_write": 0,
+        "last_read_pc": 4446,
+        "last_write_pc": 0
+      },
+      "0x5b": {
+        "reads": 45,
+        "writes": 0,
+        "last_read": 6182,
+        "last_write": 0,
+        "last_read_pc": 4446,
+        "last_write_pc": 0
+      },
+      "0x5e": {
+        "reads": 14,
+        "writes": 3,
+        "last_read": 1,
+        "last_write": 71,
+        "last_read_pc": 4791,
+        "last_write_pc": 4853
+      },
+      "0x5f": {
+        "reads": 14,
+        "writes": 6,
+        "last_read": 0,
+        "last_write": 7,
+        "last_read_pc": 4793,
+        "last_write_pc": 4864
+      },
+      "0x68": {
+        "reads": 0,
+        "writes": 5,
+        "last_read": 0,
+        "last_write": 15,
+        "last_read_pc": 0,
+        "last_write_pc": 4176
+      },
+      "0x69": {
+        "reads": 0,
+        "writes": 5,
+        "last_read": 0,
+        "last_write": 2,
+        "last_read_pc": 0,
+        "last_write_pc": 4178
+      },
+      "0x6a": {
+        "reads": 0,
+        "writes": 5,
+        "last_read": 0,
+        "last_write": 0,
+        "last_read_pc": 0,
+        "last_write_pc": 4182
+      },
+      "0x6b": {
+        "reads": 0,
+        "writes": 5,
+        "last_read": 0,
+        "last_write": 120,
+        "last_read_pc": 0,
+        "last_write_pc": 4188
+      },
+      "0x6c": {
+        "reads": 0,
+        "writes": 5,
+        "last_read": 0,
+        "last_write": 2305,
+        "last_read_pc": 0,
+        "last_write_pc": 4190
+      }
+    },
+    "dsp_memory_map": {
+      "mpmc_pin": 0,
+      "mpmc": 1,
+      "ovly": 1,
+      "ram": 1,
+      "cnf": 0,
+      "iptr": 3,
+      "pdwsr": 8192,
+      "iowsr": 257,
+      "cwsr": 16,
+      "rom_present": true,
+      "program_rom": 442,
+      "program_daram": 0,
+      "program_saram": 0,
+      "program_external": 246784,
+      "data_registers": 4558,
+      "data_daram": 45884,
+      "data_saram": 0,
+      "data_reserved": 0,
+      "data_shared": 11703,
+      "data_external": 0,
+      "rom_holes": 0,
+      "model": "c52",
+      "wait_states": {
+        "io_mapping": "8K blocks",
+        "external": [
+          {
+            "space": "data",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 2
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 32768,
+            "last": 40959
+          }
+        ],
+        "regions": [
+          {
+            "space": "program",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 0
+          },
+          {
+            "space": "program",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 0
+          },
+          {
+            "space": "program",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 0
+          },
+          {
+            "space": "program",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 2
+          },
+          {
+            "space": "data",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 8192,
+            "last": 16383
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 16384,
+            "last": 24575
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 24576,
+            "last": 32767
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 32768,
+            "last": 40959
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 40960,
+            "last": 49151
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 49152,
+            "last": 57343
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 57344,
+            "last": 65535
+          }
+        ]
+      }
+    },
+    "asic": {
+      "registers": {
+        "7d": 44,
+        "82": 184,
+        "83": 2,
+        "84": 5128
+      },
+      "writes": {
+        "7d": 1,
+        "82": 1,
+        "83": 1,
+        "84": 2
+      },
+      "call_engine_started": false,
+      "v8_armed": false,
+      "commit_edges": 0,
+      "dsp_register_commits": 0,
+      "call_overlay_available": false,
+      "call_overlay_active": false,
+      "call_resume_state": null,
+      "connected_event_queued": false,
+      "carrier_source": null,
+      "legacy_carrier_fallback": false,
+      "carrier_probe_frames": 0,
+      "carrier_best_score": 0,
+      "codec_clock_events": [
+        {
+          "write": true,
+          "port": 104,
+          "value": 15,
+          "pc": 4176,
+          "instruction": 1334
+        },
+        {
+          "write": true,
+          "port": 105,
+          "value": 2,
+          "pc": 4178,
+          "instruction": 1335
+        },
+        {
+          "write": true,
+          "port": 107,
+          "value": 120,
+          "pc": 4188,
+          "instruction": 1340
+        },
+        {
+          "write": true,
+          "port": 108,
+          "value": 2305,
+          "pc": 4190,
+          "instruction": 1341
+        },
+        {
+          "write": true,
+          "port": 104,
+          "value": 15,
+          "pc": 4176,
+          "instruction": 7412931
+        },
+        {
+          "write": true,
+          "port": 105,
+          "value": 2,
+          "pc": 4178,
+          "instruction": 7412932
+        },
+        {
+          "write": true,
+          "port": 107,
+          "value": 120,
+          "pc": 4188,
+          "instruction": 7412937
+        },
+        {
+          "write": true,
+          "port": 108,
+          "value": 2305,
+          "pc": 4190,
+          "instruction": 7412938
+        },
+        {
+          "write": true,
+          "port": 104,
+          "value": 15,
+          "pc": 4176,
+          "instruction": 7578324
+        },
+        {
+          "write": true,
+          "port": 105,
+          "value": 2,
+          "pc": 4178,
+          "instruction": 7578325
+        },
+        {
+          "write": true,
+          "port": 107,
+          "value": 120,
+          "pc": 4188,
+          "instruction": 7578330
+        },
+        {
+          "write": true,
+          "port": 108,
+          "value": 2305,
+          "pc": 4190,
+          "instruction": 7578331
+        },
+        {
+          "write": true,
+          "port": 104,
+          "value": 15,
+          "pc": 4176,
+          "instruction": 7749541
+        },
+        {
+          "write": true,
+          "port": 105,
+          "value": 2,
+          "pc": 4178,
+          "instruction": 7749542
+        },
+        {
+          "write": true,
+          "port": 107,
+          "value": 120,
+          "pc": 4188,
+          "instruction": 7749547
+        },
+        {
+          "write": true,
+          "port": 108,
+          "value": 2305,
+          "pc": 4190,
+          "instruction": 7749548
+        },
+        {
+          "write": true,
+          "port": 104,
+          "value": 15,
+          "pc": 4176,
+          "instruction": 8031324
+        },
+        {
+          "write": true,
+          "port": 105,
+          "value": 2,
+          "pc": 4178,
+          "instruction": 8031325
+        },
+        {
+          "write": true,
+          "port": 107,
+          "value": 120,
+          "pc": 4188,
+          "instruction": 8031330
+        },
+        {
+          "write": true,
+          "port": 108,
+          "value": 2305,
+          "pc": 4190,
+          "instruction": 8031331
+        }
+      ],
+      "negotiation_audio": {
+        "samples": 800,
+        "rms": 0,
+        "hz_980": 0,
+        "hz_1180": 0,
+        "hz_1300": 0,
+        "hz_1875": 0,
+        "hz_2100": 0,
+        "v21_mark_symbols": 25,
+        "v21_space_symbols": 0,
+        "v21_strong_symbols": 0
+      },
+      "dsp_registers": {},
+      "rate_writes": [],
+      "call_cell_writes": {
+        "0306": 5,
+        "039f": 10,
+        "a51b": 0,
+        "a517": 0,
+        "d2a8": 0,
+        "fff8": 0,
+        "fff9": 0
+      },
+      "call_cells": {
+        "006f": 0,
+        "0304": 0,
+        "0306": 0,
+        "035c": 0,
+        "039f": 0,
+        "03c8": 0,
+        "03ca": 0,
+        "03fe": 0,
+        "069c": 0,
+        "0b26": 0,
+        "0b49": 0,
+        "a51b": 0,
+        "d2a8": 0,
+        "fff8": 0,
+        "fff9": 0,
+        "fffa": 0,
+        "fffd": 0,
+        "fffe": 0,
+        "ffff": 0
+      },
+      "control_82": 184,
+      "command_protocol": "si3034",
+      "line_phase": null,
+      "line_enable": null,
+      "start_strobe": null,
+      "engine_hold": null,
+      "ring_indicate": null
+    },
+    "serial_port": {
+      "drr": 0,
+      "dxr": 0,
+      "spc": 16584,
+      "drr_reads": 1513,
+      "dxr_writes": 1529,
+      "spc_writes": 10,
+      "rx_consumed": 0,
+      "rx_queued": 0,
+      "codec_rx_consumed": 109,
+      "codec_rx_queued": 4353,
+      "last_drr_pc": 4604,
+      "last_dxr_pc": 4594,
+      "last_spc_pc": 4257,
+      "trcv": 0,
+      "tdxr": 0,
+      "tspc": 0,
+      "trcv_reads": 0,
+      "tdxr_writes": 0,
+      "tspc_writes": 0,
+      "last_trcv_pc": 0,
+      "last_tdxr_pc": 0,
+      "last_tspc_pc": 0,
+      "line_tx_writes": 1467,
+      "line_tx_nonzero": 0,
+      "line_frame_interrupts": 1510,
+      "serial_frame_suppressed": 0,
+      "shadow_dp": 7,
+      "last_dp_pc": 4403,
+      "last_dp_value": 7,
+      "last_dp_source": 4,
+      "stray_cala_pc": 4363,
+      "stray_cala_target": 4467,
+      "stray_cala_dp": 7,
+      "line_dac_writes": 0,
+      "line_dac_frames": 0,
+      "line_tx_last": 0,
+      "line_tx_last_pc": 4594,
+      "imr": 42,
+      "v8_rx_state": 0,
+      "v8_rx_peak": 0,
+      "codec_rx_peak": 0,
+      "negotiation_loop_entries": 0,
+      "negotiation_loop_pc": 0,
+      "negotiation_source": 0,
+      "negotiation_pair": 0,
+      "negotiation_source_value": 0,
+      "negotiation_pair_value": 0,
+      "negotiation_acc": 0,
+      "v8_dispatches": 0,
+      "v8_record": 0,
+      "v8_handler": 0,
+      "v8_countdown": 0,
+      "v8_flags": 0,
+      "v8_dispatch_pc": 0,
+      "v8_dispatch_dp": 0,
+      "negotiation_d76": 0,
+      "negotiation_d77": 0,
+      "negotiation_d78": 0,
+      "negotiation_d79": 0,
+      "negotiation_d26": 0,
+      "negotiation_indx": 0,
+      "negotiation_arp": 0,
+      "negotiation_pm": 0,
+      "hybrid_frames": 3380,
+      "hybrid_peak": 0,
+      "delay_move_ignored": 0,
+      "delay_move_last_pc": 0,
+      "delay_move_last_address": 0
+    },
+    "v8_io_events": [
+      {
+        "write": false,
+        "port": 88,
+        "value": 3687,
+        "pc": 4446,
+        "instruction": 8022176
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 2170,
+        "pc": 4446,
+        "instruction": 8022176
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 58248,
+        "pc": 4446,
+        "instruction": 8022227
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8022227
+      },
+      {
+        "write": true,
+        "port": 80,
+        "value": 0,
+        "pc": 4498,
+        "instruction": 8024012
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 31360,
+        "pc": 4446,
+        "instruction": 8024119
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8024119
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 63249,
+        "pc": 4446,
+        "instruction": 8024170
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 513,
+        "pc": 4446,
+        "instruction": 8024170
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 4395,
+        "pc": 4446,
+        "instruction": 8024221
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 1552,
+        "pc": 4446,
+        "instruction": 8024221
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 4395,
+        "pc": 4446,
+        "instruction": 8024272
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 303,
+        "pc": 4446,
+        "instruction": 8024272
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 1024,
+        "pc": 4446,
+        "instruction": 8024323
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8024323
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 48905,
+        "pc": 4446,
+        "instruction": 8024374
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 44672,
+        "pc": 4446,
+        "instruction": 8024374
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8024425
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8024425
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8025367
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31360,
+        "pc": 4446,
+        "instruction": 8025367
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 48905,
+        "pc": 4446,
+        "instruction": 8025418
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 24192,
+        "pc": 4446,
+        "instruction": 8025418
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 4736,
+        "pc": 4446,
+        "instruction": 8025469
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 59144,
+        "pc": 4446,
+        "instruction": 8025469
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 44672,
+        "pc": 4446,
+        "instruction": 8025520
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8025520
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8025571
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8025571
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8025622
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31360,
+        "pc": 4446,
+        "instruction": 8025622
+      },
+      {
+        "write": true,
+        "port": 80,
+        "value": 0,
+        "pc": 4498,
+        "instruction": 8027020
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 48905,
+        "pc": 4446,
+        "instruction": 8027130
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 4224,
+        "pc": 4446,
+        "instruction": 8027130
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 255,
+        "pc": 4446,
+        "instruction": 8027181
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 0,
+        "pc": 4446,
+        "instruction": 8027181
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 4819,
+        "pc": 4446,
+        "instruction": 8027232
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 303,
+        "pc": 4446,
+        "instruction": 8027232
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 0,
+        "pc": 4446,
+        "instruction": 8027283
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 44570,
+        "pc": 4446,
+        "instruction": 8027283
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 44571,
+        "pc": 4446,
+        "instruction": 8027334
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 61184,
+        "pc": 4446,
+        "instruction": 8027334
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 26881,
+        "pc": 4446,
+        "instruction": 8027385
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49072,
+        "pc": 4446,
+        "instruction": 8027385
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 36865,
+        "pc": 4446,
+        "instruction": 8027436
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 152,
+        "pc": 4446,
+        "instruction": 8027436
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 48905,
+        "pc": 4446,
+        "instruction": 8028631
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 4224,
+        "pc": 4446,
+        "instruction": 8028631
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 3840,
+        "pc": 4446,
+        "instruction": 8028682
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 1280,
+        "pc": 4446,
+        "instruction": 8028682
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 164,
+        "pc": 4446,
+        "instruction": 8028733
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 57856,
+        "pc": 4446,
+        "instruction": 8028733
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 44672,
+        "pc": 4446,
+        "instruction": 8028784
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8028784
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8028835
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8028835
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 31360,
+        "pc": 4446,
+        "instruction": 8028886
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 49024,
+        "pc": 4446,
+        "instruction": 8028886
+      },
+      {
+        "write": false,
+        "port": 88,
+        "value": 31360,
+        "pc": 4446,
+        "instruction": 8028937
+      },
+      {
+        "write": false,
+        "port": 90,
+        "value": 31104,
+        "pc": 4446,
+        "instruction": 8028937
+      },
+      {
+        "write": true,
+        "port": 80,
+        "value": 0,
+        "pc": 4498,
+        "instruction": 8030028
+      },
+      {
+        "write": false,
+        "port": 94,
+        "value": 1,
+        "pc": 4791,
+        "instruction": 8030211
+      },
+      {
+        "write": true,
+        "port": 86,
+        "value": 65535,
+        "pc": 4147,
+        "instruction": 8031306
+      },
+      {
+        "write": true,
+        "port": 80,
+        "value": 0,
+        "pc": 4498,
+        "instruction": 8033714
+      }
+    ],
+    "dsp_pc_trace": [
+      {
+        "probe_clock": [
+          [
+            60567,
+            200000,
+            151709
+          ],
+          [
+            1360517,
+            400000,
+            1503433
+          ],
+          [
+            3176555,
+            600000,
+            3356012
+          ],
+          [
+            4992743,
+            800000,
+            5208547
+          ],
+          [
+            6808948,
+            1000000,
+            7061029
+          ],
+          [
+            8627293,
+            1200000,
+            8915981
+          ],
+          [
+            10443539,
+            1400000,
+            10768465
+          ],
+          [
+            1670495,
+            1600000,
+            1704011
+          ],
+          [
+            3486680,
+            1800000,
+            3556602
+          ],
+          [
+            5302924,
+            2000000,
+            5409025
+          ],
+          [
+            7121172,
+            2200000,
+            7263982
+          ]
+        ]
+      }
+    ],
+    "dsp_data_events": [],
+    "dial_digits": "5551234",
+    "daa": {
+      "line_state": "disconnected",
+      "sample_rate": 8000,
+      "off_hook": true,
+      "operation": "originate",
+      "generated_samples": 4800,
+      "qualified_samples": 0,
+      "line_connected": false,
+      "dial_tone_present": false,
+      "dial_tone_qualified": false,
+      "detector_present": false,
+      "detector_qualified": false
+    },
+    "sip": null,
+    "line": null,
+    "codec": {
+      "complete": true,
+      "polls": 3,
+      "steps": [
+        "register-reset",
+        "sample-rate",
+        "power-up",
+        "ready",
+        "gpio",
+        "levels",
+        "line-interface"
+      ],
+      "codec": {
+        "line": 1,
+        "revision": 19,
+        "resets": 2,
+        "frames": 5,
+        "powered": true,
+        "pll_programmed": true,
+        "sample_rate": 9600,
+        "link_up": true,
+        "ready": true,
+        "readiness": "0x0f",
+        "off_hook": false,
+        "loop_current_ma": 0,
+        "loop_current_sense": 0,
+        "line_status": "0x0040",
+        "registers": {
+          "0x3c": "0x4001",
+          "0x3e": "0xc000",
+          "0x40": "0x2580",
+          "0x42": "0x0000",
+          "0x46": "0x0000",
+          "0x48": "0x0000",
+          "0x4c": "0x0000",
+          "0x4e": "0x0000",
+          "0x50": "0x0000",
+          "0x52": "0x0000",
+          "0x54": "0x0000",
+          "0x5a": "0x0011",
+          "0x5c": "0x0010",
+          "0x5e": "0x0000",
+          "0x62": "0x0000",
+          "0x64": "0x0000"
+        }
+      }
+    },
+    "exchange": null,
+    "core_codec": {
+      "registers": [
+        0,
+        0,
+        3,
+        0,
+        0,
+        2,
+        96,
+        4,
+        63,
+        17,
+        0,
+        3,
+        0,
+        76,
+        2,
+        0,
+        44,
+        184,
+        2,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mclk_hz": 2880000,
+      "sample_rate_millihz": 7200000,
+      "frame_period": 5600,
+      "secondary_frames": 51,
+      "register_writes": 46,
+      "register_reads": 0,
+      "phase_shifts": 0,
+      "primary_frames": 1478,
+      "frames_clocked": 1467,
+      "last_control_word": 256,
+      "rate_programmed": true,
+      "secondary_pending": false,
+      "force_secondary": false,
+      "free_run": false,
+      "loopback": false,
+      "sixteen_bit": false,
+      "input_select": null,
+      "codec_rx_size": 4244,
+      "line_frame_next_cycle": 8220800,
+      "cycles": 8220599,
+      "line_frame_irq": 5,
+      "rx_empty_frames": 1358,
+      "sample_rate": 7200.0,
+      "model": "si3034",
+      "input_gain_db": 0,
+      "output_gain_db": 0
+    },
+    "codec_register_history": [],
+    "line_rx_peak": 0,
+    "codec_queue_peak": 0,
+    "codec_in_peak": 0,
+    "codec_handed_ever": 0,
+    "codec_handed_peak": 0,
+    "codec_handed_at": 0,
+    "core_rebuilt_at": 0,
+    "codec_replayed": 0,
+    "dsp_originated_messages": 4,
+    "dsp_originated_tags": {
+      "0047:0007": 4
+    },
+    "dsp_mailbox_log": [
+      {
+        "tag": "0047",
+        "words": [
+          "0000",
+          "0007"
+        ],
+        "pc": "12f5",
+        "instruction": 165108
+      },
+      {
+        "tag": "0047",
+        "words": [
+          "0000",
+          "0007"
+        ],
+        "pc": "12f5",
+        "instruction": 7742581
+      },
+      {
+        "tag": "0047",
+        "words": [
+          "0000",
+          "0007"
+        ],
+        "pc": "12f5",
+        "instruction": 7913309
+      }
+    ],
+    "dsp_mmr_writes": {
+      "04": 5,
+      "06": 5,
+      "07": 10,
+      "09": 45,
+      "0c": 1801,
+      "1a": 5,
+      "1b": 5,
+      "1c": 5,
+      "1d": 5,
+      "1e": 5,
+      "1f": 225,
+      "21": 1529,
+      "22": 10,
+      "25": 857,
+      "26": 5,
+      "28": 6,
+      "29": 6,
+      "2a": 6
+    },
+    "dsp_cells": {},
+    "dsp_writes": []
+  }
+}

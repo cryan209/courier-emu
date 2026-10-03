@@ -481,9 +481,9 @@ void C5xCore::codec_transmit(uint16_t word)
     switch (request) {
     case 3:
         m_codec.secondary_now = true;
-        // Half a frame period after this one - (B/2) FCLK periods, which is
-        // B/2 divided by FCLK = fs/2. Scheduled from now rather than from the
-        // frame boundary, since the DSP writes DXR from inside the ISR.
+        // Secondary FSYNC is halfway through the primary interval. Si3034
+        // decodes this request when DXR enters the shifter at primary FSYNC;
+        // the legacy AC01 path still decodes it on the DXR write.
         m_codec.secondary_due = true;
         m_codec.secondary_cycle = m_cycles + m_line_frame_period / 2;
         break;
@@ -500,6 +500,31 @@ void C5xCore::codec_transmit(uint16_t word)
         : ac01_output_sample(uint16_t(word & 0xfffc), m_codec.registers[4]);
     m_codec.dac_pending = true;
     m_line_tx_last_pc = uint16_t(m_pc - 1);
+}
+
+// Si3034 SCLK is 256 * Fs (section 5.22). FSYNC moves DXR to the
+// transmit shifter and raises XINT; RSR reaches DRR sixteen SCLKs later.
+// Consequently an XINT handler reads the preceding word, including a
+// secondary-register reply at the following primary FSYNC.
+void C5xCore::si3034_serial_frame(bool secondary)
+{
+    if (m_serial.spc & SPC_XRST) {
+        m_codec.secondary_now = secondary;
+        codec_transmit(m_serial.dxr);
+    }
+    const uint16_t previous = m_serial.drr;
+    const bool ready = m_codec.rx_ready;
+    codec_frame(secondary);
+    m_codec.receive_word = m_serial.drr;
+    m_serial.drr = previous;
+    m_codec.rx_ready = ready;
+    m_codec.receive_cycle = m_cycles + std::max(1u, m_line_frame_period / 16);
+    m_codec.receive_due = (m_serial.spc & SPC_RRST) != 0;
+    if (m_serial.spc & SPC_XRST) {
+        if (!m_st0.intm && (m_imr & (1u << IRQ_XINT)))
+            ++m_line_frame_interrupts;
+        interrupt(IRQ_XINT);
+    }
 }
 
 // One frame sync: the codec clocks a word each way, whether or not the DSP has
@@ -1335,7 +1360,11 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         // samples of two known builds and no others.
         // Raw digital octets can have the same bits as AC01 secondary-frame
         // commands. Decoding them as codec control corrupts later DRR reads.
-        if (!m_digital_pcm) codec_transmit(value);
+        // An active Si3034 transmitter shifts this queued word at FSYNC.
+        // Direct register-control probes with the port in reset retain the
+        // synchronous API; they do not generate serial interrupts.
+        if (!m_digital_pcm && !(m_si3034_codec && m_line_frame_irq >= 0
+                && (m_serial.spc & SPC_XRST))) codec_transmit(value);
         return;
     case 0x22:
         // A 0 -> 1 edge on XRST releases the transmitter with DXR empty.
@@ -1724,11 +1753,24 @@ void C5xCore::step()
     // periods after the primary that requested it (datasheet Figure 2-1, note),
     // and since fs = FCLK/B that is exactly half a frame - so it is serviced
     // ahead of the next primary rather than replacing it.
+    if (m_si3034_codec && m_codec.receive_due
+        && m_cycles >= m_codec.receive_cycle) {
+        m_codec.receive_due = false;
+        if (m_serial.spc & SPC_RRST) {
+            m_serial.drr = m_codec.receive_word;
+            m_codec.rx_ready = true;
+            interrupt(IRQ_RINT);
+        }
+    }
     if (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due
         && m_cycles >= m_codec.secondary_cycle) {
         m_codec.secondary_due = false;
-        codec_frame(true);
-        serial_frame_interrupt();
+        if (m_si3034_codec && (m_serial.spc & (SPC_XRST | SPC_RRST)))
+            si3034_serial_frame(true);
+        else {
+            codec_frame(true);
+            serial_frame_interrupt();
+        }
         return;
     }
     if (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle) {
@@ -1761,8 +1803,12 @@ void C5xCore::step()
             return;
         }
         if (m_rom_codec) {
-            codec_frame(false);
-            serial_frame_interrupt();
+            if (m_si3034_codec && (m_serial.spc & (SPC_XRST | SPC_RRST)))
+                si3034_serial_frame(false);
+            else {
+                codec_frame(false);
+                serial_frame_interrupt();
+            }
             return;
         }
         // LAMM @52 at the ISR entry masks this ASIC word to two bits and
@@ -1888,6 +1934,9 @@ void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
                 && m_codec.secondary_cycle > m_cycles)
                 distance = std::min(distance,
                     m_codec.secondary_cycle - m_cycles);
+            if (m_si3034_codec && m_codec.receive_due
+                && m_codec.receive_cycle > m_cycles)
+                distance = std::min(distance, m_codec.receive_cycle - m_cycles);
             if (distance > 1) {
                 const uint64_t skipped = distance - 1;
                 m_cycles += skipped;

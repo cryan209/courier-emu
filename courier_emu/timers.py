@@ -505,7 +505,8 @@ class EbInterruptController(InterruptController):
     """80C186EB masks (Intel 270830-003, figures 8-4 and 8-8).
 
     The legacy controller above uses the DMA-equipped 80186 IMASK positions.
-    Keep that behavior for existing board profiles; the Quad selects this map.
+    Keep that behavior for existing board profiles; the Quad and 3453C select
+    this map.
     """
 
     masked: dict[str, bool] = field(default_factory=lambda: {

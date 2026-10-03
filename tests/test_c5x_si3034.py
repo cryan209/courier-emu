@@ -130,3 +130,24 @@ def test_si3034_transmit_mute_does_not_stop_serial_clock():
         core.step(core.codec_state()['frame_period'])
         assert core.codec_state()['frames_clocked'] == before + 1
         assert core.line_tx_samples()[-1] == 0
+
+
+def test_si3034_receive_word_completes_after_transmit_frame_sync():
+    with NativeC5x.from_program(0, struct.pack('<32768H', *([0x8b00] * 32768)), model='c52') as core:
+        core.configure_si3034_codec()
+        core.configure_line_frame_interrupt(5, 0xffff)
+        configure_pll(core)
+        control(core, 0x0660)
+        period = core.codec_state()['frame_period']
+        core.step(period)
+        core.host_write(0x22, 0xc0)  # XRST and RRST, sixteen-bit words
+        core.host_write(0x21, 0x1234)
+        core.queue_codec_rx([0x4566] * 4)
+        core.step(period)
+        assert core.line_tx_samples()[-1] == 0x1234
+        assert core.serial_state()['drr'] == 0
+        # Si3034 SCLK = 256 * Fs; RSR -> DRR takes 16 clocks.
+        core.step(period // 16 - 1)
+        assert core.serial_state()['drr'] == 0
+        core.step(1)
+        assert core.serial_state()['drr'] == 0x4566
