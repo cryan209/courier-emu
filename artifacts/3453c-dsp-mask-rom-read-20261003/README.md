@@ -176,5 +176,35 @@ Consumer, BB58–BB74 (`@54` = q, `@55` = M − 1, as V.34 splits a label):
 0260 is read at BD01 and BD18: each word gives 2q + 3 bits (`@7e =
 2·@54 + 3`, BCFD) to the bit writer B542, i.e. the 2q uncoded Q bits and the
 three 4D-subset bits of each 4D symbol. ROM 0D17 is the same deframing code.
-The C3A8 table (16 words before C3B8) differs from ROM 0580–058F and was not
-traced.
+
+### C3A8: 4D subset bits (firmware only)
+
+C3A8 (16 words before C3B8) is not in the ROM; ROM 0580–058F is different
+data. BB45–BB57 indexes it with the two 3-bit 2D labels `@7c` (a) and `@7f`
+(b): word `2a + (b >> 2)`, nibble `3 − (b & 3)` from the bottom (`lact`
+shifted by TREG1 = `32a + 4b` mod 16, then `sach ,4`):
+
+    a\b  0 1 2 3 4 5 6 7
+    0    0 0 1 1 8 8 9 9
+    1    3 2 2 3 b a a b
+    2    5 5 4 4 d d c c
+    3    6 7 7 6 e f f e
+    4    8 8 9 9 0 0 1 1
+    5    b a a b 3 2 2 3
+    6    d d c c 5 5 4 4
+    7    e f f e 6 7 7 6
+
+The low three bits depend only on `(a & 3, b & 3)`: a pair of 2D subsets
+maps to one of eight 4D subsets. Bit 3 is `(a >> 2) xor (b >> 2)`, and
+nothing downstream uses it.
+
+The output is then differenced against the previous symbol:
+
+    Y   = (n & 1) | ((((n >> 1) − p) mod 4) << 1)    ; BB4E–BB55
+    p  := (n >> 1) & 3                               ; @1d, BB56–BB57
+
+Y goes in the low three bits of 0260 + n, under the q-bit pairs. This fits
+V.34's differential encoding of the two bits above the trellis bit, but the
+2D labels come from the `calad` dispatch through 8B16, which was not traced,
+so the match to V.34's 4D subset table is not checked. B032 indexes C3A8
+the same way on another path (`@7c` and data 0865), also not traced.
