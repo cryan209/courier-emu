@@ -205,6 +205,38 @@ The output is then differenced against the previous symbol:
 
 Y goes in the low three bits of 0260 + n, under the q-bit pairs. This fits
 V.34's differential encoding of the two bits above the trellis bit, but the
-2D labels come from the `calad` dispatch through 8B16, which was not traced,
-so the match to V.34's 4D subset table is not checked. B032 indexes C3A8
+2D labels come from the rotation dispatch below.
+
+### 8B16: quadrant fold (resident, overlay 5)
+
+BAC1–BACD picks `@7c` = bit 8 of y, XOR 3 if bit 8 of x is set, and calls
+`8B16[@7c]` on the point. The four targets are 90° rotations:
+
+| `@7c` | target | operation |
+|---|---|---|
+| 0 | 8B53 | `ret` (0°) |
+| 1 | 8B54 | (x, y) → (−y, x) |
+| 2 | 8B46 | (x, y) → (−x, −y) |
+| 3 | 8B4D | (x, y) → (y, −x) |
+
+So every point is folded into one quarter before the label lookup, and the
+quarter number becomes the low two bits of the 2D label (bit 2 is the
+half-step bit from x − y). 8B12 is the same four routines in another order,
+used at AF87, AFF0, B01E, B5B7 and B605.
+
+C3A8 is invariant to rotation in the way the differential step needs:
+rotating both halves one quarter adds 1 (mod 4) to bits 2–1 of n and leaves
+bit 0 alone (n(0,0..3)=0,0,1,1 → n(1,1..0)=2,2,3,3 → …). The differential
+decode removes exactly that, which makes the receiver insensitive to 90°
+phase ambiguity, as V.34 intends.
+
+Users: overlay 6 (V.34 core) at BACA, BB0C, BBDD and overlay 7 at BB76,
+BBA5, BC6E. Overlay 8 (the PCM/V.90 layer) uses none of 8B12/8B16, C3A8,
+C3B8, C4B8 or C4D8. So this is the V.34 QAM receive path, not V.90
+downstream.
+
+Not early V.34: the label lookup covers 416 points per quarter (1664 in
+total) and the scale tables cover 31200/33600 bit/s. Both belong to the
+1996 V.34 extension; the 1994 version stopped at 28800 bit/s and 960
+points. B032 indexes C3A8
 the same way on another path (`@7c` and data 0865), also not traced.
