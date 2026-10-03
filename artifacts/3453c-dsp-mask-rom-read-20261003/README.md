@@ -69,10 +69,35 @@ Only 0A4C, 0CC1, 0DAF and 0E5E are direct call targets within the ROM.
 | 0ED5 | 3-tap precoding filter with modulo wrap (coefficients 4B66/4B69), quadrant table 0F24; likely V.34 precoder |
 | 0F28 | clears external data buffers at FBCC and F8CC |
 
-The downloaded firmware already carries byte-identical copies of the probe
-signal, the 672-point constellation and the precoder (`2_3_33.XMF`, RAM
-captures), and live PMST keeps MP/MC set. So the resident probably does not
-call into this library at runtime; not exhaustively excluded.
+**The stock 2.3.33 firmware does use this library at runtime**, by
+switching PMST.MP/MC. (An earlier revision of this README said it probably
+did not, because PMST read 18B8, with MP/MC set, whenever it was sampled.)
+Program RAM in the RAM capture (`../3453c-dsp-memory-read-20261003/
+dsp-program-fast-0000-7fff.bin`); all of it is present in the stock
+`2_3_33.XMF`:
+
+| RAM | What it does | Callers |
+|---|---|---|
+| 14D4 / 14DA | `apl @07,#fff7` (ROM in) / `opl @07,#8` (ROM out), saving ST0 | 9 brackets |
+| 14E0 | ROM in, call 09EE (sin/cos), ROM out | 17 |
+| 14EF | ROM in, call 0A21 (atan), ROM out | 6 |
+| 14FE | ROM in, call 0A4C (divide), ROM out | 3 |
+
+The nine 14D4…14DA brackets:
+
+| RAM | ROM use |
+|---|---|
+| 160A | call 0A68, the 64-point FFT |
+| 17DE | `tblr` 0080 + (n & 3F), the line-probe signal |
+| 1BAE, 1CC5 | `macd` × 80 with coefficients at 0030, the FIR |
+| 322C, 56DD, 65C6 | `tblr` 00C0 + n, the small constellation |
+| 359A | `tblr` from a base held in `@28` (not traced) |
+| 5310 | call 0B6A, a complex MAC kernel |
+
+The byte-identical table copies found earlier are in the 302-family images
+(`IDSDL302.ROM` and similar), whose older C51 mask has none of this. The
+emulator handles the switch already: `C5xCore` picks the ROM region from the
+live PMST.MPMC on each access (`native/c5x_core.cpp`).
 
 ### Transmit-scale tables, 0700–099F
 
@@ -275,5 +300,6 @@ signal, the 672-point constellation, the label lookup, the scale tables, the
 FFT, the precoder solve or the inverse shell mapper appears in it. What the
 two ROMs share is the vector layout, part of the V.32-family constellations
 (the 496-word 0250 → 00D0 block) and the top block. The 3453C mask is a newer
-image that includes 1996 V.34 (33.6k) tables, although the downloaded
-firmware carries its own copies and keeps the ROM unmapped at runtime.
+image that includes 1996 V.34 (33.6k) tables. The 3453C firmware calls
+into it at runtime by switching MP/MC (above). The 302-family firmware
+carries its own copies, because its ROM lacks them.
