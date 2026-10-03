@@ -42,6 +42,21 @@ dist/
 # together ~32 MB across ~8,200 files, all reconstructible from what is kept.
 artifacts/**/responses/
 artifacts/**/blocks/
+# Compressed local experiment archives and regenerable bulk capture output.
+# Tracked evidence is unaffected by these rules.
+.artifact-archives/
+artifacts/**/*.g711
+artifacts/**/*.pcap
+artifacts/**/timeline.jsonl
+artifacts/**/detector-captures.json
+artifacts/**/data-writes.json
+artifacts/**/checkpoints.json
+artifacts/**/decisions.json
+artifacts/**/retrain-captures.json
+artifacts/**/dsp-data.bin
+artifacts/**/dsp-program.bin
+artifacts/**/supervisor-data.bin
+artifacts/**/smartlink-*.s16le
 # The Quad's flash and RAM dumps are the same case: probe_quad_identify.py and
 # probe_quad_bringup rebuild every one of them from docs/x2/Qf060003.zip, which
 # is tracked, and probe_quad_c50.py rebuilds the DSP stream from those. ~6 MB of
@@ -71,3 +86,6 @@ nvram.sav
 
 # Scratch working directory.
 tmp/
+
+# Local board parameters may contain dial-security credentials.
+artifacts/3453c-emulator-boot-20261003/private-parameters.sav

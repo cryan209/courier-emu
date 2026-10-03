@@ -147,7 +147,7 @@ class NativeC5x:
         self.library = load_library(rebuild=rebuild)
         self._configure_api()
         self.model = model.lower()
-        if self.model not in ("c51", "c53"):
+        if self.model not in ("c51", "c52", "c53"):
             raise ValueError(f"unsupported DSP model: {model}")
         self._handle = self.library.courier_c5x_create_model(int(self.model[1:]))
         if not self._handle:
@@ -190,7 +190,7 @@ class NativeC5x:
         self.library = load_library(rebuild=rebuild)
         self._configure_api()
         self.model = model.lower()
-        if self.model not in ("c51", "c53"):
+        if self.model not in ("c51", "c52", "c53"):
             raise ValueError(f"unsupported DSP model: {model}")
         self._handle = self.library.courier_c5x_create_model(int(self.model[1:]))
         if not self._handle:
@@ -239,6 +239,7 @@ class NativeC5x:
             ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_uint8),
             ctypes.c_size_t, ctypes.c_char_p, ctypes.c_size_t,
         ]
+        lib.courier_c5x_set_host_io_base.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_set_mpmc_pin.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_shared_window.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16, ctypes.c_uint16
@@ -474,6 +475,9 @@ class NativeC5x:
         self.library.courier_c5x_queue_io_rx(
             self.handle, port & 0xFFFF, storage, len(words)
         )
+
+    def set_host_io_base(self, base: int) -> None:
+        self.library.courier_c5x_set_host_io_base(self.handle, base)
 
     def set_mpmc_pin(self, level: int) -> None:
         """Drive the pin that decides what the C5x's program 0x0000 is."""

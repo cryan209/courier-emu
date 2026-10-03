@@ -1,0 +1,27 @@
+--- a/native/c5x_core.cpp
++++ b/native/c5x_core.cpp
+@@ -588,12 +588,12 @@
+     const double cutoff = 0.5 * std::min(1.0, rate / 8000.0);
+     if (cutoff != m_codec_line_cutoff || m_codec_line_kernel.empty()) {
+         m_codec_line_cutoff = cutoff;
+-        m_codec_line_kernel.resize(1025);
++        m_codec_line_kernel.resize(3073);
+         const double norm = codec_i0(8);
+-        for (unsigned phase = 0; phase <= 1024; ++phase) {
++        for (unsigned phase = 0; phase <= 3072; ++phase) {
+             double total = 0;
+             for (unsigned k = 0; k < 128; ++k) {
+-                const double t = double(k) - 63 - double(phase) / 1024;
++                const double t = double(k) - 63 - double(phase) / 3072;
+                 const double x = 2 * cutoff * t;
+                 const double sinc = x == 0 ? 1 : std::sin(pi * x) / (pi * x);
+                 const double ratio = t / 64;
+@@ -618,7 +618,7 @@
+         }
+     }
+     m_codec_line_position -= advance;
+-    const unsigned phase = unsigned(std::round(m_codec_line_position * 1024));
++    const unsigned phase = unsigned(std::round(m_codec_line_position * 3072));
+     double value = 0;
+     for (unsigned k = 0; k < 128; ++k)
+         value += m_codec_line_history[k] * m_codec_line_kernel[phase][k];

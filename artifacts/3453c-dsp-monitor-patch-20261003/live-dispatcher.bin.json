@@ -1,0 +1,13 @@
+{
+  "space": "program",
+  "start_word": "12C0",
+  "end_word": "12C7",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 8,
+  "completed_words": 8,
+  "complete": true,
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 16,
+  "sha256": "f19c5d4ee60e011434de564b4ea117478e994215aae6b74bac38281fbdb43a64"
+}

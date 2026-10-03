@@ -43,7 +43,7 @@ def test_saram_mapping_and_external_storage_are_independent(model, first, size):
         assert core.program(first + size - 1) == 0x3333
 
 
-@pytest.mark.parametrize('model,size', [('c51', 0x2000), ('c53', 0x4000)])
+@pytest.mark.parametrize('model,size', [('c51', 0x2000), ('c52', 0x1000), ('c53', 0x4000)])
 def test_rom_size_and_mpmc(model, size):
     with NativeC5x.from_program(0x6000, b'', model=model) as core:
         core.load_rom(words(0x1234), size - 1)
@@ -65,7 +65,7 @@ def test_c53_does_not_inherit_courier_external_ram_wiring():
 
 def test_unknown_model_is_rejected():
     with pytest.raises(ValueError, match='unsupported DSP model'):
-        NativeC5x.from_program(0, b'', model='c52')
+        NativeC5x.from_program(0, b'', model='c54')
 
 
 @pytest.mark.parametrize('model,first', [('c51', 0x2000), ('c53', 0x4000)])

@@ -1,0 +1,13 @@
+{
+  "space": "program",
+  "start_word": "75E0",
+  "end_word": "7623",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 68,
+  "completed_words": 68,
+  "complete": true,
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 136,
+  "sha256": "8581e1c2000bd657c148449f0592b76f8aa9412858b8f603b99d634b13f0332b"
+}

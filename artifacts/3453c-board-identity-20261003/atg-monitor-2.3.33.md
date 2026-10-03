@@ -195,3 +195,29 @@ remapped (`sub al,23h`) to the slot after `Z` -> `0x82eaf`, which reads two char
 Index `[0x173]` = 8 (CTR21) live; `0x1c` means "custom table at RAM `0x17a8`". At boot `0x583db`
 sets `[0x173]` from `[0xa37]`, falling back to 8 when it is above `0x1c`. `AT~C#n` itself writes RAM only;
 whether `[0xa37]` reaches NVRAM/flash (e.g. via `&W`) is not checked.
+
+## Why `ATGLK` gives OK but `ATGLK2` gives ERROR (static parser trace)
+
+Confirmed from `2_3_33.XMF`; selected instructions are saved in
+`atglk-parser-2.3.33.asm`. This is a static trace, not a new hardware test.
+
+* The G handler (`0x824af`) has no LK or LK2 prefix check. Its subcommand
+  dispatch (`0x82524..0x8257b`) recognizes T, =, I, O, N, R, B and U.
+* With two or three characters left, `LK` and `LK2` both take the other-length
+  path at `0x825ad`, calling the hex parser at `57bb:b245` (`0x62df5`).
+  It initializes DX to zero, stops at L, restores SI/CX, returns AX=0 and
+  clears carry (`0x62dfb..0x62e25`). Neither L nor K is consumed.
+* G then calls `57bb:21a7` (`0x59d57`) with AX=0. That helper can place
+  AL into the pending DSP byte cell `[0x2cb]` when `[0x1a07]&1` enables it;
+  this is not a pure no-op. It does not consume the command text.
+* The main dispatcher (`0x816c7..0x816cb`) resumes parsing the remaining
+  text. L maps to `0x82ae4`, K to `0x82abd`. Their decimal parser
+  (`0x62d70..0x62da0`) supplies zero when no digits are present.
+* Thus `ATGLK` executes G's zero-byte path, then L0, then K0, and succeeds.
+  `ATGLK2` executes the same G path and L0, then K2. The K handler compares
+  AL against 2 at `0x82ac4` and branches to the carry-set error return
+  at `0x82b15` for values >=2. The main dispatcher turns carry into ERROR.
+
+This explains the reported responses without an unlock prefix. The command
+can change ordinary L/K settings and may submit a DSP byte; OK is not proof
+that LK is a monitor password. No W branch exists in this G dispatcher.

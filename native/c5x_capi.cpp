@@ -28,8 +28,8 @@ void *courier_c5x_create()
 // Keep the original constructor ABI for existing Courier clients.
 void *courier_c5x_create_model(int model)
 {
-    if (model != 51 && model != 53) return nullptr;
-    try { return new C5xCore(model == 53 ? C5xCore::Model::C53 : C5xCore::Model::C51); }
+    if (model != 51 && model != 52 && model != 53) return nullptr;
+    try { return new C5xCore(model == 53 ? C5xCore::Model::C53 : model == 52 ? C5xCore::Model::C52 : C5xCore::Model::C51); }
     catch (...) { return nullptr; }
 }
 
@@ -104,6 +104,11 @@ int courier_c5x_load_rom(
         copy_error(error, error_size, exception.what());
         return -1;
     }
+}
+
+void courier_c5x_set_host_io_base(void *handle, uint16_t base)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_host_io_base(base);
 }
 
 void courier_c5x_set_mpmc_pin(void *handle, int level)

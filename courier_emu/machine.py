@@ -241,7 +241,7 @@ _HOT_ADDRESSES = frozenset({
     0x57FF9,
     0x5867C,
     0x5868C,
-    0x59435,
+    0x59435, 0x5944D,
     0x59CD9,
     0x59D02,
     0x59D28,
@@ -265,7 +265,7 @@ _HOT_ADDRESSES = frozenset({
     0x5D74A,
     0x5DB9D,
     0x5DBE7,
-    0x62350,
+    0x62360,
     0x6355F,
     0x654EE,
     0x65560,
@@ -809,7 +809,7 @@ class CourierMachine:
         elif supervisor_offset == 0x17BB0:
             self._milestone_addresses.update({
                 0x61CE2: "main-loop",
-                0x61D19: "main-loop",
+                0x61D0C: "main-loop",
             })
 
     def _dte_asserted(self) -> bool:
@@ -832,7 +832,9 @@ class CourierMachine:
         whatever the boot table left at type 0x0c, so the stand-in waits for
         the firmware to claim it.
         """
-        if not self._rom_tick:
+        if not (self._rom_tick or self._supervisor_23):
+            return False
+        if self._supervisor_23 and not self.timers.controller.enabled("int0"):
             return False
         vector = bytes(uc.mem_read(INT0_VECTOR * 4, 4))
         return any(vector)
@@ -1091,7 +1093,11 @@ class CourierMachine:
             # The firmware records that variant in bit zero at 0000:067e and
             # reverses every byte in its ISR. Model the wire, while exposing
             # ordinary terminal byte order to callers.
-            reversed_bus = bool(bytes(uc.mem_read(0x67E, 1))[0] & 1)
+            if self._supervisor_23:
+                reversed_bus = (bool(bytes(uc.mem_read(0x6A2, 1))[0] & 1)
+                                != (bytes(uc.mem_read(0x965, 1))[0] != 7))
+            else:
+                reversed_bus = bool(bytes(uc.mem_read(0x67E, 1))[0] & 1)
             return reverse_byte(value) if reversed_bus else value
 
         def inject_serial_interrupt() -> bool:
@@ -1460,7 +1466,7 @@ class CourierMachine:
                 _uc.mem_write(0x02AC, (0xA35F).to_bytes(2, "little"))
                 self._daa_originate_event_posted = True
                 self._trace_serial("daa callback 02ac=a35f")
-            if hot and (self._supervisor_23 and address == 0x62350):
+            if hot and (self._supervisor_23 and address == 0x62360):
                 length = bytes(_uc.mem_read(0x1D2C, 1))[0]
                 payload = bytes(_uc.mem_read(0x1D2D, min(length, 0x3C)))
                 body = attention_body(payload)
@@ -1503,13 +1509,14 @@ class CourierMachine:
             # is only accepted at 0x5ce66, just before the parity transform and
             # the write to the transmit register. Capture there so each byte is
             # recorded exactly once.
-            if hot and (self._serial_started and address in (0x5CE66, 0x5CE6A)):
+            if hot and (self._serial_started and address in (0x5CE66, 0x5CE6A, 0x5944D)):
                 raw = _uc.reg_read(UC_X86_REG_AX) & 0xFF
                 # The transform at 5b5e:1913 recomputes bit 7 as an even-parity
                 # bit whenever [0x26c6] is zero, then applies the [0x0936]
                 # framing. In those framings bit 7 carries no data, so report
                 # the seven bits a receiving DTE would keep.
-                parity_framing = bytes(_uc.mem_read(0x26C6, 1))[0] == 0
+                parity_cell = 0x2712 if self._supervisor_23 else 0x26C6
+                parity_framing = bytes(_uc.mem_read(parity_cell, 1))[0] == 0
                 terminal_value = raw & 0x7F if parity_framing else raw
                 self._capture_serial(terminal_value)
                 self._trace_serial(f"fifo {terminal_value:02x} pc={current_pc():05x}")
@@ -1746,6 +1753,19 @@ class CourierMachine:
             ):
                 self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
                 self._int1_pending = INT1_VECTOR
+                _uc.emu_stop()
+            if (
+                self._supervisor_23
+                and self.dsp_bridge is not None
+                and self.dsp_bridge.active
+                and not self._int0_in_service
+                and self._int0_pending is None
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+                and self.instructions - self._last_frame >= self.frame_instructions
+                and self._int0_vector_installed(_uc)
+            ):
+                self._last_frame = self.instructions
+                self._int0_pending = INT0_VECTOR
                 _uc.emu_stop()
             if self.emulate_interrupts:
                 self._timer_poll_owed -= elapsed
@@ -2109,10 +2129,10 @@ class CourierMachine:
                     command_flags = bytes(_uc.mem_read(0x1CEE, 1))[0] | 0x40
                     _uc.mem_write(0x1CEE, bytes((command_flags,)))
                     # The 2.3 image enters its parser through the resident
-                    # command entry at A7A0; older supervisors use A8D9.
+                    # command entry at A7B0; older supervisors use A8D9.
                     ready_callback = (
                         0xA420 if self._alternate_supervisor
-                        else 0xA7A0 if self._supervisor_23
+                        else 0xA7B0 if self._supervisor_23
                         else 0xA8D9
                     )
                     _uc.mem_write(0x2AC, ready_callback.to_bytes(2, "little"))

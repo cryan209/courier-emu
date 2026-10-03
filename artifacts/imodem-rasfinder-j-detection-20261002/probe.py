@@ -1,0 +1,67 @@
+import json
+import time
+from pathlib import Path
+from courier_emu import cli
+from tools.probe_imodem_analog_pair import OverlayAudit
+
+out = Path(__file__).resolve().parent
+original = cli.IsdnMachine
+
+class AuditedMachine(original):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        audit = OverlayAudit(self.mailbox)
+        self.mailbox.write = audit.write
+        pump = self.serial_pump
+        snapshots, captures, traces = [], [], []
+        started = time.monotonic()
+        next_snapshot = 0
+        traced_core = None
+        addresses = list(range(0x0300, 0x0380)) + list(range(0x03b0, 0x0400))
+        addresses += [0x006d,0x006e,0x006f,0x088c,0x088d,0x088e,0x088f,0x0bf0,0x0bf1]
+        (out/'capture-addresses.json').write_text(json.dumps(addresses))
+        cells = [0x006d,0x006e,0x006f,0x031a,0x032b,0x032c,0x032d,
+                 0x0337,0x033a,0x035b,0x038f,0x039f,0x03c8,0x03cb,0x03cd,
+                 0x088c,0x088d,0x0bf0,0x0bf1,0x03b4,0x03b5,0x03d0,0x03d2,0x0264]
+        def observe(machine):
+            nonlocal next_snapshot, traced_core
+            if pump: pump(machine)
+            if machine.instructions < next_snapshot: return
+            core = machine.mailbox.core
+            if core and core is not traced_core:
+                core.set_pc_trace_range(0x92a9,0x92ae)
+                core.set_pc_capture(0xa909,addresses)
+                traced_core = core
+            if core:
+                captures.extend(core.pc_captures()); core.clear_pc_captures()
+                traces.extend(core.pc_trace()); core.clear_pc_trace()
+            if machine.bri.call_state == 'active':
+                snapshots.append({'wall_seconds':time.monotonic()-started,
+                    'instructions':machine.instructions,'dsp':core.state() if core else None,
+                    'stack':core.stack() if core else None,
+                    'cells':{f'{a:04x}':core.data(a) for a in cells} if core else {},
+                    'replies':list(machine.mailbox.replies)[-2:]})
+            next_snapshot = machine.instructions + 100_000
+        self.serial_pump = observe
+        close = self.mailbox.close
+        def capture_close():
+            core = self.mailbox.core
+            if core:
+                captures.extend(core.pc_captures()); traces.extend(core.pc_trace())
+                (out/'dsp-program.bin').write_bytes(b''.join(core.program(i).to_bytes(2,'little') for i in range(65536)))
+                (out/'dsp-data.bin').write_bytes(b''.join(core.data(i).to_bytes(2,'little') for i in range(65536)))
+            (out/'checkpoints.json').write_text(json.dumps(snapshots))
+            (out/'retrain-captures.json').write_text(json.dumps(captures))
+            (out/'retrain-trace.json').write_text(json.dumps(traces))
+            (out/'overlay-verification.json').write_text(json.dumps(audit.records,indent=2))
+            close()
+        self.mailbox.close = capture_close
+
+cli.IsdnMachine=AuditedMachine
+raise SystemExit(cli.main([
+ 'isdn-run','Ie030002.nac','--with-dsp','--no-flash-nvram','--instructions','150000000',
+ '--bri-network','--bri-establish','terminal','--bri-sip','asterisk.net.cryan.nz',
+ '--bri-sip-username','2903','--bri-sip-record',str(out/'rasfinder-to-imodem.g711'),
+ '--bri-tx-g711',str(out/'imodem-to-rasfinder.g711'),
+ '--bri-rx-heard',str(out/'imodem-heard.g711'),'--send-after','30000000','--send-every','0',
+ '--send','AT*V2=3','--send','ATS58=33','--send','AT&W','--send','ATDT3999']))

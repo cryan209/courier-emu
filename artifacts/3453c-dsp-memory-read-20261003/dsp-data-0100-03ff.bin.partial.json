@@ -1,0 +1,14 @@
+{
+  "space": "data",
+  "start_word": "0100",
+  "end_word": "03FF",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 768,
+  "completed_words": 113,
+  "complete": false,
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 226,
+  "sha256": "ac41e9584bf0e3f1620d625398a2df66c5fdb744069d8bc957b8690d5af879b3",
+  "error": "KeyboardInterrupt: "
+}

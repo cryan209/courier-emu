@@ -72,6 +72,7 @@ int main(int argc, char **argv)
             if (option == "--model") {
                 const std::string name = argument;
                 if (name == "c51") model = courier::C5xCore::Model::C51;
+                else if (name == "c52") model = courier::C5xCore::Model::C52;
                 else if (name == "c53") model = courier::C5xCore::Model::C53;
                 else throw std::runtime_error("unsupported DSP model: " + name);
                 continue;

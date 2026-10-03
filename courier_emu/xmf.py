@@ -235,9 +235,11 @@ class XmfImage:
                 row_length = end - start
                 if row_length <= 0 or row_length % 2:
                     continue
+                # Loader source segments can point anywhere in application
+                # flash, including an overlay relocated beyond the supervisor.
                 if (
                     row_offset < HEADER_SIZE
-                    or row_offset + row_length > self.supervisor_offset
+                    or row_offset + row_length > len(self.data)
                 ):
                     continue
                 found.append(

@@ -1,0 +1,29 @@
+{
+  "conclusion": "The capture reads downloaded program RAM, not the internal mask-ROM array.",
+  "dump_sha256": "a76f8c82a497a087af58741c395199e69f7923cd84ca9b0a73bab8ab7e1b329c",
+  "firmware_sha256": "8c1c5d050777f598cde1046014062bfbe9b441a8067708ae4dec5c2455135ca8",
+  "exact_firmware_matches": [
+    {
+      "segment": 5,
+      "start_word": "1000",
+      "end_word": "7623",
+      "words": 26148,
+      "exact_match": true,
+      "sha256": "b7a1c41430ada4e532fe7a5dc025c80258df8833b31cf7ef78a6ab6e8f3c09ea"
+    },
+    {
+      "segment": 7,
+      "start_word": "0000",
+      "end_word": "0FFD",
+      "words": 4094,
+      "exact_match": true,
+      "sha256": "b3efdbc9b2927b99234114265c79b730f7665b71576465f1851d431b88109f79"
+    }
+  ],
+  "resident_pmst_initialization": "18B8",
+  "mpmc_bit": 1,
+  "pmst_was_read_live": false,
+  "evidence": "Exact downloaded-module matches plus the captured resident startup instructions; no memory-map change was performed.",
+  "rom_capture_requirement": "A separate probe must temporarily clear PMST.MPMC while executing safely outside the ROM window, then read the mapped low program region and restore PMST. The part-specific ROM size and protection still need validation.",
+  "ti_reference": "https://www.ti.com/lit/ug/spru056d/spru056d.pdf"
+}

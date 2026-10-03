@@ -1,9 +1,9 @@
-# C51 and C53 memory models
+# C51, C52 and C53 memory models
 
-Observed Courier boards use a C51. MICA uses a C53. Earlier C50/C52
-identifications in analysis notes are historical inferences, not model selectors.
-The implementation supports these two memory maps explicitly; it does not infer
-the silicon from firmware load addresses.
+Older measured Courier boards use the C51 map; MICA uses C53. The 3453C
+profile selects C52 with its recovered 4K-word mask ROM. Its current model
+has no SARAM; the ROM extent is measured, while absence of SARAM remains
+a conservative board-profile choice pending a hardware alias probe.
 
 Source: TI SPRU056D, figures 8-2/8-4 and section 8.4 (the PDF is in this directory),
 and [TI's C5x datasheet](https://www.ti.com/tw/lit/gpn/tms320lbc53s).
@@ -25,11 +25,11 @@ for diagnostic runs without a ROM dump.
 
 Python callers use `NativeC5x.from_program(origin, image, model="c53")` for MICA
 images, or `NativeC5x(xmf, model="c53")` for a compatible container. The default is
-`c51`. The standalone runner and `dsp-run` accept `--model c51|c53`; selecting a
+`c51`. The standalone runner and `dsp-run` accept `--model c51|c52|c53`; selecting a
 DSP does not add a MICA image parser or emulate its board peripherals.
 
 The Courier's shared external program/data RAM at 8000–FEFF is a board mapping.
-C53 instances start with that mapping disabled; their harness must configure
+C52 and C53 instances start with that mapping disabled; their harness must configure
 any board-specific external aliases explicitly.
 
 GREG selects global external bus cycles, asserting BR with DS. It does not
@@ -55,3 +55,8 @@ INT2 at `(IPTR << 11) | 0004`, NMI at `(IPTR << 11) | 0024`). The processor
 executes the instruction at that address rather than reading a handler pointer.
 See SPRU056D section 8.2.2 and table 8-7. Diagnostic line-frame vector overrides
 can bypass normal vector selection when explicitly configured by the harness.
+
+The 3453C bridge explicitly aliases external data/program RAM at 1000–7FFF
+and maps DSP I/O 8050–807F to the host ASIC. Its recovered ROM executes the
+first transfer using IN instructions; resident overlays execute IN/BLDP.
+See [the boot comparison](../artifacts/3453c-emulator-boot-20261003/README.md).

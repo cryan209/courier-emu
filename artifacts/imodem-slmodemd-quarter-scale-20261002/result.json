@@ -1,0 +1,1594 @@
+{
+  "status": "instruction-limit",
+  "instructions": 165000000,
+  "entry": "4030:0000",
+  "registers": {
+    "ax": 65284,
+    "bx": 6,
+    "cx": 0,
+    "dx": 948,
+    "si": 27824,
+    "di": 10,
+    "sp": 1526,
+    "cs": 41984,
+    "ip": 40753,
+    "ds": 9728,
+    "es": 9728,
+    "ss": 2624
+  },
+  "hardware_interrupts": 78255,
+  "software_interrupts": {
+    "0x30": 204245
+  },
+  "timer_ticks": 19935,
+  "dte_framing": "7E1",
+  "serial_a": "\r\nOK\r\n",
+  "serial_b": "",
+  "serial_internal": "",
+  "download_bytes": 65536,
+  "io_summary": {
+    "out 0xf0a0": 156483,
+    "in 0xf0a0": 156478,
+    "out 0x001c": 146609,
+    "in 0x001e": 105129,
+    "out 0xf020": 78260,
+    "in 0xf020": 78255,
+    "in 0xf8fe": 77919,
+    "in 0x001c": 73303,
+    "out 0x001e": 18732,
+    "out 0x0040": 9950,
+    "out 0x0042": 9950,
+    "out 0x0044": 9947,
+    "out 0x0046": 9947,
+    "out 0x0048": 9947,
+    "out 0x004a": 9947,
+    "out 0x004c": 9947
+  },
+  "unmodelled_ports": [
+    "0x0000",
+    "0x0002",
+    "0x0003",
+    "0x0006",
+    "0x0007",
+    "0x000a",
+    "0x000c",
+    "0x000e",
+    "0x0010",
+    "0x0012",
+    "0x0014",
+    "0x0016",
+    "0x0100",
+    "0xf00d",
+    "0xf400",
+    "0xf402",
+    "0xf404",
+    "0xf406",
+    "0xf408",
+    "0xf40a",
+    "0xf40c",
+    "0xf40e",
+    "0xf410",
+    "0xf412",
+    "0xf414",
+    "0xf416",
+    "0xf418",
+    "0xf41a",
+    "0xf41c",
+    "0xf41e",
+    "0xf420",
+    "0xf422",
+    "0xf424",
+    "0xf426",
+    "0xf428",
+    "0xf42a",
+    "0xf42c",
+    "0xf42e",
+    "0xf430",
+    "0xf438",
+    "0xf804",
+    "0xf820",
+    "0xf822",
+    "0xf824",
+    "0xf826",
+    "0xf830",
+    "0xf832",
+    "0xf834",
+    "0xf836",
+    "0xf862",
+    "0xf864",
+    "0xf86a",
+    "0xf86c",
+    "0xf870",
+    "0xf874"
+  ],
+  "hot_addresses": [],
+  "last_addresses": [],
+  "pit": {
+    "clock_hz": 892857,
+    "control_writes": 3,
+    "counters": [
+      {
+        "index": 0,
+        "mode": 2,
+        "initial": 1860,
+        "period": 1860,
+        "count": 1181,
+        "wraps": 15817,
+        "hz": 480.0306451612903
+      },
+      {
+        "index": 1,
+        "mode": 2,
+        "initial": 8928,
+        "period": 8928,
+        "count": 6394,
+        "wraps": 3295,
+        "hz": 100.00638440860214
+      },
+      {
+        "index": 2,
+        "mode": 2,
+        "initial": 35714,
+        "period": 35714,
+        "count": 8039,
+        "wraps": 823,
+        "hz": 25.000196001568014
+      }
+    ]
+  },
+  "pic": {
+    "delivered": 78255,
+    "master": {
+      "vector_base": 32,
+      "mask": 179,
+      "irr": 0,
+      "isr": 0,
+      "auto_eoi": false
+    },
+    "slave": {
+      "vector_base": 40,
+      "mask": 131,
+      "irr": 0,
+      "isr": 0,
+      "auto_eoi": false
+    }
+  },
+  "dsc": {
+    "hook": "on-hook",
+    "hook_changes": 0,
+    "written": {
+      "INIT": "11",
+      "MCR1": "16",
+      "MCR2": "00",
+      "MCR3": "00",
+      "MCR4": "00",
+      "MAP_MMR1": "00",
+      "MAP_MMR2": "40",
+      "MAP_1_10": "31 b1 1b 62 26 a2 bb 16 bb 16 26 a2 1b 62 31 b1 21 d1 12 42 eb b1 61 12 61 12 eb b1 12 42 21 d1 08 08 52 bb 99 00 08 90 00 00 00 00 4e 02",
+      "DLC_FRAR_1_2_3": "01 01 01",
+      "DLC_SRAR_1_2_3": "01 01 01",
+      "DLC_DRLR": "10 01 10 01 10 01",
+      "DLC_DTCR": "04 00",
+      "DLC_DMR1": "0b",
+      "DLC_DMR2": "84",
+      "DLC_1_7": "00 00 00 00 00 00 00",
+      "DLC_DRCR": "00 00",
+      "DLC_RNGR1": "34 00",
+      "DLC_FRAR4": "01",
+      "DLC_SRAR4": "01",
+      "DLC_DMR3": "02",
+      "DLC_DMR4": "0a",
+      "DLC_EFCR": "01",
+      "LIU_LPR": "00",
+      "LIU_LMR1": "41",
+      "LIU_LMR2": "78",
+      "LIU_2_4": "00 00 00",
+      "LIU_MF": "00",
+      "LIU_MFQB": "00",
+      "PP_PPCR1": "07",
+      "PP_PPCR2": "01"
+    },
+    "read_counts": {
+      "DSR2": 290,
+      "DCB": 115,
+      "DER": 63,
+      "CR_IR": 53,
+      "DSR1": 49,
+      "DLC_DRCR": 28,
+      "LIU_LSR": 7,
+      "LIU_LMR1": 5,
+      "DLC_RNGR1": 3,
+      "DLC_RNGR2": 3,
+      "INIT": 2,
+      "MAP_MMR1": 1,
+      "MAP_MMR2": 1
+    },
+    "unknown_registers": {},
+    "overruns": {},
+    "liu_state": "F7",
+    "bearer": {
+      "frames": 262861,
+      "peripheral_slots": [
+        6,
+        7
+      ],
+      "routes": [
+        [
+          1,
+          6
+        ]
+      ],
+      "routed_frames": {
+        "1": 141796
+      },
+      "underruns": {},
+      "underrun_at": {},
+      "rx_pending": {
+        "1": 109,
+        "2": 0
+      }
+    },
+    "d_channel": {
+      "frames_received": 14,
+      "frames_transmitted": 14,
+      "rx_pending": 0,
+      "tx_length_mismatch": 0
+    }
+  },
+  "flash": {
+    "manufacturer": "0x0001",
+    "device": "0x2223",
+    "mode": "array",
+    "autoselects": 6,
+    "erases": 1,
+    "programs": 4096,
+    "commands": [
+      "0x00000:ff",
+      "0x00000:90",
+      "0x00000:ff",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:90",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:f0",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:80",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x78000:30",
+      "0x78100:f0",
+      "0x00000:ff",
+      "0x00000:90",
+      "0x00000:ff",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55"
+    ]
+  },
+  "bri": {
+    "line": "active",
+    "state": "multiple-frame-established",
+    "tei": 64,
+    "assigned_teis": {
+      "16399": 64,
+      "13367": 65
+    },
+    "call_state": "active",
+    "call_reference": 1,
+    "v120": null,
+    "media_peer": {
+      "blocks": 892,
+      "samples_8k": 142720,
+      "samples_9600": 171264,
+      "receive_gain": 0.25,
+      "remote_output": "/tmp/imodem-slmodemd-quarter-scale-20261002"
+    },
+    "dialled": "",
+    "outbound_setup": null,
+    "media": {
+      "channel": 1,
+      "rx_pending": 0,
+      "rx_delivered": 0,
+      "tx_octets": 142772,
+      "tx_non_ff": 126428
+    },
+    "frames_from_modem": 14,
+    "frames_to_modem": 14,
+    "undecodable": 0,
+    "call_tei": 64,
+    "links": {
+      "64": {
+        "established": true,
+        "vs": 3,
+        "vr": 4,
+        "pending_layer3": 0,
+        "unacknowledged_ns": null
+      },
+      "65": {
+        "established": true,
+        "vs": 1,
+        "vr": 2,
+        "pending_layer3": 0,
+        "unacknowledged_ns": null
+      }
+    },
+    "events": [
+      {
+        "instructions": 3000320,
+        "event": "the NT starts activation: INFO2 on the S interface"
+      },
+      {
+        "instructions": 4000256,
+        "event": "layer 1 active, the NT has the line up"
+      },
+      {
+        "instructions": 5524480,
+        "event": "ID_REQUEST ref 16399: assigning TEI 64"
+      },
+      {
+        "instructions": 5529088,
+        "event": "SABME from TEI 64, answering UA"
+      },
+      {
+        "instructions": 5537792,
+        "event": "INFORMATION call reference 0"
+      },
+      {
+        "instructions": 5537792,
+        "event": "SPID init: 017349195011"
+      },
+      {
+        "instructions": 5559296,
+        "event": "RELEASE_COMPLETE call reference 0, cause 81"
+      },
+      {
+        "instructions": 20677632,
+        "event": "ID_REQUEST ref 13367: assigning TEI 65"
+      },
+      {
+        "instructions": 20684800,
+        "event": "SABME from TEI 65, answering UA"
+      },
+      {
+        "instructions": 20694016,
+        "event": "INFORMATION call reference 0"
+      },
+      {
+        "instructions": 20694016,
+        "event": "SPID init: 017349196011"
+      },
+      {
+        "instructions": 20715008,
+        "event": "RELEASE_COMPLETE call reference 0, cause 81"
+      },
+      {
+        "instructions": 35000832,
+        "event": "inbound call from 5551000"
+      },
+      {
+        "instructions": 35000832,
+        "event": "SETUP to the modem from 5551000"
+      },
+      {
+        "instructions": 35032576,
+        "event": "ALERTING call reference 1"
+      },
+      {
+        "instructions": 75767808,
+        "event": "CONNECT call reference 1"
+      }
+    ]
+  },
+  "firmware_trace": [
+    "LINE_ACTIVE Detected",
+    "--SETUP",
+    "SETUP with result=",
+    "0000",
+    "END of INTL_TYPE",
+    "Just Sent IC SETUP",
+    "Prim = N_CONN_IN :",
+    "l4_CONNECT : modem primitive",
+    "BCH_ENABLED Detected"
+  ],
+  "mailbox": {
+    "endpoint": "native-c5x",
+    "tx_ready": true,
+    "committed": 42,
+    "replies_acked": 144,
+    "reply_pending": null,
+    "recent_commands": [
+      [
+        0,
+        0
+      ],
+      [
+        131,
+        131
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        94,
+        1
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        67,
+        63
+      ],
+      [
+        72,
+        32767
+      ],
+      [
+        81,
+        8703
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        28,
+        8
+      ],
+      [
+        29,
+        20
+      ],
+      [
+        42,
+        6
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        66,
+        4089
+      ],
+      [
+        73,
+        65525
+      ],
+      [
+        80,
+        193
+      ],
+      [
+        80,
+        325
+      ],
+      [
+        80,
+        531
+      ],
+      [
+        80,
+        784
+      ],
+      [
+        80,
+        1165
+      ],
+      [
+        80,
+        1280
+      ],
+      [
+        83,
+        16383
+      ],
+      [
+        113,
+        65535
+      ],
+      [
+        115,
+        127
+      ],
+      [
+        116,
+        65535
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        20,
+        16605
+      ],
+      [
+        2,
+        40960
+      ]
+    ],
+    "recent_replies": [
+      "0016:0000",
+      "0016:0000",
+      "0016:0000",
+      "0016:0400",
+      "0016:0040",
+      "0016:0040",
+      "0016:0040",
+      "0016:0040",
+      "0016:0000",
+      "0016:0440",
+      "0016:0000",
+      "0016:0000",
+      "0016:0000",
+      "0016:03b0",
+      "0016:0000",
+      "0016:0000",
+      "0016:0000",
+      "0016:0440",
+      "0016:0040",
+      "0016:0000",
+      "0016:0400",
+      "0016:03ba",
+      "0016:0000",
+      "0016:0400",
+      "0016:0090",
+      "0016:0440",
+      "0016:0440",
+      "0016:0440",
+      "0016:0000",
+      "0016:0000",
+      "0016:0440",
+      "0016:0400",
+      "0016:0440",
+      "0016:0040",
+      "0016:0040",
+      "0016:0000",
+      "0016:0440",
+      "0016:02ba",
+      "0016:0440",
+      "0016:0000",
+      "0016:000a",
+      "0016:0440",
+      "0016:000a",
+      "0016:0440",
+      "0016:0400",
+      "0016:0400",
+      "0016:0040",
+      "0016:02b0",
+      "0016:0400",
+      "0016:0040",
+      "0016:0400",
+      "0016:0400",
+      "0016:0008",
+      "0016:0000",
+      "0016:0000",
+      "0016:0440",
+      "0016:0000",
+      "0016:00a0",
+      "0016:0400",
+      "0016:0408",
+      "0016:0440",
+      "0016:0440",
+      "0016:0440",
+      "0016:0040",
+      "0016:0080",
+      "0016:0000",
+      "0016:0008",
+      "0016:0000",
+      "0016:0418",
+      "0016:0018",
+      "0016:0400",
+      "0016:0048",
+      "0016:0400",
+      "0016:0040",
+      "0016:0440",
+      "0016:0000",
+      "0016:0448",
+      "0016:0108",
+      "0016:0040",
+      "0016:0448",
+      "0016:0040",
+      "0016:0048",
+      "0016:0018",
+      "0016:0400",
+      "0016:0008",
+      "0016:0008",
+      "0016:0000",
+      "0016:0000",
+      "0016:0108",
+      "0016:0400",
+      "0016:0008",
+      "0016:0408",
+      "0016:0008",
+      "0016:0008",
+      "0016:0040",
+      "0016:0018",
+      "0016:0400",
+      "0016:0008",
+      "0016:0008",
+      "0016:0400",
+      "0016:000a",
+      "0016:0008",
+      "0016:0008",
+      "0016:0408",
+      "0016:0008",
+      "0016:0048",
+      "0016:0000",
+      "0016:0448",
+      "0016:0018",
+      "0016:0018",
+      "0016:0018",
+      "0016:0008",
+      "0016:0008",
+      "0016:0108",
+      "0016:0108",
+      "0016:0008",
+      "0016:0008",
+      "0016:0008",
+      "0016:0108",
+      "0016:0108",
+      "0016:0008",
+      "0016:0018",
+      "0016:0018",
+      "0016:0008",
+      "0016:0018",
+      "0016:0008",
+      "0016:0508",
+      "0016:0108",
+      "0016:0108",
+      "0016:0008",
+      "0016:0008",
+      "0016:0108",
+      "0016:0508",
+      "0016:0008",
+      "0016:0018",
+      "0048:00c1",
+      "0048:0145",
+      "0048:0211",
+      "0048:0310",
+      "0048:042a",
+      "0048:058d",
+      "0048:0600",
+      "0071:0006",
+      "0047:0006"
+    ],
+    "reply_counts": {
+      "0016:0000": 25,
+      "0016:0008": 23,
+      "0016:000a": 3,
+      "0016:0018": 10,
+      "0016:0040": 14,
+      "0016:0048": 3,
+      "0016:0080": 1,
+      "0016:0090": 1,
+      "0016:00a0": 1,
+      "0016:0108": 9,
+      "0016:02b0": 1,
+      "0016:02ba": 1,
+      "0016:03b0": 1,
+      "0016:03ba": 1,
+      "0016:0400": 16,
+      "0016:0408": 3,
+      "0016:0418": 1,
+      "0016:0440": 16,
+      "0016:0448": 3,
+      "0016:0508": 2,
+      "0047:0006": 1,
+      "0048:00c1": 1,
+      "0048:0145": 1,
+      "0048:0211": 1,
+      "0048:0310": 1,
+      "0048:042a": 1,
+      "0048:058d": 1,
+      "0048:0600": 1,
+      "0071:0006": 1
+    },
+    "timeline": [
+      "0.2409 cmd 005e:0001",
+      "1.9350 cmd 001a:1b6b",
+      "1.9354 cmd 003c:196b",
+      "1.9400 cmd 000f:0400",
+      "1.9404 cmd 0043:003f",
+      "1.9407 cmd 0048:7fff",
+      "1.9411 cmd 0051:21ff",
+      "1.9415 cmd 0052:1ef8",
+      "1.9420 cmd 0052:1ef8",
+      "1.9424 cmd 001c:0008",
+      "1.9427 cmd 001d:0014",
+      "1.9432 cmd 002a:0006",
+      "1.9436 cmd 001a:1b6b",
+      "1.9440 cmd 003c:196b",
+      "1.9444 cmd 001a:1b6b",
+      "1.9449 cmd 003c:196b",
+      "1.9452 cmd 0042:0ff9",
+      "1.9456 cmd 0049:fff5",
+      "1.9460 cmd 0050:00c1",
+      "1.9469 cmd 0050:0145",
+      "1.9472 cmd 0050:0213",
+      "1.9478 cmd 0050:0310",
+      "1.9481 cmd 0050:048d",
+      "1.9485 cmd 0050:0500",
+      "1.9489 cmd 0053:3fff",
+      "1.9494 cmd 0071:ffff",
+      "1.9498 cmd 0073:007f",
+      "1.9501 cmd 0074:ffff",
+      "1.9505 cmd 0004:0000",
+      "1.9510 cmd 0014:40dd",
+      "1.9711 reply 0016:0000",
+      "1.9911 reply 0016:0000",
+      "2.0111 reply 0016:0000",
+      "2.0311 reply 0016:0400",
+      "2.0511 reply 0016:0040",
+      "2.0711 reply 0016:0040",
+      "2.0911 reply 0016:0040",
+      "2.1111 reply 0016:0040",
+      "2.1311 reply 0016:0000",
+      "2.1511 reply 0016:0440",
+      "2.1711 reply 0016:0000",
+      "2.1911 reply 0016:0000",
+      "2.2111 reply 0016:0000",
+      "2.2311 reply 0016:03b0",
+      "2.2511 reply 0016:0000",
+      "2.2711 reply 0016:0000",
+      "2.2911 reply 0016:0000",
+      "2.3111 reply 0016:0440",
+      "2.3311 reply 0016:0040",
+      "2.3511 reply 0016:0000",
+      "2.3711 reply 0016:0400",
+      "2.3911 reply 0016:03ba",
+      "2.4111 reply 0016:0000",
+      "2.4311 reply 0016:0400",
+      "2.4511 reply 0016:0090",
+      "2.4711 reply 0016:0440",
+      "2.4911 reply 0016:0440",
+      "2.5111 reply 0016:0440",
+      "2.5311 reply 0016:0000",
+      "2.5511 reply 0016:0000",
+      "2.5711 reply 0016:0440",
+      "2.5911 reply 0016:0400",
+      "2.6111 reply 0016:0440",
+      "2.6311 reply 0016:0040",
+      "2.6511 reply 0016:0040",
+      "2.6711 reply 0016:0000",
+      "2.6911 reply 0016:0440",
+      "2.7111 reply 0016:02ba",
+      "2.7311 reply 0016:0440",
+      "2.7511 reply 0016:0000",
+      "2.7711 reply 0016:000a",
+      "2.7911 reply 0016:0440",
+      "2.8111 reply 0016:000a",
+      "2.8311 reply 0016:0440",
+      "2.8511 reply 0016:0400",
+      "2.8711 reply 0016:0400",
+      "2.8911 reply 0016:0040",
+      "2.9111 reply 0016:02b0",
+      "2.9311 reply 0016:0400",
+      "2.9511 reply 0016:0040",
+      "2.9711 reply 0016:0400",
+      "2.9911 reply 0016:0400",
+      "3.0111 reply 0016:0008",
+      "3.0311 reply 0016:0000",
+      "3.0511 reply 0016:0000",
+      "3.0711 reply 0016:0440",
+      "3.0911 reply 0016:0000",
+      "3.1111 reply 0016:00a0",
+      "3.1311 reply 0016:0400",
+      "3.1511 reply 0016:0408",
+      "3.1711 reply 0016:0440",
+      "3.1913 reply 0016:0440",
+      "3.2111 reply 0016:0440",
+      "3.2311 reply 0016:0040",
+      "3.2511 reply 0016:0080",
+      "3.2711 reply 0016:0000",
+      "3.2911 reply 0016:0008",
+      "3.3111 reply 0016:0000",
+      "3.3311 reply 0016:0418",
+      "3.3511 reply 0016:0018",
+      "3.3711 reply 0016:0400",
+      "3.3911 reply 0016:0048",
+      "3.4111 reply 0016:0400",
+      "3.4311 reply 0016:0040",
+      "3.4511 reply 0016:0440",
+      "3.4711 reply 0016:0000",
+      "3.4911 reply 0016:0448",
+      "3.5111 reply 0016:0108",
+      "3.5311 reply 0016:0040",
+      "3.5511 reply 0016:0448",
+      "3.5711 reply 0016:0040",
+      "3.5911 reply 0016:0048",
+      "3.6111 reply 0016:0018",
+      "3.6311 reply 0016:0400",
+      "3.6511 reply 0016:0008",
+      "3.6711 reply 0016:0008",
+      "3.6911 reply 0016:0000",
+      "3.7111 reply 0016:0000",
+      "3.7311 reply 0016:0108",
+      "3.7511 reply 0016:0400",
+      "3.7711 reply 0016:0008",
+      "3.7911 reply 0016:0408",
+      "3.8111 reply 0016:0008",
+      "3.8311 reply 0016:0008",
+      "3.8511 reply 0016:0040",
+      "3.8711 reply 0016:0018",
+      "3.8911 reply 0016:0400",
+      "3.9111 reply 0016:0008",
+      "3.9311 reply 0016:0008",
+      "3.9511 reply 0016:0400",
+      "3.9711 reply 0016:000a",
+      "3.9911 reply 0016:0008",
+      "4.0111 reply 0016:0008",
+      "4.0311 reply 0016:0408",
+      "4.0511 reply 0016:0008",
+      "4.0711 reply 0016:0048",
+      "4.0911 reply 0016:0000",
+      "4.1111 reply 0016:0448",
+      "4.1311 reply 0016:0018",
+      "4.1511 reply 0016:0018",
+      "4.1711 reply 0016:0018",
+      "4.1911 reply 0016:0008",
+      "4.2111 reply 0016:0008",
+      "4.2311 reply 0016:0108",
+      "4.2511 reply 0016:0108",
+      "4.2711 reply 0016:0008",
+      "4.2911 reply 0016:0008",
+      "4.3111 reply 0016:0008",
+      "4.3311 reply 0016:0108",
+      "4.3511 reply 0016:0108",
+      "4.3711 reply 0016:0008",
+      "4.3911 reply 0016:0018",
+      "4.4111 reply 0016:0018",
+      "4.4311 reply 0016:0008",
+      "4.4511 reply 0016:0018",
+      "4.4711 reply 0016:0008",
+      "4.4911 reply 0016:0508",
+      "4.5111 reply 0016:0108",
+      "4.5311 reply 0016:0108",
+      "4.5511 reply 0016:0008",
+      "4.5711 reply 0016:0008",
+      "4.5911 reply 0016:0108",
+      "4.6111 reply 0016:0508",
+      "4.6311 reply 0016:0008",
+      "4.6511 reply 0016:0018",
+      "4.6606 reply 0048:00c1",
+      "4.6610 reply 0048:0145",
+      "4.6614 reply 0048:0211",
+      "4.6617 reply 0048:0310",
+      "4.6623 reply 0048:042a",
+      "4.6626 reply 0048:058d",
+      "4.6630 reply 0048:0600",
+      "5.4123 reply 0071:0006",
+      "5.4126 reply 0047:0006",
+      "5.4134 cmd 0002:a000"
+    ],
+    "bootstrap_words": 4672,
+    "consumed": 41,
+    "download_blocks": 9364,
+    "overlay_reads": 105129,
+    "overlay_writes": {
+      "1": 9362,
+      "2": 9362,
+      "4": 6
+    },
+    "overlay_recent": [
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ]
+    ],
+    "overlay_control": [
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        4
+      ]
+    ],
+    "foreground_overlay_assist": false,
+    "foreground_overlay_assists": 0,
+    "latch_writes": 0,
+    "error": null,
+    "core": {
+      "pc": 33454,
+      "op": 48674,
+      "acc": 0,
+      "accb": 60229822,
+      "preg": 2572288,
+      "dp": 7,
+      "arp": 7,
+      "flags": 62,
+      "idle": true,
+      "instructions": 1202093289,
+      "cycles": 1325235143,
+      "io_events": 8192,
+      "ar0": 3036,
+      "ar1": 2186,
+      "ar2": 280,
+      "ar3": 1016,
+      "ar4": 0,
+      "ar5": 916,
+      "ar6": 88,
+      "ar7": 3036,
+      "arcr": 3036,
+      "indx": 3036
+    },
+    "memory_map": {
+      "mpmc_pin": 0,
+      "mpmc": 0,
+      "ovly": 1,
+      "ram": 1,
+      "cnf": 0,
+      "iptr": 0,
+      "pdwsr": 10,
+      "iowsr": 1,
+      "cwsr": 16,
+      "rom_present": true,
+      "program_rom": 1198410,
+      "program_daram": 0,
+      "program_saram": 0,
+      "program_external": 240171594,
+      "data_registers": 4974244,
+      "data_daram": 87790285,
+      "data_saram": 7553522,
+      "data_reserved": 0,
+      "data_shared": 716540,
+      "data_external": 9,
+      "rom_holes": 0,
+      "model": "c51",
+      "wait_states": {
+        "io_mapping": "8K blocks",
+        "external": [
+          {
+            "space": "program",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 2
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          }
+        ],
+        "regions": [
+          {
+            "space": "program",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 2
+          },
+          {
+            "space": "program",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 0
+          },
+          {
+            "space": "program",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 0,
+            "last": 16383,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 16384,
+            "last": 32767,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 32768,
+            "last": 49151,
+            "wait_states": 0
+          },
+          {
+            "space": "data",
+            "first": 49152,
+            "last": 65535,
+            "wait_states": 0
+          },
+          {
+            "space": "io",
+            "wait_states": 1,
+            "first": 0,
+            "last": 8191
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 8192,
+            "last": 16383
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 16384,
+            "last": 24575
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 24576,
+            "last": 32767
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 32768,
+            "last": 40959
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 40960,
+            "last": 49151
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 49152,
+            "last": 57343
+          },
+          {
+            "space": "io",
+            "wait_states": 0,
+            "first": 57344,
+            "last": 65535
+          }
+        ]
+      }
+    },
+    "core_stack": [
+      32980,
+      34273,
+      32974,
+      32974,
+      32974,
+      32974,
+      32974,
+      32974
+    ],
+    "dsp_status": 1026,
+    "pcm": {
+      "octets": 525722,
+      "sample_rate": 8000,
+      "frames": 262861,
+      "slots": [
+        "Bd",
+        "Be"
+      ],
+      "attached": true,
+      "realtime_cycles": 0,
+      "rx_empty_frames": 0,
+      "rx_pending_octets": 2,
+      "serial": {
+        "drr": 45055,
+        "dxr": 59135,
+        "spc": 16584,
+        "drr_reads": 262860,
+        "dxr_writes": 262869,
+        "spc_writes": 9,
+        "rx_consumed": 0,
+        "rx_queued": 0,
+        "codec_rx_consumed": 0,
+        "codec_rx_queued": 0,
+        "last_drr_pc": 33645,
+        "last_dxr_pc": 33648,
+        "last_spc_pc": 32961,
+        "trcv": 0,
+        "tdxr": 36354,
+        "tspc": 248,
+        "trcv_reads": 0,
+        "tdxr_writes": 119502,
+        "tspc_writes": 6,
+        "last_trcv_pc": 0,
+        "last_tdxr_pc": 33670,
+        "last_tspc_pc": 32953,
+        "line_tx_writes": 3,
+        "line_tx_nonzero": 0,
+        "line_frame_interrupts": 262434,
+        "serial_frame_suppressed": 0,
+        "shadow_dp": 6,
+        "last_dp_pc": 33446,
+        "last_dp_value": 7,
+        "last_dp_source": 1,
+        "stray_cala_pc": 0,
+        "stray_cala_target": 0,
+        "stray_cala_dp": 0,
+        "line_dac_writes": 0,
+        "line_dac_frames": 0,
+        "line_tx_last": 0,
+        "line_tx_last_pc": 32894,
+        "imr": 40,
+        "v8_rx_state": 0,
+        "v8_rx_peak": 0,
+        "codec_rx_peak": 0,
+        "negotiation_loop_entries": 0,
+        "negotiation_loop_pc": 0,
+        "negotiation_source": 0,
+        "negotiation_pair": 0,
+        "negotiation_source_value": 0,
+        "negotiation_pair_value": 0,
+        "negotiation_acc": 0,
+        "v8_dispatches": 0,
+        "v8_record": 0,
+        "v8_handler": 0,
+        "v8_countdown": 0,
+        "v8_flags": 0,
+        "v8_dispatch_pc": 0,
+        "v8_dispatch_dp": 0,
+        "negotiation_d76": 0,
+        "negotiation_d77": 0,
+        "negotiation_d78": 0,
+        "negotiation_d79": 0,
+        "negotiation_d26": 0,
+        "negotiation_indx": 0,
+        "negotiation_arp": 0,
+        "negotiation_pm": 0,
+        "hybrid_frames": 0,
+        "hybrid_peak": 0,
+        "delay_move_ignored": 0,
+        "delay_move_last_pc": 0,
+        "delay_move_last_address": 0
+      }
+    }
+  },
+  "serial": {
+    "a": {
+      "base": "0xf8f8",
+      "irq": 3,
+      "ier": 11,
+      "lcr": 3,
+      "mcr": 0,
+      "divisor": 80,
+      "input_clock_hz": 12345600,
+      "baud": 9645,
+      "character_instructions": 5185,
+      "signals": 0,
+      "queued": 0,
+      "received": 19,
+      "transmitted": 6,
+      "overruns": 0
+    },
+    "b": {
+      "base": "0xf4f8",
+      "irq": null,
+      "ier": 11,
+      "lcr": 3,
+      "mcr": 0,
+      "divisor": 2,
+      "input_clock_hz": 3686400,
+      "baud": 115200,
+      "character_instructions": 435,
+      "signals": 0,
+      "queued": 0,
+      "received": 0,
+      "transmitted": 0,
+      "overruns": 0
+    }
+  },
+  "error": null,
+  "peer": {
+    "blocks": 892,
+    "samples_8k": 142720,
+    "samples_9600": 171264,
+    "receive_gain": 0.25,
+    "remote_output": "/tmp/imodem-slmodemd-quarter-scale-20261002"
+  },
+  "transcript": [
+    [
+      30000128,
+      "sent",
+      "ATS58=33&M0&B0\r"
+    ],
+    [
+      31651840,
+      "received",
+      "\r"
+    ],
+    [
+      31657984,
+      "received",
+      "\n"
+    ],
+    [
+      31664128,
+      "received",
+      "O"
+    ],
+    [
+      31670272,
+      "received",
+      "K"
+    ],
+    [
+      31676416,
+      "received",
+      "\r"
+    ],
+    [
+      31682560,
+      "received",
+      "\n"
+    ],
+    [
+      55000576,
+      "sent",
+      "ATA\r"
+    ]
+  ],
+  "overlays": [
+    {
+      "origin": 53504,
+      "words": 7536,
+      "destination_after": 61040,
+      "expected_destination_after": 61040,
+      "dsp_status": 2,
+      "dsp_pc": 33457,
+      "mismatched_words": 0,
+      "first_mismatch_addresses": [],
+      "transport_sha256": "4a410741321a0b2cb09f8e897323d5bfe465c27a29374cf2f31c94fbf3e52874",
+      "program_sha256": "4a410741321a0b2cb09f8e897323d5bfe465c27a29374cf2f31c94fbf3e52874"
+    },
+    {
+      "origin": 37472,
+      "words": 16000,
+      "destination_after": 53472,
+      "expected_destination_after": 53472,
+      "dsp_status": 2,
+      "dsp_pc": 33461,
+      "mismatched_words": 0,
+      "first_mismatch_addresses": [],
+      "transport_sha256": "3683309dbc63f21a8ece4db5099e33974508fc4dd5e0c145f327090a8f0e0ffe",
+      "program_sha256": "3683309dbc63f21a8ece4db5099e33974508fc4dd5e0c145f327090a8f0e0ffe"
+    },
+    {
+      "origin": 40960,
+      "words": 13912,
+      "destination_after": 54872,
+      "expected_destination_after": 54872,
+      "dsp_status": 2,
+      "dsp_pc": 33458,
+      "mismatched_words": 0,
+      "first_mismatch_addresses": [],
+      "transport_sha256": "f2c9c6c9bc7dc0b0cfce5bc061c99148f50a2b3bdc090b3f57fdc76f353a566e",
+      "program_sha256": "f2c9c6c9bc7dc0b0cfce5bc061c99148f50a2b3bdc090b3f57fdc76f353a566e"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "source": "USRobotics 3453C, product 99345303, TI 16.0036.00 D172B1PJ92",
+  "installed_firmware_sha256": "9564197ef2057c318bb5d09f8433874e5600a117ed5d46b3dee313c861d495c4",
+  "program_start_word": "0000",
+  "program_end_word": "0FFF",
+  "words": 4096,
+  "bytes": 8192,
+  "byte_order": "little-endian",
+  "sha256": "262e4baa49590bb6ca4a473dffb8a8aee67c9fae020ce92ac3f59e077314f1d6",
+  "repeated_window_sha256": "6b6249e7a13a64a2c8ffeb119d75618bbaaed4b18d3e08bfefee9edd92c40352",
+  "independent_reads_identical": true,
+  "different_words_from_unmapped_low_program": 4090,
+  "upper_window_1000_1fff_matches_downloaded_resident": true,
+  "pmst_before": "18B8",
+  "pmst_after": "18B8",
+  "mapping_and_monitor_restored": true,
+  "reset_branch": "0000: B 0F46",
+  "boot_io_references": {
+    "8057": [
+      "0F5F",
+      "0F62",
+      "0F74",
+      "0F7A"
+    ],
+    "8058": [
+      "0F59",
+      "0F6A"
+    ]
+  },
+  "rom_protection_observation": "External monitor obtained a repeatable, coherent mapped ROM image; protection did not block this read route.",
+  "flash_log": "flash-log.json",
+  "capture_manifest": "/Users/scottcryan/courier-emu/artifacts/3453c-dsp-mask-rom-read-20261003/manifest.json"
+}

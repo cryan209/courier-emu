@@ -1,7 +1,7 @@
 """The C5x's own mask ROM.
 
 This is a property of the **part**, not of the firmware image it runs. A
-TMS320C5x with MP/MC low maps 0x2000 words of on-chip ROM at program
+older Courier part with MP/MC low maps 0x2000 words of on-chip ROM at program
 0x0000-0x1fff, and that window holds the interrupt vector table: 2-word slots
 of `lamm @6x ; bacc`, which read a handler address out of DARAM block B2 at
 data 0x60-0x6a and branch to it. The firmware installs handlers by writing that
@@ -28,6 +28,14 @@ MASK_ROM = (Path(__file__).resolve().parent.parent /
             "artifacts/dsp-onchip-rom-20mhz-8k/c5x-onchip-rom-8k.bin")
 MASK_ROM_SHA256 = "d57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9"
 ROM_WORDS = 0x2000
+MASK_ROM_3453C = Path(__file__).resolve().parent.parent / "artifacts/3453c-dsp-mask-rom-read-20261003/dsp-mask-rom-0000-0fff.bin"
+MASK_ROM_3453C_SHA256 = "262e4baa49590bb6ca4a473dffb8a8aee67c9fae020ce92ac3f59e077314f1d6"
+
+def mask_rom_3453c() -> bytes:
+    image = MASK_ROM_3453C.read_bytes()
+    if len(image) != 0x2000 or sha256(image).hexdigest() != MASK_ROM_3453C_SHA256:
+        raise ValueError("3453C DSP mask ROM checksum/size mismatch")
+    return image
 
 # The vector table, and the B2 cells it dispatches through.
 VECTOR_TABLE = 0x0000

@@ -1,0 +1,447 @@
+{
+  "status": "experimental; isolated handlers verified; full boot untested",
+  "source_sha256": "c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e",
+  "patched_sha256": "8c1c5d050777f598cde1046014062bfbe9b441a8067708ae4dec5c2455135ca8",
+  "boot_header_crc": "41E4",
+  "boot_payload_crc": "46C8",
+  "monitor_program_origin": "75E0",
+  "monitor_words": 68,
+  "resident_call_sites_updated": 5,
+  "cache_physical_address": "3FF00",
+  "changes": [
+    {
+      "file_offset": "50000",
+      "bytes": 23664,
+      "reason": "relocated overlay 6",
+      "before_sha256": "6f6950e856d989807e4a59225fca016f7954333d03561c895c159681ce0bebae",
+      "after_sha256": "f506f588c803a34d00ba9db65e591785ed9b99d9ddbec479efceb5adcea1486d"
+    },
+    {
+      "file_offset": "268CE",
+      "bytes": 2,
+      "reason": "overlay 6 source segment",
+      "before_sha256": "e4a225fe2fdefefb0fbd9856db28cf41dd344bf09eeeee46fd315ba0cadbafaf",
+      "after_sha256": "c723228fbe3cf04cdf49e61f3e13fc0c407d2e1ff23d6eaa1b4299e7cbb418a1"
+    },
+    {
+      "file_offset": "0CEB0",
+      "bytes": 136,
+      "reason": "appended DSP monitor",
+      "before_sha256": "fd3cba05d5b115a21c922a4cffb7bb6dab35141d8353401cc83fb4f10c49b4f9",
+      "after_sha256": "8581e1c2000bd657c148449f0592b76f8aa9412858b8f603b99d634b13f0332b"
+    },
+    {
+      "file_offset": "00870",
+      "bytes": 4,
+      "reason": "DSP dispatcher hook",
+      "before_sha256": "4516516ff60dcf4f704e4e0731fb31d32b7592d45824e06d62b6419bfad8b9e7",
+      "after_sha256": "dab779729211bf51f19ec9493289ddbd461709ecce5991b61c5e847b328843b2"
+    },
+    {
+      "file_offset": "1802E",
+      "bytes": 2,
+      "reason": "resident download extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "1805D",
+      "bytes": 2,
+      "reason": "resident download extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "1FAF5",
+      "bytes": 2,
+      "reason": "resident download extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "21D25",
+      "bytes": 2,
+      "reason": "resident download extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "22737",
+      "bytes": 2,
+      "reason": "resident download extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "269AE",
+      "bytes": 2,
+      "reason": "resident overlay-table extent",
+      "before_sha256": "aeacffe67137851868844338a524e668aee124d9b59b91d8279acaee4c1d0587",
+      "after_sha256": "7f49bb26983895bf4a60a0288d12b40bf98fd02fb0bab87c6763013309aa986d"
+    },
+    {
+      "file_offset": "4A000",
+      "bytes": 75,
+      "reason": "CPU reply capture trampoline",
+      "before_sha256": "b7388f85d8f7916eb4c70f1afa1e3eb20f151510d55b5515e3f393e0ddd20f62",
+      "after_sha256": "4904c9ba3d1751aec52c5e4d6342294d035e25179ca5d5e4a3b4d6e7d26a0a6b"
+    },
+    {
+      "file_offset": "4A100",
+      "bytes": 126,
+      "reason": "ATGU cache query",
+      "before_sha256": "63ef3c06e0c90c11e4169763292ae43e94412853dcb821186ef1e26323786b9d",
+      "after_sha256": "5758119092f4af7b853ef34a9a071cedb7003cb1d5237afda6f7272a3df8732e"
+    },
+    {
+      "file_offset": "4A200",
+      "bytes": 232,
+      "reason": "ATGD program range stream",
+      "before_sha256": "c80a17673aa3c620f955b53433262f72c351eecccd3679f0a3c50b7e4ee77f13",
+      "after_sha256": "e29cfbef281639a6966df32131171869d3892d0b88c83adf7946046d54fbfc51"
+    },
+    {
+      "file_offset": "4257E",
+      "bytes": 5,
+      "reason": "ATGD selector",
+      "before_sha256": "6d8577eb6470be5124c60ecfb7e90f6f81415d373c57d0cfb960f94487ccd1a9",
+      "after_sha256": "f353e850e368f811863f05a88d7aaa0d32038fbbbf488e8419ac6e9826331f81"
+    },
+    {
+      "file_offset": "27774",
+      "bytes": 6,
+      "reason": "CPU reply interception",
+      "before_sha256": "49d584d8c38d3876b13e167bb65f04bcdad227d82c7f9feea95abb2cc747dfd9",
+      "after_sha256": "03e8839a11961acb3083d77a7603969b7a1bad2c6f70d2bf14f4e90d0c5d3490"
+    },
+    {
+      "file_offset": "4257B",
+      "bytes": 3,
+      "reason": "ATGU query selector",
+      "before_sha256": "519a3562303f98af6e885a61c5ad6c798c3d36d609f58c97cc0b592b60144b2c",
+      "after_sha256": "6eff796259e906d104da3b5447d2601dd1fbd7f021f765d6f518f1111713ce22"
+    },
+    {
+      "file_offset": "00202",
+      "bytes": 2,
+      "reason": "boot payload CRC",
+      "before_sha256": "9a433e41db2b7aeb6b8ee0fd9e55d74ebfcc583d5dba38ce61e93ddf32062996",
+      "after_sha256": "7ab906c9bbe2a4bfedcd91a33cfb5084b6004cb330cae5a455f2400e6ff2df7a"
+    }
+  ],
+  "limitations": [
+    "Full 3453C boot and hardware patch execution untested.",
+    "Monitor reserves CPU RAM 3FF00..3FF07; live allocator ownership not yet verified.",
+    "Relocated overlay source at physical 90000 needs complete boot/overlay validation.",
+    "ATGU is repurposed; call it before the first request to initialize the reply cache.",
+    "DSP data reads limited to 0100..03FF; program reads 0000..7FFF.",
+    "No writes implemented."
+  ],
+  "dsp_replays": [
+    {
+      "request": [
+        136,
+        0
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        112,
+        54593
+      ],
+      "instructions": 92
+    },
+    {
+      "request": [
+        137,
+        291
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        113,
+        48879
+      ],
+      "instructions": 103
+    },
+    {
+      "request": [
+        138,
+        4800
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        114,
+        31104
+      ],
+      "instructions": 101
+    },
+    {
+      "request": [
+        138,
+        30176
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        114,
+        27005
+      ],
+      "instructions": 101
+    },
+    {
+      "request": [
+        137,
+        255
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        115,
+        1
+      ],
+      "instructions": 97
+    },
+    {
+      "request": [
+        137,
+        1024
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        115,
+        1
+      ],
+      "instructions": 100
+    },
+    {
+      "request": [
+        138,
+        32768
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        115,
+        1
+      ],
+      "instructions": 99
+    },
+    {
+      "request": [
+        128,
+        0
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": [
+        126,
+        3
+      ],
+      "instructions": 99
+    },
+    {
+      "request": [
+        108,
+        0
+      ],
+      "full_ring": false,
+      "overlays_loaded": false,
+      "reply": null,
+      "instructions": 36
+    },
+    {
+      "request": [
+        136,
+        0
+      ],
+      "full_ring": true,
+      "overlays_loaded": false,
+      "reply": null,
+      "instructions": 42
+    },
+    {
+      "request": [
+        136,
+        0
+      ],
+      "full_ring": false,
+      "overlays_loaded": true,
+      "reply": [
+        112,
+        54593
+      ],
+      "instructions": 92
+    },
+    {
+      "request": [
+        138,
+        30176
+      ],
+      "full_ring": false,
+      "overlays_loaded": true,
+      "reply": [
+        114,
+        27005
+      ],
+      "instructions": 101
+    }
+  ],
+  "cpu_tests": [
+    {
+      "case": "reply filter",
+      "tag": 112,
+      "resume_address": "677BE",
+      "cache": [
+        112,
+        48879,
+        10,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 113,
+      "resume_address": "677BE",
+      "cache": [
+        113,
+        48879,
+        10,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 114,
+      "resume_address": "677BE",
+      "cache": [
+        114,
+        48879,
+        10,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 115,
+      "resume_address": "677BE",
+      "cache": [
+        115,
+        48879,
+        10,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 126,
+      "resume_address": "6777A",
+      "cache": [
+        0,
+        0,
+        9,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 71,
+      "resume_address": "6777A",
+      "cache": [
+        0,
+        0,
+        9,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 128,
+      "resume_address": "677BE",
+      "cache": [
+        0,
+        0,
+        9,
+        54593
+      ]
+    },
+    {
+      "case": "reply filter",
+      "tag": 368,
+      "resume_address": "6777A",
+      "cache": [
+        0,
+        0,
+        9,
+        54593
+      ]
+    },
+    {
+      "case": "ATGU cache display",
+      "initialized": false,
+      "output": "\r\nDSPMON 0000 0000 0000\r\n"
+    },
+    {
+      "case": "ATGU cache display",
+      "initialized": true,
+      "output": "\r\nDSPMON 0071 BEEF 000A\r\n"
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D00000003",
+      "success": true,
+      "timeout": false,
+      "words": 4
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D7FFF7FFF",
+      "success": true,
+      "timeout": false,
+      "words": 1
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D00030000",
+      "success": false,
+      "timeout": false,
+      "words": 0
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D80008000",
+      "success": false,
+      "timeout": false,
+      "words": 0
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D000Z0001",
+      "success": false,
+      "timeout": false,
+      "words": 0
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D0000000",
+      "success": false,
+      "timeout": false,
+      "words": 0
+    },
+    {
+      "case": "ATGD range stream",
+      "command": "D00000001",
+      "success": false,
+      "timeout": true,
+      "words": 1
+    }
+  ],
+  "verification": {
+    "dsp_cases_passed": 12,
+    "cpu_cases_passed": 17,
+    "header_and_payload_crc_valid": true,
+    "scope": "Isolated machine-code handlers and relocated overlay survival; full boot and hardware not validated."
+  }
+}

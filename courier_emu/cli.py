@@ -1603,7 +1603,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     dsp_run = subparsers.add_parser("dsp-run", help="execute C5x firmware")
     dsp_run.add_argument("image")
-    dsp_run.add_argument("--model", choices=("c51", "c53"), default="c51")
+    dsp_run.add_argument("--model", choices=("c51", "c52", "c53"), default="c51")
     dsp_run.add_argument("--instructions", type=_number, default=1_000_000)
     dsp_run.add_argument("--trace", type=_number, default=0, help="trace this many instructions")
     dsp_run.add_argument("--trace-start", type=_number, default=0)

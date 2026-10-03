@@ -1,0 +1,77 @@
+[
+  {
+    "instructions": 1415488,
+    "dsp": {
+      "pc": 4484,
+      "op": 34577,
+      "acc": 0,
+      "accb": 0,
+      "preg": 0,
+      "dp": 7,
+      "arp": 7,
+      "flags": 156,
+      "idle": false,
+      "instructions": 6910946,
+      "cycles": 10913157,
+      "io_events": 8192,
+      "ar0": 32644,
+      "ar1": 32595,
+      "ar2": 0,
+      "ar3": 0,
+      "ar4": 0,
+      "ar5": 0,
+      "ar6": 0,
+      "ar7": 32644,
+      "arcr": 32644,
+      "indx": 32644
+    },
+    "pmst": 6328,
+    "io": {
+      "0x57": {
+        "reads": 131064,
+        "writes": 6524,
+        "last_read": 4,
+        "last_write": 2,
+        "last_read_pc": 4411,
+        "last_write_pc": 4875
+      },
+      "0x58": {
+        "reads": 6521,
+        "writes": 0,
+        "last_read": 48905,
+        "last_write": 0,
+        "last_read_pc": 3946,
+        "last_write_pc": 0
+      },
+      "0x5e": {
+        "reads": 0,
+        "writes": 1,
+        "last_read": 0,
+        "last_write": 71,
+        "last_read_pc": 0,
+        "last_write_pc": 4853
+      },
+      "0x5f": {
+        "reads": 0,
+        "writes": 2,
+        "last_read": 0,
+        "last_write": 7,
+        "last_read_pc": 0,
+        "last_write_pc": 4864
+      }
+    },
+    "mmr": {
+      "20": 0,
+      "21": 0,
+      "22": 16584,
+      "23": 0,
+      "24": 837,
+      "25": 19205,
+      "26": 0,
+      "27": 0,
+      "28": 8192,
+      "29": 257,
+      "2a": 16
+    }
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "space": "data",
+  "start_word": "012F",
+  "end_word": "0132",
+  "word_addressing": "inclusive",
+  "byte_order": "little-endian",
+  "expected_words": 4,
+  "completed_words": 4,
+  "complete": true,
+  "consistency": "Sequential live reads; memory may change during capture.",
+  "bytes": 8,
+  "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+}

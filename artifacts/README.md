@@ -4,6 +4,43 @@ Primary evidence from the physical Couriers and from the offline probes. Each
 capture directory keeps its own `manifest.json` recording acquisition details,
 hashes and assumptions; treat that file as the authority for what a capture is.
 
+## Experiment index and local archives
+
+[Experiment index](experiment-index.md) lists experiment purposes, result
+reports, and storage dispositions. [The machine-readable index](experiment-index.json)
+also records archive locations, SHA-256 hashes, and cleanup accounting. Purpose
+labels come from directory names; findings come from the cited reports.
+
+Keep compact findings, verification results, reproduction profiles, and
+documented primary evidence in Git. Bulk PCM, packet captures, timelines, and
+DSP snapshots belong in compressed archives under `.artifact-archives/` at the
+repository root. That directory is ignored by Git and is local storage, not a
+remote backup. Each archive has a neighboring manifest containing the archive
+checksum and every original file's path, size, and SHA-256 hash.
+
+The archive tool reads every archived file back and verifies its checksum before
+pruning any source. It preserves tracked files, scripts, notes, profiles, small
+JSON reports, the selected working and failing controls, and real Courier
+captures. Experiments modified in the last ten minutes are left untouched.
+
+```sh
+# Inventory only; create no archives and delete nothing.
+.venv/bin/python -m tools.archive_artifacts --date 20261002 --date 20261003
+
+# Archive, verify, then prune eligible untracked generated output.
+.venv/bin/python -m tools.archive_artifacts \
+  --apply --prune --date 20261002 --date 20261003
+
+# Restore an experiment from the archive named in the index.
+# Run from the repository root; compare its SHA-256 with the manifest first.
+shasum -a 256 .artifact-archives/RUN/EXPERIMENT.tar.gz
+tar -xzf .artifact-archives/RUN/EXPERIMENT.tar.gz -C .
+```
+
+Some documentation links point to detailed captures that now live in these
+archives. Restore the corresponding experiment to inspect those files. The
+retained tracked reports and summaries remain available in a fresh clone.
+
 | Directory | Contents |
 |---|---|
 | `courier-board-21210-capture-01/` | Full 512 KiB CPU flash window read from the 20.16 MHz board, plus its audit and the recovered-handler check |

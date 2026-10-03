@@ -1,0 +1,22 @@
+{
+  "bytes": 753664,
+  "sha256": "598e1f1e506547d3e47b64ef3d72aa497bc304ee91c8d98dc7c22835e15c401b",
+  "backup_sha256": "c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e",
+  "handler_validation": {
+    "dsp_cases_passed": 12,
+    "cpu_cases_passed": 10,
+    "header_and_payload_crc_valid": true,
+    "scope": "Isolated machine-code handlers and relocated overlay survival; full boot and hardware not validated."
+  },
+  "full_boot_validated": false,
+  "identity": "\r\nATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           CTR21 External\r\nProduct ID             99345303\r\nOptions                HST,V32bis,Terbo,V34+,V90,V92\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             25 MHz\r\nFlash ROM              1024k, C2-22D6\r\nRam                    256k\r\n\r\nSupervisor date        05/03/11\r\nDSP date               06/04/08\r\n\r\nSupervisor rev         2.3.33\r\nDSP rev                2.1.41\r\nDAA rev                0013\r\n\r\nSerial Number          5MBSXA6P0183\r\n\r\nOK",
+  "prompt": "\r\nReady to receive firmware update",
+  "crc_mode": false,
+  "blocks_acked": 5888,
+  "retries": 0,
+  "completion": "\r\n\n*TRANSFER SUCCESSFUL*\r\n\r\n\r\nFirmware Update\r\n---------------\r\nOptions:\r\n(1) Read firmware\r\n(2) Write firmware\r\nESCape Exits\r\n>",
+  "error": "RuntimeError: modem did not report successful transfer",
+  "post_reset_at_ok": true,
+  "monitor_signature": "D541",
+  "atgu_parser_quirk": "Valid DSPMON cache record followed by ERROR; host tool accepts this exact response."
+}

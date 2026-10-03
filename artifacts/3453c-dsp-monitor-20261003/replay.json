@@ -1,0 +1,284 @@
+{
+  "image_sha256": "c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e",
+  "segments": [
+    {
+      "index": 5,
+      "origin": 4096,
+      "file_offset": 752,
+      "size": 52160,
+      "words": 26080,
+      "resident": true
+    },
+    {
+      "index": 6,
+      "origin": 7625,
+      "file_offset": 52912,
+      "size": 23664,
+      "words": 11832,
+      "resident": false
+    },
+    {
+      "index": 7,
+      "origin": 0,
+      "file_offset": 76576,
+      "size": 8188,
+      "words": 4094,
+      "resident": false
+    },
+    {
+      "index": 8,
+      "origin": 23728,
+      "file_offset": 84768,
+      "size": 12394,
+      "words": 6197,
+      "resident": false
+    }
+  ],
+  "scope": "Isolated stock DSP functions in C51 emulator, fixture data and ASIC acknowledgement; not full boot or C52 hardware validation.",
+  "replays": [
+    {
+      "tag": "80",
+      "state": 0,
+      "reply": null,
+      "instructions": 33,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        }
+      ]
+    },
+    {
+      "tag": "80",
+      "state": 1,
+      "reply": [
+        123,
+        0
+      ],
+      "instructions": 89,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        },
+        {
+          "write": true,
+          "port": 32862,
+          "value": 123,
+          "pc": 4853,
+          "instruction": 73
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 0,
+          "pc": 4856,
+          "instruction": 75
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 0,
+          "pc": 4864,
+          "instruction": 80
+        },
+        {
+          "write": true,
+          "port": 32855,
+          "value": 2,
+          "pc": 4875,
+          "instruction": 87
+        }
+      ]
+    },
+    {
+      "tag": "80",
+      "state": 2,
+      "reply": [
+        124,
+        30
+      ],
+      "instructions": 91,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        },
+        {
+          "write": true,
+          "port": 32862,
+          "value": 124,
+          "pc": 4853,
+          "instruction": 75
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 0,
+          "pc": 4856,
+          "instruction": 77
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 30,
+          "pc": 4864,
+          "instruction": 82
+        },
+        {
+          "write": true,
+          "port": 32855,
+          "value": 2,
+          "pc": 4875,
+          "instruction": 89
+        }
+      ]
+    },
+    {
+      "tag": "80",
+      "state": 3,
+      "reply": [
+        125,
+        3
+      ],
+      "instructions": 89,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        },
+        {
+          "write": true,
+          "port": 32862,
+          "value": 125,
+          "pc": 4853,
+          "instruction": 73
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 0,
+          "pc": 4856,
+          "instruction": 75
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 3,
+          "pc": 4864,
+          "instruction": 80
+        },
+        {
+          "write": true,
+          "port": 32855,
+          "value": 2,
+          "pc": 4875,
+          "instruction": 87
+        }
+      ]
+    },
+    {
+      "tag": "80",
+      "state": 4,
+      "reply": [
+        126,
+        3
+      ],
+      "instructions": 88,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        },
+        {
+          "write": true,
+          "port": 32862,
+          "value": 126,
+          "pc": 4853,
+          "instruction": 72
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 0,
+          "pc": 4856,
+          "instruction": 74
+        },
+        {
+          "write": true,
+          "port": 32863,
+          "value": 3,
+          "pc": 4864,
+          "instruction": 79
+        },
+        {
+          "write": true,
+          "port": 32855,
+          "value": 2,
+          "pc": 4875,
+          "instruction": 86
+        }
+      ]
+    },
+    {
+      "tag": "80",
+      "state": 5,
+      "reply": null,
+      "instructions": 33,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        }
+      ]
+    },
+    {
+      "tag": "6C",
+      "state": 0,
+      "reply": null,
+      "instructions": 25,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        }
+      ]
+    },
+    {
+      "tag": "88",
+      "state": 0,
+      "reply": null,
+      "instructions": 20,
+      "writes": [
+        {
+          "write": true,
+          "port": 32855,
+          "value": 1,
+          "pc": 4799,
+          "instruction": 10
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "device": "/dev/cu.usbserial-FT4TQOFT",
+  "baud": 19200,
+  "bytes": 753664,
+  "blocks": 736,
+  "retries": 0,
+  "sha256": "c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e",
+  "integrity": "Every accepted block passed CRC16 and sequence checks; EOT acknowledged.",
+  "reference_bytes": 753664,
+  "exact_xmf_match": true,
+  "reference_offset_in_capture": 0,
+  "post_transfer_at_ok": true,
+  "menu_exit": "ESC exits the firmware menu by resetting the modem; AT OK confirmed after reset."
+}

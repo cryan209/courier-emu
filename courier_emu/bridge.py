@@ -463,10 +463,14 @@ class CourierDspBridge:
         # byte-identical to the 25 MHz 2806 board's, which is the evidence that
         # it is mask ROM; the upper half has not been compared across parts.
         from .mailbox_compare import program as _program_words
-        self.boot_rom_enabled = boot_rom.maps_onchip_rom(
-            _program_words(self.image), self.image.dsp_program_segments()[0][0]
+        resident_origin = self.image.dsp_program_segments()[0][0]
+        self.is3453 = resident_origin == 0x1000 and boot_rom.pmst_setting(
+            _program_words(self.image), resident_origin) == 0x18b8
+        self.board3453 = None
+        self.boot_rom_enabled = self.is3453 or boot_rom.maps_onchip_rom(
+            _program_words(self.image), resident_origin
         )
-        self.core = NativeC5x(image)
+        self.core = NativeC5x(image, model="c52" if self.is3453 else "c51")
         self._configure_boot_rom()
         self._configure_frame_interrupt()
         self._reset_asserted = True
@@ -1289,6 +1293,10 @@ class CourierDspBridge:
             self._call_resume_pending = True
 
     def _configure_boot_rom(self) -> None:
+        if self.is3453:
+            from .board3453 import Board3453
+            self.board3453 = Board3453(self)
+            return
         if not self.boot_rom_enabled:
             return
         self.core.configure_rom_codec()
@@ -1312,6 +1320,8 @@ class CourierDspBridge:
             })
             self.float_runtime_bus()
             self.core.reset()
+            if getattr(self, "board3453", None) is not None:
+                self.board3453.reset()
             self._rx_cushion_rate = None
             # `reset` clears the core's sample arrays. The output cursors index
             # those arrays, so they restart at zero too - the same rule the
@@ -1371,6 +1381,11 @@ class CourierDspBridge:
         self._loader_started = False
         self.bootstrap = bytearray()
         self.bootstrap_match = None
+        if getattr(self, "board3453", None) is not None:
+            self.core.set_io(0x58, self._download_destination)
+            self.core.nmi()
+            self._loader_nmi_seen = True
+            return
         if hasattr(self.core, "nmi"):
             self.core.set_io(0x58, self._download_destination)
             self._settle_nmi_dispatch()
@@ -2291,6 +2306,9 @@ class CourierDspBridge:
         )
 
     def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
+        if getattr(self, "board3453", None) is not None:
+            self.board3453.write(port, size, value, pc)
+            return
         if (
             port in DSP_RUNTIME_PORTS
             and size == 1
@@ -2638,6 +2656,7 @@ class CourierDspBridge:
         """
         return (
             self.boot_rom_enabled
+            and not getattr(self, "is3453", False)
             and self.active
             and self.launched
             and not self._rom_loader_armed()
@@ -2652,6 +2671,8 @@ class CourierDspBridge:
         return word
 
     def read(self, port: int, size: int) -> int | None:
+        if getattr(self, "board3453", None) is not None:
+            return self.board3453.read(port, size)
         if size == 1 and (
             port in (self.transfer.command_port, LANE_RX_ACK_PORT)
             or LANE_FIRST_PORT <= port < LANE_FIRST_PORT + 4 * LANE_BANKS

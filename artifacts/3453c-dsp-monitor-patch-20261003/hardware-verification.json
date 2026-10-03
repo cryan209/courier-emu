@@ -1,0 +1,23 @@
+{
+  "live-dispatcher": {
+    "start": "12C0",
+    "end": "12C7",
+    "bytes": 16,
+    "matches_candidate": true,
+    "sha256": "f19c5d4ee60e011434de564b4ea117478e994215aae6b74bac38281fbdb43a64"
+  },
+  "live-monitor": {
+    "start": "75E0",
+    "end": "7623",
+    "bytes": 136,
+    "matches_candidate": true,
+    "sha256": "8581e1c2000bd657c148449f0592b76f8aa9412858b8f603b99d634b13f0332b"
+  },
+  "identification": "D541",
+  "data_words": [
+    "0000",
+    "0000",
+    "0000",
+    "0000"
+  ]
+}

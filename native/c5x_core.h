@@ -224,7 +224,7 @@ public:
     using IoRead = std::function<uint16_t(uint16_t)>;
     using IoWrite = std::function<void(uint16_t, uint16_t)>;
 
-    enum class Model { C51, C53 };
+    enum class Model { C51, C52, C53 };
     explicit C5xCore(Model model = Model::C51);
     void set_separate_global_memory(bool enabled) { m_separate_global_memory = enabled; }
     void reset();
@@ -232,6 +232,7 @@ public:
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void load_rom(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void set_mpmc_pin(uint16_t level);
+    void set_host_io_base(uint16_t base) { m_host_io_base = base; }
     void set_shared_window(uint16_t first, uint16_t last);
     MemoryMap memory_map() const;
     void set_io_callbacks(IoRead read, IoWrite write);
@@ -425,6 +426,11 @@ private:
     // wait states only apply off-chip, so it does not expect a boot ROM under
     // the download.
     uint16_t m_mpmc_pin = 1;
+    uint16_t m_host_io_base = 0;
+    uint16_t host_port(uint16_t port) const {
+        return m_host_io_base && port >= m_host_io_base + 0x50
+            && port <= m_host_io_base + 0x7f ? uint16_t(port - m_host_io_base) : port;
+    }
     uint16_t m_shared_first = C5X_SHARED_FIRST, m_shared_last = C5X_SHARED_LAST;
     mutable MemoryMap m_map{};
     IoRead m_io_read;

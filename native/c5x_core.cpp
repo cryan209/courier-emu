@@ -80,12 +80,12 @@ static uint16_t ac01_output_sample(uint16_t sample, uint8_t register4)
 }
 
 C5xCore::C5xCore(Model model)
-    : m_rom_words(model == Model::C53 ? 0x4000 : 0x2000),
+    : m_rom_words(model == Model::C53 ? 0x4000 : model == Model::C52 ? 0x1000 : 0x2000),
       m_saram_program_first(model == Model::C53 ? 0x4000 : 0x2000),
-      m_saram_words(model == Model::C53 ? 0x0c00 : 0x0400)
+      m_saram_words(model == Model::C53 ? 0x0c00 : model == Model::C52 ? 0 : 0x0400)
 {
     // Courier external RAM wiring is a board setting, not a C53 property.
-    if (model == Model::C53) set_shared_window(0xffff, 0);
+    if (model != Model::C51) set_shared_window(0xffff, 0);
     reset();
 }
 
@@ -531,6 +531,7 @@ C5xCore::CodecState C5xCore::codec_state() const
 
 void C5xCore::set_io(uint16_t port, uint16_t value)
 {
+    port = host_port(port);
     m_io[port] = value;
     if (m_rom_codec && port == 0x006b) codec_apply_asic_timing(value);
 }
@@ -648,9 +649,10 @@ void C5xCore::set_v8_answering(bool enabled)
 {
     m_v8_mode = enabled ? V8Mode::Answering : V8Mode::Off;
 }
-uint16_t C5xCore::io(uint16_t port) const { return m_io[port]; }
+uint16_t C5xCore::io(uint16_t port) const { return m_io[host_port(port)]; }
 uint16_t C5xCore::io_output(uint16_t port) const
 {
+    port = host_port(port);
     if ((m_rom_codec && port >= 0x50 && port <= 0x5f)
         || (m_host_mailbox && port >= 0x58 && port <= 0x5d))
         return m_asic_output[port - 0x50];
@@ -954,6 +956,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 
 uint16_t C5xCore::IO_READ16(uint16_t port)
 {
+    port = host_port(port);
     // The resident idle path exposes its line ADC at external I/O port 0x54.
     // main211 reads a frame at 0xb300 and rereads the held word at 0xb304.
     if (port == 0x54 && uint16_t(m_pc - 1) == 0xb300 && !m_line_rx.empty()) {
@@ -980,13 +983,15 @@ uint16_t C5xCore::IO_READ16(uint16_t port)
 
 void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
 {
+    port = host_port(port);
     if ((m_rom_codec || m_host_mailbox) && port == 0x57)
         // PA7 is an acknowledgement register, not ordinary port storage.
         // The board leaves 0002 unchanged after writes of 0200, 0300 and 0000
         // (artifacts/dsp-status-03). Assigning FFFF during resident init used
         // to invent download-ready bit 9; with NDX working the firmware then
         // consumed nonexistent download words indefinitely.
-        m_io[port] &= uint16_t(~value);
+        m_io[port] = (m_host_io_base == 0x8000 && value == 0xffff)
+            ? 0x0006 : m_io[port] & uint16_t(~value);
     else if (m_host_mailbox && port == 0x56)
         // The download-ready bitmap works the same way: the host sets bits
         // via set_io when overlay data is available at 0x58-0x5b, and the

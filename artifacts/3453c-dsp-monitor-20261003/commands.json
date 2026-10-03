@@ -1,0 +1,818 @@
+[
+  {
+    "tag": "00",
+    "target": "0000",
+    "table_file_offset": "0090A",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "01",
+    "target": "1008",
+    "table_file_offset": "0090C",
+    "handler_file_offset": "00300"
+  },
+  {
+    "tag": "02",
+    "target": "1247",
+    "table_file_offset": "0090E",
+    "handler_file_offset": "0077E"
+  },
+  {
+    "tag": "03",
+    "target": "003A",
+    "table_file_offset": "00910",
+    "handler_file_offset": "12B94"
+  },
+  {
+    "tag": "04",
+    "target": "000D",
+    "table_file_offset": "00912",
+    "handler_file_offset": "12B3A"
+  },
+  {
+    "tag": "05",
+    "target": "0011",
+    "table_file_offset": "00914",
+    "handler_file_offset": "12B42"
+  },
+  {
+    "tag": "06",
+    "target": "0221",
+    "table_file_offset": "00916",
+    "handler_file_offset": "12F62"
+  },
+  {
+    "tag": "07",
+    "target": "0000",
+    "table_file_offset": "00918",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "08",
+    "target": "1826",
+    "table_file_offset": "0091A",
+    "handler_file_offset": "0133C"
+  },
+  {
+    "tag": "09",
+    "target": "0000",
+    "table_file_offset": "0091C",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "0A",
+    "target": "0165",
+    "table_file_offset": "0091E",
+    "handler_file_offset": "12DEA"
+  },
+  {
+    "tag": "0B",
+    "target": "0010",
+    "table_file_offset": "00920",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "0C",
+    "target": "3CAF",
+    "table_file_offset": "00922",
+    "handler_file_offset": "05C4E"
+  },
+  {
+    "tag": "0D",
+    "target": "3CBF",
+    "table_file_offset": "00924",
+    "handler_file_offset": "05C6E"
+  },
+  {
+    "tag": "0E",
+    "target": "3CCF",
+    "table_file_offset": "00926",
+    "handler_file_offset": "05C8E"
+  },
+  {
+    "tag": "0F",
+    "target": "1261",
+    "table_file_offset": "00928",
+    "handler_file_offset": "007B2"
+  },
+  {
+    "tag": "10",
+    "target": "1D7B",
+    "table_file_offset": "0092A",
+    "handler_file_offset": "01DE6"
+  },
+  {
+    "tag": "11",
+    "target": "1D7F",
+    "table_file_offset": "0092C",
+    "handler_file_offset": "01DEE"
+  },
+  {
+    "tag": "12",
+    "target": "040A",
+    "table_file_offset": "0092E",
+    "handler_file_offset": "13334"
+  },
+  {
+    "tag": "13",
+    "target": "0417",
+    "table_file_offset": "00930",
+    "handler_file_offset": "1334E"
+  },
+  {
+    "tag": "14",
+    "target": "1F6A",
+    "table_file_offset": "00932",
+    "handler_file_offset": "021C4"
+  },
+  {
+    "tag": "15",
+    "target": "20E8",
+    "table_file_offset": "00934",
+    "handler_file_offset": "024C0"
+  },
+  {
+    "tag": "16",
+    "target": "0413",
+    "table_file_offset": "00936",
+    "handler_file_offset": "13346"
+  },
+  {
+    "tag": "17",
+    "target": "1DEA",
+    "table_file_offset": "00938",
+    "handler_file_offset": "01EC4"
+  },
+  {
+    "tag": "18",
+    "target": "5BFF",
+    "table_file_offset": "0093A",
+    "handler_file_offset": "09AEE"
+  },
+  {
+    "tag": "19",
+    "target": "0015",
+    "table_file_offset": "0093C",
+    "handler_file_offset": "12B4A"
+  },
+  {
+    "tag": "1A",
+    "target": "0018",
+    "table_file_offset": "0093E",
+    "handler_file_offset": "12B50"
+  },
+  {
+    "tag": "1B",
+    "target": "001D",
+    "table_file_offset": "00940",
+    "handler_file_offset": "12B5A"
+  },
+  {
+    "tag": "1C",
+    "target": "1DD8",
+    "table_file_offset": "00942",
+    "handler_file_offset": "01EA0"
+  },
+  {
+    "tag": "1D",
+    "target": "1DDD",
+    "table_file_offset": "00944",
+    "handler_file_offset": "01EAA"
+  },
+  {
+    "tag": "1E",
+    "target": "1DC7",
+    "table_file_offset": "00946",
+    "handler_file_offset": "01E7E"
+  },
+  {
+    "tag": "1F",
+    "target": "1DC4",
+    "table_file_offset": "00948",
+    "handler_file_offset": "01E78"
+  },
+  {
+    "tag": "20",
+    "target": "4CCA",
+    "table_file_offset": "0094A",
+    "handler_file_offset": "07C84"
+  },
+  {
+    "tag": "21",
+    "target": "4CAA",
+    "table_file_offset": "0094C",
+    "handler_file_offset": "07C44"
+  },
+  {
+    "tag": "22",
+    "target": "4C8E",
+    "table_file_offset": "0094E",
+    "handler_file_offset": "07C0C"
+  },
+  {
+    "tag": "23",
+    "target": "4D2D",
+    "table_file_offset": "00950",
+    "handler_file_offset": "07D4A"
+  },
+  {
+    "tag": "24",
+    "target": "4D05",
+    "table_file_offset": "00952",
+    "handler_file_offset": "07CFA"
+  },
+  {
+    "tag": "25",
+    "target": "4D3A",
+    "table_file_offset": "00954",
+    "handler_file_offset": "07D64"
+  },
+  {
+    "tag": "26",
+    "target": "4D0F",
+    "table_file_offset": "00956",
+    "handler_file_offset": "07D0E"
+  },
+  {
+    "tag": "27",
+    "target": "4D20",
+    "table_file_offset": "00958",
+    "handler_file_offset": "07D30"
+  },
+  {
+    "tag": "28",
+    "target": "41BE",
+    "table_file_offset": "0095A",
+    "handler_file_offset": "0666C"
+  },
+  {
+    "tag": "29",
+    "target": "41CB",
+    "table_file_offset": "0095C",
+    "handler_file_offset": "06686"
+  },
+  {
+    "tag": "2A",
+    "target": "1DD2",
+    "table_file_offset": "0095E",
+    "handler_file_offset": "01E94"
+  },
+  {
+    "tag": "2B",
+    "target": "1DCF",
+    "table_file_offset": "00960",
+    "handler_file_offset": "01E8E"
+  },
+  {
+    "tag": "2C",
+    "target": "0010",
+    "table_file_offset": "00962",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "2D",
+    "target": "0010",
+    "table_file_offset": "00964",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "2E",
+    "target": "4A84",
+    "table_file_offset": "00966",
+    "handler_file_offset": "077F8"
+  },
+  {
+    "tag": "2F",
+    "target": "4A0B",
+    "table_file_offset": "00968",
+    "handler_file_offset": "07706"
+  },
+  {
+    "tag": "30",
+    "target": "1DE2",
+    "table_file_offset": "0096A",
+    "handler_file_offset": "01EB4"
+  },
+  {
+    "tag": "31",
+    "target": "0010",
+    "table_file_offset": "0096C",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "32",
+    "target": "6262",
+    "table_file_offset": "0096E",
+    "handler_file_offset": "0A7B4"
+  },
+  {
+    "tag": "33",
+    "target": "5F97",
+    "table_file_offset": "00970",
+    "handler_file_offset": "0A21E"
+  },
+  {
+    "tag": "34",
+    "target": "5F7E",
+    "table_file_offset": "00972",
+    "handler_file_offset": "0A1EC"
+  },
+  {
+    "tag": "35",
+    "target": "63D7",
+    "table_file_offset": "00974",
+    "handler_file_offset": "0AA9E"
+  },
+  {
+    "tag": "36",
+    "target": "6254",
+    "table_file_offset": "00976",
+    "handler_file_offset": "0A798"
+  },
+  {
+    "tag": "37",
+    "target": "6248",
+    "table_file_offset": "00978",
+    "handler_file_offset": "0A780"
+  },
+  {
+    "tag": "38",
+    "target": "345F",
+    "table_file_offset": "0097A",
+    "handler_file_offset": "04BAE"
+  },
+  {
+    "tag": "39",
+    "target": "6242",
+    "table_file_offset": "0097C",
+    "handler_file_offset": "0A774"
+  },
+  {
+    "tag": "3A",
+    "target": "63D3",
+    "table_file_offset": "0097E",
+    "handler_file_offset": "0AA96"
+  },
+  {
+    "tag": "3B",
+    "target": "625E",
+    "table_file_offset": "00980",
+    "handler_file_offset": "0A7AC"
+  },
+  {
+    "tag": "3C",
+    "target": "001A",
+    "table_file_offset": "00982",
+    "handler_file_offset": "12B54"
+  },
+  {
+    "tag": "3D",
+    "target": "25B4",
+    "table_file_offset": "00984",
+    "handler_file_offset": "02E58"
+  },
+  {
+    "tag": "3E",
+    "target": "25C8",
+    "table_file_offset": "00986",
+    "handler_file_offset": "02E80"
+  },
+  {
+    "tag": "3F",
+    "target": "25D5",
+    "table_file_offset": "00988",
+    "handler_file_offset": "02E9A"
+  },
+  {
+    "tag": "40",
+    "target": "25FC",
+    "table_file_offset": "0098A",
+    "handler_file_offset": "02EE8"
+  },
+  {
+    "tag": "41",
+    "target": "25F0",
+    "table_file_offset": "0098C",
+    "handler_file_offset": "02ED0"
+  },
+  {
+    "tag": "42",
+    "target": "25ED",
+    "table_file_offset": "0098E",
+    "handler_file_offset": "02ECA"
+  },
+  {
+    "tag": "43",
+    "target": "25E7",
+    "table_file_offset": "00990",
+    "handler_file_offset": "02EBE"
+  },
+  {
+    "tag": "44",
+    "target": "25EA",
+    "table_file_offset": "00992",
+    "handler_file_offset": "02EC4"
+  },
+  {
+    "tag": "45",
+    "target": "0375",
+    "table_file_offset": "00994",
+    "handler_file_offset": "1320A"
+  },
+  {
+    "tag": "46",
+    "target": "1DC3",
+    "table_file_offset": "00996",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "47",
+    "target": "1DC3",
+    "table_file_offset": "00998",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "48",
+    "target": "1DC3",
+    "table_file_offset": "0099A",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "49",
+    "target": "1DC3",
+    "table_file_offset": "0099C",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "4A",
+    "target": "1DC3",
+    "table_file_offset": "0099E",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "4B",
+    "target": "1DC3",
+    "table_file_offset": "009A0",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "4C",
+    "target": "0000",
+    "table_file_offset": "009A2",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "4D",
+    "target": "0032",
+    "table_file_offset": "009A4",
+    "handler_file_offset": "12B84"
+  },
+  {
+    "tag": "4E",
+    "target": "0028",
+    "table_file_offset": "009A6",
+    "handler_file_offset": "12B70"
+  },
+  {
+    "tag": "4F",
+    "target": "0020",
+    "table_file_offset": "009A8",
+    "handler_file_offset": "12B60"
+  },
+  {
+    "tag": "50",
+    "target": "47C0",
+    "table_file_offset": "009AA",
+    "handler_file_offset": "07270"
+  },
+  {
+    "tag": "51",
+    "target": "08E3",
+    "table_file_offset": "009AC",
+    "handler_file_offset": "13CE6"
+  },
+  {
+    "tag": "52",
+    "target": "08E6",
+    "table_file_offset": "009AE",
+    "handler_file_offset": "13CEC"
+  },
+  {
+    "tag": "53",
+    "target": "08F5",
+    "table_file_offset": "009B0",
+    "handler_file_offset": "13D0A"
+  },
+  {
+    "tag": "54",
+    "target": "24B4",
+    "table_file_offset": "009B2",
+    "handler_file_offset": "02C58"
+  },
+  {
+    "tag": "55",
+    "target": "0963",
+    "table_file_offset": "009B4",
+    "handler_file_offset": "13DE6"
+  },
+  {
+    "tag": "56",
+    "target": "23D7",
+    "table_file_offset": "009B6",
+    "handler_file_offset": "02A9E"
+  },
+  {
+    "tag": "57",
+    "target": "0267",
+    "table_file_offset": "009B8",
+    "handler_file_offset": "12FEE"
+  },
+  {
+    "tag": "58",
+    "target": "0397",
+    "table_file_offset": "009BA",
+    "handler_file_offset": "1324E"
+  },
+  {
+    "tag": "59",
+    "target": "09EA",
+    "table_file_offset": "009BC",
+    "handler_file_offset": "13EF4"
+  },
+  {
+    "tag": "5A",
+    "target": "09CE",
+    "table_file_offset": "009BE",
+    "handler_file_offset": "13EBC"
+  },
+  {
+    "tag": "5B",
+    "target": "08F4",
+    "table_file_offset": "009C0",
+    "handler_file_offset": "13D08"
+  },
+  {
+    "tag": "5C",
+    "target": "08CC",
+    "table_file_offset": "009C2",
+    "handler_file_offset": "13CB8"
+  },
+  {
+    "tag": "5D",
+    "target": "0000",
+    "table_file_offset": "009C4",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "5E",
+    "target": "150D",
+    "table_file_offset": "009C6",
+    "handler_file_offset": "00D0A"
+  },
+  {
+    "tag": "5F",
+    "target": "0000",
+    "table_file_offset": "009C8",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "60",
+    "target": "3A2D",
+    "table_file_offset": "009CA",
+    "handler_file_offset": "0574A"
+  },
+  {
+    "tag": "61",
+    "target": "3A25",
+    "table_file_offset": "009CC",
+    "handler_file_offset": "0573A"
+  },
+  {
+    "tag": "62",
+    "target": "3A35",
+    "table_file_offset": "009CE",
+    "handler_file_offset": "0575A"
+  },
+  {
+    "tag": "63",
+    "target": "3A31",
+    "table_file_offset": "009D0",
+    "handler_file_offset": "05752"
+  },
+  {
+    "tag": "64",
+    "target": "0000",
+    "table_file_offset": "009D2",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "65",
+    "target": "0000",
+    "table_file_offset": "009D4",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "66",
+    "target": "0000",
+    "table_file_offset": "009D6",
+    "handler_file_offset": "12B20"
+  },
+  {
+    "tag": "67",
+    "target": "75C3",
+    "table_file_offset": "009D8",
+    "handler_file_offset": "0CE76"
+  },
+  {
+    "tag": "68",
+    "target": "75BA",
+    "table_file_offset": "009DA",
+    "handler_file_offset": "0CE64"
+  },
+  {
+    "tag": "69",
+    "target": "75BD",
+    "table_file_offset": "009DC",
+    "handler_file_offset": "0CE6A"
+  },
+  {
+    "tag": "6A",
+    "target": "3B6B",
+    "table_file_offset": "009DE",
+    "handler_file_offset": "059C6"
+  },
+  {
+    "tag": "6B",
+    "target": "75C0",
+    "table_file_offset": "009E0",
+    "handler_file_offset": "0CE70"
+  },
+  {
+    "tag": "6C",
+    "target": "0010",
+    "table_file_offset": "009E2",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "6D",
+    "target": "0010",
+    "table_file_offset": "009E4",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "6E",
+    "target": "0010",
+    "table_file_offset": "009E6",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "6F",
+    "target": "0010",
+    "table_file_offset": "009E8",
+    "handler_file_offset": "12B40"
+  },
+  {
+    "tag": "70",
+    "target": "08F8",
+    "table_file_offset": "009EA",
+    "handler_file_offset": "13D10"
+  },
+  {
+    "tag": "71",
+    "target": "090B",
+    "table_file_offset": "009EC",
+    "handler_file_offset": "13D36"
+  },
+  {
+    "tag": "72",
+    "target": "0921",
+    "table_file_offset": "009EE",
+    "handler_file_offset": "13D62"
+  },
+  {
+    "tag": "73",
+    "target": "1DC3",
+    "table_file_offset": "009F0",
+    "handler_file_offset": "01E76"
+  },
+  {
+    "tag": "74",
+    "target": "091C",
+    "table_file_offset": "009F2",
+    "handler_file_offset": "13D58"
+  },
+  {
+    "tag": "75",
+    "target": "60C5",
+    "table_file_offset": "009F4",
+    "handler_file_offset": "0A47A"
+  },
+  {
+    "tag": "76",
+    "target": "0912",
+    "table_file_offset": "009F6",
+    "handler_file_offset": "13D44"
+  },
+  {
+    "tag": "77",
+    "target": "0919",
+    "table_file_offset": "009F8",
+    "handler_file_offset": "13D52"
+  },
+  {
+    "tag": "78",
+    "target": "03B3",
+    "table_file_offset": "009FA",
+    "handler_file_offset": "13286"
+  },
+  {
+    "tag": "79",
+    "target": "59C5",
+    "table_file_offset": "009FC",
+    "handler_file_offset": "0967A"
+  },
+  {
+    "tag": "7A",
+    "target": "59D5",
+    "table_file_offset": "009FE",
+    "handler_file_offset": "0969A"
+  },
+  {
+    "tag": "7B",
+    "target": "3B85",
+    "table_file_offset": "00A00",
+    "handler_file_offset": "059FA"
+  },
+  {
+    "tag": "7C",
+    "target": "128A",
+    "table_file_offset": "00A02",
+    "handler_file_offset": "00804"
+  },
+  {
+    "tag": "7D",
+    "target": "1275",
+    "table_file_offset": "00A04",
+    "handler_file_offset": "007DA"
+  },
+  {
+    "tag": "7E",
+    "target": "1259",
+    "table_file_offset": "00A06",
+    "handler_file_offset": "007A2"
+  },
+  {
+    "tag": "7F",
+    "target": "0042",
+    "table_file_offset": "00A08",
+    "handler_file_offset": "12BA4"
+  },
+  {
+    "tag": "80",
+    "target": "1292",
+    "table_file_offset": "00A0A",
+    "handler_file_offset": "00814"
+  },
+  {
+    "tag": "81",
+    "target": "005C",
+    "table_file_offset": "00A0C",
+    "handler_file_offset": "12BD8"
+  },
+  {
+    "tag": "82",
+    "target": "127C",
+    "table_file_offset": "00A0E",
+    "handler_file_offset": "007E8"
+  },
+  {
+    "tag": "83",
+    "target": "1283",
+    "table_file_offset": "00A10",
+    "handler_file_offset": "007F6"
+  },
+  {
+    "tag": "84",
+    "target": "126D",
+    "table_file_offset": "00A12",
+    "handler_file_offset": "007CA"
+  },
+  {
+    "tag": "85",
+    "target": "0085",
+    "table_file_offset": "00A14",
+    "handler_file_offset": "12C2A"
+  },
+  {
+    "tag": "86",
+    "target": "5E1B",
+    "table_file_offset": "00A16",
+    "handler_file_offset": "09F26"
+  },
+  {
+    "tag": "87",
+    "target": "1833",
+    "table_file_offset": "00A18",
+    "handler_file_offset": "01356"
+  }
+]
