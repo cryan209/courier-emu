@@ -1,0 +1,8 @@
+{
+  "profile": "QF060003",
+  "checks": {
+    "amplitude_unpacking": 512,
+    "differential_signs_and_dc_search": 1024
+  },
+  "total_cases": 1536
+}

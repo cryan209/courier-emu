@@ -1,5 +1,31 @@
 # How the Quad loads C50 code
 
+## Source offset correction verified on 4 October 2026
+
+A fresh stock controller run confirms that the overlay source offsets in the
+flattened QF image are two bytes beyond the earlier extrapolated offsets.
+The resident source remains at `449b0`, length `f450`, origin `8000`.
+All full overlay byte ranges match all four modem RAM copies; the loader
+does not discard a word. Reproduce with
+`tools/verify_quad_pcm_placement.py`; detailed fingerprints are in
+`artifacts/x2-mapper-negotiation-20261004/placement-verification.json`.
+
+| Source paragraph | Flat byte offset | Bytes | DSP origin |
+| --- | --- | --- | --- |
+| 2f45 | 53e02 | 42e0 | a180 |
+| 3373 | 580e2 | 252c | b400 |
+| 35c6 | 5a612 | 0f18 | d900 |
+| 36b8 | 5b532 | 0cb6 | c300 |
+| 3784 | 5c1f2 | 15d6 | c300 |
+| 38e2 | 5d7d2 | 08f2 | c800 |
+| 3972 | 5e0d2 | 1808 | 9440 |
+
+All values are hexadecimal. This corrects flat source extraction, leaving
+source paragraphs, copy lengths and DSP destinations unchanged. Corrected
+PCM entries include C7AD, C994, C9A5, C9B6 and C9BF. The source placement
+is shared by the reproduction tools; the following sections describe the
+original transport and overlay selection mechanism.
+
 [`docs/x2/README.md`](x2/README.md) recorded that each Quad image has exactly
 one call to its 80186-to-C50 downloader, no Courier-style x86 overlay table,
 and no source-segment reference to the tail of the DSP payload — so the overlay

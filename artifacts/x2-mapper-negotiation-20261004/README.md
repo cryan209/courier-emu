@@ -1,45 +1,80 @@
-# Six-position PCM preparation under conditional Quad alignment
+# Verified Quad PCM placement and six-position preparation
 
-QF060003's larger PCM overlay, as previously extracted at flat 5c1f0,
-starts with ffff. Internal targets consistently refer one word before the
-previously identified routine bodies. Omitting that first word makes calls,
-branches, and table references coherent. This is a **conditional placement**:
-the stock supervisor/DSP transfer has not yet proven that the first word is
-omitted. Production overlay constants remain unchanged.
+The stock QF060003 controller resolves the former conditional placement.
+The seven overlay flat offsets were two bytes too early; the resident offset
+was correct. No leading word is omitted by the downloader. A fresh run of
+8,000,000 controller instructions reproduces all seven source copies in all
+four modem RAM banks, with all 28 complete byte comparisons passing.
+`placement-verification.json` records offsets, lengths and SHA256 values.
+Reproduce with `.venv/bin/python tools/verify_quad_pcm_placement.py`.
 
-Under this placement, original instructions and manual C match in 8,384 cases:
+The reusable map in `tools/probe_quad_pcm_codewords.py` is corrected, and the
+server helper reconstruction was regenerated and passed its 6,562 cases.
+The old extra leading codeword and EF00 selector output were extraction
+artifacts, not valid mapping parameters.
 
-- C6E5 counts nonzero entries in six two-bit position fields (4,096 cases).
-- C6F4 distributes two byte-sized candidate sizes to six positions; zero
-  fields choose the high-byte size and nonzero fields choose the low byte
-  (4,096 cases).
-- C92A expands six working banks from source 0A60 (zero field) or 0880
-  (nonzero field), consuming two control bits per bank. An odd field ORs
-  0100 into each entry. The banks start at E8F4 and advance by 0080 words.
-  Copy counts are last indices, so a count of 3 copies 4 words (192 cases).
+## Received parameters and position controls
 
-Under this same placement C9BF copies the paired nine-word tables:
+Original instructions and manual C agree in **13,504 cases**, with an
+additional **128 integrated original-instruction contexts**:
 
+| Check | Cases | Scope |
+| --- | ---: | --- |
+| C6E5 nonzero six-position count | 4,096 | Every 12-bit control word |
+| C6F4 size distribution | 4,096 | Zero selects high byte, nonzero low byte |
+| C92A descriptor expansion | 192 | Seeded candidate lengths and contents |
+| C870 parameter unpacking | 512 | Random working records and flags |
+| AB06 received-record transfer | 512 | TC set at entry; stops at AB2E |
+| Received record to six banks | 4,096 | Every control combination; supplied candidates |
+| C840 startup caller through C4AB | 128 | Original constructor, conversion and expansion |
+
+AB06 transfers FF48/FF49 to 0340/0341 and FF4A/FF4B to E8F1/E8F2
+in the tested PCM branch. C870 consumes six four-bit cells from the low
+24 bits of the latter pair, high cell first. Each cell's low three bits
+index `[0,1,2,1,0,3,0,3]`; its high bit is ignored. Results form six
+two-bit controls. The last decoded cell supplies the least significant
+control, consumed first by bank expansion. This is working-record order,
+not established wire serialization.
+
+The routine stores E8F2 bits 8..10 separately. Mode comes from 0340 bits
+11..14; FFD9 bit 12 can force the stored mode to zero, but one scale lookup
+retains the original mode. Meaning and units remain unresolved. When every
+control is zero, it substitutes control word 0002 while keeping active
+count zero. The C lift preserves that default state.
+
+C92A expands banks at E8F4, E974, E9F4, EA74, EAF4, EB74, choosing source
+0A60 for control zero or 0880 for nonzero. An odd control ORs 0100 into
+each copied entry. Stored copy counts are last indices: 3 copies 4 words.
+The flag's physical meaning is open.
+
+## Constructor and its callers
+
+C9BF chooses one nine-word constructor table by FFD9 bit 2:
+
+```
 A5 A7 AD AF B7 BD C5 CF E5
 95 97 9D 9F A7 AD B5 BF D5
+```
 
-This supersedes the interpretation of the old raw helper outputs as valid
-constellation tables: those outputs included one preceding value and omitted
-one final value. The existing raw helper tests show isolated equivalence,
-not correctness of the full load map. The EF00 selector result from the old
-placement likewise must not be taken as a real mapper pointer.
+These are alternative constructor tables, not automatically the two
+candidate sets consumed by C92A. The difference of hexadecimal 10 is a
+codeword difference, not a verified amplitude ratio or companding law.
 
-The six-position preparation is consistent with the existing six-symbol
-rate analysis. No alignment waveform, complete payload mapper, PCM law,
-flag meaning, or receiver inverse is inferred solely from these routines.
+The 128 integrated contexts run the unmodified C840 caller, C9BF, C920,
+C761/C777 and C92A until C4AB. They seed the second candidate, ninth-index
+extra entries, level indices and levels. Checks establish constructor low
+byte preservation, six size slots of 9, and final bank selection/flags.
+They do not independently lift the intermediate level converter.
+C761 processes nine entries while C92A copies ten with count 9; the extra
+entry's full-call initialization and purpose remain open.
 
-Run `.venv/bin/python tools/recover_x2_mapper.py` to regenerate the conditional
-listing and comparison report. This test does not use hardware or patch the
-original program instructions. It only changes which extracted word is
-placed at the stated overlay origin in its component runner.
+The 4,096 received-record pipeline cases execute transfer, unpacking and
+expansion sequentially with prebuilt candidates. They intentionally skip
+the intervening negotiated candidate builder. No complete negotiated
+connection, payload mapper, alignment waveform, PCM law or receiver inverse
+is claimed.
 
-Negotiation documentation now includes the seven-bit body layout and the
-41-bit transmit script (39 framed bits plus two lead-in ones). The shared
-seven-bit detector is an INFO preamble detector from pre-x2 firmware, not a
-verified receiver for that proprietary body. See the correction in
-`docs/x2-v90-protocol-selection.md`.
+Run `.venv/bin/python tools/recover_x2_mapper.py` to regenerate the listing
+and report. Tests use the corrected full overlay bytes without modifying
+original program instructions. Negotiation framing and the historical
+preamble-detector correction remain in `docs/x2-v90-protocol-selection.md`.

@@ -104,28 +104,26 @@ constellation mapper is not fully reconstructed by this bundle.
 
 ## Quad PCM helpers
 
-**Alignment qualification (draft 0.2):** the existing Quad helper tests use
-the raw overlay placement and establish isolated equivalence only. New
-analysis finds internal targets one word before the identified bodies.
-Omitting the leading word yields coherent calls and the paired nine-entry
-tables. See `../x2-mapper-negotiation-20261004/README.md` for 8,384 component
-comparisons under that explicitly conditional placement. The stock transfer
-has not yet validated the omission; the production map is unchanged. The
-raw tables and EF00 selector below must not be treated as valid full mapper
-parameters.
+The stock controller source copies now validate all seven corrected overlay
+flat offsets across four modem RAM banks. Earlier extraction placed each
+overlay two bytes too early; no leading word is dropped by the downloader.
+The resident offset is unchanged. See
+`../x2-mapper-negotiation-20261004/placement-verification.json`.
 
-The later QF build supplies additional server mapping evidence:
+The regenerated QF lift and tests use the corrected complete sources:
 
-- `c7ae` sets four working parameters from `[ffd9]` bit 0.
-- `c9c0` copies nine codewords from program `c9ce` or `c9d7`, selected by
-  bit 2, to a caller-provided data destination.
-- `c995`/`c9a6` select program words using bit 2 and submode `[03e4]`;
-  `c9b7` chooses table base `cc2b` or `cb00`.
+- `c7ad` sets four working parameters from `[ffd9]` bit 0.
+- `c9bf` copies nine codewords from program `c9ce` or `c9d7`, selected by
+  bit 2, to a caller-provided destination.
+- `c994`/`c9a5` select program words using bit 2 and submode `[03e4]`;
+  `c9b6` chooses table base `cc2b` or `cb00`.
 
-The C lift preserves the raw results, including `ef00` for submode zero
-with bit 2 clear. That is not labeled a valid mapping function: it needs
-a caller-context trace. These are shared x2/V.90 helpers, not proof of a
-complete proprietary x2 mapper.
+The earlier extra leading codeword and EF00 selector output were source
+extraction errors. The corrected constructor and its startup consumers also
+execute together in 128 seeded contexts. The separate mapper bundle adds
+13,504 C comparison cases for received-record transfer, unpacking and six
+position preparation. These are shared x2/V.90 helpers; complete proprietary
+x2 payload mapping remains open.
 
 ## Verification
 

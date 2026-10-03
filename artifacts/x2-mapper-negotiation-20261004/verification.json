@@ -6,8 +6,21 @@
     "size_distribution": 4096,
     "six_descriptor_expansion": 192,
     "negotiated_parameter_unpacking": 512,
-    "received_parameter_transfer": 512
+    "received_parameter_transfer": 512,
+    "received_record_to_six_banks": 4096,
+    "startup_constructor_and_consumers": 128
   },
+  "startup_check_scope": "Unmodified C840 through C4AB; seeded second candidate and tenth entries; checks table bytes, sizes, and bank selection, not independent compander semantics.",
+  "position_decode_table": [
+    0,
+    1,
+    2,
+    1,
+    0,
+    3,
+    0,
+    3
+  ],
   "tables": {
     "0": [
       "0xa5",
@@ -32,5 +45,5 @@
       "0xd5"
     ]
   },
-  "total_cases": 9408
+  "total_cases": 13632
 }
