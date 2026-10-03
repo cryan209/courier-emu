@@ -221,8 +221,8 @@ BAC1–BACD picks `@7c` = bit 8 of y, XOR 3 if bit 8 of x is set, and calls
 
 So every point is folded into one quarter before the label lookup, and the
 quarter number becomes the low two bits of the 2D label (bit 2 is the
-half-step bit from x − y). 8B12 is the same four routines in another order,
-used at AF87, AFF0, B01E, B5B7 and B605.
+half-step bit from x − y). 8B12 is the same four routines in another order
+(0°, −90°, 180°, +90°); its users are below.
 
 C3A8 is invariant to rotation in the way the differential step needs:
 rotating both halves one quarter adds 1 (mod 4) to bits 2–1 of n and leaves
@@ -240,3 +240,40 @@ total) and the scale tables cover 31200/33600 bit/s. Both belong to the
 1996 V.34 extension; the 1994 version stopped at 28800 bit/s and 960
 points. B032 indexes C3A8
 the same way on another path (`@7c` and data 0865), also not traced.
+
+### 8B12 users: V.34 transmit mapper and training points
+
+* **AF67–AF8F and AFC1–AFFE: transmit mapping.** A label is looked up in
+  C208 (packed odd-coordinate byte pairs in energy order, 01/01, FD/01,
+  01/FD, FD/FD, 01/05, …: the V.34 label → point table). The point at 03F8
+  is then rotated by `8B12[quarter]`. The quarter is accumulated
+  differentially: `@5a = (@5a + new) & 3` at AFD7–AFDB and in B0E5. That is
+  the transmit side of the differential decode after C3A8. AF87 takes its
+  bits from 8CC2 (probably the scrambler; not traced); AFF0 then calls B146,
+  the 3-tap precoder with modulo wrap (ROM 0ED5 is the same kind of code).
+* **B064–B083: nonlinear encoder.** It runs only when the **remote** MP
+  (0340) has **bit 13** set, and scales the point by a polynomial in |p|²
+  (constants 3195, 0633). This confirms MP bit 13 is the nonlinear encoder,
+  applied by the transmitter at the receiver's request. The result goes to
+  the transmit buffer at 04B6 (B0EE).
+* **B5B7: 4-point training symbols.** Writes (2000, 2000) into 034C or 034E
+  (`@4b` bit 0), then jumps to `8B12[@7d & 3]`.
+* **B605: 16-point training symbols.** Each axis is 0E50 or −3 × 0E50, picked
+  by bits 2 and 3 of `@7d`, then rotated by `8B12[@7d & 3]`. These match
+  V.34's 4- and 16-point TRN sequences. They write the receiver's reference
+  cells (034C/034E), so they are probably the receiver's training reference.
+
+Open: the transmit path at AFDC reads `0260 − @4a`, the same region the
+receive path writes at 0260 + n. Whether the two share it at different
+times, or the two directions are not what they seem, was not resolved.
+
+### Relation to the 302/403 mask ROM
+
+None of this V.34 material is in the older C51 mask ROM
+(`artifacts/dsp-onchip-rom-20mhz-8k/`). No 16-word chunk of the probe
+signal, the 672-point constellation, the label lookup, the scale tables, the
+FFT, the precoder solve or the inverse shell mapper appears in it. What the
+two ROMs share is the vector layout, part of the V.32-family constellations
+(the 496-word 0250 → 00D0 block) and the top block. The 3453C mask is a newer
+image that includes 1996 V.34 (33.6k) tables, although the downloaded
+firmware carries its own copies and keeps the ROM unmapped at runtime.
