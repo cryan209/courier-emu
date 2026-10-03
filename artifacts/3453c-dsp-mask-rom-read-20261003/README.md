@@ -43,7 +43,7 @@ response, decoded point pairs, phasor magnitudes). Routine names are
 | 0560–058F | Small index/bitmask tables |
 | 0590–068F | 16×16 packed-byte table, symmetric, saturating to FF at centre; purpose unknown |
 | 06C4–06DB | 12 unit-circle points at 30° steps, radius 11585 (0.707 in Q14) |
-| 0700–099F | Two similar 336-word tables (values 23k–32k and zeros); unidentified |
+| 0700–099F | Four 168-word V.34 transmit-scale tables (0700, 07A8, 0850, 08F8); see below |
 | 09A0–09ED | Unit-magnitude (16384) phasors: four full-period rotations with steps −68.57°, −72°, −80°, −90° (17/21, 4/5, 7/9, 3/4 cycle); assignment unknown |
 
 ### Code, 09EE–0F45
@@ -60,9 +60,10 @@ Only 0A4C, 0CC1, 0DAF and 0E5E are direct call targets within the ROM.
 | 0B21–0BB6 | complex MAC / coefficient-update kernels; 0E13–0E70 wraps them for 64/32/16 taps, then jumps via `@48` |
 | 0BB7 | table builder using binomial kernel 0C1E (8, −28, 56, −70, …); possibly V.34 shell-mapping tables |
 | 0CEE–0DAE | possibly V.34 shell mapper (`mpyu` over data 5440/5470/54C0); 0DAF writes bits into a 128-bit ring at `@28` |
+| 0DFF | transmit-scale table lookup (see below); firmware copy at 302 overlay 6 A7C0 |
 | 0E71 | scrambler-like step, 4 bits per call |
 | 0E86 | complex autocorrelation over three lags into `@68–@77` |
-| 0C26 | solves three complex coefficients into data 4B60, zeroes them on a stability-check failure; fits V.34 precoder computation |
+| 0C26 | V.34 precoder solve: three complex taps into data 4B60, zeroed on a stability-check failure. Firmware copy at 302 overlay 6 B64A writes data 0850 |
 | 0ED5 | 3-tap precoding filter with modulo wrap (coefficients 4B66/4B69), quadrant table 0F24; likely V.34 precoder |
 | 0F28 | clears external data buffers at FBCC and F8CC |
 
@@ -70,3 +71,29 @@ The downloaded firmware already carries byte-identical copies of the probe
 signal, the 672-point constellation and the precoder (`2_3_33.XMF`, RAM
 captures), and live PMST keeps MP/MC set. So the resident probably does not
 call into this library at runtime; not exhaustively excluded.
+
+### Transmit-scale tables, 0700–099F
+
+Four tables of 168 words, each 28 rows × 6 columns. Columns are the V.34
+symbol rates 2400–3429; rows are the 14 data rates 2400–33600, two rows per
+rate. Zeros fall exactly on the rate/baud combinations V.34 disallows. All
+non-zero values lie in 0x5A82–0x7FFF (1/√2 to 1.0), i.e. mantissas of a
+scale whose exponent is held elsewhere.
+
+The consumer is ROM 0DFF, identical to `IDSDL302.ROM` overlay 6 A7C0
+(tables at A84E there, same order):
+
+    index = base + 12·rate + baud + 6·[FF38 bit 10] + 168·[precoder on] + 336·[FF38 bit 14]
+
+| Term | Meaning | Evidence |
+|---|---|---|
+| `@5b` | symbol-rate index 0–5 | same cell indexes the baud and carrier tables (`docs/codec-sample-rates.md`) |
+| `@7c` | data-rate index 1–14 (base = table − 12) | caller A77B loops it over all 14 rates, writing a per-rate result to data 0836 |
+| +168 | precoder taps non-zero | the six ORed words are data 0850–0855, which the precoder solve (B64A) fills or zeroes at B6F6 |
+| FF38 bit 10 | negotiated V.34 option | A5C5 clears it unless the remote's word `@40` has it |
+| FF38 bit 14 | negotiated V.34 option | kept with bits 13–10 and 1 by `apl #7c02` at A33C |
+
+FF38/FF39 is the local V.34 mode word; FF39 & 0x7FFF is the data-rate mask.
+Bits 14–10 are five contiguous options, matching the MP run auxiliary
+channel / trellis select (2) / nonlinear encoding / shaping. Bits 10 and 14
+are probably shaping and auxiliary channel in some order; **unproven**.
