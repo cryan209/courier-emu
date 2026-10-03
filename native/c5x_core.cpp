@@ -91,6 +91,8 @@ C5xCore::C5xCore(Model model)
 
 void C5xCore::reset()
 {
+    m_delay_move_ignored = 0;
+    m_delay_move_last_pc = m_delay_move_last_address = 0;
     m_pc = m_op = 0;
     m_acc = m_accb = m_preg = 0;
     m_treg0 = m_treg1 = m_treg2 = 0;
@@ -158,9 +160,14 @@ void C5xCore::reset()
     // Both wait-state registers come out of reset at maximum.
     m_pdwsr = m_iowsr = 0xffff; m_cwsr = 0x000e;
     m_codec_rx.clear();
+    m_codec_line_input = false;
+    m_codec_line_rx.clear();
+    m_codec_line_history.fill(0);
+    m_codec_line_position = 0;
     m_codec_boot.clear();
     m_line_rx.clear();
     m_line_tx.clear();
+    m_line_tx_clock_events.clear();
     m_line_rx_consumed = m_line_tx_nonzero = 0;
     m_line_dac_writes = m_line_dac_frames = 0;
     m_line_tx_last_pc = 0;
@@ -188,6 +195,7 @@ void C5xCore::reset()
     m_data_events.clear();
     m_data_write_counts.fill(0);
     m_pc_trace.clear();
+    m_pc_captures.clear();
     // Whether writes are traced, and which cell, is a diagnostic the caller
     // arms before the run - not device state the reset line clears. Clearing
     // it here silently disarmed every `--dsp-write-watch` on these images,
@@ -431,24 +439,31 @@ void C5xCore::codec_frame(bool secondary)
     // mechanism; it is not the DAC clock. In particular, a secondary exchange
     // or a missed DSP write does not delete time from the analog waveform --
     // the converter continues to hold the most recent primary sample.
-    const uint16_t output = m_codec.dac_pending ? m_codec.dac_sample : 0;
+    const uint16_t output = m_codec.dac_sample;
     m_codec.dac_pending = false;
     if (m_hybrid_return) {
         m_hybrid_line.push_back(int16_t(output));
         if (m_hybrid_line.size() > m_hybrid_delay + 64) m_hybrid_line.pop_front();
     }
+    if (m_line_tx_clock_events.empty()
+        || m_line_tx_clock_events.back()[1] != m_line_frame_period)
+        m_line_tx_clock_events.push_back({m_line_tx.size(), m_line_frame_period});
     m_line_tx.push_back(output);
     if (output) ++m_line_tx_nonzero;
     // The ADC converts whether or not the line is doing anything. An empty
     // queue is silence on the line, which is a delivered zero, not a repeat.
     int32_t analog = 0;
     bool present = false;
-    if (!m_codec_rx.empty()) {
+    if (m_codec_line_input) {
+        present = codec_line_sample(analog);
+        ++m_serial.rx_consumed;
+    } else if (!m_codec_rx.empty()) {
         analog = int16_t(m_codec_rx.front());
         m_codec_rx.pop_front();
         ++m_serial.rx_consumed;
         present = true;
     }
+    if (!present) ++m_codec.rx_empty_frames;
     // The hybrid's return sums with whatever the line brought in, at the
     // analog input, so it goes through the input gain with it.
     if (m_hybrid_return && m_hybrid_line.size() > m_hybrid_delay) {
@@ -485,7 +500,8 @@ C5xCore::CodecState C5xCore::codec_state() const
     CodecState out{};
     for (unsigned index = 0; index < 9; ++index)
         out.registers[index] = m_codec.registers[index];
-    out.codec_rx_size = m_codec_rx.size();
+    out.codec_rx_size = m_codec_line_input ? m_codec_line_rx.size() : m_codec_rx.size();
+    out.rx_empty_frames = m_codec.rx_empty_frames;
     out.line_frame_next_cycle = m_line_frame_next_cycle;
     out.cycles = m_cycles;
     out.line_frame_irq = m_line_frame_irq;
@@ -540,6 +556,77 @@ void C5xCore::queue_serial_rx(const uint16_t *samples, std::size_t count)
 {
     for (std::size_t index = 0; index < count; ++index) m_line_rx.push_back(samples[index]);
 }
+static double codec_i0(double x)
+{
+    double total = 1, term = 1;
+    for (unsigned k = 1; term > 1e-12 * total; ++k) {
+        term *= (x / (2 * k)) * (x / (2 * k));
+        total += term;
+    }
+    return total;
+}
+
+void C5xCore::queue_line_rx(const uint16_t *samples, std::size_t count)
+{
+    if (!m_codec_line_input) {
+        m_codec_line_input = true;
+        // Prime once, in line samples. A codec retune must never insert a
+        // fresh cushion into an already continuous receive waveform.
+        m_codec_line_rx.insert(m_codec_line_rx.end(), 32, 0);
+    }
+    for (std::size_t k = 0; k < count; ++k)
+        m_codec_line_rx.push_back(samples[k]);
+}
+
+bool C5xCore::codec_line_sample(int32_t &sample)
+{
+    constexpr double pi = 3.14159265358979323846;
+    const double rate = double(C5X_CLOCK_HZ) / m_line_frame_period;
+    // Reconstruct the ideal exchange waveform through the lower Nyquist
+    // limit. An additional 2% cutoff reduction attenuates the upper PCM
+    // band before the client's equalizer and reduces the negotiated x2 rate.
+    const double cutoff = 0.5 * std::min(1.0, rate / 8000.0);
+    if (cutoff != m_codec_line_cutoff || m_codec_line_kernel.empty()) {
+        m_codec_line_cutoff = cutoff;
+        m_codec_line_kernel.resize(1025);
+        const double norm = codec_i0(8);
+        for (unsigned phase = 0; phase <= 1024; ++phase) {
+            double total = 0;
+            for (unsigned k = 0; k < 128; ++k) {
+                const double t = double(k) - 63 - double(phase) / 1024;
+                const double x = 2 * cutoff * t;
+                const double sinc = x == 0 ? 1 : std::sin(pi * x) / (pi * x);
+                const double ratio = t / 64;
+                const double window = std::abs(ratio) < 1
+                    ? codec_i0(8 * std::sqrt(1 - ratio * ratio)) / norm : 0;
+                total += (m_codec_line_kernel[phase][k] = 2 * cutoff * sinc * window);
+            }
+            for (double &tap : m_codec_line_kernel[phase]) tap /= total;
+        }
+    }
+    bool present = true;
+    const unsigned advance = unsigned(m_codec_line_position);
+    for (unsigned k = 0; k < advance; ++k) {
+        std::move(m_codec_line_history.begin() + 1, m_codec_line_history.end(),
+                  m_codec_line_history.begin());
+        if (m_codec_line_rx.empty()) {
+            m_codec_line_history.back() = 0;
+            present = false;
+        } else {
+            m_codec_line_history.back() = int16_t(m_codec_line_rx.front());
+            m_codec_line_rx.pop_front();
+        }
+    }
+    m_codec_line_position -= advance;
+    const unsigned phase = unsigned(std::round(m_codec_line_position * 1024));
+    double value = 0;
+    for (unsigned k = 0; k < 128; ++k)
+        value += m_codec_line_history[k] * m_codec_line_kernel[phase][k];
+    sample = int32_t(std::clamp(std::round(value), -32768.0, 32767.0));
+    m_codec_line_position += 8000.0 / rate;
+    return present;
+}
+
 void C5xCore::queue_codec_rx(const uint16_t *samples, std::size_t count)
 {
     for (std::size_t index = 0; index < count; ++index) {
@@ -1014,6 +1101,13 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
     case 0x1e: return m_cbcr; case 0x1f: return m_bmar;
     case 0x20:
         ++m_serial.drr_reads; m_serial.last_drr_pc = uint16_t(m_pc - 1);
+        if (m_digital_pcm) {
+            // The I-modem serial word contains G.711 time slots, not AC01
+            // samples or register commands. Read the word latched by its
+            // digital frame clock, without analogue codec readback/FIFO work.
+            m_codec.rx_ready = false;
+            return m_serial.drr;
+        }
         if (m_rom_codec) {
             if (!m_codec_boot.empty()) {
                 // The ROM boot loader polling its table. This is the ASIC
@@ -1131,7 +1225,9 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         // business, not the caller's: the previous frame's control bits decided
         // it. This used to be two hardcoded ISR addresses, which recognised the
         // samples of two known builds and no others.
-        codec_transmit(value);
+        // Raw digital octets can have the same bits as AC01 secondary-frame
+        // commands. Decoding them as codec control corrupts later DRR reads.
+        if (!m_digital_pcm) codec_transmit(value);
         return;
     case 0x22:
         // A 0 -> 1 edge on XRST releases the transmitter with DXR empty.
@@ -1480,6 +1576,14 @@ void C5xCore::step()
                                   ? (uint32_t(m_pcstack[m_pcstack_ptr]) << 16 | uint32_t((m_cycles >> 8) & 0xffff))
                                   : uint32_t(m_acc)));
         }
+        if (!m_capture_addresses.empty() && previous_pc == m_capture_pc) {
+            std::vector<uint64_t> capture = {m_instructions, m_cycles,
+                uint32_t(m_acc), uint16_t(m_st0.dp >> 7), m_st1.c};
+            for (const uint16_t address : m_capture_addresses)
+                capture.push_back(address < 0x60 ? register_value(address) : data(address));
+            if (m_pc_captures.size() >= 64) m_pc_captures.pop_front();
+            m_pc_captures.push_back(std::move(capture));
+        }
         (this->*s_opcode_table[m_op >> 8])();
         if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;
         if (m_repeat_active && previous_pc == m_rpt_end) {
@@ -1648,9 +1752,10 @@ void C5xCore::run(uint64_t instruction_limit)
     for (uint64_t i = 0; i < instruction_limit; ++i) step();
 }
 
-void C5xCore::run_cycles(uint64_t cycle_limit)
+void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
 {
     const uint64_t target = m_cycles + cycle_limit;
+    const std::size_t initial_pcm_size = m_g711_tx.size();
     while (m_cycles < target) {
         // IDLE stops instruction fetch while the clocks and peripherals keep
         // running. Skip only cycles on which no modeled event can occur, then
@@ -1684,6 +1789,11 @@ void C5xCore::run_cycles(uint64_t cycle_limit)
             }
         }
         step();
+        // The digital board's MUX exchange supplies the next receive word.
+        // Return each completed frame before clocking another one; otherwise
+        // a long host scheduler slice fabricates empty receive slots.
+        if (yield_on_pcm_frame && m_g711_tx.size() != initial_pcm_size)
+            break;
     }
 }
 
@@ -1704,7 +1814,9 @@ C5xCore::SerialState C5xCore::serial_state() const
     return {m_serial.drr, m_serial.dxr, m_serial.spc,
         m_serial.drr_reads, m_serial.dxr_writes, m_serial.spc_writes,
         m_line_rx_consumed, m_line_rx.size(),
-        m_serial.rx_consumed, m_serial.rx_consumed + m_codec_rx.size(),
+        m_serial.rx_consumed, m_serial.rx_consumed + (m_codec_line_input
+            ? uint64_t(std::ceil(m_codec_line_rx.size() * double(C5X_CLOCK_HZ)
+                / m_line_frame_period / 8000.0)) : m_codec_rx.size()),
         m_serial.last_drr_pc, m_serial.last_dxr_pc, m_serial.last_spc_pc,
         m_tdm.trcv, m_tdm.tdxr, m_tdm.tspc,
         m_tdm.trcv_reads, m_tdm.tdxr_writes, m_tdm.tspc_writes,

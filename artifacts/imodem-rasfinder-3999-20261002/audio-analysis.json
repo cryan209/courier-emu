@@ -1,0 +1,88 @@
+{
+  "caller_to_imodem_dsp_bearer": {
+    "ansam_2100hz_window": {
+      "at_seconds": 6.4,
+      "sideband_magnitude": {
+        "2084.95": 277.9,
+        "2115.05": 276.3
+      },
+      "sideband_to_carrier_ratio": {
+        "2084.95": 0.1007,
+        "2115.05": 0.1001
+      }
+    },
+    "idle_codewords": 19700,
+    "non_idle_codewords": 370654,
+    "octets": 390354,
+    "path": "/Users/scottcryan/courier-emu/artifacts/imodem-rasfinder-3999-20261002/rasfinder-to-imodem.g711",
+    "peak": 32124,
+    "rms": 4252.1,
+    "seconds": 48.794,
+    "strongest_windows": {
+      "ansam": {
+        "at_seconds": 6.4,
+        "hz": 2100,
+        "magnitude": 2760.3
+      },
+      "calling-tone": {
+        "at_seconds": 21.4,
+        "hz": 1300,
+        "magnitude": 38.6
+      },
+      "v21-mark": {
+        "at_seconds": 9.8,
+        "hz": 980,
+        "magnitude": 54.7
+      },
+      "v21-space": {
+        "at_seconds": 30.8,
+        "hz": 1180,
+        "magnitude": 37.0
+      }
+    }
+  },
+  "imodem_dsp_bearer_to_caller": {
+    "ansam_2100hz_window": {
+      "at_seconds": 20.8,
+      "sideband_magnitude": {
+        "2084.95": 27.0,
+        "2115.05": 56.9
+      },
+      "sideband_to_carrier_ratio": {
+        "2084.95": 0.0377,
+        "2115.05": 0.0794
+      }
+    },
+    "idle_codewords": 103606,
+    "non_idle_codewords": 290234,
+    "octets": 393840,
+    "path": "/Users/scottcryan/courier-emu/artifacts/imodem-rasfinder-3999-20261002/imodem-to-rasfinder.g711",
+    "peak": 9340,
+    "rms": 2243.2,
+    "seconds": 49.23,
+    "strongest_windows": {
+      "ansam": {
+        "at_seconds": 20.8,
+        "hz": 2100,
+        "magnitude": 716.8
+      },
+      "calling-tone": {
+        "at_seconds": 10.0,
+        "hz": 1300,
+        "magnitude": 105.1
+      },
+      "v21-mark": {
+        "at_seconds": 8.6,
+        "hz": 980,
+        "magnitude": 604.4
+      },
+      "v21-space": {
+        "at_seconds": 9.6,
+        "hz": 1180,
+        "magnitude": 245.6
+      }
+    }
+  },
+  "interpretation": "Confirm the run JSON reports bri.media.rx_delivered >= the SIP received_from_rtp count. A strong 2100 Hz window in the I-modem capture plus symmetric 2084.95/2115.05 Hz sidebands is ANSam evidence; energy near 980/1180 Hz and changing non-idle audio in the caller capture is V.8 evidence.",
+  "sample_rate": 8000
+}

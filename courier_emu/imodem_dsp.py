@@ -14,9 +14,10 @@ PP_SLOTS = 2
 # nothing on that channel.
 IDLE_CODEWORD = 0xff
 
-# The ASIC clocks the I-modem's C51 and its digital PCM highway from the same
-# 40.32 MHz can as the analogue boards, so the model uses that figure for both
-# sides of the ratio; the PCM result is still exactly 8 kHz. CPU instruction
+# The model assumes a 40.32 MHz C51 machine clock from the ASIC. The can's
+# frequency alone does not establish the ASIC output or C51 clock-mode pins;
+# see docs/asic-pinout.md, "What is still unknown". Using the same figure for
+# the PCM divider and pacing gives exactly 8 kHz. CPU instruction
 # throughput is not a usable substitute for that clock during a live call:
 # Unicorn may run faster or slower than real time, while RTP continues to
 # deliver one sample every 125 us.
@@ -30,7 +31,7 @@ ROM_SHA256 = 'd57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9'
 
 
 class ImodemDsp(ImodemMailbox):
-    def __init__(self, dsc=None):
+    def __init__(self, dsc=None, *, foreground_overlay_assist=False):
         super().__init__(self._command)
         self.core = None
         self.tx_ready = False
@@ -47,10 +48,16 @@ class ImodemDsp(ImodemMailbox):
         self.overlay_recent = []
         self.overlay_control = []
         self._call_overlay_mode = False
+        # Diagnostic only: executing a guest command handler on the host is
+        # not hardware emulation. The default must expose the missing native
+        # dispatch transition rather than conceal it with writes to DSP RAM.
+        self.foreground_overlay_assist = foreground_overlay_assist
+        self.foreground_overlay_assists = 0
         self.bootstrap_words = 0
         self.error = None
         self._reply_writes = 0
         self.dsc = dsc
+        self.pcm_frame_service = None
         self.pcm_tx = bytearray()
         self._pcm_cursor = 0
         self._pcm_partial = b''
@@ -87,23 +94,21 @@ class ImodemDsp(ImodemMailbox):
             # those commands again after reset, rather than retaining the
             # foreground call-overlay shortcut across a new bootstrap.
             self._call_overlay_mode = False
-        active_overlay_request = tag == 2 and self._call_overlay_mode
+        active_overlay_request = (self.foreground_overlay_assist
+                                  and tag == 2 and self._call_overlay_mode)
         if tag == 2:
             self.overlay_control.append(("command", value,
                                          int(active_overlay_request)))
         self.core.set_io(0x5e, tag)
         self.core.set_io(0x5f, value)
         self.core.set_io(0x57, self.core.io(0x57) | 1)
-        # The resident polls PA7 while idle, but the V.8 handler that requests
-        # a mid-call datapump owns the foreground until that datapump replaces
-        # it. Apply command 2's tiny native handler (840f..8414) at this exact
-        # boundary: copy its argument to the BLDP destination cell and
-        # acknowledge the command. Without that acknowledgement the x86 waits
-        # for mailbox room before it enters the overlay sender, while the C5x
-        # waits for the overlay: neither side can make progress. The ordinary
-        # idle path still executes the firmware handler instruction by
-        # instruction during startup.
+        # Historical diagnostic bypass for the formerly stalled foreground
+        # handoff: reproduce command 2's handler (840f..8414) on the host.
+        # Current native runs execute the handoff successfully without this
+        # bypass. Keep it explicitly opt-in for comparing older traces, never
+        # as part of the default hardware/mailbox path.
         if active_overlay_request:
+            self.foreground_overlay_assists += 1
             self.core.set_data(0x0BFF, value)
             # The supervisor strobes bit 10 *before* sending command 2 and
             # waits for it to clear before publishing any overlay words.
@@ -163,11 +168,17 @@ class ImodemDsp(ImodemMailbox):
         if native_step_cycles is not None:
             native_advance = getattr(self.core, 'advance_imodem', None)
             if native_advance is not None:
-                ran, elapsed, status, tag, value, writes, octets = native_advance(
-                    int(self._cycle_debt), self._pcm_cursor)
-                self._sync_values(status, tag, value, writes)
-                if octets:
-                    self._sync_pcm(octets)
+                ran = elapsed = 0
+                remaining = int(self._cycle_debt)
+                while remaining > 0:
+                    done, spent, status, tag, value, writes, octets = native_advance(
+                        remaining, self._pcm_cursor)
+                    self._sync_values(status, tag, value, writes)
+                    if octets:
+                        self._sync_pcm(octets)
+                    ran += done
+                    elapsed += spent
+                    remaining -= spent
             else:
                 ran, elapsed = native_step_cycles(int(self._cycle_debt))
                 self._sync()
@@ -192,7 +203,7 @@ class ImodemDsp(ImodemMailbox):
             self._cpi = 0.9 * self._cpi + 0.1 * max(
                 1.0, (current - start_cycles) / ran)
 
-    def pace_realtime(self, active, now=None):
+    def pace_realtime(self, active, now=None, *, max_wall_seconds=None):
         """Advance the digital PCM clock against monotonic wall time.
 
         The ordinary harness couples C51 progress to 386 instructions.  That
@@ -200,7 +211,8 @@ class ImodemDsp(ImodemMailbox):
         is different: its far end has an independent 8 kHz clock, so while the
         B channel is active we advance the modeled C51 clock at 40.32 MHz
         directly from elapsed wall time.  This keeps both directions at one
-        codeword per 125 us without changing firmware timers elsewhere.
+        codeword per 125 us. The supervisor peripheral clock follows the same
+        wall time during live calls (see IsdnMachine._peripheral_instructions).
         """
         if not active or self.core is None:
             self._realtime_origin = None
@@ -214,15 +226,26 @@ class ImodemDsp(ImodemMailbox):
         target = origin_cycles + int(
             max(0.0, current_time - origin_time) * DIGITAL_PCM_CLOCK_HZ
         )
+        # A delayed host must not monopolize the scheduler catching up the
+        # DSP while the supervisor's timer edges collapse into one PIC bit.
+        # Leave the absolute cycle target intact for the next CPU slice.
+        deadline = (time.monotonic() + max_wall_seconds
+                    if max_wall_seconds is not None else None)
         native_step_cycles = getattr(self.core, 'step_cycles', None)
         if cycles < target and native_step_cycles is not None:
             native_advance = getattr(self.core, 'advance_imodem', None)
             if native_advance is not None:
-                _, elapsed, status, tag, value, writes, octets = native_advance(
-                    target - cycles, self._pcm_cursor)
-                self._sync_values(status, tag, value, writes)
-                if octets:
-                    self._sync_pcm(octets)
+                elapsed = 0
+                while cycles < target:
+                    _, spent, status, tag, value, writes, octets = native_advance(
+                        target - cycles, self._pcm_cursor)
+                    self._sync_values(status, tag, value, writes)
+                    if octets:
+                        self._sync_pcm(octets)
+                    cycles += spent
+                    elapsed += spent
+                    if deadline is not None and time.monotonic() >= deadline:
+                        break
             else:
                 _, elapsed = native_step_cycles(target - cycles)
                 self._sync()
@@ -239,6 +262,8 @@ class ImodemDsp(ImodemMailbox):
             new_cycles = self.core.state()['cycles']
             self.realtime_cycles += new_cycles - cycles
             cycles = new_cycles
+            if deadline is not None and time.monotonic() >= deadline:
+                break
 
     def _sync_values(self, status, tag, value, writes):
         if self.host_pending and not status & 1:
@@ -276,6 +301,8 @@ class ImodemDsp(ImodemMailbox):
             })
             incoming.extend(outputs.get(port, IDLE_CODEWORD) if port
                             else IDLE_CODEWORD for port in slots)
+            if self.pcm_frame_service is not None:
+                self.pcm_frame_service()
         if incoming:
             self.core.queue_g711_rx(bytes(incoming))
 
@@ -483,8 +510,11 @@ class ImodemDsp(ImodemMailbox):
                       overlay_writes=self.overlay_writes,
                       overlay_recent=self.overlay_recent,
                       overlay_control=self.overlay_control,
+                      foreground_overlay_assist=self.foreground_overlay_assist,
+                      foreground_overlay_assists=self.foreground_overlay_assists,
                       latch_writes=self.latch_writes,
                       error=self.error, core=self.core.state() if self.core else None,
+                      memory_map=self.core.memory_map() if self.core else None,
                       core_stack=self.core.stack() if self.core else None,
                       dsp_status=self.core.io(0x57) if self.core else None)
         names = {3: 'Ba', 4: 'Bb', 5: 'Bc', 6: 'Bd', 7: 'Be', 8: 'Bf'}

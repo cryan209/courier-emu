@@ -1,0 +1,122 @@
+{
+  "captures": 23367,
+  "max_capture_cycle_gap": 10106,
+  "native_samples": 9600,
+  "native": {
+    "min": -21338,
+    "max": 9268,
+    "rms": 5497.77894737199,
+    "spectral_peaks": [
+      {
+        "frequency": 1200.0,
+        "magnitude": 7346177.470951128
+      },
+      {
+        "frequency": 2400.0,
+        "magnitude": 6098154.494905048
+      },
+      {
+        "frequency": 1600.0,
+        "magnitude": 6084665.736102662
+      },
+      {
+        "frequency": 800.0,
+        "magnitude": 6011539.494424671
+      },
+      {
+        "frequency": 3200.0,
+        "magnitude": 5103481.992610434
+      },
+      {
+        "frequency": 2600.0,
+        "magnitude": 4372719.501073625
+      },
+      {
+        "frequency": 1400.0,
+        "magnitude": 4346540.23097695
+      },
+      {
+        "frequency": 1000.0,
+        "magnitude": 4305109.960250713
+      },
+      {
+        "frequency": 1800.0,
+        "magnitude": 4301995.701873202
+      },
+      {
+        "frequency": 2200.0,
+        "magnitude": 4298985.949105833
+      },
+      {
+        "frequency": 600.0,
+        "magnitude": 4264801.002792407
+      },
+      {
+        "frequency": 3000.0,
+        "magnitude": 4087266.4132179385
+      }
+    ],
+    "difference_8_rms": 7336.608802485298,
+    "difference_48_rms": 0.0
+  },
+  "bearer": {
+    "min": -4092,
+    "max": 4092,
+    "rms": 2977.984821989528,
+    "spectral_peaks": [
+      {
+        "frequency": 1200.0,
+        "magnitude": 8420981.269893855
+      },
+      {
+        "frequency": 1199.0,
+        "magnitude": 4211280.109022592
+      },
+      {
+        "frequency": 1201.0,
+        "magnitude": 4211280.109022326
+      },
+      {
+        "frequency": 3600.0,
+        "magnitude": 111749.22315062326
+      },
+      {
+        "frequency": 3601.0,
+        "magnitude": 55885.087970922024
+      },
+      {
+        "frequency": 3599.0,
+        "magnitude": 55885.08797068375
+      },
+      {
+        "frequency": 2800.0,
+        "magnitude": 54708.106886436566
+      },
+      {
+        "frequency": 2000.0,
+        "magnitude": 29411.965664074072
+      },
+      {
+        "frequency": 2799.0,
+        "magnitude": 27359.18284753146
+      },
+      {
+        "frequency": 2801.0,
+        "magnitude": 27359.18284687009
+      },
+      {
+        "frequency": 2001.0,
+        "magnitude": 14708.73944621259
+      },
+      {
+        "frequency": 1999.0,
+        "magnitude": 14708.739443643675
+      }
+    ]
+  },
+  "receive_index_checks": 23366,
+  "receive_index_mismatches": 0,
+  "seconds_for_last_9599_intervals": 0.9998747023809523,
+  "dsp_receive_underruns": 0,
+  "dsc_receive_underruns": 0
+}

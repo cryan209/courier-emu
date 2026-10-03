@@ -7,6 +7,7 @@ import math
 import random
 import re
 import socket
+import threading
 import time
 
 
@@ -271,12 +272,13 @@ class SipSession:
         self._register_call_id = f"{random.getrandbits(64):016x}@{self.local_ip}"
         self._register_cseq = 0
         self._register_auth_attempted = False
+        self._register_refresh_at: float | None = None
         self._tx_audio: deque[int] = deque(maxlen=PCMU_RATE * 2)
         # Codeword mode: the B channel's own G.711 octets, in and out, with no
         # conversion at either end. set_codewords() turns it on.
         self.codewords = False
-        self._tx_codewords: deque[int] = deque(maxlen=PCMU_RATE * 2)
-        self._rx_codewords: deque[int] = deque(maxlen=PCMU_RATE * 2)
+        self._tx_codewords: deque[int] = deque()
+        self._rx_codewords: deque[int] = deque()
         self._rx_audio: deque[int] = deque()
         self._rtp_sequence = random.getrandbits(16)
         self._rtp_timestamp = random.getrandbits(32)
@@ -286,7 +288,41 @@ class SipSession:
         self.rtp_packets_received = 0
         self.rtp_octets_sent = 0
         self.rtp_octets_received = 0
+        self.preanswer_samples_discarded = 0
         self.closed = False
+        self._rtp_lock = threading.RLock()
+        self._rtp_clock_thread = None
+        self._rtp_clock_stop = threading.Event()
+        self._rtp_clock_wake = threading.Event()
+        self._rtp_tx_primed = False
+        self._rtp_tx_buffer_samples = 480
+
+    def enable_media_clock(self, *, buffer_samples: int = 480) -> None:
+        """Send B-channel RTP independently of emulator scheduler passes."""
+        if buffer_samples < RTP_PACKET_SAMPLES:
+            raise ValueError('RTP transmit buffer must hold at least one packet')
+        with self._rtp_lock:
+            self._rtp_tx_buffer_samples = buffer_samples
+        if self._rtp_clock_thread is not None:
+            return
+        self._rtp_clock_thread = threading.Thread(
+            target=self._run_media_clock, name='courier-rtp', daemon=True)
+        self._rtp_clock_thread.start()
+
+    def _run_media_clock(self) -> None:
+        while not self._rtp_clock_stop.is_set():
+            self._rtp_clock_wake.clear()
+            try:
+                self._flush_rtp(time.monotonic())
+            except OSError as exc:
+                if not self.closed:
+                    self.error = str(exc)
+                return
+            # Producer arrivals wake an unprimed sender. Once primed, the
+            # packet deadline is independent of the producer's call frequency.
+            delay = (max(0.001, self._next_rtp_at - time.monotonic())
+                     if self._rtp_tx_primed else 0.02)
+            self._rtp_clock_wake.wait(min(0.02, delay))
 
     def _target(self, number: str) -> str:
         if self.config.target:
@@ -428,6 +464,10 @@ class SipSession:
 
     def register(self, authorization: str = "") -> None:
         """Register this UDP contact with the configured SIP server."""
+        if not authorization:
+            self._register_auth_attempted = False
+        # Retry a missing/failed registration without flooding the registrar.
+        self._register_refresh_at = time.monotonic() + 30
         self._register_cseq += 1
         uri = f"sip:{self.server_host}"
         branch = f"z9hG4bK{random.getrandbits(48):012x}"
@@ -468,7 +508,19 @@ class SipSession:
             self.register(authorization)
             return
         if 200 <= status < 300:
-            self.registered = True
+            contact_expiry = re.search(
+                r"(?:^|;)\s*expires\s*=\s*\"?(\d+)",
+                headers.get("contact", ""), re.IGNORECASE)
+            expiry = (contact_expiry.group(1) if contact_expiry
+                      else headers.get("expires", "300"))
+            try:
+                lifetime = max(0, int(expiry))
+            except ValueError:
+                lifetime = 300
+            self.registered = lifetime > 0
+            self._register_refresh_at = (
+                time.monotonic() + max(1, lifetime * 0.8)
+                if lifetime else None)
             return
         if status >= 300:
             self.error = f"REGISTER failed with SIP {status}"
@@ -781,6 +833,9 @@ class SipSession:
             self.rtp_packets_received += 1
             self.rtp_octets_received += len(packet) - 12
         now = time.monotonic()
+        refresh_at = getattr(self, "_register_refresh_at", None)
+        if refresh_at is not None and now >= refresh_at:
+            self.register()
         # Only an INVITE that has drawn no response at all is retransmitted.
         # RFC 3261 stops timer A on the first provisional, and retransmitting
         # through a long ringback sent the proxy one INVITE a second.
@@ -793,8 +848,13 @@ class SipSession:
         self._flush_rtp(now)
 
     def send_audio(self, samples: list[int]) -> None:
-        if self.state in ("inviting", "trying", "ringing", "connected"):
-            self._tx_audio.extend(samples)
+        with self._rtp_lock:
+            if self.state == "connected":
+                self._tx_audio.extend(samples)
+            elif self.state in ("inviting", "trying", "ringing"):
+                self.preanswer_samples_discarded += len(samples)
+        if self._rtp_clock_thread is not None and not self._rtp_tx_primed:
+            self._rtp_clock_wake.set()
         self._flush_rtp(time.monotonic())
 
     # -- codewords ---------------------------------------------------------
@@ -812,8 +872,16 @@ class SipSession:
         self.codewords = enabled
 
     def send_pcmu(self, octets: bytes) -> None:
-        if self.state in ("inviting", "trying", "ringing", "connected"):
-            self._tx_codewords.extend(octets)
+        # The DSP-facing bearer can start before the SIP peer answers. Those
+        # samples have already elapsed when the RTP media clock starts;
+        # queueing them adds a permanent ring-time delay to training replies.
+        with self._rtp_lock:
+            if self.state == "connected":
+                self._tx_codewords.extend(octets)
+            elif self.state in ("inviting", "trying", "ringing"):
+                self.preanswer_samples_discarded += len(octets)
+        if self._rtp_clock_thread is not None and not self._rtp_tx_primed:
+            self._rtp_clock_wake.set()
         self._flush_rtp(time.monotonic())
 
     def receive_pcmu(self, count: int | None = None) -> bytes:
@@ -824,7 +892,28 @@ class SipSession:
         return taken
 
     def _flush_rtp(self, now: float) -> None:
+        worker = self._rtp_clock_thread
+        if worker is not None and threading.current_thread() is not worker:
+            return
+        with self._rtp_lock:
+            self._flush_rtp_locked(now)
+
+    def _flush_rtp_locked(self, now: float) -> None:
         source = self._tx_codewords if self.codewords else self._tx_audio
+        if self._rtp_clock_thread is not None:
+            if self.state != 'connected':
+                self._rtp_tx_primed = False
+                return
+            if not self._rtp_tx_primed:
+                if len(source) < self._rtp_tx_buffer_samples:
+                    return
+                self._rtp_tx_primed = True
+                self._next_rtp_at = now
+            elif now >= self._next_rtp_at and len(source) < RTP_PACKET_SAMPLES:
+                # A genuine production outage cannot be hidden with invented
+                # samples. Retain every codeword and rebuild the reserve.
+                self._rtp_tx_primed = False
+                return
         # The analogue bridge hands us 100 ms blocks while RTP packetizes
         # 20 ms. Send every packet whose playout time has arrived, not merely
         # one packet per bridge call. The old one-shot form turned an otherwise
@@ -879,6 +968,10 @@ class SipSession:
             rtp_packets_received=self.rtp_packets_received,
             rtp_octets_sent=self.rtp_octets_sent,
             rtp_octets_received=self.rtp_octets_received,
+            preanswer_samples_discarded=self.preanswer_samples_discarded,
+            rtp_tx_queued_samples=len(self._tx_codewords if self.codewords else self._tx_audio),
+            rtp_tx_buffer_samples=(self._rtp_tx_buffer_samples
+                                   if self._rtp_clock_thread is not None else 0),
             events=list(self.events),
         )
         return value
@@ -914,9 +1007,11 @@ class SipSession:
         self._incoming_headers = {}
         self._incoming_response = b""
         self._incoming_ringing = False
-        self._tx_audio.clear()
+        with self._rtp_lock:
+            self._tx_audio.clear()
+            self._tx_codewords.clear()
+            self._rtp_tx_primed = False
         self._rx_audio.clear()
-        self._tx_codewords.clear()
         self._rx_codewords.clear()
 
     def close(self) -> None:
@@ -930,5 +1025,9 @@ class SipSession:
             except OSError:
                 pass
         self.closed = True
+        self._rtp_clock_stop.set()
+        self._rtp_clock_wake.set()
+        if self._rtp_clock_thread is not None:
+            self._rtp_clock_thread.join(timeout=1)
         self.socket.close()
         self.rtp_socket.close()

@@ -1,0 +1,47 @@
+{
+  "objective_minimum_bps": 53333,
+  "analog_connect_rate_bps": 53333,
+  "imodem_connect_rate_bps": 33333,
+  "data_delivery": {
+    "analog_to_imodem": true,
+    "imodem_to_analog": true
+  },
+  "guest_no_carrier": {
+    "analog": false,
+    "imodem": false
+  },
+  "cpu_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "dsp_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "receive_underruns": {
+    "analog_connected": 0,
+    "imodem_pcm": 0
+  },
+  "frame_ms": 20,
+  "instructions": {
+    "analog": 450000000,
+    "imodem": 600000000
+  },
+  "imodem_s_registers": {
+    "54": 0,
+    "56": 0,
+    "58": 48
+  },
+  "imodem_server_enabled": true,
+  "foreground_overlay_assist": false,
+  "rx_acquisition_assist": false,
+  "settings": {
+    "analog": "X1S27=1S54=0S58=48&A3&B1Q0&U26&N39",
+    "imodem": "S54=0S58=48&A3&B1Q0"
+  },
+  "native_terminal_output": {
+    "analog": "\r\nCONNECT 53333/ARQ/x2/LAPM/V42BIS\r\nX2-FULLBAND-HIGHPOWER-SERVER",
+    "imodem": "\r\nOK\r\n\r\nCONNECT 33333/ARQ/x2/LAPM/V42BIS\r\nX2-FULLBAND-HIGHPOWER-CALLER"
+  },
+  "goal_requirements_verified": true
+}

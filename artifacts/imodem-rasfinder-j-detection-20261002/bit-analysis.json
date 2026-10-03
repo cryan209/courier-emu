@@ -1,0 +1,13 @@
+{
+  "captured_symbols": 3436,
+  "consecutive_pairs": 1691,
+  "descrambler_errors": [],
+  "history_shift_errors": [],
+  "native_J_matches": [
+    {
+      "row": 3435,
+      "dsp_seconds": 19.364888095238094,
+      "pattern": "8990"
+    }
+  ]
+}

@@ -185,7 +185,7 @@ public:
         // Diagnostics for "the queue is fed but nothing is consumed": what the
         // native codec queue actually holds, and where the frame driver's next
         // edge sits against the cycle counter it is compared against.
-        uint64_t codec_rx_size, line_frame_next_cycle, cycles;
+        uint64_t codec_rx_size, line_frame_next_cycle, cycles, rx_empty_frames;
         int32_t line_frame_irq;
         uint32_t mclk_hz;
         uint64_t sample_rate_millihz;
@@ -242,6 +242,7 @@ public:
     void host_write(uint16_t address, uint16_t value);
     void queue_serial_rx(const uint16_t *samples, std::size_t count);
     void queue_codec_rx(const uint16_t *samples, std::size_t count);
+    void queue_line_rx(const uint16_t *samples, std::size_t count);
     // `return_scale` is 1/256ths of the transmit sample; `delay` is in codec
     // frames. Zero scale opens the loop and drops the delay line.
     void set_hybrid_return(uint32_t return_scale, uint32_t delay);
@@ -318,9 +319,12 @@ public:
     void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
     void step();
     void run(uint64_t instruction_limit);
-    void run_cycles(uint64_t cycle_limit);
+    void run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame = false);
     uint64_t instruction_count() const { return m_instructions; }
     uint64_t cycle_count() const { return m_cycles; }
+    std::array<uint64_t, 3> delay_move_state() const {
+        return {m_delay_move_ignored, m_delay_move_last_pc, m_delay_move_last_address};
+    }
     void set_data_trace(bool enabled) { m_trace_data_writes = enabled; }
     // Restrict the write trace to one cell. Unfiltered it records every
     // write and the 4096-event buffer covers a few milliseconds of a run,
@@ -353,6 +357,16 @@ public:
     const std::deque<uint64_t> &pc_trace() const { return m_pc_trace; }
     // Empty it, so a harness draining it between runs sees each entry once.
     void clear_pc_trace() { m_pc_trace.clear(); }
+    // Read-only snapshots at an instruction boundary, for comparing a
+    // signal-processing decision with the exact samples it consumed.
+    void set_pc_capture(uint16_t pc, const std::vector<uint16_t> &addresses)
+    {
+        m_capture_pc = pc;
+        m_capture_addresses = addresses;
+        m_pc_captures.clear();
+    }
+    const std::deque<std::vector<uint64_t>> &pc_captures() const { return m_pc_captures; }
+    void clear_pc_captures() { m_pc_captures.clear(); }
     // The trace windows. Two are compiled in for the call overlay and the
     // low-page stub; a third is settable so a caller can watch a handler
     // elsewhere - 3.1.2's mailbox tag 0x13 enters ee20, which neither
@@ -363,6 +377,7 @@ public:
         m_trace_last = last;
     }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
+    const std::vector<std::array<uint64_t, 2>> &line_tx_clock_events() const { return m_line_tx_clock_events; }
     // The per-instruction probes in step(): the V.8 dispatch record, the
     // negotiation-loop capture, the first-execution record and the built-in
     // 0x0200..0x02FF trace window. They are on by default, as they always
@@ -422,8 +437,13 @@ private:
     std::array<uint64_t, 65536> m_data_write_counts{};
     std::array<PortStat, 65536> m_io_port_stats{};
     std::deque<uint64_t> m_pc_trace;
+    uint16_t m_capture_pc = 0;
+    std::vector<uint16_t> m_capture_addresses;
+    std::deque<std::vector<uint64_t>> m_pc_captures;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_step_probes = true;
+    uint64_t m_delay_move_ignored = 0;
+    uint16_t m_delay_move_last_pc = 0, m_delay_move_last_address = 0;
     bool m_trace_data_writes = false;
     bool m_trace_changes_only = true;
     uint16_t m_trace_filter = 0;
@@ -541,6 +561,7 @@ private:
         uint64_t secondary_frames = 0, register_writes = 0, register_reads = 0;
         uint64_t phase_shifts = 0, primary_frames = 0;
         uint64_t frames_clocked = 0;
+        uint64_t rx_empty_frames = 0;
         uint64_t secondary_cycle = 0;
         uint16_t last_control_word = 0, readback = 0;
         uint16_t dac_sample = 0;
@@ -557,6 +578,15 @@ private:
     void codec_apply_asic_timing(uint16_t word);
     void codec_recompute_rate();
     std::deque<uint16_t> m_codec_rx;
+    // Socket samples retain their 8 kHz time grid until the ADC conversion
+    // edge. Pre-converting a whole frame at the old codec rate changes its
+    // duration when firmware retunes the ADC while that frame is queued.
+    bool m_codec_line_input = false;
+    std::deque<uint16_t> m_codec_line_rx;
+    std::array<double, 128> m_codec_line_history{};
+    std::vector<std::array<double, 128>> m_codec_line_kernel;
+    double m_codec_line_position = 0, m_codec_line_cutoff = 0;
+    bool codec_line_sample(int32_t &sample);
     // Trans-hybrid return. The codec's analog output reaches its own analog
     // input through the hybrid, attenuated by how well the hybrid is
     // terminated: near unity when the DAA is on hook and the line side is
@@ -594,6 +624,9 @@ private:
     uint16_t m_negotiation_d26 = 0, m_negotiation_indx = 0;
     uint16_t m_negotiation_arp = 0, m_negotiation_pm = 0;
     std::vector<uint16_t> m_line_tx;
+    // [first DAC sample index, clock period in DSP cycles]. Host draining
+    // may straddle a firmware retune; samples retain their original spacing.
+    std::vector<std::array<uint64_t, 2>> m_line_tx_clock_events;
     uint64_t m_line_rx_consumed = 0;
     uint64_t m_line_tx_nonzero = 0;
     uint64_t m_line_dac_writes = 0, m_line_dac_frames = 0;

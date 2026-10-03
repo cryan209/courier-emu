@@ -1,0 +1,2402 @@
+[
+  {
+    "start": 0.0,
+    "rms": 2181.9,
+    "peak_hz": 2100,
+    "concentration": 0.893
+  },
+  {
+    "start": 0.05,
+    "rms": 2029.3,
+    "peak_hz": 2100,
+    "concentration": 0.881
+  },
+  {
+    "start": 0.1,
+    "rms": 2009.0,
+    "peak_hz": 2100,
+    "concentration": 0.841
+  },
+  {
+    "start": 0.15,
+    "rms": 1926.6,
+    "peak_hz": 2100,
+    "concentration": 0.821
+  },
+  {
+    "start": 0.2,
+    "rms": 2153.8,
+    "peak_hz": 2100,
+    "concentration": 0.899
+  },
+  {
+    "start": 0.25,
+    "rms": 2041.1,
+    "peak_hz": 2100,
+    "concentration": 0.877
+  },
+  {
+    "start": 0.3,
+    "rms": 1966.0,
+    "peak_hz": 2100,
+    "concentration": 0.812
+  },
+  {
+    "start": 0.35,
+    "rms": 1887.6,
+    "peak_hz": 2100,
+    "concentration": 0.824
+  },
+  {
+    "start": 0.4,
+    "rms": 2045.5,
+    "peak_hz": 2100,
+    "concentration": 0.877
+  },
+  {
+    "start": 0.45,
+    "rms": 2195.4,
+    "peak_hz": 2100,
+    "concentration": 0.896
+  },
+  {
+    "start": 0.5,
+    "rms": 1985.3,
+    "peak_hz": 2100,
+    "concentration": 0.838
+  },
+  {
+    "start": 0.55,
+    "rms": 1850.6,
+    "peak_hz": 2100,
+    "concentration": 0.807
+  },
+  {
+    "start": 0.6,
+    "rms": 2099.0,
+    "peak_hz": 2100,
+    "concentration": 0.888
+  },
+  {
+    "start": 0.65,
+    "rms": 2046.6,
+    "peak_hz": 2100,
+    "concentration": 0.882
+  },
+  {
+    "start": 0.7,
+    "rms": 1979.3,
+    "peak_hz": 2100,
+    "concentration": 0.839
+  },
+  {
+    "start": 0.75,
+    "rms": 1941.1,
+    "peak_hz": 2100,
+    "concentration": 0.829
+  },
+  {
+    "start": 0.8,
+    "rms": 2085.4,
+    "peak_hz": 2100,
+    "concentration": 0.884
+  },
+  {
+    "start": 0.85,
+    "rms": 2014.8,
+    "peak_hz": 2100,
+    "concentration": 0.877
+  },
+  {
+    "start": 0.9,
+    "rms": 2051.1,
+    "peak_hz": 2100,
+    "concentration": 0.864
+  },
+  {
+    "start": 0.95,
+    "rms": 1933.6,
+    "peak_hz": 2100,
+    "concentration": 0.829
+  },
+  {
+    "start": 1.0,
+    "rms": 2102.6,
+    "peak_hz": 2100,
+    "concentration": 0.876
+  },
+  {
+    "start": 1.05,
+    "rms": 2045.7,
+    "peak_hz": 2100,
+    "concentration": 0.884
+  },
+  {
+    "start": 1.1,
+    "rms": 2058.9,
+    "peak_hz": 2100,
+    "concentration": 0.849
+  },
+  {
+    "start": 1.15,
+    "rms": 1976.2,
+    "peak_hz": 2100,
+    "concentration": 0.834
+  },
+  {
+    "start": 1.2,
+    "rms": 2062.2,
+    "peak_hz": 2100,
+    "concentration": 0.87
+  },
+  {
+    "start": 1.25,
+    "rms": 2142.1,
+    "peak_hz": 2100,
+    "concentration": 0.885
+  },
+  {
+    "start": 1.3,
+    "rms": 1953.8,
+    "peak_hz": 2100,
+    "concentration": 0.841
+  },
+  {
+    "start": 1.35,
+    "rms": 1851.4,
+    "peak_hz": 2100,
+    "concentration": 0.801
+  },
+  {
+    "start": 1.4,
+    "rms": 2081.5,
+    "peak_hz": 2100,
+    "concentration": 0.879
+  },
+  {
+    "start": 1.45,
+    "rms": 2222.3,
+    "peak_hz": 2100,
+    "concentration": 0.907
+  },
+  {
+    "start": 1.5,
+    "rms": 2038.5,
+    "peak_hz": 2100,
+    "concentration": 0.863
+  },
+  {
+    "start": 1.55,
+    "rms": 1826.7,
+    "peak_hz": 2100,
+    "concentration": 0.792
+  },
+  {
+    "start": 1.6,
+    "rms": 2006.9,
+    "peak_hz": 2100,
+    "concentration": 0.857
+  },
+  {
+    "start": 1.65,
+    "rms": 2159.0,
+    "peak_hz": 2100,
+    "concentration": 0.895
+  },
+  {
+    "start": 1.7,
+    "rms": 1991.4,
+    "peak_hz": 2100,
+    "concentration": 0.845
+  },
+  {
+    "start": 1.75,
+    "rms": 1922.4,
+    "peak_hz": 2100,
+    "concentration": 0.827
+  },
+  {
+    "start": 1.8,
+    "rms": 2078.3,
+    "peak_hz": 2100,
+    "concentration": 0.879
+  },
+  {
+    "start": 1.85,
+    "rms": 2112.3,
+    "peak_hz": 2100,
+    "concentration": 0.89
+  },
+  {
+    "start": 1.9,
+    "rms": 2027.5,
+    "peak_hz": 2100,
+    "concentration": 0.849
+  },
+  {
+    "start": 1.95,
+    "rms": 1912.8,
+    "peak_hz": 2100,
+    "concentration": 0.802
+  },
+  {
+    "start": 2.0,
+    "rms": 2121.1,
+    "peak_hz": 2100,
+    "concentration": 0.887
+  },
+  {
+    "start": 2.05,
+    "rms": 2557.4,
+    "peak_hz": 1660,
+    "concentration": 0.855
+  },
+  {
+    "start": 2.1,
+    "rms": 2911.9,
+    "peak_hz": 1660,
+    "concentration": 0.401
+  },
+  {
+    "start": 2.15,
+    "rms": 2833.9,
+    "peak_hz": 1740,
+    "concentration": 0.42
+  },
+  {
+    "start": 2.2,
+    "rms": 2900.9,
+    "peak_hz": 1800,
+    "concentration": 0.442
+  },
+  {
+    "start": 2.25,
+    "rms": 2837.2,
+    "peak_hz": 1780,
+    "concentration": 0.222
+  },
+  {
+    "start": 2.3,
+    "rms": 2821.3,
+    "peak_hz": 1660,
+    "concentration": 0.306
+  },
+  {
+    "start": 2.35,
+    "rms": 2905.4,
+    "peak_hz": 1840,
+    "concentration": 0.734
+  },
+  {
+    "start": 2.4,
+    "rms": 2853.0,
+    "peak_hz": 1840,
+    "concentration": 0.364
+  },
+  {
+    "start": 2.45,
+    "rms": 2839.3,
+    "peak_hz": 1740,
+    "concentration": 0.286
+  },
+  {
+    "start": 2.5,
+    "rms": 2891.4,
+    "peak_hz": 1800,
+    "concentration": 0.4
+  },
+  {
+    "start": 2.55,
+    "rms": 2821.3,
+    "peak_hz": 1740,
+    "concentration": 0.479
+  },
+  {
+    "start": 2.6,
+    "rms": 2920.7,
+    "peak_hz": 1660,
+    "concentration": 0.813
+  },
+  {
+    "start": 2.65,
+    "rms": 2863.9,
+    "peak_hz": 1860,
+    "concentration": 0.405
+  },
+  {
+    "start": 2.7,
+    "rms": 2830.9,
+    "peak_hz": 1740,
+    "concentration": 0.35
+  },
+  {
+    "start": 2.75,
+    "rms": 2902.9,
+    "peak_hz": 1860,
+    "concentration": 0.539
+  },
+  {
+    "start": 2.8,
+    "rms": 2807.9,
+    "peak_hz": 1780,
+    "concentration": 0.504
+  },
+  {
+    "start": 2.85,
+    "rms": 2853.0,
+    "peak_hz": 1640,
+    "concentration": 0.951
+  },
+  {
+    "start": 2.9,
+    "rms": 1531.5,
+    "peak_hz": 1840,
+    "concentration": 0.507
+  },
+  {
+    "start": 2.95,
+    "rms": 1195.1,
+    "peak_hz": 1800,
+    "concentration": 0.185
+  },
+  {
+    "start": 3.0,
+    "rms": 2568.3,
+    "peak_hz": 1800,
+    "concentration": 0.174
+  },
+  {
+    "start": 3.05,
+    "rms": 2487.5,
+    "peak_hz": 2400,
+    "concentration": 0.334
+  },
+  {
+    "start": 3.1,
+    "rms": 2452.3,
+    "peak_hz": 2400,
+    "concentration": 0.803
+  },
+  {
+    "start": 3.15,
+    "rms": 2458.5,
+    "peak_hz": 2400,
+    "concentration": 0.783
+  },
+  {
+    "start": 3.2,
+    "rms": 2452.3,
+    "peak_hz": 2400,
+    "concentration": 0.803
+  },
+  {
+    "start": 3.25,
+    "rms": 2452.3,
+    "peak_hz": 2400,
+    "concentration": 0.803
+  },
+  {
+    "start": 3.3,
+    "rms": 2452.3,
+    "peak_hz": 2400,
+    "concentration": 0.803
+  },
+  {
+    "start": 3.35,
+    "rms": 2452.3,
+    "peak_hz": 2400,
+    "concentration": 0.803
+  },
+  {
+    "start": 3.4,
+    "rms": 2450.2,
+    "peak_hz": 2420,
+    "concentration": 0.356
+  },
+  {
+    "start": 3.45,
+    "rms": 2450.6,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 3.5,
+    "rms": 2457.9,
+    "peak_hz": 2700,
+    "concentration": 0.057
+  },
+  {
+    "start": 3.55,
+    "rms": 2444.7,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 3.6,
+    "rms": 2.4,
+    "peak_hz": 140,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.65,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.7,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.75,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.8,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.85,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.9,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 3.95,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.0,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.05,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.1,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.15,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.2,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.25,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.3,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.35,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.4,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.45,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.5,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.55,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.6,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.65,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.7,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.75,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.8,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.85,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.9,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 4.95,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.0,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.05,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.1,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.15,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.2,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.25,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.3,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.35,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.4,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.45,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.5,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.55,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.6,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.65,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.7,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.75,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.8,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.85,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.9,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 5.95,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 6.0,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 6.05,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 6.1,
+    "rms": 1437.6,
+    "peak_hz": 4000,
+    "concentration": 0.043
+  },
+  {
+    "start": 6.15,
+    "rms": 3903.2,
+    "peak_hz": 4000,
+    "concentration": 0.175
+  },
+  {
+    "start": 6.2,
+    "rms": 3772.0,
+    "peak_hz": 1260,
+    "concentration": 0.048
+  },
+  {
+    "start": 6.25,
+    "rms": 3772.0,
+    "peak_hz": 220,
+    "concentration": 0.041
+  },
+  {
+    "start": 6.3,
+    "rms": 3772.0,
+    "peak_hz": 360,
+    "concentration": 0.048
+  },
+  {
+    "start": 6.35,
+    "rms": 3772.0,
+    "peak_hz": 1980,
+    "concentration": 0.073
+  },
+  {
+    "start": 6.4,
+    "rms": 3772.0,
+    "peak_hz": 660,
+    "concentration": 0.055
+  },
+  {
+    "start": 6.45,
+    "rms": 3772.0,
+    "peak_hz": 3860,
+    "concentration": 0.058
+  },
+  {
+    "start": 6.5,
+    "rms": 3772.0,
+    "peak_hz": 980,
+    "concentration": 0.052
+  },
+  {
+    "start": 6.55,
+    "rms": 3772.0,
+    "peak_hz": 1900,
+    "concentration": 0.052
+  },
+  {
+    "start": 6.6,
+    "rms": 3772.0,
+    "peak_hz": 2920,
+    "concentration": 0.046
+  },
+  {
+    "start": 6.65,
+    "rms": 3772.0,
+    "peak_hz": 4000,
+    "concentration": 0.033
+  },
+  {
+    "start": 6.7,
+    "rms": 3772.0,
+    "peak_hz": 1760,
+    "concentration": 0.056
+  },
+  {
+    "start": 6.75,
+    "rms": 3772.0,
+    "peak_hz": 580,
+    "concentration": 0.042
+  },
+  {
+    "start": 6.8,
+    "rms": 3772.0,
+    "peak_hz": 1360,
+    "concentration": 0.049
+  },
+  {
+    "start": 6.85,
+    "rms": 3772.0,
+    "peak_hz": 40,
+    "concentration": 0.033
+  },
+  {
+    "start": 6.9,
+    "rms": 3772.0,
+    "peak_hz": 3880,
+    "concentration": 0.046
+  },
+  {
+    "start": 6.95,
+    "rms": 3772.0,
+    "peak_hz": 1100,
+    "concentration": 0.047
+  },
+  {
+    "start": 7.0,
+    "rms": 3772.0,
+    "peak_hz": 1720,
+    "concentration": 0.04
+  },
+  {
+    "start": 7.05,
+    "rms": 3772.0,
+    "peak_hz": 2600,
+    "concentration": 0.044
+  },
+  {
+    "start": 7.1,
+    "rms": 3772.0,
+    "peak_hz": 2080,
+    "concentration": 0.045
+  },
+  {
+    "start": 7.15,
+    "rms": 3772.0,
+    "peak_hz": 3000,
+    "concentration": 0.041
+  },
+  {
+    "start": 7.2,
+    "rms": 3772.0,
+    "peak_hz": 820,
+    "concentration": 0.049
+  },
+  {
+    "start": 7.25,
+    "rms": 3772.0,
+    "peak_hz": 3020,
+    "concentration": 0.051
+  },
+  {
+    "start": 7.3,
+    "rms": 3772.0,
+    "peak_hz": 3760,
+    "concentration": 0.047
+  },
+  {
+    "start": 7.35,
+    "rms": 3772.0,
+    "peak_hz": 580,
+    "concentration": 0.044
+  },
+  {
+    "start": 7.4,
+    "rms": 3772.0,
+    "peak_hz": 2160,
+    "concentration": 0.048
+  },
+  {
+    "start": 7.45,
+    "rms": 3772.0,
+    "peak_hz": 2060,
+    "concentration": 0.04
+  },
+  {
+    "start": 7.5,
+    "rms": 3772.0,
+    "peak_hz": 2380,
+    "concentration": 0.031
+  },
+  {
+    "start": 7.55,
+    "rms": 3772.0,
+    "peak_hz": 3340,
+    "concentration": 0.087
+  },
+  {
+    "start": 7.6,
+    "rms": 3772.0,
+    "peak_hz": 1180,
+    "concentration": 0.074
+  },
+  {
+    "start": 7.65,
+    "rms": 3772.0,
+    "peak_hz": 60,
+    "concentration": 0.048
+  },
+  {
+    "start": 7.7,
+    "rms": 3772.0,
+    "peak_hz": 2980,
+    "concentration": 0.037
+  },
+  {
+    "start": 7.75,
+    "rms": 3772.0,
+    "peak_hz": 1560,
+    "concentration": 0.036
+  },
+  {
+    "start": 7.8,
+    "rms": 3772.0,
+    "peak_hz": 2120,
+    "concentration": 0.056
+  },
+  {
+    "start": 7.85,
+    "rms": 3772.0,
+    "peak_hz": 140,
+    "concentration": 0.043
+  },
+  {
+    "start": 7.9,
+    "rms": 3772.0,
+    "peak_hz": 1600,
+    "concentration": 0.056
+  },
+  {
+    "start": 7.95,
+    "rms": 3772.0,
+    "peak_hz": 1980,
+    "concentration": 0.052
+  },
+  {
+    "start": 8.0,
+    "rms": 3772.0,
+    "peak_hz": 540,
+    "concentration": 0.076
+  },
+  {
+    "start": 8.05,
+    "rms": 3772.0,
+    "peak_hz": 3040,
+    "concentration": 0.049
+  },
+  {
+    "start": 8.1,
+    "rms": 3772.0,
+    "peak_hz": 2400,
+    "concentration": 0.052
+  },
+  {
+    "start": 8.15,
+    "rms": 3772.0,
+    "peak_hz": 340,
+    "concentration": 0.072
+  },
+  {
+    "start": 8.2,
+    "rms": 3772.0,
+    "peak_hz": 2040,
+    "concentration": 0.052
+  },
+  {
+    "start": 8.25,
+    "rms": 3772.0,
+    "peak_hz": 3600,
+    "concentration": 0.063
+  },
+  {
+    "start": 8.3,
+    "rms": 3772.0,
+    "peak_hz": 2440,
+    "concentration": 0.05
+  },
+  {
+    "start": 8.35,
+    "rms": 3772.0,
+    "peak_hz": 300,
+    "concentration": 0.049
+  },
+  {
+    "start": 8.4,
+    "rms": 3772.0,
+    "peak_hz": 1440,
+    "concentration": 0.044
+  },
+  {
+    "start": 8.45,
+    "rms": 3772.0,
+    "peak_hz": 3700,
+    "concentration": 0.098
+  },
+  {
+    "start": 8.5,
+    "rms": 3772.0,
+    "peak_hz": 4000,
+    "concentration": 0.078
+  },
+  {
+    "start": 8.55,
+    "rms": 3772.0,
+    "peak_hz": 1180,
+    "concentration": 0.08
+  },
+  {
+    "start": 8.6,
+    "rms": 3772.0,
+    "peak_hz": 1260,
+    "concentration": 0.057
+  },
+  {
+    "start": 8.65,
+    "rms": 3772.0,
+    "peak_hz": 3280,
+    "concentration": 0.034
+  },
+  {
+    "start": 8.7,
+    "rms": 3772.0,
+    "peak_hz": 1500,
+    "concentration": 0.044
+  },
+  {
+    "start": 8.75,
+    "rms": 3772.0,
+    "peak_hz": 3480,
+    "concentration": 0.036
+  },
+  {
+    "start": 8.8,
+    "rms": 3772.0,
+    "peak_hz": 3540,
+    "concentration": 0.048
+  },
+  {
+    "start": 8.85,
+    "rms": 3772.0,
+    "peak_hz": 3040,
+    "concentration": 0.064
+  },
+  {
+    "start": 8.9,
+    "rms": 2608.7,
+    "peak_hz": 0,
+    "concentration": 0.082
+  },
+  {
+    "start": 8.95,
+    "rms": 1820.0,
+    "peak_hz": 1880,
+    "concentration": 0.057
+  },
+  {
+    "start": 9.0,
+    "rms": 1820.0,
+    "peak_hz": 2580,
+    "concentration": 0.034
+  },
+  {
+    "start": 9.05,
+    "rms": 1820.0,
+    "peak_hz": 140,
+    "concentration": 0.085
+  },
+  {
+    "start": 9.1,
+    "rms": 1820.0,
+    "peak_hz": 1080,
+    "concentration": 0.049
+  },
+  {
+    "start": 9.15,
+    "rms": 1820.0,
+    "peak_hz": 1860,
+    "concentration": 0.07
+  },
+  {
+    "start": 9.2,
+    "rms": 1820.0,
+    "peak_hz": 1180,
+    "concentration": 0.064
+  },
+  {
+    "start": 9.25,
+    "rms": 1820.0,
+    "peak_hz": 0,
+    "concentration": 0.099
+  },
+  {
+    "start": 9.3,
+    "rms": 1820.0,
+    "peak_hz": 1380,
+    "concentration": 0.035
+  },
+  {
+    "start": 9.35,
+    "rms": 1820.0,
+    "peak_hz": 3700,
+    "concentration": 0.078
+  },
+  {
+    "start": 9.4,
+    "rms": 1820.0,
+    "peak_hz": 3200,
+    "concentration": 0.068
+  },
+  {
+    "start": 9.45,
+    "rms": 1820.0,
+    "peak_hz": 1780,
+    "concentration": 0.047
+  },
+  {
+    "start": 9.5,
+    "rms": 1820.0,
+    "peak_hz": 940,
+    "concentration": 0.057
+  },
+  {
+    "start": 9.55,
+    "rms": 1820.0,
+    "peak_hz": 3060,
+    "concentration": 0.035
+  },
+  {
+    "start": 9.6,
+    "rms": 1820.0,
+    "peak_hz": 840,
+    "concentration": 0.039
+  },
+  {
+    "start": 9.65,
+    "rms": 6314.7,
+    "peak_hz": 3340,
+    "concentration": 0.74
+  },
+  {
+    "start": 9.7,
+    "rms": 7563.8,
+    "peak_hz": 3340,
+    "concentration": 0.803
+  },
+  {
+    "start": 9.75,
+    "rms": 7559.8,
+    "peak_hz": 3340,
+    "concentration": 0.803
+  },
+  {
+    "start": 9.8,
+    "rms": 4927.0,
+    "peak_hz": 3460,
+    "concentration": 0.06
+  },
+  {
+    "start": 9.85,
+    "rms": 3980.7,
+    "peak_hz": 3720,
+    "concentration": 0.053
+  },
+  {
+    "start": 9.9,
+    "rms": 4033.1,
+    "peak_hz": 2560,
+    "concentration": 0.058
+  },
+  {
+    "start": 9.95,
+    "rms": 4040.0,
+    "peak_hz": 3440,
+    "concentration": 0.072
+  },
+  {
+    "start": 10.0,
+    "rms": 3814.2,
+    "peak_hz": 2920,
+    "concentration": 0.033
+  },
+  {
+    "start": 10.05,
+    "rms": 3781.4,
+    "peak_hz": 2960,
+    "concentration": 0.048
+  },
+  {
+    "start": 10.1,
+    "rms": 3740.1,
+    "peak_hz": 1780,
+    "concentration": 0.048
+  },
+  {
+    "start": 10.15,
+    "rms": 3726.0,
+    "peak_hz": 2360,
+    "concentration": 0.063
+  },
+  {
+    "start": 10.2,
+    "rms": 4088.8,
+    "peak_hz": 1360,
+    "concentration": 0.052
+  },
+  {
+    "start": 10.25,
+    "rms": 3946.6,
+    "peak_hz": 1220,
+    "concentration": 0.058
+  },
+  {
+    "start": 10.3,
+    "rms": 3966.0,
+    "peak_hz": 3980,
+    "concentration": 0.055
+  },
+  {
+    "start": 10.35,
+    "rms": 3892.1,
+    "peak_hz": 2820,
+    "concentration": 0.049
+  },
+  {
+    "start": 10.4,
+    "rms": 3936.0,
+    "peak_hz": 2400,
+    "concentration": 0.055
+  },
+  {
+    "start": 10.45,
+    "rms": 2841.3,
+    "peak_hz": 880,
+    "concentration": 0.048
+  },
+  {
+    "start": 10.5,
+    "rms": 2.6,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 10.55,
+    "rms": 2372.9,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 10.6,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 10.65,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 10.7,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 10.75,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 10.8,
+    "rms": 2433.8,
+    "peak_hz": 1200,
+    "concentration": 0.985
+  },
+  {
+    "start": 10.85,
+    "rms": 565.4,
+    "peak_hz": 1440,
+    "concentration": 0.083
+  },
+  {
+    "start": 10.9,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 10.95,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.0,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.05,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.1,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.15,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.2,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.25,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.3,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 11.35,
+    "rms": 2012.2,
+    "peak_hz": 1200,
+    "concentration": 0.942
+  },
+  {
+    "start": 11.4,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 11.45,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 11.5,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 11.55,
+    "rms": 2434.6,
+    "peak_hz": 1200,
+    "concentration": 1.0
+  },
+  {
+    "start": 11.6,
+    "rms": 2434.2,
+    "peak_hz": 1200,
+    "concentration": 0.997
+  },
+  {
+    "start": 11.65,
+    "rms": 4744.9,
+    "peak_hz": 2700,
+    "concentration": 0.057
+  },
+  {
+    "start": 11.7,
+    "rms": 4892.7,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 11.75,
+    "rms": 4922.1,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 11.8,
+    "rms": 3339.5,
+    "peak_hz": 1500,
+    "concentration": 0.056
+  },
+  {
+    "start": 11.85,
+    "rms": 2461.8,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 11.9,
+    "rms": 2446.7,
+    "peak_hz": 2700,
+    "concentration": 0.057
+  },
+  {
+    "start": 11.95,
+    "rms": 2461.8,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 12.0,
+    "rms": 2446.7,
+    "peak_hz": 2700,
+    "concentration": 0.057
+  },
+  {
+    "start": 12.05,
+    "rms": 2461.8,
+    "peak_hz": 2700,
+    "concentration": 0.056
+  },
+  {
+    "start": 12.1,
+    "rms": 2446.7,
+    "peak_hz": 2700,
+    "concentration": 0.057
+  },
+  {
+    "start": 12.15,
+    "rms": 2438.9,
+    "peak_hz": 1260,
+    "concentration": 0.151
+  },
+  {
+    "start": 12.2,
+    "rms": 2462.5,
+    "peak_hz": 1200,
+    "concentration": 0.305
+  },
+  {
+    "start": 12.25,
+    "rms": 2511.1,
+    "peak_hz": 1200,
+    "concentration": 0.255
+  },
+  {
+    "start": 12.3,
+    "rms": 2348.1,
+    "peak_hz": 1340,
+    "concentration": 0.175
+  },
+  {
+    "start": 12.35,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.4,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.45,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.5,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.55,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.6,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.65,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.7,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.75,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.8,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.85,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.9,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 12.95,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.0,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.05,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.1,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.15,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.2,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.25,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.3,
+    "rms": 0.0,
+    "peak_hz": 0,
+    "concentration": 0.0
+  },
+  {
+    "start": 13.35,
+    "rms": 634.1,
+    "peak_hz": 1980,
+    "concentration": 0.111
+  },
+  {
+    "start": 13.4,
+    "rms": 1990.8,
+    "peak_hz": 1960,
+    "concentration": 0.412
+  },
+  {
+    "start": 13.45,
+    "rms": 2162.1,
+    "peak_hz": 2820,
+    "concentration": 0.027
+  },
+  {
+    "start": 13.5,
+    "rms": 2186.0,
+    "peak_hz": 1960,
+    "concentration": 0.214
+  },
+  {
+    "start": 13.55,
+    "rms": 2162.3,
+    "peak_hz": 1960,
+    "concentration": 0.172
+  },
+  {
+    "start": 13.6,
+    "rms": 2134.0,
+    "peak_hz": 1960,
+    "concentration": 0.11
+  },
+  {
+    "start": 13.65,
+    "rms": 2177.1,
+    "peak_hz": 1460,
+    "concentration": 0.052
+  },
+  {
+    "start": 13.7,
+    "rms": 2161.7,
+    "peak_hz": 2840,
+    "concentration": 0.068
+  },
+  {
+    "start": 13.75,
+    "rms": 2175.5,
+    "peak_hz": 2680,
+    "concentration": 0.057
+  },
+  {
+    "start": 13.8,
+    "rms": 2189.8,
+    "peak_hz": 2760,
+    "concentration": 0.132
+  },
+  {
+    "start": 13.85,
+    "rms": 2179.7,
+    "peak_hz": 780,
+    "concentration": 0.077
+  },
+  {
+    "start": 13.9,
+    "rms": 2183.7,
+    "peak_hz": 1620,
+    "concentration": 0.051
+  },
+  {
+    "start": 13.95,
+    "rms": 2161.2,
+    "peak_hz": 3120,
+    "concentration": 0.056
+  },
+  {
+    "start": 14.0,
+    "rms": 2169.4,
+    "peak_hz": 3160,
+    "concentration": 0.06
+  },
+  {
+    "start": 14.05,
+    "rms": 2168.1,
+    "peak_hz": 600,
+    "concentration": 0.062
+  },
+  {
+    "start": 14.1,
+    "rms": 2149.8,
+    "peak_hz": 2320,
+    "concentration": 0.074
+  },
+  {
+    "start": 14.15,
+    "rms": 2172.2,
+    "peak_hz": 1880,
+    "concentration": 0.081
+  },
+  {
+    "start": 14.2,
+    "rms": 2153.0,
+    "peak_hz": 2220,
+    "concentration": 0.055
+  },
+  {
+    "start": 14.25,
+    "rms": 2132.8,
+    "peak_hz": 1280,
+    "concentration": 0.086
+  },
+  {
+    "start": 14.3,
+    "rms": 2182.5,
+    "peak_hz": 1760,
+    "concentration": 0.083
+  },
+  {
+    "start": 14.35,
+    "rms": 2172.0,
+    "peak_hz": 1860,
+    "concentration": 0.066
+  },
+  {
+    "start": 14.4,
+    "rms": 2163.6,
+    "peak_hz": 2260,
+    "concentration": 0.05
+  },
+  {
+    "start": 14.45,
+    "rms": 2162.0,
+    "peak_hz": 2720,
+    "concentration": 0.064
+  },
+  {
+    "start": 14.5,
+    "rms": 2159.7,
+    "peak_hz": 1740,
+    "concentration": 0.097
+  },
+  {
+    "start": 14.55,
+    "rms": 2149.4,
+    "peak_hz": 1680,
+    "concentration": 0.054
+  },
+  {
+    "start": 14.6,
+    "rms": 2215.4,
+    "peak_hz": 2720,
+    "concentration": 0.097
+  },
+  {
+    "start": 14.65,
+    "rms": 2176.5,
+    "peak_hz": 2980,
+    "concentration": 0.054
+  },
+  {
+    "start": 14.7,
+    "rms": 2165.8,
+    "peak_hz": 2360,
+    "concentration": 0.045
+  },
+  {
+    "start": 14.75,
+    "rms": 2121.2,
+    "peak_hz": 2600,
+    "concentration": 0.069
+  },
+  {
+    "start": 14.8,
+    "rms": 2169.4,
+    "peak_hz": 2600,
+    "concentration": 0.058
+  },
+  {
+    "start": 14.85,
+    "rms": 2183.1,
+    "peak_hz": 3120,
+    "concentration": 0.072
+  },
+  {
+    "start": 14.9,
+    "rms": 2230.0,
+    "peak_hz": 2100,
+    "concentration": 0.076
+  },
+  {
+    "start": 14.95,
+    "rms": 2157.9,
+    "peak_hz": 2960,
+    "concentration": 0.095
+  },
+  {
+    "start": 15.0,
+    "rms": 2166.3,
+    "peak_hz": 600,
+    "concentration": 0.045
+  },
+  {
+    "start": 15.05,
+    "rms": 2178.8,
+    "peak_hz": 660,
+    "concentration": 0.046
+  },
+  {
+    "start": 15.1,
+    "rms": 2233.4,
+    "peak_hz": 2040,
+    "concentration": 0.054
+  },
+  {
+    "start": 15.15,
+    "rms": 2132.7,
+    "peak_hz": 3060,
+    "concentration": 0.049
+  },
+  {
+    "start": 15.2,
+    "rms": 2093.4,
+    "peak_hz": 2140,
+    "concentration": 0.077
+  },
+  {
+    "start": 15.25,
+    "rms": 2149.3,
+    "peak_hz": 2800,
+    "concentration": 0.052
+  },
+  {
+    "start": 15.3,
+    "rms": 2133.5,
+    "peak_hz": 1720,
+    "concentration": 0.087
+  },
+  {
+    "start": 15.35,
+    "rms": 2158.1,
+    "peak_hz": 2780,
+    "concentration": 0.069
+  },
+  {
+    "start": 15.4,
+    "rms": 2114.4,
+    "peak_hz": 1920,
+    "concentration": 0.085
+  },
+  {
+    "start": 15.45,
+    "rms": 2149.8,
+    "peak_hz": 2680,
+    "concentration": 0.069
+  },
+  {
+    "start": 15.5,
+    "rms": 2130.7,
+    "peak_hz": 2360,
+    "concentration": 0.053
+  },
+  {
+    "start": 15.55,
+    "rms": 2111.8,
+    "peak_hz": 2560,
+    "concentration": 0.099
+  },
+  {
+    "start": 15.6,
+    "rms": 2203.5,
+    "peak_hz": 2460,
+    "concentration": 0.068
+  },
+  {
+    "start": 15.65,
+    "rms": 2092.1,
+    "peak_hz": 1360,
+    "concentration": 0.065
+  },
+  {
+    "start": 15.7,
+    "rms": 2089.6,
+    "peak_hz": 920,
+    "concentration": 0.069
+  },
+  {
+    "start": 15.75,
+    "rms": 2206.2,
+    "peak_hz": 1500,
+    "concentration": 0.079
+  },
+  {
+    "start": 15.8,
+    "rms": 2190.8,
+    "peak_hz": 1780,
+    "concentration": 0.08
+  },
+  {
+    "start": 15.85,
+    "rms": 2225.7,
+    "peak_hz": 1180,
+    "concentration": 0.065
+  },
+  {
+    "start": 15.9,
+    "rms": 2161.4,
+    "peak_hz": 2640,
+    "concentration": 0.049
+  },
+  {
+    "start": 15.95,
+    "rms": 2213.5,
+    "peak_hz": 3080,
+    "concentration": 0.058
+  },
+  {
+    "start": 16.0,
+    "rms": 2093.4,
+    "peak_hz": 2140,
+    "concentration": 0.106
+  },
+  {
+    "start": 16.05,
+    "rms": 2208.6,
+    "peak_hz": 2740,
+    "concentration": 0.054
+  },
+  {
+    "start": 16.1,
+    "rms": 2149.5,
+    "peak_hz": 2300,
+    "concentration": 0.098
+  },
+  {
+    "start": 16.15,
+    "rms": 2222.6,
+    "peak_hz": 500,
+    "concentration": 0.057
+  },
+  {
+    "start": 16.2,
+    "rms": 2140.1,
+    "peak_hz": 760,
+    "concentration": 0.073
+  },
+  {
+    "start": 16.25,
+    "rms": 2215.3,
+    "peak_hz": 1400,
+    "concentration": 0.093
+  },
+  {
+    "start": 16.3,
+    "rms": 2185.3,
+    "peak_hz": 3280,
+    "concentration": 0.059
+  },
+  {
+    "start": 16.35,
+    "rms": 2189.1,
+    "peak_hz": 980,
+    "concentration": 0.063
+  },
+  {
+    "start": 16.4,
+    "rms": 2096.0,
+    "peak_hz": 1480,
+    "concentration": 0.053
+  },
+  {
+    "start": 16.45,
+    "rms": 2138.7,
+    "peak_hz": 2940,
+    "concentration": 0.075
+  },
+  {
+    "start": 16.5,
+    "rms": 2189.9,
+    "peak_hz": 1440,
+    "concentration": 0.074
+  },
+  {
+    "start": 16.55,
+    "rms": 2156.6,
+    "peak_hz": 3200,
+    "concentration": 0.041
+  },
+  {
+    "start": 16.6,
+    "rms": 2196.5,
+    "peak_hz": 760,
+    "concentration": 0.086
+  },
+  {
+    "start": 16.65,
+    "rms": 2163.4,
+    "peak_hz": 1740,
+    "concentration": 0.066
+  },
+  {
+    "start": 16.7,
+    "rms": 2166.6,
+    "peak_hz": 2600,
+    "concentration": 0.054
+  },
+  {
+    "start": 16.75,
+    "rms": 2181.2,
+    "peak_hz": 2860,
+    "concentration": 0.067
+  },
+  {
+    "start": 16.8,
+    "rms": 2176.4,
+    "peak_hz": 2740,
+    "concentration": 0.068
+  },
+  {
+    "start": 16.85,
+    "rms": 2238.2,
+    "peak_hz": 1400,
+    "concentration": 0.071
+  },
+  {
+    "start": 16.9,
+    "rms": 2218.4,
+    "peak_hz": 980,
+    "concentration": 0.065
+  },
+  {
+    "start": 16.95,
+    "rms": 2219.8,
+    "peak_hz": 3000,
+    "concentration": 0.057
+  },
+  {
+    "start": 17.0,
+    "rms": 2128.4,
+    "peak_hz": 2660,
+    "concentration": 0.072
+  },
+  {
+    "start": 17.05,
+    "rms": 2235.0,
+    "peak_hz": 1080,
+    "concentration": 0.065
+  },
+  {
+    "start": 17.1,
+    "rms": 2156.3,
+    "peak_hz": 900,
+    "concentration": 0.073
+  },
+  {
+    "start": 17.15,
+    "rms": 2175.5,
+    "peak_hz": 1600,
+    "concentration": 0.051
+  },
+  {
+    "start": 17.2,
+    "rms": 2154.5,
+    "peak_hz": 2440,
+    "concentration": 0.118
+  },
+  {
+    "start": 17.25,
+    "rms": 2210.3,
+    "peak_hz": 2780,
+    "concentration": 0.078
+  },
+  {
+    "start": 17.3,
+    "rms": 2143.5,
+    "peak_hz": 2280,
+    "concentration": 0.053
+  },
+  {
+    "start": 17.35,
+    "rms": 2213.0,
+    "peak_hz": 2780,
+    "concentration": 0.06
+  },
+  {
+    "start": 17.4,
+    "rms": 2230.6,
+    "peak_hz": 2800,
+    "concentration": 0.086
+  },
+  {
+    "start": 17.45,
+    "rms": 2219.9,
+    "peak_hz": 2280,
+    "concentration": 0.056
+  },
+  {
+    "start": 17.5,
+    "rms": 2128.7,
+    "peak_hz": 2340,
+    "concentration": 0.055
+  },
+  {
+    "start": 17.55,
+    "rms": 2184.9,
+    "peak_hz": 1600,
+    "concentration": 0.05
+  },
+  {
+    "start": 17.6,
+    "rms": 2158.9,
+    "peak_hz": 1960,
+    "concentration": 0.076
+  },
+  {
+    "start": 17.65,
+    "rms": 2164.6,
+    "peak_hz": 1900,
+    "concentration": 0.066
+  },
+  {
+    "start": 17.7,
+    "rms": 2179.9,
+    "peak_hz": 2440,
+    "concentration": 0.06
+  },
+  {
+    "start": 17.75,
+    "rms": 2117.7,
+    "peak_hz": 1760,
+    "concentration": 0.053
+  },
+  {
+    "start": 17.8,
+    "rms": 2108.5,
+    "peak_hz": 960,
+    "concentration": 0.078
+  },
+  {
+    "start": 17.85,
+    "rms": 2211.4,
+    "peak_hz": 2560,
+    "concentration": 0.082
+  },
+  {
+    "start": 17.9,
+    "rms": 2206.3,
+    "peak_hz": 2300,
+    "concentration": 0.064
+  },
+  {
+    "start": 17.95,
+    "rms": 2248.5,
+    "peak_hz": 2360,
+    "concentration": 0.07
+  },
+  {
+    "start": 18.0,
+    "rms": 2156.0,
+    "peak_hz": 2520,
+    "concentration": 0.076
+  },
+  {
+    "start": 18.05,
+    "rms": 2155.6,
+    "peak_hz": 2980,
+    "concentration": 0.065
+  },
+  {
+    "start": 18.1,
+    "rms": 2174.1,
+    "peak_hz": 2820,
+    "concentration": 0.062
+  },
+  {
+    "start": 18.15,
+    "rms": 2097.1,
+    "peak_hz": 780,
+    "concentration": 0.052
+  },
+  {
+    "start": 18.2,
+    "rms": 2145.8,
+    "peak_hz": 2640,
+    "concentration": 0.086
+  },
+  {
+    "start": 18.25,
+    "rms": 2149.8,
+    "peak_hz": 2420,
+    "concentration": 0.097
+  },
+  {
+    "start": 18.3,
+    "rms": 2201.1,
+    "peak_hz": 1180,
+    "concentration": 0.06
+  },
+  {
+    "start": 18.35,
+    "rms": 2112.9,
+    "peak_hz": 2740,
+    "concentration": 0.08
+  },
+  {
+    "start": 18.4,
+    "rms": 2174.9,
+    "peak_hz": 2100,
+    "concentration": 0.076
+  },
+  {
+    "start": 18.45,
+    "rms": 2164.0,
+    "peak_hz": 1940,
+    "concentration": 0.078
+  },
+  {
+    "start": 18.5,
+    "rms": 2225.1,
+    "peak_hz": 1540,
+    "concentration": 0.052
+  },
+  {
+    "start": 18.55,
+    "rms": 2181.2,
+    "peak_hz": 820,
+    "concentration": 0.062
+  },
+  {
+    "start": 18.6,
+    "rms": 2220.4,
+    "peak_hz": 480,
+    "concentration": 0.055
+  },
+  {
+    "start": 18.65,
+    "rms": 2208.8,
+    "peak_hz": 1820,
+    "concentration": 0.065
+  },
+  {
+    "start": 18.7,
+    "rms": 2186.4,
+    "peak_hz": 2340,
+    "concentration": 0.077
+  },
+  {
+    "start": 18.75,
+    "rms": 2155.6,
+    "peak_hz": 3000,
+    "concentration": 0.059
+  },
+  {
+    "start": 18.8,
+    "rms": 2135.9,
+    "peak_hz": 2120,
+    "concentration": 0.058
+  },
+  {
+    "start": 18.85,
+    "rms": 2108.0,
+    "peak_hz": 1720,
+    "concentration": 0.067
+  },
+  {
+    "start": 18.9,
+    "rms": 2115.4,
+    "peak_hz": 2120,
+    "concentration": 0.058
+  },
+  {
+    "start": 18.95,
+    "rms": 2150.3,
+    "peak_hz": 2320,
+    "concentration": 0.065
+  },
+  {
+    "start": 19.0,
+    "rms": 2193.7,
+    "peak_hz": 600,
+    "concentration": 0.067
+  },
+  {
+    "start": 19.05,
+    "rms": 2160.3,
+    "peak_hz": 1660,
+    "concentration": 0.064
+  },
+  {
+    "start": 19.1,
+    "rms": 2178.0,
+    "peak_hz": 1180,
+    "concentration": 0.059
+  },
+  {
+    "start": 19.15,
+    "rms": 2168.9,
+    "peak_hz": 820,
+    "concentration": 0.057
+  },
+  {
+    "start": 19.2,
+    "rms": 2167.1,
+    "peak_hz": 1660,
+    "concentration": 0.067
+  },
+  {
+    "start": 19.25,
+    "rms": 2115.8,
+    "peak_hz": 3240,
+    "concentration": 0.063
+  },
+  {
+    "start": 19.3,
+    "rms": 2142.4,
+    "peak_hz": 3120,
+    "concentration": 0.073
+  },
+  {
+    "start": 19.35,
+    "rms": 2200.9,
+    "peak_hz": 2980,
+    "concentration": 0.065
+  },
+  {
+    "start": 19.4,
+    "rms": 2173.2,
+    "peak_hz": 660,
+    "concentration": 0.08
+  },
+  {
+    "start": 19.45,
+    "rms": 2152.7,
+    "peak_hz": 2700,
+    "concentration": 0.074
+  },
+  {
+    "start": 19.5,
+    "rms": 2191.2,
+    "peak_hz": 440,
+    "concentration": 0.059
+  },
+  {
+    "start": 19.55,
+    "rms": 2149.3,
+    "peak_hz": 2840,
+    "concentration": 0.05
+  },
+  {
+    "start": 19.6,
+    "rms": 2153.1,
+    "peak_hz": 1460,
+    "concentration": 0.077
+  },
+  {
+    "start": 19.65,
+    "rms": 2094.8,
+    "peak_hz": 1400,
+    "concentration": 0.07
+  },
+  {
+    "start": 19.7,
+    "rms": 2126.2,
+    "peak_hz": 1380,
+    "concentration": 0.078
+  },
+  {
+    "start": 19.75,
+    "rms": 2142.8,
+    "peak_hz": 1160,
+    "concentration": 0.073
+  },
+  {
+    "start": 19.8,
+    "rms": 2208.1,
+    "peak_hz": 2700,
+    "concentration": 0.065
+  },
+  {
+    "start": 19.85,
+    "rms": 2230.5,
+    "peak_hz": 740,
+    "concentration": 0.062
+  },
+  {
+    "start": 19.9,
+    "rms": 2191.7,
+    "peak_hz": 2720,
+    "concentration": 0.147
+  },
+  {
+    "start": 19.95,
+    "rms": 2133.2,
+    "peak_hz": 2180,
+    "concentration": 0.062
+  }
+]

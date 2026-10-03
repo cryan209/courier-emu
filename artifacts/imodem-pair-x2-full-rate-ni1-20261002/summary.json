@@ -1,0 +1,236 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {
+        "16399": 64
+      },
+      "call_reference": 1,
+      "call_state": "active",
+      "call_tei": 64,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5726208
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5730304
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5740544
+        },
+        {
+          "event": "SPID init: ",
+          "instructions": 5740544
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5762048
+        },
+        {
+          "event": "SETUP to the modem from 5551000",
+          "instructions": 20000256
+        },
+        {
+          "event": "ALERTING call reference 1",
+          "instructions": 20030976
+        },
+        {
+          "event": "CONNECT call reference 1",
+          "instructions": 52385792
+        }
+      ],
+      "frames_from_modem": 9,
+      "frames_to_modem": 9,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 3
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 136000,
+        "rx_pending": 0,
+        "tx_non_ff": 139345,
+        "tx_octets": 156182
+      },
+      "media_peer": {
+        "error": "the far I-modem closed the B channel",
+        "frames": 170,
+        "listen": false,
+        "octets_received": 136000,
+        "octets_sent": 136000,
+        "pending": 0,
+        "received_non_ff": 103248,
+        "sent_non_ff": 119250
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": "the far I-modem closed the B channel",
+      "frames": 170,
+      "listen": false,
+      "octets_received": 136000,
+      "octets_sent": 136000,
+      "pending": 0,
+      "received_non_ff": 103248,
+      "sent_non_ff": 119250
+    },
+    "modem_connected": false,
+    "serial": "\r\nOK\r\n",
+    "working_s_registers": {
+      "54": 64,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "data_delivery": {
+    "answer_to_originate": false,
+    "originate_to_answer": false
+  },
+  "establish": "terminal",
+  "internal_baud": null,
+  "nvram": "/Users/scottcryan/courier-emu/artifacts/imodem-pair-x2-full-rate-routed-20261002/nvram-230400-switch2.sav",
+  "originate": {
+    "bri": {
+      "assigned_teis": {
+        "16399": 64
+      },
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "7349195",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5726208
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5730304
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5740544
+        },
+        {
+          "event": "SPID init: ",
+          "instructions": 5740544
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5762048
+        },
+        {
+          "event": "SETUP call reference 1",
+          "instructions": 32516608
+        },
+        {
+          "event": "the modem is calling 7349195",
+          "instructions": 32516608
+        },
+        {
+          "event": "CONNECT_ACKNOWLEDGE call reference 1",
+          "instructions": 33422336
+        },
+        {
+          "event": "DISCONNECT call reference 1, cause 16 normal call clearing",
+          "instructions": 118861312
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 1",
+          "instructions": 118883840
+        }
+      ],
+      "frames_from_modem": 13,
+      "frames_to_modem": 13,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 6,
+          "vs": 5
+        }
+      },
+      "media": {
+        "channel": null,
+        "rx_delivered": 136000,
+        "rx_pending": 0,
+        "tx_non_ff": 103248,
+        "tx_octets": 136703
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 170,
+        "listen": true,
+        "octets_received": 136000,
+        "octets_sent": 136000,
+        "pending": 703,
+        "received_non_ff": 119250,
+        "sent_non_ff": 103248
+      },
+      "outbound_setup": {
+        "bearer_capability": "90 90 a2",
+        "low_layer_compatibility": null
+      },
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 170,
+      "listen": true,
+      "octets_received": 136000,
+      "octets_sent": 136000,
+      "pending": 703,
+      "received_non_ff": 119250,
+      "sent_non_ff": 103248
+    },
+    "modem_connected": false,
+    "serial": "\r\nOK\r\n\r\nNO CARRIER\r\n",
+    "working_s_registers": {
+      "54": 64,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "prime_originate": false,
+  "product_type": "external",
+  "protocol": "x2",
+  "settings": ""
+}

@@ -1,0 +1,35 @@
+{
+  "frame_ms": 100,
+  "reported_x2_bps": null,
+  "above_40000": false,
+  "connected": true,
+  "data_delivery": {
+    "analog_to_imodem": true,
+    "imodem_to_analog": true
+  },
+  "guest_no_carrier": {
+    "analog": false,
+    "imodem": false
+  },
+  "settings": {
+    "analog": "S27=1S54=0S58=32&A3&B1Q0",
+    "imodem": "S54=0S58=48&A3&B1Q0"
+  },
+  "cpu_error": {
+    "analog": null,
+    "imodem": null
+  },
+  "dsp_error": {
+    "analog": null,
+    "imodem": null
+  },
+  "receive_underruns": {
+    "analog_connected": 0,
+    "imodem_pcm": 0
+  },
+  "terminal_output": {
+    "analog": "\r\nCONNECT/ARQ\r\nIMODEM-X2-HIGHPOWER",
+    "imodem": "\r\nOK\r\n\r\nCONNECT 21600/ARQ/V34/LAPM/V42BIS\r\nANALOG-X2-HIGHPOWER"
+  },
+  "firmware_assists": false
+}

@@ -1,0 +1,429 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {
+        "11883": 64
+      },
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 6500352
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 11500544
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 16500736
+        },
+        {
+          "event": "SETUP from 5551000 on the broadcast data link, TEI 127: no terminal has a TEI yet",
+          "instructions": 20000256
+        },
+        {
+          "event": "ID_REQUEST ref 11883: assigning TEI 64",
+          "instructions": 20019200
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 20026368
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 1, cause 88 incompatible destination",
+          "instructions": 20050944
+        }
+      ],
+      "frames_from_modem": 7,
+      "frames_to_modem": 11,
+      "line": "active",
+      "links": {
+        "0": {
+          "established": false,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 0,
+          "vs": 0
+        },
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 1,
+          "vs": 0
+        }
+      },
+      "media": {
+        "channel": null,
+        "rx_delivered": 0,
+        "rx_pending": 0,
+        "tx_non_ff": 0,
+        "tx_octets": 0
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 0,
+        "listen": false,
+        "octets_received": 0,
+        "octets_sent": 0,
+        "pending": 0,
+        "received_non_ff": 0,
+        "sent_non_ff": 0
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 0,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 0,
+      "listen": false,
+      "octets_received": 0,
+      "octets_sent": 0,
+      "pending": 0,
+      "received_non_ff": 0,
+      "sent_non_ff": 0
+    },
+    "modem_connected": false,
+    "serial": "\r\nOK\r\n\r\nOK\r\n",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "data_delivery": {
+    "answer_to_originate": false,
+    "originate_to_answer": false
+  },
+  "establish": "network",
+  "internal_baud": null,
+  "nvram": "/Users/scottcryan/courier-emu/artifacts/imodem-pair-x2-230400-net3-20261002/nvram-230400.sav",
+  "originate": {
+    "bri": {
+      "assigned_teis": {},
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 6500352
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 11500544
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 16500736
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 21500928
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 26501120
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 26501632
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 31501824
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 36502016
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 41502208
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 46502400
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 46502912
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 51503104
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 56503296
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 61503488
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 66503680
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 66504192
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 71504384
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 76504576
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 81504768
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 86504960
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 86505472
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 91505664
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 96505856
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 101506048
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 106506240
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 106506752
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 111506944
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 116507136
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 121507328
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 126507520
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 126508032
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 131508224
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 136508416
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 141508608
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 146508800
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 146509312
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 151509504
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 156509696
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 161509888
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 166510080
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 166510592
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 171510784
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 176510976
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 181511168
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 186511360
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 186511872
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 191512064
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 196512256
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 201512448
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 206512640
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 206513152
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 211513344
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 216513536
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 221513728
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 226513920
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 226514432
+        },
+        {
+          "event": "T200 expired, SABME retransmission 1",
+          "instructions": 231514624
+        },
+        {
+          "event": "T200 expired, SABME retransmission 2",
+          "instructions": 236514816
+        },
+        {
+          "event": "T200 expired, SABME retransmission 3",
+          "instructions": 241515008
+        },
+        {
+          "event": "T200 expired 3 times with no UA: the terminal is not answering SABME",
+          "instructions": 246515200
+        },
+        {
+          "event": "the network establishes the data link: SABME to TEI 0",
+          "instructions": 246515712
+        }
+      ],
+      "frames_from_modem": 0,
+      "frames_to_modem": 49,
+      "line": "active",
+      "links": {},
+      "media": {
+        "channel": null,
+        "rx_delivered": 0,
+        "rx_pending": 0,
+        "tx_non_ff": 0,
+        "tx_octets": 0
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 0,
+        "listen": true,
+        "octets_received": 0,
+        "octets_sent": 0,
+        "pending": 0,
+        "received_non_ff": 0,
+        "sent_non_ff": 0
+      },
+      "outbound_setup": null,
+      "state": "awaiting-establishment",
+      "tei": 0,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 0,
+      "listen": true,
+      "octets_received": 0,
+      "octets_sent": 0,
+      "pending": 0,
+      "received_non_ff": 0,
+      "sent_non_ff": 0
+    },
+    "modem_connected": false,
+    "serial": "\r\nOK\r\n\r\nOK\r\n\r\nNO CARRIER\r\n",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "product_type": "external",
+  "protocol": "x2",
+  "settings": "S54=0S58=32&N0&U0&B1"
+}

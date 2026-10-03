@@ -1,0 +1,13 @@
+{
+  "destination": "3999",
+  "answered_member": "8416",
+  "sip_account": "2903",
+  "sip_answered": true,
+  "modem_connect": false,
+  "serial_received": "\r\nOK\r\n\r\nOK\r\n",
+  "bearer_seconds": 49.23,
+  "silence_filled": 3486,
+  "received_from_rtp": 390354,
+  "stop_reason": "instruction-limit",
+  "foreground_overlay_assists": 0
+}

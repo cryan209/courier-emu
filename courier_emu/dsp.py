@@ -8,6 +8,7 @@ import sys
 from typing import Any
 
 from .xmf import XmfImage
+from .timebase import ASIC_DSP_CLOCK_HZ
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -269,6 +270,9 @@ class NativeC5x:
         lib.courier_c5x_queue_codec_rx.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
         ]
+        lib.courier_c5x_queue_line_rx.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t
+        ]
         lib.courier_c5x_set_hybrid_return.argtypes = [
             ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32
         ]
@@ -345,6 +349,10 @@ class NativeC5x:
         lib.courier_c5x_get_serial_state.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t
         ]
+        lib.courier_c5x_get_delay_move_state.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64)
+        ]
+        lib.courier_c5x_get_delay_move_state.restype = None
         lib.courier_c5x_set_data_trace.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_clear_data_events.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_data_event_count.argtypes = [ctypes.c_void_p]
@@ -368,6 +376,9 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
+        lib.courier_c5x_get_line_tx_clock_events.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
+        lib.courier_c5x_get_line_tx_clock_events.restype = ctypes.c_size_t
 
     @property
     def handle(self) -> int:
@@ -424,7 +435,10 @@ class NativeC5x:
     def advance_imodem(
         self, count: int, tx_start: int
     ) -> tuple[int, int, int, int, int, int, bytes]:
-        """Advance and collect the I-modem's hot-path state in one native call."""
+        """Advance up to the cycle budget or next completed PCM frame.
+
+        The caller exchanges that frame before running the remaining cycles.
+        """
         capacity = 64
         buffers = getattr(self, "_imodem_advance_buffers", None)
         if buffers is None:
@@ -540,6 +554,13 @@ class NativeC5x:
             return
         storage = (ctypes.c_uint16 * len(samples))(*(sample & 0xFFFF for sample in samples))
         self.library.courier_c5x_queue_codec_rx(self.handle, storage, len(storage))
+
+    def queue_line_rx(self, samples: list[int] | tuple[int, ...]) -> None:
+        """Queue 8 kHz line audio for conversion at actual ADC clock edges."""
+        if not samples:
+            return
+        storage = (ctypes.c_uint16 * len(samples))(*(s & 0xffff for s in samples))
+        self.library.courier_c5x_queue_line_rx(self.handle, storage, len(storage))
 
     def set_hybrid_return(self, return_scale: int, delay: int = 0) -> None:
         """Close the codec's analog output back onto its own analog input.
@@ -731,6 +752,10 @@ class NativeC5x:
         state = dict(zip(names, map(int, values), strict=True))
         if state["negotiation_acc"] & 0x80000000:
             state["negotiation_acc"] -= 0x100000000
+        moves = (ctypes.c_uint64 * 3)()
+        self.library.courier_c5x_get_delay_move_state(self.handle, moves)
+        state.update(zip(('delay_move_ignored', 'delay_move_last_pc',
+                          'delay_move_last_address'), map(int, moves)))
         return state
 
     # Names follow docs/ac01-codec-protocol.md; `registers` is indexed by the
@@ -743,6 +768,7 @@ class NativeC5x:
         "free_run", "high_pass_enabled", "loopback", "sixteen_bit",
         "input_gain", "output_gain", "monitor_gain", "input_select",
         "codec_rx_size", "line_frame_next_cycle", "cycles", "line_frame_irq",
+        "rx_empty_frames",
     )
     _CODEC_FLAGS = frozenset({
         "rate_programmed", "secondary_pending", "force_secondary",
@@ -753,7 +779,7 @@ class NativeC5x:
     OUTPUT_GAIN_DB = (None, 0, -6, -12)
 
     def codec_state(self) -> dict[str, Any]:
-        values = (ctypes.c_uint64 * 35)()
+        values = (ctypes.c_uint64 * 36)()
         self.library.courier_c5x_get_codec_state(self.handle, values, len(values))
         state: dict[str, Any] = {"registers": [int(values[i]) for i in range(9)]}
         for offset, name in enumerate(self._CODEC_FIELDS, start=9):
@@ -817,6 +843,36 @@ class NativeC5x:
             self.library.courier_c5x_get_pc_trace(self.handle, index, values, 3)
             result.append({"pc": int(values[0]), "op": int(values[1]), "acc": int(values[2])})
         return result
+
+    def set_pc_capture(self, pc: int, addresses: list[int]) -> None:
+        if len(addresses) > 256:
+            raise ValueError("PC capture accepts at most 256 data addresses")
+        lib = self.library
+        lib.courier_c5x_set_pc_capture.argtypes = [ctypes.c_void_p, ctypes.c_uint16,
+                                                  ctypes.POINTER(ctypes.c_uint16), ctypes.c_size_t]
+        lib.courier_c5x_set_pc_capture.restype = None
+        storage = (ctypes.c_uint16 * len(addresses))(*addresses)
+        lib.courier_c5x_set_pc_capture(self.handle, pc, storage, len(addresses))
+        self._capture_words = 5 + len(addresses)
+
+    def pc_captures(self) -> list[list[int]]:
+        lib = self.library
+        lib.courier_c5x_get_pc_capture_count.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_pc_capture_count.restype = ctypes.c_size_t
+        lib.courier_c5x_get_pc_capture.argtypes = [ctypes.c_void_p, ctypes.c_size_t,
+                                                ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
+        lib.courier_c5x_get_pc_capture.restype = ctypes.c_size_t
+        result = []
+        for i in range(lib.courier_c5x_get_pc_capture_count(self.handle)):
+            values = (ctypes.c_uint64 * self._capture_words)()
+            n = lib.courier_c5x_get_pc_capture(self.handle, i, values, len(values))
+            result.append(list(values[:n]))
+        return result
+
+    def clear_pc_captures(self) -> None:
+        self.library.courier_c5x_clear_pc_captures.argtypes = [ctypes.c_void_p]
+        self.library.courier_c5x_clear_pc_captures.restype = None
+        self.library.courier_c5x_clear_pc_captures(self.handle)
 
     def mailbox_events(self) -> list[dict[str, int]]:
         """Every DSP write to the tag, word and stream ports, in order.
@@ -902,6 +958,13 @@ class NativeC5x:
             for index in range(max(0, start), count)
         ]
         return [sample - 0x10000 if sample & 0x8000 else sample for sample in samples]
+
+    def line_tx_clock_events(self) -> list[tuple[int, float]]:
+        count = self.library.courier_c5x_get_line_tx_clock_events(self.handle, None, 0)
+        values = (ctypes.c_uint64 * (2 * count))()
+        self.library.courier_c5x_get_line_tx_clock_events(self.handle, values, count)
+        return [(int(values[2*i]), ASIC_DSP_CLOCK_HZ / values[2*i+1])
+                for i in range(count)]
 
     def __enter__(self) -> "NativeC5x":
         return self

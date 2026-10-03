@@ -1,0 +1,58 @@
+[
+  {
+    "approx_audio_seconds": 2.8947,
+    "event": "353.5582 reply 0071:0007"
+  },
+  {
+    "approx_audio_seconds": 2.8971,
+    "event": "353.5606 reply 0047:0006"
+  },
+  {
+    "approx_audio_seconds": 2.8983,
+    "event": "353.5618 cmd 0002:a000"
+  },
+  {
+    "approx_audio_seconds": 3.4174,
+    "event": "354.0809 reply 006b:0025"
+  },
+  {
+    "approx_audio_seconds": 3.8904,
+    "event": "354.5539 reply 0034:0004"
+  },
+  {
+    "approx_audio_seconds": 3.9916,
+    "event": "354.6551 reply 0004:0000"
+  },
+  {
+    "approx_audio_seconds": 10.3598,
+    "event": "361.0233 reply 000e:0000"
+  },
+  {
+    "approx_audio_seconds": 10.3971,
+    "event": "361.0606 reply 0005:0000"
+  },
+  {
+    "approx_audio_seconds": 10.3976,
+    "event": "361.0611 reply 000e:0000"
+  },
+  {
+    "approx_audio_seconds": 10.4346,
+    "event": "361.0981 reply 0004:0000"
+  },
+  {
+    "approx_audio_seconds": 10.435,
+    "event": "361.0985 reply 000e:0000"
+  },
+  {
+    "approx_audio_seconds": 10.4575,
+    "event": "361.1210 reply 0006:0000"
+  },
+  {
+    "approx_audio_seconds": 12.5984,
+    "event": "363.2619 reply 0034:0005"
+  },
+  {
+    "approx_audio_seconds": 12.7605,
+    "event": "363.4240 reply 0004:0000"
+  }
+]

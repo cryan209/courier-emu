@@ -1,0 +1,28 @@
+{
+  "x2_verified": false,
+  "carrier_connected": false,
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": false
+  },
+  "settings": {
+    "analog": "S27=1S54=0S58=32&A3&B0",
+    "imodem": "S54=0S58=48&A3&B0"
+  },
+  "foreground_overlay_assist": false,
+  "imodem_call_state": "active",
+  "imodem_cpu_error": null,
+  "imodem_dsp_error": null,
+  "analog_cpu_error": null,
+  "bearer_octets": {
+    "to_line": 278400,
+    "from_line": 278400,
+    "pending": 461
+  },
+  "line_frames": 598,
+  "terminal_output": {
+    "imodem": "\r\nOK\r\n",
+    "analog": ""
+  },
+  "conclusion": "ISDN call and audio exchange work, but neither modem reports CONNECT and neither application marker is delivered."
+}

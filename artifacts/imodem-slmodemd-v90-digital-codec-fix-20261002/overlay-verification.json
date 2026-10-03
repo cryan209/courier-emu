@@ -1,0 +1,56 @@
+{
+  "transfers": [
+    {
+      "image": 10,
+      "origin": 53504,
+      "words": 7536,
+      "firmware_sha256": "4a410741321a0b2cb09f8e897323d5bfe465c27a29374cf2f31c94fbf3e52874",
+      "transport_sha256": "4a410741321a0b2cb09f8e897323d5bfe465c27a29374cf2f31c94fbf3e52874",
+      "loaded_sha256": "4a410741321a0b2cb09f8e897323d5bfe465c27a29374cf2f31c94fbf3e52874",
+      "mismatched_words": 0,
+      "matches_firmware": true
+    },
+    {
+      "image": 11,
+      "origin": 37472,
+      "words": 16000,
+      "firmware_sha256": "3683309dbc63f21a8ece4db5099e33974508fc4dd5e0c145f327090a8f0e0ffe",
+      "transport_sha256": "3683309dbc63f21a8ece4db5099e33974508fc4dd5e0c145f327090a8f0e0ffe",
+      "loaded_sha256": "3683309dbc63f21a8ece4db5099e33974508fc4dd5e0c145f327090a8f0e0ffe",
+      "mismatched_words": 0,
+      "matches_firmware": true
+    },
+    {
+      "image": 6,
+      "origin": 40960,
+      "words": 13912,
+      "firmware_sha256": "f2c9c6c9bc7dc0b0cfce5bc061c99148f50a2b3bdc090b3f57fdc76f353a566e",
+      "transport_sha256": "f2c9c6c9bc7dc0b0cfce5bc061c99148f50a2b3bdc090b3f57fdc76f353a566e",
+      "loaded_sha256": "f2c9c6c9bc7dc0b0cfce5bc061c99148f50a2b3bdc090b3f57fdc76f353a566e",
+      "mismatched_words": 0,
+      "matches_firmware": true
+    }
+  ],
+  "intact_final_code": [
+    {
+      "image": 5,
+      "origin": 32768,
+      "words": 4670,
+      "mismatched_words": 0,
+      "firmware_sha256": "df33f720e19e737ef52134e2af7fbfbf0507582f47fdffe19ffb99a51f6e897b",
+      "final_sha256": "df33f720e19e737ef52134e2af7fbfbf0507582f47fdffe19ffb99a51f6e897b"
+    },
+    {
+      "image": 6,
+      "origin": 40960,
+      "words": 13909,
+      "mismatched_words": 0,
+      "firmware_sha256": "577e8280b68ae40287acb1b93f25900645161db3ec008652462ff229174c870d",
+      "final_sha256": "577e8280b68ae40287acb1b93f25900645161db3ec008652462ff229174c870d"
+    }
+  ],
+  "foreground_overlay_assists": 0,
+  "later_load_commands": [
+    "4.9079 cmd 0002:a000"
+  ]
+}

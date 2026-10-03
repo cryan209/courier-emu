@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import os
 import socket
 import struct
 import time
 import wave
 from typing import Any
 
-from .daa import DAA_FRAME_SAMPLES, DAA_SAMPLE_RATE, INSTRUCTIONS_PER_MS
+from .daa import DAA_SAMPLE_RATE, INSTRUCTIONS_PER_MS
 
 
-# One exchange carries one 100 ms ASIC frame, which is the same unit the DAA
-# renders into the C52 receive queue.
-LINE_FRAME_SAMPLES = DAA_FRAME_SAMPLES
+# Default to the DAA's 100 ms batch. Both socket peers can select smaller
+# exchanges to model a lower transit delay without changing sample clocks.
+LINE_FRAME_MS = int(os.environ.get("COURIER_LINE_FRAME_MS", "100"))
+if not 1 <= LINE_FRAME_MS <= 100:
+    raise ValueError("COURIER_LINE_FRAME_MS must be between 1 and 100")
+LINE_FRAME_SAMPLES = DAA_SAMPLE_RATE * LINE_FRAME_MS // 1_000
 LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // DAA_SAMPLE_RATE
 LINE_FRAME_INSTRUCTIONS = LINE_FRAME_MS * INSTRUCTIONS_PER_MS
 
@@ -297,6 +301,8 @@ class LineLink:
             "audio_only": self.audio_only,
             "digital": self.digital,
             "sample_rate": DAA_SAMPLE_RATE,
+            "frame_samples": LINE_FRAME_SAMPLES,
+            "frame_ms": LINE_FRAME_MS,
             "record_prefix": self.record_prefix,
             "frames": self.frames,
             "connected": self.connected,

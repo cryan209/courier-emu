@@ -1,0 +1,96 @@
+{
+  "protocol": "default",
+  "speed_index": 0,
+  "disable_v34": false,
+  "analog_settings": "S27=1S54=0S58=32&A3&B1Q0",
+  "imodem_settings": "S54=0S58=48&A3&B1Q0",
+  "foreground_overlay_assist": false,
+  "connected": true,
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": true
+  },
+  "imodem": {
+    "serial": "\r\nOK\r\n\r\nCONNECT 33333/ARQ/x2/LAPM/V42BIS\r\nANALOG-X2-R\r\nOK\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                  21      Octets Received              11\r\nBlocks sent                   5      Blocks Received              11\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                        60\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       V42BIS 2048/32\r\nEqualization           Long\r\nFallback               Disabled\r\nProtocol               LAPM\r\nSpeed                  24000/32000\r\nCurrent Call           00:00:03\r\n\r\nOnline\r\nOK\r\n\r\nCONNECT 33333/ARQ/x2/LAPM/V42BIS\r\nX-PLUS6",
+    "carrier_connected": true,
+    "isdn_call_state": "active",
+    "dsp": {
+      "pc": 48414,
+      "op": 48668,
+      "acc": 125632512,
+      "accb": 125632512,
+      "preg": 67600,
+      "dp": 6,
+      "arp": 1,
+      "flags": 118,
+      "idle": false,
+      "instructions": 2485924118,
+      "cycles": 2816404487,
+      "io_events": 8192,
+      "ar0": 16,
+      "ar1": 2916,
+      "ar2": 49975,
+      "ar3": 49978,
+      "ar4": 2879,
+      "ar5": 2944,
+      "ar6": 61792,
+      "ar7": 3030,
+      "arcr": 16,
+      "indx": 16
+    },
+    "recent_mailbox": [
+      "38.1306 reply 0035:1ffe",
+      "38.1307 reply 0036:001c",
+      "38.1737 reply 0002:0000",
+      "38.6209 reply 0003:0000",
+      "38.9289 reply 0020:000b",
+      "39.7289 reply 0020:000b",
+      "40.5289 reply 0020:000b",
+      "41.3289 reply 0020:000b",
+      "42.1289 reply 0020:000b",
+      "42.9289 reply 0020:000a",
+      "43.7289 reply 0020:000a",
+      "44.5289 reply 0020:000b"
+    ],
+    "error": null
+  },
+  "analog": {
+    "serial": "\r\nCONNECT/ARQ\r\nIMODEM-X2-RX-PLUS6+++",
+    "carrier_connected": true,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-1pgu0zaa/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "frame_samples": 160,
+      "frame_ms": 20,
+      "record_prefix": null,
+      "frames": 3492,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 303577360,
+      "samples_sent": 558720,
+      "samples_received": 558720,
+      "error": null
+    },
+    "call_state": "answered",
+    "answered": true,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 358400,
+      "from_line": 358400,
+      "pending": 8
+    },
+    "silence_frames": 1252,
+    "events": [
+      "the line is ringing us at frame 942: offering the I-modem a 3.1 kHz call",
+      "the I-modem answered at frame 1252: off hook"
+    ]
+  }
+}

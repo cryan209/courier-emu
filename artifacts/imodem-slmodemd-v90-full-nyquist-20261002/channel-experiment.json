@@ -1,0 +1,10 @@
+{
+  "upstream_and_downstream_resampler_cutoff": 1.0,
+  "normal_cutoff": 0.98,
+  "receive_gain": 0.25,
+  "instructions": 190000000,
+  "dil_generator_entries": 0,
+  "connect": false,
+  "smartlink_final_timing_offset_ppm": 12796.059,
+  "note": "Experiment overrides courier_emu.resample.CUTOFF at runtime; no production resampler change."
+}

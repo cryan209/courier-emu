@@ -1,0 +1,38 @@
+{
+  "serial_a": "\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n",
+  "media": {
+    "from_rtp": 218558,
+    "receive_buffer_samples": 320,
+    "receive_buffered": 166,
+    "received_from_rtp": 194074,
+    "silence_filled": 24484,
+    "to_rtp": 218558
+  },
+  "post_start_silence_samples": 0,
+  "dsc": {
+    "frames": 278118,
+    "peripheral_slots": [
+      6,
+      7
+    ],
+    "routed_frames": {
+      "1": 219511
+    },
+    "routes": [
+      [
+        1,
+        6
+      ]
+    ],
+    "rx_pending": {
+      "1": 1,
+      "2": 0
+    },
+    "underrun_at": {},
+    "underruns": {}
+  },
+  "control_register_writes": {
+    "PP_PPCR1": "07",
+    "PP_PPCR2": "01"
+  }
+}

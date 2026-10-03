@@ -196,3 +196,30 @@ def test_cpu_int1_latches_while_masked():
         core.step(2)
         assert core.state()['pc'] == 2  # INT1 slot
         assert not core.register(6) & 1
+
+
+def test_primary_codec_clock_holds_dac_word_until_replaced():
+    with NativeC5x.from_program(0, program(*([0x8B00] * 32768))) as core:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        period = core.codec_state()['frame_period']
+        core.host_write(0x21, 0x1234)
+        core.step(period * 3)
+        # Delaying the writer must not splice synthetic zero samples into
+        # the line; the external DAC retains the most recent primary word.
+        assert core.line_tx_samples() == [0x1234] * 3
+        core.host_write(0x21, 0x5678)
+        core.step(period)
+        assert core.line_tx_samples()[-1] == 0x5678
+
+
+def test_codec_underrun_counter_distinguishes_silence_from_missing_samples():
+    with NativeC5x.from_program(0, program(*([0x8B00] * 32768))) as core:
+        core.configure_rom_codec()
+        core.configure_line_frame_interrupt(5, 0xFFFF)
+        period = core.codec_state()['frame_period']
+        core.queue_codec_rx([0, 0x1234])
+        core.step(period * 2)
+        assert core.codec_state()['rx_empty_frames'] == 0
+        core.step(period)
+        assert core.codec_state()['rx_empty_frames'] == 1

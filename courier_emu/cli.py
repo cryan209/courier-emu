@@ -80,6 +80,13 @@ def _number(value: str) -> int:
     return int(value, 0)
 
 
+def _media_buffer_ms(value: str) -> int:
+    milliseconds = _number(value)
+    if milliseconds < 20:
+        raise argparse.ArgumentTypeError('media buffer must be at least 20 ms')
+    return milliseconds
+
+
 def _board_id(value: str) -> str:
     """Validate a board identification strap code, or 'none' for floating."""
     if value == "none":
@@ -784,6 +791,11 @@ def build_parser() -> argparse.ArgumentParser:
              "(default: ephemeral)",
     )
     isdn_run.add_argument(
+        "--bri-sip-buffer-ms", type=_media_buffer_ms, metavar="MS",
+        help="prime both RTP playout directions with this much audio "
+             "(default: 40 ms receive, 60 ms transmit)",
+    )
+    isdn_run.add_argument(
         "--bri-sip-record",
         metavar="FILE",
         help="save the RTP payload the far end sends, as mu-law at 8 kHz - "
@@ -898,6 +910,13 @@ def build_parser() -> argparse.ArgumentParser:
              "back after it, so AT&W survives to the next boot (default: "
              f"{imodem_config.DEFAULT_NVRAM_FILE}). --no-flash-nvram runs "
              "against an erased store and keeps nothing",
+    )
+    isdn_run.add_argument(
+        "--dte-framing",
+        choices=("8N1", "7M1", "7O1", "7E1", "stored"),
+        default="8N1",
+        help="serial format applied to the loaded flash profile (default: "
+             "8N1); stored preserves the profile's existing setting",
     )
     isdn_run.add_argument(
         "--no-flash-nvram",
@@ -1675,6 +1694,9 @@ def main(argv: list[str] | None = None) -> int:
                 imodem_config.load_nvram(args.flash_nvram)
                 if args.flash_nvram else None
             )
+            if nvram is not None and args.dte_framing != "stored":
+                nvram = imodem_config.set_dte_framing(
+                    nvram, ("8N1", "7M1", "7O1", "7E1").index(args.dte_framing))
             dipswitches: dict[int, bool] = {}
             for setting in args.dipswitch:
                 number, separator, state = setting.partition("=")
@@ -1727,6 +1749,10 @@ def main(argv: list[str] | None = None) -> int:
                         target=args.bri_sip_target or "",
                         record=(open(args.bri_sip_record, "wb")
                                 if args.bri_sip_record else None),
+                        receive_buffer_samples=(args.bri_sip_buffer_ms * 8
+                                                if args.bri_sip_buffer_ms else 320),
+                        transmit_buffer_samples=(args.bri_sip_buffer_ms * 8
+                                                 if args.bri_sip_buffer_ms else 480),
                     )
                 if args.bri_line:
                     if args.bri_sip or args.bri_v120:

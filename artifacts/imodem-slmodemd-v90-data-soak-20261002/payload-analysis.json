@@ -1,0 +1,35 @@
+{
+  "framing": "seven-bit application data; upstream parity removed at terminal",
+  "audio_duration_seconds": 184.84,
+  "data_hold_seconds_approximately": 162.82,
+  "imodem_to_smartlink": {
+    "packets_sent": 162,
+    "packets_received_exactly_once": 161,
+    "missing_or_corrupted_packets": [
+      1
+    ],
+    "duplicate_packets": [],
+    "unexpected_bytes_between_intact_packets": [
+      {
+        "after_packet": 3,
+        "hex": "7e4e"
+      }
+    ],
+    "verified_payload_bytes": 13846,
+    "all_packets_match": false
+  },
+  "smartlink_to_imodem": {
+    "packets_sent": 162,
+    "packets_received_exactly_once": 162,
+    "missing_or_corrupted_packets": [],
+    "duplicate_packets": [],
+    "unexpected_bytes_between_intact_packets": [],
+    "verified_payload_bytes": 13932,
+    "all_packets_match": true
+  },
+  "negotiated_links": [
+    "V.90, rate: rx 34667, tx 31200"
+  ],
+  "retrain_requests": 0,
+  "probe_status": "instruction-limit"
+}

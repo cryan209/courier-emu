@@ -1,0 +1,8 @@
+{
+  "upstream_exact": 0,
+  "upstream_sent": 10,
+  "downstream_exact": 0,
+  "downstream_after_stripping_bit7": 0,
+  "downstream_sent": 10,
+  "received_bytes": 65504
+}

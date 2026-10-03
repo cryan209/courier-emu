@@ -12,6 +12,7 @@ from .imodem_config import NVRAM_BASE
 from .bri import BriNetwork
 from .timebase import ASIC_DSP_CLOCK_HZ
 from . import imodem_trace
+from .peripheral_clock import PeripheralClock
 from .pic import InterruptControllers
 from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
 from .xmp import XmpImage
@@ -515,6 +516,7 @@ class IsdnMachine:
         self._line_walk = list(S_INTERFACE_WALK) if line_activate is not None else []
 
         self.pit = ProgrammableIntervalTimer()
+        self._peripheral_clock = PeripheralClock(INSTRUCTIONS_PER_SECOND)
         self.pic = InterruptControllers()
         self.dsc = Am79C30()
         if with_dsp:
@@ -529,6 +531,7 @@ class IsdnMachine:
 
         self.instructions = 0
         self.timer_ticks = 0
+        self._timer_coalesced_wraps = [0, 0, 0]
         self.hardware_interrupts = 0
         self.software_interrupts: Counter[int] = Counter()
         self.io_counts: Counter[tuple[str, int]] = Counter()
@@ -644,7 +647,7 @@ class IsdnMachine:
             self._advance_dsp()
         self.io_counts[("in", port)] += 1
         if self.pit.handles(port):
-            return self.pit.read(port, self.instructions)
+            return self.pit.read(port, self._peripheral_instructions())
         if self.pic.handles(port):
             return self.pic.read(port)
         if self.dsc.handles(port):
@@ -690,7 +693,7 @@ class IsdnMachine:
             if port not in DOWNLOAD_PORTS:
                 return
         if self.pit.handles(port):
-            self.pit.write(port, value, self.instructions)
+            self.pit.write(port, value, self._peripheral_instructions())
             return
         if self.pic.handles(port):
             self.pic.write(port, value)
@@ -730,6 +733,13 @@ class IsdnMachine:
 
     # -- timing ------------------------------------------------------------
 
+    def _peripheral_instructions(self) -> int:
+        peer = self.bri.media_peer if self.bri is not None else None
+        realtime = bool(self.with_dsp and peer is not None
+                        and getattr(peer, "realtime_clock", False)
+                        and self.bri.call_state == "active")
+        return self._peripheral_clock.read(self.instructions, realtime)
+
     def _advance_dsp(self) -> None:
         if self.with_dsp:
             elapsed = self.instructions - self._dsp_instructions
@@ -740,12 +750,21 @@ class IsdnMachine:
                 and getattr(peer, "realtime_clock", False)
                 and self.bri.call_state == "active"
             )
+            if hasattr(self.mailbox, 'pcm_frame_service'):
+                self.mailbox.pcm_frame_service = (
+                    self._service_pcm_frame if realtime else None)
             if hasattr(self.mailbox, "pace_realtime"):
-                self.mailbox.pace_realtime(realtime)
+                self.mailbox.pace_realtime(realtime, max_wall_seconds=0.001)
                 if realtime:
                     return
             if elapsed:
                 self.mailbox.step_cycles(elapsed * DSP_CYCLES_PER_CPU_INSTRUCTION)
+
+    def _service_pcm_frame(self) -> None:
+        # A realtime catch-up pass can span multiple DS0 frames. Exchange
+        # each one's media before the next MUX clock consumes its RX slot.
+        if self.bri is not None:
+            self.bri._service_media(self.dsc)
 
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
@@ -754,8 +773,9 @@ class IsdnMachine:
             # DSP serial clock in this scheduler pass.
             self.bri.service(self.dsc, self.instructions)
         self._advance_dsp()
-        if self.rtos_service and self.instructions >= self._next_rtos_service:
-            self._next_rtos_service = self.instructions + RTOS_SERVICE_INSTRUCTIONS
+        peripheral_instructions = self._peripheral_instructions()
+        if self.rtos_service and peripheral_instructions >= self._next_rtos_service:
+            self._next_rtos_service = peripheral_instructions + RTOS_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(11)
         if self.serial_pump is not None:
             self.serial_pump(self)
@@ -771,15 +791,18 @@ class IsdnMachine:
             self.dsc.set_hook(False)
         if self.dsc.interrupting():
             self.pic.raise_irq(DSC_IRQ)
-        if self.mailbox_service and self.instructions >= self._next_mailbox_service:
-            self._next_mailbox_service = self.instructions + MAILBOX_SERVICE_INSTRUCTIONS
+        if self.mailbox_service and peripheral_instructions >= self._next_mailbox_service:
+            self._next_mailbox_service = peripheral_instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
         for counter in self.pit.counters:
-            wraps = counter.take_wraps(self.pit.ticks(self.instructions))
+            wraps = counter.take_wraps(self.pit.ticks(peripheral_instructions))
             if not wraps:
                 continue
             self.timer_ticks += wraps
             for line in self.counter_irq.get(counter.index, ()):
+                controller = self.pic.slave if line >= 8 else self.pic.master
+                pending = bool(controller.irr & (1 << (line % 8)))
+                self._timer_coalesced_wraps[counter.index] += wraps - (not pending)
                 self.pic.raise_irq(line)
 
     def _advance_line(self) -> None:
@@ -1171,7 +1194,12 @@ class IsdnMachine:
             unmodelled_ports=[f"{port:#06x}" for port in unmodelled],
             hot_addresses=self.pc_counts.most_common(8),
             last_addresses=[f"{address:#07x}" for address in self.recent],
-            pit=self.pit.status(self.instructions),
+            pit={
+                **self.pit.status(self._peripheral_instructions()),
+                "time_seconds": self._peripheral_clock.value / INSTRUCTIONS_PER_SECOND,
+                "cpu_time_seconds": self.instructions / INSTRUCTIONS_PER_SECOND,
+                "coalesced_timer_edges": self._timer_coalesced_wraps,
+            },
             pic=self.pic.status(),
             dsc=self.dsc.status(),
             flash=self.flash.status_report(),

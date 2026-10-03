@@ -1,0 +1,254 @@
+[
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-distinct-number-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-distinct-voice-number.sav"
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 65504
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-erased-header-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-erased-factory-header.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26905
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-factory-isdn-audit-20261003",
+    "framing": "7E1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-firmware-fresh-7e1-factory-isdn.sav"
+    },
+    "audio_blocks": 0,
+    "emulator_to_peer_matches": 0,
+    "emulator_to_peer_sent": 0,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 0,
+    "received_bytes": 0
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-factory-profile-audit-20261003",
+    "framing": "7E1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": null
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 10,
+    "emulator_to_peer_sent": 10,
+    "peer_to_emulator_matches": 10,
+    "peer_to_emulator_sent": 10,
+    "received_bytes": 860
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-fresh-7e1-ni1-audit-20261003",
+    "framing": "7E1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-firmware-fresh-7e1-ni1.sav"
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 5,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 20079
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-fresh-8n1-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-firmware-fresh-8n1.sav"
+    },
+    "audio_blocks": 0,
+    "emulator_to_peer_matches": 0,
+    "emulator_to_peer_sent": 0,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 0,
+    "received_bytes": 0
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-fresh-net3-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-firmware-fresh-8n1-net3.sav"
+    },
+    "audio_blocks": 0,
+    "emulator_to_peer_matches": 0,
+    "emulator_to_peer_sent": 0,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 0,
+    "received_bytes": 0
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-fresh-ni1-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-firmware-fresh-8n1-ni1.sav"
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 4,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 20079
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-live-profile-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 8,
+    "emulator_to_peer_sent": 10,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 10,
+    "received_bytes": 65504
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-routing-zero-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1S67=0S68=0&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26905
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-s67-zero-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1S67=0&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26870
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-s68-zero-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1S68=0&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26905
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-saved-7e1-audit-20261003",
+    "framing": "7E1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-7e1.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26883
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-saved-8n1-9600-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/imodem-slmodemd-v90-profile-framing-audit-20261003/nvram-8n1-9600.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 5,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 7651
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-saved-f0-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "AT&F0X1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26905
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-saved-reset-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "AT&F1X1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 0
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-v2-auto-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "AT*V2=0X1S54=0S58=1&A3&B1Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 1542,
+    "emulator_to_peer_matches": 3,
+    "emulator_to_peer_sent": 5,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 5,
+    "received_bytes": 26905
+  },
+  {
+    "directory": "artifacts/imodem-slmodemd-v90-variable-dte-audit-20261003",
+    "framing": "8N1",
+    "configuration": {
+      "imodem_initialization": "ATX1S54=0S58=1&A3&B0Q0&N0&U0&M0&K0",
+      "flash_nvram": "artifacts/real-courier-inbound/nvram.sav"
+    },
+    "audio_blocks": 2242,
+    "emulator_to_peer_matches": 0,
+    "emulator_to_peer_sent": 10,
+    "peer_to_emulator_matches": 0,
+    "peer_to_emulator_sent": 10,
+    "received_bytes": 65504
+  }
+]

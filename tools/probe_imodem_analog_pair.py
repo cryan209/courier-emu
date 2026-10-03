@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import ExitStack
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,12 @@ import re
 import subprocess
 import sys
 import tempfile
+
+# A 100 ms exchange plus a full receive reserve delays the analog caller's
+# training response past the first x2 transition. Keep the general line
+# default unchanged; select a lower transit delay for this paired CLI.
+if __name__ == "__main__":
+    os.environ.setdefault("COURIER_LINE_FRAME_MS", "20")
 
 from courier_emu.bearer_line import BearerLineLink
 from courier_emu.bri import BriNetwork
@@ -30,6 +37,53 @@ DEFAULT_ANALOG = (
 PROTOCOL_S58 = {"default": None, "x2": 32, "v90": 1, "v34": 33, "bell103": None}
 
 
+class OverlayAudit:
+    """Observe the CPU transport and read back before its completion strobe.
+
+    The supervisor polls both half-block acknowledgements before completion,
+    so the native BLDP writes must already be visible at this boundary.
+    This observer never publishes program words or changes handshake state.
+    """
+
+    def __init__(self, endpoint):
+        self.endpoint = endpoint
+        self.original_write = endpoint.write
+        self.payload = bytearray()
+        self.origin = None
+        self.records = []
+
+    def write(self, port, value):
+        endpoint = self.endpoint
+        if port == 0x1e and endpoint.core and not endpoint.reset_status:
+            strobe = value & 7
+            if strobe in (1, 2):
+                if not self.payload:
+                    self.origin = endpoint.core.data(0x0bff)
+                base = 0x40 if strobe == 1 else 0x48
+                for offset in (0, 4):
+                    self.payload.extend(endpoint._word(base + offset).to_bytes(2, "little"))
+            elif strobe == 4 and self.payload:
+                words = len(self.payload) // 2
+                actual = b"".join(endpoint.core.program((self.origin + i) & 0xffff)
+                                  .to_bytes(2, "little") for i in range(words))
+                mismatches = [i for i in range(words)
+                              if actual[2*i:2*i+2] != self.payload[2*i:2*i+2]]
+                self.records.append({
+                    "origin": self.origin, "words": words,
+                    "destination_after": endpoint.core.data(0x0bff),
+                    "expected_destination_after": (self.origin + words) & 0xffff,
+                    "dsp_status": endpoint.core.io(0x57),
+                    "dsp_pc": endpoint.core.state()["pc"],
+                    "mismatched_words": len(mismatches),
+                    "first_mismatch_addresses": [self.origin + i for i in mismatches[:16]],
+                    "transport_sha256": sha256(self.payload).hexdigest(),
+                    "program_sha256": sha256(actual).hexdigest(),
+                })
+                self.payload.clear()
+                self.origin = None
+        return self.original_write(port, value)
+
+
 def stop_child(process: subprocess.Popen) -> None:
     """Retire our Courier worker if the I-modem or socket failed first."""
     if process.poll() is None:
@@ -46,6 +100,7 @@ def carrier_connected(serial: str, *, complete: bool = False) -> bool:
     return re.search(
         r"(?:^|[\r\n])CONNECT(?: +[0-9]+)?(?:/[A-Z0-9./ -]+)?" + ending,
         serial,
+        re.IGNORECASE,
     ) is not None
 
 
@@ -57,9 +112,18 @@ def analog_terminal_text(result: dict) -> str:
                  bytes.fromhex(result["serial_hex"])).decode("ascii")
 
 
+def connection_rate_bps(serial: str) -> int | None:
+    """Read this terminal's native rate; bare CONNECT supplies no rate."""
+    match = re.search(r"(?:^|[\r\n])CONNECT +([0-9]+)(?:/[^\r\n]*)?\r\n",
+                      serial, re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--imodem", type=Path, default=DEFAULT_IMODEM)
+    result.add_argument("--imodem-nvram", type=Path,
+                        help="boot the I-modem from a saved flash configuration")
     result.add_argument("--analog", type=Path, default=DEFAULT_ANALOG)
     result.add_argument("--instructions", type=int, default=300_000_000)
     result.add_argument("--analog-instructions", type=int,
@@ -93,14 +157,22 @@ def parser() -> argparse.ArgumentParser:
         help="additional gain on I-modem audio entering the analogue Courier",
     )
     result.add_argument("--output", type=Path)
+    result.add_argument("--audit-overlays", action="store_true",
+                        help="read back every I-modem overlay at its completion strobe")
+    result.add_argument("--assist-overlay-command", action="store_true",
+                        help="diagnostic: let the host acknowledge foreground overlay commands")
     result.add_argument(
         "--disable-v34", action="store_true",
         help="set S56=192 on both modems to disable V.34 and V.FC",
     )
     result.add_argument("--analog-settings", default="S27=1", help="extra Hayes settings before dialling")
+    result.add_argument("--analog-result-mode", type=int, choices=range(5), default=1,
+                        help="Hayes X result mode (1 reports speed without dial-tone detection; 0 bare CONNECT)")
     result.add_argument("--imodem-settings", default="", help="extra Hayes settings before answering")
     result.add_argument("--analog-send", default="", help="text to send from the analogue DTE after CONNECT")
     result.add_argument("--imodem-send", default="", help="text to send from the I-modem DTE after CONNECT")
+    result.add_argument("--link-diagnostics", action="store_true",
+                        help="query the I-modem's ATI6 after carrier and resume data mode")
     result.add_argument(
         "--snapshot-every", type=int, default=25_000_000,
         help="write periodic DSP checkpoints when --output is set (0 disables)",
@@ -125,7 +197,7 @@ def main() -> int:
         # The line observer sees the body after AT is stripped. Start with X0
         # so a fixed-speed &N prefix is not mistaken for a standalone extended
         # command when it records which subscriber is originating the call.
-        analog_dial = "ATX0" + args.analog_settings
+        analog_dial = f"ATX{args.analog_result_mode}" + args.analog_settings
         if args.speed_index:
             analog_dial += f"&N{args.speed_index}"
         if analog_s58 is not None:
@@ -203,9 +275,17 @@ def main() -> int:
         data_sent = False
         received_text = ""
         transcript_cursor = 0
+        diagnostic_stage = "connecting"
+        connected_at = 0
+        diagnostic_cursor = 0
+
+        def send(current: IsdnMachine, value: str, direction: str = "sent") -> None:
+            current.send_serial(_on_the_wire(value, current.dte_framing()))
+            transcript.append((current.instructions, direction, value))
 
         def pump(current: IsdnMachine) -> None:
             nonlocal traced_core, next_snapshot, data_sent, received_text, transcript_cursor
+            nonlocal diagnostic_stage, connected_at, diagnostic_cursor
             command_pump(current)
             for _, direction, value in transcript[transcript_cursor:]:
                 if direction == "received":
@@ -216,6 +296,19 @@ def main() -> int:
                 current.send_serial(_on_the_wire(args.imodem_send, current.dte_framing()))
                 transcript.append((current.instructions, "sent_data", args.imodem_send))
                 data_sent = True
+            if args.link_diagnostics:
+                if diagnostic_stage == "connecting" and carrier_connected(received_text, complete=True):
+                    connected_at = current.instructions
+                    diagnostic_stage = "guard"
+                elif diagnostic_stage == "guard" and current.instructions >= connected_at + 20_000_000:
+                    send(current, "+++")
+                    diagnostic_stage, diagnostic_cursor = "escaping", len(received_text)
+                elif diagnostic_stage == "escaping" and "\r\nOK\r\n" in received_text[diagnostic_cursor:]:
+                    send(current, "ATI6\r")
+                    diagnostic_stage, diagnostic_cursor = "diagnostics", len(received_text)
+                elif diagnostic_stage == "diagnostics" and "\r\nOK\r\n" in received_text[diagnostic_cursor:]:
+                    send(current, "ATO\r")
+                    diagnostic_stage = "done"
             core = getattr(current.mailbox, "core", None)
             # The mask-ROM bootstrap creates a fresh core, so object identity
             # rather than a one-shot flag decides whether tracing is armed.
@@ -230,13 +323,17 @@ def main() -> int:
             if output and args.snapshot_every > 0 and current.instructions >= next_snapshot:
                 snapshots.append({
                     "instructions": current.instructions,
+                    "serial": received_text,
                     "call_state": bri.call_state,
                     "line_frames": peer.line.frames,
                     "dsp": core.state() if core else None,
                     "stack": core.stack() if core else None,
                     "dsp_status": core.io(0x57) if core else None,
                     "cells": {f"{a:04x}": core.data(a) for a in
-                              (0x0bff, 0x0bf0, 0x0bf1, 0x0061, 0x006f)} if core else {},
+                              (0x0bff, 0x0bf0, 0x0bf1, 0x0061, 0x006f,
+                               0x031a, 0x0337, 0x035b, 0x039f,
+                               0x03c8, 0x03c9, 0x03ca, 0x03cb, 0x03cc, 0x03cd,
+                               0x006d, 0x032c, 0x032d, 0x03b4, 0x03d0, 0x03d2)} if core else {},
                     "recent_commands": list(current.mailbox.commands)[-8:],
                     "recent_replies": list(current.mailbox.replies)[-8:],
                 })
@@ -248,13 +345,23 @@ def main() -> int:
             with_dsp=True,
             profile=False,
             bri=bri,
-            flash_nvram=None,
+            flash_nvram=args.imodem_nvram.read_bytes() if args.imodem_nvram else None,
             # The continuously clocked analogue side reaches RING after about
             # 95M 386 instructions. ATA sent earlier is correctly ignored.
             serial_pump=pump,
         )
+        overlay_audit = OverlayAudit(machine.mailbox) if args.audit_overlays else None
+        machine.mailbox.foreground_overlay_assist = args.assist_overlay_command
+        if overlay_audit:
+            machine.mailbox.write = overlay_audit.write
         try:
             imodem_result = machine.run(args.instructions).to_dict()
+            imodem_result["working_s_registers"] = {
+                str(number): machine.uc.mem_read(0x26000 + 0xD17B + number, 1)[0]
+                for number in (54, 56, 58)
+            }
+            if overlay_audit:
+                imodem_result["overlay_audit"] = overlay_audit.records
             imodem_result["all_io_counts"] = {
                 f"{direction} 0x{port:04x}": count
                 for (direction, port), count in sorted(machine.io_counts.items())
@@ -307,7 +414,10 @@ def main() -> int:
         "speed_index": args.speed_index,
         "disable_v34": args.disable_v34,
         "analog_settings": args.analog_settings,
+        "analog_result_mode": args.analog_result_mode,
         "imodem_settings": args.imodem_settings,
+        "imodem_nvram": str(args.imodem_nvram.resolve()) if args.imodem_nvram else None,
+        "foreground_overlay_assist": args.assist_overlay_command,
         "dsp_clock_hz": ASIC_DSP_CLOCK_HZ,
         "audio_gain_db": {
             "analog_to_imodem": args.analog_to_imodem_db,
@@ -333,7 +443,9 @@ def main() -> int:
             "speed_index": args.speed_index,
             "disable_v34": args.disable_v34,
             "analog_settings": args.analog_settings,
+            "analog_result_mode": args.analog_result_mode,
             "imodem_settings": args.imodem_settings,
+            "foreground_overlay_assist": args.assist_overlay_command,
             "connected": carrier_connected(imodem_serial) and carrier_connected(analog_serial),
             "data_delivery": {
                 "analog_to_imodem": args.analog_send in imodem_serial if args.analog_send else None,
@@ -341,6 +453,7 @@ def main() -> int:
             },
             "imodem": {
                 "serial": imodem_serial,
+                "connect_rate_bps": connection_rate_bps(imodem_serial),
                 "carrier_connected": carrier_connected(imodem_serial),
                 "isdn_call_state": imodem_result["bri"]["call_state"],
                 "dsp": imodem_result["mailbox"]["core"],
@@ -349,6 +462,7 @@ def main() -> int:
             },
             "analog": {
                 "serial": analog_serial,
+                "connect_rate_bps": connection_rate_bps(analog_serial),
                 "carrier_connected": carrier_connected(analog_serial),
                 "error": analog_result["error"],
             },

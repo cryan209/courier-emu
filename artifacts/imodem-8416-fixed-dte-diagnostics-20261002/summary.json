@@ -1,0 +1,47 @@
+[
+  {
+    "dialled": "8416",
+    "connect_result": "CONNECT 9600/ARQ",
+    "arq": true,
+    "login_prompt_received": true,
+    "credentials_submitted": false,
+    "terminal": "\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 9600/ARQ\r\n\n\n\n\rMULTITECH SOFTWARE SYSTEMS\n\n\rUSA\n\n\n\n\rlogin: +++\r\nOK\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                   3      Octets Received              51\r\nBlocks sent                   2      Blocks Received               2\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nProtocol               LAPM\r\nSpeed                  9600/9600\r\nCurrent Call           00:00:03\r\n\r\nOnline\r\nOK\r\n\r\nOK\r\n",
+    "status": "instruction-limit",
+    "sip": {
+      "direction": "",
+      "display_name": "Courier Emulator",
+      "error": "",
+      "events": [
+        "tx INVITE cseq=1",
+        "rx 401",
+        "tx ACK cseq=1",
+        "tx INVITE cseq=2",
+        "rx 100",
+        "rx 183",
+        "rx 200",
+        "tx ACK cseq=2",
+        "tx BYE cseq=3",
+        "rx 200 BYE"
+      ],
+      "incoming_from": "",
+      "incoming_to": "",
+      "last_status": 200,
+      "local_port": 52233,
+      "number": "8416",
+      "preanswer_samples_discarded": 25633,
+      "registered": false,
+      "remote_rtp": "",
+      "rtp_octets_received": 257920,
+      "rtp_octets_sent": 235200,
+      "rtp_packets_received": 1612,
+      "rtp_packets_sent": 1470,
+      "rtp_port": 53664,
+      "rtp_tx_buffer_samples": 480,
+      "rtp_tx_queued_samples": 0,
+      "server": "asterisk.net.cryan.nz",
+      "state": "idle",
+      "target": "sip:8416@asterisk.net.cryan.nz",
+      "username": "2903"
+    }
+  }
+]

@@ -21,6 +21,7 @@ samples and the kernel is read from a finely tabulated set of phases.
 from __future__ import annotations
 
 import math
+from bisect import bisect_left, bisect_right
 from operator import mul
 
 # Input samples each side of the output instant. 64 narrows the transition
@@ -86,10 +87,9 @@ def _kernel_for(cutoff: float) -> list[tuple[float, ...]]:
 class BandLimitedResampler:
     """Streaming arbitrary-ratio conversion through a band-limiting kernel.
 
-    Output lags input by HALF_TAPS input samples, a fixed delay. Equal rates
-    pass through untouched. A change of rate restarts the history, as the
-    linear converter did: samples buffered at one spacing mean nothing at
-    another.
+    Output initially lags input by HALF_TAPS input samples. Equal rates pass
+    through untouched until conversion starts. Retunes preserve the output
+    timeline and the input history's physical sample spacing.
     """
 
     def __init__(self) -> None:
@@ -100,20 +100,101 @@ class BandLimitedResampler:
         # Output instant, in input samples, relative to _history[HALF_TAPS-1].
         self._position = 0.0
         self._kernel: list[tuple[float, ...]] | None = None
+        # Keep extra input history for a clock change: its old sample spacing
+        # must survive until the FIR window has crossed the boundary.
+        self._recent_input: list[float] = [0.0] * (2 * TAPS)
+        self._timed_samples: list[float] | None = None
+        self._timed_times: list[float] = []
+        self._input_time = 0.0
+        self._next_time = 0.0
+
+    def _convert_retuned(self, samples: list[int], input_rate: float,
+                         output_rate: float) -> list[int]:
+        """Interpolate across an input-clock edge in physical time.
+
+        Regular windows still use the cached polyphase kernel. Only windows
+        straddling the rate change need nonuniform sinc weights. Re-labeling
+        the old history at the new spacing otherwise shifts the whole tone,
+        even when the output remains a perfectly continuous 8 kHz stream.
+        """
+        if self._timed_samples is None:
+            old_rate = self.input_rate
+            self._timed_samples = list(self._recent_input)
+            self._timed_times = [k / old_rate for k in
+                                 range(-len(self._recent_input), 0)]
+            self._next_time = (self._position - HALF_TAPS - 1) / old_rate
+        history = self._timed_samples
+        times = self._timed_times
+        history.extend(float(s) for s in samples)
+        times.extend(self._input_time + k / input_rate for k in range(len(samples)))
+        self._input_time += len(samples) / input_rate
+        self.input_rate, self.output_rate = input_rate, output_rate
+        kernel = _kernel_for(CUTOFF * min(input_rate, output_rate) / 2 / input_rate)
+        self._kernel = kernel
+        result = []
+        instant = self._next_time
+        support = HALF_TAPS / input_rate
+        cutoff = CUTOFF * min(input_rate, output_rate) / 2
+        norm = _bessel_i0(KAISER_BETA)
+        while instant + support <= times[-1] + 1e-12:
+            center = bisect_right(times, instant) - 1
+            base = center - (HALF_TAPS - 1)
+            end = base + TAPS
+            if (base >= 0 and end <= len(times) and
+                    abs(times[end - 1] - times[base] - (TAPS - 1) / input_rate) < 1e-10):
+                phase = round((instant - times[center]) * input_rate * PHASES)
+                if phase == PHASES:
+                    base, phase = base + 1, 0
+                value = sum(map(mul, kernel[phase], history[base:base + TAPS]))
+            else:
+                # A clock edge creates two spacings in the same window.
+                # Integrate over their actual times, with local sample widths,
+                # rather than discarding or replaying either side's samples.
+                first = max(1, bisect_left(times, instant - support))
+                last = min(len(times) - 1, bisect_right(times, instant + support))
+                value, total = 0.0, 0.0
+                for k in range(first, last):
+                    delta = times[k] - instant
+                    x = 2 * cutoff * delta
+                    sinc = 1.0 if x == 0 else math.sin(math.pi * x) / (math.pi * x)
+                    ratio = delta / support
+                    window = _bessel_i0(KAISER_BETA * math.sqrt(max(0, 1 - ratio * ratio))) / norm
+                    width = (times[k + 1] - times[k - 1]) / 2
+                    weight = 2 * cutoff * sinc * window * width
+                    value += history[k] * weight
+                    total += weight
+                value = value / total if total else 0.0
+            result.append(max(-32768, min(32767, round(value))))
+            instant += 1 / output_rate
+        self._next_time = instant
+        # Enough past samples for subsequent retunes in the codec's supported
+        # range, while keeping long calls bounded in memory.
+        keep = max(0, bisect_left(times, instant - 2 * TAPS / min(input_rate, output_rate)) - 1)
+        del history[:keep]
+        del times[:keep]
+        self.converted += len(result)
+        return result
 
     def convert(self, samples: list[int], input_rate: float,
                 output_rate: float) -> list[int]:
         if not samples:
             return []
-        if input_rate <= 0 or output_rate <= 0 or output_rate == input_rate:
+        if input_rate > 0 and output_rate > 0 and (self._timed_samples is not None or
+                (self.input_rate > 0 and input_rate != self.input_rate)):
+            return self._convert_retuned(samples, input_rate, output_rate)
+        self._recent_input = (self._recent_input + [float(s) for s in samples])[-2 * TAPS:]
+        if input_rate <= 0 or output_rate <= 0 or (output_rate == input_rate and
+                                                  self.input_rate == 0):
             # Nothing has programmed the codec yet, or the rates agree.
             self._history = (self._history + [float(s) for s in samples])[-TAPS:]
             return list(samples)
         if output_rate != self.output_rate or input_rate != self.input_rate:
+            input_changed = input_rate != self.input_rate
             self.input_rate, self.output_rate = input_rate, output_rate
             self._kernel = _kernel_for(
                 CUTOFF * min(input_rate, output_rate) / 2 / input_rate)
-            self._position = 0.0
+            if input_changed:
+                self._position = 0.0
         kernel = self._kernel
         step = input_rate / output_rate
         history = self._history + [float(s) for s in samples]

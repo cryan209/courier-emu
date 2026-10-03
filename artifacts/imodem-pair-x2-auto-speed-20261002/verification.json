@@ -1,0 +1,38 @@
+{
+  "requested_protocol": "x2",
+  "x2_verified": false,
+  "data_delivery": {
+    "answer_to_originate": true,
+    "originate_to_answer": true
+  },
+  "sides": {
+    "originate": {
+      "connect_result": "CONNECT 9600/ARQ/V34/LAPM",
+      "isdn_call_state": "active",
+      "frames": 291,
+      "rx_empty_frames": 0,
+      "working_s_registers": {
+        "54": 0,
+        "56": 0,
+        "58": 34
+      },
+      "emulator_error": null,
+      "dsp_error": null,
+      "foreground_overlay_assist": false
+    },
+    "answer": {
+      "connect_result": "CONNECT 9600/ARQ/V34/LAPM",
+      "isdn_call_state": "active",
+      "frames": 291,
+      "rx_empty_frames": 0,
+      "working_s_registers": {
+        "54": 0,
+        "56": 0,
+        "58": 34
+      },
+      "emulator_error": null,
+      "dsp_error": null,
+      "foreground_overlay_assist": false
+    }
+  }
+}

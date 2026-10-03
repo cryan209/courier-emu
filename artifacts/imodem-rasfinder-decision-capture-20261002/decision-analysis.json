@@ -1,0 +1,3138 @@
+[
+  {
+    "cycles": 942692425,
+    "power": 86094481,
+    "reference": 666504102,
+    "fft_energy": 30353425.0,
+    "dft_energy": 30337079.10156252,
+    "fft_relative_error": 0.000538809236800898
+  },
+  {
+    "cycles": 943498825,
+    "power": 105985408,
+    "reference": 125566065,
+    "fft_energy": 30650422.5,
+    "dft_energy": 30643122.300781272,
+    "fft_relative_error": 0.00023823287806874443
+  },
+  {
+    "cycles": 944305218,
+    "power": 106188774,
+    "reference": 125547137,
+    "fft_energy": 30547406.5,
+    "dft_energy": 30531698.53906252,
+    "fft_relative_error": 0.0005144804150802312
+  },
+  {
+    "cycles": 945111625,
+    "power": 106377264,
+    "reference": 125363112,
+    "fft_energy": 30601682.5,
+    "dft_energy": 30581792.488281272,
+    "fft_relative_error": 0.0006503873743290018
+  },
+  {
+    "cycles": 945918025,
+    "power": 106593641,
+    "reference": 124888050,
+    "fft_energy": 30654521.0,
+    "dft_energy": 30649988.60156252,
+    "fft_relative_error": 0.00014787602359011366
+  },
+  {
+    "cycles": 946724418,
+    "power": 106411409,
+    "reference": 124862762,
+    "fft_energy": 30589510.5,
+    "dft_energy": 30589161.37695315,
+    "fft_relative_error": 1.1413292523670276e-05
+  },
+  {
+    "cycles": 947530799,
+    "power": 106220812,
+    "reference": 124693384,
+    "fft_energy": 30555706.5,
+    "dft_energy": 30565766.298828147,
+    "fft_relative_error": 0.0003291197979398616
+  },
+  {
+    "cycles": 948337199,
+    "power": 106529303,
+    "reference": 124628747,
+    "fft_energy": 30764852.5,
+    "dft_energy": 30753088.976562522,
+    "fft_relative_error": 0.0003825151823429132
+  },
+  {
+    "cycles": 949143592,
+    "power": 106528206,
+    "reference": 124580765,
+    "fft_energy": 30647321.0,
+    "dft_energy": 30655628.12500002,
+    "fft_relative_error": 0.00027098205152234576
+  },
+  {
+    "cycles": 949949999,
+    "power": 106520954,
+    "reference": 124249259,
+    "fft_energy": 30747194.0,
+    "dft_energy": 30741669.312500015,
+    "fft_relative_error": 0.0001797133214798677
+  },
+  {
+    "cycles": 950756399,
+    "power": 106761566,
+    "reference": 124485816,
+    "fft_energy": 30881405.0,
+    "dft_energy": 30872358.597656265,
+    "fft_relative_error": 0.0002930259544349123
+  },
+  {
+    "cycles": 951562792,
+    "power": 106757105,
+    "reference": 124141692,
+    "fft_energy": 30716573.0,
+    "dft_energy": 30718902.43164065,
+    "fft_relative_error": 7.583056217046832e-05
+  },
+  {
+    "cycles": 952369199,
+    "power": 105698069,
+    "reference": 125612614,
+    "fft_energy": 30491642.0,
+    "dft_energy": 30501944.316406265,
+    "fft_relative_error": 0.00033775933427048887
+  },
+  {
+    "cycles": 953175599,
+    "power": 105596999,
+    "reference": 125007676,
+    "fft_energy": 30469844.5,
+    "dft_energy": 30473356.97265626,
+    "fft_relative_error": 0.0001152637256017746
+  },
+  {
+    "cycles": 953981992,
+    "power": 105349449,
+    "reference": 124862496,
+    "fft_energy": 30363345.0,
+    "dft_energy": 30365526.75195314,
+    "fft_relative_error": 7.184963300528184e-05
+  },
+  {
+    "cycles": 954788399,
+    "power": 105456702,
+    "reference": 124562903,
+    "fft_energy": 30419162.5,
+    "dft_energy": 30411405.42382814,
+    "fft_relative_error": 0.00025507128209807184
+  },
+  {
+    "cycles": 955594799,
+    "power": 27919014,
+    "reference": 455148527,
+    "fft_energy": 5029652.0,
+    "dft_energy": 5032468.845703121,
+    "fft_relative_error": 0.0005597343549431777
+  },
+  {
+    "cycles": 956401192,
+    "power": 82873196,
+    "reference": 337981547,
+    "fft_energy": 30464042.5,
+    "dft_energy": 30475693.783203144,
+    "fft_relative_error": 0.00038231396095616697
+  },
+  {
+    "cycles": 957207599,
+    "power": 83180141,
+    "reference": 172389783,
+    "fft_energy": 30514022.5,
+    "dft_energy": 30513149.000000015,
+    "fft_relative_error": 2.8627002738560296e-05
+  },
+  {
+    "cycles": 958013999,
+    "power": 83476353,
+    "reference": 172011663,
+    "fft_energy": 30478097.0,
+    "dft_energy": 30475559.39453127,
+    "fft_relative_error": 8.326690368107691e-05
+  },
+  {
+    "cycles": 958820392,
+    "power": 83144410,
+    "reference": 171340124,
+    "fft_energy": 30299022.5,
+    "dft_energy": 30304162.845703136,
+    "fft_relative_error": 0.000169625068651749
+  },
+  {
+    "cycles": 959626799,
+    "power": 83104884,
+    "reference": 171443053,
+    "fft_energy": 30186912.5,
+    "dft_energy": 30190091.675781265,
+    "fft_relative_error": 0.0001053052708619385
+  },
+  {
+    "cycles": 960433199,
+    "power": 83037037,
+    "reference": 171317265,
+    "fft_energy": 30189662.5,
+    "dft_energy": 30189045.957031265,
+    "fft_relative_error": 2.0422737757683302e-05
+  },
+  {
+    "cycles": 961239592,
+    "power": 82844064,
+    "reference": 170655802,
+    "fft_energy": 30147298.0,
+    "dft_energy": 30142082.91406251,
+    "fft_relative_error": 0.00017301677367013592
+  },
+  {
+    "cycles": 962045999,
+    "power": 82987689,
+    "reference": 170698446,
+    "fft_energy": 30231200.5,
+    "dft_energy": 30224147.60351564,
+    "fft_relative_error": 0.00023335303204844438
+  },
+  {
+    "cycles": 962852399,
+    "power": 82970606,
+    "reference": 170604025,
+    "fft_energy": 30213658.0,
+    "dft_energy": 30216904.228515644,
+    "fft_relative_error": 0.0001074308768063727
+  },
+  {
+    "cycles": 963658792,
+    "power": 83088326,
+    "reference": 170750299,
+    "fft_energy": 30363001.0,
+    "dft_energy": 30369887.550781272,
+    "fft_relative_error": 0.00022675588672356456
+  },
+  {
+    "cycles": 964465199,
+    "power": 83082582,
+    "reference": 168888639,
+    "fft_energy": 30325021.0,
+    "dft_energy": 30328295.394531272,
+    "fft_relative_error": 0.00010796500392378739
+  },
+  {
+    "cycles": 965271599,
+    "power": 82552486,
+    "reference": 168610640,
+    "fft_energy": 29915498.5,
+    "dft_energy": 29926045.800781265,
+    "fft_relative_error": 0.0003524455202494393
+  },
+  {
+    "cycles": 966077992,
+    "power": 82682230,
+    "reference": 168628171,
+    "fft_energy": 30110800.0,
+    "dft_energy": 30101648.632812522,
+    "fft_relative_error": 0.0003040154809827304
+  },
+  {
+    "cycles": 966884399,
+    "power": 83330584,
+    "reference": 168927209,
+    "fft_energy": 30091422.5,
+    "dft_energy": 30093767.744140644,
+    "fft_relative_error": 7.793122352053286e-05
+  },
+  {
+    "cycles": 967690799,
+    "power": 83838516,
+    "reference": 169023225,
+    "fft_energy": 30275720.0,
+    "dft_energy": 30281375.816406272,
+    "fft_relative_error": 0.00018677541075290454
+  },
+  {
+    "cycles": 968497192,
+    "power": 83959646,
+    "reference": 168430620,
+    "fft_energy": 30263242.0,
+    "dft_energy": 30264213.507812522,
+    "fft_relative_error": 3.2100877568536944e-05
+  },
+  {
+    "cycles": 969303599,
+    "power": 83941719,
+    "reference": 167437369,
+    "fft_energy": 30339065.0,
+    "dft_energy": 30341703.203125022,
+    "fft_relative_error": 8.694973737501433e-05
+  },
+  {
+    "cycles": 970109999,
+    "power": 84198482,
+    "reference": 167514190,
+    "fft_energy": 30330176.5,
+    "dft_energy": 30342393.425781265,
+    "fft_relative_error": 0.00040263553404737174
+  },
+  {
+    "cycles": 970916392,
+    "power": 84674700,
+    "reference": 167670770,
+    "fft_energy": 30636528.5,
+    "dft_energy": 30645602.89062502,
+    "fft_relative_error": 0.00029610742713743863
+  },
+  {
+    "cycles": 971722799,
+    "power": 84790542,
+    "reference": 165238214,
+    "fft_energy": 30569348.5,
+    "dft_energy": 30561395.07031252,
+    "fft_relative_error": 0.0002602443268438152
+  },
+  {
+    "cycles": 972529199,
+    "power": 84826610,
+    "reference": 165261568,
+    "fft_energy": 30579186.5,
+    "dft_energy": 30571833.447265644,
+    "fft_relative_error": 0.0002405172312298474
+  },
+  {
+    "cycles": 1093116253,
+    "power": 82717715,
+    "reference": 819908731,
+    "fft_energy": 30459661.0,
+    "dft_energy": 30460891.02539062,
+    "fft_relative_error": 4.0380479664760605e-05
+  },
+  {
+    "cycles": 1093922660,
+    "power": 127504972,
+    "reference": 449433944,
+    "fft_energy": 30552026.5,
+    "dft_energy": 30540075.957031243,
+    "fft_relative_error": 0.0003913069170348961
+  },
+  {
+    "cycles": 1094729060,
+    "power": 127230140,
+    "reference": 450593322,
+    "fft_energy": 30375510.5,
+    "dft_energy": 30375870.265624993,
+    "fft_relative_error": 1.1843796468925535e-05
+  },
+  {
+    "cycles": 1095535453,
+    "power": 126930420,
+    "reference": 450156189,
+    "fft_energy": 30371525.0,
+    "dft_energy": 30377461.47851562,
+    "fft_relative_error": 0.00019542378548713932
+  },
+  {
+    "cycles": 1096341860,
+    "power": 126883122,
+    "reference": 450258687,
+    "fft_energy": 30204848.5,
+    "dft_energy": 30203638.789062493,
+    "fft_relative_error": 4.005182772697963e-05
+  },
+  {
+    "cycles": 1097148260,
+    "power": 126844467,
+    "reference": 450682667,
+    "fft_energy": 30238952.5,
+    "dft_energy": 30240635.986328125,
+    "fft_relative_error": 5.5669673378764544e-05
+  },
+  {
+    "cycles": 1097954653,
+    "power": 126985072,
+    "reference": 449675512,
+    "fft_energy": 30289706.5,
+    "dft_energy": 30261432.976562504,
+    "fft_relative_error": 0.000934308810141084
+  },
+  {
+    "cycles": 1098761060,
+    "power": 127137690,
+    "reference": 449440323,
+    "fft_energy": 30387604.0,
+    "dft_energy": 30380896.953124993,
+    "fft_relative_error": 0.00022076526856188033
+  },
+  {
+    "cycles": 1099567460,
+    "power": 127789469,
+    "reference": 449259621,
+    "fft_energy": 30494100.5,
+    "dft_energy": 30494247.166015618,
+    "fft_relative_error": 4.809629003761788e-06
+  },
+  {
+    "cycles": 1100373853,
+    "power": 127384481,
+    "reference": 449753290,
+    "fft_energy": 30484921.0,
+    "dft_energy": 30486037.59570312,
+    "fft_relative_error": 3.662646218341783e-05
+  },
+  {
+    "cycles": 1101180260,
+    "power": 127363464,
+    "reference": 449551673,
+    "fft_energy": 30515098.5,
+    "dft_energy": 30526147.83007812,
+    "fft_relative_error": 0.0003619628044660818
+  },
+  {
+    "cycles": 1101986660,
+    "power": 127316580,
+    "reference": 449163304,
+    "fft_energy": 30445610.0,
+    "dft_energy": 30462122.62890625,
+    "fft_relative_error": 0.0005420708565653519
+  },
+  {
+    "cycles": 1102793053,
+    "power": 127822834,
+    "reference": 448495324,
+    "fft_energy": 30478093.0,
+    "dft_energy": 30457126.22070312,
+    "fft_relative_error": 0.0006884030733873583
+  },
+  {
+    "cycles": 1103599460,
+    "power": 127822319,
+    "reference": 449193826,
+    "fft_energy": 30614262.5,
+    "dft_energy": 30612123.535156246,
+    "fft_relative_error": 6.987312857591367e-05
+  },
+  {
+    "cycles": 1104405860,
+    "power": 128470184,
+    "reference": 449634622,
+    "fft_energy": 30665488.5,
+    "dft_energy": 30662395.400390625,
+    "fft_relative_error": 0.00010087599383496292
+  },
+  {
+    "cycles": 1105212253,
+    "power": 128665716,
+    "reference": 448541282,
+    "fft_energy": 30717728.5,
+    "dft_energy": 30715893.49414062,
+    "fft_relative_error": 5.9741249582362694e-05
+  },
+  {
+    "cycles": 1106018660,
+    "power": 128423632,
+    "reference": 449109194,
+    "fft_energy": 30718805.0,
+    "dft_energy": 30723978.681640625,
+    "fft_relative_error": 0.00016839230668118442
+  },
+  {
+    "cycles": 1106825060,
+    "power": 128345059,
+    "reference": 448677751,
+    "fft_energy": 30716165.0,
+    "dft_energy": 30703353.52539062,
+    "fft_relative_error": 0.00041726629629509606
+  },
+  {
+    "cycles": 1107631453,
+    "power": 128765396,
+    "reference": 447274731,
+    "fft_energy": 30820958.5,
+    "dft_energy": 30833779.13476562,
+    "fft_relative_error": 0.00041579835898758797
+  },
+  {
+    "cycles": 1108437860,
+    "power": 128581634,
+    "reference": 447248557,
+    "fft_energy": 30741636.5,
+    "dft_energy": 30733978.035156246,
+    "fft_relative_error": 0.00024918560282021727
+  },
+  {
+    "cycles": 1109244260,
+    "power": 128722756,
+    "reference": 446843279,
+    "fft_energy": 30802504.0,
+    "dft_energy": 30818468.476562496,
+    "fft_relative_error": 0.0005180165450024646
+  },
+  {
+    "cycles": 1110050653,
+    "power": 92540818,
+    "reference": 903743859,
+    "fft_energy": 30865386.5,
+    "dft_energy": 30880984.220703118,
+    "fft_relative_error": 0.0005050914372301833
+  },
+  {
+    "cycles": 1110857060,
+    "power": 94996137,
+    "reference": 616541412,
+    "fft_energy": 30983682.5,
+    "dft_energy": 31000274.01757816,
+    "fft_relative_error": 0.0005352055136270924
+  },
+  {
+    "cycles": 1111663460,
+    "power": 118808714,
+    "reference": 322449091,
+    "fft_energy": 30692314.0,
+    "dft_energy": 30686188.812500034,
+    "fft_relative_error": 0.00019960730664185232
+  },
+  {
+    "cycles": 1112469853,
+    "power": 103638921,
+    "reference": 357368081,
+    "fft_energy": 16939810.0,
+    "dft_energy": 16941515.175781265,
+    "fft_relative_error": 0.00010065072477711642
+  },
+  {
+    "cycles": 1113276260,
+    "power": 6512273,
+    "reference": 496964910,
+    "fft_energy": 130.0,
+    "dft_energy": 114.37695312500175,
+    "fft_relative_error": 0.13659261283104768
+  },
+  {
+    "cycles": 1114082660,
+    "power": 6523801,
+    "reference": 470428805,
+    "fft_energy": 145.0,
+    "dft_energy": 126.20703125000178,
+    "fft_relative_error": 0.14890587761922305
+  },
+  {
+    "cycles": 1114889079,
+    "power": 6531303,
+    "reference": 470537661,
+    "fft_energy": 110.5,
+    "dft_energy": 109.0820312500021,
+    "fft_relative_error": 0.012999104744832752
+  },
+  {
+    "cycles": 1115695486,
+    "power": 101718717,
+    "reference": 549551484,
+    "fft_energy": 30307440.5,
+    "dft_energy": 30312847.22070316,
+    "fft_relative_error": 0.00017836400070877636
+  },
+  {
+    "cycles": 1116501886,
+    "power": 122356006,
+    "reference": 386969201,
+    "fft_energy": 30437930.0,
+    "dft_energy": 30439052.541015662,
+    "fft_relative_error": 3.687831656881121e-05
+  },
+  {
+    "cycles": 1117308279,
+    "power": 122521814,
+    "reference": 387049948,
+    "fft_energy": 30495694.5,
+    "dft_energy": 30496591.281250034,
+    "fft_relative_error": 2.9405950381900162e-05
+  },
+  {
+    "cycles": 1118114686,
+    "power": 122658772,
+    "reference": 386634690,
+    "fft_energy": 30485462.5,
+    "dft_energy": 30483479.33789066,
+    "fft_relative_error": 6.505694731757282e-05
+  },
+  {
+    "cycles": 1118921090,
+    "power": 122876806,
+    "reference": 386083996,
+    "fft_energy": 30517129.0,
+    "dft_energy": 30521222.95507816,
+    "fft_relative_error": 0.00013413469978526435
+  },
+  {
+    "cycles": 1119727479,
+    "power": 122814426,
+    "reference": 386212908,
+    "fft_energy": 30514122.5,
+    "dft_energy": 30504707.83203128,
+    "fft_relative_error": 0.0003086299996892409
+  },
+  {
+    "cycles": 1120533886,
+    "power": 122883396,
+    "reference": 385133577,
+    "fft_energy": 30587680.0,
+    "dft_energy": 30586927.50976566,
+    "fft_relative_error": 2.4601694109394304e-05
+  },
+  {
+    "cycles": 1121340286,
+    "power": 122742299,
+    "reference": 384392840,
+    "fft_energy": 30422305.0,
+    "dft_energy": 30410522.705078162,
+    "fft_relative_error": 0.0003874413812647244
+  },
+  {
+    "cycles": 1122146679,
+    "power": 122240353,
+    "reference": 384643223,
+    "fft_energy": 30354617.0,
+    "dft_energy": 30361149.47656253,
+    "fft_relative_error": 0.00021515906594948213
+  },
+  {
+    "cycles": 1122953086,
+    "power": 122159777,
+    "reference": 384812903,
+    "fft_energy": 30354461.0,
+    "dft_energy": 30350677.613281287,
+    "fft_relative_error": 0.00012465575783577096
+  },
+  {
+    "cycles": 1123759486,
+    "power": 122760180,
+    "reference": 384968389,
+    "fft_energy": 30676962.5,
+    "dft_energy": 30677998.83789066,
+    "fft_relative_error": 3.3781143813674633e-05
+  },
+  {
+    "cycles": 1124565879,
+    "power": 123301172,
+    "reference": 384095697,
+    "fft_energy": 30722228.5,
+    "dft_energy": 30728932.876953162,
+    "fft_relative_error": 0.00021817799466087434
+  },
+  {
+    "cycles": 1125372286,
+    "power": 123212701,
+    "reference": 384294501,
+    "fft_energy": 30682192.5,
+    "dft_energy": 30679421.11132816,
+    "fft_relative_error": 9.033379938248434e-05
+  },
+  {
+    "cycles": 1126178686,
+    "power": 122563302,
+    "reference": 386445296,
+    "fft_energy": 30219732.5,
+    "dft_energy": 30229619.572265662,
+    "fft_relative_error": 0.00032706571917078323
+  },
+  {
+    "cycles": 1126985079,
+    "power": 122532011,
+    "reference": 388659595,
+    "fft_energy": 30308041.0,
+    "dft_energy": 30306750.566406284,
+    "fft_relative_error": 4.257908121456155e-05
+  },
+  {
+    "cycles": 1127791486,
+    "power": 122165417,
+    "reference": 388017566,
+    "fft_energy": 30114565.0,
+    "dft_energy": 30112173.08007816,
+    "fft_relative_error": 7.943365347564162e-05
+  },
+  {
+    "cycles": 1128597886,
+    "power": 122141599,
+    "reference": 387825831,
+    "fft_energy": 30083065.0,
+    "dft_energy": 30078183.533203155,
+    "fft_relative_error": 0.00016229260624919624
+  },
+  {
+    "cycles": 1129404279,
+    "power": 114729946,
+    "reference": 401527984,
+    "fft_energy": 22715005.0,
+    "dft_energy": 22716137.441406265,
+    "fft_relative_error": 4.9851846916576685e-05
+  },
+  {
+    "cycles": 1130210686,
+    "power": 64441310,
+    "reference": 738084599,
+    "fft_energy": 30420788.0,
+    "dft_energy": 30418580.470703106,
+    "fft_relative_error": 7.257173946758472e-05
+  },
+  {
+    "cycles": 1131017086,
+    "power": 64240186,
+    "reference": 587295989,
+    "fft_energy": 30188941.0,
+    "dft_energy": 30192721.519531224,
+    "fft_relative_error": 0.00012521294341678873
+  },
+  {
+    "cycles": 1131823479,
+    "power": 63725548,
+    "reference": 587091511,
+    "fft_energy": 30071317.0,
+    "dft_energy": 30088861.861328103,
+    "fft_relative_error": 0.0005831015280326137
+  },
+  {
+    "cycles": 1132629886,
+    "power": 63579447,
+    "reference": 587145340,
+    "fft_energy": 30059684.5,
+    "dft_energy": 30063764.111328106,
+    "fft_relative_error": 0.0001356986208712689
+  },
+  {
+    "cycles": 1133436286,
+    "power": 63793602,
+    "reference": 588096457,
+    "fft_energy": 30187540.0,
+    "dft_energy": 30195732.94140623,
+    "fft_relative_error": 0.0002713277873443076
+  },
+  {
+    "cycles": 1134242679,
+    "power": 63302439,
+    "reference": 587399614,
+    "fft_energy": 29953789.0,
+    "dft_energy": 29945431.533203106,
+    "fft_relative_error": 0.0002790898767856117
+  },
+  {
+    "cycles": 1135049086,
+    "power": 63232133,
+    "reference": 586209153,
+    "fft_energy": 29911162.5,
+    "dft_energy": 29908320.611328103,
+    "fft_relative_error": 9.502000158514268e-05
+  },
+  {
+    "cycles": 1135855490,
+    "power": 63192360,
+    "reference": 585296417,
+    "fft_energy": 29941312.0,
+    "dft_energy": 29942628.095703103,
+    "fft_relative_error": 4.3953914095186375e-05
+  },
+  {
+    "cycles": 1136661879,
+    "power": 63398596,
+    "reference": 585885280,
+    "fft_energy": 30110138.5,
+    "dft_energy": 30105181.578124978,
+    "fft_relative_error": 0.00016465344552594061
+  },
+  {
+    "cycles": 1137468286,
+    "power": 63635911,
+    "reference": 585824066,
+    "fft_energy": 30047504.0,
+    "dft_energy": 30036521.814453103,
+    "fft_relative_error": 0.00036562773861562416
+  },
+  {
+    "cycles": 1138274686,
+    "power": 63330990,
+    "reference": 585373806,
+    "fft_energy": 29986002.5,
+    "dft_energy": 29987955.175781228,
+    "fft_relative_error": 6.511533613351076e-05
+  },
+  {
+    "cycles": 1139081079,
+    "power": 63251428,
+    "reference": 585657238,
+    "fft_energy": 29924065.0,
+    "dft_energy": 29933734.525390603,
+    "fft_relative_error": 0.0003230310398590826
+  },
+  {
+    "cycles": 1139887486,
+    "power": 63069945,
+    "reference": 585394256,
+    "fft_energy": 29833801.0,
+    "dft_energy": 29825914.25390623,
+    "fft_relative_error": 0.00026442596282646113
+  },
+  {
+    "cycles": 1140693886,
+    "power": 63509201,
+    "reference": 586054249,
+    "fft_energy": 30006104.5,
+    "dft_energy": 30005825.664062474,
+    "fft_relative_error": 9.292726707401844e-06
+  },
+  {
+    "cycles": 1141500279,
+    "power": 63233974,
+    "reference": 584621592,
+    "fft_energy": 29895000.5,
+    "dft_energy": 29897219.14453123,
+    "fft_relative_error": 7.420906006360815e-05
+  },
+  {
+    "cycles": 1448859586,
+    "power": 98640227,
+    "reference": 793258424,
+    "fft_energy": 29666436.5,
+    "dft_energy": 29665425.04101563,
+    "fft_relative_error": 3.409555005440927e-05
+  },
+  {
+    "cycles": 1449665993,
+    "power": 75341832,
+    "reference": 270532541,
+    "fft_energy": 29619220.0,
+    "dft_energy": 29600519.503906254,
+    "fft_relative_error": 0.0006317624287397541
+  },
+  {
+    "cycles": 1450472393,
+    "power": 75605798,
+    "reference": 270085350,
+    "fft_energy": 29666618.0,
+    "dft_energy": 29672646.320312504,
+    "fft_relative_error": 0.00020316085890785613
+  },
+  {
+    "cycles": 1451278786,
+    "power": 75824758,
+    "reference": 270859603,
+    "fft_energy": 29770898.0,
+    "dft_energy": 29759665.65625,
+    "fft_relative_error": 0.0003774351459368977
+  },
+  {
+    "cycles": 1452085193,
+    "power": 76663550,
+    "reference": 270984551,
+    "fft_energy": 29953884.5,
+    "dft_energy": 29958883.05078125,
+    "fft_relative_error": 0.00016684703407591328
+  },
+  {
+    "cycles": 1452891593,
+    "power": 76790907,
+    "reference": 270413843,
+    "fft_energy": 30106453.0,
+    "dft_energy": 30098425.45507812,
+    "fft_relative_error": 0.0002667097962934915
+  },
+  {
+    "cycles": 1453697986,
+    "power": 77301197,
+    "reference": 270577370,
+    "fft_energy": 30298448.0,
+    "dft_energy": 30290881.06445312,
+    "fft_relative_error": 0.00024980902769971446
+  },
+  {
+    "cycles": 1454504393,
+    "power": 77352126,
+    "reference": 270720756,
+    "fft_energy": 30322032.5,
+    "dft_energy": 30336033.400390618,
+    "fft_relative_error": 0.00046152706274503474
+  },
+  {
+    "cycles": 1455310793,
+    "power": 77541906,
+    "reference": 269814409,
+    "fft_energy": 30388650.5,
+    "dft_energy": 30394365.613281246,
+    "fft_relative_error": 0.00018803199757355606
+  },
+  {
+    "cycles": 1456117186,
+    "power": 77810312,
+    "reference": 271476466,
+    "fft_energy": 30305286.5,
+    "dft_energy": 30302779.736328125,
+    "fft_relative_error": 8.272388519096142e-05
+  },
+  {
+    "cycles": 1456923593,
+    "power": 77762124,
+    "reference": 271554452,
+    "fft_energy": 30251370.5,
+    "dft_energy": 30250808.394531254,
+    "fft_relative_error": 1.8581502398722417e-05
+  },
+  {
+    "cycles": 1457729993,
+    "power": 77858402,
+    "reference": 272284699,
+    "fft_energy": 30401520.5,
+    "dft_energy": 30414654.882812496,
+    "fft_relative_error": 0.00043184388785942113
+  },
+  {
+    "cycles": 1458536386,
+    "power": 78110824,
+    "reference": 271906655,
+    "fft_energy": 30397212.5,
+    "dft_energy": 30406719.531249996,
+    "fft_relative_error": 0.0003126621811414277
+  },
+  {
+    "cycles": 1459342793,
+    "power": 78186324,
+    "reference": 271924335,
+    "fft_energy": 30403616.0,
+    "dft_energy": 30401900.73828125,
+    "fft_relative_error": 5.641955526123368e-05
+  },
+  {
+    "cycles": 1460149193,
+    "power": 78330034,
+    "reference": 271618673,
+    "fft_energy": 30468248.5,
+    "dft_energy": 30475533.00195312,
+    "fft_relative_error": 0.00023902787697443797
+  },
+  {
+    "cycles": 1460955586,
+    "power": 78371598,
+    "reference": 271240843,
+    "fft_energy": 30399690.5,
+    "dft_energy": 30389942.01953125,
+    "fft_relative_error": 0.0003207798311192818
+  },
+  {
+    "cycles": 1461761993,
+    "power": 78289641,
+    "reference": 271418728,
+    "fft_energy": 30330945.0,
+    "dft_energy": 30341876.298828125,
+    "fft_relative_error": 0.0003602710234682221
+  },
+  {
+    "cycles": 1462568393,
+    "power": 78235507,
+    "reference": 270076978,
+    "fft_energy": 30250705.0,
+    "dft_energy": 30251691.953125,
+    "fft_relative_error": 3.2624724809748954e-05
+  },
+  {
+    "cycles": 1463374786,
+    "power": 78401418,
+    "reference": 270034353,
+    "fft_energy": 30399024.5,
+    "dft_energy": 30398721.156249996,
+    "fft_relative_error": 9.9788326109027e-06
+  },
+  {
+    "cycles": 1464181193,
+    "power": 78208663,
+    "reference": 269164786,
+    "fft_energy": 30246705.0,
+    "dft_energy": 30254352.37695312,
+    "fft_relative_error": 0.00025276948115890993
+  },
+  {
+    "cycles": 1464987593,
+    "power": 78759332,
+    "reference": 269730671,
+    "fft_energy": 30574772.5,
+    "dft_energy": 30557529.414062493,
+    "fft_relative_error": 0.0005642827240337116
+  },
+  {
+    "cycles": 1465793986,
+    "power": 78802737,
+    "reference": 269599564,
+    "fft_energy": 30463474.0,
+    "dft_energy": 30457437.285156246,
+    "fft_relative_error": 0.00019820166704228204
+  },
+  {
+    "cycles": 1466600393,
+    "power": 78608768,
+    "reference": 269399525,
+    "fft_energy": 30330126.5,
+    "dft_energy": 30330205.332031243,
+    "fft_relative_error": 2.5991261971212632e-06
+  },
+  {
+    "cycles": 1467406793,
+    "power": 78279939,
+    "reference": 269203984,
+    "fft_energy": 30270342.5,
+    "dft_energy": 30268829.96289062,
+    "fft_relative_error": 4.99701214494609e-05
+  },
+  {
+    "cycles": 1468213186,
+    "power": 78383071,
+    "reference": 269242135,
+    "fft_energy": 30245977.0,
+    "dft_energy": 30248903.36914062,
+    "fft_relative_error": 9.674298287476772e-05
+  },
+  {
+    "cycles": 1469019593,
+    "power": 78367985,
+    "reference": 267844648,
+    "fft_energy": 30233070.5,
+    "dft_energy": 30238689.972656246,
+    "fft_relative_error": 0.00018583717288439945
+  },
+  {
+    "cycles": 1469825993,
+    "power": 78411548,
+    "reference": 267350571,
+    "fft_energy": 30202961.0,
+    "dft_energy": 30205455.59570312,
+    "fft_relative_error": 8.258758737200255e-05
+  },
+  {
+    "cycles": 1470632386,
+    "power": 78256817,
+    "reference": 266932652,
+    "fft_energy": 30107281.0,
+    "dft_energy": 30114056.330078118,
+    "fft_relative_error": 0.00022498895545168735
+  },
+  {
+    "cycles": 1471438793,
+    "power": 78322057,
+    "reference": 266497340,
+    "fft_energy": 30118472.5,
+    "dft_energy": 30125341.41601562,
+    "fft_relative_error": 0.00022801122552488427
+  },
+  {
+    "cycles": 1472245193,
+    "power": 78733606,
+    "reference": 267123758,
+    "fft_energy": 30261650.0,
+    "dft_energy": 30279345.337890614,
+    "fft_relative_error": 0.0005844029219637863
+  },
+  {
+    "cycles": 1473051586,
+    "power": 79020131,
+    "reference": 267644506,
+    "fft_energy": 30339852.5,
+    "dft_energy": 30336809.64257812,
+    "fft_relative_error": 0.00010030248591493398
+  },
+  {
+    "cycles": 1473857993,
+    "power": 79256753,
+    "reference": 267400569,
+    "fft_energy": 30420212.5,
+    "dft_energy": 30424881.54101562,
+    "fft_relative_error": 0.00015346127179910183
+  },
+  {
+    "cycles": 1594631521,
+    "power": 112717537,
+    "reference": 1277955101,
+    "fft_energy": 37080746.0,
+    "dft_energy": 37077122.57031247,
+    "fft_relative_error": 9.772683089574676e-05
+  },
+  {
+    "cycles": 1595437928,
+    "power": 85203048,
+    "reference": 440248644,
+    "fft_energy": 37267361.0,
+    "dft_energy": 37263789.42578122,
+    "fft_relative_error": 9.584570634968174e-05
+  },
+  {
+    "cycles": 1596244328,
+    "power": 85199626,
+    "reference": 439448747,
+    "fft_energy": 37334112.5,
+    "dft_energy": 37327299.78320309,
+    "fft_relative_error": 0.00018251298209301245
+  },
+  {
+    "cycles": 1597050721,
+    "power": 85415045,
+    "reference": 439059228,
+    "fft_energy": 37447870.5,
+    "dft_energy": 37452762.20703122,
+    "fft_relative_error": 0.00013061004697543642
+  },
+  {
+    "cycles": 1597857128,
+    "power": 85640800,
+    "reference": 438872647,
+    "fft_energy": 37610612.5,
+    "dft_energy": 37613789.73828122,
+    "fft_relative_error": 8.4470038869457e-05
+  },
+  {
+    "cycles": 1598663528,
+    "power": 86230888,
+    "reference": 438882917,
+    "fft_energy": 37755344.5,
+    "dft_energy": 37745405.658203095,
+    "fft_relative_error": 0.00026331262371119394
+  },
+  {
+    "cycles": 1599469921,
+    "power": 85775762,
+    "reference": 435217260,
+    "fft_energy": 37425672.5,
+    "dft_energy": 37424186.42382809,
+    "fft_relative_error": 3.9708977373147753e-05
+  },
+  {
+    "cycles": 1600276328,
+    "power": 85972955,
+    "reference": 431795194,
+    "fft_energy": 37655957.0,
+    "dft_energy": 37653003.44140621,
+    "fft_relative_error": 7.844151392553421e-05
+  },
+  {
+    "cycles": 1601082728,
+    "power": 86032962,
+    "reference": 431087843,
+    "fft_energy": 37738565.0,
+    "dft_energy": 37731022.89062497,
+    "fft_relative_error": 0.00019989146323684193
+  },
+  {
+    "cycles": 1601889121,
+    "power": 85959689,
+    "reference": 430999407,
+    "fft_energy": 37621225.0,
+    "dft_energy": 37611900.078124955,
+    "fft_relative_error": 0.0002479247752885547
+  },
+  {
+    "cycles": 1602695528,
+    "power": 86531604,
+    "reference": 430416044,
+    "fft_energy": 37867700.0,
+    "dft_energy": 37857079.72070309,
+    "fft_relative_error": 0.00028053614740664447
+  },
+  {
+    "cycles": 1603501928,
+    "power": 87330465,
+    "reference": 430417774,
+    "fft_energy": 38046685.0,
+    "dft_energy": 38038254.507812455,
+    "fft_relative_error": 0.00022163194122940666
+  },
+  {
+    "cycles": 1604308321,
+    "power": 87312223,
+    "reference": 429855376,
+    "fft_energy": 38086281.0,
+    "dft_energy": 38084113.23828121,
+    "fft_relative_error": 5.692036743048732e-05
+  },
+  {
+    "cycles": 1605114728,
+    "power": 87680873,
+    "reference": 429962112,
+    "fft_energy": 38104144.0,
+    "dft_energy": 38085314.86914059,
+    "fft_relative_error": 0.000494393466986115
+  },
+  {
+    "cycles": 1605921128,
+    "power": 87658456,
+    "reference": 429404920,
+    "fft_energy": 38117784.5,
+    "dft_energy": 38108947.16601559,
+    "fft_relative_error": 0.00023189656607184157
+  },
+  {
+    "cycles": 1606727521,
+    "power": 87655211,
+    "reference": 429510044,
+    "fft_energy": 38127505.0,
+    "dft_energy": 38152680.406249955,
+    "fft_relative_error": 0.0006598594379710004
+  },
+  {
+    "cycles": 1607533928,
+    "power": 88114725,
+    "reference": 429488714,
+    "fft_energy": 38332344.5,
+    "dft_energy": 38319889.408203095,
+    "fft_relative_error": 0.00032502942960577945
+  },
+  {
+    "cycles": 1608340328,
+    "power": 87995675,
+    "reference": 428727457,
+    "fft_energy": 38295202.5,
+    "dft_energy": 38283027.08203122,
+    "fft_relative_error": 0.0003180369708667719
+  },
+  {
+    "cycles": 1609146721,
+    "power": 88269134,
+    "reference": 429014108,
+    "fft_energy": 38398782.5,
+    "dft_energy": 38419152.44140622,
+    "fft_relative_error": 0.0005302027793894408
+  },
+  {
+    "cycles": 1609953128,
+    "power": 88535146,
+    "reference": 429122858,
+    "fft_energy": 38483432.0,
+    "dft_energy": 38479967.53320309,
+    "fft_relative_error": 9.003299688137417e-05
+  },
+  {
+    "cycles": 1610759528,
+    "power": 88984995,
+    "reference": 428833470,
+    "fft_energy": 38662037.0,
+    "dft_energy": 38668557.595703095,
+    "fft_relative_error": 0.00016862784930513612
+  },
+  {
+    "cycles": 1611565921,
+    "power": 87999364,
+    "reference": 429057546,
+    "fft_energy": 38065508.0,
+    "dft_energy": 38086414.1269531,
+    "fft_relative_error": 0.0005489129767747744
+  },
+  {
+    "cycles": 1612372328,
+    "power": 87943952,
+    "reference": 429293201,
+    "fft_energy": 38139041.0,
+    "dft_energy": 38149990.1347656,
+    "fft_relative_error": 0.0002870022961192024
+  },
+  {
+    "cycles": 1613178728,
+    "power": 87925809,
+    "reference": 428507001,
+    "fft_energy": 38169254.5,
+    "dft_energy": 38159990.791015595,
+    "fft_relative_error": 0.00024275972798677546
+  },
+  {
+    "cycles": 1613985121,
+    "power": 87779697,
+    "reference": 428124362,
+    "fft_energy": 38006162.0,
+    "dft_energy": 38001572.89062497,
+    "fft_relative_error": 0.00012076103766120535
+  },
+  {
+    "cycles": 1614791528,
+    "power": 87601215,
+    "reference": 427393891,
+    "fft_energy": 37998677.0,
+    "dft_energy": 38008143.14453122,
+    "fft_relative_error": 0.0002490556956498473
+  },
+  {
+    "cycles": 1615597944,
+    "power": 88027489,
+    "reference": 427299332,
+    "fft_energy": 38117298.5,
+    "dft_energy": 38119915.70312496,
+    "fft_relative_error": 6.865710683479282e-05
+  },
+  {
+    "cycles": 1616404347,
+    "power": 88535064,
+    "reference": 427447909,
+    "fft_energy": 38376585.0,
+    "dft_energy": 38374384.88281247,
+    "fft_relative_error": 5.733296297122444e-05
+  },
+  {
+    "cycles": 1617210754,
+    "power": 89689566,
+    "reference": 427097543,
+    "fft_energy": 38971554.5,
+    "dft_energy": 38955338.11132809,
+    "fft_relative_error": 0.0004162815536491667
+  },
+  {
+    "cycles": 1618017154,
+    "power": 90123752,
+    "reference": 424941014,
+    "fft_energy": 39129420.5,
+    "dft_energy": 39139886.27539059,
+    "fft_relative_error": 0.0002673941185457189
+  },
+  {
+    "cycles": 1618823547,
+    "power": 90195452,
+    "reference": 424444118,
+    "fft_energy": 39212368.0,
+    "dft_energy": 39216399.62695309,
+    "fft_relative_error": 0.00010280461723765293
+  },
+  {
+    "cycles": 1619629958,
+    "power": 89693858,
+    "reference": 424160668,
+    "fft_energy": 38713122.5,
+    "dft_energy": 38721355.09765621,
+    "fft_relative_error": 0.00021261130028765607
+  },
+  {
+    "cycles": 1620436354,
+    "power": 89108255,
+    "reference": 423273376,
+    "fft_energy": 38664698.5,
+    "dft_energy": 38655938.14453121,
+    "fft_relative_error": 0.0002266237967381115
+  },
+  {
+    "cycles": 1621242751,
+    "power": 88914272,
+    "reference": 423140228,
+    "fft_energy": 38416026.5,
+    "dft_energy": 38411558.91601558,
+    "fft_relative_error": 0.00011630832255956574
+  },
+  {
+    "cycles": 1622049154,
+    "power": 88917532,
+    "reference": 423336090,
+    "fft_energy": 38482722.5,
+    "dft_energy": 38481287.91406247,
+    "fft_relative_error": 3.728009157940767e-05
+  },
+  {
+    "cycles": 1622855554,
+    "power": 89019156,
+    "reference": 423055438,
+    "fft_energy": 38517165.0,
+    "dft_energy": 38528032.4863281,
+    "fft_relative_error": 0.0002820669945177979
+  },
+  {
+    "cycles": 1623661947,
+    "power": 89511903,
+    "reference": 423085085,
+    "fft_energy": 38733874.0,
+    "dft_energy": 38739191.58203123,
+    "fft_relative_error": 0.00013726621062722832
+  },
+  {
+    "cycles": 1624468354,
+    "power": 89695172,
+    "reference": 423021135,
+    "fft_energy": 38789484.5,
+    "dft_energy": 38784685.67382809,
+    "fft_relative_error": 0.00012372992299768725
+  },
+  {
+    "cycles": 1625274754,
+    "power": 95932084,
+    "reference": 704245483,
+    "fft_energy": 41631576.5,
+    "dft_energy": 41646383.082031325,
+    "fft_relative_error": 0.0003555310434080151
+  },
+  {
+    "cycles": 1626081147,
+    "power": 42581510,
+    "reference": 922467890,
+    "fft_energy": 31700866.0,
+    "dft_energy": 31706942.36914056,
+    "fft_relative_error": 0.00019164159917468493
+  },
+  {
+    "cycles": 1626887554,
+    "power": 72532429,
+    "reference": 567014315,
+    "fft_energy": 31913354.5,
+    "dft_energy": 31911380.281249933,
+    "fft_relative_error": 6.186566462081368e-05
+  },
+  {
+    "cycles": 1627693954,
+    "power": 72338855,
+    "reference": 567336559,
+    "fft_energy": 31808120.5,
+    "dft_energy": 31810505.238281187,
+    "fft_relative_error": 7.496700424351777e-05
+  },
+  {
+    "cycles": 1628500347,
+    "power": 72147642,
+    "reference": 567513620,
+    "fft_energy": 31755474.0,
+    "dft_energy": 31744909.624999937,
+    "fft_relative_error": 0.00033278957555272457
+  },
+  {
+    "cycles": 1629306754,
+    "power": 72110681,
+    "reference": 567995300,
+    "fft_energy": 31737090.5,
+    "dft_energy": 31735660.955078054,
+    "fft_relative_error": 4.504538046235453e-05
+  },
+  {
+    "cycles": 1630113154,
+    "power": 72092060,
+    "reference": 567735845,
+    "fft_energy": 31818630.5,
+    "dft_energy": 31811256.923828058,
+    "fft_relative_error": 0.00023179141237952518
+  },
+  {
+    "cycles": 1630919547,
+    "power": 72396810,
+    "reference": 568482846,
+    "fft_energy": 32002866.5,
+    "dft_energy": 31991953.572265558,
+    "fft_relative_error": 0.0003411147653046947
+  },
+  {
+    "cycles": 1631725954,
+    "power": 72525154,
+    "reference": 568485847,
+    "fft_energy": 32126617.0,
+    "dft_energy": 32131896.601562433,
+    "fft_relative_error": 0.0001643102997591565
+  },
+  {
+    "cycles": 1632532354,
+    "power": 72525980,
+    "reference": 567981175,
+    "fft_energy": 31980914.5,
+    "dft_energy": 31990784.84570306,
+    "fft_relative_error": 0.0003085371537668741
+  },
+  {
+    "cycles": 1633338747,
+    "power": 72574562,
+    "reference": 573199971,
+    "fft_energy": 32020892.5,
+    "dft_energy": 32018270.22265618,
+    "fft_relative_error": 8.189940698186915e-05
+  },
+  {
+    "cycles": 1634145154,
+    "power": 72526444,
+    "reference": 573336820,
+    "fft_energy": 32016668.5,
+    "dft_energy": 32011872.876953054,
+    "fft_relative_error": 0.00014980763747810547
+  },
+  {
+    "cycles": 1634951554,
+    "power": 72731166,
+    "reference": 572929037,
+    "fft_energy": 32268632.5,
+    "dft_energy": 32280737.705078054,
+    "fft_relative_error": 0.00037499778315629883
+  },
+  {
+    "cycles": 1635757947,
+    "power": 73316517,
+    "reference": 573176609,
+    "fft_energy": 32466109.0,
+    "dft_energy": 32474986.50390618,
+    "fft_relative_error": 0.00027336436013950026
+  },
+  {
+    "cycles": 1636564354,
+    "power": 73284168,
+    "reference": 572977363,
+    "fft_energy": 32400925.0,
+    "dft_energy": 32410371.81249993,
+    "fft_relative_error": 0.0002914749807432262
+  },
+  {
+    "cycles": 1637370754,
+    "power": 73593290,
+    "reference": 572979773,
+    "fft_energy": 32607812.5,
+    "dft_energy": 32617868.06640618,
+    "fft_relative_error": 0.0003082839867310536
+  },
+  {
+    "cycles": 1638177147,
+    "power": 73663988,
+    "reference": 573039997,
+    "fft_energy": 32587970.0,
+    "dft_energy": 32613952.673828058,
+    "fft_relative_error": 0.000796673561402094
+  },
+  {
+    "cycles": 1727889134,
+    "power": 104952375,
+    "reference": 1472747113,
+    "fft_energy": 20868458.0,
+    "dft_energy": 20870181.34765632,
+    "fft_relative_error": 8.257463735523836e-05
+  },
+  {
+    "cycles": 1728695534,
+    "power": 63266568,
+    "reference": 626045761,
+    "fft_energy": 20835498.5,
+    "dft_energy": 20841318.85156257,
+    "fft_relative_error": 0.0002792698295163025
+  },
+  {
+    "cycles": 1729501927,
+    "power": 63235020,
+    "reference": 625340688,
+    "fft_energy": 20908260.5,
+    "dft_energy": 20885993.134765696,
+    "fft_relative_error": 0.0010661386839795118
+  },
+  {
+    "cycles": 1730308334,
+    "power": 63314627,
+    "reference": 625016843,
+    "fft_energy": 20918330.0,
+    "dft_energy": 20910244.570312575,
+    "fft_relative_error": 0.00038667312858238034
+  },
+  {
+    "cycles": 1731114734,
+    "power": 63518319,
+    "reference": 624668318,
+    "fft_energy": 21030689.0,
+    "dft_energy": 21028357.5644532,
+    "fft_relative_error": 0.00011087102450367329
+  },
+  {
+    "cycles": 1731921127,
+    "power": 94934331,
+    "reference": 769798645,
+    "fft_energy": 42173405.0,
+    "dft_energy": 42186759.90820309,
+    "fft_relative_error": 0.00031656634053308573
+  },
+  {
+    "cycles": 1732727534,
+    "power": 124543375,
+    "reference": 417489525,
+    "fft_energy": 42062944.5,
+    "dft_energy": 42049206.91601559,
+    "fft_relative_error": 0.00032670257043967976
+  },
+  {
+    "cycles": 1733533934,
+    "power": 125051887,
+    "reference": 416800858,
+    "fft_energy": 42195400.0,
+    "dft_energy": 42202524.19140623,
+    "fft_relative_error": 0.00016880960422927403
+  },
+  {
+    "cycles": 1734340327,
+    "power": 124982794,
+    "reference": 417190207,
+    "fft_energy": 42148842.5,
+    "dft_energy": 42150051.34765622,
+    "fft_relative_error": 2.8679624758924913e-05
+  },
+  {
+    "cycles": 1735146734,
+    "power": 124963511,
+    "reference": 416472898,
+    "fft_energy": 42097988.0,
+    "dft_energy": 42113132.58789059,
+    "fft_relative_error": 0.00035961675040394633
+  },
+  {
+    "cycles": 1735953134,
+    "power": 124998086,
+    "reference": 416579644,
+    "fft_energy": 42130985.0,
+    "dft_energy": 42125535.597656205,
+    "fft_relative_error": 0.000129361022156307
+  },
+  {
+    "cycles": 1736759527,
+    "power": 124810157,
+    "reference": 416333666,
+    "fft_energy": 42108205.0,
+    "dft_energy": 42104173.22265621,
+    "fft_relative_error": 9.575719068193834e-05
+  },
+  {
+    "cycles": 1737565934,
+    "power": 125100274,
+    "reference": 416080289,
+    "fft_energy": 42134622.5,
+    "dft_energy": 42134064.142578095,
+    "fft_relative_error": 1.3251924144211872e-05
+  },
+  {
+    "cycles": 1738372334,
+    "power": 124768462,
+    "reference": 417539374,
+    "fft_energy": 41838772.5,
+    "dft_energy": 41838041.88281246,
+    "fft_relative_error": 1.7462987144180823e-05
+  },
+  {
+    "cycles": 1739178727,
+    "power": 124797432,
+    "reference": 416869319,
+    "fft_energy": 41914742.5,
+    "dft_energy": 41915351.24999997,
+    "fft_relative_error": 1.4523318588919092e-05
+  },
+  {
+    "cycles": 1739985134,
+    "power": 125171179,
+    "reference": 416502258,
+    "fft_energy": 41935757.0,
+    "dft_energy": 41935474.06249996,
+    "fft_relative_error": 6.746972732812496e-06
+  },
+  {
+    "cycles": 1740791534,
+    "power": 125232343,
+    "reference": 415224915,
+    "fft_energy": 41851220.0,
+    "dft_energy": 41825294.44726559,
+    "fft_relative_error": 0.0006198534422058847
+  },
+  {
+    "cycles": 1741597927,
+    "power": 124971651,
+    "reference": 415484069,
+    "fft_energy": 41801693.0,
+    "dft_energy": 41796928.144531205,
+    "fft_relative_error": 0.00011400013542426195
+  },
+  {
+    "cycles": 1742404334,
+    "power": 124698354,
+    "reference": 414510331,
+    "fft_energy": 41647685.0,
+    "dft_energy": 41638711.85156246,
+    "fft_relative_error": 0.0002155001449018299
+  },
+  {
+    "cycles": 1743210734,
+    "power": 124292666,
+    "reference": 414469889,
+    "fft_energy": 41597909.0,
+    "dft_energy": 41605192.95312497,
+    "fft_relative_error": 0.0001750731725526849
+  },
+  {
+    "cycles": 1744017127,
+    "power": 124423952,
+    "reference": 414166315,
+    "fft_energy": 41730338.0,
+    "dft_energy": 41737260.33789059,
+    "fft_relative_error": 0.00016585510966812068
+  },
+  {
+    "cycles": 1744823534,
+    "power": 124782749,
+    "reference": 414596412,
+    "fft_energy": 41722013.0,
+    "dft_energy": 41711543.78515621,
+    "fft_relative_error": 0.0002509908263695794
+  },
+  {
+    "cycles": 1745629934,
+    "power": 124688839,
+    "reference": 414578874,
+    "fft_energy": 41573534.5,
+    "dft_energy": 41582381.03515621,
+    "fft_relative_error": 0.00021274720052065707
+  },
+  {
+    "cycles": 1746436327,
+    "power": 124530088,
+    "reference": 412706092,
+    "fft_energy": 41444682.5,
+    "dft_energy": 41449318.13281246,
+    "fft_relative_error": 0.00011183857832375409
+  },
+  {
+    "cycles": 1747242734,
+    "power": 124859401,
+    "reference": 412911263,
+    "fft_energy": 41489862.5,
+    "dft_energy": 41507709.47070308,
+    "fft_relative_error": 0.00042996761157531525
+  },
+  {
+    "cycles": 1748049134,
+    "power": 125765608,
+    "reference": 414179276,
+    "fft_energy": 41676206.5,
+    "dft_energy": 41662352.89062496,
+    "fft_relative_error": 0.0003325210511131418
+  },
+  {
+    "cycles": 1748855527,
+    "power": 125266431,
+    "reference": 413798314,
+    "fft_energy": 41511450.5,
+    "dft_energy": 41505053.94140621,
+    "fft_relative_error": 0.00015411517360795253
+  },
+  {
+    "cycles": 1749661934,
+    "power": 125782003,
+    "reference": 413919089,
+    "fft_energy": 41674865.0,
+    "dft_energy": 41665597.07031246,
+    "fft_relative_error": 0.00022243602250310318
+  },
+  {
+    "cycles": 1750468334,
+    "power": 125645982,
+    "reference": 412847100,
+    "fft_energy": 41494324.5,
+    "dft_energy": 41489207.45507807,
+    "fft_relative_error": 0.00012333436177269888
+  },
+  {
+    "cycles": 1751274727,
+    "power": 125574228,
+    "reference": 412548873,
+    "fft_energy": 41445854.5,
+    "dft_energy": 41442460.57812496,
+    "fft_relative_error": 8.189479648871777e-05
+  },
+  {
+    "cycles": 1752081134,
+    "power": 125226276,
+    "reference": 412336752,
+    "fft_energy": 41357066.5,
+    "dft_energy": 41356157.8789062,
+    "fft_relative_error": 2.1970636064952212e-05
+  },
+  {
+    "cycles": 1752887534,
+    "power": 125284340,
+    "reference": 412989793,
+    "fft_energy": 41453102.5,
+    "dft_energy": 41449909.00390621,
+    "fft_relative_error": 7.704470698563657e-05
+  },
+  {
+    "cycles": 1753693927,
+    "power": 85897558,
+    "reference": 546774252,
+    "fft_energy": 2782674.0,
+    "dft_energy": 2784925.6250000116,
+    "fft_relative_error": 0.0008085045359197455
+  },
+  {
+    "cycles": 1754500334,
+    "power": 63249121,
+    "reference": 832657415,
+    "fft_energy": 20797450.0,
+    "dft_energy": 20798688.314453177,
+    "fft_relative_error": 5.953810329070797e-05
+  },
+  {
+    "cycles": 1755306734,
+    "power": 93259160,
+    "reference": 446365740,
+    "fft_energy": 40985522.5,
+    "dft_energy": 40976276.2207032,
+    "fft_relative_error": 0.00022564957457331923
+  },
+  {
+    "cycles": 1756113127,
+    "power": 93486561,
+    "reference": 400357712,
+    "fft_energy": 41010509.0,
+    "dft_energy": 41005224.88281257,
+    "fft_relative_error": 0.00012886448501463516
+  },
+  {
+    "cycles": 1756919564,
+    "power": 93533170,
+    "reference": 399213109,
+    "fft_energy": 41148178.0,
+    "dft_energy": 41149334.53320319,
+    "fft_relative_error": 2.8105757148000885e-05
+  },
+  {
+    "cycles": 1757725960,
+    "power": 94045333,
+    "reference": 399128754,
+    "fft_energy": 41197817.0,
+    "dft_energy": 41194937.632812575,
+    "fft_relative_error": 6.989614144073911e-05
+  },
+  {
+    "cycles": 1758532353,
+    "power": 93738445,
+    "reference": 405362207,
+    "fft_energy": 40931490.5,
+    "dft_energy": 40937603.8378907,
+    "fft_relative_error": 0.00014933306587527166
+  },
+  {
+    "cycles": 1791362905,
+    "power": 3408189,
+    "reference": 560982383,
+    "fft_energy": 1814408.0,
+    "dft_energy": 1813436.6289062581,
+    "fft_relative_error": 0.0005356520753238099
+  },
+  {
+    "cycles": 1792169309,
+    "power": 1819755,
+    "reference": 154904183,
+    "fft_energy": 1819684.0,
+    "dft_energy": 1819471.4082031331,
+    "fft_relative_error": 0.00011684261478821563
+  },
+  {
+    "cycles": 1792975698,
+    "power": 1814562,
+    "reference": 154845175,
+    "fft_energy": 1814486.5,
+    "dft_energy": 1813069.2675781331,
+    "fft_relative_error": 0.0007816758285026616
+  },
+  {
+    "cycles": 1793782105,
+    "power": 1813538,
+    "reference": 154881491,
+    "fft_energy": 1813450.0,
+    "dft_energy": 1813113.300781258,
+    "fft_relative_error": 0.00018570224960403876
+  },
+  {
+    "cycles": 1794588505,
+    "power": 1816093,
+    "reference": 154887174,
+    "fft_energy": 1816004.5,
+    "dft_energy": 1815823.7265625081,
+    "fft_relative_error": 9.955450787839894e-05
+  },
+  {
+    "cycles": 1795394898,
+    "power": 1812430,
+    "reference": 154862539,
+    "fft_energy": 1812330.0,
+    "dft_energy": 1815349.9785156331,
+    "fft_relative_error": 0.0016635792279032118
+  },
+  {
+    "cycles": 1796201305,
+    "power": 1816656,
+    "reference": 154833518,
+    "fft_energy": 1816562.5,
+    "dft_energy": 1814535.7128906334,
+    "fft_relative_error": 0.0011169728404727063
+  },
+  {
+    "cycles": 1797007705,
+    "power": 1810304,
+    "reference": 154852467,
+    "fft_energy": 1810178.5,
+    "dft_energy": 1813930.8203125081,
+    "fft_relative_error": 0.0020686126893536606
+  },
+  {
+    "cycles": 1797814098,
+    "power": 1805328,
+    "reference": 154939646,
+    "fft_energy": 1805245.0,
+    "dft_energy": 1803013.056640633,
+    "fft_relative_error": 0.001237896393010948
+  },
+  {
+    "cycles": 1798620505,
+    "power": 1822889,
+    "reference": 157808370,
+    "fft_energy": 1822718.5,
+    "dft_energy": 1825667.9785156327,
+    "fft_relative_error": 0.0016155612906300573
+  },
+  {
+    "cycles": 1799426905,
+    "power": 1828755,
+    "reference": 157362068,
+    "fft_energy": 1828525.0,
+    "dft_energy": 1830560.7226562577,
+    "fft_relative_error": 0.0011120760054895765
+  },
+  {
+    "cycles": 1800233298,
+    "power": 1824427,
+    "reference": 157412596,
+    "fft_energy": 1824282.5,
+    "dft_energy": 1823084.0410156327,
+    "fft_relative_error": 0.0006573799986201734
+  },
+  {
+    "cycles": 1801039705,
+    "power": 1829190,
+    "reference": 157460897,
+    "fft_energy": 1829066.0,
+    "dft_energy": 1829992.1562500072,
+    "fft_relative_error": 0.0005060984807197663
+  },
+  {
+    "cycles": 1801846079,
+    "power": 1829300,
+    "reference": 157477152,
+    "fft_energy": 1829102.5,
+    "dft_energy": 1828603.1738281325,
+    "fft_relative_error": 0.00027306425965685233
+  },
+  {
+    "cycles": 1802652472,
+    "power": 1828121,
+    "reference": 157395588,
+    "fft_energy": 1828012.5,
+    "dft_energy": 1828812.7753906322,
+    "fft_relative_error": 0.0004375928478853063
+  },
+  {
+    "cycles": 1803458873,
+    "power": 1829805,
+    "reference": 157431217,
+    "fft_energy": 1829609.0,
+    "dft_energy": 1828588.1972656322,
+    "fft_relative_error": 0.0005582463760261786
+  },
+  {
+    "cycles": 1804265273,
+    "power": 1833530,
+    "reference": 157482767,
+    "fft_energy": 1833352.0,
+    "dft_energy": 1833391.8945312575,
+    "fft_relative_error": 2.1759958346303478e-05
+  },
+  {
+    "cycles": 1805071666,
+    "power": 1829831,
+    "reference": 157436362,
+    "fft_energy": 1829609.0,
+    "dft_energy": 1829277.7656250077,
+    "fft_relative_error": 0.00018107385396396814
+  },
+  {
+    "cycles": 1805878073,
+    "power": 1824957,
+    "reference": 157422658,
+    "fft_energy": 1824822.5,
+    "dft_energy": 1828942.2578125072,
+    "fft_relative_error": 0.0022525357456799227
+  },
+  {
+    "cycles": 1806684473,
+    "power": 1834111,
+    "reference": 157447297,
+    "fft_energy": 1833901.0,
+    "dft_energy": 1833546.5781250077,
+    "fft_relative_error": 0.00019329853913760395
+  },
+  {
+    "cycles": 1807490866,
+    "power": 1834008,
+    "reference": 157464929,
+    "fft_energy": 1833858.5,
+    "dft_energy": 1833541.3515625072,
+    "fft_relative_error": 0.0001729704308127628
+  },
+  {
+    "cycles": 1808297273,
+    "power": 1827082,
+    "reference": 157388581,
+    "fft_energy": 1826960.0,
+    "dft_energy": 1828997.3691406325,
+    "fft_relative_error": 0.0011139267748590165
+  },
+  {
+    "cycles": 1809103673,
+    "power": 1829769,
+    "reference": 157382722,
+    "fft_energy": 1829580.5,
+    "dft_energy": 1828531.6562500075,
+    "fft_relative_error": 0.0005735989018333656
+  },
+  {
+    "cycles": 1809910066,
+    "power": 1826768,
+    "reference": 158755049,
+    "fft_energy": 1826226.0,
+    "dft_energy": 1825430.1757812572,
+    "fft_relative_error": 0.000435965302481198
+  },
+  {
+    "cycles": 1810716473,
+    "power": 1861708,
+    "reference": 158218915,
+    "fft_energy": 1860469.0,
+    "dft_energy": 1861172.0253906327,
+    "fft_relative_error": 0.0003777326227999417
+  },
+  {
+    "cycles": 1811522873,
+    "power": 1867374,
+    "reference": 157530164,
+    "fft_energy": 1866356.0,
+    "dft_energy": 1862670.8300781331,
+    "fft_relative_error": 0.0019784332595750532
+  },
+  {
+    "cycles": 1812329266,
+    "power": 1863671,
+    "reference": 157486449,
+    "fft_energy": 1862617.0,
+    "dft_energy": 1863522.4257812581,
+    "fft_relative_error": 0.00048586792878468356
+  },
+  {
+    "cycles": 1813135673,
+    "power": 1860394,
+    "reference": 157442366,
+    "fft_energy": 1859413.0,
+    "dft_energy": 1860114.941406258,
+    "fft_relative_error": 0.0003773645330364608
+  },
+  {
+    "cycles": 1813942073,
+    "power": 1865145,
+    "reference": 157472385,
+    "fft_energy": 1864220.5,
+    "dft_energy": 1863079.765625008,
+    "fft_relative_error": 0.000612284238194923
+  },
+  {
+    "cycles": 1814748466,
+    "power": 1863383,
+    "reference": 157370669,
+    "fft_energy": 1862605.0,
+    "dft_energy": 1862707.6269531327,
+    "fft_relative_error": 5.509557788226397e-05
+  },
+  {
+    "cycles": 1815554873,
+    "power": 1863448,
+    "reference": 157430980,
+    "fft_energy": 1862604.5,
+    "dft_energy": 1861835.4101562577,
+    "fft_relative_error": 0.00041308154284044337
+  },
+  {
+    "cycles": 1816361273,
+    "power": 1865785,
+    "reference": 157617125,
+    "fft_energy": 1864818.5,
+    "dft_energy": 1861591.2695312575,
+    "fft_relative_error": 0.001733587023941703
+  },
+  {
+    "cycles": 1944321854,
+    "power": 6404722,
+    "reference": 646340975,
+    "fft_energy": 90.5,
+    "dft_energy": 84.55078124997794,
+    "fft_relative_error": 0.07036267036294958
+  },
+  {
+    "cycles": 1945128247,
+    "power": 6600192,
+    "reference": 479897206,
+    "fft_energy": 40.0,
+    "dft_energy": 33.54882812498861,
+    "fft_relative_error": 0.19229201839709803
+  },
+  {
+    "cycles": 1945934654,
+    "power": 6593969,
+    "reference": 479940152,
+    "fft_energy": 62.5,
+    "dft_energy": 88.07031249997365,
+    "fft_relative_error": 0.2903397498445495
+  },
+  {
+    "cycles": 1946741054,
+    "power": 6625098,
+    "reference": 479835257,
+    "fft_energy": 234.0,
+    "dft_energy": 244.80664062496854,
+    "fft_relative_error": 0.044143576323665855
+  },
+  {
+    "cycles": 1947547447,
+    "power": 6586118,
+    "reference": 479774013,
+    "fft_energy": 20.5,
+    "dft_energy": 19.999999999987036,
+    "fft_relative_error": 0.025000000000664397
+  },
+  {
+    "cycles": 1948353854,
+    "power": 6628581,
+    "reference": 479532998,
+    "fft_energy": 110.5,
+    "dft_energy": 110.42382812498465,
+    "fft_relative_error": 0.0006898137504265075
+  },
+  {
+    "cycles": 1949160254,
+    "power": 6607520,
+    "reference": 479081685,
+    "fft_energy": 648.0,
+    "dft_energy": 675.4062499999816,
+    "fft_relative_error": 0.04057743025028615
+  },
+  {
+    "cycles": 1949966647,
+    "power": 6596409,
+    "reference": 478625330,
+    "fft_energy": 552.5,
+    "dft_energy": 598.2226562500052,
+    "fft_relative_error": 0.07643083352379272
+  },
+  {
+    "cycles": 1950773054,
+    "power": 6590992,
+    "reference": 479215597,
+    "fft_energy": 288.5,
+    "dft_energy": 343.65039062499125,
+    "fft_relative_error": 0.16048400388746875
+  },
+  {
+    "cycles": 1951579454,
+    "power": 6629412,
+    "reference": 479052141,
+    "fft_energy": 125.0,
+    "dft_energy": 107.78515625001017,
+    "fft_relative_error": 0.15971442032388575
+  },
+  {
+    "cycles": 1952385847,
+    "power": 6634161,
+    "reference": 478577746,
+    "fft_energy": 292.5,
+    "dft_energy": 290.03124999998,
+    "fft_relative_error": 0.008512013791686859
+  },
+  {
+    "cycles": 1953192254,
+    "power": 6575160,
+    "reference": 478488267,
+    "fft_energy": 612.5,
+    "dft_energy": 640.9238281249337,
+    "fft_relative_error": 0.04434821561883503
+  },
+  {
+    "cycles": 1953998654,
+    "power": 6648696,
+    "reference": 478378212,
+    "fft_energy": 558.5,
+    "dft_energy": 582.8906249999451,
+    "fft_relative_error": 0.041844256801947
+  },
+  {
+    "cycles": 1954805047,
+    "power": 6671119,
+    "reference": 478935594,
+    "fft_energy": 712.0,
+    "dft_energy": 695.962890624946,
+    "fft_relative_error": 0.023043052425759852
+  },
+  {
+    "cycles": 1955611454,
+    "power": 6597011,
+    "reference": 478710328,
+    "fft_energy": 380.5,
+    "dft_energy": 395.1757812499534,
+    "fft_relative_error": 0.0371373498738547
+  },
+  {
+    "cycles": 1956417854,
+    "power": 6682058,
+    "reference": 478176031,
+    "fft_energy": 1033.0,
+    "dft_energy": 953.8281249999195,
+    "fft_relative_error": 0.08300434105996525
+  },
+  {
+    "cycles": 1957224247,
+    "power": 6653084,
+    "reference": 478035687,
+    "fft_energy": 932.5,
+    "dft_energy": 869.7851562499322,
+    "fft_relative_error": 0.07210383311260682
+  },
+  {
+    "cycles": 1958030654,
+    "power": 6597318,
+    "reference": 478319343,
+    "fft_energy": 500.0,
+    "dft_energy": 478.61328124995543,
+    "fft_relative_error": 0.04468475821270695
+  },
+  {
+    "cycles": 1958837054,
+    "power": 6653740,
+    "reference": 477860551,
+    "fft_energy": 36.5,
+    "dft_energy": 43.50976562499214,
+    "fft_relative_error": 0.16110786910251043
+  },
+  {
+    "cycles": 1959643447,
+    "power": 6595137,
+    "reference": 477673878,
+    "fft_energy": 125.0,
+    "dft_energy": 155.7578124999751,
+    "fft_relative_error": 0.19747203691615803
+  },
+  {
+    "cycles": 1960449854,
+    "power": 6607859,
+    "reference": 478019159,
+    "fft_energy": 120.5,
+    "dft_energy": 96.47070312497273,
+    "fft_relative_error": 0.2490838782827008
+  },
+  {
+    "cycles": 1961256290,
+    "power": 6628139,
+    "reference": 477906688,
+    "fft_energy": 12.5,
+    "dft_energy": 20.851562499989182,
+    "fft_relative_error": 0.4005245410262907
+  },
+  {
+    "cycles": 1962062673,
+    "power": 6672086,
+    "reference": 478024276,
+    "fft_energy": 14.5,
+    "dft_energy": 20.1601562499881,
+    "fft_relative_error": 0.2807595427238536
+  },
+  {
+    "cycles": 1962869080,
+    "power": 6626078,
+    "reference": 477866967,
+    "fft_energy": 152.5,
+    "dft_energy": 151.7363281249841,
+    "fft_relative_error": 0.005032887538881636
+  },
+  {
+    "cycles": 1963675480,
+    "power": 6642087,
+    "reference": 477458649,
+    "fft_energy": 86.5,
+    "dft_energy": 92.22265625000045,
+    "fft_relative_error": 0.062052607056635574
+  },
+  {
+    "cycles": 1964481873,
+    "power": 6643464,
+    "reference": 477437472,
+    "fft_energy": 202.5,
+    "dft_energy": 205.32031249996265,
+    "fft_relative_error": 0.013736159202286265
+  },
+  {
+    "cycles": 1965288280,
+    "power": 6666353,
+    "reference": 477562305,
+    "fft_energy": 90.0,
+    "dft_energy": 82.76562499998266,
+    "fft_relative_error": 0.08740796677387325
+  },
+  {
+    "cycles": 1966094680,
+    "power": 6605551,
+    "reference": 477861336,
+    "fft_energy": 72.5,
+    "dft_energy": 62.44531249998069,
+    "fft_relative_error": 0.16101588890314902
+  },
+  {
+    "cycles": 1966901079,
+    "power": 6657844,
+    "reference": 477801607,
+    "fft_energy": 32.0,
+    "dft_energy": 19.00976562499558,
+    "fft_relative_error": 0.6833453200455983
+  },
+  {
+    "cycles": 1967707486,
+    "power": 6656075,
+    "reference": 477680223,
+    "fft_energy": 4.5,
+    "dft_energy": 6.4003906249965175,
+    "fft_relative_error": 0.29691791272467083
+  },
+  {
+    "cycles": 1968513886,
+    "power": 6646744,
+    "reference": 477082111,
+    "fft_energy": 198.5,
+    "dft_energy": 172.6953125000027,
+    "fft_relative_error": 0.14942320741911796
+  },
+  {
+    "cycles": 1969320279,
+    "power": 6627242,
+    "reference": 476678515,
+    "fft_energy": 34.0,
+    "dft_energy": 34.04882812499135,
+    "fft_relative_error": 0.0014340618364927968
+  },
+  {
+    "cycles": 1970126686,
+    "power": 6546996,
+    "reference": 476548077,
+    "fft_energy": 80.0,
+    "dft_energy": 60.00390624998618,
+    "fft_relative_error": 0.3332465334291203
+  },
+  {
+    "cycles": 1970933086,
+    "power": 6503241,
+    "reference": 476218970,
+    "fft_energy": 5.0,
+    "dft_energy": 2.1289062499992237,
+    "fft_relative_error": 1.3486238532118655
+  },
+  {
+    "cycles": 1971739479,
+    "power": 6547168,
+    "reference": 476709689,
+    "fft_energy": 128.0,
+    "dft_energy": 101.56249999999456,
+    "fft_relative_error": 0.26030769230775985
+  },
+  {
+    "cycles": 1972545886,
+    "power": 6515834,
+    "reference": 476863634,
+    "fft_energy": 101.0,
+    "dft_energy": 113.21289062502156,
+    "fft_relative_error": 0.10787544207728537
+  },
+  {
+    "cycles": 1973352286,
+    "power": 6583757,
+    "reference": 476118420,
+    "fft_energy": 148.0,
+    "dft_energy": 187.20507812502018,
+    "fft_relative_error": 0.20942315517123986
+  },
+  {
+    "cycles": 2076047273,
+    "power": 3417680,
+    "reference": 560615095,
+    "fft_energy": 1808282.5,
+    "dft_energy": 1804460.0019531327,
+    "fft_relative_error": 0.0021183611954434436
+  },
+  {
+    "cycles": 2076853666,
+    "power": 1812552,
+    "reference": 154426564,
+    "fft_energy": 1812512.0,
+    "dft_energy": 1809294.5781250081,
+    "fft_relative_error": 0.001778274203599339
+  },
+  {
+    "cycles": 2077660073,
+    "power": 1806172,
+    "reference": 154479986,
+    "fft_energy": 1806120.0,
+    "dft_energy": 1808420.2656250075,
+    "fft_relative_error": 0.0012719751424663762
+  },
+  {
+    "cycles": 2078466473,
+    "power": 1795116,
+    "reference": 154393912,
+    "fft_energy": 1795061.0,
+    "dft_energy": 1796751.572265633,
+    "fft_relative_error": 0.0009409048483542837
+  },
+  {
+    "cycles": 2079272866,
+    "power": 1804554,
+    "reference": 154391628,
+    "fft_energy": 1804524.5,
+    "dft_energy": 1801957.7539062577,
+    "fft_relative_error": 0.0014244207935386732
+  },
+  {
+    "cycles": 2080079273,
+    "power": 1803434,
+    "reference": 154430529,
+    "fft_energy": 1803402.5,
+    "dft_energy": 1803001.472656258,
+    "fft_relative_error": 0.0002224220833005052
+  },
+  {
+    "cycles": 2080885673,
+    "power": 1811420,
+    "reference": 154435372,
+    "fft_energy": 1811380.0,
+    "dft_energy": 1806636.1250000077,
+    "fft_relative_error": 0.00262580545929928
+  },
+  {
+    "cycles": 2081692066,
+    "power": 1810394,
+    "reference": 154433179,
+    "fft_energy": 1810346.5,
+    "dft_energy": 1806049.5156250077,
+    "fft_relative_error": 0.0023792173679719336
+  },
+  {
+    "cycles": 2082498473,
+    "power": 1813124,
+    "reference": 154479731,
+    "fft_energy": 1813081.0,
+    "dft_energy": 1807673.8007812581,
+    "fft_relative_error": 0.0029912472130784406
+  },
+  {
+    "cycles": 2083304873,
+    "power": 1812016,
+    "reference": 154376734,
+    "fft_energy": 1811945.0,
+    "dft_energy": 1810054.976562508,
+    "fft_relative_error": 0.0010441801282088374
+  },
+  {
+    "cycles": 2084111266,
+    "power": 1809868,
+    "reference": 154439952,
+    "fft_energy": 1809782.5,
+    "dft_energy": 1809218.8632812575,
+    "fft_relative_error": 0.00031153595078061466
+  },
+  {
+    "cycles": 2084917673,
+    "power": 1808316,
+    "reference": 154439292,
+    "fft_energy": 1808282.5,
+    "dft_energy": 1807864.0410156327,
+    "fft_relative_error": 0.00023146595920577756
+  },
+  {
+    "cycles": 2085724073,
+    "power": 1808924,
+    "reference": 154488353,
+    "fft_energy": 1808850.5,
+    "dft_energy": 1804139.3847656325,
+    "fft_relative_error": 0.0026112811871126847
+  },
+  {
+    "cycles": 2086530466,
+    "power": 1806646,
+    "reference": 154544179,
+    "fft_energy": 1806590.5,
+    "dft_energy": 1805769.0351562577,
+    "fft_relative_error": 0.00045491135784772894
+  },
+  {
+    "cycles": 2087336873,
+    "power": 1805624,
+    "reference": 154445934,
+    "fft_energy": 1805557.0,
+    "dft_energy": 1806008.3691406327,
+    "fft_relative_error": 0.00024992638370079204
+  },
+  {
+    "cycles": 2088143273,
+    "power": 1802989,
+    "reference": 154427501,
+    "fft_energy": 1802930.0,
+    "dft_energy": 1802109.7656250075,
+    "fft_relative_error": 0.0004551522835281212
+  },
+  {
+    "cycles": 2088949692,
+    "power": 1729484,
+    "reference": 154540183,
+    "fft_energy": 1729454.5,
+    "dft_energy": 1729660.111328133,
+    "fft_relative_error": 0.0001188738335273489
+  },
+  {
+    "cycles": 2089756099,
+    "power": 1828146,
+    "reference": 161519877,
+    "fft_energy": 1828104.5,
+    "dft_energy": 1826792.6347656327,
+    "fft_relative_error": 0.0007181248760265675
+  },
+  {
+    "cycles": 2090562499,
+    "power": 1826581,
+    "reference": 157137092,
+    "fft_energy": 1826568.5,
+    "dft_energy": 1826825.2285156327,
+    "fft_relative_error": 0.00014053260904508386
+  },
+  {
+    "cycles": 2091368892,
+    "power": 1827626,
+    "reference": 157075793,
+    "fft_energy": 1827613.0,
+    "dft_energy": 1824524.570312508,
+    "fft_relative_error": 0.0016927312121442638
+  },
+  {
+    "cycles": 2092175299,
+    "power": 1825478,
+    "reference": 157045433,
+    "fft_energy": 1825458.5,
+    "dft_energy": 1826273.7812500075,
+    "fft_relative_error": 0.0004464178692032828
+  },
+  {
+    "cycles": 2092981699,
+    "power": 1825534,
+    "reference": 157027094,
+    "fft_energy": 1825525.0,
+    "dft_energy": 1822982.0019531325,
+    "fft_relative_error": 0.0013949660743457675
+  },
+  {
+    "cycles": 2093788092,
+    "power": 1819708,
+    "reference": 157091500,
+    "fft_energy": 1819684.0,
+    "dft_energy": 1822291.3281250077,
+    "fft_relative_error": 0.001430796538822591
+  },
+  {
+    "cycles": 2094594499,
+    "power": 1820751,
+    "reference": 157056295,
+    "fft_energy": 1820726.5,
+    "dft_energy": 1823868.2363281325,
+    "fft_relative_error": 0.001722567598664633
+  },
+  {
+    "cycles": 2095400899,
+    "power": 1820176,
+    "reference": 157057322,
+    "fft_energy": 1820172.5,
+    "dft_energy": 1825439.2695312577,
+    "fft_relative_error": 0.0028852066563737843
+  },
+  {
+    "cycles": 2096207292,
+    "power": 1822353,
+    "reference": 157059239,
+    "fft_energy": 1822325.0,
+    "dft_energy": 1822585.7812500075,
+    "fft_relative_error": 0.00014308311449055399
+  },
+  {
+    "cycles": 2097013699,
+    "power": 1821785,
+    "reference": 157075924,
+    "fft_energy": 1821770.0,
+    "dft_energy": 1822526.4882812577,
+    "fft_relative_error": 0.0004150767004605202
+  },
+  {
+    "cycles": 2097820099,
+    "power": 1826053,
+    "reference": 157084939,
+    "fft_energy": 1826012.5,
+    "dft_energy": 1825224.8535156327,
+    "fft_relative_error": 0.00043153394654373776
+  },
+  {
+    "cycles": 2098626492,
+    "power": 1823873,
+    "reference": 157049768,
+    "fft_energy": 1823860.0,
+    "dft_energy": 1825627.587890633,
+    "fft_relative_error": 0.0009682083587897699
+  },
+  {
+    "cycles": 2099432899,
+    "power": 1820257,
+    "reference": 157063004,
+    "fft_energy": 1820241.0,
+    "dft_energy": 1823624.5175781327,
+    "fft_relative_error": 0.001855380614550066
+  },
+  {
+    "cycles": 2100239299,
+    "power": 1828672,
+    "reference": 157113057,
+    "fft_energy": 1828658.5,
+    "dft_energy": 1828217.7050781327,
+    "fft_relative_error": 0.0002411063631223713
+  },
+  {
+    "cycles": 2101045692,
+    "power": 1831388,
+    "reference": 157028393,
+    "fft_energy": 1831376.0,
+    "dft_energy": 1826890.5078125077,
+    "fft_relative_error": 0.002455260546984384
+  },
+  {
+    "cycles": 2101852099,
+    "power": 1826043,
+    "reference": 157046340,
+    "fft_energy": 1826012.5,
+    "dft_energy": 1825324.8476562575,
+    "fft_relative_error": 0.0003767287475571839
+  },
+  {
+    "cycles": 2102658499,
+    "power": 1822832,
+    "reference": 157078515,
+    "fft_energy": 1822814.5,
+    "dft_energy": 1824897.236328133,
+    "fft_relative_error": 0.0011412896499989119
+  },
+  {
+    "cycles": 2103464892,
+    "power": 1817066,
+    "reference": 157096307,
+    "fft_energy": 1817045.0,
+    "dft_energy": 1820900.035156258,
+    "fft_relative_error": 0.002117104224190485
+  },
+  {
+    "cycles": 2104271299,
+    "power": 1830264,
+    "reference": 157076755,
+    "fft_energy": 1830260.0,
+    "dft_energy": 1826316.6289062575,
+    "fft_relative_error": 0.002159193554572271
+  },
+  {
+    "cycles": 2105077699,
+    "power": 1820745,
+    "reference": 157099676,
+    "fft_energy": 1820726.5,
+    "dft_energy": 1822090.3945312577,
+    "fft_relative_error": 0.0007485328583868378
+  },
+  {
+    "cycles": 2105884092,
+    "power": 1824970,
+    "reference": 157105717,
+    "fft_energy": 1824968.0,
+    "dft_energy": 1824682.164062508,
+    "fft_relative_error": 0.00015664971309616631
+  },
+  {
+    "cycles": 2106690499,
+    "power": 1829783,
+    "reference": 157101842,
+    "fft_energy": 1829772.5,
+    "dft_energy": 1828182.916015633,
+    "fft_relative_error": 0.0008694884797586037
+  },
+  {
+    "cycles": 2107496899,
+    "power": 1827068,
+    "reference": 157126711,
+    "fft_energy": 1827058.0,
+    "dft_energy": 1826461.9238281325,
+    "fft_relative_error": 0.00032635565192523517
+  },
+  {
+    "cycles": 2108303292,
+    "power": 1816500,
+    "reference": 157045424,
+    "fft_energy": 1816490.0,
+    "dft_energy": 1823437.8906250077,
+    "fft_relative_error": 0.0038103248049903148
+  },
+  {
+    "cycles": 2109109699,
+    "power": 1823937,
+    "reference": 157035524,
+    "fft_energy": 1823924.5,
+    "dft_energy": 1822759.5507812577,
+    "fft_relative_error": 0.0006391129418265863
+  },
+  {
+    "cycles": 2109916099,
+    "power": 1827062,
+    "reference": 157061690,
+    "fft_energy": 1827058.0,
+    "dft_energy": 1824639.6757812575,
+    "fft_relative_error": 0.0013253708394272933
+  },
+  {
+    "cycles": 2110722492,
+    "power": 1824920,
+    "reference": 157108682,
+    "fft_energy": 1824906.5,
+    "dft_energy": 1824828.1191406327,
+    "fft_relative_error": 4.2952461410025034e-05
+  },
+  {
+    "cycles": 2111528899,
+    "power": 1823382,
+    "reference": 157090908,
+    "fft_energy": 1823368.5,
+    "dft_energy": 1824402.8007812575,
+    "fft_relative_error": 0.0005669256705890474
+  },
+  {
+    "cycles": 2112335299,
+    "power": 1823948,
+    "reference": 157098247,
+    "fft_energy": 1823924.5,
+    "dft_energy": 1823911.4160156327,
+    "fft_relative_error": 7.1735854342634625e-06
+  },
+  {
+    "cycles": 2113141692,
+    "power": 1828664,
+    "reference": 157125944,
+    "fft_energy": 1828658.5,
+    "dft_energy": 1824463.8632812577,
+    "fft_relative_error": 0.0022991064954272955
+  },
+  {
+    "cycles": 2113948099,
+    "power": 1824488,
+    "reference": 157058887,
+    "fft_energy": 1824482.5,
+    "dft_energy": 1825129.0332031327,
+    "fft_relative_error": 0.0003542397229844109
+  },
+  {
+    "cycles": 2114754499,
+    "power": 1826579,
+    "reference": 157044093,
+    "fft_energy": 1826568.5,
+    "dft_energy": 1823798.6191406327,
+    "fft_relative_error": 0.0015187427111182233
+  },
+  {
+    "cycles": 2115560892,
+    "power": 1826582,
+    "reference": 157005353,
+    "fft_energy": 1826568.5,
+    "dft_energy": 1827625.791015633,
+    "fft_relative_error": 0.0005785051955550306
+  },
+  {
+    "cycles": 2116367299,
+    "power": 1826030,
+    "reference": 157048803,
+    "fft_energy": 1826012.5,
+    "dft_energy": 1826033.447265633,
+    "fft_relative_error": 1.147145780066812e-05
+  },
+  {
+    "cycles": 2117173699,
+    "power": 1826018,
+    "reference": 157073952,
+    "fft_energy": 1826012.5,
+    "dft_energy": 1827135.1953125075,
+    "fft_relative_error": 0.0006144566178724549
+  },
+  {
+    "cycles": 2117980092,
+    "power": 1821778,
+    "reference": 157083353,
+    "fft_energy": 1821770.0,
+    "dft_energy": 1822916.078125008,
+    "fft_relative_error": 0.0006287059172722504
+  },
+  {
+    "cycles": 2118786499,
+    "power": 1823403,
+    "reference": 157131352,
+    "fft_energy": 1823368.5,
+    "dft_energy": 1826643.181640633,
+    "fft_relative_error": 0.0017927319760894414
+  },
+  {
+    "cycles": 2119592873,
+    "power": 1816438,
+    "reference": 157061176,
+    "fft_energy": 1816430.5,
+    "dft_energy": 1820333.7207031327,
+    "fft_relative_error": 0.002144233586809018
+  },
+  {
+    "cycles": 2120399266,
+    "power": 1826587,
+    "reference": 157073470,
+    "fft_energy": 1826568.5,
+    "dft_energy": 1826603.3164062577,
+    "fft_relative_error": 1.9060737460053883e-05
+  },
+  {
+    "cycles": 2121205673,
+    "power": 1824419,
+    "reference": 157093052,
+    "fft_energy": 1824413.0,
+    "dft_energy": 1826769.800781258,
+    "fft_relative_error": 0.0012901465637596915
+  },
+  {
+    "cycles": 2248320535,
+    "power": 111376470,
+    "reference": 639260462,
+    "fft_energy": 30362216.0,
+    "dft_energy": 30353664.70703125,
+    "fft_relative_error": 0.0002817219288440365
+  },
+  {
+    "cycles": 2249126935,
+    "power": 101789534,
+    "reference": 72898055,
+    "fft_energy": 30356514.0,
+    "dft_energy": 30374390.36914063,
+    "fft_relative_error": 0.0005885342528155074
+  },
+  {
+    "cycles": 2318657800,
+    "power": 6889564,
+    "reference": 1204108903,
+    "fft_energy": 4728242.0,
+    "dft_energy": 4727835.351562515,
+    "fft_relative_error": 8.601154804401226e-05
+  },
+  {
+    "cycles": 2319464200,
+    "power": 6539834,
+    "reference": 474410108,
+    "fft_energy": 4728242.0,
+    "dft_energy": 4733598.400390639,
+    "fft_relative_error": 0.0011315705173039045
+  },
+  {
+    "cycles": 2320270593,
+    "power": 6546848,
+    "reference": 474394536,
+    "fft_energy": 4726088.0,
+    "dft_energy": 4727575.976562516,
+    "fft_relative_error": 0.0003147440823569292
+  },
+  {
+    "cycles": 2321077000,
+    "power": 6549743,
+    "reference": 474443142,
+    "fft_energy": 4732582.5,
+    "dft_energy": 4736357.156250014,
+    "fft_relative_error": 0.0007969534656044677
+  },
+  {
+    "cycles": 2321883400,
+    "power": 6546486,
+    "reference": 474503911,
+    "fft_energy": 4731122.5,
+    "dft_energy": 4732049.628906264,
+    "fft_relative_error": 0.0001959254401307411
+  },
+  {
+    "cycles": 2322689793,
+    "power": 6545225,
+    "reference": 474449962,
+    "fft_energy": 4733280.5,
+    "dft_energy": 4734608.535156265,
+    "fft_relative_error": 0.0002804952397655976
+  },
+  {
+    "cycles": 2323496200,
+    "power": 6540851,
+    "reference": 474544325,
+    "fft_energy": 4727520.5,
+    "dft_energy": 4728848.503906265,
+    "fft_relative_error": 0.0002808302920188506
+  },
+  {
+    "cycles": 2324302600,
+    "power": 6551649,
+    "reference": 474410779,
+    "fft_energy": 4732562.0,
+    "dft_energy": 4735690.191406265,
+    "fft_relative_error": 0.0006605565988969358
+  },
+  {
+    "cycles": 2325108993,
+    "power": 6545681,
+    "reference": 474505050,
+    "fft_energy": 4728242.0,
+    "dft_energy": 4736996.675781266,
+    "fft_relative_error": 0.0018481490236262276
+  },
+  {
+    "cycles": 2325915400,
+    "power": 6533483,
+    "reference": 474448032,
+    "fft_energy": 4722133.0,
+    "dft_energy": 4725904.595703139,
+    "fft_relative_error": 0.000798068523551694
+  },
+  {
+    "cycles": 2326721800,
+    "power": 6543832,
+    "reference": 474450770,
+    "fft_energy": 4728242.0,
+    "dft_energy": 4729613.769531264,
+    "fft_relative_error": 0.00029003838328217683
+  },
+  {
+    "cycles": 2327528193,
+    "power": 6537616,
+    "reference": 474406713,
+    "fft_energy": 4726088.0,
+    "dft_energy": 4726266.132812515,
+    "fft_relative_error": 3.7689966563287366e-05
+  },
+  {
+    "cycles": 2328334600,
+    "power": 6539007,
+    "reference": 474561355,
+    "fft_energy": 4727164.5,
+    "dft_energy": 4730406.98632814,
+    "fft_relative_error": 0.0006854561008199423
+  },
+  {
+    "cycles": 2329141000,
+    "power": 6534984,
+    "reference": 474523155,
+    "fft_energy": 4721406.5,
+    "dft_energy": 4729772.726562515,
+    "fft_relative_error": 0.0017688432502327176
+  },
+  {
+    "cycles": 2329947393,
+    "power": 6556301,
+    "reference": 474504571,
+    "fft_energy": 4739044.5,
+    "dft_energy": 4734519.160156266,
+    "fft_relative_error": 0.0009558182553822014
+  },
+  {
+    "cycles": 2330753800,
+    "power": 6541014,
+    "reference": 474456446,
+    "fft_energy": 4727164.5,
+    "dft_energy": 4727948.582031265,
+    "fft_relative_error": 0.0001658397966181004
+  },
+  {
+    "cycles": 2331560200,
+    "power": 6676094,
+    "reference": 470809529,
+    "fft_energy": 4898557.0,
+    "dft_energy": 4899157.45507814,
+    "fft_relative_error": 0.00012256292712484868
+  },
+  {
+    "cycles": 2332366593,
+    "power": 6806713,
+    "reference": 484121077,
+    "fft_energy": 4916732.5,
+    "dft_energy": 4915158.722656265,
+    "fft_relative_error": 0.0003201885091687524
+  },
+  {
+    "cycles": 2333173000,
+    "power": 6793292,
+    "reference": 484456491,
+    "fft_energy": 4906178.0,
+    "dft_energy": 4910060.925781265,
+    "fft_relative_error": 0.000790810101943301
+  },
+  {
+    "cycles": 2333979400,
+    "power": 6807056,
+    "reference": 484197665,
+    "fft_energy": 4917866.0,
+    "dft_energy": 4917336.695312514,
+    "fft_relative_error": 0.00010764052174637412
+  },
+  {
+    "cycles": 2334785793,
+    "power": 6793786,
+    "reference": 484356590,
+    "fft_energy": 4906832.5,
+    "dft_energy": 4908848.025390641,
+    "fft_relative_error": 0.0004105903014751489
+  },
+  {
+    "cycles": 2335592200,
+    "power": 6805055,
+    "reference": 484376821,
+    "fft_energy": 4920136.0,
+    "dft_energy": 4916077.000000014,
+    "fft_relative_error": 0.0008256583450556243
+  },
+  {
+    "cycles": 2336398600,
+    "power": 6799770,
+    "reference": 484162338,
+    "fft_energy": 4916564.0,
+    "dft_energy": 4911885.79882814,
+    "fft_relative_error": 0.000952424662026183
+  },
+  {
+    "cycles": 2337204993,
+    "power": 6818496,
+    "reference": 484313251,
+    "fft_energy": 4929570.0,
+    "dft_energy": 4923485.253906265,
+    "fft_relative_error": 0.0012358615452148448
+  },
+  {
+    "cycles": 2338011374,
+    "power": 6690139,
+    "reference": 485813132,
+    "fft_energy": 4803041.0,
+    "dft_energy": 4807916.019531266,
+    "fft_relative_error": 0.0010139568809983308
+  },
+  {
+    "cycles": 2338817774,
+    "power": 6626208,
+    "reference": 477160311,
+    "fft_energy": 4803041.0,
+    "dft_energy": 4801006.015625016,
+    "fft_relative_error": 0.0004238662414421583
+  },
+  {
+    "cycles": 2339624167,
+    "power": 6566205,
+    "reference": 478330502,
+    "fft_energy": 4748426.0,
+    "dft_energy": 4754919.501953141,
+    "fft_relative_error": 0.001365638671795295
+  },
+  {
+    "cycles": 2340430574,
+    "power": 6453322,
+    "reference": 472178441,
+    "fft_energy": 4636710.5,
+    "dft_energy": 4636261.220703141,
+    "fft_relative_error": 9.690551836314117e-05
+  },
+  {
+    "cycles": 2341236974,
+    "power": 6489453,
+    "reference": 463075107,
+    "fft_energy": 4683850.0,
+    "dft_energy": 4688192.265625017,
+    "fft_relative_error": 0.0009262132137487891
+  },
+  {
+    "cycles": 2342043367,
+    "power": 6696152,
+    "reference": 475562105,
+    "fft_energy": 4825556.5,
+    "dft_energy": 4822284.314453141,
+    "fft_relative_error": 0.0006785550858235204
+  },
+  {
+    "cycles": 2342849774,
+    "power": 6444202,
+    "reference": 475485700,
+    "fft_energy": 4662754.0,
+    "dft_energy": 4668079.251953141,
+    "fft_relative_error": 0.001140780107988254
+  },
+  {
+    "cycles": 2343656174,
+    "power": 6452778,
+    "reference": 467576904,
+    "fft_energy": 4648778.0,
+    "dft_energy": 4647527.423828141,
+    "fft_relative_error": 0.00026908419419913296
+  },
+  {
+    "cycles": 2344462567,
+    "power": 6614516,
+    "reference": 467028509,
+    "fft_energy": 4747752.5,
+    "dft_energy": 4747772.957031264,
+    "fft_relative_error": 4.308763592764853e-06
+  },
+  {
+    "cycles": 2345268974,
+    "power": 6621834,
+    "reference": 477355204,
+    "fft_energy": 4736556.5,
+    "dft_energy": 4740869.306640641,
+    "fft_relative_error": 0.0009097079800533182
+  },
+  {
+    "cycles": 2346075374,
+    "power": 6461759,
+    "reference": 468278581,
+    "fft_energy": 4640838.5,
+    "dft_energy": 4639926.957031266,
+    "fft_relative_error": 0.00019645631863941972
+  },
+  {
+    "cycles": 2346881767,
+    "power": 6513238,
+    "reference": 471162989,
+    "fft_energy": 4706960.5,
+    "dft_energy": 4710189.142578141,
+    "fft_relative_error": 0.00068545922051309
+  },
+  {
+    "cycles": 2347688174,
+    "power": 6537490,
+    "reference": 471774414,
+    "fft_energy": 4716730.0,
+    "dft_energy": 4718572.445312517,
+    "fft_relative_error": 0.0003904666790370189
+  },
+  {
+    "cycles": 2348494574,
+    "power": 6523137,
+    "reference": 470375482,
+    "fft_energy": 4717466.0,
+    "dft_energy": 4720059.033203142,
+    "fft_relative_error": 0.0005493645704219236
+  },
+  {
+    "cycles": 2349300967,
+    "power": 6520471,
+    "reference": 470528506,
+    "fft_energy": 4714933.0,
+    "dft_energy": 4714753.007812517,
+    "fft_relative_error": 3.81763768292809e-05
+  }
+]

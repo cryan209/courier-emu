@@ -7,8 +7,29 @@ from courier_emu.imodem_dsp import ImodemDsp
 from courier_emu.nac import NacImage
 
 
-def test_call_overlay_command_acknowledges_supervisor_pre_download_strobe():
+def test_default_overlay_command_only_publishes_hardware_mailbox():
     endpoint = ImodemDsp()
+    endpoint.core = NativeC5x.from_program(0, b'')
+    endpoint.reset_status = False
+    try:
+        endpoint.core.set_data(0x0bff, 0x1234)
+        endpoint.core.set_io(0x57, 2)
+        endpoint.write(0x1e, 4)
+        endpoint._command(2, 0xa000)
+        endpoint._sync()
+        assert endpoint.core.data(0x0bff) == 0x1234
+        assert endpoint.core.io(0x57) == 0x0403
+        assert endpoint.core.io(0x5e) == 2
+        assert endpoint.core.io(0x5f) == 0xa000
+        assert not endpoint.tx_ready
+        assert endpoint.consumed == 0
+        assert endpoint.foreground_overlay_assists == 0
+    finally:
+        endpoint.close()
+
+
+def test_call_overlay_command_acknowledges_supervisor_pre_download_strobe():
+    endpoint = ImodemDsp(foreground_overlay_assist=True)
     endpoint.core = NativeC5x.from_program(0, b"")
     endpoint.reset_status = False
     try:
@@ -47,7 +68,7 @@ def test_foreground_ack_matches_native_resident_and_preserves_other_status(statu
     image = NacImage.load(Path(__file__).resolve().parents[1] / 'Ie030002.nac')
     _, payload = image.flatten()
     resident = payload[0xa8690:0xa8690 + 0x247c]
-    endpoint = ImodemDsp()
+    endpoint = ImodemDsp(foreground_overlay_assist=True)
     endpoint.core = NativeC5x.from_program(0x8000, resident)
     endpoint.reset_status = False
     try:
@@ -71,7 +92,7 @@ def test_foreground_ack_matches_native_resident_and_preserves_other_status(statu
 
 
 def test_new_dsp_does_not_inherit_foreground_overlay_ownership():
-    endpoint = ImodemDsp()
+    endpoint = ImodemDsp(foreground_overlay_assist=True)
     endpoint.core = NativeC5x.from_program(0, b'')
     endpoint.reset_status = False
     endpoint._command(2, 0xa000)

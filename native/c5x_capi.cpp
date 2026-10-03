@@ -45,6 +45,13 @@ void courier_c5x_reset(void *handle)
     if (handle) static_cast<C5xCore *>(handle)->reset();
 }
 
+void courier_c5x_get_delay_move_state(void *handle, uint64_t *values)
+{
+    if (!handle || !values) return;
+    const auto state = static_cast<C5xCore *>(handle)->delay_move_state();
+    std::copy(state.begin(), state.end(), values);
+}
+
 int courier_c5x_load_program(
     void *handle, uint16_t origin, const uint8_t *bytes, std::size_t byte_count,
     char *error, std::size_t error_size)
@@ -192,7 +199,7 @@ std::size_t courier_c5x_advance_imodem(void *handle, uint64_t count,
         C5xCore *core = static_cast<C5xCore *>(handle);
         const uint64_t before_instructions = core->instruction_count();
         const uint64_t before_cycles = core->cycle_count();
-        core->run_cycles(count);
+        core->run_cycles(count, true);
         const auto &words = core->g711_tx();
         tx_start = std::min(tx_start, words.size());
         const std::size_t available = words.size() - tx_start;
@@ -257,6 +264,11 @@ void courier_c5x_queue_codec_boot(void *handle, const uint16_t *words, std::size
 void courier_c5x_queue_codec_rx(void *handle, const uint16_t *samples, std::size_t count)
 {
     if (handle && samples) static_cast<C5xCore *>(handle)->queue_codec_rx(samples, count);
+}
+
+void courier_c5x_queue_line_rx(void *handle, const uint16_t *samples, std::size_t count)
+{
+    if (handle && samples) static_cast<C5xCore *>(handle)->queue_line_rx(samples, count);
 }
 
 void courier_c5x_set_hybrid_return(void *handle, uint32_t return_scale,
@@ -507,6 +519,18 @@ uint16_t courier_c5x_get_line_tx_sample(void *handle, std::size_t index)
     return index < samples.size() ? samples[index] : 0;
 }
 
+std::size_t courier_c5x_get_line_tx_clock_events(void *handle, uint64_t *values, std::size_t count)
+{
+    if (!handle) return 0;
+    const auto &events = static_cast<C5xCore *>(handle)->line_tx_clock_events();
+    if (values)
+        for (std::size_t i = 0; i < std::min(count, events.size()); ++i) {
+            values[2*i] = events[i][0];
+            values[2*i+1] = events[i][1];
+        }
+    return events.size();
+}
+
 void courier_c5x_get_data_event(void *handle, std::size_t index, uint64_t *values, std::size_t count)
 {
     if (!handle || !values || count < 4) return;
@@ -520,6 +544,35 @@ void courier_c5x_get_data_event(void *handle, std::size_t index, uint64_t *value
 std::size_t courier_c5x_get_pc_trace_count(void *handle)
 {
     return handle ? static_cast<C5xCore *>(handle)->pc_trace().size() : 0;
+}
+
+void courier_c5x_set_pc_capture(void *handle, uint16_t pc, const uint16_t *addresses, std::size_t count)
+{
+    if (!handle || count > 256 || (count && !addresses)) return;
+    std::vector<uint16_t> selected;
+    if (count) selected.assign(addresses, addresses + count);
+    static_cast<C5xCore *>(handle)->set_pc_capture(pc, selected);
+}
+
+std::size_t courier_c5x_get_pc_capture_count(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->pc_captures().size() : 0;
+}
+
+std::size_t courier_c5x_get_pc_capture(void *handle, std::size_t index, uint64_t *values, std::size_t count)
+{
+    if (!handle || !values) return 0;
+    const auto &captures = static_cast<C5xCore *>(handle)->pc_captures();
+    if (index >= captures.size()) return 0;
+    const auto &capture = captures[index];
+    const auto copied = std::min(count, capture.size());
+    std::copy_n(capture.begin(), copied, values);
+    return copied;
+}
+
+void courier_c5x_clear_pc_captures(void *handle)
+{
+    if (handle) static_cast<C5xCore *>(handle)->clear_pc_captures();
 }
 
 void courier_c5x_clear_pc_trace(void *handle)
@@ -587,7 +640,7 @@ extern "C" void courier_c5x_set_codec_mclk(void *handle, uint32_t hz)
 
 extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std::size_t count)
 {
-    if (!handle || !values || count < 35) return;
+    if (!handle || !values || count < 36) return;
     auto codec = static_cast<C5xCore *>(handle)->codec_state();
     uint64_t result[] = {
         codec.registers[0], codec.registers[1], codec.registers[2],
@@ -602,7 +655,7 @@ extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std:
         codec.sixteen_bit, codec.input_gain, codec.output_gain,
         codec.monitor_gain, codec.input_select,
         codec.codec_rx_size, codec.line_frame_next_cycle, codec.cycles,
-        uint64_t(int64_t(codec.line_frame_irq)),
+        uint64_t(int64_t(codec.line_frame_irq)), codec.rx_empty_frames,
     };
     std::copy(std::begin(result), std::end(result), values);
 }

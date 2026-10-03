@@ -1,0 +1,15 @@
+{
+  "beep_start_seconds": 9.666,
+  "beep_end_seconds": 9.81,
+  "beep_codewords": 1152,
+  "repeat_period_codewords": 36,
+  "dominant_hz_approx": 3333,
+  "exact_match_in_successful_53333_x2_reference": true,
+  "reference_beep_source_offset": 88159,
+  "first_post_beep_silence_start_seconds": 10.478375,
+  "seconds_after_beep_end": 0.6683749999999993,
+  "initial_post_beep_constellation_levels_real": 18,
+  "initial_post_beep_constellation_levels_reference": 18,
+  "local_transport_codeword_gaps": false,
+  "interpretation": "The beep waveform is identical to the successful x2 control. The failed call aborts the following PCM training approximately 0.67 seconds after the beep. Cause not established; both gateway playback and DSP receive/training decisions remain candidates."
+}

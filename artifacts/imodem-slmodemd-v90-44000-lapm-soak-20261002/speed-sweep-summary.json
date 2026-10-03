@@ -1,0 +1,70 @@
+[
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-lapm-drained-soak-20261002",
+    "interpolation_points": 8,
+    "training_gain": 1,
+    "links": [
+      "V.90, rate: rx 34667, tx 31200"
+    ],
+    "retrain_requests": 0,
+    "upstream_packets_exact": 150,
+    "downstream_packets_exact": 150,
+    "clipped_samples": null
+  },
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-training-gain2-20261002",
+    "interpolation_points": 8,
+    "training_gain": 2,
+    "links": [
+      "V.90, rate: rx 34667, tx 31200"
+    ],
+    "retrain_requests": 0,
+    "upstream_packets_exact": 10,
+    "downstream_packets_exact": 10,
+    "clipped_samples": null
+  },
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-interpolation16-20261002",
+    "interpolation_points": 16,
+    "training_gain": 1,
+    "links": [
+      "V.90, rate: rx 38667, tx 31200"
+    ],
+    "retrain_requests": 0,
+    "upstream_packets_exact": 10,
+    "downstream_packets_exact": 10,
+    "clipped_samples": 0
+  },
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-interpolation32-20261002",
+    "interpolation_points": 32,
+    "training_gain": 1,
+    "links": [
+      "V.90, rate: rx 44000, tx 31200"
+    ],
+    "retrain_requests": 0,
+    "upstream_packets_exact": 10,
+    "downstream_packets_exact": 10,
+    "clipped_samples": 0
+  },
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-interpolation64-20261002",
+    "interpolation_points": 64,
+    "training_gain": 1,
+    "links": [],
+    "retrain_requests": 2,
+    "upstream_packets_exact": 0,
+    "downstream_packets_exact": 0,
+    "clipped_samples": 0
+  },
+  {
+    "artifact": "artifacts/imodem-slmodemd-v90-interpolation128-20261002",
+    "interpolation_points": 128,
+    "training_gain": 1,
+    "links": [],
+    "retrain_requests": 3,
+    "upstream_packets_exact": 0,
+    "downstream_packets_exact": 0,
+    "clipped_samples": 0
+  }
+]

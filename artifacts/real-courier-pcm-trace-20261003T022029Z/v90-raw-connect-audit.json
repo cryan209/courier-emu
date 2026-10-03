@@ -1,0 +1,56 @@
+{
+  "call_id": "b2d1bca9-9719-4461-b317-8a8ec744bf84",
+  "imodem_connect": "CONNECT 44000/V90/NONE",
+  "courier_connect": "CONNECT 44000/V90/NONE",
+  "courier_current_speed": [
+    45333,
+    28800
+  ],
+  "courier_current_call_seconds": 69,
+  "courier_error_control": "NONE",
+  "courier_retrains_requested": 0,
+  "courier_retrains_granted": 0,
+  "courier_snr_db": 42.5,
+  "courier_roundtrip_ms": 154,
+  "bidirectional_payload_verified": false,
+  "note": "Raw V.90 CONNECT established on both ends, upstream marker present exactly amid extensive unsolicited binary bytes. Downstream marker reported corrupted. This demonstrates unclean raw data; error-control establishment failure may be caused by datapump errors, not necessarily LAPM compatibility.",
+  "upstream_marker_exact": true,
+  "upstream_marker_offsets": [
+    13789
+  ],
+  "raw_serial_received_bytes": 34858,
+  "downstream_marker": "User reports corrupted output",
+  "streams": {
+    "tx": {
+      "packets": 11439,
+      "unique_packets": 11439,
+      "missing_within_observed_range": 0,
+      "duplicate_packets": 0,
+      "out_of_order_packets": 0,
+      "timestamp_discontinuities": [],
+      "payload_sample_counts": [
+        160
+      ],
+      "duration_seconds": 228.9366937079467,
+      "max_observed_packet_gap_ms": 109.66570815071464,
+      "median_observed_packet_gap_ms": 19.988646265119314,
+      "observed_gaps_over_40ms": 4
+    },
+    "rx": {
+      "packets": 11446,
+      "unique_packets": 11446,
+      "missing_within_observed_range": 1,
+      "duplicate_packets": 0,
+      "out_of_order_packets": 0,
+      "timestamp_discontinuities": [],
+      "payload_sample_counts": [
+        160
+      ],
+      "duration_seconds": 228.92136141704395,
+      "max_observed_packet_gap_ms": 107.02833300456405,
+      "median_observed_packet_gap_ms": 20.00100025907159,
+      "observed_gaps_over_40ms": 5
+    }
+  },
+  "connected_receive_fill_change": 705
+}

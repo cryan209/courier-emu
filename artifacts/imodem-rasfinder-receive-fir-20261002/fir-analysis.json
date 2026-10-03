@@ -1,0 +1,7 @@
+{
+  "rows": 197330,
+  "matched": 135138,
+  "mismatched": 0,
+  "expected": "signed16((4 * sum(input_post_move[0x118-k] * coefficient[base+36*k], k=0..11) + 32768) >> 16)",
+  "base": "(0be9 - 0bea) & 65535"
+}

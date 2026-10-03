@@ -1,0 +1,37 @@
+{
+  "framing": "7E1",
+  "audio_duration_seconds": 44.84,
+  "data_hold_seconds_approximately": 22.82,
+  "imodem_to_smartlink": {
+    "packets_sent": 5,
+    "packets_received_exactly_once": 5,
+    "missing_or_corrupted_packets": [],
+    "duplicate_packets": [],
+    "unexpected_bytes_between_intact_packets": [],
+    "verified_payload_bytes": 430,
+    "application_stream_matches_exactly": true,
+    "all_packets_match": true
+  },
+  "smartlink_to_imodem": {
+    "packets_sent": 5,
+    "packets_received_exactly_once": 0,
+    "missing_or_corrupted_packets": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "duplicate_packets": [],
+    "unexpected_bytes_between_intact_packets": [],
+    "verified_payload_bytes": 0,
+    "application_stream_matches_exactly": false,
+    "all_packets_match": false
+  },
+  "negotiated_links": [
+    "V.90, rate: rx 44000, tx 31200"
+  ],
+  "retrain_requests": 0,
+  "smartlink_error_correction_active": false,
+  "probe_status": "instruction-limit"
+}

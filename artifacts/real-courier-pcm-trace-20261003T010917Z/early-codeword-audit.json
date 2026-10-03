@@ -1,0 +1,45 @@
+{
+  "call_id": "5b33876c-39f5-4df1-a26d-12eba4d1eae2",
+  "reference": "Seconds from first outgoing RTP payload; V.34 CONNECT at approximately 17.34 s",
+  "tx_rtp_codewords": 2386400,
+  "tx_exact_contiguous_match_in_bearer_output": 465846,
+  "rx_rtp_codewords": 2387360,
+  "rx_exact_contiguous_match_in_dsp_heard_capture": 2805873,
+  "tx_idle_runs_at_least_10ms_in_first_20_seconds": [
+    {
+      "start_seconds": 2.917,
+      "end_seconds": 2.986,
+      "idle_codewords": 552,
+      "duration_ms": 69.0
+    },
+    {
+      "start_seconds": 3.60025,
+      "end_seconds": 6.143625,
+      "idle_codewords": 20347,
+      "duration_ms": 2543.375
+    },
+    {
+      "start_seconds": 10.478375,
+      "end_seconds": 10.5495,
+      "idle_codewords": 569,
+      "duration_ms": 71.125
+    },
+    {
+      "start_seconds": 10.855625,
+      "end_seconds": 11.362875,
+      "idle_codewords": 4058,
+      "duration_ms": 507.25
+    },
+    {
+      "start_seconds": 12.34575,
+      "end_seconds": 13.39225,
+      "idle_codewords": 8372,
+      "duration_ms": 1046.5
+    }
+  ],
+  "startup_fill_excluding_preanswer_samples": 565,
+  "limitations": [
+    "Bearer capture confirms local sample continuity, not VG224 analog playback.",
+    "Idle codewords do not establish whether a training pause is expected or erroneous."
+  ]
+}

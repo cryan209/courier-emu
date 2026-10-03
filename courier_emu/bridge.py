@@ -704,7 +704,8 @@ class CourierDspBridge:
         self._codec_replayed = 0
         self._codec_in_peak = 0
         self._codec_handed_ever = 0
-        # Words the codec has clocked out that the C50 has not taken yet.
+        # Input still in flight: raw line samples for clocked socket input,
+        # preconverted codec words for the legacy receive paths.
         self._codec_in_flight: deque[int] = deque()
         self._carrier_probe: deque[int] = deque()
         self._carrier_probe_frames = 0
@@ -825,12 +826,29 @@ class CourierDspBridge:
         produced = self.core.line_tx_samples(self._exchange_tx_index)
         if not produced:
             return
+        start = self._exchange_tx_index
         self._exchange_tx_index += len(produced)
         rate = self.codec_sample_rate()
-        converted = (
-            self._codec_to_line.convert(produced, rate, LINE_RATE)
-            if rate else produced
-        )
+        events = (self.core.line_tx_clock_events()
+                  if hasattr(self.core, "line_tx_clock_events") else [])
+        converted = []
+        offset = 0
+        boundaries = []
+        for index, event_rate in events:
+            if index <= start:
+                rate = event_rate
+            elif index < self._exchange_tx_index:
+                boundaries.append((index - start, event_rate))
+        # Drain at the clocks that generated the samples, rather than labeling
+        # a mixed batch with the final codec rate after a firmware retune.
+        for end, next_rate in boundaries + [(len(produced), rate)]:
+            chunk = produced[offset:end]
+            converted.extend(self._codec_to_line.convert(chunk, rate, LINE_RATE)
+                             if rate else chunk)
+            offset, rate = end, next_rate
+        if boundaries:
+            self._line_service["tx_batches_crossing_retune"] = (
+                self._line_service.get("tx_batches_crossing_retune", 0) + 1)
         # Peak either side of the conversion. A stream that is nonzero going in
         # and zero coming out is a resampler fault; one that is near zero going
         # in is a datapump that is not transmitting, which is a different
@@ -848,14 +866,16 @@ class CourierDspBridge:
         self._exchange_line_buffer.extend(converted)
 
     def _queue_line_audio(self, samples: list[int]) -> None:
-        """Hand line audio to the codec at the codec's rate, not the line's."""
+        """Feed the ADC; socket conversion happens at its actual clock edge."""
         if not samples:
             return
         self._codec_in_peak = max(
             self._codec_in_peak, max(abs(sample) for sample in samples))
         rate = self.codec_sample_rate()
-        converted = self._line_to_codec.convert(samples, rate)
-        if converted and rate > 0 and rate != self._rx_cushion_rate:
+        clocked_input = (getattr(self, "boot_rom_enabled", False) and self.line is not None
+                         and hasattr(self.core, "queue_line_rx"))
+        converted = samples if clocked_input else self._line_to_codec.convert(samples, rate)
+        if not clocked_input and converted and rate > 0 and rate != self._rx_cushion_rate:
             # The line arrives a frame at a time and the AC01 takes a sample
             # every period, so what the queue holds when a frame lands is its
             # low point - and where that settles depends only on where the two
@@ -874,8 +894,11 @@ class CourierDspBridge:
                 self.core.queue_codec_rx([0] * (RX_CUSHION_SAMPLES - max(0, pending)))
             self._rx_cushion_rate = rate
         if converted:
-            # Measured *after* conversion and *after* the last core rebuild,
-            # which is what makes it answerable. The core's own codec_rx_peak
+            # Measured after the last core rebuild. Legacy paths are already
+            # converted here; clocked line input is still on its 8 kHz grid
+            # and the native codec reports the peak after ADC conversion.
+            # Keeping input-side evidence across a rebuild lets us establish
+            # whether the tone arrived. The core's own codec_rx_peak
             # cannot answer "did the DSP get the dial tone": a fresh NativeC5x
             # is built at the call boundary and takes the counter and the
             # queued audio with it, so the peak reads zero afterwards whether
@@ -888,20 +911,22 @@ class CourierDspBridge:
                 # audio went to the core that is still running or to one that
                 # was thrown away.
                 self._codec_handed_ever = self._instructions
-            self.core.queue_codec_rx(converted)
-            # Keep a copy of what the codec has clocked out but the C50 has not
-            # yet taken, so a rebuild does not swallow it. The AC01 is on the
-            # C50's primary serial port and is not part of the C50: it keeps
+            if clocked_input:
+                self.core.queue_line_rx(converted)
+            else:
+                self.core.queue_codec_rx(converted)
+            # Keep a copy of pending input so a rebuild does not swallow it.
+            # Socket input is raw 8 kHz audio; legacy input is codec words.
+            # The AC01 is on the C50's primary serial port and is not part of
+            # the C50: it keeps
             # converting the line and shifting words at CLKX whether or not the
             # DSP is in reset, and the tone is still on the wire when the DSP
-            # comes back. `codec_rx_queued - codec_rx_consumed` is the core's
-            # own count of words still in flight, so trimming to it leaves
-            # exactly those.
+            # comes back. Trim using the raw FIFO size for clocked input or
+            # the queued/consumed codec-word counters for legacy input.
             self._codec_in_flight.extend(converted)
             serial = self.core.serial_state()
-            pending = serial.get("codec_rx_queued", 0) - serial.get(
-                "codec_rx_consumed", 0
-            )
+            pending = (self.core.codec_state()["codec_rx_size"] if clocked_input else
+                       serial.get("codec_rx_queued", 0) - serial.get("codec_rx_consumed", 0))
             while len(self._codec_in_flight) > max(0, pending):
                 self._codec_in_flight.popleft()
 
@@ -2501,7 +2526,10 @@ class CourierDspBridge:
             # discarded 31 ms after it arrives, and every later frame with it.
             if self._codec_in_flight and hasattr(self.core, "queue_codec_rx"):
                 self._codec_replayed = len(self._codec_in_flight)
-                self.core.queue_codec_rx(list(self._codec_in_flight))
+                if self.boot_rom_enabled and self.line is not None:
+                    self.core.queue_line_rx(list(self._codec_in_flight))
+                else:
+                    self.core.queue_codec_rx(list(self._codec_in_flight))
             self._configure_boot_rom()
             self._configure_frame_interrupt()
             self._call_overlay_active = False
@@ -3346,6 +3374,19 @@ class CourierDspBridge:
         if not hasattr(self.core, "codec_state") or getattr(self.core, "closed", False):
             return
         state = self.core.codec_state()
+        empty = state.get("rx_empty_frames", 0)
+        previous_empty = getattr(self, "_codec_empty_seen", empty)
+        if (getattr(self, "_call_state", None) == CALL_ANSWERED and
+                self.line is not None and self.line.connected):
+            missing = max(0, empty - previous_empty)
+            self._line_service["rx_empty_connected"] = self._line_service.get(
+                "rx_empty_connected", 0) + missing
+            if missing:
+                gaps = self._line_service.setdefault("rx_gap_events", [])
+                gaps.append({"line_frame": self.line.frames, "samples": missing,
+                             "codec_rate": state.get("sample_rate")})
+                del gaps[:-32]
+        self._codec_empty_seen = empty
         registers = list(state.get("registers", []))
         clock = (state.get("mclk_hz"), state.get("sample_rate"))
         if registers == self._codec_registers_seen and clock == self._codec_clock_seen:
@@ -3360,6 +3401,13 @@ class CourierDspBridge:
             "input_gain": state.get("input_gain"),
             "sample_rate": state.get("sample_rate"),
             "mclk_hz": state.get("mclk_hz"),
+            # Rate changes can leave a frame of pre-converted RX samples in
+            # flight. Record it so a clean socket FIFO cannot hide a codec
+            # clock mismatch at the retune boundary.
+            "codec_rx_pending": state.get("codec_rx_size"),
+            "codec_rx_empty_frames": empty,
+            "codec_tx_samples": self.core.serial_state().get("line_tx_writes")
+                if hasattr(self.core, "serial_state") else None,
         })
 
     def _service_line_frame(self) -> None:

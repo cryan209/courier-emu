@@ -1,0 +1,289 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {
+        "13367": 65,
+        "16399": 64
+      },
+      "call_reference": null,
+      "call_state": "active",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5525504
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5530624
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5539840
+        },
+        {
+          "event": "SPID init: 017349195011",
+          "instructions": 5539840
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5563904
+        },
+        {
+          "event": "SETUP to the modem from 5551000",
+          "instructions": 20000256
+        },
+        {
+          "event": "ALERTING call reference 1",
+          "instructions": 20035072
+        },
+        {
+          "event": "ID_REQUEST ref 13367: assigning TEI 65",
+          "instructions": 20679680
+        },
+        {
+          "event": "SABME from TEI 65, answering UA",
+          "instructions": 20694528
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 20703232
+        },
+        {
+          "event": "SPID init: 017349196011",
+          "instructions": 20703232
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 20728320
+        },
+        {
+          "event": "CONNECT call reference 1",
+          "instructions": 54192640
+        }
+      ],
+      "frames_from_modem": 15,
+      "frames_to_modem": 15,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 3
+        },
+        "65": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 2,
+          "vs": 1
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 136800,
+        "rx_pending": 0,
+        "tx_non_ff": 216458,
+        "tx_octets": 233292
+      },
+      "media_peer": {
+        "error": "the far I-modem closed the B channel",
+        "frames": 171,
+        "listen": false,
+        "octets_received": 136800,
+        "octets_sent": 136800,
+        "pending": 0,
+        "received_non_ff": 117543,
+        "sent_non_ff": 120325
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": "the far I-modem closed the B channel",
+      "frames": 171,
+      "listen": false,
+      "octets_received": 136800,
+      "octets_sent": 136800,
+      "pending": 0,
+      "received_non_ff": 117543,
+      "sent_non_ff": 120325
+    },
+    "modem_connected": false,
+    "serial": "AT3&\r\r\nOK\r\nAT3&\r\r\nOK\r\nAT\r",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "data_delivery": {
+    "answer_to_originate": false,
+    "originate_to_answer": false
+  },
+  "internal_baud": 115200,
+  "originate": {
+    "bri": {
+      "assigned_teis": {
+        "13367": 65,
+        "16399": 64
+      },
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "7349195",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5525504
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5530624
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5539840
+        },
+        {
+          "event": "SPID init: 017349195011",
+          "instructions": 5539840
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5563904
+        },
+        {
+          "event": "ID_REQUEST ref 13367: assigning TEI 65",
+          "instructions": 20678144
+        },
+        {
+          "event": "SABME from TEI 65, answering UA",
+          "instructions": 20682752
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 20691968
+        },
+        {
+          "event": "SPID init: 017349196011",
+          "instructions": 20691968
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 20713472
+        },
+        {
+          "event": "SETUP call reference 1",
+          "instructions": 34323456
+        },
+        {
+          "event": "the modem is calling 7349195",
+          "instructions": 34323456
+        },
+        {
+          "event": "CONNECT_ACKNOWLEDGE call reference 1",
+          "instructions": 35828224
+        },
+        {
+          "event": "DISCONNECT call reference 1, cause 16 normal call clearing",
+          "instructions": 121353216
+        },
+        {
+          "event": "T200 exhausted awaiting I-frame acknowledgement from TEI 64",
+          "instructions": 141353984
+        }
+      ],
+      "frames_from_modem": 16,
+      "frames_to_modem": 20,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": false,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 0,
+          "vs": 0
+        },
+        "65": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 2,
+          "vs": 1
+        }
+      },
+      "media": {
+        "channel": null,
+        "rx_delivered": 136800,
+        "rx_pending": 0,
+        "tx_non_ff": 117543,
+        "tx_octets": 136840
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 171,
+        "listen": true,
+        "octets_received": 136800,
+        "octets_sent": 136800,
+        "pending": 40,
+        "received_non_ff": 120325,
+        "sent_non_ff": 117543
+      },
+      "outbound_setup": {
+        "bearer_capability": "90 90 a2",
+        "low_layer_compatibility": null
+      },
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 171,
+      "listen": true,
+      "octets_received": 136800,
+      "octets_sent": 136800,
+      "pending": 40,
+      "received_non_ff": 120325,
+      "sent_non_ff": 117543
+    },
+    "modem_connected": false,
+    "serial": "AT3\r\r\nOK\r\nAT3&\r\r\nOK\r\nAT3\r\r\nNO CARRIER\r\n",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 32
+    },
+    "x2_connected": false
+  },
+  "product_type": "internal",
+  "protocol": "x2",
+  "settings": "S54=0S58=32&N0&U0&B1"
+}

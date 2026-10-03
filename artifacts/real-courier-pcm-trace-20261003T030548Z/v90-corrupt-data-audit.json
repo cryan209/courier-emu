@@ -1,0 +1,48 @@
+{
+  "connect_seconds": 98.9328582920134,
+  "initial_data_hex": "0d0a87264c406606bd64e187264c406606bd64e187264c406606bd64e187264c406606bd64e187264c406606bd64e187",
+  "streams": [
+    {
+      "call_id": "c2da6083-febc-4ebe-9922-63f0f6bfaf4a",
+      "direction": "tx",
+      "through_first_10s_of_data": {
+        "packets": 1319,
+        "unique_packets": 1319,
+        "missing_within_observed_range": 0,
+        "duplicate_packets": 0,
+        "out_of_order_packets": 0,
+        "timestamp_discontinuities": [],
+        "payload_sample_counts": [
+          160
+        ],
+        "duration_seconds": 26.36392999999225,
+        "max_observed_packet_gap_ms": 24.975957814604044,
+        "median_observed_packet_gap_ms": 19.996395334601402,
+        "observed_gaps_over_40ms": 0
+      }
+    },
+    {
+      "call_id": "c2da6083-febc-4ebe-9922-63f0f6bfaf4a",
+      "direction": "rx",
+      "through_first_10s_of_data": {
+        "packets": 1319,
+        "unique_packets": 1319,
+        "missing_within_observed_range": 0,
+        "duplicate_packets": 0,
+        "out_of_order_packets": 0,
+        "timestamp_discontinuities": [],
+        "payload_sample_counts": [
+          160
+        ],
+        "duration_seconds": 26.357455166056752,
+        "max_observed_packet_gap_ms": 28.16391596570611,
+        "median_observed_packet_gap_ms": 20.00847947783768,
+        "observed_gaps_over_40ms": 0
+      }
+    }
+  ],
+  "receive_fill_around_connect": [
+    32545,
+    32545
+  ]
+}

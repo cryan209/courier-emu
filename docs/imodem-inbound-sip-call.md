@@ -4,21 +4,42 @@ This run reverses the existing live-call direction. A physical analogue
 Courier originates a call through Asterisk; Asterisk sends the INVITE to the
 emulator; the virtual NT presents a 3.1 kHz, mu-law Q.931 SETUP to the I-modem.
 The SIP response follows what the I-modem actually does: 100 Trying on INVITE,
-180 Ringing on ALERTING, and 200 OK with the emulator's PCMU SDP on CONNECT.
+180 Ringing on ALERTING. Q.931 CONNECT starts the local bearer, but SIP 200 OK
+with PCMU SDP waits for the DSP's answer waveform: at least 160 samples with
+32 samples of decoded magnitude at least 128. The beginning of that waveform
+is buffered and transmitted after accepting the call. This avoids exposing
+the caller to the several seconds of idle bearer seen before the answer tone
+in the 2026-10-03 physical Courier capture. Physical training with this change
+still needs a live retest.
 
 `--bri-sip-register` registers the local contact using the configured username
 and password. Without it, configure the Asterisk extension as a static contact.
+Registration is renewed at 80% of the registrar's accepted lifetime, with a
+fresh authentication attempt on each renewal. The requested lifetime is 300
+seconds; without renewal, the extension disappears after five minutes even
+though the emulator is still running.
 The `--bri-sip` address must be the Asterisk signalling address because the UDP
 socket accepts the INVITE and subsequent dialog requests from that peer.
 
+Incoming calls can be repeated in the same process after call clearing. The
+incoming-call check uses the current idle call state, independently of the
+one-shot guard for `--bri-call-at`. Clearing also resets the ringing flag and
+answer/receive buffers, including when a caller cancels before answer.
+
 Create an artifact directory, then run the emulator in terminal mode so it
 stays available while the physical Courier originates:
+
+The launcher defaults to 8N1, including when loading an older custom flash
+profile. Set the physical Courier terminal to 8N1 too. Use `--dte-framing stored`
+to preserve an explicitly saved serial format, or choose a format explicitly
+with `--dte-framing`. Inspect ATI4 if received text has unexpected high-bit
+characters.
 
 ```sh
 mkdir -p artifacts/imodem-inbound-sip-live
 
 .venv/bin/python -m courier_emu isdn-run Ie030002.nac --with-dsp \
-    --terminal --report --no-flash-nvram \
+    --terminal --report --flash-nvram artifacts/imodem-inbound-sip-live/nvram.sav \
     --bri-network --bri-establish terminal \
     --bri-call-to 7349195 \
     --bri-sip asterisk.net.cryan.nz --bri-sip-username 6000 \
@@ -63,11 +84,33 @@ letting the modem's dialled digits populate it) still makes `BearerSipLine`
 call `SipSession.start_call()` and use the existing authenticated INVITE flow.
 
 During a live SIP B channel, the C51 digital-PCM peripheral is paced from
-monotonic wall time at its recovered 20.16 MHz clock. This is deliberately
-scoped to the live bearer: offline instruction-budget runs and their firmware
-timers keep their deterministic instruction coupling. A focused regression
+monotonic wall time at 40.32 MHz. The supervisor PIT and periodic RTOS/mailbox
+service interrupts use wall time during the same live call. Previously those
+timers followed CPU instruction progress, which could run substantially slower
+than the real-time DSP under load. Clock transitions preserve elapsed time
+across hangup and subsequent calls. The report's `pit.time_seconds` and
+`pit.cpu_time_seconds` expose the difference. Offline instruction-budget runs
+keep deterministic instruction coupling. A focused regression
 checks that 100 ms produces 800 bearer frames and that leaving the call starts
 a fresh clock epoch rather than catching up idle time.
+
+Live DSP catch-up yields at a PCM-frame boundary after a one-millisecond
+host-time slice so the supervisor can service interrupts during a backlog.
+The absolute DSP target is retained for subsequent slices. Clock-source
+agreement alone does not prove that the firmware receives every tick:
+`pit.coalesced_timer_edges` counts timer requests lost to multiple elapsed
+periods or an already-pending PIC request. The timestamped capture launcher
+is `python -m tools.run_imodem_inbound_trace --extension 2903`; it saves each
+run in a fresh directory and uses the existing PBX test account.
+
+The 2026-10-03 hardware call reached V.34 at 31,200/33,600 with 37.5 dB
+reported SNR, but was not error-free: the Courier reported 100 retransmissions
+and 23 block errors; the I-modem reported 88 retransmissions and 826 block
+errors. The endpoints reported roughly four minutes versus 52 seconds of
+connected time. This prompted the supervisor clock correction; it does not
+establish that timer drift caused the x2 failure. The pre-fix report and G.711
+captures are preserved in `artifacts/real-courier-call-clock-audit-20261003/`.
+A new hardware call is required to verify the effect on training and errors.
 
 ## Live result, 2026-09-13
 

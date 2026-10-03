@@ -1,0 +1,56 @@
+[
+  {
+    "artifact": "imodem-pair-x2-eligibility-20261002",
+    "role": "originate",
+    "dte_index": 6,
+    "originate_flag": 1,
+    "x2_command_sent": false,
+    "x2_capability": null,
+    "pcm_rate_mask": "0003"
+  },
+  {
+    "artifact": "imodem-pair-x2-eligibility-20261002",
+    "role": "answer",
+    "dte_index": 6,
+    "originate_flag": 0,
+    "x2_command_sent": true,
+    "x2_capability": "39ff",
+    "pcm_rate_mask": "ffff"
+  },
+  {
+    "artifact": "imodem-pair-x2-internal-dte-20261002",
+    "role": "originate",
+    "dte_index": 9,
+    "originate_flag": 1,
+    "x2_command_sent": true,
+    "x2_capability": "39ff",
+    "pcm_rate_mask": "0003"
+  },
+  {
+    "artifact": "imodem-pair-x2-internal-dte-20261002",
+    "role": "answer",
+    "dte_index": 9,
+    "originate_flag": 0,
+    "x2_command_sent": true,
+    "x2_capability": "39ff",
+    "pcm_rate_mask": "ffff"
+  },
+  {
+    "artifact": "imodem-pair-x2-fast-dte-20261002",
+    "role": "originate",
+    "dte_index": 10,
+    "originate_flag": 1,
+    "x2_command_sent": true,
+    "x2_capability": "39ff",
+    "pcm_rate_mask": "0fff"
+  },
+  {
+    "artifact": "imodem-pair-x2-fast-dte-20261002",
+    "role": "answer",
+    "dte_index": 10,
+    "originate_flag": 0,
+    "x2_command_sent": true,
+    "x2_capability": "39ff",
+    "pcm_rate_mask": "ffff"
+  }
+]

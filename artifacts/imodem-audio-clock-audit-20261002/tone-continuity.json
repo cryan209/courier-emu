@@ -1,0 +1,86 @@
+{
+  "before": {
+    "receive": [
+      {
+        "codec_rate": 9600,
+        "output_samples": 964,
+        "rms_error": 4.379856415495353,
+        "snr_db": 64.15672830188649
+      },
+      {
+        "codec_rate": 10266.666,
+        "output_samples": 1027,
+        "rms_error": 5410.532949579399,
+        "snr_db": 2.3272663626672574
+      },
+      {
+        "codec_rate": 9600,
+        "output_samples": 960,
+        "rms_error": 9097.237531042803,
+        "snr_db": -2.1884906444672914
+      }
+    ],
+    "transmit": [
+      {
+        "codec_rate": 9600,
+        "output_samples": 803,
+        "rms_error": 3.824528646346174,
+        "snr_db": 65.33343633522824
+      },
+      {
+        "codec_rate": 10266.666,
+        "output_samples": 801,
+        "rms_error": 5938.358756312543,
+        "snr_db": 1.5202035919731884
+      },
+      {
+        "codec_rate": 9600,
+        "output_samples": 803,
+        "rms_error": 13828.691552057748,
+        "snr_db": -5.829747753960014
+      }
+    ]
+  },
+  "after": {
+    "receive": [
+      {
+        "codec_rate": 9600,
+        "output_samples": 964,
+        "rms_error": 4.379856415495353,
+        "snr_db": 64.15672830188649
+      },
+      {
+        "codec_rate": 10266.666,
+        "output_samples": 1027,
+        "rms_error": 4.7530541704189675,
+        "snr_db": 63.452612007179326
+      },
+      {
+        "codec_rate": 9600,
+        "output_samples": 960,
+        "rms_error": 4.46167070691805,
+        "snr_db": 63.99974976181171
+      }
+    ],
+    "transmit": [
+      {
+        "codec_rate": 9600,
+        "output_samples": 803,
+        "rms_error": 3.824528646346174,
+        "snr_db": 65.33343633522824
+      },
+      {
+        "codec_rate": 10266.666,
+        "output_samples": 804,
+        "rms_error": 9.104283221346284,
+        "snr_db": 57.80478485242227
+      },
+      {
+        "codec_rate": 9600,
+        "output_samples": 799,
+        "rms_error": 11.641536678425872,
+        "snr_db": 55.67333558904995
+      }
+    ]
+  }
+}

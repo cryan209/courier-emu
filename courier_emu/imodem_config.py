@@ -75,6 +75,10 @@ SEED = 0x169E
 NVRAM_BASE = 0xF8000
 NVRAM_SIZE = 0x8000
 DEFAULT_NVRAM_FILE = "flashnvram.sav"
+# The external firmware unpacks 2600:d1dc from the low three bits of
+# profile byte 0x254. Zero means eight data bits with no parity; the upper
+# five bits select the DTE rate and must remain unchanged.
+DTE_FORMAT_OFFSET = 0x254
 
 # A useful emulated unit needs the factory-programmed header that an update
 # image deliberately does not contain.  The first five values come from the
@@ -112,7 +116,9 @@ def load_nvram(path: Path | str) -> bytes | None:
     # checkouts gain the useful identity on their next run.  A caller naming
     # any other store gets its bytes exactly as supplied.
     if file.name == DEFAULT_NVRAM_FILE and _factory_header_is_erased(data):
-        return _seed_factory_header(data)
+        data = _seed_factory_header(data)
+    if file.name == DEFAULT_NVRAM_FILE:
+        return set_dte_framing(data, 0)
     return data
 
 
@@ -188,7 +194,28 @@ def _seed_factory_header(nvram: bytes) -> bytes:
 
 def default_nvram() -> bytes:
     """Return the I-modem's default 32 KiB non-volatile flash region."""
-    return _seed_factory_header(b"\xff" * NVRAM_SIZE)
+    return set_dte_framing(_seed_factory_header(b"\xff" * NVRAM_SIZE), 0)
+
+
+def set_dte_framing(nvram: bytes, framing: int) -> bytes:
+    """Set the serial format in each sealed configuration page.
+
+    Formats are 0=8N1, 1=7M1, 2=7O1 and 3=7E1. Preserve the DTE rate,
+    unrelated profile fields, and unsealed pages.
+    """
+    if framing not in (0, 1, 2, 3):
+        raise ValueError("unsupported DTE framing")
+    out = bytearray(nvram)
+    for index in range(CONFIGURATION_PAGES):
+        base = index * PAGE_SIZE
+        page = bytes(out[base:base + PAGE_SIZE])
+        if len(page) != PAGE_SIZE or not page_is_sealed(page):
+            continue
+        out[base + DTE_FORMAT_OFFSET] = (
+            out[base + DTE_FORMAT_OFFSET] & 0xF8) | framing
+        struct.pack_into('<H', out, base + CRC_OFFSET,
+                         page_crc(bytes(out[base:base + PAGE_SIZE])))
+    return bytes(out)
 
 
 # The unit's identity, near the front of the record. The firmware's own

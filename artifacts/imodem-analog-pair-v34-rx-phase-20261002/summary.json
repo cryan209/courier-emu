@@ -1,0 +1,93 @@
+{
+  "protocol": "v34",
+  "speed_index": 0,
+  "disable_v34": false,
+  "analog_settings": "S27=1",
+  "imodem_settings": "",
+  "connected": false,
+  "data_delivery": {
+    "analog_to_imodem": null,
+    "imodem_to_analog": null
+  },
+  "imodem": {
+    "serial": "\r\nOK\r\n",
+    "carrier_connected": false,
+    "isdn_call_state": "active",
+    "dsp": {
+      "pc": 33454,
+      "op": 48674,
+      "acc": 0,
+      "accb": -15715828,
+      "preg": 139264,
+      "dp": 7,
+      "arp": 7,
+      "flags": 62,
+      "idle": true,
+      "instructions": 1612192366,
+      "cycles": 1768755725,
+      "io_events": 8192,
+      "ar0": 3034,
+      "ar1": 2186,
+      "ar2": 280,
+      "ar3": 2583,
+      "ar4": 63543,
+      "ar5": 695,
+      "ar6": 767,
+      "ar7": 3034,
+      "arcr": 3034,
+      "indx": 3034
+    },
+    "recent_mailbox": [
+      "4.0164 reply 0048:00c1",
+      "4.0168 reply 0048:0145",
+      "4.0172 reply 0048:0213",
+      "4.0175 reply 0048:0310",
+      "4.0179 reply 0048:048d",
+      "4.0184 reply 0048:0500",
+      "5.0015 reply 0071:0006",
+      "5.0018 reply 0047:0006",
+      "5.0026 cmd 0002:a000",
+      "8.7255 reply 0034:0005",
+      "16.7282 reply 0006:0000",
+      "17.5931 reply 0034:0005"
+    ],
+    "error": null
+  },
+  "analog": {
+    "serial": "",
+    "carrier_connected": false,
+    "error": null
+  },
+  "bridge": {
+    "line": {
+      "path": "/var/folders/_1/yfx80wlx5g38qqrwdkzxncz00000gn/T/courier-imodem-analog-v7rixd39/line.sock",
+      "listen": false,
+      "audio_only": false,
+      "digital": true,
+      "sample_rate": 8000,
+      "record_prefix": null,
+      "frames": 438,
+      "connected": false,
+      "peer_off_hook": false,
+      "peer_call_state": "cleared",
+      "peer_instructions": 190007600,
+      "samples_sent": 350400,
+      "samples_received": 350400,
+      "error": null
+    },
+    "call_state": "answered",
+    "answered": true,
+    "dialled": "",
+    "cleared": false,
+    "octets": {
+      "to_line": 150400,
+      "from_line": 150400,
+      "pending": 461
+    },
+    "silence_frames": 250,
+    "events": [
+      "the line is ringing us at frame 188: offering the I-modem a 3.1 kHz call",
+      "the I-modem answered at frame 250: off hook"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "extension": "2903",
+  "framing": "8N1",
+  "calls_offered": 2,
+  "terminal": "\r\nOK\r\n\r\nOK\r\n\r\nRING\r\n\r\nNO CARRIER\r\n\r\nRING\r\n\r\nCONNECT 28800/ARQ/V34/LAPM/V42BIS\r\n+++\r\nNO CARRIER\r\n",
+  "last_call_result": "CONNECT 28800/ARQ/V34/LAPM/V42BIS",
+  "last_call_clearing": "I-modem Q.931 DISCONNECT cause 16, followed by outgoing SIP BYE",
+  "rtp_received_seconds": 85.24,
+  "rtp_sent_seconds": 85.28,
+  "receive_fill_excluding_preanswer_ms": 146.25,
+  "counter_scope": "Totals across both calls; fill includes playout priming and any receive gaps. No per-call packet timing or training DSP-state trace was recorded.",
+  "cpu_error": null,
+  "dsp_error": null,
+  "finding": "Second call established V.34, not x2. Aggregate media counts do not demonstrate a sustained clock-rate mismatch. Exact PCM-training failure remains unresolved."
+}

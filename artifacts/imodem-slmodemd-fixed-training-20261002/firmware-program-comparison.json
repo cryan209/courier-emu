@@ -1,0 +1,40 @@
+[
+  {
+    "image": 5,
+    "origin": 32768,
+    "words_checked": 4670,
+    "mismatches": 0,
+    "ranges": []
+  },
+  {
+    "image": 11,
+    "origin": 37472,
+    "words_checked": 3488,
+    "mismatches": 0,
+    "ranges": []
+  },
+  {
+    "image": 10,
+    "origin": 53504,
+    "words_checked": 7536,
+    "mismatches": 7536,
+    "ranges": [
+      [
+        53504,
+        61039
+      ]
+    ]
+  },
+  {
+    "image": 6,
+    "origin": 40960,
+    "words_checked": 12544,
+    "mismatches": 768,
+    "ranges": [
+      [
+        52736,
+        53503
+      ]
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "calls": [
+    {
+      "origin": "8411",
+      "id": "abf0d63f-7644-4ed9-bcc3-5854e6607a2b",
+      "rtp_seconds": 41.44,
+      "outcome": "NO CARRIER, remote SIP BYE",
+      "recovery_capture": {
+        "reply": "0006",
+        "caller": "92fd",
+        "training_state": "a0f9",
+        "timeout_high": "ffe8",
+        "retrain_count": 1
+      },
+      "audio": "Incoming signal becomes low-level around 4 s; emulator sends a steady recovery tone from roughly 5 s through hangup."
+    },
+    {
+      "origin": "8411",
+      "id": "07655630-913e-4b3c-aee3-61388e94258c",
+      "rtp_seconds": 4.48,
+      "outcome": "NO CARRIER, remote SIP BYE",
+      "recovery_capture": {
+        "reply": "0006",
+        "caller": "92fd",
+        "training_state": "95ed",
+        "timeout_high": "ffff",
+        "retrain_count": 1
+      }
+    },
+    {
+      "origin": "8421",
+      "outcome": "Remote SIP CANCEL before answer; no RTP in this attempt"
+    }
+  ],
+  "transport": "Both audio attempts have continuous RTP sequences/timestamps, no loss/reordering, no gap exceeding 29 ms in application observations.",
+  "clock": "Supervisor CPU, peripheral and DSP clocks track wall time in this run; first active epoch is 45.36 s in all clocks.",
+  "limits": "These calls fail before the 9.666-second PCM beep seen in the earlier successful-V.34 call. The local recovery reply coincides with an expired timeout, but that alone does not establish why the expected remote response was absent. The exact original mapped recovery instructions were not saved; new trace records their instruction windows."
+}

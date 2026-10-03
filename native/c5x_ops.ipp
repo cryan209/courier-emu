@@ -598,7 +598,7 @@ void C5xCore::op_lacc_limm()
 		m_acc = (uint32_t)(uint16_t)(imm) << shift;
 	}
 
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_lacc_s16_mem()
@@ -690,7 +690,7 @@ void C5xCore::op_or_limm()
 
 	m_acc |= imm << shift;
 
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_or_s16_limm()
@@ -1007,7 +1007,7 @@ void C5xCore::op_xor_limm()
 
 	m_acc ^= imm << shift;
 
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_xor_s16_limm()
@@ -1232,7 +1232,7 @@ void C5xCore::op_banzd()
 	{
 		delay_slot(m_pc);
 		CHANGE_PC(pma);
-		CYCLES(4);
+		CYCLES(2);
 	}
 	else
 	{
@@ -1271,7 +1271,7 @@ void C5xCore::op_bcndd()
 
 		delay_slot(m_pc);
 		CHANGE_PC(pma);
-		CYCLES(4);
+		CYCLES(2);
 	}
 	else
 	{
@@ -1307,7 +1307,7 @@ void C5xCore::op_calad()
 	delay_slot(m_pc);
 	CHANGE_PC(pma);
 
-	CYCLES(4);
+	CYCLES(2);
 }
 
 void C5xCore::op_call()
@@ -1330,7 +1330,7 @@ void C5xCore::op_calld()
 	delay_slot(m_pc);
 	CHANGE_PC(pma);
 
-	CYCLES(4);
+	CYCLES(2);
 }
 
 void C5xCore::op_cc()
@@ -1412,7 +1412,7 @@ void C5xCore::op_retcd()
 		uint16_t pc = POP_STACK();
 		delay_slot(m_pc);
 		CHANGE_PC(pc);
-		CYCLES(4);
+		CYCLES(2);
 	}
 	else
 	{
@@ -1602,7 +1602,17 @@ void C5xCore::op_blpd_imm()
 void C5xCore::op_dmov()
 {
 	uint16_t ea = GET_ADDRESS();
-	DM_WRITE16(uint16_t(ea + 1), DM_READ16(ea));
+	uint16_t value = DM_READ16(ea);
+	// SPRU056D 6-104: the delay-line copy exists only in on-chip RAM.
+	// External memory and memory-mapped registers are read, without a write.
+	const Region region = data_region(ea);
+	if (region == Region::Daram || region == Region::Saram)
+		DM_WRITE16(uint16_t(ea + 1), value);
+	else {
+		++m_delay_move_ignored;
+		m_delay_move_last_pc = uint16_t(m_pc - 1);
+		m_delay_move_last_address = ea;
+	}
 	CYCLES(1);
 }
 
@@ -1867,7 +1877,15 @@ void C5xCore::op_ltd()
 	uint16_t ea = GET_ADDRESS();
 	uint16_t value = DM_READ16(ea);
 	m_treg0 = value;
-	DM_WRITE16(uint16_t(ea + 1), value);
+	// LTD includes DMOV's on-chip-only delay-line copy (SPRU056D 6-142).
+	const Region region = data_region(ea);
+	if (region == Region::Daram || region == Region::Saram)
+		DM_WRITE16(uint16_t(ea + 1), value);
+	else {
+		++m_delay_move_ignored;
+		m_delay_move_last_pc = uint16_t(m_pc - 1);
+		m_delay_move_last_address = ea;
+	}
 	m_acc = ADD(uint32_t(m_acc), uint32_t(PREG_PSCALER(m_preg)), false);
 	if (!m_pmst.trm) { m_treg1 = value; m_treg2 = value; }
 	CYCLES(1);

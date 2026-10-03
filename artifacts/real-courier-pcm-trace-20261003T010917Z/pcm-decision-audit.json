@@ -1,0 +1,41 @@
+{
+  "observations": [
+    {
+      "relative_to_first_tx_rtp": 10.181043583899736,
+      "training_state": "0xa830",
+      "flags": "0xbc0",
+      "timeout_high": "0x0",
+      "timeout_low": "0x7276",
+      "retrain_count": 0
+    },
+    {
+      "relative_to_first_tx_rtp": 10.281659999862313,
+      "training_state": "0xa830",
+      "flags": "0xbc0",
+      "timeout_high": "0x0",
+      "timeout_low": "0x7134",
+      "retrain_count": 0
+    },
+    {
+      "relative_to_first_tx_rtp": 10.381775749847293,
+      "training_state": "0xa830",
+      "flags": "0xb40",
+      "timeout_high": "0x0",
+      "timeout_low": "0x6ff4",
+      "retrain_count": 0
+    },
+    {
+      "relative_to_first_tx_rtp": 10.482495999895036,
+      "training_state": "0x94bf",
+      "flags": "0x150",
+      "timeout_high": "0xfdbd",
+      "timeout_low": "0x6f78",
+      "retrain_count": 1
+    }
+  ],
+  "incoming_waveform": "Physical Courier changes from broadband training to a 2400 Hz tone around 10.32 s; outgoing PCM training stops at 10.478375 s. Incoming and outgoing files have independent stream origins, so these are approximate comparative times.",
+  "local_timeout": "Last pre-recovery snapshots have signed timeout high word 031a=0000, not negative. State a830 checks this word at a87a/a87b. This argues against expiration of that training timeout.",
+  "mailbox": "Replies 000e, 0005, 000e, 0004, 000e, 0006 occur around the transition. The original 8d35 signal-level monitor can produce 0004/0005 and 000e; 0006 is emitted by retrain counter increment 9316. Without instruction-boundary captures, the producer of each saved reply is not established.",
+  "limitations": "Incoming signal transition first suggests remote initiation but is not proof of the first decoded protocol decision; no proprietary x2 rejection reason has been decoded.",
+  "next_capture": "Observe original mailbox enqueue instruction 85f5, including its caller, timeout, flags, parser counters and CRC state. Listener extension 2903 is prepared in artifacts/real-courier-pcm-trace-20261003T020137Z."
+}

@@ -1,0 +1,16 @@
+{
+  "dialled": "3999",
+  "hunt_member_observed": "8423",
+  "sip_username": "2903",
+  "connect_result": "CONNECT 9600/ARQ",
+  "arq": true,
+  "remote_banner": "MULTITECH SOFTWARE SYSTEMS",
+  "login_prompt_received": true,
+  "credentials_submitted": false,
+  "status": "instruction-limit",
+  "sip_status": 200,
+  "received_application_text": "\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 9600/ARQ\r\n\n\n\n\rMULTITECH SOFTWARE SYSTEMS\n\n\rUSA\n\n\n\n\rlogin: ",
+  "foreground_overlay_assists": 0,
+  "dsp_rx_empty_frames": 0,
+  "note": "Exact Hayes result recorded; no separate line-rate or authenticated payload benchmark."
+}

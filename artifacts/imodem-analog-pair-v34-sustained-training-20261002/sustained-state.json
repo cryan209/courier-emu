@@ -1,0 +1,60 @@
+{
+  "state_checkpoints": [
+    {
+      "line_frame": 338,
+      "transmit_state": "0xb391",
+      "sequence_pointer": "0xb2d9",
+      "phase_countdown": 0,
+      "training_counter": 14565,
+      "retrain_count": 0
+    },
+    {
+      "line_frame": 348,
+      "transmit_state": "0xb391",
+      "sequence_pointer": "0xb2d9",
+      "phase_countdown": 4,
+      "training_counter": 11137,
+      "retrain_count": 0
+    },
+    {
+      "line_frame": 358,
+      "transmit_state": "0xb391",
+      "sequence_pointer": "0xb2d9",
+      "phase_countdown": 7,
+      "training_counter": 7708,
+      "retrain_count": 0
+    },
+    {
+      "line_frame": 368,
+      "transmit_state": "0xb391",
+      "sequence_pointer": "0xb2d9",
+      "phase_countdown": 2,
+      "training_counter": 4279,
+      "retrain_count": 0
+    },
+    {
+      "line_frame": 378,
+      "transmit_state": "0xb391",
+      "sequence_pointer": "0xb2d9",
+      "phase_countdown": 5,
+      "training_counter": 850,
+      "retrain_count": 0
+    },
+    {
+      "line_frame": 388,
+      "transmit_state": "0x9e49",
+      "sequence_pointer": "0x9e10",
+      "phase_countdown": 0,
+      "training_counter": 56833,
+      "retrain_count": 1
+    }
+  ],
+  "audio_window": {
+    "file": "../imodem-analog-pair-v34-tx-clock-20261002/imodem-tx.g711",
+    "start_sample": 64000,
+    "end_sample": 104000,
+    "unique_100ms_blocks": 50,
+    "total_100ms_blocks": 50,
+    "unique_codewords": 178
+  }
+}

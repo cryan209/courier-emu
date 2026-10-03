@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import socket
 import struct
 import subprocess
@@ -16,7 +17,7 @@ from typing import Any
 
 from courier_emu.bri import BriNetwork, CAPABILITY_AUDIO_31KHZ, audio_bearer
 from courier_emu.isdn import IsdnMachine
-from courier_emu.isdn_console import scripted_pump
+from courier_emu.isdn_console import _on_the_wire, scripted_pump
 from courier_emu.nac import NacImage
 
 
@@ -134,6 +135,30 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--instructions", type=int, default=150_000_000)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--profile", action="store_true")
+    parser.add_argument("--protocol", choices=("default", "x2"), default="default",
+                        help="use default negotiation or disable V.90 for an x2 symmetric call")
+    parser.add_argument("--check-connect", action="store_true",
+                        help="fail unless both firmware instances return a modem CONNECT result")
+    parser.add_argument("--check-x2", action="store_true",
+                        help="fail unless both CONNECT results identify x2 modulation")
+    parser.add_argument("--link-diagnostics", action="store_true",
+                        help="escape after CONNECT, query ATI6, then resume with ATO")
+    parser.add_argument("--originate-send", default="", help="caller payload after CONNECT")
+    parser.add_argument("--answer-send", default="", help="answerer payload after CONNECT")
+    parser.add_argument("--settings", default="",
+                        help="additional AT settings on both ends before dial/answer")
+    parser.add_argument("--trace-negotiation", action="store_true",
+                        help="capture x2 eligibility fields when DSP parameters are sent")
+    parser.add_argument("--product-type", choices=("external", "internal"), default="external",
+                        help="select the external DTE or the internal card's host UART")
+    parser.add_argument("--internal-baud", choices=(57600, 115200), type=int, default=57600,
+                        help="host UART speed for the internal card")
+    parser.add_argument("--nvram", type=Path,
+                        help="boot both instances from a saved configuration without modifying it")
+    parser.add_argument("--establish", choices=("terminal", "network"), default="terminal",
+                        help="which end initiates the ISDN data link")
+    parser.add_argument("--prime-originate", action="store_true",
+                        help="offer an initial ring, then hang up before dialing to establish the caller's data link")
     parser.add_argument("--check-keepalive", action="store_true",
                         help="fail unless both calls survive the V.8 overlay handoff and old clearing window")
     parser.add_argument("--worker", choices=("originate", "answer"),
@@ -147,26 +172,98 @@ def run_side(args: argparse.Namespace) -> int:
     originate = args.worker == "originate"
     peer = G711Peer(args.socket, listen=originate)
     bri = BriNetwork(
-        establish="terminal",
-        call_at=None if originate else 20_000_000,
+        establish=args.establish,
+        call_at=None if originate and not args.prime_originate else 20_000_000,
         call_to="7349195",
         bearer=audio_bearer(CAPABILITY_AUDIO_31KHZ),
         media_peer=peer,
     )
     commands = ["AT*V2=3", "ATD7349195"] if originate else ["ATA"]
+    if args.protocol == "x2":
+        # S58 bits disable x2 (1), server (2), symmetric (8), and V.90
+        # (32). Keep both x2 roles enabled across the digital bearer.
+        commands = ["AT*V2=3S58=32&A3&B0", "ATD7349195" if originate else "ATA"]
+    if args.settings:
+        commands.insert(-1, "AT" + args.settings)
+    if originate and args.prime_originate:
+        commands.insert(-1, "ATH")
     transcript: list[tuple[int, str, str]] = []
+    command_pump = scripted_pump(commands, after=30_000_000, every=0,
+                                 transcript=transcript)
+    payload = args.originate_send if originate else args.answer_send
+    stage = "connecting"
+    connected_at = 0
+    received_text = ""
+    cursor = 0
+    host_rate_set = False
+
+    def send(current: IsdnMachine, value: str, direction: str = "sent") -> None:
+        current.send_serial(_on_the_wire(value, current.dte_framing()))
+        transcript.append((current.instructions, direction, value))
+
+    def pump(current: IsdnMachine) -> None:
+        nonlocal stage, connected_at, received_text, cursor, host_rate_set
+        command_pump(current)
+        if (args.product_type == "internal" and not host_rate_set
+                and any(direction == "sent" for _, direction, _ in transcript)):
+            # send_serial opens the host UART before queueing the first AT.
+            # Set the requested driver speed before those staged bytes clock
+            # into the guest; its attention receiver reads the actual divisor.
+            current.channels[current.command_base].host_open(115200 // args.internal_baud, 3)
+            host_rate_set = True
+        received_text += "".join(value for _, direction, value in transcript[cursor:]
+                                 if direction == "received")
+        cursor = len(transcript)
+        if stage == "connecting" and connect_result(received_text) is not None:
+            connected_at = current.instructions
+            if payload:
+                send(current, payload, "sent_data")
+            stage = "guard" if args.link_diagnostics else "done"
+            received_text = ""
+        elif stage == "guard" and current.instructions >= connected_at + 20_000_000:
+            send(current, "+++")
+            stage, received_text = "escaping", ""
+        elif stage == "escaping" and "\r\nOK\r\n" in received_text:
+            send(current, "ATI6\r")
+            stage, received_text = "diagnostics", ""
+        elif stage == "diagnostics" and "\r\nOK\r\n" in received_text:
+            send(current, "ATO\r")
+            stage = "done"
+
     machine = IsdnMachine(
         NacImage.load(args.image),
         with_dsp=True,
         profile=args.profile,
         bri=bri,
-        flash_nvram=None,
-        serial_pump=scripted_pump(
-            commands, after=30_000_000, every=0, transcript=transcript
-        ),
+        flash_nvram=args.nvram.read_bytes() if args.nvram else None,
+        serial_pump=pump,
+        product_type=args.product_type,
     )
+    negotiation = []
+    if args.trace_negotiation:
+        original_command = machine.mailbox.on_command
+
+        def observe_command(tag: int, value: int) -> None:
+            if tag in (0x42, 0x49, 0x53, 0x70, 0x71, 0x72, 0x04):
+                negotiation.append({
+                    "instructions": machine.instructions,
+                    "tag": f"{tag:04x}", "value": f"{value:04x}",
+                    "cpu_fields": {f"{offset:04x}": machine.uc.mem_read(0x26000 + offset, 1)[0]
+                                   for offset in (0xD1EA, 0xD1B5, 0xD1D7, 0xD1DB, 0xE496)},
+                })
+            if original_command is not None:
+                original_command(tag, value)
+
+        machine.mailbox.on_command = observe_command
     try:
         result = machine.run(args.instructions).to_dict()
+        if args.trace_negotiation:
+            result["negotiation_trace"] = negotiation
+        # The live S-register file, rather than ATSn?'s saved-profile view.
+        result["working_s_registers"] = {
+            str(number): machine.uc.mem_read(0x26000 + 0xD17B + number, 1)[0]
+            for number in (54, 56, 58)
+        }
     finally:
         peer.stop()
         machine.mailbox.close()
@@ -184,6 +281,11 @@ def serial_text(result: dict[str, Any]) -> str:
         event["text"] for event in result["serial_session"]
         if event["direction"] == "received"
     )
+
+
+def connect_result(serial: str) -> str | None:
+    match = re.search(r"(?:^|[\r\n])(CONNECT[^\r\n]*)\r\n", serial)
+    return match.group(1) if match else None
 
 
 def check_keepalive(result: dict[str, Any]) -> None:
@@ -229,10 +331,25 @@ def main() -> int:
                 "--worker", role, "--socket", path,
                 "--image", str(args.image.resolve()),
                 "--instructions", str(args.instructions),
+                "--protocol", args.protocol,
                 "--result", str(output / f"{role}.json"),
             ]
             if args.profile:
                 command.append("--profile")
+            if args.link_diagnostics:
+                command.append("--link-diagnostics")
+            if args.trace_negotiation:
+                command.append("--trace-negotiation")
+            if args.nvram:
+                command.extend(["--nvram", str(args.nvram.resolve())])
+            if args.prime_originate:
+                command.append("--prime-originate")
+            command.extend(["--originate-send", args.originate_send,
+                            "--answer-send", args.answer_send,
+                            "--settings", args.settings,
+                            "--product-type", args.product_type,
+                            "--internal-baud", str(args.internal_baud),
+                            "--establish", args.establish])
             processes.append((role, subprocess.Popen(command, cwd=ROOT)))
         failures = []
         for role, process in processes:
@@ -245,17 +362,38 @@ def main() -> int:
     originate = json.loads((output / "originate.json").read_text())
     answer = json.loads((output / "answer.json").read_text())
     summary = {
+        "protocol": args.protocol,
+        "settings": args.settings,
+        "product_type": args.product_type,
+        "internal_baud": args.internal_baud if args.product_type == "internal" else None,
+        "nvram": str(args.nvram.resolve()) if args.nvram else None,
+        "establish": args.establish,
+        "prime_originate": args.prime_originate,
         "originate": {
             "serial": serial_text(originate),
+            "modem_connected": connect_result(serial_text(originate)) is not None,
+            "connect_result": connect_result(serial_text(originate)),
+            "working_s_registers": originate["working_s_registers"],
             "bri": originate.get("bri"),
             "g711_peer": originate["g711_peer"],
         },
         "answer": {
             "serial": serial_text(answer),
+            "modem_connected": connect_result(serial_text(answer)) is not None,
+            "connect_result": connect_result(serial_text(answer)),
+            "working_s_registers": answer["working_s_registers"],
             "bri": answer.get("bri"),
             "g711_peer": answer["g711_peer"],
         },
     }
+    summary["data_delivery"] = {
+        "originate_to_answer": bool(args.originate_send and args.originate_send in serial_text(answer)),
+        "answer_to_originate": bool(args.answer_send and args.answer_send in serial_text(originate)),
+    }
+    for role in ("originate", "answer"):
+        summary[role]["x2_connected"] = bool(
+            re.search(r"/x2(?:/|$)", summary[role]["connect_result"] or "", re.IGNORECASE)
+        )
     (output / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n"
     )
@@ -263,6 +401,14 @@ def main() -> int:
     if args.check_keepalive:
         for result in (originate, answer):
             check_keepalive(result)
+    if args.check_connect:
+        for role in ("originate", "answer"):
+            if not summary[role]["modem_connected"]:
+                raise RuntimeError(f"{role} did not establish modem carrier")
+    if args.check_x2:
+        for role in ("originate", "answer"):
+            if not summary[role]["x2_connected"]:
+                raise RuntimeError(f"{role} did not establish x2: {summary[role]['connect_result']}")
     return 0
 
 

@@ -1,0 +1,976 @@
+{
+  "bri": {
+    "assigned_teis": {},
+    "call_reference": null,
+    "call_state": "null",
+    "call_tei": null,
+    "dialled": "",
+    "events": [
+      {
+        "event": "the NT starts activation: INFO2 on the S interface",
+        "instructions": 3000320
+      },
+      {
+        "event": "layer 1 active, the NT has the line up",
+        "instructions": 4000256
+      },
+      {
+        "event": "SABME from TEI 101, answering UA",
+        "instructions": 4001280
+      },
+      {
+        "event": "SABME from TEI 101, answering UA",
+        "instructions": 9233920
+      },
+      {
+        "event": "SABME from TEI 101, answering UA",
+        "instructions": 14351872
+      },
+      {
+        "event": "SABME from TEI 101, answering UA",
+        "instructions": 19469824
+      }
+    ],
+    "frames_from_modem": 4,
+    "frames_to_modem": 4,
+    "line": "active",
+    "links": {
+      "101": {
+        "established": true,
+        "pending_layer3": 0,
+        "unacknowledged_ns": null,
+        "vr": 0,
+        "vs": 0
+      }
+    },
+    "media": {
+      "channel": null,
+      "rx_delivered": 0,
+      "rx_pending": 0,
+      "tx_non_ff": 0,
+      "tx_octets": 0
+    },
+    "media_peer": {
+      "error": null,
+      "frames": 0,
+      "listen": true,
+      "octets_received": 0,
+      "octets_sent": 0,
+      "pending": 0,
+      "received_non_ff": 0,
+      "sent_non_ff": 0
+    },
+    "outbound_setup": null,
+    "state": "multiple-frame-established",
+    "tei": 0,
+    "undecodable": 0,
+    "v120": null
+  },
+  "download_bytes": 54098,
+  "dsc": {
+    "bearer": {
+      "frames": 398725,
+      "peripheral_slots": [
+        6,
+        7
+      ],
+      "routed_frames": {},
+      "routes": [],
+      "rx_pending": {
+        "1": 0,
+        "2": 0
+      },
+      "underrun_at": {},
+      "underruns": {}
+    },
+    "d_channel": {
+      "frames_received": 4,
+      "frames_transmitted": 4,
+      "rx_pending": 0,
+      "tx_length_mismatch": 0
+    },
+    "hook": "on-hook",
+    "hook_changes": 0,
+    "liu_state": "F7",
+    "overruns": {},
+    "read_counts": {
+      "CR_IR": 17,
+      "DCB": 12,
+      "DER": 17,
+      "DLC_DRCR": 8,
+      "DSR1": 13,
+      "DSR2": 41,
+      "INIT": 2,
+      "LIU_LMR1": 4,
+      "LIU_LSR": 12481,
+      "MAP_MMR1": 1,
+      "MAP_MMR2": 1
+    },
+    "unknown_registers": {},
+    "written": {
+      "DLC_1_7": "00 00 00 00 00 00 00",
+      "DLC_DMR1": "0b",
+      "DLC_DMR2": "84",
+      "DLC_DMR3": "02",
+      "DLC_DMR4": "0a",
+      "DLC_DRCR": "00 00",
+      "DLC_DRLR": "10 01 10 01 10 01",
+      "DLC_DTCR": "03 00",
+      "DLC_EFCR": "01",
+      "DLC_FRAR4": "01",
+      "DLC_FRAR_1_2_3": "01 01 01",
+      "DLC_RNGR1": "00 00",
+      "DLC_SRAR4": "01",
+      "DLC_SRAR_1_2_3": "01 01 01",
+      "INIT": "11",
+      "LIU_2_4": "00 00 00",
+      "LIU_LMR1": "40",
+      "LIU_LMR2": "78",
+      "LIU_LPR": "00",
+      "LIU_MF": "00",
+      "LIU_MFQB": "00",
+      "MAP_1_10": "31 b1 1b 62 26 a2 bb 16 bb 16 26 a2 1b 62 31 b1 21 d1 12 42 eb b1 61 12 61 12 eb b1 12 42 21 d1 08 08 52 bb 99 00 08 90 00 00 00 00 4f 02",
+      "MAP_MMR1": "00",
+      "MAP_MMR2": "40",
+      "MCR1": "00",
+      "MCR2": "00",
+      "MCR3": "00",
+      "MCR4": "00",
+      "PP_PPCR1": "07",
+      "PP_PPCR2": "01"
+    }
+  },
+  "dte_framing": "7E1",
+  "entry": "4030:0000",
+  "error": null,
+  "firmware_trace": [
+    "LINE_ACTIVE Detected",
+    "default of n_stat_in detected",
+    "0014",
+    "default of n_stat_in detected",
+    "001A"
+  ],
+  "flash": {
+    "autoselects": 6,
+    "commands": [
+      "0x00000:ff",
+      "0x00000:90",
+      "0x00000:ff",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:90",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:f0",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x0aaaa:80",
+      "0x0aaaa:aa",
+      "0x05554:55",
+      "0x78000:30",
+      "0x78100:f0",
+      "0x00000:ff",
+      "0x00000:90",
+      "0x00000:ff",
+      "0x00000:f0",
+      "0x0aaaa:aa",
+      "0x05554:55"
+    ],
+    "device": "0x2223",
+    "erases": 1,
+    "manufacturer": "0x0001",
+    "mode": "array",
+    "programs": 4096
+  },
+  "g711_peer": {
+    "error": null,
+    "frames": 0,
+    "listen": true,
+    "octets_received": 0,
+    "octets_sent": 0,
+    "pending": 0,
+    "received_non_ff": 0,
+    "sent_non_ff": 0
+  },
+  "hardware_interrupts": 124911,
+  "hot_addresses": [],
+  "instructions": 250000000,
+  "io_summary": {
+    "in 0x001c": 117458,
+    "in 0x001e": 132827,
+    "in 0x0301": 12497,
+    "in 0xf020": 124911,
+    "in 0xf0a0": 249820,
+    "in 0xf8fe": 129876,
+    "out 0x001c": 234919,
+    "out 0x001e": 11774,
+    "out 0x0040": 6472,
+    "out 0x0042": 6472,
+    "out 0x0044": 6469,
+    "out 0x0046": 6469,
+    "out 0x0048": 6469,
+    "out 0x0300": 12541,
+    "out 0xf020": 124916,
+    "out 0xf0a0": 249825
+  },
+  "last_addresses": [],
+  "mailbox": {
+    "bootstrap_words": 4672,
+    "committed": 7,
+    "consumed": 6,
+    "core": {
+      "acc": 0,
+      "accb": 0,
+      "ar0": 3032,
+      "ar1": 2186,
+      "ar2": 0,
+      "ar3": 0,
+      "ar4": 0,
+      "ar5": 0,
+      "ar6": 88,
+      "ar7": 3032,
+      "arcr": 3032,
+      "arp": 7,
+      "cycles": 2009986440,
+      "dp": 7,
+      "flags": 30,
+      "idle": true,
+      "indx": 3032,
+      "instructions": 1949234560,
+      "io_events": 8192,
+      "op": 48674,
+      "pc": 33454,
+      "preg": 0
+    },
+    "core_stack": [
+      32980,
+      34273,
+      32974,
+      1626,
+      1626,
+      1626,
+      1626,
+      1626
+    ],
+    "download_blocks": 5886,
+    "dsp_status": 2,
+    "endpoint": "native-c5x",
+    "error": null,
+    "foreground_overlay_assist": false,
+    "foreground_overlay_assists": 0,
+    "latch_writes": 0,
+    "memory_map": {
+      "cnf": 0,
+      "cwsr": 16,
+      "data_daram": 7996295,
+      "data_external": 1,
+      "data_registers": 2291512,
+      "data_reserved": 0,
+      "data_saram": 7262584,
+      "data_shared": 0,
+      "iowsr": 1,
+      "iptr": 0,
+      "model": "c51",
+      "mpmc": 0,
+      "mpmc_pin": 0,
+      "ovly": 1,
+      "pdwsr": 10,
+      "program_daram": 0,
+      "program_external": 79774873,
+      "program_rom": 1309168,
+      "program_saram": 0,
+      "ram": 1,
+      "rom_holes": 0,
+      "rom_present": true,
+      "wait_states": {
+        "external": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          }
+        ],
+        "io_mapping": "8K blocks",
+        "regions": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          },
+          {
+            "first": 8192,
+            "last": 16383,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 24575,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 24576,
+            "last": 32767,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 40959,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 40960,
+            "last": 49151,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 57343,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 57344,
+            "last": 65535,
+            "space": "io",
+            "wait_states": 0
+          }
+        ]
+      }
+    },
+    "overlay_control": [
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        4
+      ]
+    ],
+    "overlay_reads": 132827,
+    "overlay_recent": [
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ]
+    ],
+    "overlay_writes": {
+      "1": 5884,
+      "2": 5884,
+      "4": 4
+    },
+    "pcm": {
+      "attached": true,
+      "frames": 398725,
+      "octets": 797450,
+      "realtime_cycles": 0,
+      "rx_empty_frames": 0,
+      "rx_pending_octets": 2,
+      "sample_rate": 8000,
+      "serial": {
+        "codec_rx_consumed": 0,
+        "codec_rx_peak": 0,
+        "codec_rx_queued": 0,
+        "delay_move_ignored": 0,
+        "delay_move_last_address": 0,
+        "delay_move_last_pc": 0,
+        "drr": 65535,
+        "drr_reads": 398725,
+        "dxr": 65535,
+        "dxr_writes": 398731,
+        "hybrid_frames": 0,
+        "hybrid_peak": 0,
+        "imr": 40,
+        "last_dp_pc": 33446,
+        "last_dp_source": 1,
+        "last_dp_value": 7,
+        "last_drr_pc": 33645,
+        "last_dxr_pc": 33648,
+        "last_spc_pc": 32961,
+        "last_tdxr_pc": 0,
+        "last_trcv_pc": 0,
+        "last_tspc_pc": 32953,
+        "line_dac_frames": 0,
+        "line_dac_writes": 0,
+        "line_frame_interrupts": 398159,
+        "line_tx_last": 0,
+        "line_tx_last_pc": 32894,
+        "line_tx_nonzero": 0,
+        "line_tx_writes": 2,
+        "negotiation_acc": 0,
+        "negotiation_arp": 0,
+        "negotiation_d26": 0,
+        "negotiation_d76": 0,
+        "negotiation_d77": 0,
+        "negotiation_d78": 0,
+        "negotiation_d79": 0,
+        "negotiation_indx": 0,
+        "negotiation_loop_entries": 0,
+        "negotiation_loop_pc": 0,
+        "negotiation_pair": 0,
+        "negotiation_pair_value": 0,
+        "negotiation_pm": 0,
+        "negotiation_source": 0,
+        "negotiation_source_value": 0,
+        "rx_consumed": 0,
+        "rx_queued": 0,
+        "serial_frame_suppressed": 0,
+        "shadow_dp": 7,
+        "spc": 16584,
+        "spc_writes": 7,
+        "stray_cala_dp": 0,
+        "stray_cala_pc": 0,
+        "stray_cala_target": 0,
+        "tdxr": 0,
+        "tdxr_writes": 0,
+        "trcv": 0,
+        "trcv_reads": 0,
+        "tspc": 248,
+        "tspc_writes": 4,
+        "v8_countdown": 0,
+        "v8_dispatch_dp": 0,
+        "v8_dispatch_pc": 0,
+        "v8_dispatches": 0,
+        "v8_flags": 0,
+        "v8_handler": 0,
+        "v8_record": 0,
+        "v8_rx_peak": 0,
+        "v8_rx_state": 0
+      },
+      "slots": [
+        "Bd",
+        "Be"
+      ]
+    },
+    "recent_commands": [
+      [
+        0,
+        0
+      ],
+      [
+        131,
+        131
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        77,
+        0
+      ]
+    ],
+    "recent_replies": [],
+    "replies_acked": 0,
+    "reply_counts": {},
+    "reply_pending": null,
+    "timeline": [],
+    "tx_ready": true
+  },
+  "pic": {
+    "delivered": 124911,
+    "master": {
+      "auto_eoi": false,
+      "irr": 8,
+      "isr": 0,
+      "mask": 187,
+      "vector_base": 32
+    },
+    "slave": {
+      "auto_eoi": false,
+      "irr": 64,
+      "isr": 0,
+      "mask": 131,
+      "vector_base": 40
+    }
+  },
+  "pit": {
+    "clock_hz": 892857,
+    "control_writes": 3,
+    "counters": [
+      {
+        "count": 212,
+        "hz": 480.0306451612903,
+        "index": 0,
+        "initial": 1860,
+        "mode": 2,
+        "period": 1860,
+        "wraps": 23977
+      },
+      {
+        "count": 5425,
+        "hz": 100.00638440860214,
+        "index": 1,
+        "initial": 8928,
+        "mode": 2,
+        "period": 8928,
+        "wraps": 4995
+      },
+      {
+        "count": 7920,
+        "hz": 25.000196001568014,
+        "index": 2,
+        "initial": 35714,
+        "mode": 2,
+        "period": 35714,
+        "wraps": 1248
+      }
+    ]
+  },
+  "registers": {
+    "ax": 8193,
+    "bx": 12,
+    "cs": 50415,
+    "cx": 0,
+    "di": 65520,
+    "ds": 9728,
+    "dx": 61473,
+    "es": 9728,
+    "ip": 2137,
+    "si": 18,
+    "sp": 1530,
+    "ss": 2624
+  },
+  "serial": {
+    "a": {
+      "base": "0xf8f8",
+      "baud": 13,
+      "character_instructions": 3839295,
+      "divisor": 59248,
+      "ier": 11,
+      "input_clock_hz": 12345600,
+      "irq": 3,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 20,
+      "received": 20,
+      "signals": 0,
+      "transmitted": 0
+    },
+    "b": {
+      "base": "0xf4f8",
+      "baud": 115200,
+      "character_instructions": 435,
+      "divisor": 2,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": null,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 0,
+      "signals": 0,
+      "transmitted": 0
+    }
+  },
+  "serial_a": "",
+  "serial_b": "",
+  "serial_internal": "",
+  "serial_session": [
+    {
+      "direction": "sent",
+      "instructions": 30000128,
+      "text": "AT*V2=3S58=32&A3&B0\r"
+    }
+  ],
+  "software_interrupts": {
+    "0x30": 17685
+  },
+  "status": "instruction-limit",
+  "timer_ticks": 30220,
+  "unmodelled_ports": [
+    "0x0000",
+    "0x0002",
+    "0x0003",
+    "0x0004",
+    "0x0006",
+    "0x0007",
+    "0x0008",
+    "0x000a",
+    "0x000c",
+    "0x000e",
+    "0x0010",
+    "0x0012",
+    "0x0014",
+    "0x0016",
+    "0x0100",
+    "0xf00d",
+    "0xf400",
+    "0xf402",
+    "0xf404",
+    "0xf406",
+    "0xf408",
+    "0xf40a",
+    "0xf40c",
+    "0xf40e",
+    "0xf410",
+    "0xf412",
+    "0xf414",
+    "0xf416",
+    "0xf418",
+    "0xf41a",
+    "0xf41c",
+    "0xf41e",
+    "0xf420",
+    "0xf422",
+    "0xf424",
+    "0xf426",
+    "0xf428",
+    "0xf42a",
+    "0xf42c",
+    "0xf42e",
+    "0xf430",
+    "0xf438",
+    "0xf804",
+    "0xf820",
+    "0xf822",
+    "0xf824",
+    "0xf826",
+    "0xf830",
+    "0xf832",
+    "0xf834",
+    "0xf836",
+    "0xf862",
+    "0xf864",
+    "0xf86a",
+    "0xf86c",
+    "0xf870",
+    "0xf874"
+  ],
+  "working_s_registers": {
+    "54": 255,
+    "56": 255,
+    "58": 255
+  }
+}

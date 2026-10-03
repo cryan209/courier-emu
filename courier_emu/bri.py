@@ -965,7 +965,10 @@ class BriNetwork:
             self._establish()
         if self._t200_expiry is not None and self.instructions >= self._t200_expiry:
             self._t200()
-        if not self._call_placed and self.call_state == "null" \
+        # _call_placed is the one-shot guard for --bri-call-at, not a
+        # lifetime limit on incoming calls. SIP can offer another INVITE
+        # after the previous call has cleared.
+        if self.call_state == "null" \
                 and self.media_peer is not None \
                 and hasattr(self.media_peer, "incoming_call"):
             incoming = self.media_peer.incoming_call()

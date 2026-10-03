@@ -1,0 +1,145 @@
+{
+  "mpmc_pin": 0,
+  "mpmc": 0,
+  "ovly": 1,
+  "ram": 1,
+  "cnf": 0,
+  "iptr": 0,
+  "pdwsr": 10,
+  "iowsr": 1,
+  "cwsr": 16,
+  "rom_present": true,
+  "program_rom": 1330008,
+  "program_daram": 0,
+  "program_saram": 0,
+  "program_external": 324096687,
+  "data_registers": 6910191,
+  "data_daram": 116256896,
+  "data_saram": 11287571,
+  "data_reserved": 0,
+  "data_shared": 1136185,
+  "data_external": 9,
+  "rom_holes": 0,
+  "model": "c51",
+  "wait_states": {
+    "io_mapping": "8K blocks",
+    "external": [
+      {
+        "space": "program",
+        "first": 0,
+        "last": 16383,
+        "wait_states": 2
+      },
+      {
+        "space": "program",
+        "first": 16384,
+        "last": 32767,
+        "wait_states": 2
+      },
+      {
+        "space": "io",
+        "wait_states": 1,
+        "first": 0,
+        "last": 8191
+      }
+    ],
+    "regions": [
+      {
+        "space": "program",
+        "first": 0,
+        "last": 16383,
+        "wait_states": 2
+      },
+      {
+        "space": "program",
+        "first": 16384,
+        "last": 32767,
+        "wait_states": 2
+      },
+      {
+        "space": "program",
+        "first": 32768,
+        "last": 49151,
+        "wait_states": 0
+      },
+      {
+        "space": "program",
+        "first": 49152,
+        "last": 65535,
+        "wait_states": 0
+      },
+      {
+        "space": "data",
+        "first": 0,
+        "last": 16383,
+        "wait_states": 0
+      },
+      {
+        "space": "data",
+        "first": 16384,
+        "last": 32767,
+        "wait_states": 0
+      },
+      {
+        "space": "data",
+        "first": 32768,
+        "last": 49151,
+        "wait_states": 0
+      },
+      {
+        "space": "data",
+        "first": 49152,
+        "last": 65535,
+        "wait_states": 0
+      },
+      {
+        "space": "io",
+        "wait_states": 1,
+        "first": 0,
+        "last": 8191
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 8192,
+        "last": 16383
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 16384,
+        "last": 24575
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 24576,
+        "last": 32767
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 32768,
+        "last": 40959
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 40960,
+        "last": 49151
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 49152,
+        "last": 57343
+      },
+      {
+        "space": "io",
+        "wait_states": 0,
+        "first": 57344,
+        "last": 65535
+      }
+    ]
+  }
+}

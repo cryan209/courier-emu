@@ -1,0 +1,119 @@
+{
+  "call_id": "0d18d4fd-0963-4028-a863-1b638a6a065d",
+  "courier_reported_speed": [
+    45333,
+    28800
+  ],
+  "imodem_reported_speed": [
+    28800,
+    45333
+  ],
+  "terminal_connect": false,
+  "dsp_decisions": [
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x806e",
+      "caller": "0xaade",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x4",
+      "caller": "0xab99",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x8072",
+      "caller": "0xab12",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0xd0c",
+      "caller": "0xab2f",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x8035",
+      "caller": "0xab39",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0xdffe",
+      "caller": "0xab3c",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x8036",
+      "caller": "0xab46",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x1c",
+      "caller": "0xab4f",
+      "flags": "0xfc0"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x3",
+      "caller": "0xcc0c",
+      "flags": "0xec4"
+    },
+    {
+      "time": 1172.9456179589033,
+      "accumulator_low": "0x2",
+      "caller": "0xa89c",
+      "flags": "0xecc"
+    },
+    {
+      "time": 1173.7477552918717,
+      "accumulator_low": "0x8020",
+      "caller": "0xc0e8",
+      "flags": "0xecc"
+    },
+    {
+      "time": 1173.7477552918717,
+      "accumulator_low": "0xc",
+      "caller": "0xbda2",
+      "flags": "0xecc"
+    }
+  ],
+  "streams": {
+    "tx": {
+      "packets": 2612,
+      "unique_packets": 2612,
+      "missing_within_observed_range": 0,
+      "duplicate_packets": 0,
+      "out_of_order_packets": 0,
+      "timestamp_discontinuities": [],
+      "payload_sample_counts": [
+        160
+      ],
+      "duration_seconds": 52.22480370895937,
+      "max_observed_packet_gap_ms": 24.975167121738195,
+      "median_observed_packet_gap_ms": 19.994874950498343,
+      "observed_gaps_over_40ms": 0
+    },
+    "rx": {
+      "packets": 2610,
+      "unique_packets": 2610,
+      "missing_within_observed_range": 0,
+      "duplicate_packets": 0,
+      "out_of_order_packets": 0,
+      "timestamp_discontinuities": [],
+      "payload_sample_counts": [
+        160
+      ],
+      "duration_seconds": 52.17693074978888,
+      "max_observed_packet_gap_ms": 27.20345789566636,
+      "median_observed_packet_gap_ms": 20.001250319182873,
+      "observed_gaps_over_40ms": 0
+    }
+  },
+  "interpretation": "Native transmitter reports carrier readiness (reply 0003 from cc0c), receiver reports negotiated masks/rates. Both endpoint diagnostics agree on the rates, while neither terminal reports CONNECT and no LAPM blocks are exchanged. Error-control establishment is a candidate; a raw &M0 &K0 call on both ends will test whether the datapump can sustain a connection without V.42."
+}

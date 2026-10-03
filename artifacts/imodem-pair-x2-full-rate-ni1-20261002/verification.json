@@ -1,0 +1,67 @@
+{
+  "requested_bps": 64000,
+  "result": "no-carrier",
+  "data_verified": false,
+  "sides": {
+    "originate": {
+      "serial": "\r\nOK\r\n\r\nNO CARRIER\r\n",
+      "parameters": [
+        {
+          "cpu_fields": {
+            "d1b5": 32,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 1
+          },
+          "instructions": 33763401,
+          "tag": "0070",
+          "value": "39ff"
+        },
+        {
+          "cpu_fields": {
+            "d1b5": 32,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 1
+          },
+          "instructions": 33798217,
+          "tag": "0071",
+          "value": "ffff"
+        }
+      ],
+      "bearer_frames": 170
+    },
+    "answer": {
+      "serial": "\r\nOK\r\n",
+      "parameters": [
+        {
+          "cpu_fields": {
+            "d1b5": 32,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 0
+          },
+          "instructions": 62081097,
+          "tag": "0070",
+          "value": "39ff"
+        },
+        {
+          "cpu_fields": {
+            "d1b5": 32,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 0
+          },
+          "instructions": 62115913,
+          "tag": "0071",
+          "value": "ffff"
+        }
+      ],
+      "bearer_frames": 170
+    }
+  }
+}

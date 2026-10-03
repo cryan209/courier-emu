@@ -1,0 +1,10 @@
+{
+  "received_packets": 1165,
+  "post_start_silence_samples": 101,
+  "maximum_receive_arrival_gap_ms": 33.75258343294263,
+  "late_silence_clusters_seconds": [
+    1.24,
+    6.061,
+    18.5301
+  ]
+}

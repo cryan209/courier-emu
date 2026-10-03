@@ -1,0 +1,51 @@
+[
+  {
+    "call_id": "a4d82b02-8423-4c00-982e-01e665e5cf96",
+    "rtp_bytes": 300000,
+    "saved_bearer_offset": 31737,
+    "compared_bytes": 300000,
+    "byte_identical": true
+  },
+  {
+    "call_id": "1f1e3cb9-8573-42b2-a9e7-703eb63e935f",
+    "rtp_bytes": 37760,
+    "saved_bearer_offset": 363947,
+    "compared_bytes": 37760,
+    "byte_identical": true
+  },
+  {
+    "call_id": "fcadb776-7c70-4313-bde6-411daec8e6df",
+    "rtp_bytes": 411680,
+    "saved_bearer_offset": 433977,
+    "compared_bytes": 411680,
+    "byte_identical": true
+  },
+  {
+    "call_id": "bf5828cb-963b-4bd8-a970-217fc8b3a66f",
+    "rtp_bytes": 428000,
+    "saved_bearer_offset": 877632,
+    "compared_bytes": 428000,
+    "byte_identical": true
+  },
+  {
+    "call_id": "0d18d4fd-0963-4028-a863-1b638a6a065d",
+    "rtp_bytes": 417920,
+    "saved_bearer_offset": 1337760,
+    "compared_bytes": 417920,
+    "byte_identical": true
+  },
+  {
+    "call_id": "b2d1bca9-9719-4461-b317-8a8ec744bf84",
+    "rtp_bytes": 7380000,
+    "saved_bearer_offset": 1787813,
+    "compared_bytes": 7380000,
+    "byte_identical": true
+  },
+  {
+    "call_id": "ae34e422-83dd-4271-939f-7964b8add41a",
+    "rtp_bytes": 426240,
+    "saved_bearer_offset": 9201144,
+    "compared_bytes": 426240,
+    "byte_identical": true
+  }
+]

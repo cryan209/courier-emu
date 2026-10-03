@@ -1,0 +1,90 @@
+{
+  "settings": "S54=0S58=48",
+  "requested_bps": 64000,
+  "x2_verified": true,
+  "bidirectional_data_verified": true,
+  "data_delivery": {
+    "answer_to_originate": true,
+    "originate_to_answer": true
+  },
+  "sides": {
+    "originate": {
+      "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+      "serial": "\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2/LAPM\r\nANSWER-X2-S58-48",
+      "working_s_registers": {
+        "54": 0,
+        "56": 0,
+        "58": 48
+      },
+      "parameters": [
+        {
+          "cpu_fields": {
+            "d1b5": 48,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 1
+          },
+          "instructions": 35371081,
+          "tag": "0070",
+          "value": "3dff"
+        },
+        {
+          "cpu_fields": {
+            "d1b5": 48,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 1
+          },
+          "instructions": 35405897,
+          "tag": "0071",
+          "value": "ffff"
+        }
+      ],
+      "dsp_error": null,
+      "cpu_error": null,
+      "pcm_rx_empty_frames": 0,
+      "bearer_frames": 252
+    },
+    "answer": {
+      "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+      "serial": "\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2/LAPM\r\nCALLER-X2-S58-48",
+      "working_s_registers": {
+        "54": 0,
+        "56": 0,
+        "58": 48
+      },
+      "parameters": [
+        {
+          "cpu_fields": {
+            "d1b5": 48,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 0
+          },
+          "instructions": 63682633,
+          "tag": "0070",
+          "value": "3dff"
+        },
+        {
+          "cpu_fields": {
+            "d1b5": 48,
+            "d1d7": 0,
+            "d1db": 11,
+            "d1ea": 4,
+            "e496": 0
+          },
+          "instructions": 63717449,
+          "tag": "0071",
+          "value": "ffff"
+        }
+      ],
+      "dsp_error": null,
+      "cpu_error": null,
+      "pcm_rx_empty_frames": 0,
+      "bearer_frames": 252
+    }
+  }
+}

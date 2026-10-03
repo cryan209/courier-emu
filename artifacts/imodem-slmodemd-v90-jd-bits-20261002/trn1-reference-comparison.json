@@ -1,0 +1,12 @@
+{
+  "start_sample": 94110,
+  "symbols": 20004,
+  "normal_polarity_errors": 20004,
+  "reversed_polarity_errors": 0,
+  "scrambler_initial_state": 0,
+  "scrambler_input": 1,
+  "feedback_delays": [
+    18,
+    23
+  ]
+}

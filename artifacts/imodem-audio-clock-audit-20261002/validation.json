@@ -1,0 +1,52 @@
+{
+  "tests": {
+    "passed": 159
+  },
+  "runs": {
+    "before_adc_fix": {
+      "artifact": "imodem-analog-pair-v34-live-gaps-20261002",
+      "instructions": 220000000,
+      "isdn_call_state": "active",
+      "modem_connected": false,
+      "data_delivery": {
+        "analog_to_imodem": null,
+        "imodem_to_analog": null
+      },
+      "analogue_live_missing_samples": 148,
+      "analogue_live_gaps": [
+        {
+          "codec_rate": 9600.0,
+          "line_frame": 299,
+          "samples": 148
+        }
+      ],
+      "imodem_receive_underruns": 0
+    },
+    "after_adc_fix": {
+      "artifact": "imodem-analog-pair-v34-adc-edge-20261002",
+      "instructions": 300000000,
+      "isdn_call_state": "active",
+      "modem_connected": false,
+      "data_delivery": {
+        "analog_to_imodem": null,
+        "imodem_to_analog": null
+      },
+      "analogue_live_missing_samples": 0,
+      "analogue_live_gaps": [],
+      "imodem_receive_underruns": 0
+    },
+    "bell103_control": {
+      "artifact": "imodem-analog-pair-bell103-adc-edge-20261002",
+      "instructions": 200000000,
+      "isdn_call_state": "active",
+      "modem_connected": true,
+      "data_delivery": {
+        "analog_to_imodem": true,
+        "imodem_to_analog": true
+      },
+      "analogue_live_missing_samples": 0,
+      "analogue_live_gaps": [],
+      "imodem_receive_underruns": 0
+    }
+  }
+}

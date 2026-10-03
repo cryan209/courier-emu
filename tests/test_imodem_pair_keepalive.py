@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from tools.probe_imodem_pair import check_keepalive
+from tools.probe_imodem_pair import check_keepalive, connect_result
 
 
 def active_pair_side():
@@ -23,6 +23,16 @@ def active_pair_side():
 
 def test_keepalive_accepts_final_strobe_and_peer_closing_at_instruction_limit():
     check_keepalive(active_pair_side())
+
+
+@pytest.mark.parametrize('serial', ['DISCONNECT\r\n', '\r\nCONNECT 64000/ARQ/x2\r',
+                                  'ATCONNECT\r\n'])
+def test_connect_result_rejects_incomplete_or_embedded_results(serial):
+    assert connect_result(serial) is None
+
+
+def test_connect_result_retains_modulation_and_rate():
+    assert connect_result('\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2\r\n') == 'CONNECT 64000/ARQ/x2'
 
 
 @pytest.mark.parametrize('failure', ['cleared', 'timeout', 'short', 'underrun', 'no-handoff'])

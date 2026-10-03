@@ -26,7 +26,10 @@ mu-law silence, and counts every octet of that fill.
 """
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
+
+from .sip import ulaw_to_linear
 
 # mu-law silence, and what an unconnected slot carries: the same octet the
 # Am79C30's idle codeword is.
@@ -46,20 +49,33 @@ class BearerSipLine:
     realtime_clock = True
 
     def __init__(self, session: Any, *, target: str = "",
-                 record: Any = None, silence: int = PCMU_SILENCE) -> None:
+                 record: Any = None, silence: int = PCMU_SILENCE,
+                 receive_buffer_samples: int = 320,
+                 transmit_buffer_samples: int = 480) -> None:
         self.session = session
         self.session.set_codewords(True)
+        if hasattr(self.session, 'enable_media_clock'):
+            self.session.enable_media_clock(buffer_samples=transmit_buffer_samples)
         self.target = target
         self.dialled = ""
         self.record = record
         self.silence = silence
         self.started = False
         self.alerted = False
+        self._answer_pending = False
+        self._answer_audio = bytearray()
+        self.preanswer_octets = 0
         self.octets_in = 0
         self.octets_out = 0
         self.octets_from_rtp = 0
         self.underrun = 0
         self.events: list[str] = []
+        # Two 20 ms packets establish a small playout reserve. Consuming the
+        # first packet immediately lets ordinary arrival jitter insert silence
+        # into a modem waveform, even when no RTP packet has been lost.
+        self.receive_buffer_samples = max(0, receive_buffer_samples)
+        self._receive_octets: deque[int] = deque()
+        self._receive_started = False
 
     # -- what the call does to it ------------------------------------------
 
@@ -82,10 +98,10 @@ class BearerSipLine:
             self.session.start_call(self.target)
             self.events.append(f"INVITE to {self.target}")
         else:
-            # For an inbound leg, CONNECT from the I-modem is the point at
-            # which the SIP caller gets its 200 OK and our SDP.
-            self.session.answer_incoming()
-            self.events.append("the I-modem answered: accepting the inbound INVITE")
+            # Q.931 CONNECT can precede the DSP answer waveform by seconds.
+            # Keep SIP ringing until the bearer actually has audio to send.
+            self._answer_pending = True
+            self.events.append("the I-modem connected: waiting for DSP answer audio")
 
     def poll(self) -> None:
         """Service SIP signalling even while no B channel is active."""
@@ -111,11 +127,15 @@ class BearerSipLine:
         self.events.append("the I-modem is alerting: sending 180 Ringing")
 
     def stop(self) -> None:
-        if not self.started:
+        if not self.started or self._answer_pending:
             self.session.reject_incoming()
-            return
         self.started = False
+        self.alerted = False
+        self._answer_pending = False
+        self._answer_audio.clear()
         self.session.hangup()
+        self._receive_octets.clear()
+        self._receive_started = False
         self.events.append("the ISDN call cleared: hanging up the SIP leg")
 
     # -- the bearer --------------------------------------------------------
@@ -123,13 +143,41 @@ class BearerSipLine:
     def exchange(self, octets: bytes) -> bytes:
         """Modem-to-network octets out to RTP, network-to-modem back."""
         self.octets_in += len(octets)
-        self.session.send_pcmu(octets)
+        if self._answer_pending:
+            self.preanswer_octets += len(octets)
+            self._answer_audio.extend(
+                octets if self._answer_audio else octets.lstrip(b"\xff\x7f"))
+            # Require 20 ms of samples and 4 ms of appreciable signal so a
+            # lone transient cannot accept the call. Retain the beginning of
+            # the waveform and send it once SIP has accepted the INVITE.
+            if (len(self._answer_audio) >= 160
+                    and sum(abs(ulaw_to_linear(value)) >= 128
+                            for value in self._answer_audio) >= 32):
+                self.session.answer_incoming()
+                self._answer_pending = False
+                self.events.append("DSP answer audio ready: accepting the inbound INVITE")
+                self.session.send_pcmu(bytes(self._answer_audio))
+                self._answer_audio.clear()
+            elif len(self._answer_audio) > 320:
+                del self._answer_audio[:-320]
+        else:
+            self.session.send_pcmu(octets)
         self.session.poll()
-        received = self.session.receive_pcmu(len(octets))
+        incoming = self.session.receive_pcmu()
+        if not self._answer_pending:
+            self._receive_octets.extend(incoming)
+        if len(self._receive_octets) >= self.receive_buffer_samples:
+            self._receive_started = True
+        received = (bytes(self._receive_octets.popleft()
+                          for _ in range(min(len(octets), len(self._receive_octets))))
+                    if self._receive_started else b"")
         self.octets_from_rtp += len(received)
         if self.record is not None and received:
             self.record.write(received)
         if len(received) < len(octets):
+            # After a real outage, rebuild the reserve before resuming. Without
+            # this, every subsequent jitter peak causes another waveform gap.
+            self._receive_started = False
             # The far end has not sent this much yet. Silence is the honest
             # filler: it is what an idle timeslot carries, and it is counted.
             self.underrun += len(octets) - len(received)
@@ -146,7 +194,11 @@ class BearerSipLine:
             "target": self.target,
             "octets": {"to_rtp": self.octets_in, "from_rtp": self.octets_out,
                        "received_from_rtp": self.octets_from_rtp,
-                       "silence_filled": self.underrun},
+                       "silence_filled": self.underrun,
+                       "receive_buffered": len(self._receive_octets),
+                       "preanswer_octets": self.preanswer_octets,
+                       "answer_pending": self._answer_pending,
+                       "receive_buffer_samples": self.receive_buffer_samples},
             "events": list(self.events),
         }
 

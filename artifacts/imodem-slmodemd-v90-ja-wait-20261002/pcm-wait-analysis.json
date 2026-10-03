@@ -1,0 +1,45 @@
+{
+  "constant_level_interval_seconds": [
+    12,
+    19
+  ],
+  "levels_by_second": {
+    "12": {
+      "31": 4001,
+      "b1": 3999
+    },
+    "13": {
+      "b1": 3975,
+      "31": 4025
+    },
+    "14": {
+      "b1": 4009,
+      "31": 3991
+    },
+    "15": {
+      "b1": 4048,
+      "31": 3952
+    },
+    "16": {
+      "b1": 4011,
+      "31": 3989
+    },
+    "17": {
+      "31": 4004,
+      "b1": 3996
+    },
+    "18": {
+      "b1": 4036,
+      "31": 3964
+    }
+  },
+  "interpretation": "TRN1-like two-level interval followed by a changed sign sequence; no varying DIL amplitude ladder in this interval. Exact downstream message framing not yet established.",
+  "c861_capture_stage_counts": {
+    "c9a4": 3,
+    "c9a9": 1,
+    "c9bb": 86,
+    "ca3e": 487,
+    "ca44": 1
+  },
+  "captures": 578
+}

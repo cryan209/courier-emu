@@ -1115,6 +1115,19 @@ different fields rather than a contradiction: `== 4` matches the whole word,
 `XX345302`, and the placeholder is correct. Settling it needs the `si` path to
 run, which it cannot yet.
 
+> **Measured 2026-10-03 on a real 3453C** (stock 2.3.33 / DSP 2.1.41, CTR21):
+> `ATI7` prints `DAA rev 0013` and `ATGR0000:0280` shows `[0x287]` = `0x0013`.
+> Bit `0x10` is set, so on hardware the `si` path is live. 2.3.33 has the same
+> `== 4` test (`0x830e2`, strings `00345303`/`XX345303`); `0x13` takes the `XX`
+> branch, and the board prints `99345303`, so the `XX` is a placeholder that
+> later code fills in (with `99` on this CTR21 unit), not a failure marker.
+> Against the board's own part (`docs/SI3034.PDF`, Si3021 + Si3014), the `0x0084`
+> data word is the Si3021 control word itself (`D13` = read, `D12:8` = register),
+> so `0084:3100` is a read of register 17, not a write. On the Si3021 the ring
+> bits are register 5 bits 6/5, not bits 0/1, so `[0x281]` is not a raw register.
+> Decode in `artifacts/3453c-board-identity-20261003/atg-monitor-2.3.33.md`.
+> See `artifacts/3453c-board-identity-20261003/`.
+
 `0x7d` is the one tag with no consumer found anywhere. Its only other
 appearance is a printer at `0x794de` that renders `[0x283]` `:` `[0x27f]` `:`
 byte `[0x64c]` as a colon triple; injecting marker values for all three tags

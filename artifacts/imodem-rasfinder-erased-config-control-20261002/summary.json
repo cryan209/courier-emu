@@ -1,0 +1,176 @@
+{
+  "serial_a": "\r\nUSRobotics Courier I-Modem with ISDN/V.34 Configuration Profile...\r\n\r\nProduct type            External\r\nOptions                V32bis,x2,V.90\r\nClock Freq             20.16Mhz\r\nEprom                  768k\r\nRam                    256k\r\n\r\nSupervisor date        07/06/00\r\nDSP date               11/12/99\r\n\r\nSupervisor rev         3.0.2\r\nDSP rev                3.0.5\r\n\r\nProduct ID             992332-01\r\n\r\nSerial Number          \u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\u007f\r\n\r\n\r\nOK\r\n\r\n,,,,,\r\nOK\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 ISDN Switch Settings...\r\n\r\n   Switch Protocol *W                         Invalid Switch Type (Mu-Law)\r\n   Multipoint      *M                         Invalid value\r\n   Dialing Mode    *O                         Invalid Value\r\n   SPID            *S1                        Voice SPID\r\n                   *S2                        Data SPID\r\n   Directory No.   *P1                        Voice Directory Number (DN1)\r\n                   *P2                        Data Directory Number (DN2)\r\n   TEI             *T1                        Invalid fixed TEI\r\n                   *T2                        Invalid fixed TEI\r\n\r\n   Physical Interface:  Active\r\n   Data Link Layer   :  Active\r\n\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n",
+  "memory_map": {
+    "mpmc_pin": 0,
+    "mpmc": 0,
+    "ovly": 1,
+    "ram": 1,
+    "cnf": 0,
+    "iptr": 0,
+    "pdwsr": 10,
+    "iowsr": 1,
+    "cwsr": 16,
+    "rom_present": true,
+    "program_rom": 1330008,
+    "program_daram": 0,
+    "program_saram": 0,
+    "program_external": 324096687,
+    "data_registers": 6910191,
+    "data_daram": 116256896,
+    "data_saram": 11287571,
+    "data_reserved": 0,
+    "data_shared": 1136185,
+    "data_external": 9,
+    "rom_holes": 0,
+    "model": "c51",
+    "wait_states": {
+      "io_mapping": "8K blocks",
+      "external": [
+        {
+          "space": "program",
+          "first": 0,
+          "last": 16383,
+          "wait_states": 2
+        },
+        {
+          "space": "program",
+          "first": 16384,
+          "last": 32767,
+          "wait_states": 2
+        },
+        {
+          "space": "io",
+          "wait_states": 1,
+          "first": 0,
+          "last": 8191
+        }
+      ],
+      "regions": [
+        {
+          "space": "program",
+          "first": 0,
+          "last": 16383,
+          "wait_states": 2
+        },
+        {
+          "space": "program",
+          "first": 16384,
+          "last": 32767,
+          "wait_states": 2
+        },
+        {
+          "space": "program",
+          "first": 32768,
+          "last": 49151,
+          "wait_states": 0
+        },
+        {
+          "space": "program",
+          "first": 49152,
+          "last": 65535,
+          "wait_states": 0
+        },
+        {
+          "space": "data",
+          "first": 0,
+          "last": 16383,
+          "wait_states": 0
+        },
+        {
+          "space": "data",
+          "first": 16384,
+          "last": 32767,
+          "wait_states": 0
+        },
+        {
+          "space": "data",
+          "first": 32768,
+          "last": 49151,
+          "wait_states": 0
+        },
+        {
+          "space": "data",
+          "first": 49152,
+          "last": 65535,
+          "wait_states": 0
+        },
+        {
+          "space": "io",
+          "wait_states": 1,
+          "first": 0,
+          "last": 8191
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 8192,
+          "last": 16383
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 16384,
+          "last": 24575
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 24576,
+          "last": 32767
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 32768,
+          "last": 40959
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 40960,
+          "last": 49151
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 49152,
+          "last": 57343
+        },
+        {
+          "space": "io",
+          "wait_states": 0,
+          "first": 57344,
+          "last": 65535
+        }
+      ]
+    }
+  },
+  "media": {
+    "from_rtp": 199712,
+    "receive_buffer_samples": 320,
+    "receive_buffered": 206,
+    "received_from_rtp": 175314,
+    "silence_filled": 24398,
+    "to_rtp": 199712
+  },
+  "replies": {
+    "0008:0000": 274,
+    "0008:0001": 2,
+    "0008:0002": 8,
+    "0008:0003": 1,
+    "0008:0801": 20,
+    "0008:0805": 87,
+    "0008:0811": 3,
+    "0008:0815": 1,
+    "0047:0006": 1,
+    "0048:00c1": 1,
+    "0048:0145": 1,
+    "0048:0213": 1,
+    "0048:0310": 1,
+    "0048:040d": 1,
+    "0048:0500": 1,
+    "0071:0006": 1
+  },
+  "overlay_loads": 3,
+  "overlay_mismatched_words": 0
+}

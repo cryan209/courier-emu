@@ -1,0 +1,43 @@
+{
+  "objective_minimum_bps": 56000,
+  "analog_connect_rate_bps": null,
+  "imodem_connect_rate_bps": null,
+  "data_delivery": {
+    "analog_to_imodem": false,
+    "imodem_to_analog": false
+  },
+  "guest_no_carrier": {
+    "analog": true,
+    "imodem": true
+  },
+  "cpu_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "dsp_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "receive_underruns": {
+    "analog_connected": 1,
+    "imodem_pcm": 0
+  },
+  "frame_ms": 20,
+  "instructions": {
+    "analog": 450000000,
+    "imodem": 600000000
+  },
+  "settings": {
+    "analog": "X1S27=1S54=0S58=48&A3&B1Q0&U26&N39",
+    "imodem": "S54=0S58=48&A3&B1Q0"
+  },
+  "audio_gain_db": {
+    "analog_to_imodem": 0.0,
+    "imodem_to_analog": 0.0
+  },
+  "native_terminal_output": {
+    "analog": "\r\nNO CARRIER\r\n",
+    "imodem": "\r\nOK\r\n\r\nNO CARRIER\r\n"
+  },
+  "goal_requirements_verified": false
+}

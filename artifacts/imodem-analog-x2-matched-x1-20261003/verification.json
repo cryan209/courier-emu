@@ -1,0 +1,41 @@
+{
+  "objective_minimum_bps": 40000,
+  "analog_connect_rate_bps": 41333,
+  "imodem_connect_rate_bps": 33333,
+  "analog_x2": true,
+  "imodem_x2": true,
+  "data_delivery": {
+    "analog_to_imodem": true,
+    "imodem_to_analog": true
+  },
+  "cpu_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "dsp_errors": {
+    "analog": null,
+    "imodem": null
+  },
+  "guest_no_carrier": {
+    "analog": false,
+    "imodem": false
+  },
+  "imodem_s_registers": {
+    "54": 0,
+    "56": 0,
+    "58": 48
+  },
+  "imodem_server_enabled": true,
+  "foreground_overlay_assist": false,
+  "rx_acquisition_assist": false,
+  "frame_ms": 20,
+  "settings": {
+    "analog": "S27=1S54=0S58=32&A3&B1Q0",
+    "imodem": "S54=0S58=48&A3&B1Q0"
+  },
+  "native_terminal_output": {
+    "analog": "\r\nCONNECT 41333/ARQ/x2/LAPM/V42BIS\r\nIMODEM-MATCHED-X1",
+    "imodem": "\r\nOK\r\n\r\nCONNECT 33333/ARQ/x2/LAPM/V42BIS\r\nANALOG-MATCHED-X1"
+  },
+  "goal_requirements_verified": true
+}

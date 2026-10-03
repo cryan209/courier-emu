@@ -1,0 +1,2207 @@
+{
+  "bri": {
+    "assigned_teis": {
+      "16399": 64
+    },
+    "call_reference": null,
+    "call_state": "null",
+    "call_tei": null,
+    "dialled": "7349195",
+    "events": [
+      {
+        "event": "the NT starts activation: INFO2 on the S interface",
+        "instructions": 3000320
+      },
+      {
+        "event": "layer 1 active, the NT has the line up",
+        "instructions": 4000256
+      },
+      {
+        "event": "ID_REQUEST ref 16399: assigning TEI 64",
+        "instructions": 5726208
+      },
+      {
+        "event": "SABME from TEI 64, answering UA",
+        "instructions": 5730304
+      },
+      {
+        "event": "INFORMATION call reference 0",
+        "instructions": 5740544
+      },
+      {
+        "event": "SPID init: ",
+        "instructions": 5740544
+      },
+      {
+        "event": "RELEASE_COMPLETE call reference 0, cause 81",
+        "instructions": 5762048
+      },
+      {
+        "event": "SETUP call reference 1",
+        "instructions": 34122240
+      },
+      {
+        "event": "the modem is calling 7349195",
+        "instructions": 34122240
+      },
+      {
+        "event": "CONNECT_ACKNOWLEDGE call reference 1",
+        "instructions": 35027968
+      },
+      {
+        "event": "DISCONNECT call reference 1, cause 16 normal call clearing",
+        "instructions": 77763584
+      },
+      {
+        "event": "RELEASE_COMPLETE call reference 1",
+        "instructions": 77798400
+      }
+    ],
+    "frames_from_modem": 13,
+    "frames_to_modem": 13,
+    "line": "active",
+    "links": {
+      "64": {
+        "established": true,
+        "pending_layer3": 0,
+        "unacknowledged_ns": null,
+        "vr": 6,
+        "vs": 5
+      }
+    },
+    "media": {
+      "channel": null,
+      "rx_delivered": 68000,
+      "rx_pending": 0,
+      "tx_non_ff": 49221,
+      "tx_octets": 68377
+    },
+    "media_peer": {
+      "error": null,
+      "frames": 85,
+      "listen": true,
+      "octets_received": 68000,
+      "octets_sent": 68000,
+      "pending": 377,
+      "received_non_ff": 49812,
+      "sent_non_ff": 49221
+    },
+    "outbound_setup": {
+      "bearer_capability": "90 90 a2",
+      "low_layer_compatibility": null
+    },
+    "state": "multiple-frame-established",
+    "tei": 64,
+    "undecodable": 0,
+    "v120": null
+  },
+  "download_bytes": 65536,
+  "dsc": {
+    "bearer": {
+      "frames": 286729,
+      "peripheral_slots": [
+        6,
+        7
+      ],
+      "routed_frames": {
+        "1": 68902
+      },
+      "routes": [],
+      "rx_pending": {
+        "1": 0,
+        "2": 0
+      },
+      "underrun_at": {},
+      "underruns": {}
+    },
+    "d_channel": {
+      "frames_received": 13,
+      "frames_transmitted": 13,
+      "rx_pending": 0,
+      "tx_length_mismatch": 0
+    },
+    "hook": "on-hook",
+    "hook_changes": 0,
+    "liu_state": "F7",
+    "overruns": {},
+    "read_counts": {
+      "CR_IR": 46,
+      "DCB": 82,
+      "DER": 56,
+      "DLC_DRCR": 26,
+      "DLC_RNGR1": 2,
+      "DLC_RNGR2": 2,
+      "DSR1": 43,
+      "DSR2": 237,
+      "INIT": 2,
+      "LIU_LMR1": 6,
+      "LIU_LSR": 7,
+      "MAP_MMR1": 1,
+      "MAP_MMR2": 1
+    },
+    "unknown_registers": {},
+    "written": {
+      "DLC_1_7": "00 00 00 00 00 00 00",
+      "DLC_DMR1": "0b",
+      "DLC_DMR2": "84",
+      "DLC_DMR3": "02",
+      "DLC_DMR4": "0a",
+      "DLC_DRCR": "00 00",
+      "DLC_DRLR": "10 01 10 01 10 01",
+      "DLC_DTCR": "08 00",
+      "DLC_EFCR": "01",
+      "DLC_FRAR4": "01",
+      "DLC_FRAR_1_2_3": "01 01 01",
+      "DLC_RNGR1": "40 00",
+      "DLC_SRAR4": "01",
+      "DLC_SRAR_1_2_3": "01 01 01",
+      "INIT": "11",
+      "LIU_2_4": "00 00 00",
+      "LIU_LMR1": "40",
+      "LIU_LMR2": "78",
+      "LIU_LPR": "00",
+      "LIU_MF": "00",
+      "LIU_MFQB": "00",
+      "MAP_1_10": "31 b1 1b 62 26 a2 bb 16 bb 16 26 a2 1b 62 31 b1 21 d1 12 42 eb b1 61 12 61 12 eb b1 12 42 21 d1 08 08 52 bb 99 00 08 90 00 00 00 00 4e 02",
+      "MAP_MMR1": "00",
+      "MAP_MMR2": "40",
+      "MCR1": "00",
+      "MCR2": "00",
+      "MCR3": "00",
+      "MCR4": "00",
+      "PP_PPCR1": "07",
+      "PP_PPCR2": "01"
+    }
+  },
+  "dte_framing": "7E1",
+  "entry": "4030:0000",
+  "error": null,
+  "firmware_trace": [
+    "LINE_ACTIVE Detected",
+    "l4_SETUP : modem primitive",
+    "BCH_ENABLED Detected",
+    "Prim = N_CONN_CF :",
+    "l4_DISCONN : modem primitive",
+    "l4_DISCONN : modem primitive",
+    "Prim = N_DISC_CF :"
+  ],
+  "flash": {
+    "autoselects": 0,
+    "commands": [],
+    "device": "0x2223",
+    "erases": 0,
+    "manufacturer": "0x0001",
+    "mode": "array",
+    "programs": 0
+  },
+  "g711_peer": {
+    "error": null,
+    "frames": 85,
+    "listen": true,
+    "octets_received": 68000,
+    "octets_sent": 68000,
+    "pending": 377,
+    "received_non_ff": 49812,
+    "sent_non_ff": 49221
+  },
+  "hardware_interrupts": 78856,
+  "hot_addresses": [],
+  "instructions": 180000000,
+  "io_summary": {
+    "in 0x0018": 24774,
+    "in 0x001c": 73405,
+    "in 0x001e": 136924,
+    "in 0xf020": 78856,
+    "in 0xf0a0": 157566,
+    "in 0xf4fe": 348303,
+    "in 0xf8fe": 76290,
+    "out 0x001c": 142506,
+    "out 0x001e": 46583,
+    "out 0x0040": 24131,
+    "out 0x0042": 24131,
+    "out 0x0044": 24128,
+    "out 0x0046": 24128,
+    "out 0x0048": 24128,
+    "out 0xf020": 78861,
+    "out 0xf0a0": 157571
+  },
+  "last_addresses": [],
+  "mailbox": {
+    "bootstrap_words": 4672,
+    "committed": 86,
+    "consumed": 85,
+    "core": {
+      "acc": 0,
+      "accb": 128,
+      "ar0": 3036,
+      "ar1": 2186,
+      "ar2": 65497,
+      "ar3": 65535,
+      "ar4": 1050,
+      "ar5": 916,
+      "ar6": 86,
+      "ar7": 3036,
+      "arcr": 3036,
+      "arp": 7,
+      "cycles": 1445525519,
+      "dp": 7,
+      "flags": 62,
+      "idle": true,
+      "indx": 3036,
+      "instructions": 1370387034,
+      "io_events": 8192,
+      "op": 48674,
+      "pc": 33454,
+      "preg": 0
+    },
+    "core_stack": [
+      32980,
+      34273,
+      32974,
+      34273,
+      32974,
+      34273,
+      34273,
+      34273
+    ],
+    "download_blocks": 21132,
+    "dsp_status": 2,
+    "endpoint": "native-c5x",
+    "error": null,
+    "foreground_overlay_assist": false,
+    "foreground_overlay_assists": 0,
+    "latch_writes": 32876,
+    "memory_map": {
+      "cnf": 0,
+      "cwsr": 16,
+      "data_daram": 26914221,
+      "data_external": 72941,
+      "data_registers": 2677759,
+      "data_reserved": 0,
+      "data_saram": 8185450,
+      "data_shared": 43213,
+      "iowsr": 1,
+      "iptr": 0,
+      "model": "c51",
+      "mpmc": 0,
+      "mpmc_pin": 0,
+      "ovly": 1,
+      "pdwsr": 10,
+      "program_daram": 34480,
+      "program_external": 125071019,
+      "program_rom": 1034882,
+      "program_saram": 0,
+      "ram": 1,
+      "rom_holes": 0,
+      "rom_present": true,
+      "wait_states": {
+        "external": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          }
+        ],
+        "io_mapping": "8K blocks",
+        "regions": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          },
+          {
+            "first": 8192,
+            "last": 16383,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 24575,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 24576,
+            "last": 32767,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 40959,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 40960,
+            "last": 49151,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 57343,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 57344,
+            "last": 65535,
+            "space": "io",
+            "wait_states": 0
+          }
+        ]
+      }
+    },
+    "overlay_control": [
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        4
+      ]
+    ],
+    "overlay_reads": 136924,
+    "overlay_recent": [
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ],
+      [
+        "read",
+        7
+      ]
+    ],
+    "overlay_writes": {
+      "1": 21130,
+      "2": 21130,
+      "4": 14
+    },
+    "pcm": {
+      "attached": true,
+      "frames": 286729,
+      "octets": 573458,
+      "realtime_cycles": 0,
+      "rx_empty_frames": 0,
+      "rx_pending_octets": 2,
+      "sample_rate": 8000,
+      "serial": {
+        "codec_rx_consumed": 0,
+        "codec_rx_peak": 0,
+        "codec_rx_queued": 0,
+        "delay_move_ignored": 0,
+        "delay_move_last_address": 0,
+        "delay_move_last_pc": 0,
+        "drr": 65535,
+        "drr_reads": 286728,
+        "dxr": 65535,
+        "dxr_writes": 286755,
+        "hybrid_frames": 0,
+        "hybrid_peak": 0,
+        "imr": 296,
+        "last_dp_pc": 33446,
+        "last_dp_source": 1,
+        "last_dp_value": 7,
+        "last_drr_pc": 33645,
+        "last_dxr_pc": 33648,
+        "last_spc_pc": 32961,
+        "last_tdxr_pc": 33670,
+        "last_trcv_pc": 0,
+        "last_tspc_pc": 32953,
+        "line_dac_frames": 0,
+        "line_dac_writes": 0,
+        "line_frame_interrupts": 286316,
+        "line_tx_last": 0,
+        "line_tx_last_pc": 32894,
+        "line_tx_nonzero": 0,
+        "line_tx_writes": 9,
+        "negotiation_acc": 0,
+        "negotiation_arp": 0,
+        "negotiation_d26": 0,
+        "negotiation_d76": 0,
+        "negotiation_d77": 0,
+        "negotiation_d78": 0,
+        "negotiation_d79": 0,
+        "negotiation_indx": 0,
+        "negotiation_loop_entries": 0,
+        "negotiation_loop_pc": 0,
+        "negotiation_pair": 0,
+        "negotiation_pair_value": 0,
+        "negotiation_pm": 0,
+        "negotiation_source": 0,
+        "negotiation_source_value": 0,
+        "rx_consumed": 0,
+        "rx_queued": 0,
+        "serial_frame_suppressed": 0,
+        "shadow_dp": 7,
+        "spc": 16584,
+        "spc_writes": 21,
+        "stray_cala_dp": 0,
+        "stray_cala_pc": 0,
+        "stray_cala_target": 0,
+        "tdxr": 23551,
+        "tdxr_writes": 8018,
+        "trcv": 0,
+        "trcv_reads": 0,
+        "tspc": 248,
+        "tspc_writes": 18,
+        "v8_countdown": 0,
+        "v8_dispatch_dp": 0,
+        "v8_dispatch_pc": 0,
+        "v8_dispatches": 0,
+        "v8_flags": 0,
+        "v8_handler": 0,
+        "v8_record": 0,
+        "v8_rx_peak": 0,
+        "v8_rx_state": 0
+      },
+      "slots": [
+        "Bd",
+        "Be"
+      ]
+    },
+    "recent_commands": [
+      [
+        0,
+        0
+      ],
+      [
+        131,
+        131
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        94,
+        1
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        68,
+        63
+      ],
+      [
+        72,
+        32767
+      ],
+      [
+        81,
+        8703
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        112,
+        14847
+      ],
+      [
+        28,
+        8
+      ],
+      [
+        29,
+        20
+      ],
+      [
+        42,
+        6
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        66,
+        4095
+      ],
+      [
+        73,
+        65525
+      ],
+      [
+        80,
+        193
+      ],
+      [
+        80,
+        325
+      ],
+      [
+        80,
+        531
+      ],
+      [
+        80,
+        784
+      ],
+      [
+        80,
+        1165
+      ],
+      [
+        80,
+        1280
+      ],
+      [
+        83,
+        16383
+      ],
+      [
+        113,
+        65535
+      ],
+      [
+        115,
+        127
+      ],
+      [
+        116,
+        65535
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        23,
+        28895
+      ],
+      [
+        2,
+        40960
+      ],
+      [
+        10,
+        2
+      ],
+      [
+        15,
+        0
+      ],
+      [
+        6,
+        63
+      ],
+      [
+        10,
+        2
+      ],
+      [
+        10,
+        3
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        87,
+        63
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        15,
+        0
+      ],
+      [
+        94,
+        1
+      ],
+      [
+        15,
+        0
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        94,
+        1
+      ],
+      [
+        15,
+        0
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        0
+      ]
+    ],
+    "recent_replies": [
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0001",
+      "0008:0001",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c05",
+      "0008:0c15",
+      "0008:0c11",
+      "0008:0c01",
+      "0008:0c11",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c11",
+      "0008:0c11",
+      "0008:0c11",
+      "0008:0c11",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c01",
+      "0008:0c11",
+      "0048:00c1",
+      "0048:0145",
+      "0048:0213",
+      "0048:0310",
+      "0048:048d",
+      "0048:0500",
+      "0071:0007",
+      "0047:0006",
+      "006b:0039",
+      "005b:0000",
+      "006a:1010",
+      "0002:0000",
+      "0003:0000",
+      "0004:0000"
+    ],
+    "replies_acked": 245,
+    "reply_counts": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "0008:0000": 115,
+      "0008:0001": 2,
+      "0008:0805": 4,
+      "0008:0c01": 16,
+      "0008:0c05": 86,
+      "0008:0c11": 7,
+      "0008:0c15": 1,
+      "0047:0006": 1,
+      "0048:00c1": 1,
+      "0048:0145": 1,
+      "0048:0213": 1,
+      "0048:0310": 1,
+      "0048:048d": 1,
+      "0048:0500": 1,
+      "005b:0000": 1,
+      "006a:1010": 1,
+      "006b:0039": 1,
+      "0071:0007": 1
+    },
+    "reply_pending": null,
+    "timeline": [
+      "0.0039 reply 0008:0000",
+      "0.0239 reply 0008:0000",
+      "0.0439 reply 0008:0000",
+      "0.0639 reply 0008:0000",
+      "0.0839 reply 0008:0000",
+      "0.1039 reply 0008:0000",
+      "0.1239 reply 0008:0000",
+      "0.1439 reply 0008:0000",
+      "0.1639 reply 0008:0000",
+      "0.1839 reply 0008:0000",
+      "0.2039 reply 0008:0000",
+      "0.2239 reply 0008:0000",
+      "0.2439 reply 0008:0000",
+      "0.2639 reply 0008:0000",
+      "0.2839 reply 0008:0000",
+      "0.3039 reply 0008:0000",
+      "0.3239 reply 0008:0000",
+      "0.3439 reply 0008:0000",
+      "0.3639 reply 0008:0000",
+      "0.3839 reply 0008:0000",
+      "0.4039 reply 0008:0000",
+      "0.4239 reply 0008:0000",
+      "0.4439 reply 0008:0000",
+      "0.4639 reply 0008:0000",
+      "0.4839 reply 0008:0000",
+      "0.5039 reply 0008:0000",
+      "0.5239 reply 0008:0000",
+      "0.5439 reply 0008:0000",
+      "0.5639 reply 0008:0000",
+      "0.5839 reply 0008:0000",
+      "0.6039 reply 0008:0000",
+      "0.6239 reply 0008:0000",
+      "0.6439 reply 0008:0000",
+      "0.6639 reply 0008:0000",
+      "0.6839 reply 0008:0000",
+      "0.7039 reply 0008:0000",
+      "0.7239 reply 0008:0000",
+      "0.7439 reply 0008:0000",
+      "0.7639 reply 0008:0000",
+      "0.7839 reply 0008:0000",
+      "0.8039 reply 0008:0000",
+      "0.8239 reply 0008:0000",
+      "0.8439 reply 0008:0000",
+      "0.8639 reply 0008:0000",
+      "0.8839 reply 0008:0000",
+      "0.9039 reply 0008:0000",
+      "0.9239 reply 0008:0000",
+      "0.9439 reply 0008:0000",
+      "0.9639 reply 0008:0000",
+      "0.9839 reply 0008:0000",
+      "1.0039 reply 0008:0000",
+      "1.0239 reply 0008:0000",
+      "1.0439 reply 0008:0000",
+      "1.0639 reply 0008:0000",
+      "1.0839 reply 0008:0000",
+      "1.1039 reply 0008:0000",
+      "1.1239 reply 0008:0000",
+      "1.1439 reply 0008:0000",
+      "1.1639 reply 0008:0000",
+      "1.1839 reply 0008:0000",
+      "1.2039 reply 0008:0000",
+      "1.2239 reply 0008:0000",
+      "1.2439 reply 0008:0000",
+      "1.2639 reply 0008:0000",
+      "1.2839 reply 0008:0000",
+      "1.3039 reply 0008:0000",
+      "1.3239 reply 0008:0000",
+      "1.3439 reply 0008:0000",
+      "1.3639 reply 0008:0000",
+      "1.3839 reply 0008:0000",
+      "1.4039 reply 0008:0000",
+      "1.4239 reply 0008:0000",
+      "1.4439 reply 0008:0000",
+      "1.4639 reply 0008:0000",
+      "1.4839 reply 0008:0000",
+      "1.5039 reply 0008:0000",
+      "1.5239 reply 0008:0000",
+      "1.5439 reply 0008:0000",
+      "1.5639 reply 0008:0000",
+      "1.5839 reply 0008:0000",
+      "1.6039 reply 0008:0000",
+      "1.6239 reply 0008:0000",
+      "1.6439 reply 0008:0000",
+      "1.6639 reply 0008:0000",
+      "1.6839 reply 0008:0000",
+      "1.7039 reply 0008:0000",
+      "1.7239 reply 0008:0000",
+      "1.7439 reply 0008:0000",
+      "1.7639 reply 0008:0000",
+      "1.7839 reply 0008:0000",
+      "1.8039 reply 0008:0000",
+      "1.8239 reply 0008:0000",
+      "1.8439 reply 0008:0000",
+      "1.8639 reply 0008:0000",
+      "1.8839 reply 0008:0000",
+      "1.9039 reply 0008:0000",
+      "1.9239 reply 0008:0000",
+      "1.9439 reply 0008:0000",
+      "1.9639 reply 0008:0000",
+      "1.9839 reply 0008:0001",
+      "2.0039 reply 0008:0001",
+      "2.0239 reply 0008:0805",
+      "2.0439 reply 0008:0805",
+      "2.0639 reply 0008:0805",
+      "2.0839 reply 0008:0805",
+      "2.1039 reply 0008:0c05",
+      "2.1239 reply 0008:0c05",
+      "2.1439 reply 0008:0c05",
+      "2.1639 reply 0008:0c05",
+      "2.1839 reply 0008:0c05",
+      "2.2039 reply 0008:0c05",
+      "2.2239 reply 0008:0c05",
+      "2.2439 reply 0008:0c05",
+      "2.2639 reply 0008:0c05",
+      "2.2839 reply 0008:0c05",
+      "2.3039 reply 0008:0c05",
+      "2.3239 reply 0008:0c05",
+      "2.3439 reply 0008:0c05",
+      "2.3639 reply 0008:0c05",
+      "2.3839 reply 0008:0c05",
+      "2.4039 reply 0008:0c05",
+      "2.4239 reply 0008:0c05",
+      "2.4439 reply 0008:0c05",
+      "2.4639 reply 0008:0c05",
+      "2.4839 reply 0008:0c05",
+      "2.5039 reply 0008:0c05",
+      "2.5239 reply 0008:0c05",
+      "2.5439 reply 0008:0c05",
+      "2.5639 reply 0008:0c05",
+      "2.5839 reply 0008:0c05",
+      "2.6039 reply 0008:0c05",
+      "2.6239 reply 0008:0c05",
+      "2.6439 reply 0008:0c05",
+      "2.6639 reply 0008:0c05",
+      "2.6839 reply 0008:0c05",
+      "2.7039 reply 0008:0c05",
+      "2.7239 reply 0008:0c05",
+      "2.7439 reply 0008:0c05",
+      "2.7639 reply 0008:0c05",
+      "2.7839 reply 0008:0c05",
+      "2.8039 reply 0008:0c05",
+      "2.8239 reply 0008:0c05",
+      "2.8439 reply 0008:0c05",
+      "2.8639 reply 0008:0c05",
+      "2.8839 reply 0008:0c05",
+      "2.9039 reply 0008:0c05",
+      "2.9239 reply 0008:0c05",
+      "2.9439 reply 0008:0c05",
+      "2.9639 reply 0008:0c05",
+      "2.9839 reply 0008:0c05",
+      "3.0039 reply 0008:0c05",
+      "3.0239 reply 0008:0c05",
+      "3.0439 reply 0008:0c05",
+      "3.0639 reply 0008:0c05",
+      "3.0839 reply 0008:0c05",
+      "3.1039 reply 0008:0c05",
+      "3.1239 reply 0008:0c05",
+      "3.1439 reply 0008:0c05",
+      "3.1639 reply 0008:0c05",
+      "3.1839 reply 0008:0c05",
+      "3.2039 reply 0008:0c05",
+      "3.2239 reply 0008:0c05",
+      "3.2439 reply 0008:0c05",
+      "3.2639 reply 0008:0c05",
+      "3.2839 reply 0008:0c05",
+      "3.3039 reply 0008:0c05",
+      "3.3239 reply 0008:0c05",
+      "3.3439 reply 0008:0c05",
+      "3.3639 reply 0008:0c05",
+      "3.3839 reply 0008:0c05",
+      "3.4039 reply 0008:0c05",
+      "3.4239 reply 0008:0c05",
+      "3.4439 reply 0008:0c05",
+      "3.4639 reply 0008:0c05",
+      "3.4839 reply 0008:0c05",
+      "3.5039 reply 0008:0c05",
+      "3.5239 reply 0008:0c05",
+      "3.5439 reply 0008:0c05",
+      "3.5639 reply 0008:0c05",
+      "3.5839 reply 0008:0c05",
+      "3.6039 reply 0008:0c05",
+      "3.6239 reply 0008:0c05",
+      "3.6439 reply 0008:0c05",
+      "3.6639 reply 0008:0c05",
+      "3.6839 reply 0008:0c05",
+      "3.7039 reply 0008:0c05",
+      "3.7239 reply 0008:0c05",
+      "3.7439 reply 0008:0c05",
+      "3.7639 reply 0008:0c05",
+      "3.7839 reply 0008:0c05",
+      "3.8039 reply 0008:0c05",
+      "3.8239 reply 0008:0c15",
+      "3.8439 reply 0008:0c11",
+      "3.8639 reply 0008:0c01",
+      "3.8839 reply 0008:0c11",
+      "3.9039 reply 0008:0c01",
+      "3.9239 reply 0008:0c01",
+      "3.9439 reply 0008:0c01",
+      "3.9639 reply 0008:0c01",
+      "3.9839 reply 0008:0c01",
+      "4.0039 reply 0008:0c01",
+      "4.0239 reply 0008:0c01",
+      "4.0439 reply 0008:0c11",
+      "4.0639 reply 0008:0c11",
+      "4.0839 reply 0008:0c11",
+      "4.1039 reply 0008:0c11",
+      "4.1239 reply 0008:0c01",
+      "4.1439 reply 0008:0c01",
+      "4.1639 reply 0008:0c01",
+      "4.1839 reply 0008:0c01",
+      "4.2039 reply 0008:0c01",
+      "4.2239 reply 0008:0c01",
+      "4.2439 reply 0008:0c01",
+      "4.2639 reply 0008:0c01",
+      "4.2839 reply 0008:0c11",
+      "4.2884 reply 0048:00c1",
+      "4.2885 reply 0048:0145",
+      "4.2889 reply 0048:0213",
+      "4.2894 reply 0048:0310",
+      "4.2897 reply 0048:048d",
+      "4.2901 reply 0048:0500",
+      "4.6093 reply 0071:0007",
+      "4.6096 reply 0047:0006",
+      "4.6104 cmd 0002:a000",
+      "5.3474 reply 006b:0039",
+      "5.5700 reply 005b:0000",
+      "6.2626 reply 006a:1010",
+      "6.2627 reply 0002:0000",
+      "6.2631 reply 0003:0000",
+      "6.2635 cmd 000a:0002",
+      "6.2636 reply 0004:0000",
+      "6.2687 cmd 000f:0000",
+      "6.2693 cmd 0006:003f",
+      "6.2696 cmd 000a:0002",
+      "6.6703 cmd 000a:0003",
+      "7.8736 cmd 005b:0001",
+      "7.8797 cmd 005b:0001",
+      "7.8801 cmd 0057:003f",
+      "8.0834 cmd 0001:003f",
+      "8.0869 cmd 005b:0001",
+      "8.0870 cmd 000f:0000",
+      "8.0874 cmd 005e:0001",
+      "8.1133 cmd 000f:0000",
+      "8.1136 cmd 0002:d100",
+      "8.1309 cmd 0002:9260",
+      "8.1669 cmd 0001:003f",
+      "8.3631 cmd 005b:0001",
+      "8.3664 cmd 005e:0001",
+      "8.3931 cmd 000f:0000",
+      "8.3934 cmd 0002:d100",
+      "8.4106 cmd 0002:9260",
+      "8.4466 cmd 0001:003f",
+      "8.4470 cmd 005b:0000"
+    ],
+    "tx_ready": true
+  },
+  "negotiation_trace": [
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35371081,
+      "tag": "0070",
+      "value": "39ff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35387465,
+      "tag": "0042",
+      "value": "0fff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35389515,
+      "tag": "0049",
+      "value": "fff5"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35403849,
+      "tag": "0053",
+      "value": "3fff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35405897,
+      "tag": "0071",
+      "value": "ffff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 32,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35412031,
+      "tag": "0004",
+      "value": "0000"
+    }
+  ],
+  "pic": {
+    "delivered": 78856,
+    "master": {
+      "auto_eoi": false,
+      "irr": 4,
+      "isr": 0,
+      "mask": 179,
+      "vector_base": 32
+    },
+    "slave": {
+      "auto_eoi": false,
+      "irr": 96,
+      "isr": 0,
+      "mask": 131,
+      "vector_base": 40
+    }
+  },
+  "pit": {
+    "clock_hz": 892857,
+    "control_writes": 3,
+    "counters": [
+      {
+        "count": 1010,
+        "hz": 480.0306451612903,
+        "index": 0,
+        "initial": 1860,
+        "mode": 2,
+        "period": 1860,
+        "wraps": 17257
+      },
+      {
+        "count": 6223,
+        "hz": 100.00638440860214,
+        "index": 1,
+        "initial": 8928,
+        "mode": 2,
+        "period": 8928,
+        "wraps": 3595
+      },
+      {
+        "count": 8018,
+        "hz": 25.000196001568014,
+        "index": 2,
+        "initial": 35714,
+        "mode": 2,
+        "period": 35714,
+        "wraps": 898
+      }
+    ]
+  },
+  "registers": {
+    "ax": 0,
+    "bx": 32,
+    "cs": 29536,
+    "cx": 32,
+    "di": 276,
+    "ds": 16,
+    "dx": 32,
+    "es": 9728,
+    "ip": 2199,
+    "si": 980,
+    "sp": 1492,
+    "ss": 2624
+  },
+  "serial": {
+    "a": {
+      "base": "0xf8f8",
+      "baud": 38400,
+      "character_instructions": 1303,
+      "divisor": 6,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": 3,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 61,
+      "signals": 0,
+      "transmitted": 55
+    },
+    "b": {
+      "base": "0xf4f8",
+      "baud": 115200,
+      "character_instructions": 435,
+      "divisor": 2,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": null,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 0,
+      "signals": 0,
+      "transmitted": 0
+    }
+  },
+  "serial_a": "\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2/LAPM\r\n\r\nNO CARRIER\r\n",
+  "serial_b": "",
+  "serial_internal": "",
+  "serial_session": [
+    {
+      "direction": "sent",
+      "instructions": 30000128,
+      "text": "AT*V2=3S58=32&A3&B0\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31596544,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31597568,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 31598592,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 31599616,
+      "text": "K"
+    },
+    {
+      "direction": "received",
+      "instructions": 31600640,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31601664,
+      "text": "\n"
+    },
+    {
+      "direction": "sent",
+      "instructions": 31601664,
+      "text": "ATS54=0S58=32\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33246720,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33247744,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 33248768,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 33249792,
+      "text": "K"
+    },
+    {
+      "direction": "received",
+      "instructions": 33250816,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33251840,
+      "text": "\n"
+    },
+    {
+      "direction": "sent",
+      "instructions": 33251840,
+      "text": "ATD7349195\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 74893824,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 74894848,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 74895872,
+      "text": "C"
+    },
+    {
+      "direction": "received",
+      "instructions": 74896896,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 74897920,
+      "text": "N"
+    },
+    {
+      "direction": "received",
+      "instructions": 74898944,
+      "text": "N"
+    },
+    {
+      "direction": "received",
+      "instructions": 74899968,
+      "text": "E"
+    },
+    {
+      "direction": "received",
+      "instructions": 74900992,
+      "text": "C"
+    },
+    {
+      "direction": "received",
+      "instructions": 74902016,
+      "text": "T"
+    },
+    {
+      "direction": "received",
+      "instructions": 74903040,
+      "text": " "
+    },
+    {
+      "direction": "received",
+      "instructions": 74904064,
+      "text": "6"
+    },
+    {
+      "direction": "received",
+      "instructions": 74905088,
+      "text": "4"
+    },
+    {
+      "direction": "received",
+      "instructions": 74906112,
+      "text": "0"
+    },
+    {
+      "direction": "received",
+      "instructions": 74907136,
+      "text": "0"
+    },
+    {
+      "direction": "received",
+      "instructions": 74908160,
+      "text": "0"
+    },
+    {
+      "direction": "received",
+      "instructions": 74909184,
+      "text": "/"
+    },
+    {
+      "direction": "received",
+      "instructions": 74910208,
+      "text": "A"
+    },
+    {
+      "direction": "received",
+      "instructions": 74911232,
+      "text": "R"
+    },
+    {
+      "direction": "received",
+      "instructions": 74912256,
+      "text": "Q"
+    },
+    {
+      "direction": "received",
+      "instructions": 74913280,
+      "text": "/"
+    },
+    {
+      "direction": "received",
+      "instructions": 74914304,
+      "text": "x"
+    },
+    {
+      "direction": "received",
+      "instructions": 74915328,
+      "text": "2"
+    },
+    {
+      "direction": "received",
+      "instructions": 74916352,
+      "text": "/"
+    },
+    {
+      "direction": "received",
+      "instructions": 74917376,
+      "text": "L"
+    },
+    {
+      "direction": "received",
+      "instructions": 74918400,
+      "text": "A"
+    },
+    {
+      "direction": "received",
+      "instructions": 74919424,
+      "text": "P"
+    },
+    {
+      "direction": "received",
+      "instructions": 74920448,
+      "text": "M"
+    },
+    {
+      "direction": "received",
+      "instructions": 74921472,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 74922496,
+      "text": "\n"
+    },
+    {
+      "direction": "sent_data",
+      "instructions": 74922496,
+      "text": "CALLER-X2-S58-32"
+    },
+    {
+      "direction": "received",
+      "instructions": 77343744,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 77344768,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 77345792,
+      "text": "N"
+    },
+    {
+      "direction": "received",
+      "instructions": 77346816,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 77347840,
+      "text": " "
+    },
+    {
+      "direction": "received",
+      "instructions": 77348864,
+      "text": "C"
+    },
+    {
+      "direction": "received",
+      "instructions": 77349888,
+      "text": "A"
+    },
+    {
+      "direction": "received",
+      "instructions": 77350912,
+      "text": "R"
+    },
+    {
+      "direction": "received",
+      "instructions": 77351936,
+      "text": "R"
+    },
+    {
+      "direction": "received",
+      "instructions": 77352960,
+      "text": "I"
+    },
+    {
+      "direction": "received",
+      "instructions": 77353984,
+      "text": "E"
+    },
+    {
+      "direction": "received",
+      "instructions": 77355008,
+      "text": "R"
+    },
+    {
+      "direction": "received",
+      "instructions": 77356032,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 77357056,
+      "text": "\n"
+    }
+  ],
+  "software_interrupts": {
+    "0x30": 514307
+  },
+  "status": "instruction-limit",
+  "timer_ticks": 21750,
+  "unmodelled_ports": [
+    "0x0000",
+    "0x0002",
+    "0x0003",
+    "0x0006",
+    "0x0007",
+    "0x000a",
+    "0x000c",
+    "0x000e",
+    "0x0010",
+    "0x0012",
+    "0x0014",
+    "0x0016",
+    "0x0060",
+    "0x0062",
+    "0x0100",
+    "0xf00d",
+    "0xf400",
+    "0xf402",
+    "0xf404",
+    "0xf406",
+    "0xf408",
+    "0xf40a",
+    "0xf40c",
+    "0xf40e",
+    "0xf410",
+    "0xf412",
+    "0xf414",
+    "0xf416",
+    "0xf418",
+    "0xf41a",
+    "0xf41c",
+    "0xf41e",
+    "0xf420",
+    "0xf422",
+    "0xf424",
+    "0xf426",
+    "0xf428",
+    "0xf42a",
+    "0xf42c",
+    "0xf42e",
+    "0xf430",
+    "0xf438",
+    "0xf804",
+    "0xf820",
+    "0xf822",
+    "0xf824",
+    "0xf826",
+    "0xf830",
+    "0xf832",
+    "0xf834",
+    "0xf836",
+    "0xf862",
+    "0xf864",
+    "0xf86c",
+    "0xf870",
+    "0xf874"
+  ],
+  "working_s_registers": {
+    "54": 0,
+    "56": 0,
+    "58": 32
+  }
+}

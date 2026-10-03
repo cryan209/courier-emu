@@ -1,0 +1,16 @@
+{
+  "source": "User physical Courier AT#UD dump",
+  "initial_upstream_bps": 28800,
+  "initial_downstream_bps": 44000,
+  "final_upstream_bps": 31200,
+  "final_downstream_bps": 45333,
+  "carrier_loss_events": 1,
+  "rate_renegotiations": 3,
+  "retrains_requested": 0,
+  "retrains_granted": 1,
+  "error_control_code": "00",
+  "compression_code": "00",
+  "reported_received_dte_characters": 1536,
+  "roundtrip_ms_standard_key17": 324,
+  "notes": "Vendor-specific A0..FF keys and status string not decoded. Standard counters now show carrier instability; marker tests found corrupted downstream and extensive unsolicited upstream binary data. RTT key17 increased to 324 ms from prior ATI11 154 ms; later captured playout outages are a possible contributor, not proof of the initial decoding fault."
+}

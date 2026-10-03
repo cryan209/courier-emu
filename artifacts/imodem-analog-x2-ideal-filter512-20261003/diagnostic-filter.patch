@@ -1,0 +1,47 @@
+--- a/native/c5x_core.cpp
++++ b/native/c5x_core.cpp
+@@ -582,18 +582,18 @@
+ {
+     constexpr double pi = 3.14159265358979323846;
+     const double rate = double(C5X_CLOCK_HZ) / m_line_frame_period;
+-    const double cutoff = 0.49 * std::min(1.0, rate / 8000.0);
++    const double cutoff = 0.5 * std::min(1.0, rate / 8000.0);
+     if (cutoff != m_codec_line_cutoff || m_codec_line_kernel.empty()) {
+         m_codec_line_cutoff = cutoff;
+         m_codec_line_kernel.resize(1025);
+         const double norm = codec_i0(8);
+         for (unsigned phase = 0; phase <= 1024; ++phase) {
+             double total = 0;
+-            for (unsigned k = 0; k < 128; ++k) {
+-                const double t = double(k) - 63 - double(phase) / 1024;
++            for (unsigned k = 0; k < 512; ++k) {
++                const double t = double(k) - 255 - double(phase) / 1024;
+                 const double x = 2 * cutoff * t;
+                 const double sinc = x == 0 ? 1 : std::sin(pi * x) / (pi * x);
+-                const double ratio = t / 64;
++                const double ratio = t / 256;
+                 const double window = std::abs(ratio) < 1
+                     ? codec_i0(8 * std::sqrt(1 - ratio * ratio)) / norm : 0;
+                 total += (m_codec_line_kernel[phase][k] = 2 * cutoff * sinc * window);
+@@ -617,7 +617,7 @@
+     m_codec_line_position -= advance;
+     const unsigned phase = unsigned(std::round(m_codec_line_position * 1024));
+     double value = 0;
+-    for (unsigned k = 0; k < 128; ++k)
++    for (unsigned k = 0; k < 512; ++k)
+         value += m_codec_line_history[k] * m_codec_line_kernel[phase][k];
+     sample = int32_t(std::clamp(std::round(value), -32768.0, 32767.0));
+     m_codec_line_position += 8000.0 / rate;
+--- a/native/c5x_core.h
++++ b/native/c5x_core.h
+@@ -583,8 +583,8 @@
+     // duration when firmware retunes the ADC while that frame is queued.
+     bool m_codec_line_input = false;
+     std::deque<uint16_t> m_codec_line_rx;
+-    std::array<double, 128> m_codec_line_history{};
+-    std::vector<std::array<double, 128>> m_codec_line_kernel;
++    std::array<double, 512> m_codec_line_history{};
++    std::vector<std::array<double, 512>> m_codec_line_kernel;
+     double m_codec_line_position = 0, m_codec_line_cutoff = 0;
+     bool codec_line_sample(int32_t &sample);
+     // Trans-hybrid return. The codec's analog output reaches its own analog

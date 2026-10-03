@@ -1,0 +1,13 @@
+{
+  "analog_to_imodem": {
+    "source_offset_samples": 199200,
+    "compared_samples": 166061,
+    "mismatches": 0
+  },
+  "imodem_to_analog": {
+    "source_offset_samples": 200532,
+    "comparison_start_sample": 16000,
+    "compared_samples": 149868,
+    "mismatches": 0
+  }
+}

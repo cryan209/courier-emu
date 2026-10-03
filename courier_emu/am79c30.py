@@ -119,8 +119,11 @@ REGISTERS: dict[int, tuple[str, int]] = {
     0xC0: ("PP_PPCR1", 1),
     0xC1: ("PP_PPSR", 1),
     0xC2: ("PP_PPIER", 1),
-    0xC4: ("PP_PPCR2", 1),
-    0xC8: ("PP_PPCR3", 1),
+    0xC3: ("PP_MONITOR_DATA", 1),
+    0xC4: ("PP_CI0_DATA", 1),
+    0xC5: ("PP_CI1_DATA", 1),
+    0xC8: ("PP_PPCR2", 1),
+    0xC9: ("PP_PPCR3", 1),
 }
 
 # The direct registers, at the six ports above the command/data pair. The
@@ -318,20 +321,20 @@ class Am79C30:
     def peripheral_slots(self, count: int) -> list[int | None]:
         """Which logical port each peripheral-port time slot carries.
 
-        The part's PP clocks several eight-bit slots in each 125 us frame and
-        the MUX decides which channel is in which.  This model takes the slots
-        in the order the MCRs list their connections - MCR1's first - and
-        leaves the rest unconnected, which is the register order the firmware
-        writes rather than a decoding of PPCR1.  PPCR1 (`07` here) and PPCR2
-        are recorded but not interpreted: nothing in the image has shown what
-        their fields mean, and a slot map invented from them would be a guess
-        wearing a datasheet's clothes.
+        AMD 09893H, pp. 49 and 60: IOM-2's first two octets are Bd/Be;
+        Bf uses IC1 (fifth octet) or IC2 (sixth), selected by PPCR1 bit 3.
+        SBP's three octets are Bd, Be, Bf. MUX programming connects these
+        fixed ports; it never changes their physical slot positions.
         """
-        slots: list[int | None] = []
-        for left, right in self.bearer_routes():
-            for port in (left, right):
-                if port >= 3 and port not in slots:
-                    slots.append(port)
+        ppcr1 = self.blocks.get(0xC0, b'\x01')[0]
+        mode = ppcr1 & 3
+        if mode == 0:
+            slots = []
+        elif mode == 1:
+            slots = [6, 7, 8]
+        else:
+            slots = [6, 7, None, None, None, None]
+            slots[5 if ppcr1 & 8 else 4] = 8
         return (slots + [None] * count)[:count]
 
     def queue_bearer(self, channel: int, octets: bytes) -> None:

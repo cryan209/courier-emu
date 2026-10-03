@@ -1,0 +1,204 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {},
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 4001280
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 9233920
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 14351872
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 19469824
+        },
+        {
+          "event": "SETUP from 5551000 on the broadcast data link, TEI 127: no terminal has a TEI yet",
+          "instructions": 20000256
+        },
+        {
+          "event": "T303 expired, SETUP retransmission 1",
+          "instructions": 40000512
+        },
+        {
+          "event": "T303 expired with no response: clearing the call",
+          "instructions": 60000768
+        }
+      ],
+      "frames_from_modem": 4,
+      "frames_to_modem": 6,
+      "line": "active",
+      "links": {
+        "0": {
+          "established": false,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 0,
+          "vs": 0
+        },
+        "101": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 0,
+          "vs": 0
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 0,
+        "rx_pending": 0,
+        "tx_non_ff": 0,
+        "tx_octets": 0
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 0,
+        "listen": false,
+        "octets_received": 0,
+        "octets_sent": 0,
+        "pending": 0,
+        "received_non_ff": 0,
+        "sent_non_ff": 0
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 0,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 0,
+      "listen": false,
+      "octets_received": 0,
+      "octets_sent": 0,
+      "pending": 0,
+      "received_non_ff": 0,
+      "sent_non_ff": 0
+    },
+    "modem_connected": false,
+    "serial": "",
+    "working_s_registers": {
+      "54": 255,
+      "56": 255,
+      "58": 255
+    },
+    "x2_connected": false
+  },
+  "data_delivery": {
+    "answer_to_originate": false,
+    "originate_to_answer": false
+  },
+  "factory_config": true,
+  "originate": {
+    "bri": {
+      "assigned_teis": {},
+      "call_reference": null,
+      "call_state": "null",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 4001280
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 9233920
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 14351872
+        },
+        {
+          "event": "SABME from TEI 101, answering UA",
+          "instructions": 19469824
+        }
+      ],
+      "frames_from_modem": 4,
+      "frames_to_modem": 4,
+      "line": "active",
+      "links": {
+        "101": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 0,
+          "vs": 0
+        }
+      },
+      "media": {
+        "channel": null,
+        "rx_delivered": 0,
+        "rx_pending": 0,
+        "tx_non_ff": 0,
+        "tx_octets": 0
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 0,
+        "listen": true,
+        "octets_received": 0,
+        "octets_sent": 0,
+        "pending": 0,
+        "received_non_ff": 0,
+        "sent_non_ff": 0
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 0,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": null,
+    "g711_peer": {
+      "error": null,
+      "frames": 0,
+      "listen": true,
+      "octets_received": 0,
+      "octets_sent": 0,
+      "pending": 0,
+      "received_non_ff": 0,
+      "sent_non_ff": 0
+    },
+    "modem_connected": false,
+    "serial": "",
+    "working_s_registers": {
+      "54": 255,
+      "56": 255,
+      "58": 255
+    },
+    "x2_connected": false
+  },
+  "protocol": "x2",
+  "settings": "S54=0S58=34&N0"
+}

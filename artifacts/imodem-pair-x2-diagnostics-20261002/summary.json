@@ -1,0 +1,266 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {
+        "13367": 65,
+        "16399": 64
+      },
+      "call_reference": null,
+      "call_state": "active",
+      "call_tei": null,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5524480
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5529088
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5537792
+        },
+        {
+          "event": "SPID init: 017349195011",
+          "instructions": 5537792
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5559296
+        },
+        {
+          "event": "SETUP to the modem from 5551000",
+          "instructions": 20000256
+        },
+        {
+          "event": "ALERTING call reference 1",
+          "instructions": 20057600
+        },
+        {
+          "event": "ID_REQUEST ref 13367: assigning TEI 65",
+          "instructions": 20677632
+        },
+        {
+          "event": "SABME from TEI 65, answering UA",
+          "instructions": 20682240
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 20690944
+        },
+        {
+          "event": "SPID init: 017349196011",
+          "instructions": 20690944
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 20719104
+        },
+        {
+          "event": "CONNECT call reference 1",
+          "instructions": 52787200
+        }
+      ],
+      "frames_from_modem": 17,
+      "frames_to_modem": 17,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 3
+        },
+        "65": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 2,
+          "vs": 1
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 475200,
+        "rx_pending": 0,
+        "tx_non_ff": 443993,
+        "tx_octets": 475540
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 594,
+        "listen": false,
+        "octets_received": 475200,
+        "octets_sent": 475200,
+        "pending": 340,
+        "received_non_ff": 423830,
+        "sent_non_ff": 443653
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": "CONNECT 9600/ARQ/V34/LAPM",
+    "g711_peer": {
+      "error": null,
+      "frames": 594,
+      "listen": false,
+      "octets_received": 475200,
+      "octets_sent": 475200,
+      "pending": 340,
+      "received_non_ff": 423830,
+      "sent_non_ff": 443653
+    },
+    "modem_connected": true,
+    "serial": "\r\nOK\r\n\r\nCONNECT 9600/ARQ/V34/LAPM\r\nX2-CALLER-123456789+++\r\nOK\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                  22      Octets Received              22\r\nBlocks sent                   6      Blocks Received               6\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nProtocol               LAPM\r\nSpeed                  9600/9600\r\nCurrent Call           00:00:03\r\n\r\nOnline\r\nOK\r\n\r\nCONNECT 9600/ARQ/V34/LAPM\r\n"
+  },
+  "data_delivery": {
+    "answer_to_originate": true,
+    "originate_to_answer": true
+  },
+  "originate": {
+    "bri": {
+      "assigned_teis": {
+        "13367": 65,
+        "16399": 64
+      },
+      "call_reference": 1,
+      "call_state": "active",
+      "call_tei": 64,
+      "dialled": "7349195",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5524480
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5529088
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5537792
+        },
+        {
+          "event": "SPID init: 017349195011",
+          "instructions": 5537792
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5559296
+        },
+        {
+          "event": "ID_REQUEST ref 13367: assigning TEI 65",
+          "instructions": 20677632
+        },
+        {
+          "event": "SABME from TEI 65, answering UA",
+          "instructions": 20684800
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 20694016
+        },
+        {
+          "event": "SPID init: 017349196011",
+          "instructions": 20694016
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 20715008
+        },
+        {
+          "event": "SETUP call reference 1",
+          "instructions": 32918016
+        },
+        {
+          "event": "the modem is calling 7349195",
+          "instructions": 32918016
+        },
+        {
+          "event": "CONNECT_ACKNOWLEDGE call reference 1",
+          "instructions": 34123776
+        }
+      ],
+      "frames_from_modem": 19,
+      "frames_to_modem": 19,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 4
+        },
+        "65": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 2,
+          "vs": 1
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 475200,
+        "rx_pending": 0,
+        "tx_non_ff": 453373,
+        "tx_octets": 505401
+      },
+      "media_peer": {
+        "error": "[Errno 32] Broken pipe",
+        "frames": 594,
+        "listen": true,
+        "octets_received": 475200,
+        "octets_sent": 475200,
+        "pending": 0,
+        "received_non_ff": 443653,
+        "sent_non_ff": 423830
+      },
+      "outbound_setup": {
+        "bearer_capability": "90 90 a2",
+        "low_layer_compatibility": null
+      },
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": "CONNECT 9600/ARQ/V34/LAPM",
+    "g711_peer": {
+      "error": "[Errno 32] Broken pipe",
+      "frames": 594,
+      "listen": true,
+      "octets_received": 475200,
+      "octets_sent": 475200,
+      "pending": 0,
+      "received_non_ff": 443653,
+      "sent_non_ff": 423830
+    },
+    "modem_connected": true,
+    "serial": "\r\nOK\r\n\r\nCONNECT 9600/ARQ/V34/LAPM\r\nX2-ANSWER-987654321+++\r\nOK\r\n\r\nUSRobotics Courier I-Modem with ISDN/V.34 Link Diagnostics...\r\n\r\nChars sent                    0      Chars Received                0\r\nChars lost                    0\r\nOctets sent                  22      Octets Received              22\r\nBlocks sent                   6      Blocks Received               6\r\nBlocks resent                 0\r\n\r\nRetrains Requested            0      Retrains Granted              0\r\nLine Reversals                0      Blers                         0\r\nLink Timeouts                 0      Link Naks                     0\r\n\r\nData Compression       NONE\r\nEqualization           Long\r\nFallback               Disabled\r\nProtocol               LAPM\r\nSpeed                  9600/9600\r\nCurrent Call           00:00:03\r\n\r\nOnline\r\nOK\r\n\r\nCONNECT 9600/ARQ/V34/LAPM\r\n"
+  },
+  "protocol": "x2"
+}

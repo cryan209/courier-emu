@@ -1,5 +1,54 @@
 # I-modem against an emulated analogue Courier
 
+The current path is verified at **41333/x2/LAPM** on the analog Courier,
+with both application markers delivered and I-modem server mode enabled.
+See [the 2026-10-03 results and reproduction](imodem-analog-x2-20261003.md).
+The experiments below record the earlier transport and firmware investigation.
+
+## 2026-10-02: x2 with V.8 and high-power constellation
+
+Following the successful digital I-modem pair at 64000/x2/LAPM, the
+analogue Courier was tested as caller with `S27=1S54=0S58=32&A3&B0` and
+the I-modem as server with `S54=0S58=48&A3&B0`. The original firmware and
+native DSPs were used, with foreground overlay assistance disabled.
+
+The 300M-instruction run establishes the I-modem's ISDN call, answers the
+analogue line, and exchanges 278400 bearer octets each way. Neither terminal
+reports modem CONNECT, and neither application marker arrives. There are
+no reported CPU or I-modem DSP errors. The working digital pair therefore
+does not yet demonstrate an x2 connection with the analogue Courier emulator.
+
+[Verification](../artifacts/imodem-analog-pair-x2-v8-high-power-20261002/verification.json)
+and [full capture](../artifacts/imodem-analog-pair-x2-v8-high-power-20261002/result.json).
+
+## 2026-10-02: remove host command handling from the default path
+
+The foreground overlay acknowledgement described below was a host-side
+execution of a DSP command handler, not ASIC emulation. It is now disabled
+by default. `ImodemDsp(foreground_overlay_assist=True)` and the pair probe's
+`--assist-overlay-command` retain it only as an explicit diagnostic option.
+The endpoint reports both the setting and the number of assisted commands.
+
+With the current core, the unassisted firmware reaches image 6 and
+`0034:0005` at 7.8246 seconds. Its live completion audit verifies all 13,912
+transferred words at `a000`, including the supervisor's three padding words,
+with the destination advanced to `d658`. The host assist count is zero.
+Thus the old handoff bypass is no longer necessary; the exact change that
+made it unnecessary has not been isolated.
+
+The unassisted Bell 103 control still returns both CONNECT results and
+delivers both distinct payloads. These runs do not establish V.34 carrier.
+
+- [Unassisted overlay run](../artifacts/imodem-analog-pair-unassisted-overlay-20261002/result.json)
+- [Unassisted Bell 103 control](../artifacts/imodem-analog-pair-bell103-unassisted-20261002/summary.json)
+
+Negotiation tones, forced carrier reports, and the analogue `&T1` acquisition
+assist are not enabled by the native pair probe. The active device models
+still supply clocks, interrupts and holding-register handshakes. In particular,
+the I-modem supervisor's IRQ13 and RTOS IRQ11 service cadences are modeled
+from instruction counts rather than captured board interrupt timing; they
+remain assumptions to verify, not permission to patch guest state.
+
 ## 2026-10-02: regression for the first failed transition
 
 The original `imodem-analog-pair-20261001/result.json` and September
@@ -109,6 +158,11 @@ The buffering and hybrid experiments were reverted. The codec history now
 records clock changes even when divider registers stay identical, confirming
 the 9.6 kHz to 10.2667 kHz change after symbol-rate index 5. Offline execution
 of the I-modem's native mu-law decoder matches all 256 reference codewords.
+
+The [2026-10-02 audio clock audit](imodem-audio-clock-continuity.md) identifies
+and corrects receive FIFO time compression and resampler phase jumps during
+retuning. The corrected V.34 replay has zero live receive gaps but still no
+modem CONNECT; Bell 103 retains delivery in both directions.
 
 ## Earlier overlay blocker and V.34 investigation
 

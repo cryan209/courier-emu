@@ -1,0 +1,35 @@
+{
+  "dil_generator_pc": "ca57",
+  "generator_entry_count": 0,
+  "descriptor_writes": [
+    {
+      "address": 56565,
+      "value": 144,
+      "pc": 42961,
+      "instruction": 999193275
+    }
+  ],
+  "descriptor_write_pc": [
+    "a7d1"
+  ],
+  "supervisor_v90_power_commands": [
+    [
+      114,
+      2934
+    ]
+  ],
+  "power_word": "0b76",
+  "descriptor_n": 144,
+  "descriptor_lsp": 120,
+  "descriptor_ltp": 120,
+  "reply_pending": null,
+  "replies_acked": 118,
+  "peer": {
+    "blocks": 942,
+    "samples_8k": 150720,
+    "samples_9600": 180864,
+    "receive_gain": 0.25,
+    "remote_output": "/tmp/imodem-slmodemd-v90-dil-dispatch-20261002",
+    "protocol": "v90"
+  }
+}
