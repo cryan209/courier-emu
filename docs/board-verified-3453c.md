@@ -129,7 +129,15 @@ recovery loader and the reset vector `cli; mov dx,ffa4; mov ax,8000; out dx,ax; 
    every block go through one window on one strobe.
 
    So the whole 3453 family speaks a first-download protocol the repo's mask ROM does not
-   implement. **The same failure now stops `main211`**: it was introduced by `f01e9d8` ("Gate
+   implement. **That ROM's loader is not in any image either**: no run of `0610..0652`,
+   and none of its instruction pairs (`bit 0,@56 ; bcnd`, `rpt #3 ; bldp ; lacl #1 ; samm @56`,
+   `splk @56/@57 #ffff`), occurs in 2.1.1, 2.2.05, 2.3.12, 2.3.33, the boot block or the
+   parameter sectors. What 2.3.33 does carry is the resident's own overlay loader at program
+   `1150..1171`, and it shows the DSP side of the 3453 transfer: poll **I/O port `0x8057`**
+   bit 9, `rpt #3 ; in *+, #8058` (four words from I/O `0x8058`), `bldp`, then acknowledge
+   with `out 0300 -> 0x8057`. One four-word group per handshake, through I/O space, where the
+   recovered ROM uses the memory-mapped cells `@56`/`@58..5f`. A 3453 mask ROM that performs
+   the first download would have to speak this protocol. **The same failure now stops `main211`**: it was introduced by `f01e9d8` ("Gate
    the DSP mask ROM on the part"), which first mapped that ROM for B-series XMF images;
    `f01e9d8~1` boots `3453Bv2.1.1.xmf` cleanly, `f01e9d8` and `HEAD` do not. Either the 3453
    DSP has a different mask ROM, or its ASIC turns the `0x1e` protocol into the loader's 1/2
