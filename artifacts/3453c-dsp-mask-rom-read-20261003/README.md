@@ -42,6 +42,8 @@ response, decoded point pairs, phasor magnitudes). Routine names are
 | 02C0–055F | 672 packed points on a rotated lattice in groups of four, ordered by increasing energy (V.34-style ordering) |
 | 0560–058F | Small index/bitmask tables |
 | 0590–068F | Trellis-decoder squared-distance table, 16×16 words of byte pairs; see below |
+| 0690–06AF | Side-bit map for the 0590 table (1 bit per cell, two 16×16 halves); see below |
+| 06B0–06B7 | Fallback metrics for saturated 0590 cells; see below |
 | 06C4–06DB | 12 unit-circle points at 30° steps, radius 11585 (0.707 in Q14) |
 | 0700–099F | Four 168-word V.34 transmit-scale tables (0700, 07A8, 0850, 08F8); see below |
 | 09A0–09ED | Unit-magnitude (16384) phasors: four full-period rotations with steps −68.57°, −72°, −80°, −90° (17/21, 4/5, 7/9, 3/4 cycle); assignment unknown |
@@ -165,3 +167,30 @@ once per 2D half of a 4D symbol (inputs `@4c/@4d` and `@4e/@4f`, data
 This gives one Viterbi branch metric per 2D half, which fits the V.34 4D
 trellis decoder. The roles of C4B8 and C4D8 were not traced. No routine in
 the ROM code region was found reading this table.
+
+### Side-bit map 0690 and fallback 06B0
+
+Firmware copies: C4B8 and C4D8 (same overlay). Per 2D half, BAE4–BB02:
+
+    d   = C3B8[16·row + col]             ; byte chosen by bit 9 of x − y
+    b   = (C4B8[row + (16 if high byte)] >> col) & 1   ; satl, TREG1 (MMR 0Dh) = col
+    m   = 2·d + b
+    if m == 0x1FE: m = C4D8[2·(row & 3) + sign(x − y)]  ; rolb pulls the sign from ACCB
+
+* **0690–06AF** is a 1-bit map: words 0–15 go with the low byte, 16–31 with
+  the high byte; word = row, bit = column. Every saturated (255) cell has
+  b = 0, so the sentinel is exactly 0x1FE.
+* **06B0–06B7** = 194 191 19D 19C 1FF 1FF 197 196: finite replacements
+  (metric ≈ C8–CE, two at FF) for saturated cells, keyed by row mod 4 and the
+  sign of x − y. Their LSBs are side bits in the same format.
+* b is **not** a rounding bit of d: it does not make the distance surface any
+  smoother, in any arrangement of the map (rows/columns swapped, halves swapped).
+
+Consumer, BB58–BB74: the metric stored at data 0250 + 2n is
+`min(m >> @54, @55)` (`satl` with TREG1 = `@54`, then `crlt`). The bits that
+shift drops (`m & ((1 << @54) − 1)`, b among them) are combined for both
+halves (`@58` low bits + `@59 << @54`), shifted left 3 and ORed with a 3-bit
+value from the C3A8 table into data 0260 + n. So b is carried with the
+stored decision word, not the metric. It looks like a per-cell decision
+(for example, which of two candidate points is nearest), but what it selects
+was not traced; nor were the values of `@54`/`@55`.
