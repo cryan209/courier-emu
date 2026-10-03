@@ -1,0 +1,418 @@
+CTS=True DSR=True CD=False RI=False
+=== ATI2
+ATI2
+OK
+
+OK
+
+=== ATI4
+ATI4
+USRobotics Courier V.Everything Settings...
+
+   B0  C1  E1  F1  L0  M1  Q2  V1  X7
+   SPEED=19200  PARITY=N  WORDLEN=8
+   DIAL=HUNT   OFF LINE   TIMER
+
+   &A3  &B1  &C1  &D2  &H0  &I0  &K1  &L0  &M4  &N0
+   &P0  &R1  &S0  &T5  &U0  &X0  &Y1  %N6  #CID=0  
+
+   S00=000  S01=000  S02=043  S03=013  S04=010  S05=008  S06=004  S07=060  
+   S08=002  S09=006  S10=014  S11=072  S12=050  S13=032  S14=000  S15=000  
+   S16=000  S17=000  S18=000  S19=000  S20=000  S21=010  S22=017  S23=019  
+   S24=150  S25=005  S26=001  S27=001  S28=008  S29=020  S30=000  S31=000  
+   S32=009  S33=000  S34=000  S35=000  S36=000  S37=000  S38=000  S39=011  
+   S40=000  S41=003  S42=126  S43=200  S44=015  S45=000  S46=000  S47=000  
+   S48=000  S49=000  S50=000  S51=000  S52=000  S53=003  S54=064  S55=000  
+   S56=000  S57=000  S58=000  S59=001  S60=000  S61=010  S62=000  S63=000  
+   S64=000  S65=000  S66=000  S67=000  S68=000  S69=000  S70=000  S71=056  
+   S72=125  S73=121  
+
+   LAST DIALLED #: T2903                                
+
+OK
+
+=== ATI5
+ATI5
+USRobotics Courier V.Everything NVRAM Settings...
+
+   SPEED=9600    PARITY=N  WORDLEN=8  DIAL=TONE 
+
+   B0   F1   L2   M1   X7
+   &A3  &B1  &H0  &I0  &K1  &L0  &M4  &N0
+   &P0  &R1  &S0  &T5  &U0  &X0  &Y1  %N6  #CID=0
+
+   S00=001  S02=043  S03=013  S04=010  S05=008  S06=004  S07=060  S08=002
+   S09=006  S10=014  S11=072  S12=050  S13=032  S14=000  S15=000  S19=000
+   S21=010  S22=017  S23=019  S24=150  S25=005  S26=001  S27=001  S28=008
+   S29=020  S31=000  S32=009  S33=000  S34=000  S35=000  S36=000  S37=000
+   S38=000  S39=011  S40=000  S41=003  S42=126  S43=200  S44=015  S51=000
+   S53=003  S54=064  S55=000  S56=000  S57=000  S58=000  S59=001  S60=000
+   S61=010  S69=000  S70=000  S71=056  S72=125  S73=121
+   STORED COMMAND = 
+
+OK
+
+=== ATI6
+ATI6
+USRobotics Courier V.Everything Link Diagnostics...
+
+Chars sent                   67      Chars Received              290
+Chars lost                    0
+Octets sent                   0      Octets Received               0
+Blocks sent                   0      Blocks Received               0
+Blocks resent                 0
+
+Retrains Requested            0      Retrains Granted              0
+Line Reversals                0      Blers                         0
+Link Timeouts                 0      Link Naks                     0
+
+Data Compression       NONE
+Equalisation           Long
+Fallback               Enabled
+Protocol               NONE
+Speed                  45333/31200
+Last Call              00:03:25
+
+Disconnect Reason is Loss of Carrier
+OK
+
+=== ATI9
+ATI9
+(1.0USR00BA\\MODEM\PNPC107\USRobotics Courier V.Everything EXT)
+
+OK
+
+=== ATI10
+ATI10
+USRobotics Courier V.Everything
+
+                            DIAL SECURITY STATUS
+
+    DIAL SECURITY ENABLED:[Y]                  LOCAL SECURITY ENABLED:[N]
+
+    PROMPTING ENABLED:[Y]                      FORCED AUTOPASS:[Y]
+
+    DTMF SECURITY ENABLED:[N]                  DTMF PASSWORD:[NO PSW]
+
+    LOCAL ACCESS PASSWORD:[NO PSW]             AUTOPASS PASSWORD:[NO PSW]
+
+ACCOUNT   PSW       ACCT/E DIAL/B NEW_#  PHONE #                              
+   #0     [REDACTED]    [Y]    [N]   [N]   ,                                    
+   #1     [NO PSW]    [N]    [N]   [N]                                        
+   #2     [NO PSW]    [N]    [N]   [N]                                        
+   #3     [NO PSW]    [N]    [N]   [N]                                        
+   #4     [NO PSW]    [N]    [N]   [N]                                        
+   #5     [NO PSW]    [N]    [N]   [N]                                        
+   #6     [NO PSW]    [N]    [N]   [N]                                        
+   #7     [NO PSW]    [N]    [N]   [N]                                        
+   #8     [NO PSW]    [N]    [N]   [N]                                        
+   #9     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== ATI11
+  #10     [NO PSW]    [N]    [N]   [N]                                        
+  #11     [NO PSW]    [N]    [N]   [N]                                        
+  #12     [NO PSW]    [N]    [N]   [N]                                        
+  #13     [NO PSW]    [N]    [N]   [N]                                        
+  #14     [NO PSW]    [N]    [N]   [N]                                        
+  #15     [NO PSW]    [N]    [N]   [N]                                        
+  #16     [NO PSW]    [N]    [N]   [N]                                        
+  #17     [NO PSW]    [N]    [N]   [N]                                        
+  #18     [NO PSW]    [N]    [N]   [N]                                        
+  #19     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== ATI12
+  #20     [NO PSW]    [N]    [N]   [N]                                        
+  #21     [NO PSW]    [N]    [N]   [N]                                        
+  #22     [NO PSW]    [N]    [N]   [N]                                        
+  #23     [NO PSW]    [N]    [N]   [N]                                        
+  #24     [NO PSW]    [N]    [N]   [N]                                        
+  #25     [NO PSW]    [N]    [N]   [N]                                        
+  #26     [NO PSW]    [N]    [N]   [N]                                        
+  #27     [NO PSW]    [N]    [N]   [N]                                        
+  #28     [NO PSW]    [N]    [N]   [N]                                        
+  #29     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== AT$
+  #30     [NO PSW]    [N]    [N]   [N]                                        
+  #31     [NO PSW]    [N]    [N]   [N]                                        
+  #32     [NO PSW]    [N]    [N]   [N]                                        
+  #33     [NO PSW]    [N]    [N]   [N]                                        
+  #34     [NO PSW]    [N]    [N]   [N]                                        
+  #35     [NO PSW]    [N]    [N]   [N]                                        
+  #36     [NO PSW]    [N]    [N]   [N]                                        
+  #37     [NO PSW]    [N]    [N]   [N]                                        
+  #38     [NO PSW]    [N]    [N]   [N]                                        
+  #39     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== AT&$
+  #40     [NO PSW]    [N]    [N]   [N]                                        
+  #41     [NO PSW]    [N]    [N]   [N]                                        
+  #42     [NO PSW]    [N]    [N]   [N]                                        
+  #43     [NO PSW]    [N]    [N]   [N]                                        
+  #44     [NO PSW]    [N]    [N]   [N]                                        
+  #45     [NO PSW]    [N]    [N]   [N]                                        
+  #46     [NO PSW]    [N]    [N]   [N]                                        
+  #47     [NO PSW]    [N]    [N]   [N]                                        
+  #48     [NO PSW]    [N]    [N]   [N]                                        
+  #49     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== ATS$
+  #50     [NO PSW]    [N]    [N]   [N]                                        
+  #51     [NO PSW]    [N]    [N]   [N]                                        
+  #52     [NO PSW]    [N]    [N]   [N]                                        
+  #53     [NO PSW]    [N]    [N]   [N]                                        
+  #54     [NO PSW]    [N]    [N]   [N]                                        
+  #55     [NO PSW]    [N]    [N]   [N]                                        
+  #56     [NO PSW]    [N]    [N]   [N]                                        
+  #57     [NO PSW]    [N]    [N]   [N]                                        
+  #58     [NO PSW]    [N]    [N]   [N]                                        
+  #59     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== ATD$
+  #60     [NO PSW]    [N]    [N]   [N]                                        
+  #61     [NO PSW]    [N]    [N]   [N]                                        
+  #62     [NO PSW]    [N]    [N]   [N]                                        
+  #63     [NO PSW]    [N]    [N]   [N]                                        
+  #64     [NO PSW]    [N]    [N]   [N]                                        
+  #65     [NO PSW]    [N]    [N]   [N]                                        
+  #66     [NO PSW]    [N]    [N]   [N]                                        
+  #67     [NO PSW]    [N]    [N]   [N]                                        
+  #68     [NO PSW]    [N]    [N]   [N]                                        
+  #69     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== AT%$
+  #70     [NO PSW]    [N]    [N]   [N]                                        
+  #71     [NO PSW]    [N]    [N]   [N]                                        
+  #72     [NO PSW]    [N]    [N]   [N]                                        
+  #73     [NO PSW]    [N]    [N]   [N]                                        
+  #74     [NO PSW]    [N]    [N]   [N]                                        
+  #75     [NO PSW]    [N]    [N]   [N]                                        
+  #76     [NO PSW]    [N]    [N]   [N]                                        
+  #77     [NO PSW]    [N]    [N]   [N]                                        
+  #78     [NO PSW]    [N]    [N]   [N]                                        
+  #79     [NO PSW]    [N]    [N]   [N]                                        
+Strike a key when ready . . . 
+=== ATG$
+
+OK
+
+CTS=True DSR=True CD=False RI=False
+=== ATI11
+ATI11
+USRobotics Courier V.Everything Link Diagnostics...
+
+Modulation               V.90/V.34+
+Carrier Freq    ( Hz )   NONE/1829
+Symbol Rate              8000/3200
+Trellis Code             NONE/64S-4D
+Nonlinear Encoding       NONE/ON
+Precoding                NONE/OFF
+Shaping                  OFF/ON
+Preemphasis Index        NONE/2
+Recv/Xmit Level (-dBm)   71.9/17.3
+SNR             ( dB )   40.3
+Near Echo Loss  ( dB )   14.2
+Far Echo Loss   ( dB )   
+Roundtrip Delay (msec)   150
+Timing Offset   ( ppm)   -6039
+Carrier Offset  ( ppm)   0
+RX Upshifts              1
+RX Downshifts            0
+TX Speedshifts           0
+V.90 Status              uu,5,12N,12.1,0,0N,0,38.6,63.9
+
+OK
+
+=== ATI12
+ATI12
+ERROR
+
+=== ATI13
+ATI13
+ERROR
+
+=== ATI14
+ATI14
+ERROR
+
+=== ATI15
+ATI15
+USRobotics Courier V.Everything CID Status...
+
+
+
+OK
+
+=== AT$
+AT$
+HELP,  Command Quick Reference (CTRL-S to Stop, CTRL-C to Cancel)
+
+#$    HELP, Octothorpe Commands      Kn    n=0  Call Duration Mode        
+&$    HELP, Ampersand Commands             n=1  Real Time Clock Mode      
+%$    HELP, Percent Commands         Ln    n=0  Lowest Speaker Volume     
++p$   HELP, V92 Commands                   n=1  Low Speaker Volume        
+A/    Repeat Last Command                  n=2  Medium Speaker Volume     
+AT    Command Mode Prefix                  n=3  High Speaker Volume       
+A     Answer Call                    Mn    n=0  Speaker Off               
+Bn    n=0  V.32 originate mode             n=1  Speaker On Until CD       
+      n=1  HST originate mode              n=2  Speaker Always On         
+Cn    n=0  Transmitter Off                 n=3  Speaker Off During Dial   
+      n=1  Transmitter On            On    n=0  Return Online              
+Dn    Dial a Telephone Number              n=1  Return Online & Retrain    
+      n=0..9#*TPR,;"W@!()-                 n=2  Return Online & Speed Shift
+DL    Dial Last Phone Number         P     Pulse Dial                     
+DSn   Dial Stored Phone Number       Qn    n=0  Result Codes Sent         
+D$    HELP, Dial Commands                  n=1  Quiet (No Result Codes)   
+En    n=0  No Command Echo                 n=2  Verbose/Quiet On Answer   
+      n=1  Echo Command Chars        Sr=n  Sets Register "r" to "n"       
+Fn    n=0  Online Echo               Sr?   Query Register "r"             
+Strike a key when ready . . . 
+=== AT&$
+      n=1  No Online Echo            S$    HELP, S Registers              
+Hn    n=0  On Hook (Hang Up)         T     Tone Dial                      
+      n=1  Off Hook                  Vn    n=0  Numeric Responses         
+In    n=0  Product Code                    n=1  Verbal Responses          
+      n=1  Checksum                  Xn    n=0  Basic Result Codes        
+      n=2  RAM Test                        n=1  Extended Result Codes     
+      n=3  Banner/Clock set                n=2-7  Advanced Result Codes   
+      n=4  Current Settings          Z     Software Reset                 
+      n=5  NVRAM Settings            Z!    Hardware Reset                 
+      n=6  Link Diagnostics          +++   Escape Code                    
+      n=7  Product Configuration     $     HELP,  Command Summary         
+      n=10 Dial Security Status    
+      n=11 Extended Link Screen      
+      n=15 CID Status                
+      n=16 Channel Probe             
+      n=17 Training Signature        
+
+OK
+
+=== ATS$
+ATS$
+HELP, S Register Functions (CTRL-S to Stop, CTRL-C to Cancel)
+
+S0  Ring to Answer On                  S52 Reserved                           
+S1  Counts # of Rings                  S53 Bit Mapped                         
+S2  Escape Code Char                         1 = Enable Dial Security         
+S3  Carriage Return Char                     2 = Enable Autopass Fallback     
+S4  Line Feed Char                           4 = Enable Local Access Psw      
+S5  Backspace Char                           8 = Enable DTMF Security         
+S6  Wait Time/Dial Tone (sec)               16 = Reserved                     
+S7  Wait Time/Carrier (sec)                 32 = Reserved                     
+S8  Comma Time (sec)                        64 = Reserved                     
+S9  Carrier Detect Time (1/10sec)          128 = Reserved                     
+S10 Carrier Loss Time (1/10sec)        S54 Bit Mapped                         
+S11 Dial Tone Spacing (msec)                 1 = Disable 2400 symbol rate   
+S12 Escape Code Time (1/50sec)               2 = Disable 2743 symbol rate   
+S13 Bit Mapped                               4 = Disable 2800 symbol rate   
+      1 = Reset On DTR Loss                  8 = Disable 3000 symbol rate   
+      2 = Do Originate in Auto Answer       16 = Disable 3200 symbol rate   
+      4 = No Pause Before Result Codes      32 = Disable 3429 symbol rate   
+      8 = Do DS0 On DTR                     64 = Disable V.8 Call Indicate    
+     16 = Do DS0 On Reset                  128 = Disable V.8 Mode             
+Strike a key when ready . . . 
+=== ATD$
+     32 = Disable HST                  S55 Bit Mapped                         
+     64 = Disable MNP Level 3                1 = Disable 8S-2D trellis code   
+    128 = Hardware Reset                     2 = Disable 16S-4D trellis code  
+S14 Bit Mapped                               4 = Disable 32S-2D trellis code  
+      1 = Escape Code Hang Up                8 = Disable 64S-4D trellis code  
+S15 Bit Mapped                              16 = Reserved                     
+      1 = Disable High-Freq EQ              32 = Reserved                     
+      2 = Disable Online Fallback           64 = Reserved                     
+      4 = Disable 450 bps Back Channel     128 = Enable phase roll detection 
+      8 = Reduced Non-ARQ TX Buffer    S56 Bit Mapped                         
+     16 = Disable MNP Level 4                1 = Disable nonlinear coding
+     32 = Set DEL=Backspace                  2 = Disable TX level deviation    
+     64 = Unusual MNP-Incompatibility        4 = Disable preemphasis
+    128 = Custom Applications                8 = Disable precoding
+S16 Test Modes                              16 = Disable shaping
+      1 = Analog Loopback                   32 = Disable V34+
+      2 = Dial Test                         64 = Disable V34
+      4 = Test Pattern                     128 = Reserved                    
+      8 = Remote Digital Loopback      S57 Reserved                           
+Strike a key when ready . . . 
+=== AT%$
+     16 = Reserved                     S58 Bit Mapped                         
+     32 = Reserved                           1 = Reserved                     
+     64 = Reserved                           2 = Disable BLER monitor          
+    128 = Reserved                           4 = Reserved                     
+S17 Reserved                                 8 = Reserved                     
+S18 &Tn Test Timeout (sec)                  16 = Reserved                     
+S19 Inactivity Timeout (min)                32 = Disable V.90                  
+S20 Reserved                                64 = Disable V.92                  
+S21 Break Length (1/100sec)                128 = Reserved                    
+S22 Xon Char                           S59 Bit Mapped                         
+S23 Xoff Char                                1 = Disable enhanced V42bis       
+S24 DSR Pulse Time (1/50sec)                 2 = Alternate CID timing        
+S25 DTR Recognition Time (1/100sec)    S60 Reserved                           
+S26 RTS/CTS Delay Time (1/100sec)      S61 Reserved                           
+S27 Bit Mapped                         S62 Reserved                           
+      1 = Reserved                     S63 Reserved                           
+      2 = Disable TCM                  S64 Reserved                           
+      4 = Disable V32                  S65 Reserved                           
+      8 = Disable 2100hz               S66 Reserved                           
+Strike a key when ready . . . 
+=== AT#$
+     16 = Disable MNP Handshake        S67 Reserved                           
+     32 = Disable V.42                 S68 Reserved                           
+     48 = Disable V.42 Detect Phase    S69 Bit Mapped                         
+     64 = Reserved                           1 = Disable External PnP 
+    128 = Unusual SW-Incompatibility         2 = Enable Auto Redial  
+S28 V32 Handshake Time (1/10sec)             4 = HS LED at 14400            
+S29 V21 Handshake Time (1/10sec)             8 = HS LED at 16800            
+S30 Bit Mapped                              12 = HS LED in V.90             
+      1 = Enable feature upgrades           16 = Reserved                      
+S31 Reserved                                32 = Disable CTR21 DLG             
+S32 Talk/Data Switch                        64 = Disable loop monitor          
+      0 = Disabled                         128 = Reserved                     
+      1 = Originate Mode               S70 Bit Mapped                         
+      2 = Answer Mode                        1 = Enable ring type A 
+      3 = Redial Last Number                 2 = Enable ring type B 
+      4 = Dial Stored Number 0               4 = Enable ring type C 
+      5 = Auto Answer Toggle                 8 = Enable ring type D 
+      6 = Reset Modem                       16 = Enable ring type E 
+      7 = Initiate RDL                      32 = Reserved                     
+Strike a key when ready . . . 
+=== AT
+AT
+OK
+
+=== ATI16
+ATI16
+USRobotics Courier V.Everything Channel Probe...
+
+ -16  . x x x x x x x x x . . . . . . . . . . . . . . .   0
+ -18  x X X X X X X X X X X X X X X X X X X x . . . . .   2
+ -20  X X X X X X X X X X X X X X X X X X X X X x . . .   4
+ -22  X X X X X X X X X X X X X X X X X X X X X X x . .   6
+ -24  X X X X X X X X X X X X X X X X X X X X X X X . .   8
+ -26  X X X X X X X X X X X X X X X X X X X X X X X . .  10
+ -28  X X X X X X X X X X X X X X X X X X X X X X X . .  12
+ -30  X X X X X X X X X X X X X X X X X X X X X X X x .  14
+ -32  X X X X X X X X X X X X X X X X X X X X X X X X .  16
+ -34  X X X X X X X X X X X X X X X X X X X X X X X X .  18
+ -36  X X X X X X X X X X X X X X X X X X X X X X X X .  20
+ -38  X X X X X X X X X X X X X X X X X X X X X X X X .  22
+ -40  X X X X X X X X X X X X X X X X X X X X X X X X .  24
+ -42  X X X X X X X X X X X X X X X X X X X X X X X X X  26
+Level --------------------Frequency-------------------- Attn
+      0 0 0 0 0 0 1 1 1 1 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 
+      1 3 4 6 7 9 0 2 3 5 6 8 9 1 2 4 5 7 8 0 1 3 4 6 7 
+      5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 0 5 
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+
+OK
+
+=== ATI17
+ATI17
+USRobotics Courier V.Everything Training Signature...
+
+V.90 enabled on local modem
+V.8 negotiation completed
+V.90 Server/client pair established
+Channel supports x2/V.90
+High frequency rolloff is normal
+
+OK
+

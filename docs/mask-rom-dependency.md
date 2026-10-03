@@ -60,7 +60,8 @@ performs the *first* download on a 3453C - the transfer that installs the
 resident before any of this runs - is not answered by these images. The
 supervisor drives the same ports (`40..5e`, `18`, `1c`) as a 302/403 one, which
 implies a DSP-side loader is still listening; where it lives on a part that
-then unmaps the ROM is untested here, and no 3453C board has been probed.
+then unmaps the ROM is untested here. A 3453C running 2.3.33 is now on the bench and
+its DSP boots and answers mailbox tags; see [board-verified-3453c.md](board-verified-3453c.md).
 
 ## What is at `1800`, then: RAM, and probably the same RAM
 

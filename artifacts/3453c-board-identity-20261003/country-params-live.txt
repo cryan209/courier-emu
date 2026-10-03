@@ -1,0 +1,100 @@
+ 16 [0x1f81] w = 0x0000 (    0)  I7 revision prefix, the country code  
+ 18 [0x1f83] b = 0x0001 (    1)  Xmode default
+ 19 [0x1f84] b = 0x0001 (    1)  British spellings enabled
+ 20 [0x1f85] b = 0x0001 (    1)  S0 default
+ 21 [0x1f86] b = 0x0000 (    0)  S0 minimum value
+ 22 [0x1f87] b = 0x0014 (   20)  S0 maximum value
+ 23 [0x1f88] b = 0x0004 (    4)  S6 default
+ 24 [0x1f89] b = 0x0003 (    3)  S6 minimum value
+ 25 [0x1f8a] b = 0x0005 (    5)  S6 maximum value
+ 26 [0x1f8b] b = 0x003c (   60)  S7 default
+ 27 [0x1f8c] b = 0x0000 (    0)  S7 minimum value
+ 28 [0x1f8d] b = 0x005a (   90)  S7 maximum, answer mode
+ 29 [0x1f8e] b = 0x005a (   90)  S7 maximum, originate mode
+ 30 [0x1f8f] b = 0x0002 (    2)  S8 default
+ 31 [0x1f90] b = 0x0000 (    0)  S8 minimum value
+ 32 [0x1f91] b = 0x00ff (  255)  S8 maximum value
+ 33 [0x1f92] b = 0x0000 (    0)  S9 minimum value
+ 34 [0x1f93] b = 0x00ff (  255)  S9 maximum value
+ 35 [0x1f94] b = 0x0000 (    0)  S10 minimum value
+ 36 [0x1f95] b = 0x00fe (  254)  S10 maximum value
+ 37 [0x1f96] b = 0x0048 (   72)  S11 default
+ 38 [0x1f97] b = 0x0048 (   72)  S11 minimum value
+ 39 [0x1f98] b = 0x00ff (  255)  S11 maximum value
+ 40 [0x1f99] b = 0x0028 (   40)  Ring Minimum Length, in 5 ms
+ 41 [0x1f9a] b = 0x000c (   12)  S1 limit between rings, in sec
+ 42 [0x1f9b] b = 0x001e (   30)  Ring High Frequency, 2400/freq
+ 43 [0x1f9c] b = 0x00b4 (  180)  Ring Low Fequency, 2400/freq
+ 44 [0x1f9d] w = 0x3910 (14608)  Transmit Level Leased Line mode
+ 46 [0x1f9f] w = 0x3910 (14608)  Transmit Level Dial Up
+ 48 [0x1fa1] b = 0x0007 (    7)  Transmit Level Adjust, bit mapped, 0-none 1-dialup 2-leased 4-fax
+ 49 [0x1fa2] b = 0x000b (   11)  S39 default
+ 50 [0x1fa3] w = 0x2f00 (12032)  DTMF Level
+ 52 [0x1fa5] w = 0x0c80 ( 3200)  DTMF Twist
+ 54 [0x1fa7] b = 0x0000 (    0)  Dial Shunt, 0=disable, 1=enable, 2=not in IDP
+ 55 [0x1fa8] b = 0x0001 (    1)  Pulse Method, 0-7, see comments in code
+ 56 [0x1fa9] b = 0x004b (   75)  IDP, in 10 ms
+ 57 [0x1faa] b = 0x0000 (    0)  &P Default
+ 58 [0x1fab] w = 0x020d (  525)  Dial Tone Level
+ 60 [0x1fad] b = 0x0001 (    1)  S27 default
+ 61 [0x1fae] b = 0x0000 (    0)  ?
+ 62 [0x1faf] b = 0x0000 (    0)  &G Default
+ 63 [0x1fb0] b = 0x0003 (    3)  Dial Tone Method, 0=normal, 2=Italy, 3=Finland
+ 64 [0x1fb1] b = 0x0038 (   56)  Dial Tone Amount, in 10 ms 
+ 65 [0x1fb2] b = 0x0000 (    0)  Dial Tone Delay After Detection, in 10 ms
+ 66 [0x1fb3] b = 0x0005 (    5)  Dial Tone Wait Time (instead of S6), in sec
+ 67 [0x1fb4] b = 0x0000 (    0)  Dial Tone Dropout Cutoff Point, in ms
+ 68 [0x1fb5] b = 0x0000 (    0)  Dial Tone Detection Required, 1=yes, 0=no
+ 69 [0x1fb6] b = 0x000a (   10)  Flash Switch Hook Time, 0=disabled, X=X sec
+ 70 [0x1fb7] b = 0x0000 (    0)  Quote Dial Disabled, 1=disabled, 0=enabled
+ 71 [0x1fb8] w = 0x3910 (14608)  FAX Transmit Level
+ 73 [0x1fba] b = 0x0002 (    2)  Off Hook Restrictions,   0=no rest.; 1=ATA, ATD, ATH1
+ 74 [0x1fbb] b = 0x000c (   12)  Repeat Dial Retry, number of retries
+ 75 [0x1fbc] b = 0x0005 (    5)  Repeat Dial Interval, in sec (if 255, then S8 delay)
+ 76 [0x1fbd] b = 0x0000 (    0)  Blacklist Method, 0=none, 1=GER, 2=FRA, 3=SWS, 4=SWE,
+ 77 [0x1fbe] b = 0x0000 (    0)  Blacklist Maximum Number of Attempts
+ 78 [0x1fbf] b = 0x0005 (    5)  Time Between Off Hook Attempts, in 2 sec
+ 79 [0x1fc0] b = 0x0001 (    1)  Force &g2, 1=enabled, 0=disabled
+ 80 [0x1fc1] b = 0x0001 (    1)  Calling Tone, 1=enabled, 0=disabled
+ 81 [0x1fc2] b = 0x0000 (    0)  Number Unobtainable, 1=enabled, 0=disabled
+ 82 [0x1fc3] b = 0x0000 (    0)  Call Progress Filter, filter 0-4 see AS.EQU
+ 83 [0x1fc4] w = 0x00c8 (  200)  Call Progress Level
+ 85 [0x1fc6] b = 0x0004 (    4)  Busy ON minimum, in 20 ms
+ 86 [0x1fc7] b = 0x0028 (   40)  Busy ON maximum, in 20 ms
+ 87 [0x1fc8] b = 0x0005 (    5)  Busy OFF minimum, in 20 ms
+ 88 [0x1fc9] b = 0x002d (   45)  Busy OFF maximum, in 20 ms
+ 89 [0x1fca] b = 0x0004 (    4)  Number of Busys
+ 90 [0x1fcb] b = 0x0000 (    0)  Busy Detection Required, 1=yes, 0=no
+ 91 [0x1fcc] b = 0x0000 (    0)  Bell Answer Sequence Disabled, 1=disabled, 0=enabled
+ 92 [0x1fcd] b = 0x0007 (    7)  Ringback ON minimum, in 20 ms
+ 93 [0x1fce] b = 0x0096 (  150)  Ringback ON maximum, in 20 ms
+ 94 [0x1fcf] b = 0x0032 (   50)  Ringback OFF minimum, in 20 ms
+ 95 [0x1fd0] b = 0x0001 (    1)  Force V21 connection, 1=enabled, 0=disabled
+ 96 [0x1fd1] b = 0x00c8 (  200)  Billing delay, in 5ms (1 sec accounted for)
+ 97 [0x1fd2] b = 0x0000 (    0)  Comma Like w, 1-yes, 0=no
+ 98 [0x1fd3] b = 0x0000 (    0)  NO Slash, 1=slash disabled, 0=slash enabled
+ 99 [0x1fd4] w = 0x02f0 (  752)  Ring Threshold, 256/duty cycle
+101 [0x1fd6] b = 0x0000 (    0)  Eye Loss Disconnect, 1=yes, 0=no
+102 [0x1fd7] b = 0x0000 (    0)  Post Pulse Delay, in 5 ms
+103 [0x1fd8] b = 0x000c (   12)  Call Tone Start, in 170 ms
+104 [0x1fd9] b = 0x0078 (  120)  Ring Silence, the amount of time before "RING", in 10 ms
+105 [0x1fda] b = 0x0000 (    0)  Adaptive Dial Mode, 0=enabled, 1=disabled
+106 [0x1fdb] b = 0x0000 (    0)  Off Hook Timout, 1=yes, 0=no
+107 [0x1fdc] b = 0x0000 (    0)  Swiss Flag, 1=yes, 0=no
+108 [0x1fdd] w = 0x1000 ( 4096)  Transmit Level Divisor, greater than 1000h
+110 [0x1fdf] b = 0x0000 (    0)  Longest ring dropout, in 20 ms
+111 [0x1fe0] b = 0x0000 (    0)  S19 minimum value
+112 [0x1fe1] b = 0x00ff (  255)  S19 maxmum value
+113 [0x1fe2] b = 0x0000 (    0)  S19 default value
+114 [0x1fe3] w = 0x0000 (    0)  Delay before blacklist gets cleared out, in 5 ms
+116 [0x1fe5] b = 0x0006 (    6)  S39 minimum value
+117 [0x1fe6] w = 0x017c (  380)  T_off_min, in 5 ms
+119 [0x1fe8] b = 0x0000 (    0)  No &D0 or &D1, 1=enabled, 0=disabled
+120 [0x1fe9] b = 0x0000 (    0)  A-law default, 1=enabled, 0=disabled
+121 [0x1fea] b = 0x002c (   44)  Impedance match byte
+122 [0x1feb] b = 0x00bc (  188)  SI DAA register 17
+123 [0x1fec] b = 0x0002 (    2)  SI DAA register 18
+124 [0x1fed] b = 0x0001 (    1)  Flash Table version
+125 [0x1fee] b = 0x0000 (    0)  Distinctive Ring type 0=usa 1=uk
+126 [0x1fef] b = 0x0002 (    2)  CID modulation 0=none, 1=Bell212 2=V.23 3=Russian MF
+127 [0x1ff0] b = 0x0002 (    2)  CID timing 0=none, 1=USA, 2=UK 3=Russian MF

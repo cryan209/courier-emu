@@ -1,0 +1,25 @@
+CTS=True DSR=True CD=False RI=False
+=== AT~C?
+AT~C?
+00:US/Canada           01:UK
+02:Germany             03:Italy
+04:France              05:Russia
+06:Japan               07:Australia
+08:CTR21               09:Brazil
+10:China               11:Czech Rep
+12:Hong Kong           13:Hungary
+14:Indonesia           15:Korea
+16:Malaysia            17:Mexico
+18:New Zealand         19:Poland
+20:Romania             21:Singapore
+22:South Africa        23:Taiwan
+24:Argentina           25:India
+26:Bulgaria            27:Turkey
+
+
+OK
+
+=== AT
+AT
+OK
+

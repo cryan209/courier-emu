@@ -150,3 +150,48 @@ US-cadence ring. S1 counted 1..8 at ~6 s intervals (2 s on / 4 s off), so the ri
 qualified and counted. At the 9th ring the modem answered (serial went quiet), then `NO CARRIER`
 ~4 s later. **No `RING` result was printed at any point, even with Q0.** So ring counting works
 and the open question is only the `RING` result code (and RI), not ring detection.
+
+## Country parameter table (RAM `0x1f71..0x1ff1`), `country-params-live.txt`
+
+A hidden dump routine at `0x7d898` (far, prints `ADDRESS VALUE DESCRIPTION`) walks this table;
+`0x825d3` is the matching writer (`0..0x80`, word-sized at 10,2c,2e,32,34,3a,47,53,63,6c,72,75).
+Values were decoded from the board RAM dump with the routine's own descriptions; full list in the txt.
+Relevant here:
+
+* Ring: min length 40x5 = 200 ms; frequency 2400/180..2400/30 = 13.3..80 Hz; T_off_min 380x5 = 1.9 s;
+  "Ring Silence, the amount of time before RING" 120x10 = 1.2 s; distinctive ring type 0 = usa.
+  **A US ring (20 Hz, 2 s on / 4 s off) passes all of them**, matching S1 counting it.
+* CID modulation 2 (V.23), CID timing 2 (UK).
+* `[0x1fea]` "Impedance match byte" = `2c`, `[0x1feb]` "SI DAA register 17" = `bc`, `[0x1fec]` "SI DAA
+  register 18" = `02`. These are what `0x677ff` sends as tags `7d`, `82` (`& fb`) and `83` - so tag
+  `0x7d` is Si register 16 (`2c` = ACT complex AC termination, DCT = 11 TBR21), `0x82` reg 17, `0x83` reg 18.
+  That accounts for the "unexplained" `0x82`/`0x83` traffic noted in courier_firmware_analysis.md.
+
+## Why no RING - not found
+
+Ruled out, statically: ring qualification (above), S70 (zero = accept any), the ring-silence timer
+(`0x6e151`, 1.2 s; on expiry it starts caller ID with tag `0x79` only when `[0x287] & 0x10` is clear -
+not on this board), the ring counter (`0x6e3c9..0x6e58c`). The counter reports through
+`57bb:c73a -> [0x2ac]` as event 3 (below S0) or 9 (at S0, with tag `0x7a` = answer); **every state
+handler assigned to `[0x2ac]` ignores event 3** or only changes state on it, so that path never prints.
+The result printer is `0x62ee1` (ax = code, gate: `[0x202e]` bit 0, `[0x953]` = Q, table at `0x80187`,
+`RING` = 2); its only direct caller sits in the routine at `0x5b565`, which has no direct callers -
+it is reached indirectly. Where code 2 is issued is still open.
+
+## Country selection: the `AT~` family (`country-list.txt`)
+
+Main AT dispatcher `0x816a5`: characters `!`..`Z` index the table at `0x85e50` (base `!`); `~` is
+remapped (`sub al,23h`) to the slot after `Z` -> `0x82eaf`, which reads two characters:
+
+| form | action |
+|---|---|
+| `AT~C?` | list the 28 tables as `nn:name` (`7b59:1ca0`) - **run on the board**, read-only |
+| `AT~C#n` | `[0x173]` = `[0xa37]` = n, then `7b59:1b8b` copies table n (`cs:0d42 + n*80h`, seg `7b59`) to RAM `0x1f71` |
+| `AT~C!` | gated on `[0x287] & 0x10`, -> `57bb:acae`, unread |
+| `AT~F!` | `7b59:1c9c` then four `57bb:1424`, unread |
+| `AT~X!` | `lcall 777c:1ebe` then far return to `ffff:0000`-style restart - the `~X!` token in courier_firmware_analysis.md; do not send |
+| `AT~P?`, `AT~P!` | only when `[0xa32] & 8`; unread |
+
+Index `[0x173]` = 8 (CTR21) live; `0x1c` means "custom table at RAM `0x17a8`". At boot `0x583db`
+sets `[0x173]` from `[0xa37]`, falling back to 8 when it is above `0x1c`. `AT~C#n` itself writes RAM only;
+whether `[0xa37]` reaches NVRAM/flash (e.g. via `&W`) is not checked.
