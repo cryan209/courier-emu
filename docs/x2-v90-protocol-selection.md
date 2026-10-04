@@ -4205,8 +4205,10 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   the Courier's J and sets bit 9 (`opl *, #0200` at `a91b`, `[006f]` = `2c0` then `ac0`, instruction
   1,250,235,301) but does not consume it, the Courier never receives a J, and in the plain V.34
   call neither side does, so `aede` has not run with either setting and no 16-point training
-  signal has been seen.  The Courier also sets bit 9 itself at `e6c5` and `ea34`.  The V.34 name of
-  the field was not checked.
+  signal has been seen.  The Courier also sets bit 9 itself at `e6c5` and `ea34`.  The choice of a
+  4-point or 16-point training constellation is a V.34 feature (stated by the project owner; the
+  clause and the exact J field were not looked up here), so the reading is consistent with the
+  standard rather than something x2-specific.
   This replaces earlier readings of the tail as a client record, a two-lane stream or random
   data; those came from not undoing the differential encoding.  The Courier's burst therefore
   ends with J, as the V.34 Phase 3 sequence requires.  The pair probe now traces the analog
