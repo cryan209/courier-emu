@@ -477,18 +477,10 @@ class CourierDspBridge:
         self._loader_started = False
         self._loader_nmi_seen = False
         self._download_destination = image.dsp_program_segments()[0][0]
-        if dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
-            # A third C50 trace window, for a handler the two compiled-in
-            # ranges do not cover.
-            self.core.set_pc_trace_range(*dsp_trace_range)
+        self._dsp_trace_range = dsp_trace_range
         self.dsp_peek = dict(dsp_peek or {})
         self.dsp_write_watch = dsp_write_watch
-        if dsp_write_watch is not None and hasattr(self.core, "set_data_trace_filter"):
-            # Arm the write trace from construction rather than from the call
-            # engine, which on 302/403 never starts.
-            self.core.set_data_trace_filter(dsp_write_watch, True)
-            self.core.trace_data_writes(True)
-            self._rate_trace_enabled = True
+        self._arm_core_traces()
         self._call_overlay = self._find_call_overlay()
         self._call_overlay_active = False
         # Aim the core's V.8 dispatcher counter at this image's own copies.
@@ -1291,6 +1283,42 @@ class CourierDspBridge:
             self._queue_runtime_message(0x0003, 0x0000)
         if not self.boot_rom_enabled:
             self._call_resume_pending = True
+
+    def _dump_dsp_memory(self) -> None:
+        """Diagnostic: write the DSP's program and data memory to the directory in
+        COURIER_DSP_DUMP, for a core that was rebuilt and downloaded during the run."""
+        target = os.environ.get("COURIER_DSP_DUMP")
+        if not target or not hasattr(self.core, "program"):
+            return
+        directory = Path(target) / str(os.getpid())
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "analog-dsp-program.bin").write_bytes(b"".join(
+            self.core.program(address).to_bytes(2, "little") for address in range(0x10000)))
+        if hasattr(self.core, "first_exec"):
+            (directory / "analog-dsp-first-exec.bin").write_bytes(b"".join(
+                self.core.first_exec(address).to_bytes(8, "little") for address in range(0x10000)))
+        (directory / "analog-dsp-data.bin").write_bytes(b"".join(
+            self.core.data(address).to_bytes(2, "little") for address in range(0x10000)))
+
+    def _arm_core_traces(self) -> None:
+        """Apply the requested PC range and data-write filter to the current core.
+
+        The DSP is rebuilt at every line-operation reset (two or three per call),
+        so this runs again after each rebuild; a range set only at construction
+        is gone before the training signal starts.
+        """
+        if os.environ.get("COURIER_DSP_DUMP") and hasattr(self.core, "set_coverage"):
+            self.core.set_coverage(True)
+        if self._dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
+            # A third C50 trace window, for a handler the two compiled-in
+            # ranges do not cover.
+            self.core.set_pc_trace_range(*self._dsp_trace_range)
+        if self.dsp_write_watch is not None and hasattr(self.core, "set_data_trace_filter"):
+            # Arm the write trace from construction rather than from the call
+            # engine, which on 302/403 never starts.
+            self.core.set_data_trace_filter(self.dsp_write_watch, True)
+            self.core.trace_data_writes(True)
+            self._rate_trace_enabled = True
 
     def _configure_boot_rom(self) -> None:
         if self.is3453:
@@ -2531,6 +2559,8 @@ class CourierDspBridge:
             # by itself.
             self.core.close()
             self.core = NativeC5x(self.image)
+            # The trace settings belong to the core that is gone.
+            self._arm_core_traces()
             self._rx_cushion_rate = None
             # Output cursors index this core's arrays, which restart at zero.
             self._exchange_tx_index = 0
@@ -3855,6 +3885,7 @@ class CourierDspBridge:
         # native handle, and a status built after the destroy used to report a
         # datapump that ran for millions of instructions as never started.
         self._last_state = self.core.state()
+        self._dump_dsp_memory()
         try:
             self._last_status = self.status()
         except Exception:

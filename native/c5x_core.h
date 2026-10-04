@@ -388,6 +388,14 @@ public:
     // were. A harness that reads none of them - MICA's native board - turns
     // them off, which is about a tenth of step()'s cost; the window set by
     // set_pc_trace_range() is traced either way.
+    // Coverage: the instruction count at which each program address first ran
+    // (0 = never), kept per core. Off by default; one predictable branch per step.
+    void set_coverage(bool enabled)
+    {
+        m_coverage = enabled;
+        if (enabled && m_first_exec.empty()) m_first_exec.assign(65536, 0);
+    }
+    uint64_t first_exec(uint16_t pc) const { return m_first_exec.empty() ? 0 : m_first_exec[pc]; }
     void set_step_probes(bool enabled) { m_step_probes = enabled; }
     bool step_probes() const { return m_step_probes; }
 
@@ -451,6 +459,8 @@ private:
     std::deque<std::vector<uint64_t>> m_pc_captures;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
     bool m_step_probes = true;
+    bool m_coverage = false;
+    std::vector<uint64_t> m_first_exec;
     uint64_t m_delay_move_ignored = 0;
     uint16_t m_delay_move_last_pc = 0, m_delay_move_last_address = 0;
     bool m_trace_data_writes = false;

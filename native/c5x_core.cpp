@@ -1723,6 +1723,7 @@ void C5xCore::step()
             m_negotiation_arp = m_st0.arp; m_negotiation_pm = m_st1.pm;
         }
         m_op = ROPCODE();
+        if (m_coverage && !m_first_exec[previous_pc]) m_first_exec[previous_pc] = m_instructions + 1;
         if (m_step_probes) {   // PROBE: first-ever execution of each PC after 1.6G instructions
             static std::vector<uint8_t> seen(65536, 0);
             if (!seen[previous_pc]) {

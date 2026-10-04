@@ -331,6 +331,16 @@ void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabl
         static_cast<uint16_t>(address), enabled != 0);
 }
 
+void courier_c5x_set_coverage(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_coverage(enabled != 0);
+}
+
+uint64_t courier_c5x_get_first_exec(void *handle, unsigned pc)
+{
+    return handle ? static_cast<C5xCore *>(handle)->first_exec(uint16_t(pc)) : 0;
+}
+
 void courier_c5x_set_pc_trace_range(void *handle, unsigned first, unsigned last)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_pc_trace_range(
