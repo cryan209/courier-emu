@@ -4187,7 +4187,7 @@ using a small fixed set of codewords (`tools/analyze_server_training.py`,
 | B tail | 10.1214-10.270 | the same two levels | the descrambled bits become the 12-bit pattern `000011011001`, repeated 94.75 times (about 0.14 s) |
 | C | 10.270-11.020 | two levels, +-1820 (`c1 41`) | scrambled ones again, same polynomial, at lower amplitude, for 0.75 s |
 | D | 11.020-11.164 | six levels, +-5884, +-7676, +-8828 | an exactly periodic pattern, period 36 octets (six periods of six), 32 periods |
-| E | 11.164 on | 34 octets, 17 magnitudes from 292 to 6652, the same set at every one of six positions | many-level data |
+| E | 11.164 to about 12.4 | 18 octets, the nine magnitudes 292 to 6652 with both signs (first 1.25 s); the 34-octet set of 17 magnitudes appears only in the data that follows | uniformly distributed levels |
 
 One bit per octet in B and C: 8000 bit/s of scrambled ones, level-shifted, which
 is a training source before any real constellation.  The scrambler polynomial
@@ -4289,3 +4289,30 @@ codeword through every position fits the client's six-position measurement
 matrices of `docs/x2-client-record-production.md`, but the Courier's tail
 (886 bits), which would carry that record, did not parse with the framing
 described there.
+
+#### E, from `d229` and `d0af`
+
+* **`d229`** (reached from `cb53` with `ACC = 0a60`): copies a nine-octet table into
+  data `0a60`-`0a68`, choosing it with `ffd9` bit 2 (`d22b`-`d231`).  With the bit
+  clear (this call) the table at `d238` is `a5 a7 ad af b7 bd c5 cf e5`, the
+  mu-law codewords of 6652, 6140, 4604, 4092, 3004, 2236, 1564, 924 and 292.  With
+  it set, the table at `d241` is `95 97 9d 9f a7 ad b5 bf d5`, which decode (mu-law)
+  to 13436, 12412, 9340, 8316, 6140, 4604, 3260, 1980 and 716: about twice the
+  amplitude, 6 dB higher.  The table is chosen by a flag the gate sets
+  (`ffd9 |= 4` when a bit of the exchanged INFO0 words matches), so the training
+  level depends on the exchange.
+* **E's alphabet is exactly that table.**  During its first 1.25 s (the script's
+  10002 symbols) the server sends only the 18 octets +-(`a5 a7 ad af b7 bd c5 cf e5`),
+  each about equally often (a count of 126 to 319 in the first 4000 octets),
+  so the symbols look random over nine magnitudes and both signs, as scrambled bits
+  mapped to levels would.  The earlier figure of 34 octets was measured over a
+  window that included the data phase after the script ends; it does not describe E.
+* **`d0af`**: builds two level tables by running scaled levels through `d178`
+  and `d18e`, a normalise-and-round conversion from linear to mu-law octets, with
+  `@5c`, `@5d` and `@6e` as the scales, into the arrays at `dced`/`d9f4`.  The E
+  stretch transmits only the `d229` table, so what `d0af`'s tables are used for
+  (they look like the receive-side or decoder levels) was not worked out.
+
+So E is a 1.25 s nine-magnitude, two-sign PAM training sequence at a level that
+depends on the exchange; what maps its bits to levels, and whether it carries
+anything beyond scrambled bits, was not decoded.
