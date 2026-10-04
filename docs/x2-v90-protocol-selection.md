@@ -3624,3 +3624,58 @@ field is 6) and compares each against this layout; the result is
 `artifacts/x2-marker-receiver-20261004/verification.json`.  The CRC and frame
 sync for the 7-bit body use the same `9f4d` checker as every other INFO
 frame; that path was read, not run end to end with a transmitted frame.
+
+### After acceptance: the server retunes to the announced index, and says nothing back
+
+Nothing is transmitted in reply to the marker.  Acceptance only changes the
+server's own receive state, then reports to the host.
+
+Both servers run the same sequence on the accept branch (QF060003 `9800`,
+Ie030002 `9649`; the compare is `962a` there):
+
+| step | QF060003 | Ie030002 | what it does |
+|---|---|---|---|
+| clear role bits | `9800` | `9649` | `@6f &= fffc`, so later role-dependent tests no longer apply |
+| mark x2 | `9803` | `964c` | `[0345] \|= 0080` |
+| reset receive state | `c300` | `c809` | clears the working buffers, restarts the receiver coroutine |
+| retune | `9d5c` | `9b94` | programs the receive symbol rate and carrier from the announced fields |
+| timing hooks | `83c5` | `8309` | installs the second pair of timing-callback pointers at `0bee:0bef` (`8202`/`81f1` instead of `8208`/`81d8`) |
+| wait | `@1a = 03c0` | `@1a = 03c0` | a 960-count symbol delay, then on to the next state |
+
+The retune is where the announced index is used.  `9d5c` calls `833f` with
+`@5b`, which indexes a five-word table and writes four of its words to I/O
+ports `68`, `69`, `6b` and `6c` and one to `[6b]`/`[6c]`; a second table
+`9db1` holds `0054 0060 0062 0069 0070 0078`, which is each V.34 symbol rate
+times 0.035 (2400, 2743, 2800, 3000, 3200, 3429), so the 3-bit index is the
+ordinary V.34 symbol-rate index and 4 is 3200.  The carrier bit stored at
+`ff20 + @5b` selects the carrier through `ac92`.  The Ie030002 equivalent
+sends the host `8034` and the index (`9b98`).  The timing-hook difference
+skips the interpolating filter section (`81d8`-`81f0`); what that implies for
+upstream timing is not established here.
+
+#### Seen in a real call
+
+In the saved analog Courier to I-modem call at 53333/x2
+(`artifacts/imodem-analog-x2-53333-production-20261003`):
+
+* the Ie030002 DSP's receive buffer still holds the body at `[f6a8]` as
+  `9a9d`, whose bits 15:9 are `4d`, exactly the originator marker and exactly
+  at the position the parse reads;
+* `ff20[4]` (`[f6c4]`) is 1: index 4, high carrier;
+* the DSP-to-host replies, in order, include `0071:0007`, `0047:0006`,
+  `006b:0021`, then **`0034:0004`** (the retune message carrying index 4),
+  `0004:0000`, and the `006e/006c/006d/006a` group that precedes the rate
+  steps `006a:0c0d`, `0d0d`, `0e0d`.
+
+A separate trace of this call shows the accept branch executing
+(`962a` → `962c` → `9649` → `9658` → `965a`).  That trace was taken on the
+current working tree, where the call does not connect (below), so it shows the
+marker being accepted, not a completed connection.
+
+#### A regression to know about
+
+On 2026-10-04 the same command that produced the 53333 result ends in NO
+CARRIER with the uncommitted native changes in `native/c5x_core.cpp`,
+`c5x_core.h` and `c5x_ops.ipp` applied, and connects at 53333/x2 again from a
+clean checkout of `2f0d1fd`.  The marker is accepted in both; the failure is
+later.  This is not diagnosed here.
