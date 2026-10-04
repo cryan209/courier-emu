@@ -3873,3 +3873,58 @@ After the 128 pairs both ends move to `e499`, which waits for two words
 (`e4af`, `e4b8`, `e4c1`, `e4ce`, `e4e6`), the first of which is the remote
 capability word the gate at `95ae` reads.  That is the next stage and is not
 decoded here.
+
+### The `e499` exchange: a six-position map and mask, CRC-protected
+
+After the 128 pairs each end sends and receives one short frame in the same
+word stream.  Words carry data in bits 6:1 and have bit 0 set; the start
+words are `0080`/`0081`.  Frame, as built by the transmit chain
+`e36e` -> `e373` -> ... -> `e3c6` (each `@75` step returns one word):
+
+| word | content |
+|---|---|
+| `00ff` | idle word, CRC reset (`@18 = ffff`) |
+| `0081`, `0081` | start |
+| w0, w1 | `0001`, `0001` (stored at `fef0`, `fef1`) |
+| w2 | `((@76 << 1) & 7e) \| 1`: the local per-phase error map from the receiver above |
+| w3 | `1`, bit 1 set when the map is empty, bit 3 added if mode bit 9 (`@60`) is set and the map is empty, bit 2 = `@76` bit 6 AND `@6a` bit 6 |
+| w4 | `((@6a << 1) & 7e) \| 1`: the local six-bit mask `@6a` (initialised to `0041` at `e301`) |
+| 4 words | the inverted CRC-16, four bits per word in bits 4:1 (`e3c6`-`e3d9`) |
+
+The CRC is the 8408 polynomial run by `e3db`/`e52a` (nibble-wise, with `DBMR`
+as the polynomial table), preset `ffff`, and the receiver accepts when the
+register equals the standard good residue `f0b8` (`cpl @28, #f0b8` at `e516`).
+The transmit chain then restarts at `e36e`, so the frame repeats.
+
+The receiver (`e499` waits for two `0080`/`0081` words, with `@28 = ffff` and
+`@69 = 2`; `e4af`...`e4fa` store five words at `f6a0`-`f6a4` and fold each byte
+into the CRC, then take four more words for the CRC) merges the peer's frame
+into local state on a good CRC:
+
+* `@6c` = peer w2 bits 6:1, with bit 6 also ORed from w3 bit 2; `@76 |= @6c`,
+  so the error map becomes the union of local and peer errors;
+* w3 bit 3 clear clears mode bit 9 in `@60`;
+* `@71` = `ffc0 | (w4 & 7e) >> 1`, with bit 6 from w3 bit 1; `@6a &= @71`, so
+  the mask becomes the intersection of both ends' masks;
+* a bad CRC sets `@65 = e499` and hunts for the start words again.
+
+After the merge the originating end installs `@75 = e36e` and the answering end
+`@75 = e3f9`, and both go to `e548`, which waits for four more start words and
+then changes the hooks: it applies the merged state through `e67c`/`e695`,
+sets `@1a`/`@1b` to the data-mode pair `e97e`/`e992` (or `ea00`/`ea0f` when
+`@6d & c0` is `c0`) and notifies the host (`8058`, `806a` in `e6ae`-`e6c9`).
+Those hooks and messages were read, not decoded.
+
+Six is the symbol-phase counter `e427` keeps, so the map and mask are
+per-position over a six-symbol cycle.  That the map exists to find positions
+disturbed by digital impairments is an inference from the structure, not from
+any string or documentation.
+
+#### Seen in the symmetric call
+
+Data traces of the sent and received cells (`fef2`, `fef4`, `f6a2`, `f6a4`,
+four runs) show, at both ends: `e398` writes `fef2 = 01` (empty map), `e3c1`
+writes `fef4 = 03` (`@6a & 3f = 1`); each end receives exactly one frame with
+`f6a2 = 01` and `f6a4 = 03` (`e4c4`, `e4e9`).  The two ends' frames are
+identical in those fields.  After the exchange the stores at `e991` begin
+(256 distinct values), the data-mode hook.
