@@ -127,3 +127,15 @@ is in `artifacts/x2-xc-pair-20261004`.
 Remaining work is the analogue sample/measurement producer, interpretation
 of the five header words, automatic scheduling of the variable-length exchange,
 its peer receiver branch, frame alignment, and analogue payload decoding.
+
+## Courier 403 additive count audit
+
+The captured Courier 403 counterpart clarifies the arithmetic of 0364 without
+establishing that its later record exchange runs in the observed call.
+EA82..EABC returns N-0364+20; E970..E97B makes the same conversion from the
+header to 0351; E11C consumes 0351+0364 bits. At 0364=5 the intermediate
+count is N+15 and the total is N+20. The original consumer passes 216 bit-count
+contexts. Assigning the additive count specifically to independent signs,
+and binding the XMF header fields to the complete receiver, remain open.
+See [Courier MP fields](x2-courier-mp-fields.md) for the profile, live-call
+coverage and distinction between the short MP and the unexecuted later body.

@@ -1,0 +1,16 @@
+{
+  "consumer_bit_count_cases": 216,
+  "consumer_rule": "E11C consumes data[0351]+data[0364] bits, demonstrated with a return-only per-bit callback; no mapper semantics asserted.",
+  "firmware_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "packing_cases": 1536,
+  "qualification": "Original local MP field packer with seeded masks, requested ceiling, offset and low byte; no full call scheduling.",
+  "formula": "N1=min(bit_length(data[FFF3]),data[037D]); N2=bit_length(data[0941]&7FFF); returned=(N1<<2)|(N2<<6); W4=(data[0364]<<8)|(old_W4&FF)",
+  "examples": [
+    {
+      "ceiling": 13,
+      "requested": 1,
+      "mask": "0x1ffe",
+      "packed": "0x344"
+    }
+  ]
+}

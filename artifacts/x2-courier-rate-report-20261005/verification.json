@@ -1,0 +1,106 @@
+{
+  "firmware_sha256": "f1c91621fbf14aad34547056feb4425e64fcf0b38ec5d57f86c9f432ca999db6",
+  "dsp_report_cases": 45,
+  "threshold_boundary_cases": 46,
+  "live_ceiling_arithmetic": "4220 + FF00 - 0200 = 3F20, between threshold 12 (3EC0) and threshold 13 (40C0), yielding index 12.",
+  "supervisor_selection_cases": 150,
+  "qualification": "Controlled inputs through original DSP report builder, supervisor mailbox handler, result selector and pointer lookup; live scheduling is recorded separately.",
+  "rate_rule": "x2 result index 1 selects 33333, 2 selects 37333; n=3..15 selects floor((n+28)*8000/6) bit/s.",
+  "results": [
+    {
+      "index": 1,
+      "result_enum": "0xb7",
+      "string_address": "0x8aaaa",
+      "text": "33333/ARQ/x2"
+    },
+    {
+      "index": 2,
+      "result_enum": "0xbb",
+      "string_address": "0x8aad4",
+      "text": "37333/ARQ/x2"
+    },
+    {
+      "index": 3,
+      "result_enum": "0xbf",
+      "string_address": "0x8aafe",
+      "text": "41333/ARQ/x2"
+    },
+    {
+      "index": 4,
+      "result_enum": "0xc3",
+      "string_address": "0x8ab28",
+      "text": "42666/ARQ/x2"
+    },
+    {
+      "index": 5,
+      "result_enum": "0xc7",
+      "string_address": "0x8ab52",
+      "text": "44000/ARQ/x2"
+    },
+    {
+      "index": 6,
+      "result_enum": "0xcb",
+      "string_address": "0x8ab7c",
+      "text": "45333/ARQ/x2"
+    },
+    {
+      "index": 7,
+      "result_enum": "0xcf",
+      "string_address": "0x8aba6",
+      "text": "46666/ARQ/x2"
+    },
+    {
+      "index": 8,
+      "result_enum": "0xd3",
+      "string_address": "0x8abd0",
+      "text": "48000/ARQ/x2"
+    },
+    {
+      "index": 9,
+      "result_enum": "0xd7",
+      "string_address": "0x8abfa",
+      "text": "49333/ARQ/x2"
+    },
+    {
+      "index": 10,
+      "result_enum": "0xdb",
+      "string_address": "0x8ac24",
+      "text": "50666/ARQ/x2"
+    },
+    {
+      "index": 11,
+      "result_enum": "0xdf",
+      "string_address": "0x8ac4e",
+      "text": "52000/ARQ/x2"
+    },
+    {
+      "index": 12,
+      "result_enum": "0xe3",
+      "string_address": "0x8ac78",
+      "text": "53333/ARQ/x2"
+    },
+    {
+      "index": 13,
+      "result_enum": "0xe7",
+      "string_address": "0x8aca2",
+      "text": "54666/ARQ/x2"
+    },
+    {
+      "index": 14,
+      "result_enum": "0xeb",
+      "string_address": "0x8accc",
+      "text": "56000/ARQ/x2"
+    },
+    {
+      "index": 15,
+      "result_enum": "0xef",
+      "string_address": "0x8acf6",
+      "text": "57333/ARQ/x2"
+    }
+  ],
+  "imodem_selector_cases": 15,
+  "imodem_sha256": "3f9a7aa8033323c28eebfee950b53267a67b7ad9141ebf30271918d0babbe358",
+  "imodem_bit_consumer_cases": 210,
+  "imodem_bit_consumer_rule": "CC95..CCBE advances the source bit-ring cursor by B+MD, including cursor wrap. The live selected values B=19 and W4 high byte MD=5 imply 24 source bits per invocation, distinct from the displayed 33333 nominal label. No analogue or terminal throughput measurement is asserted.",
+  "imodem_selector_rule": "Tested x2 TX branch: intersect the local F6D9 mask with the received W1 N1 ceiling; save selected index minus one at 03A2 and table D24A amplitude allocation at 03C0. N1=1 selects index zero and amplitude allocation 19."
+}

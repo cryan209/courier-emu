@@ -140,6 +140,8 @@ def parser() -> argparse.ArgumentParser:
                         help="observe an analogue supervisor instruction address, hexadecimal")
     result.add_argument("--analog-peek", action="append", default=[], metavar="ADDRESS",
                         help="report an analogue supervisor data word, hexadecimal")
+    result.add_argument("--analog-mem-watch", metavar="FIRST:LAST",
+                        help="record analogue supervisor memory writes in this hexadecimal range")
     result.add_argument("--analog-dsp-write-watch", metavar="ADDRESS",
                         help="record writes to one analogue C51 data cell, hexadecimal, "
                              "with the writing program counter (dsp_writes in the analogue result)")
@@ -258,6 +260,8 @@ def main() -> int:
             analog_command.extend(("--dsp-write-watch", args.analog_dsp_write_watch))
         for address in args.analog_trace_pc:
             analog_command.extend(("--trace-pc", address))
+        if args.analog_mem_watch:
+            analog_command.extend(("--mem-watch", args.analog_mem_watch))
         for address in args.analog_peek:
             analog_command.extend(("--peek", address))
         for address in args.analog_dsp_peek:

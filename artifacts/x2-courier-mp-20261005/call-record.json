@@ -1,0 +1,249 @@
+{
+  "instruction_limits": {
+    "analog": 220000000,
+    "imodem": 300000000
+  },
+  "analog_serial": "\r\nCONNECT 53333/ARQ/x2/LAPM/V42BIS\r\n",
+  "imodem_serial": {
+    "a": {
+      "base": "0xf8f8",
+      "baud": 230400,
+      "character_instructions": 218,
+      "divisor": 1,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": 3,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 26,
+      "signals": 0,
+      "transmitted": 42
+    },
+    "b": {
+      "base": "0xf4f8",
+      "baud": 115200,
+      "character_instructions": 435,
+      "divisor": 2,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": null,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 0,
+      "signals": 0,
+      "transmitted": 0
+    }
+  },
+  "writes": [
+    {
+      "address": 2368,
+      "instruction": 745909506,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2369,
+      "instruction": 745909507,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2370,
+      "instruction": 745909508,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2371,
+      "instruction": 745909509,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2372,
+      "instruction": 745909510,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2373,
+      "instruction": 745909511,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2374,
+      "instruction": 745909512,
+      "pc": 42683,
+      "value": 0
+    },
+    {
+      "address": 2368,
+      "instruction": 745910160,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2369,
+      "instruction": 745910161,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2370,
+      "instruction": 745910162,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2371,
+      "instruction": 745910163,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2372,
+      "instruction": 745910164,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2373,
+      "instruction": 745910165,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2374,
+      "instruction": 745910166,
+      "pc": 42709,
+      "value": 0
+    },
+    {
+      "address": 2368,
+      "instruction": 829440495,
+      "pc": 62533,
+      "value": 0
+    },
+    {
+      "address": 2370,
+      "instruction": 944079714,
+      "pc": 63252,
+      "value": 0
+    },
+    {
+      "address": 2371,
+      "instruction": 944079715,
+      "pc": 63253,
+      "value": 0
+    },
+    {
+      "address": 2369,
+      "instruction": 956242487,
+      "pc": 63581,
+      "value": 8190
+    },
+    {
+      "address": 2368,
+      "instruction": 956242488,
+      "pc": 63583,
+      "value": 0
+    },
+    {
+      "address": 2371,
+      "instruction": 956242541,
+      "pc": 63644,
+      "value": 1280
+    },
+    {
+      "address": 2368,
+      "instruction": 956242543,
+      "pc": 63648,
+      "value": 0
+    },
+    {
+      "address": 2371,
+      "instruction": 956242610,
+      "pc": 63644,
+      "value": 1280
+    },
+    {
+      "address": 2368,
+      "instruction": 956242612,
+      "pc": 63648,
+      "value": 0
+    },
+    {
+      "address": 2368,
+      "instruction": 956242670,
+      "pc": 63612,
+      "value": 836
+    },
+    {
+      "address": 2369,
+      "instruction": 956242675,
+      "pc": 62863,
+      "value": 1022
+    },
+    {
+      "address": 2368,
+      "instruction": 983920584,
+      "pc": 42294,
+      "value": 33604
+    }
+  ],
+  "mp_builder_pc_trace": [],
+  "later_selector_pc_trace": [],
+  "rate_notifications": [
+    {
+      "instruction": 987397797,
+      "pc": "83d4",
+      "tag": "006a",
+      "words": [
+        "0000",
+        "0a0c"
+      ]
+    },
+    {
+      "instruction": 987406533,
+      "pc": "83d4",
+      "tag": "0035",
+      "words": [
+        "0000",
+        "03fe"
+      ]
+    },
+    {
+      "instruction": 1260343744,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    },
+    {
+      "instruction": 1283691041,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    },
+    {
+      "instruction": 1307037528,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    }
+  ],
+  "dsp_cells": {}
+}

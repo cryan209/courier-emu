@@ -1,0 +1,195 @@
+{
+  "serial_text": "\r\nCONNECT 53333/ARQ/x2/LAPM/V42BIS\r\n",
+  "error": null,
+  "dsp_saved_index_writes": [
+    {
+      "address": 796,
+      "instruction": 559,
+      "pc": 1573,
+      "value": 0
+    },
+    {
+      "address": 796,
+      "instruction": 956242602,
+      "pc": 63604,
+      "value": 12
+    }
+  ],
+  "supervisor_writes": [
+    {
+      "address": "0a23",
+      "instructions": 108266586,
+      "pc": "93c49",
+      "size": 2,
+      "value": "453d"
+    },
+    {
+      "address": "0a1a",
+      "instructions": 133183579,
+      "pc": "93cc7",
+      "size": 1,
+      "value": "0001"
+    },
+    {
+      "address": "0a1c",
+      "instructions": 133184596,
+      "pc": "93c72",
+      "size": 1,
+      "value": "0001"
+    },
+    {
+      "address": "0a1c",
+      "instructions": 133185621,
+      "pc": "93c81",
+      "size": 1,
+      "value": "0001"
+    },
+    {
+      "address": "0a1d",
+      "instructions": 133187633,
+      "pc": "ca9d9",
+      "size": 2,
+      "value": "0275"
+    },
+    {
+      "address": "0a1c",
+      "instructions": 133188634,
+      "pc": "93ce3",
+      "size": 1,
+      "value": "0001"
+    },
+    {
+      "address": "0a19",
+      "instructions": 133188699,
+      "pc": "943a7",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a27",
+      "instructions": 133188699,
+      "pc": "943aa",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a17",
+      "instructions": 133188699,
+      "pc": "943ad",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a18",
+      "instructions": 133188699,
+      "pc": "943ba",
+      "size": 1,
+      "value": "000a"
+    },
+    {
+      "address": "0a27",
+      "instructions": 133188699,
+      "pc": "93d84",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a17",
+      "instructions": 133188699,
+      "pc": "93d6b",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a27",
+      "instructions": 133188699,
+      "pc": "93d84",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a17",
+      "instructions": 162963521,
+      "pc": "93fab",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a17",
+      "instructions": 165513281,
+      "pc": "93fab",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a17",
+      "instructions": 168062017,
+      "pc": "93fab",
+      "size": 1,
+      "value": "000c"
+    },
+    {
+      "address": "0a27",
+      "instructions": 170058751,
+      "pc": "88967",
+      "size": 1,
+      "value": "0001"
+    },
+    {
+      "address": "0a19",
+      "instructions": 170058751,
+      "pc": "8896c",
+      "size": 1,
+      "value": "0001"
+    }
+  ],
+  "mailbox_reports": [
+    {
+      "instruction": 987397797,
+      "pc": "83d4",
+      "tag": "006a",
+      "words": [
+        "0000",
+        "0a0c"
+      ]
+    },
+    {
+      "instruction": 1260343744,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    },
+    {
+      "instruction": 1283691041,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    },
+    {
+      "instruction": 1307037528,
+      "pc": "83d4",
+      "tag": "0020",
+      "words": [
+        "0000",
+        "000c"
+      ]
+    }
+  ],
+  "final_peek": {
+    "0022a": "03",
+    "00238": "04",
+    "004e2": "03",
+    "00a27": "01"
+  },
+  "final_dsp_cells": {
+    "0031c": "000c",
+    "00364": "0005"
+  },
+  "write_pc_qualification": "Supervisor native memory-write callbacks report the following IP; disassembly identifies the actual store immediately before it. DSP data write PCs name the writing instruction."
+}

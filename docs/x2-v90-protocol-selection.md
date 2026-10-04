@@ -4575,3 +4575,35 @@ established across the bearer.  The 12.5 s `006a:010a` report is the connect and
 `006a:0e0d` is the step to the final rate.  The characters in the I-frames carry even parity in bit 7 (`I` `49` is sent as `c9`, `M` `4d` as `4d`), the DTE
 format of the text, not compression.
 
+
+### Courier MP field audit 5 October 2026
+
+The remaining MP questions are narrowed by original-instruction execution and
+capped live calls; see [the full audit](x2-courier-mp-fields.md). F875's delayed
+call forces 037D to one before the second F895 pack, giving N1=1; the earlier
+pack retains local rate index twelve at 031C. N2=13 is packed before W2 is
+cut from 1FFE to 03FE. W4 preserves a zero low byte from the clear and places
+0364=5 in its high byte. In the separate variable-length path the count is
+N-5+20, then its bit consumer adds five back: total N+20, not N+15.
+The original consumer confirms forty bit callbacks for intermediate count
+thirty-five and additive parameter five.
+
+The Courier bit-nine setter is **F8CB**, `OPL *,#0200`, at instruction
+910792158; F8CD adds 0800 next. F8BD requires the recovered repeated words
+to match **09B0**. This supersedes the earlier statement that the setter was
+not found. The line decoder now reads all four words and verifies CRC 14AD.
+
+In two capped calls the known variable-length selector, header writer and
+serializer preparation never execute, and the MP buffer remains the
+acknowledged short record. The Courier reports local index twelve and CONNECT
+53333 while the I-modem reports CONNECT 33333. A later variable client record
+is therefore not supported as the explanation for this call's 53333 result.
+The continuation audit now traces the complete Courier reported-rate path:
+F874 stores 031C=12, E1A3..E1AC builds tag 6A argument 0A0C, 94399 masks its
+low byte into supervisor 0A27, and 82FB9 selects result enum E3 and literal
+53333/ARQ/x2 at 8AC78. The I-modem's live CFF4 selector consumes MP N1=1,
+stores index zero at 03A2 and selects allocation 19 from D24A. The first
+Courier E2DD call returns twelve because its adjusted metric 3F20 lies
+between thresholds 3EC0 and 40C0. These paths explain the asymmetric
+CONNECT results without the unexecuted variable-length client exchange.
+Full record-receiver state and measured payload throughput remain open.

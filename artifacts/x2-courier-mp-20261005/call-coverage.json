@@ -1,0 +1,15 @@
+{
+  "qualification": "First-execution counters from the same capped live call as call-flags.json; zero means not executed in the retained DSP core.",
+  "entries": {
+    "0xe724": 0,
+    "0xf506": 0,
+    "0xf8cb": 910792159,
+    "0xf8cd": 910792160,
+    "0xea82": 0,
+    "0xeab2": 0,
+    "0xeaba": 0,
+    "0xeac7": 0,
+    "0xead6": 0,
+    "0xe970": 0
+  }
+}

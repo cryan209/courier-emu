@@ -11,9 +11,9 @@ the four rotation orbits of the V.34 16-point constellation (rings 4/8/4 at radi
 is differentially decoded, the four bits per symbol (orbit index high, difference low, least
 significant first) are descrambled with 1 + x^-5 + x^-23 and the 17-ones frame sync is
 located.  The conventions fixed by search on this capture: clockwise Z (sign -1), orbit offsets
-(0, 1, 2, 2), orbits 1 and 2 as measured.  Prints each distinct 104-bit frame and its fields
-per V.34 Table 20.  The CRC of the frames does not verify against Figure 14 at any alignment
-tried, and the frame is 104 bits where Table 20 has 88.
+(0, 1, 2, 2), orbits 1 and 2 as measured. Prints distinct 104-bit four-word
+records and verifies their reflected 8408 CRC. The earlier three-word V.34
+Table 20 interpretation is superseded by the original MP buffer/serializer trace.
 """
 from __future__ import annotations
 
@@ -59,16 +59,30 @@ def decode_bits(cls):
 def fields(f):
     def val(a, b):
         return sum(f[a + i] << i for i in range(b - a + 1))
-    mask = val(35, 49)
+    words = [val(18 + 17*i, 33 + 17*i) for i in range(4)]
+    crc = 0xffff
+    for word in words:
+        for i in range(16):
+            v = crc ^ ((word >> i) & 1)
+            crc = (v >> 1) ^ (0x8408 if v & 1 else 0)
+    received_crc = val(86, 101)
+    separators = [f[17], *[f[34 + 17*i] for i in range(4)]]
     return {
-        "start_bits_17_34_51_68": [f[17], f[34], f[51], f[68]],
-        "type": f[18], "max_call_to_answer_N": val(20, 23), "max_answer_to_call_N": val(24, 27),
-        "aux": f[28], "trellis": val(29, 30), "nonlinear": f[31], "shaping": f[32], "ack": f[33],
-        "rate_mask_rates": [2400 * (i + 1) for i in range(15) if mask >> i & 1],
-        "asymmetric": f[50], "reserved_52_67": val(52, 67),
-        "bits_69_84": "".join(map(str, f[69:85])), "fill_85_87": f[85:88],
-        "extra_88_103": "".join(map(str, f[88:104])),
+        "words_hex": [f"{word:04x}" for word in words],
+        "separators": separators,
+        "tail": f[102:104],
+        "crc_calculated_hex": f"{crc:04x}",
+        "crc_received_hex": f"{received_crc:04x}",
+        "crc_valid": crc == received_crc,
+        "framing_valid": f[:17] == [1]*17 and separators == [0]*5,
+        "N1": (words[0] >> 2) & 15,
+        "N2": (words[0] >> 6) & 15,
+        "acknowledge": (words[0] >> 15) & 1,
+        "rate_mask_hex": f"{words[1] & 0x7fff:04x}",
+        "W4_high": words[3] >> 8,
+        "W4_low": words[3] & 255,
     }
+
 
 
 def main(path, t0=35.1, t1=42.0, first=5000, last=7500):
