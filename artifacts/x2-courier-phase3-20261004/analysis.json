@@ -1,0 +1,73 @@
+{
+ "recording": "analog-tx.wav of the 53333/x2 analog Courier to I-modem call (artifacts/imodem-analog-x2-53333-production-20261003 configuration, rerun 4 Oct 2026); analog clock, bearer time = analog time - 25.02 s",
+ "baud": 3200,
+ "carrier_hz": 1920.0,
+ "symbols": 7328,
+ "onset_symbol": 14,
+ "S_alternating_points": {
+  "start": 14,
+  "end": 142,
+  "length": 128
+ },
+ "S_bar": {
+  "start": 142,
+  "length": 16
+ },
+ "PP_period_48": {
+  "start": 158,
+  "end": 446,
+  "length": 288,
+  "periods": 6.0
+ },
+ "TRN_scrambled_ones": {
+  "start": 446,
+  "polynomial": "1 + x^-5 + x^-23",
+  "dibit_map_quadrant_to_value": [
+   0,
+   3,
+   2,
+   1
+  ],
+  "constant_bit_fraction_first_3000_bits": 1.0,
+  "approx_end_symbol": 6846,
+  "approx_length": 6400,
+  "per_200_symbol_constant_fraction": [
+   0.98,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   0.98,
+   0.98,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   0.95,
+   0.52,
+   0.52,
+   0.35
+  ]
+ },
+ "seconds_per_symbol": 0.0003125
+}

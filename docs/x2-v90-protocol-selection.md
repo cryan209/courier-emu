@@ -4142,3 +4142,34 @@ Not decoded here: the Courier's wideband signal from 5.40 s and what it is
 by that test), the I-modem's wideband signal from 7.55 s, and what ends the
 digital zero.  The 12.5 s `006a:010a` report and the later `006a:0e0d`
 (40.3 s) are the connect and a rate step.
+
+### The Courier's signal after the marker is V.34 Phase 3 at the announced rate
+
+The Courier's own line output (`analog-tx.wav`, analysed by
+`tools/analyze_v34_training.py`, results in
+`artifacts/x2-courier-phase3-20261004/analysis.json`) shows the marker frame at
+analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
+32.7 (bearer 5.41 to 7.69):
+
+* **Symbol rate 3200, carrier 1920 Hz.**  The envelope has a line at exactly
+  3200 Hz and the band is 320 to 3520 Hz; the fourth-power spectrum has a pure
+  line at zero offset from 1920 Hz.  The marker announced index 4 (3200
+  symbol/s) and the high carrier; the Courier sends exactly that.
+* **S, 128 symbols** of two alternating points (14 to 142), then **S-bar, 16
+  symbols** of the opposite pair (142 to 158).
+* **PP, 288 symbols**: exactly six repetitions of a 48-symbol period (158 to
+  446), 28 distinct points, not on one constellation ring.
+* **TRN, about 6400 symbols (2.0 s)** on a four-point constellation: descrambled
+  with 1 + x^-5 + x^-23 (the polynomial that fits; 1 + x^-18 + x^-23 does not)
+  with the right quadrant-to-dibit map, the bits are all constant ones, apart
+  from a short transient at the start and three short glitches of 10-20 bits.
+  The scrambler's seed transient ends within 12 symbols of the start of TRN.
+* **About 440 further symbols** of the same four-point constellation, whose
+  descrambled bits are not constant (a 34-bit run of ones, then varied bits),
+  then the signal stops at bearer 7.69.  They were not decoded.
+
+This is the V.34 Phase 3 sequence, and it is exactly the same on the Courier's
+side as an ordinary V.34 upstream; x2 makes no change to it.  It ends at bearer
+7.545 s, which is when the I-modem's own wideband signal starts (7.55 s), so
+the server begins its signal as the client's TRN ends.  What the server's signal
+is remains open.
