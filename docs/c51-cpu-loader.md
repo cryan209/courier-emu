@@ -141,3 +141,64 @@ release starts the C51 mask ROM, whose reset setup installs and reaches the
 service-loader path. This is not a separate, unidentified ASIC interrupt pin.
 The CPU and C51 instruction streams independently establish the subsequent
 four-word windows and 1/2/4 handshake.
+
+## Earlier supervisors: 5/25/94 and the SDL images to 3/13/98
+
+Measured 2026-10-04 on the Metropoli BBS SDL images (`firmware/legacy-usrobotics`),
+unpacked with `tools/unpack_sdl.py`. The flash image carries no boot block, so
+`courier_emu.rom.CourierRom` needs the top 16 bytes of `IDSDL302.ROM` grafted on
+and its supervisor identification check bypassed before it will load one.
+
+Every image has the same 1/2/4 holding-register transfer: two `out 0x18,1`, one
+`out 0x18,2`, two `out 0x18,4`. The DSP resident is a C5x image for `0x8000` in all
+of them:
+
+| Supervisor | Payload words | Found by |
+|---|---|---|
+| 5/25/94 | 32329 (32312 before `ffff` padding) | the 5/94 sequence below |
+| 5/15/95, 6/9/95, 7/5/95 | 25549, 25568, 25620 | `CourierRom.dsp_download` |
+| 11/1/95, 1/23/96 | 26535, 26601 | `CourierRom.dsp_download` |
+| 3/13/98 | 27710 | `CourierRom.dsp_download` |
+
+`dsp_download` finds nothing in the 5/25/94 and 6/10/94 images. They launch with
+the same routines but a different call shape, so the regex does not match. The
+5/25/94 sequence, in the supervisor's code segment:
+
+1. `0xc8d6f` calls `0xce220`, which sends eight words of `0x0083` to DSP
+   destination `0xfff8` (`mov ax,0xfff8; call 0xce25a`, then eight word writes
+   through ports `40`/`42` and `out 0x18,1`/`out 0x18,2`). The boot-mode word is
+   written explicitly; later builds are not known to do this.
+2. `mov ax,0x8000; call 0xce25a` writes the destination to ports `40`/`42`,
+   clears bit 1 of `0xff56`, writes `0xffff` to ports `18`/`1a`/`1c`/`1e`,
+   waits, and pulses bit 1 back. It then polls ports `18`/`1a` and `1c`/`1e`
+   for `0xffff`.
+3. `mov ax,0; mov cx,0xfc92; call 0xce323` transfers `0xfc92` bytes from
+   `e3aa:0000` (physical `0xe3aa0`) through the four-word windows, then sends
+   the checksum with `out 0x18,4`. The source segment is hard-coded at
+   `0xce35c`.
+
+The payload begins `bc00 ae57 ffff be41 bc00 ae2a 0010`, word for word the opening of
+the 6/9/95 resident, though only 123 words match at the same index over the
+whole image.
+
+`out 0x1c,2` after the reset pulse, which this document names for the 4.03
+supervisor, is not a version marker. The 5/94 code writes port `1c` with
+`mov dx,0x1c; out dx,al`, which a search for `mov al,2; out 0x1c,al` does not find.
+
+### Use of the on-chip ROM tables
+
+Question: do the early residents lean on the DSP mask ROM's tables
+([dsp-rom-content-analysis.md](dsp-rom-content-analysis.md)) where later ones carry their
+own copies? On two crude tests, no:
+
+* None of the residents, 5/94 to 3/98, contains the ROM's quarter-wave cosine table
+  (`0x40..0x240`, Q14) in any of the variants searched: cosine and sine at 256 to
+  4096 points, Q12 to Q15.
+* Control-flow targets in the ROM table and helper range `0x40..0x615` number about
+  73 in 5/25/94, 47 in 5/95 to 7/95, 58 to 59 in 11/95 and 1/96, and 102 in 3/98.
+  `splk #0040` and `lar #0244` occur at about the same counts in all of them.
+
+Both counts come from linear disassembly (`tools/c5x_disasm.py`), which reads data
+as code, so the numbers are noisy. Not tested: table copies that are scaled,
+interleaved or packed, and what the code reads from `0x40..0x5af`.
+
