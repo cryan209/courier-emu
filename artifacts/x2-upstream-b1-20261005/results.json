@@ -1,0 +1,38 @@
+{
+  "capture_sha256": "b01953a0b55f5784692c53b13dd4f1f7a115a6aa38b01a1d74ff379b9bfcbefe",
+  "acquisition": {
+    "fit_percent": 99.9,
+    "scrambler_tap": 4,
+    "expanded_shaping": true,
+    "trellis_states": 64,
+    "rate_bps": 24000,
+    "baud": 3200,
+    "carrier": "high",
+    "internal_sample": 8309,
+    "internal_sample_rate": 9600
+  },
+  "validation": {
+    "symbols": 256,
+    "mean_lattice_distance": 0.252,
+    "mean_symbol_power": 147.2,
+    "template_power": 147.7
+  },
+  "tests": {
+    "recorded_blocks": [
+      17,
+      160
+    ],
+    "silence_rejected": true,
+    "v34_decoder_cases": 402,
+    "v34_mp": "passed",
+    "x2_session": "passed",
+    "full_capture_e_blocks": [
+      1,
+      17,
+      160
+    ]
+  },
+  "default_enabled": true,
+  "engine_end_state": "TRAINING",
+  "upstream_payload_verified": false
+}

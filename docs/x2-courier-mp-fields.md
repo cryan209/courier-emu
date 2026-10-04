@@ -239,3 +239,79 @@ and use `--analog-dsp-trace-range e2dd:e307` for threshold arithmetic. In a
 separate call use `--dsp-trace-range cff4:d01c` for the I-modem selector.
 Run `.venv/bin/python tools/verify_courier_rate_report.py` for the component
 checks. Compact live extracts retain the original writes and PC traces.
+
+## Continuation: the upstream E boundary
+
+The short MP is followed by a separate upstream E event. Courier script
+AE83 is the triplet `AF2E,0,5`, then `AF99,0,0`. With 006F bit nine set,
+AF2E does not double the five-symbol count; AF38 supplies nibble 000F to
+the same AF7D scrambler/16-point transmitter used by MP. That is five
+four-bit all-one source symbols, twenty decoded ones, before the data mapper
+initializer AF99. This does not identify the subsequent complete B1 frame.
+
+Ie030002 AABF clears its consecutive-one counter. A881..A889 increments
+0323 for a one and clears it on a zero, then invokes the saved bit coroutine.
+AAC4..AAC6 waits for seventeen ones, and AACB..AACD waits for twenty before
+jumping to A891, which runs the data receiver initializer AAD3. A zero after
+the seventeen-one sync returns to the record parser at A941; it is not an
+E acknowledgement. `tools/verify_x2_upstream_e.py` executes the original
+dispatcher and coroutine in nine contexts: sixteen through nineteen ones
+wait, twenty enter A891, and an interrupted nineteen-one prefix returns to
+the record path. The harness starts after record acceptance; it does not
+reconstruct that acceptance or demodulate audio.
+
+The v90modem MP receiver now detects the twenty-consecutive-one boundary on a
+hypothesis that already has two matching CRC-valid MPs. Bits inside an MP
+body cannot contribute to that run. The preserved PCMU fixture includes the
+E boundary: detector sample 11434 within bearer samples 88640..100959,
+or absolute sample **100074** (12.50925 s, detector time including filter
+latency). Input blocks of 1, 17 and 160 give the identical sample. This is
+a receive detection timestamp, not the unfiltered transmitted E endpoint.
+
+Full engine replay retains INFO0=21FF, marker=4D, MP=0344/03FE/0000/0500,
+and downstream startup/payload activation, and now records upstream E.
+An opt-in `ME_X2_UPSTREAM_ACQUIRE=1` experiment prepares the existing V.34
+T/3 receiver for 3200/high, N=10 (24000 bit/s), linear encoding and 16-state
+trellis, then begins B1 acquisition on E. It fails to acquire the preserved
+recording; the template fit remains below 25 percent and the engine stays
+in TRAINING. E reception therefore does not establish an upstream data lock.
+The next boundary is the Courier AF99/AFC9/B006 mapper reset and framing,
+compared with the receiver's B1 template; no adjustment to the E threshold
+or rate label is justified by this failure.
+
+Original listings, component results and both engine replay logs are saved
+in `artifacts/x2-upstream-e-20261005`. The acquisition experiment remains
+off by default; no CONNECT or decoded upstream payload is claimed.
+
+### Continuation: upstream B1 acquisition
+
+The fresh original Courier B1A1..B1C2 trace confirms upstream rate N=10:
+B1B4 holds ACC=000A before the A71B mapper builder. The built parameters
+are B=60 bits per eight symbols and Q=3, hence 60*3200/8 = **24000 bit/s**.
+This upstream rate is independent of downstream N1=1 and W4's five signs.
+
+Controlled execution of B1A1, AF99 and B006 from the retained original DSP
+snapshot reproduces 480 mapper symbols. Seeding received word 0340=F37C,
+mask 0941=03FE, direction 039F=4060 and baud index 03DB=4 yields expanded
+shaping and the 64-state trellis. Against the SpanDSP all-one reference,
+minimum/16-state matches only 49 complex symbols; expanded/64-state matches
+475, and all 480 amplitude norms match. Five remaining rotations require
+further mapper/frame-epoch analysis; the seeded execution does not establish
+a complete wire MP field decode.
+
+The captured audio resolves the acquisition choice independently. Searching
+minimum/expanded shaping for x2 alongside the existing scrambler/trellis
+candidates selects GPA, expanded shaping and 64 states with **99.9% fit**.
+The independent 256-symbol post-B1 check has mean lattice distance 0.252,
+mean power 147.2 against template power 147.7. The 95% acceptance threshold
+and post-B1 validation remain unchanged. The winning shaping and trellis
+are retained for DATA decoding, and x2 acquisition now runs by default.
+Recorded regressions pass at block sizes 17/160 and reject silence; all
+402 V.34 data decoder cases pass. Evidence and original-instruction
+reproduction are in `artifacts/x2-upstream-b1-20261005` and
+`tools/verify_x2_upstream_b1.py`.
+
+This closes the earlier B1 acquisition failure. Upstream DATA has substantial
+shell/frame errors and is not a verified payload stream. The engine still
+ends TRAINING and gates CONNECT/user bits. Next resolve the mapper/frame
+inversion epoch and verify V.42/LAPM upstream before opening that gate.

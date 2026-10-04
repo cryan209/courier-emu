@@ -1,0 +1,19 @@
+{
+  "source": "/private/tmp/x2-rate-server-call/imodem-rx.g711",
+  "sha256": "b01953a0b55f5784692c53b13dd4f1f7a115a6aa38b01a1d74ff379b9bfcbefe",
+  "samples": 278249,
+  "format": "PCMU, 8000 codewords/s",
+  "standalone_E_detector": {
+    "absolute_sample": 100074,
+    "fixture_start": 88640,
+    "fixture_sample": 11434,
+    "timing_hypothesis": 4,
+    "phase_hypothesis": 0,
+    "block_sizes": [
+      1,
+      17,
+      160
+    ]
+  },
+  "qualification": "E detection including FIR latency. Recorded peer cannot react to newly generated TX. Experimental B1 acquisition failed; no bidirectional payload claim."
+}

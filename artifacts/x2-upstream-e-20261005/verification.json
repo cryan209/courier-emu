@@ -1,0 +1,51 @@
+{
+  "firmware_sha256": "3f9a7aa8033323c28eebfee950b53267a67b7ad9141ebf30271918d0babbe358",
+  "cases": [
+    {
+      "input_bits": "1111111111111111",
+      "entered_A891": false,
+      "counter": 16
+    },
+    {
+      "input_bits": "11111111111111111",
+      "entered_A891": false,
+      "counter": 17
+    },
+    {
+      "input_bits": "111111111111111111",
+      "entered_A891": false,
+      "counter": 18
+    },
+    {
+      "input_bits": "1111111111111111111",
+      "entered_A891": false,
+      "counter": 19
+    },
+    {
+      "input_bits": "11111111111111111111",
+      "entered_A891": true,
+      "counter": 20
+    },
+    {
+      "input_bits": "111111111111111111111",
+      "entered_A891": true,
+      "counter": 20
+    },
+    {
+      "input_bits": "1111111111111111111011111111111111111",
+      "entered_A891": false,
+      "counter": 17
+    },
+    {
+      "input_bits": "111111111111111111101111111111111111111",
+      "entered_A891": false,
+      "counter": 19
+    },
+    {
+      "input_bits": "1111111111111111111011111111111111111111",
+      "entered_A891": false,
+      "counter": 20
+    }
+  ],
+  "boundary": "Original A881 consecutive-one dispatcher and AABF/AAC0 coroutine after accepted record; A891 reached on bit twenty. No receiver setup or analogue data acquisition asserted."
+}

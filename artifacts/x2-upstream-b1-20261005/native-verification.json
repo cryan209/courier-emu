@@ -1,0 +1,29 @@
+{
+  "qualification": "Controlled original-instruction mapper execution with seeded received MP and rate mask; snapshot supplies lookup tables. Not a complete call.",
+  "snapshot_source": "/private/tmp/x2-mp-record/9754",
+  "program_sha256": "98326c61c3b2966d1142b8d680d2f3862dd6cfe9b5b2b9c2da856767018bf056",
+  "data_sha256": "147c0c55139e6aab31cd2c791168fb3bcc8d4c0aea997c84ed206f56dccbd7f2",
+  "seeds": {
+    "039f": "4060",
+    "0340": "f37c",
+    "0941": "03fe",
+    "03db": "0004",
+    "03fb": "0001"
+  },
+  "parameters": {
+    "03a2": 65535,
+    "03a3": 65535,
+    "03a4": 60,
+    "03a5": 3,
+    "03a6": 9,
+    "03a7": 24,
+    "03a8": 32,
+    "03a9": 1,
+    "03aa": 0,
+    "03ab": 3,
+    "03ac": 128,
+    "03ad": 30866
+  },
+  "symbols": 480,
+  "upstream_bps": 24000
+}

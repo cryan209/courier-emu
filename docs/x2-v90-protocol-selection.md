@@ -16,7 +16,7 @@ historical and are answered by later sections.  The current state is:
 |---|---|---|
 | x2's on-wire selector | **resolved** | the x2 INFO0 capability pattern plus the 7-bit modulation-parameter frame; see "The actual x2 bits in INFO0" and "The 7 bits are modulation parameters" |
 | exact x2 INFO0 capability word | **resolved** | all sixteen capability bits are mapped to V.34 Table 14 and their S54/S56/S58 sources below |
-| x2 data-rate construction | **mostly resolved** | tag `69` is the local line-quality-derived rate index; overlay 6 applies the shared MP capability constraints and builds the PCM codeword sets.  The exact proprietary encoding that communicates the 56k rate between peers has not yet been isolated from the V.34 MP machinery |
+| x2 data-rate construction | **mostly resolved** | tag `69` is the local line-quality-derived rate index; overlay 6 applies the shared MP capability constraints and builds the PCM codeword sets.  The four-word MP N1 ceiling and W4 sign-bit count are traced through the I-modem selector; the Courier retains a separate local display index. Variable client-record scheduling and measured payload throughput remain open |
 | server/symmetric control path | **mostly resolved** | I-modem S58 is supervisor byte `2800:9187`.  Its bit `08h` paths at `5f649` and `6057c` clear the asymmetric-role byte in both mirrored call descriptors and set both modulation fields to internal mode 8: this is the proved x2 symmetric selector.  Mailbox tags `70` and `71` are consecutive configuration/capability and intersected-rate fields, not the two roles.  Separately, the dual-protocol QF build's `c90e` constants identify a V.90 Phase 3/4 path (`Sd`, `Sd-bar`, `Jd'`, DIL and `Ri`), and `c922` is its post-MP tail.  This is V.90 evidence, not proof that x2 shares that sequence; comparison with a pre-V.90 x2-only server image remains required.  The final x2 mapper-enable edge also remains to be named |
 | Quad DSP overlay map | **resolved** | the eight supervisor rows and DSP pull loader are recovered in [How the Quad loads C50 code](quad-c50-overlay-loader.md) |
 | V.90 INFO1a `37:39` producer on the analogue Courier | **open** | the consumer is proven, but no direct bit-field write at buffer offset 12 is present; needs a complete data-flow trace into `ff1a` before the 38-bit script runs |
@@ -4289,9 +4289,9 @@ register `@32`.  The second pass through `aede` takes the bit-9-set branch (`aee
 `@51` = `0f`), four bits per symbol, where the Phase 3 TRN took `aefa`; `[006f]` ends at `0x0a43`.  (An
 earlier statement here that `006f` was written only once was an artefact: the final DSP core is a
 fresh rebuild after the call, so a full-length run's write trace holds only its boot write; use a
-capped run.)  What set bit 9 was not found; the setters `a4be`, `e6c6`, `ea35` show no execution.
+capped run.)  The live flag trace identifies `f8cb`, `opl *,#0200`, as the setter after matching the server’s repeated `09b0` word; `f8cd` then adds bit 11. See the 5 October MP field audit below.
 
-**The MP.**  `tools/decode_courier_mp16.py` places each symbol in its orbit and rotation, undoes
+**Historical three-word MP interpretation (superseded below).**  `tools/decode_courier_mp16.py` places each symbol in its orbit and rotation, undoes
 the differential encoding (V.34 10.1.3.6: four bits per symbol, I1 I2 differential, Q1 Q2 the
 point), descrambles with 1 + x^-5 + x^-23 and finds the 17-ones sync 94 times, every 104 bits (one
 gap of 208), 90 of the frames identical.  The conventions were fixed by search (clockwise rotation,
@@ -4320,9 +4320,37 @@ range): `W1` = `0x0344` (`f87c`; bit 15, the acknowledge bit, is set later at `a
 `W4` = `0x0500` (`f895`-`f89c`: `@64` << 8 over a preserved low byte; `@64` = 5, cell `0364`, the
 cell the client-record rate selection adds to its limit).  The server uses `(W1 >> 2) & 15` as the peer
 ceiling: here 1.  `N2` = 13 is simply the top bit of the 3200-baud mask (`a661` is a highest-set-bit
-routine), not an x2 ordinal.  Not worked out: how `N1` = 1 arises, and what `W4`'s `@64` = 5
-means in rate terms.  Earlier statements that the CRC fails and the frame is 104 bits where the standard
-has 88 are superseded by this paragraph.
+routine), not an x2 ordinal. The original-instruction and live buffer audits now
+resolve N1 and W4; see [Courier MP fields](x2-courier-mp-fields.md).
+
+`F86A` first obtains local rate index twelve from `E2DD`. `F86E` stores it
+at `037D`, the first `F895` packs it, and `F874` retains it at `031C`.
+The delayed `F875` call executes `SPLK @7D,#0001` at `F877` before entering
+`F895` again. The second pack therefore uses **N1=1**, while `031C` remains
+12. With the FFF3 ceiling fifteen and W2 ceiling thirteen, the returned
+fields are `(min(1,15)<<2)|(13<<6) = 0344`. The buffer write at instruction
+956242670 precedes the W2 cut by five instructions; the later acknowledgement
+changes W1 to 8344. N1 is a peer ceiling, not the Courier's displayed-rate index.
+
+`F506` initializes Courier `0364` to five; `F895..F89C` puts it in W4's high
+byte and preserves the cleared low byte. On the live I-modem branch,
+`CFF4/ABBC` consumes N1=1 and selects D24A allocation **B=19**. `D009..D00C`
+extracts W4's high byte into `03ED`, the mapper's **MD**. `CC95..CCBE` consumes
+MD sign-source bits followed by B amplitude bits; `CE85..CE99` applies the
+differential-sign recurrence. Thus W4=0500 supplies **five independent sign
+bits per six-sample frame**, contributing `5*8000/6 = 6666⅔` source bits/s.
+B=19 and MD=5 together carry 24 bits per frame, **32,000 source bits/s**.
+This source accounting is separate from the nominal index-one **33333**
+CONNECT label and from the Courier's retained index-twelve **53333** label.
+Neither label establishes measured terminal throughput.
+
+The variable client-record branch uses a different index convention:
+`EA82..EABC` converts N to `N-MD+20`, and `E11C` adds MD back, consuming
+N+20 bits. That branch does not execute in the capped paired calls and must
+not be used to reinterpret forced N1=1 as its allocation index.
+
+Earlier statements that the CRC fails and that the extra word is unexplained
+are superseded by the verified four-word record and this rate trace.
 
 ### What the code says the server's signal is
 
@@ -4607,3 +4635,32 @@ Courier E2DD call returns twelve because its adjusted metric 3F20 lies
 between thresholds 3EC0 and 40C0. These paths explain the asymmetric
 CONNECT results without the unexecuted variable-length client exchange.
 Full record-receiver state and measured payload throughput remain open.
+
+
+### Upstream E continuation, 5 October 2026
+
+The next receive boundary after MP is now verified: Courier AE83/AF2E sends
+five four-bit all-one symbols, and Ie030002 A881/AACB enters its data
+receiver on twenty consecutive decoded ones. The v90modem detector recovers
+that event at PCMU bearer sample 100074 for all tested input block sizes.
+See [the upstream E audit](x2-courier-mp-fields.md#continuation-the-upstream-e-boundary)
+and `artifacts/x2-upstream-e-20261005` for original-instruction checks and
+recorded audio evidence. The initial V.34 B1 probe failed on this capture;
+the continuation below resolves acquisition. A received E alone does not
+release CONNECT.
+
+
+### Upstream B1 fix, 5 October 2026
+
+Courier B1B4 confirms upstream N=10 (24000 bit/s). Its mapper uses expanded
+shaping and a 64-state trellis; the V.90 minimum-shaping assumption was the
+cause of the failed x2 B1 template. The x2 receiver now searches both shaping
+choices and retains the winning shaping/trellis in its data decoder. Default
+engine replay acquires B1 at 99.9% fit and passes the independent post-B1
+lattice/power check. Two input block sizes acquire identically; silence is
+rejected, and 402 V.34 decoder cases pass. Original mapper execution and
+recorded evidence are retained in `artifacts/x2-upstream-b1-20261005`; see
+[the B1 audit](x2-courier-mp-fields.md#continuation-upstream-b1-acquisition).
+
+B1 acquisition is closed; upstream shell/frame decoding and bidirectional
+V.42/LAPM payload remain open. CONNECT remains gated.
