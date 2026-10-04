@@ -3751,3 +3751,37 @@ answering end and `e2ae`-`e317` at the originating end, including the
 symmetric pair takes exactly this branch and the asymmetric marker path is not
 used.  The traces are `SCRATCH`-style captures made with an uncommitted
 modified copy of `tools/probe_imodem_pair.py`; they are not saved as artifacts.
+
+#### The originating end's stub, decoded
+
+`8bff` is two words, `retd` with the delay slot `splk *, #00ff` (the `8c00`
+word): the idle transmit hook.  The transmit loop at `80eb`-`8138` loads
+`@1a` with `AR1 = 0888`, calls it, then calls `@1b`; the stub stores `00ff`
+into the channel-0 output cell `[0888]` and returns, where the answering end's
+source (`e33d`...) returns its word in ACC and the delay slot at `e33c` stores
+it there.  `@1a = 8bff` is also the reset default (written at `83a8` at every
+core start), so the originating end is not given something new: it simply
+keeps the idle hook while the answering end gets the source.
+
+The data confirm the handover (a data trace on `[039a]`, `@1a`, in the
+recorded symmetric call; instruction counts are per-core and not comparable
+between the two DSPs):
+
+* both ends execute `e2c0` (`@1a = e97e`) then `e311` (`@1a = e337`); only
+  the originating end then executes `e314` (`@1a = 8bff`), 42 instructions
+  after `e2c0`;
+* the answering end's first `e33c` store follows its `e311` by 145
+  instructions;
+* the originating end's `@1a` returns to `e337` at `e497`/`e498`, 9.9 million
+  instructions after `e314`, and its source begins there.
+
+`e497` is the delay slot of `e496`, inside the receive state machine that the
+`@1b` hook `e41c` dispatches through `@65`.  From the code (read, not run
+here): the first state `e56f` resets a seven-count and compares each received
+word with `007e`/`007f` (`e578`-`e57d`), later states (`e440`, `e485`,
+`e499`) keep counting received words, and at `e48c` the role bit `@60` bit 8
+lets only the originating end continue to `@74 = 06d3`, `@75 = e33d` and
+`@1a = e337`.  So the originating end listens first and starts the 1,747-word
+source after it has received a run of the answering end's own, while the
+answering end transmits at once.  The exact received-word pattern that ends the
+wait was not tested.
