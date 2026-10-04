@@ -24,7 +24,7 @@
 83e2  b9fe           lacl    #fe
 83e3  7980 83e6      b       83e6, *
 83e5  b97e           lacl    #7e
-83e6  a87e 039f      bldd    @7e, #039f
+83e6  a87e 039f      bldd    #039f, @7e
 83e8  407e           bit     15, @7e
 83e9  9000           sacl    @00
 83ea  f500           xc      2, tc
@@ -679,7 +679,7 @@ e2f5  3067           sub     @67
 e2f6  e388 e316      bcnd    e316, eq
 e2f8  1080           lacc    *
 e2f9  bfc0 0001      or      #00000001
-e2fb  a87d 03e7      bldd    @7d, #03e7
+e2fb  a87d 03e7      bldd    #03e7, @7d
 e2fd  5d7d 0001      opl     @7d, #0001
 e2ff  307d           sub     @7d
 e300  e388 e314      bcnd    e314, eq

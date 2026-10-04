@@ -1,8 +1,408 @@
 {
   "profile": "QF060003",
+  "builder_product_scaling_mode": 1,
   "checks": {
     "amplitude_unpacking": 512,
-    "differential_signs_and_dc_search": 1024
+    "differential_signs_and_dc_search": 1024,
+    "source_scrambler_and_ring_append": 1024,
+    "firmware_constellations_mapping_and_inverse": 840,
+    "continuous_frame_mapper_output_samples": 1260,
+    "continuous_byte_streams": 56,
+    "continuous_stream_samples": 10752
   },
-  "total_cases": 1536
+  "negotiated_profiles": [
+    {
+      "rate_index": 1,
+      "flags": 0,
+      "amplitude_bits": 19,
+      "sizes": [
+        9,
+        9,
+        9,
+        9,
+        9,
+        9
+      ]
+    },
+    {
+      "rate_index": 1,
+      "flags": 1,
+      "amplitude_bits": 19,
+      "sizes": [
+        9,
+        9,
+        9,
+        9,
+        9,
+        9
+      ]
+    },
+    {
+      "rate_index": 2,
+      "flags": 0,
+      "amplitude_bits": 22,
+      "sizes": [
+        12,
+        13,
+        13,
+        13,
+        13,
+        13
+      ]
+    },
+    {
+      "rate_index": 2,
+      "flags": 1,
+      "amplitude_bits": 22,
+      "sizes": [
+        12,
+        13,
+        13,
+        13,
+        13,
+        13
+      ]
+    },
+    {
+      "rate_index": 3,
+      "flags": 0,
+      "amplitude_bits": 25,
+      "sizes": [
+        18,
+        18,
+        18,
+        18,
+        18,
+        18
+      ]
+    },
+    {
+      "rate_index": 3,
+      "flags": 1,
+      "amplitude_bits": 25,
+      "sizes": [
+        18,
+        18,
+        18,
+        18,
+        18,
+        18
+      ]
+    },
+    {
+      "rate_index": 4,
+      "flags": 0,
+      "amplitude_bits": 26,
+      "sizes": [
+        21,
+        20,
+        20,
+        20,
+        20,
+        20
+      ]
+    },
+    {
+      "rate_index": 4,
+      "flags": 1,
+      "amplitude_bits": 26,
+      "sizes": [
+        21,
+        20,
+        20,
+        20,
+        20,
+        20
+      ]
+    },
+    {
+      "rate_index": 5,
+      "flags": 0,
+      "amplitude_bits": 27,
+      "sizes": [
+        27,
+        22,
+        22,
+        22,
+        22,
+        22
+      ]
+    },
+    {
+      "rate_index": 5,
+      "flags": 1,
+      "amplitude_bits": 27,
+      "sizes": [
+        27,
+        22,
+        22,
+        22,
+        22,
+        22
+      ]
+    },
+    {
+      "rate_index": 6,
+      "flags": 0,
+      "amplitude_bits": 28,
+      "sizes": [
+        28,
+        25,
+        25,
+        25,
+        25,
+        25
+      ]
+    },
+    {
+      "rate_index": 6,
+      "flags": 1,
+      "amplitude_bits": 28,
+      "sizes": [
+        28,
+        25,
+        25,
+        25,
+        25,
+        25
+      ]
+    },
+    {
+      "rate_index": 7,
+      "flags": 0,
+      "amplitude_bits": 29,
+      "sizes": [
+        28,
+        29,
+        29,
+        29,
+        29,
+        29
+      ]
+    },
+    {
+      "rate_index": 7,
+      "flags": 1,
+      "amplitude_bits": 29,
+      "sizes": [
+        28,
+        29,
+        29,
+        29,
+        29,
+        29
+      ]
+    },
+    {
+      "rate_index": 8,
+      "flags": 0,
+      "amplitude_bits": 30,
+      "sizes": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ]
+    },
+    {
+      "rate_index": 8,
+      "flags": 1,
+      "amplitude_bits": 30,
+      "sizes": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ]
+    },
+    {
+      "rate_index": 9,
+      "flags": 0,
+      "amplitude_bits": 31,
+      "sizes": [
+        41,
+        35,
+        35,
+        35,
+        35,
+        35
+      ]
+    },
+    {
+      "rate_index": 9,
+      "flags": 1,
+      "amplitude_bits": 31,
+      "sizes": [
+        41,
+        35,
+        35,
+        35,
+        35,
+        35
+      ]
+    },
+    {
+      "rate_index": 10,
+      "flags": 0,
+      "amplitude_bits": 32,
+      "sizes": [
+        42,
+        40,
+        40,
+        40,
+        40,
+        40
+      ]
+    },
+    {
+      "rate_index": 10,
+      "flags": 1,
+      "amplitude_bits": 32,
+      "sizes": [
+        42,
+        40,
+        40,
+        40,
+        40,
+        40
+      ]
+    },
+    {
+      "rate_index": 11,
+      "flags": 0,
+      "amplitude_bits": 33,
+      "sizes": [
+        47,
+        45,
+        45,
+        45,
+        45,
+        45
+      ]
+    },
+    {
+      "rate_index": 11,
+      "flags": 1,
+      "amplitude_bits": 33,
+      "sizes": [
+        47,
+        45,
+        45,
+        45,
+        45,
+        45
+      ]
+    },
+    {
+      "rate_index": 12,
+      "flags": 0,
+      "amplitude_bits": 34,
+      "sizes": [
+        50,
+        51,
+        51,
+        51,
+        51,
+        51
+      ]
+    },
+    {
+      "rate_index": 12,
+      "flags": 1,
+      "amplitude_bits": 34,
+      "sizes": [
+        50,
+        51,
+        51,
+        51,
+        51,
+        51
+      ]
+    },
+    {
+      "rate_index": 13,
+      "flags": 0,
+      "amplitude_bits": 35,
+      "sizes": [
+        52,
+        62,
+        62,
+        62,
+        62,
+        62
+      ]
+    },
+    {
+      "rate_index": 13,
+      "flags": 1,
+      "amplitude_bits": 35,
+      "sizes": [
+        52,
+        62,
+        62,
+        62,
+        62,
+        62
+      ]
+    },
+    {
+      "rate_index": 14,
+      "flags": 0,
+      "amplitude_bits": 36,
+      "sizes": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ]
+    },
+    {
+      "rate_index": 14,
+      "flags": 1,
+      "amplitude_bits": 36,
+      "sizes": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ]
+    },
+    {
+      "rate_index": 15,
+      "flags": 0,
+      "amplitude_bits": 37,
+      "sizes": [
+        82,
+        70,
+        70,
+        70,
+        70,
+        70
+      ]
+    },
+    {
+      "rate_index": 15,
+      "flags": 1,
+      "amplitude_bits": 37,
+      "sizes": [
+        82,
+        70,
+        70,
+        70,
+        70,
+        70
+      ]
+    }
+  ],
+  "decoded_source_bytes": 8400,
+  "stream_scope": "32 frames per stream; byte scrambling, ring wrap/refill, original C544 output, ideal inverse and byte descrambling. Preselected rate indices 10 and 15; all MD 0..6, both scrambler role flags and final format XOR states.",
+  "total_cases": 15468
 }

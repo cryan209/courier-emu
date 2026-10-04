@@ -1587,7 +1587,7 @@ d7cc  fe81           retcd   nc, ntc
 d7cd  7ba3 dedf      banz    dedf, *+
 d7cf  2121           add     @21, 1
 d7d0  845d           sar     ar4, @5d
-d7d1  a57e a57e      blpd    @7e, #a57e
+d7d1  a57e a57e      blpd    #a57e, @7e
 d7d3  845d           sar     ar4, @5d
 d7d4  2121           add     @21, 1
 d7d5  dedf           mpy     #1edf
@@ -3660,7 +3660,7 @@ e2f5  3067           sub     @67
 e2f6  e388 e316      bcnd    e316, eq
 e2f8  1080           lacc    *
 e2f9  bfc0 0001      or      #00000001
-e2fb  a87d 03e7      bldd    @7d, #03e7
+e2fb  a87d 03e7      bldd    #03e7, @7d
 e2fd  5d7d 0001      opl     @7d, #0001
 e2ff  307d           sub     @7d
 e300  e388 e314      bcnd    e314, eq
@@ -3695,7 +3695,7 @@ e327  3069           sub     @69
 e328  e388 e33d      bcnd    e33d, eq
 e32a  1080           lacc    *
 e32b  bfc0 0001      or      #00000001
-e32d  a87d 03e9      bldd    @7d, #03e9
+e32d  a87d 03e9      bldd    #03e9, @7d
 e32f  5d7d 0001      opl     @7d, #0001
 e331  307d           sub     @7d
 e332  e388 e33b      bcnd    e33b, eq
@@ -4687,7 +4687,7 @@ e857  8500           sar     ar5, @00
 e858  8501           sar     ar5, @01
 e859  8503           sar     ar5, @03
 e85a  bb28           rpt     #28
-e85b  a4a0           blpd    *+
+e85b  a4a0           blpd    bmar, *+
 e85c  ae0b 0000      splk    @0b, #0000
 e85e  bc07           ldp     #007
 e85f  ae1a e865      splk    @1a, #e865

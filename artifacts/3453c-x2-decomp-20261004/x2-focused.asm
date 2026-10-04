@@ -245,7 +245,7 @@
 1deb  b900           lacl    #00
 1dec  907c           sacl    @7c
 1ded  7a80 2711      call    2711, *
-1def  a812 7fef      bldd    @12, #7fef
+1def  a812 7fef      bldd    #7fef, @12
 1df1  bc06           ldp     #006
 
 ; SHA256 c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e
@@ -395,7 +395,7 @@
 09a6  5e80 fffd      apl     *, #fffd
 09a8  bc07           ldp     #007
 09a9  7a80 0a64      call    0a64, *
-09ab  a812 7fef      bldd    @12, #7fef
+09ab  a812 7fef      bldd    #7fef, @12
 09ad  bf80 0d00      lacc    #00000d00
 09af  7a80 112b      call    112b, *
 09b1  bc00           ldp     #000

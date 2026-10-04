@@ -1,0 +1,12 @@
+{
+  "profile": "QF060003",
+  "rate_index": 15,
+  "amplitude_bits": 37,
+  "independent_sign_bits": 6,
+  "frame_bits": 43,
+  "builder_product_scaling_mode": 1,
+  "candidate_contexts": 36,
+  "valid_contexts": 28,
+  "exact_symbol_roundtrips": 1792,
+  "qualification": "Seeded builder inputs and exact-symbol inverse; no established call."
+}

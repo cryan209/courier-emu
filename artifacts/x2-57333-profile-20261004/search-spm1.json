@@ -1,0 +1,930 @@
+[
+  {
+    "mode": 0,
+    "flags": 0,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "unique": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "capacity": 137817400000,
+    "steps": 16620,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 0,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "capacity": 138467537955,
+    "steps": 13664,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 0,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7407,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 1,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "unique": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "capacity": 137817400000,
+    "steps": 16623,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 1,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "capacity": 138467537955,
+    "steps": 13667,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 1,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7410,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 4,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 16019,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 4,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "unique": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "capacity": 138584369664,
+    "steps": 13724,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 4,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "unique": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "capacity": 137552716161,
+    "steps": 14436,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 5,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 16022,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 5,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "unique": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "capacity": 138584369664,
+    "steps": 13727,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 0,
+    "flags": 5,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "unique": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "capacity": 137552716161,
+    "steps": 14439,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 0,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 11927,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 0,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      9,
+      10,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      10,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 900000,
+    "steps": 6687,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 0,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      12,
+      12,
+      14,
+      14,
+      14,
+      14
+    ],
+    "unique": [
+      12,
+      12,
+      14,
+      14,
+      14,
+      14
+    ],
+    "capacity": 5531904,
+    "steps": 6981,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 1,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 11930,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 1,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      9,
+      10,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      10,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 900000,
+    "steps": 6690,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 1,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      12,
+      12,
+      14,
+      14,
+      14,
+      14
+    ],
+    "unique": [
+      12,
+      12,
+      14,
+      14,
+      14,
+      14
+    ],
+    "capacity": 5531904,
+    "steps": 6984,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 4,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 12066,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 4,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      42,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "unique": [
+      42,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "capacity": 137625600000,
+    "steps": 11003,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 4,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      46,
+      46,
+      90,
+      90,
+      90,
+      90
+    ],
+    "unique": [
+      46,
+      46,
+      90,
+      90,
+      90,
+      90
+    ],
+    "capacity": 138830760000,
+    "steps": 11568,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 5,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 12069,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 5,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      42,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "unique": [
+      42,
+      80,
+      80,
+      80,
+      80,
+      80
+    ],
+    "capacity": 137625600000,
+    "steps": 11006,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 1,
+    "flags": 5,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      46,
+      46,
+      90,
+      90,
+      90,
+      90
+    ],
+    "unique": [
+      46,
+      46,
+      90,
+      90,
+      90,
+      90
+    ],
+    "capacity": 138830760000,
+    "steps": 11571,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 0,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "unique": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "capacity": 137817400000,
+    "steps": 12345,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 0,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "capacity": 138467537955,
+    "steps": 11054,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 0,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 6732,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 1,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "unique": [
+      82,
+      70,
+      70,
+      70,
+      70,
+      70
+    ],
+    "capacity": 137817400000,
+    "steps": 12348,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 1,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "capacity": 138467537955,
+    "steps": 11057,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 1,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 6735,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 4,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 11971,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 4,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "unique": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "capacity": 138584369664,
+    "steps": 11135,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 4,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "unique": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "capacity": 137552716161,
+    "steps": 11589,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 5,
+    "active": 0,
+    "record": 0,
+    "sizes": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "unique": [
+      72,
+      72,
+      72,
+      72,
+      72,
+      72
+    ],
+    "capacity": 139314069504,
+    "steps": 11974,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 5,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "unique": [
+      48,
+      78,
+      78,
+      78,
+      78,
+      78
+    ],
+    "capacity": 138584369664,
+    "steps": 11138,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  },
+  {
+    "mode": 2,
+    "flags": 5,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "unique": [
+      49,
+      49,
+      87,
+      87,
+      87,
+      87
+    ],
+    "capacity": 137552716161,
+    "steps": 11592,
+    "valid": true,
+    "exact_symbol_roundtrips": 64
+  }
+]

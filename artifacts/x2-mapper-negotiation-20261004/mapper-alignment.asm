@@ -13,7 +13,7 @@ ab19  a9a0 0856      bldd    *+, #0856
 ab1b  a9a0 0859      bldd    *+, #0859
 ab1d  bf09 ff42      lar     ar1, #ff42
 ab1f  bb05           rpt     #05
-ab20  a8a0 0856      bldd    *+, #0856
+ab20  a8a0 0856      bldd    #0856, *+
 ab22  7980 ab2e      b       ab2e, *
 ab24  bb01           rpt     #01
 ab25  a9a0 e8f1      bldd    *+, #e8f1
@@ -188,7 +188,7 @@ c864  bf90 c9e0      add     #0000c9e0
 c866  a640           tblr    @40
 c867  bf09 c64b      lar     ar1, #c64b
 c869  bb03           rpt     #03
-c86a  a8a0 c969      bldd    *+, #c969
+c86a  a8a0 c969      bldd    #c969, *+
 c86c  bf09 e8e4      lar     ar1, #e8e4
 c86e  ae80 0000      splk    *, #0000
 c870  bf09 e8f2      lar     ar1, #e8f2
@@ -352,7 +352,7 @@ c950  817c           sar     ar1, @7c
 c951  6989           lacl    *, ar1
 c952  907d           sacl    @7d
 c953  0b7d           rpt     @7d
-c954  aca0           bldd    *+
+c954  aca0           bldd    bmar, *+
 c955  e200 c95a      bcnd    c95a, ntc
 c957  017c           lar     ar1, @7c
 c958  0b7d           rpt     @7d

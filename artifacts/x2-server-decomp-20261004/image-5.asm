@@ -60,7 +60,7 @@
 8057  ae1e 00ef      splk    @1e, #00ef
 8059  b160           lar     ar1, #60
 805a  bb0a           rpt     #0a
-805b  a5a0 82a2      blpd    *+, #82a2
+805b  a5a0 82a2      blpd    #82a2, *+
 805d  ae1a 0bd0      splk    @1a, #0bd0
 805f  ae1b 0bdf      splk    @1b, #0bdf
 8061  b958           lacl    #58
@@ -149,8 +149,8 @@
 80e1  be3d           calad
 80e2  bf09 0889      lar     ar1, #0889
 80e4  be32           pop
-80e5  a81b 088d      bldd    @1b, #088d
-80e7  a81a 088c      bldd    @1a, #088c
+80e5  a81b 088d      bldd    #088d, @1b
+80e7  a81a 088c      bldd    #088c, @1a
 80e9  bf09 0888      lar     ar1, #0888
 80eb  691a           lacl    @1a
 80ec  be3d           calad
@@ -159,8 +159,8 @@
 80f1  691b           lacl    @1b
 80f2  be30           cala
 80f3  bc11           ldp     #011
-80f4  a80c 039a      bldd    @0c, #039a
-80f6  a80d 039b      bldd    @0d, #039b
+80f4  a80c 039a      bldd    #039a, @0c
+80f6  a80d 039b      bldd    #039b, @0d
 80f8  bf80 80e5      lacc    #000080e5
 80fa  be3c           push
 80fb  bf09 0899      lar     ar1, #0899
@@ -175,8 +175,8 @@
 8108  be3d           calad
 8109  bf09 088b      lar     ar1, #088b
 810b  be32           pop
-810c  a81b 088f      bldd    @1b, #088f
-810e  a81a 088e      bldd    @1a, #088e
+810c  a81b 088f      bldd    #088f, @1b
+810e  a81a 088e      bldd    #088e, @1a
 8110  bf09 088a      lar     ar1, #088a
 8112  691a           lacl    @1a
 8113  be3d           calad
@@ -185,8 +185,8 @@
 8118  691b           lacl    @1b
 8119  be30           cala
 811a  bc11           ldp     #011
-811b  a80e 039a      bldd    @0e, #039a
-811d  a80f 039b      bldd    @0f, #039b
+811b  a80e 039a      bldd    #039a, @0e
+811d  a80f 039b      bldd    #039b, @0f
 811f  bf80 810c      lacc    #0000810c
 8121  be3c           push
 8122  bf09 089b      lar     ar1, #089b
@@ -668,13 +668,13 @@
 8356  bc11           ldp     #011
 8357  5f16 088c      cpl     @16, #088c
 8359  e200 8365      bcnd    8365, ntc
-835b  a80c 039a      bldd    @0c, #039a
-835d  a80d 039b      bldd    @0d, #039b
+835b  a80c 039a      bldd    #039a, @0c
+835d  a80d 039b      bldd    #039b, @0d
 835f  ae1a 81a5      splk    @1a, #81a5
 8361  f300 836d      bcndd   836d
 8363  ae19 81a9      splk    @19, #81a9
-8365  a80e 039a      bldd    @0e, #039a
-8367  a80f 039b      bldd    @0f, #039b
+8365  a80e 039a      bldd    #039a, @0e
+8367  a80f 039b      bldd    #039b, @0f
 8369  ae1c 81a5      splk    @1c, #81a5
 836b  ae1b 81a9      splk    @1b, #81a9
 836d  bc07           ldp     #007
@@ -759,7 +759,7 @@
 83e2  b9fe           lacl    #fe
 83e3  7980 83e6      b       83e6, *
 83e5  b97e           lacl    #7e
-83e6  a87e 039f      bldd    @7e, #039f
+83e6  a87e 039f      bldd    #039f, @7e
 83e8  407e           bit     15, @7e
 83e9  9000           sacl    @00
 83ea  f500           xc      2, tc
@@ -945,7 +945,7 @@
 84bc  e301 84c1      bcnd    84c1, nc
 84be  7b90 84bb      banz    84bb, *-
 84c0  ef00           ret
-84c1  a87e 039f      bldd    @7e, #039f
+84c1  a87e 039f      bldd    #039f, @7e
 84c3  ae26 84ce      splk    @26, #84ce
 84c5  407e           bit     15, @7e
 84c6  be1e           sacb
@@ -1834,7 +1834,7 @@
 887c  9194           sacl    *-, 1
 887d  919b           sacl    *-, ar3, 1
 887e  919e           sacl    *-, ar6, 1
-887f  a5f4 91ed      blpd    *br0+, #91ed
+887f  a5f4 91ed      blpd    #91ed, *br0+
 8881  91b1           sacl    *?, 1
 8882  88e7           samm    *0+
 8883  898b 9238      lmmr    *, ar3, 9238

@@ -93,10 +93,10 @@
 5d2b  bf09 77b3      lar     ar1, #77b3
 5d2d  ae80 0000      splk    *, #0000
 5d2f  bf09 765e      lar     ar1, #765e
-5d31  a8a0 03ba      bldd    *+, #03ba
-5d33  a8a0 03bb      bldd    *+, #03bb
+5d31  a8a0 03ba      bldd    #03ba, *+
+5d33  a8a0 03bb      bldd    #03bb, *+
 5d35  bb73           rpt     #73
-5d36  a8a0 75e0      bldd    *+, #75e0
+5d36  a8a0 75e0      bldd    #75e0, *+
 5d38  bf80 007a      lacc    #0000007a
 5d3a  7a80 12d3      call    12d3, *
 5d3c  7a80 0387      call    0387, *
@@ -456,7 +456,7 @@
 5f22  be03           pac
 5f23  9880           sach    *
 5f24  bf09 77c2      lar     ar1, #77c2
-5f26  a880 0331      bldd    *, #0331
+5f26  a880 0331      bldd    #0331, *
 5f28  b16f           lar     ar1, #6f
 5f29  5e80 feff      apl     *, #feff
 5f2b  7980 6625      b       6625, *
@@ -562,7 +562,7 @@
 5fa3  307b           sub     @7b
 5fa4  be12           andb
 5fa5  9020           sacl    @20
-5fa6  a87f 0364      bldd    @7f, #0364
+5fa6  a87f 0364      bldd    #0364, @7f
 5fa8  7e80 3c11      calld   3c11, *
 5faa  bf08 0280      lar     ar0, #0280
 5fac  6951           lacl    @51
@@ -573,7 +573,7 @@
 5fb1  be1b           crgt
 5fb2  907f           sacl    @7f
 5fb3  7e80 3c11      calld   3c11, *
-5fb5  a820 0358      bldd    @20, #0358
+5fb5  a820 0358      bldd    #0358, @20
 5fb7  6951           lacl    @51
 5fb8  ba10           sub     #10
 5fb9  be1e           sacb
@@ -583,7 +583,7 @@
 5fbd  be1b           crgt
 5fbe  907f           sacl    @7f
 5fbf  7e80 3c11      calld   3c11, *
-5fc1  a820 0357      bldd    @20, #0357
+5fc1  a820 0357      bldd    #0357, @20
 5fc3  6951           lacl    @51
 5fc4  ba20           sub     #20
 5fc5  be1e           sacb
@@ -591,7 +591,7 @@
 5fc7  be1b           crgt
 5fc8  907f           sacl    @7f
 5fc9  7d80 3c11      bd      3c11, *
-5fcb  a820 0356      bldd    @20, #0356
+5fcb  a820 0356      bldd    #0356, @20
 5fcd  6928           lacl    @28
 5fce  6629           subs    @29
 5fcf  bfb0 007f      and     #0000007f
@@ -992,7 +992,7 @@
 61dd  7a80 5d45      call    5d45, *
 61df  6901           lacl    @01
 61e0  bfa0 0a00      sub     #00000a00
-61e2  a87f 7795      bldd    @7f, #7795
+61e2  a87f 7795      bldd    #7795, @7f
 61e4  0b7f           rpt     @7f
 61e5  287b           add     @7b, 8
 61e6  7a80 5f2d      call    5f2d, *
@@ -1031,8 +1031,8 @@
 621d  907d           sacl    @7d
 621e  7a80 5f51      call    5f51, *
 6220  bf09 765b      lar     ar1, #765b
-6222  a8a0 0388      bldd    *+, #0388
-6224  a8a0 0389      bldd    *+, #0389
+6222  a8a0 0388      bldd    #0388, *+
+6224  a8a0 0389      bldd    #0389, *+
 6226  697d           lacl    @7d
 6227  90a0           sacl    *+
 6228  bf09 7bcc      lar     ar1, #7bcc
@@ -1257,7 +1257,7 @@
 6383  ae4d 27c7      splk    @4d, #27c7
 6385  bf09 4d45      lar     ar1, #4d45
 6387  bb66           rpt     #66
-6388  a8a0 4dac      bldd    *+, #4dac
+6388  a8a0 4dac      bldd    #4dac, *+
 638a  bf09 4e93      lar     ar1, #4e93
 638c  bb05           rpt     #05
 638d  a9a0 4e99      bldd    *+, #4e99
@@ -1296,7 +1296,7 @@
 63bd  bf80 60ab      lacc    #000060ab
 63bf  7a80 0691      call    0691, *
 63c1  7e80 5f51      calld   5f51, *
-63c3  a87d 036f      bldd    @7d, #036f
+63c3  a87d 036f      bldd    #036f, @7d
 63c5  ae51 0013      splk    @51, #0013
 63c7  bf0a 4e93      lar     ar2, #4e93
 63c9  7e80 70ca      calld   70ca, *
@@ -1422,13 +1422,13 @@
 645d  aea0 00c5      splk    *+, #00c5
 645f  aea0 4141      splk    *+, #4141
 6461  bb04           rpt     #04
-6462  a5a0 643e      blpd    *+, #643e
+6462  a5a0 643e      blpd    #643e, *+
 6464  bb04           rpt     #04
-6465  a5a0 6443      blpd    *+, #6443
+6465  a5a0 6443      blpd    #6443, *+
 6467  bb03           rpt     #03
-6468  a5a0 6448      blpd    *+, #6448
+6468  a5a0 6448      blpd    #6448, *+
 646a  bb03           rpt     #03
-646b  a5a0 644c      blpd    *+, #644c
+646b  a5a0 644c      blpd    #644c, *+
 646d  ae7c 0000      splk    @7c, #0000
 646f  b20b           lar     ar2, #0b
 6470  b304           lar     ar3, #04
@@ -1606,13 +1606,13 @@
 654f  aea0 0002      splk    *+, #0002
 6551  aea0 4141      splk    *+, #4141
 6553  bb04           rpt     #04
-6554  a5a0 643e      blpd    *+, #643e
+6554  a5a0 643e      blpd    #643e, *+
 6556  bb04           rpt     #04
-6557  a5a0 6443      blpd    *+, #6443
+6557  a5a0 6443      blpd    #6443, *+
 6559  bb03           rpt     #03
-655a  a5a0 6448      blpd    *+, #6448
+655a  a5a0 6448      blpd    #6448, *+
 655c  bb03           rpt     #03
-655d  a5a0 644c      blpd    *+, #644c
+655d  a5a0 644c      blpd    #644c, *+
 655f  ae7c 0000      splk    @7c, #0000
 6561  bf0a 76d4      lar     ar2, #76d4
 6563  8b8a           mar     *, ar2
@@ -1928,8 +1928,8 @@
 6702  7a80 14b4      call    14b4, *
 6704  b900           lacl    #00
 6705  7a80 0000      call    0000, *
-6707  a812 77b6      bldd    @12, #77b6
-6709  a871 77b5      bldd    @71, #77b5
+6707  a812 77b6      bldd    #77b6, @12
+6709  a871 77b5      bldd    #77b5, @71
 670b  bf80 000f      lacc    #0000000f
 670d  887a           samm    @7a
 670e  7a80 0417      call    0417, *
@@ -2338,7 +2338,7 @@
 6939  be1e           sacb
 693a  b901           lacl    #01
 693b  880f           samm    @0f
-693c  a87f 031d      bldd    @7f, #031d
+693c  a87f 031d      bldd    #031d, @7f
 693e  6953           lacl    @53
 693f  be0a           sfr
 6940  697d           lacl    @7d
@@ -2642,7 +2642,7 @@
 6af0  ed00           retc    tc
 6af1  bf09 76f1      lar     ar1, #76f1
 6af3  bb04           rpt     #04
-6af4  a8a0 7ccc      bldd    *+, #7ccc
+6af4  a8a0 7ccc      bldd    #7ccc, *+
 6af6  ef00           ret
 6af7  bf09 4cc5      lar     ar1, #4cc5
 6af9  bf0a 4fc5      lar     ar2, #4fc5
@@ -2882,7 +2882,7 @@
 6c2b  e301 6c34      bcnd    6c34, nc
 6c2d  bf09 7ccc      lar     ar1, #7ccc
 6c2f  bb02           rpt     #02
-6c30  a8a0 0361      bldd    *+, #0361
+6c30  a8a0 0361      bldd    #0361, *+
 6c32  9869           sach    @69
 6c33  906a           sacl    @6a
 6c34  b908           lacl    #08
@@ -3106,10 +3106,10 @@
 6d4d  9073           sacl    @73
 6d4e  bf09 772b      lar     ar1, #772b
 6d50  bb2f           rpt     #2f
-6d51  a8a0 5270      bldd    *+, #5270
+6d51  a8a0 5270      bldd    #5270, *+
 6d53  bf09 76fb      lar     ar1, #76fb
 6d55  bb2f           rpt     #2f
-6d56  a8a0 5240      bldd    *+, #5240
+6d56  a8a0 5240      bldd    #5240, *+
 6d58  1074           lacc    @74
 6d59  be20           bacc
 6d5a  0162           lar     ar1, @62
@@ -3382,7 +3382,7 @@
 6eca  7a80 4bdb      call    4bdb, *
 6ecc  bf09 784c      lar     ar1, #784c
 6ece  bb7f           rpt     #7f
-6ecf  a8a0 77cc      bldd    *+, #77cc
+6ecf  a8a0 77cc      bldd    #77cc, *+
 6ed1  7d80 71a5      bd      71a5, *
 6ed3  bf09 784c      lar     ar1, #784c
 6ed5  8a74           popd    @74
@@ -4162,7 +4162,7 @@
 727b  8be9           mar     *0+, ar1
 727c  bf09 4dac      lar     ar1, #4dac
 727e  bb06           rpt     #06
-727f  a8a0 7cce      bldd    *+, #7cce
+727f  a8a0 7cce      bldd    #7cce, *+
 7281  bc06           ldp     #006
 7282  ef00           ret
 7283  007d           lar     ar0, @7d
@@ -4194,13 +4194,13 @@
 729e  8b8b           mar     *, ar3
 729f  8baa           mar     *+, ar2
 72a0  bb07           rpt     #07
-72a1  ada0           bldd    *+
+72a1  ada0           bldd    *+, bmar
 72a2  7828           adrk    #28
 72a3  081f           lamm    @1f
 72a4  207d           add     @7d
 72a5  881f           samm    @1f
 72a6  bb07           rpt     #07
-72a7  ada0           bldd    *+
+72a7  ada0           bldd    *+, bmar
 72a8  7c38           sbrk    #38
 72a9  081f           lamm    @1f
 72aa  307d           sub     @7d
@@ -4323,14 +4323,14 @@
 735a  f100 7369      bcndd   7369, tc
 735c  bf09 5820      lar     ar1, #5820
 735e  bb03           rpt     #03
-735f  a5a0 74d9      blpd    *+, #74d9
+735f  a5a0 74d9      blpd    #74d9, *+
 7361  f708           xc      2, neq
 7362  ae5a 0002      splk    @5a, #0002
 7364  ae52 0002      splk    @52, #0002
 7366  ff00           retd
 7367  ae51 0003      splk    @51, #0003
 7369  bb07           rpt     #07
-736a  a5a0 74dd      blpd    *+, #74dd
+736a  a5a0 74dd      blpd    #74dd, *+
 736c  f708           xc      2, neq
 736d  ae5a 0004      splk    @5a, #0004
 736f  ae52 0003      splk    @52, #0003
@@ -4419,7 +4419,7 @@
 73db  2022           add     @22
 73dc  881f           samm    @1f
 73dd  0b23           rpt     @23
-73de  ada0           bldd    *+
+73de  ada0           bldd    *+, bmar
 73df  8b8a           mar     *, ar2
 73e0  023f           lar     ar2, @3f
 73e1  b900           lacl    #00

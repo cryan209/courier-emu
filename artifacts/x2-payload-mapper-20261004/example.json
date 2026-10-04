@@ -1,0 +1,52 @@
+[
+  {
+    "rate_index": 10,
+    "source_octets": [
+      231,
+      77,
+      170,
+      203,
+      96,
+      44,
+      146,
+      133,
+      102
+    ],
+    "frame_bits": 35,
+    "mapped_octets": [
+      169,
+      60,
+      177,
+      48,
+      44,
+      87
+    ],
+    "decoded_frame_integer": "0x70fb64de7"
+  },
+  {
+    "rate_index": 15,
+    "source_octets": [
+      83,
+      34,
+      103,
+      48,
+      87,
+      245,
+      41,
+      198,
+      208,
+      42,
+      66
+    ],
+    "frame_bits": 40,
+    "mapped_octets": [
+      159,
+      70,
+      192,
+      36,
+      32,
+      185
+    ],
+    "decoded_frame_integer": "0x6a90ab2253"
+  }
+]

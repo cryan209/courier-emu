@@ -1,0 +1,1795 @@
+{
+  "qualification": "Seeded measurement bitmaps and local parameters; original diagnostic report summarizer and packer, separate peer-record rate intersection. No analogue acquisition or peer exchange.",
+  "profiles": [
+    {
+      "name": "v211",
+      "image": "docs/3453Bv2.1.1/3453Bv2.1.1.xmf",
+      "sha256": "7699fbad0e906954b1ec7db315af0c17b758f5f4059ba0357401eadebdde1bd4",
+      "entry": "0xde1d",
+      "stop": "0xde6c",
+      "bitmap_base": "0xd26b",
+      "destination": "0xf7c0",
+      "cases": 512,
+      "examples": [
+        {
+          "popcounts": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "below_twenty": 6,
+          "mode": 2,
+          "rate_field": 18,
+          "flags": 37363,
+          "local_0361": 1,
+          "source_aux": 55282,
+          "initial_first": 0,
+          "initial_second": 49397,
+          "packed_words": [
+            27228,
+            64693
+          ],
+          "steps": 915
+        },
+        {
+          "popcounts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "below_twenty": 6,
+          "mode": 1,
+          "rate_field": 4,
+          "flags": 11634,
+          "local_0361": 1,
+          "source_aux": 41705,
+          "initial_first": 0,
+          "initial_second": 43123,
+          "packed_words": [
+            9372,
+            47731
+          ],
+          "steps": 920
+        },
+        {
+          "popcounts": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "below_twenty": 6,
+          "mode": 4,
+          "rate_field": 31,
+          "flags": 49927,
+          "local_0361": 0,
+          "source_aux": 48004,
+          "initial_first": 1,
+          "initial_second": 21732,
+          "packed_words": [
+            21501,
+            57636
+          ],
+          "steps": 926
+        },
+        {
+          "popcounts": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "below_twenty": 6,
+          "mode": 4,
+          "rate_field": 22,
+          "flags": 8836,
+          "local_0361": 0,
+          "source_aux": 12726,
+          "initial_first": 0,
+          "initial_second": 48803,
+          "packed_words": [
+            4812,
+            28067
+          ],
+          "steps": 930
+        },
+        {
+          "popcounts": [
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ],
+          "below_twenty": 1,
+          "mode": 0,
+          "rate_field": 19,
+          "flags": 17634,
+          "local_0361": 1,
+          "source_aux": 3010,
+          "initial_first": 0,
+          "initial_second": 24043,
+          "packed_words": [
+            8802,
+            61611
+          ],
+          "steps": 1022
+        }
+      ]
+    },
+    {
+      "name": "v2333",
+      "image": "docs/3453C_v2.3.33/2_3_33.XMF",
+      "sha256": "c8d44a1c984a203f6e9a91b14c77382706ea05fc2b860081f986c47b6fa7c41e",
+      "entry": "0x5ec3",
+      "stop": "0x5f12",
+      "bitmap_base": "0x526b",
+      "destination": "0x77be",
+      "cases": 512,
+      "examples": [
+        {
+          "popcounts": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "below_twenty": 6,
+          "mode": 1,
+          "rate_field": 23,
+          "flags": 61230,
+          "local_0361": 1,
+          "source_aux": 6903,
+          "initial_first": 0,
+          "initial_second": 62122,
+          "packed_words": [
+            9980,
+            48618
+          ],
+          "steps": 914
+        },
+        {
+          "popcounts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "below_twenty": 6,
+          "mode": 7,
+          "rate_field": 7,
+          "flags": 9641,
+          "local_0361": 1,
+          "source_aux": 542,
+          "initial_first": 0,
+          "initial_second": 65393,
+          "packed_words": [
+            31996,
+            34737
+          ],
+          "steps": 921
+        },
+        {
+          "popcounts": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "below_twenty": 6,
+          "mode": 1,
+          "rate_field": 17,
+          "flags": 13900,
+          "local_0361": 0,
+          "source_aux": 9792,
+          "initial_first": 0,
+          "initial_second": 51077,
+          "packed_words": [
+            1580,
+            36869
+          ],
+          "steps": 924
+        },
+        {
+          "popcounts": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "below_twenty": 6,
+          "mode": 4,
+          "rate_field": 22,
+          "flags": 41595,
+          "local_0361": 1,
+          "source_aux": 2031,
+          "initial_first": 1,
+          "initial_second": 31702,
+          "packed_words": [
+            29389,
+            64470
+          ],
+          "steps": 932
+        },
+        {
+          "popcounts": [
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ],
+          "below_twenty": 1,
+          "mode": 5,
+          "rate_field": 14,
+          "flags": 22868,
+          "local_0361": 1,
+          "source_aux": 3173,
+          "initial_first": 1,
+          "initial_second": 56546,
+          "packed_words": [
+            13779,
+            6498
+          ],
+          "steps": 1023
+        }
+      ]
+    }
+  ],
+  "peer_record_rate_intersection": {
+    "cases": 992,
+    "profiles": [
+      {
+        "profile": "v211",
+        "entry": "0xe773",
+        "stop": "0xe7a3",
+        "cases": 496,
+        "working_word": "0xfcd0",
+        "measurement_mask_low": "0xd2a0",
+        "host_mask_high": "0xf7c9",
+        "examples": [
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 1,
+            "measurement_mask": 826266027,
+            "host_mask": 1856434115,
+            "eligible": 1,
+            "selected": 1,
+            "packed_first_word": 16389
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 2,
+            "measurement_mask": 97646233,
+            "host_mask": 1059172180,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 24579
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 3,
+            "measurement_mask": 974522790,
+            "host_mask": 348882901,
+            "eligible": 4,
+            "selected": 3,
+            "packed_first_word": 4110
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 4,
+            "measurement_mask": 759630080,
+            "host_mask": 2073152429,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 16385
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 5,
+            "measurement_mask": 542920068,
+            "host_mask": 1163125890,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 12290
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 6,
+            "measurement_mask": 2136837509,
+            "host_mask": 453448758,
+            "eligible": 4,
+            "selected": 3,
+            "packed_first_word": 24589
+          }
+        ]
+      },
+      {
+        "profile": "v2333",
+        "entry": "0x6818",
+        "stop": "0x6848",
+        "cases": 496,
+        "working_word": "0x7cce",
+        "measurement_mask_low": "0x52a0",
+        "host_mask_high": "0x77c7",
+        "examples": [
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 1,
+            "measurement_mask": 1980879326,
+            "host_mask": 1681595915,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 8195
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 2,
+            "measurement_mask": 1355531380,
+            "host_mask": 505897312,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 24577
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 3,
+            "measurement_mask": 2047395300,
+            "host_mask": 1246321835,
+            "eligible": 0,
+            "selected": 0,
+            "packed_first_word": 24576
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 4,
+            "measurement_mask": 926830668,
+            "host_mask": 597411817,
+            "eligible": 8,
+            "selected": 4,
+            "packed_first_word": 24595
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 5,
+            "measurement_mask": 191649939,
+            "host_mask": 173310831,
+            "eligible": 3,
+            "selected": 2,
+            "packed_first_word": 16393
+          },
+          {
+            "role_bit_5": 0,
+            "offset_0364": 0,
+            "limit": 6,
+            "measurement_mask": 1494566220,
+            "host_mask": 1203381301,
+            "eligible": 4,
+            "selected": 3,
+            "packed_first_word": 20495
+          }
+        ]
+      }
+    ]
+  },
+  "client_serializer_to_server_receiver": {
+    "cases": 64,
+    "client_entry": "0x2e3a",
+    "client_buffer": "0x7cce",
+    "server_receiver": "0xaaa4 / 0xa9ea",
+    "body_words": 4,
+    "bits": 102,
+    "qualification": "Unmodified client serializer and server receiver; four-word source bodies and message length are seeded. This does not prove client call-state selection or constellation-record production.",
+    "examples": [
+      {
+        "words": [
+          12652,
+          15029,
+          41310,
+          50449
+        ],
+        "crc": 41035,
+        "bits": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "words": [
+          12646,
+          19357,
+          39081,
+          48725
+        ],
+        "crc": 60159,
+        "bits": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "words": [
+          2170,
+          65315,
+          54585,
+          15615
+        ],
+        "crc": 30593,
+        "bits": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1,
+          1,
+          1,
+          0
+        ]
+      }
+    ]
+  },
+  "pre_v90_serializer": {
+    "entry": "0xade2",
+    "buffer": "0xfcd0",
+    "cases": 96,
+    "word_counts": [
+      1,
+      2,
+      4,
+      6,
+      7,
+      9
+    ],
+    "qualification": "Original 3453B 2.1.1 serializer with seeded source bodies and lengths; confirms framing predates V.90, not selection of any length during an actual call."
+  },
+  "position_report_constructor": {
+    "profiles": [
+      {
+        "profile": "v211",
+        "entry": "0xf16b",
+        "cases": 76,
+        "examples": [
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              16,
+              256
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              16,
+              0
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              2,
+              0,
+              0
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              8208,
+              256
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              0,
+              272
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              272,
+              0
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              528,
+              256
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": true,
+            "packed_positions": [
+              0,
+              256
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 8
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              1,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              4112,
+              16
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              1,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              4112,
+              272
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              1,
+              2
+            ],
+            "distinct_classes": 3,
+            "second_matrix": false,
+            "packed_positions": [
+              528,
+              33
+            ],
+            "parameter_length": 31,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              1,
+              2
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              528,
+              289
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              0,
+              1
+            ],
+            "distinct_classes": 4,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              16
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              0,
+              1
+            ],
+            "distinct_classes": 4,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              272
+            ],
+            "parameter_length": 71,
+            "second_matrix_words": 32
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              0
+            ],
+            "distinct_classes": 5,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              4
+            ],
+            "parameter_length": 47,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              0
+            ],
+            "distinct_classes": 5,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              260
+            ],
+            "parameter_length": 87,
+            "second_matrix_words": 40
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "distinct_classes": 6,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              84
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "distinct_classes": 6,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              340
+            ],
+            "parameter_length": 103,
+            "second_matrix_words": 48
+          }
+        ]
+      },
+      {
+        "profile": "v2333",
+        "entry": "0x720a",
+        "cases": 76,
+        "examples": [
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              16,
+              256
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              16,
+              0
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              2,
+              0,
+              0
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              8208,
+              256
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              0,
+              272
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              272,
+              0
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              528,
+              256
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": false,
+            "packed_positions": [
+              0,
+              0
+            ],
+            "parameter_length": 15,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "distinct_classes": 1,
+            "second_matrix": true,
+            "packed_positions": [
+              0,
+              256
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 8
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              1,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": false,
+            "packed_positions": [
+              4112,
+              16
+            ],
+            "parameter_length": 23,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              0,
+              1,
+              0,
+              1
+            ],
+            "distinct_classes": 2,
+            "second_matrix": true,
+            "packed_positions": [
+              4112,
+              272
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 16
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              1,
+              2
+            ],
+            "distinct_classes": 3,
+            "second_matrix": false,
+            "packed_positions": [
+              528,
+              33
+            ],
+            "parameter_length": 31,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              0,
+              1,
+              2
+            ],
+            "distinct_classes": 3,
+            "second_matrix": true,
+            "packed_positions": [
+              528,
+              289
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 24
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              0,
+              1
+            ],
+            "distinct_classes": 4,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              16
+            ],
+            "parameter_length": 39,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              0,
+              1
+            ],
+            "distinct_classes": 4,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              272
+            ],
+            "parameter_length": 71,
+            "second_matrix_words": 32
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              0
+            ],
+            "distinct_classes": 5,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              4
+            ],
+            "parameter_length": 47,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              0
+            ],
+            "distinct_classes": 5,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              260
+            ],
+            "parameter_length": 87,
+            "second_matrix_words": 40
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "distinct_classes": 6,
+            "second_matrix": false,
+            "packed_positions": [
+              12816,
+              84
+            ],
+            "parameter_length": 55,
+            "second_matrix_words": 0
+          },
+          {
+            "preserved_header_words": [
+              4660,
+              9029,
+              13398,
+              17767,
+              22136
+            ],
+            "position_labels": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "distinct_classes": 6,
+            "second_matrix": true,
+            "packed_positions": [
+              12816,
+              340
+            ],
+            "parameter_length": 103,
+            "second_matrix_words": 48
+          }
+        ]
+      }
+    ],
+    "cross_version_equal_cases": 76,
+    "constructed_records_serialized": 152,
+    "native_initializers": [
+      "0xc5e8",
+      "0x4650"
+    ],
+    "qualification": "Seeded six groups of eight measurement words and a second comparison matrix. Existing five header words are preserved; packed controls are written at offsets five and six, followed by selected bitmap blocks. The final seven-word BLDD copies the message buffer back into scratch, not scratch into the message. Original initializers install the source pointer, returned length, preamble and callbacks before each original serializer executes. This variable-length record is not asserted to be the Quad four-word negotiation body; analogue acquisition and complete call scheduling remain open."
+  }
+}

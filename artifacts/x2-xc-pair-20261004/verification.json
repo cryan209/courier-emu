@@ -1,0 +1,95 @@
+{
+  "firmware": "Ie030002.nac",
+  "scrambler": "1 + x^-18 + x^-23",
+  "bit_order": "LSB first, then octet reversal",
+  "sides": {
+    "originate": {
+      "modes": [
+        "0310"
+      ],
+      "width": 8,
+      "scrambling_enabled": true,
+      "octet_reversal_enabled": true,
+      "tx_callback": "e97e",
+      "rx_callback": "e992",
+      "tx_gpc_entry": "9057",
+      "rx_gpc_entry": "908e",
+      "width_initializer": "e8e1",
+      "reset_capture_pc": "e908",
+      "zero_history_resets": 2,
+      "reset_dsp_instructions": [
+        453921023,
+        489442400
+      ],
+      "tx_captures": 6720,
+      "consecutive_gpc_transitions_checked": 6615,
+      "last_reset": [
+        489442400,
+        533006700,
+        8,
+        6,
+        0,
+        0,
+        255,
+        8,
+        0,
+        0,
+        784,
+        0,
+        0,
+        32768,
+        59774,
+        59794,
+        58167,
+        58396
+      ],
+      "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+      "bidirectional_payload": true,
+      "trace_sha256": "9f0c0decebbe04deca1a2e4fc2bdc6f663755933ac2211a6e616dd972d18db6f"
+    },
+    "answer": {
+      "modes": [
+        "0210"
+      ],
+      "width": 8,
+      "scrambling_enabled": true,
+      "octet_reversal_enabled": true,
+      "tx_callback": "e97e",
+      "rx_callback": "e992",
+      "tx_gpc_entry": "9057",
+      "rx_gpc_entry": "908e",
+      "width_initializer": "e8e1",
+      "reset_capture_pc": "e908",
+      "zero_history_resets": 2,
+      "reset_dsp_instructions": [
+        609839188,
+        645119078
+      ],
+      "tx_captures": 5504,
+      "consecutive_gpc_transitions_checked": 5418,
+      "last_reset": [
+        645119078,
+        681847885,
+        8,
+        6,
+        0,
+        0,
+        255,
+        8,
+        0,
+        0,
+        528,
+        0,
+        0,
+        32768,
+        59774,
+        59794,
+        58167,
+        58396
+      ],
+      "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+      "bidirectional_payload": true,
+      "trace_sha256": "07df53c30e009ba09cf3c46bae78bb11f67c01021c57032e60913a40f7577829"
+    }
+  }
+}

@@ -1,0 +1,1223 @@
+{
+  "profile": "QF060003",
+  "qualification": "Synthetic demodulated records and seeded local call state; original receiver, selector, constructor and callback scheduler. No full call or analogue probe measurement.",
+  "checks": {
+    "rate_mask_and_peer_limit": 1249,
+    "accepted_records": 128,
+    "rejected_corrupt_records": 256,
+    "record_to_rate_banks_and_data": 40,
+    "continuous_data_frame_inverses": 1280,
+    "continuous_data_samples": 7680
+  },
+  "controller_sha256": "61a8f031c7cdf94daad748cded191f8287757254bc3a3657609a7426ca2dca2d",
+  "source_activation": {
+    "script": "0xc7e7",
+    "startup_samples": 6,
+    "mapped_samples_before_activation": 4080,
+    "activation_entry": "0xc52e",
+    "source_callback": "0x84fb",
+    "host_queue_word": 3,
+    "qualification": "Original scheduler reaches source activation after its countdown; prefetched ring input bypasses external source queues."
+  },
+  "selection_rule": "For tested PCM TX direction: selected_index = bit_length(local_mask_ff39 & ((1 << peer_limit) - 1)), peer_limit = (received_word_0 >> 2) & 15. Builder index = selected_index - 1.",
+  "receive_format": "Tested mode 039F=8040, bit 7 clear: at least 17 one bits then zero; four LSB-first 16-bit words, each followed by zero; 16 LSB-first CRC bits. CRC starts FFFF, reflected polynomial 8408, no final XOR.",
+  "profiles": [
+    {
+      "peer_limit": 1,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 1,
+      "amplitude_bits": 19,
+      "sign_bits": 6,
+      "radices": [
+        9,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "startup_samples": [
+        39,
+        229,
+        175,
+        189,
+        45,
+        47
+      ],
+      "data_frames": 32,
+      "record_crc": 5595
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 1,
+      "amplitude_bits": 19,
+      "sign_bits": 6,
+      "radices": [
+        9,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "startup_samples": [
+        39,
+        165,
+        207,
+        101,
+        39,
+        55
+      ],
+      "data_frames": 32,
+      "record_crc": 5595
+    },
+    {
+      "peer_limit": 2,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 2,
+      "amplitude_bits": 22,
+      "sign_bits": 6,
+      "radices": [
+        12,
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "startup_samples": [
+        197,
+        189,
+        207,
+        45,
+        61,
+        45
+      ],
+      "data_frames": 32,
+      "record_crc": 11961
+    },
+    {
+      "peer_limit": 2,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 2,
+      "amplitude_bits": 22,
+      "sign_bits": 6,
+      "radices": [
+        12,
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "startup_samples": [
+        229,
+        183,
+        207,
+        61,
+        197,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 11961
+    },
+    {
+      "peer_limit": 3,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 3,
+      "amplitude_bits": 25,
+      "sign_bits": 6,
+      "radices": [
+        18,
+        18,
+        18,
+        18,
+        18,
+        18
+      ],
+      "startup_samples": [
+        37,
+        173,
+        69,
+        37,
+        183,
+        79
+      ],
+      "data_frames": 32,
+      "record_crc": 14439
+    },
+    {
+      "peer_limit": 3,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 3,
+      "amplitude_bits": 25,
+      "sign_bits": 6,
+      "radices": [
+        18,
+        18,
+        18,
+        18,
+        18,
+        18
+      ],
+      "startup_samples": [
+        55,
+        165,
+        189,
+        79,
+        37,
+        79
+      ],
+      "data_frames": 32,
+      "record_crc": 14439
+    },
+    {
+      "peer_limit": 4,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 4,
+      "amplitude_bits": 26,
+      "sign_bits": 6,
+      "radices": [
+        21,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "startup_samples": [
+        197,
+        183,
+        207,
+        39,
+        47,
+        45
+      ],
+      "data_frames": 32,
+      "record_crc": 22653
+    },
+    {
+      "peer_limit": 4,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 4,
+      "amplitude_bits": 26,
+      "sign_bits": 6,
+      "radices": [
+        21,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "startup_samples": [
+        173,
+        69,
+        37,
+        229,
+        79,
+        69
+      ],
+      "data_frames": 32,
+      "record_crc": 22653
+    },
+    {
+      "peer_limit": 5,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 5,
+      "amplitude_bits": 27,
+      "sign_bits": 6,
+      "radices": [
+        27,
+        22,
+        22,
+        22,
+        22,
+        22
+      ],
+      "startup_samples": [
+        175,
+        45,
+        55,
+        61,
+        37,
+        55
+      ],
+      "data_frames": 32,
+      "record_crc": 20131
+    },
+    {
+      "peer_limit": 5,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 5,
+      "amplitude_bits": 27,
+      "sign_bits": 6,
+      "radices": [
+        27,
+        22,
+        22,
+        22,
+        22,
+        22
+      ],
+      "startup_samples": [
+        101,
+        101,
+        101,
+        47,
+        207,
+        79
+      ],
+      "data_frames": 32,
+      "record_crc": 20131
+    },
+    {
+      "peer_limit": 6,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 6,
+      "amplitude_bits": 28,
+      "sign_bits": 6,
+      "radices": [
+        28,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "startup_samples": [
+        47,
+        165,
+        229,
+        207,
+        165,
+        45
+      ],
+      "data_frames": 32,
+      "record_crc": 30145
+    },
+    {
+      "peer_limit": 6,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 6,
+      "amplitude_bits": 28,
+      "sign_bits": 6,
+      "radices": [
+        28,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "startup_samples": [
+        175,
+        37,
+        69,
+        45,
+        207,
+        101
+      ],
+      "data_frames": 32,
+      "record_crc": 30145
+    },
+    {
+      "peer_limit": 7,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 7,
+      "amplitude_bits": 29,
+      "sign_bits": 6,
+      "radices": [
+        28,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "startup_samples": [
+        183,
+        47,
+        207,
+        55,
+        79,
+        79
+      ],
+      "data_frames": 32,
+      "record_crc": 25375
+    },
+    {
+      "peer_limit": 7,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 7,
+      "amplitude_bits": 29,
+      "sign_bits": 6,
+      "radices": [
+        28,
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "startup_samples": [
+        173,
+        229,
+        101,
+        69,
+        167,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 25375
+    },
+    {
+      "peer_limit": 8,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 8,
+      "amplitude_bits": 30,
+      "sign_bits": 6,
+      "radices": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "startup_samples": [
+        189,
+        101,
+        101,
+        167,
+        69,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 46581
+    },
+    {
+      "peer_limit": 8,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 8,
+      "amplitude_bits": 30,
+      "sign_bits": 6,
+      "radices": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "startup_samples": [
+        101,
+        207,
+        61,
+        167,
+        79,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 46581
+    },
+    {
+      "peer_limit": 9,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 9,
+      "amplitude_bits": 31,
+      "sign_bits": 6,
+      "radices": [
+        41,
+        35,
+        35,
+        35,
+        35,
+        35
+      ],
+      "startup_samples": [
+        175,
+        45,
+        197,
+        37,
+        69,
+        55
+      ],
+      "data_frames": 32,
+      "record_crc": 41771
+    },
+    {
+      "peer_limit": 9,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 9,
+      "amplitude_bits": 31,
+      "sign_bits": 6,
+      "radices": [
+        41,
+        35,
+        35,
+        35,
+        35,
+        35
+      ],
+      "startup_samples": [
+        207,
+        61,
+        37,
+        61,
+        47,
+        101
+      ],
+      "data_frames": 32,
+      "record_crc": 41771
+    },
+    {
+      "peer_limit": 10,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 10,
+      "amplitude_bits": 32,
+      "sign_bits": 6,
+      "radices": [
+        42,
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "startup_samples": [
+        61,
+        197,
+        167,
+        229,
+        45,
+        55
+      ],
+      "data_frames": 32,
+      "record_crc": 38985
+    },
+    {
+      "peer_limit": 10,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 10,
+      "amplitude_bits": 32,
+      "sign_bits": 6,
+      "radices": [
+        42,
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "startup_samples": [
+        207,
+        69,
+        229,
+        101,
+        69,
+        45
+      ],
+      "data_frames": 32,
+      "record_crc": 38985
+    },
+    {
+      "peer_limit": 11,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 11,
+      "amplitude_bits": 33,
+      "sign_bits": 6,
+      "radices": [
+        47,
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "startup_samples": [
+        229,
+        229,
+        167,
+        229,
+        197,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 36503
+    },
+    {
+      "peer_limit": 11,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 11,
+      "amplitude_bits": 33,
+      "sign_bits": 6,
+      "radices": [
+        47,
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "startup_samples": [
+        189,
+        47,
+        39,
+        165,
+        39,
+        69
+      ],
+      "data_frames": 32,
+      "record_crc": 36503
+    },
+    {
+      "peer_limit": 12,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 12,
+      "amplitude_bits": 34,
+      "sign_bits": 6,
+      "radices": [
+        50,
+        51,
+        51,
+        51,
+        51,
+        51
+      ],
+      "startup_samples": [
+        37,
+        79,
+        197,
+        37,
+        173,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 61069
+    },
+    {
+      "peer_limit": 12,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 12,
+      "amplitude_bits": 34,
+      "sign_bits": 6,
+      "radices": [
+        50,
+        51,
+        51,
+        51,
+        51,
+        51
+      ],
+      "startup_samples": [
+        197,
+        229,
+        165,
+        69,
+        69,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 61069
+    },
+    {
+      "peer_limit": 13,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 13,
+      "amplitude_bits": 35,
+      "sign_bits": 6,
+      "radices": [
+        52,
+        62,
+        62,
+        62,
+        62,
+        62
+      ],
+      "startup_samples": [
+        101,
+        189,
+        167,
+        101,
+        69,
+        79
+      ],
+      "data_frames": 32,
+      "record_crc": 63571
+    },
+    {
+      "peer_limit": 13,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 13,
+      "amplitude_bits": 35,
+      "sign_bits": 6,
+      "radices": [
+        52,
+        62,
+        62,
+        62,
+        62,
+        62
+      ],
+      "startup_samples": [
+        173,
+        101,
+        79,
+        175,
+        37,
+        47
+      ],
+      "data_frames": 32,
+      "record_crc": 63571
+    },
+    {
+      "peer_limit": 14,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 14,
+      "amplitude_bits": 36,
+      "sign_bits": 6,
+      "radices": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
+      "startup_samples": [
+        173,
+        101,
+        47,
+        61,
+        167,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 49969
+    },
+    {
+      "peer_limit": 14,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 14,
+      "amplitude_bits": 36,
+      "sign_bits": 6,
+      "radices": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
+      "startup_samples": [
+        175,
+        37,
+        101,
+        61,
+        37,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 49969
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        82,
+        70,
+        70,
+        70,
+        70,
+        70
+      ],
+      "startup_samples": [
+        61,
+        47,
+        47,
+        101,
+        61,
+        55
+      ],
+      "data_frames": 32,
+      "record_crc": 54767
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 0,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        82,
+        70,
+        70,
+        70,
+        70,
+        70
+      ],
+      "startup_samples": [
+        189,
+        61,
+        79,
+        197,
+        229,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 54767
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 0,
+      "record": 2,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        45,
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "startup_samples": [
+        55,
+        47,
+        61,
+        167,
+        61,
+        101
+      ],
+      "data_frames": 32,
+      "record_crc": 60569
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 1,
+      "record": 2,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        45,
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "startup_samples": [
+        101,
+        183,
+        55,
+        167,
+        79,
+        47
+      ],
+      "data_frames": 32,
+      "record_crc": 60569
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 4,
+      "record": 0,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        72,
+        72,
+        72,
+        72,
+        72,
+        72
+      ],
+      "startup_samples": [
+        29,
+        149,
+        173,
+        29,
+        53,
+        85
+      ],
+      "data_frames": 32,
+      "record_crc": 54767
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 4,
+      "record": 2,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        48,
+        78,
+        78,
+        78,
+        78,
+        78
+      ],
+      "startup_samples": [
+        181,
+        181,
+        151,
+        39,
+        173,
+        39
+      ],
+      "data_frames": 32,
+      "record_crc": 60569
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 0,
+      "flags": 4,
+      "record": 34,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        49,
+        49,
+        87,
+        87,
+        87,
+        87
+      ],
+      "startup_samples": [
+        213,
+        191,
+        213,
+        39,
+        85,
+        53
+      ],
+      "data_frames": 32,
+      "record_crc": 25546
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 1,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        72,
+        72,
+        72,
+        72,
+        72,
+        72
+      ],
+      "startup_samples": [
+        207,
+        79,
+        167,
+        229,
+        69,
+        39
+      ],
+      "data_frames": 32,
+      "record_crc": 2819
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 1,
+      "flags": 4,
+      "record": 2,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        42,
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "startup_samples": [
+        53,
+        31,
+        149,
+        149,
+        21,
+        23
+      ],
+      "data_frames": 32,
+      "record_crc": 12917
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 32767,
+      "mode": 1,
+      "flags": 4,
+      "record": 34,
+      "selected_index": 15,
+      "amplitude_bits": 37,
+      "sign_bits": 6,
+      "radices": [
+        46,
+        46,
+        90,
+        90,
+        90,
+        90
+      ],
+      "startup_samples": [
+        191,
+        167,
+        159,
+        31,
+        39,
+        45
+      ],
+      "data_frames": 32,
+      "record_crc": 48422
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 16383,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 14,
+      "amplitude_bits": 36,
+      "sign_bits": 6,
+      "radices": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
+      "startup_samples": [
+        47,
+        167,
+        173,
+        39,
+        39,
+        61
+      ],
+      "data_frames": 32,
+      "record_crc": 54767
+    },
+    {
+      "peer_limit": 15,
+      "local_mask": 129,
+      "mode": 0,
+      "flags": 0,
+      "record": 0,
+      "selected_index": 8,
+      "amplitude_bits": 30,
+      "sign_bits": 6,
+      "radices": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "startup_samples": [
+        189,
+        61,
+        61,
+        47,
+        165,
+        37
+      ],
+      "data_frames": 32,
+      "record_crc": 54767
+    }
+  ],
+  "selection_examples": [
+    {
+      "peer_limit": 1,
+      "local_mask": 1,
+      "selected_index": 1
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 2,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 4,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 8,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 16,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 32,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 64,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 128,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 256,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 512,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 1024,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 2048,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 4096,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 8192,
+      "selected_index": 0
+    },
+    {
+      "peer_limit": 1,
+      "local_mask": 16384,
+      "selected_index": 0
+    }
+  ]
+}

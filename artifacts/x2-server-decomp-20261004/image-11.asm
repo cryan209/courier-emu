@@ -165,7 +165,7 @@
 9297  7a80 854b      call    854b, *
 9299  7a80 927f      call    927f, *
 929b  bc07           ldp     #007
-929c  a812 fff0      bldd    @12, #fff0
+929c  a812 fff0      bldd    #fff0, @12
 929e  5d1f 0020      opl     @1f, #0020
 92a0  bf09 d542      lar     ar1, #d542
 92a2  bec5 0005      rptz    #0005
@@ -996,7 +996,7 @@
 9750  6aa0           lacc16  *+
 9751  6290           adds    *-
 9752  bf09 0345      lar     ar1, #0345
-9754  a880 fef2      bldd    *, #fef2
+9754  a880 fef2      bldd    #fef2, *
 9756  5e80 00ff      apl     *, #00ff
 9758  bfa0 1c00      sub     #00001c00
 975a  e344 976a      bcnd    976a, lt
@@ -1974,7 +1974,7 @@
 9c00  e308 9c12      bcnd    9c12, neq
 9c02  0124           lar     ar1, @24
 9c03  bb05           rpt     #05
-9c04  a8a0 0271      bldd    *+, #0271
+9c04  a8a0 0271      bldd    #0271, *+
 9c06  ae24 d510      splk    @24, #d510
 9c08  bf09 0271      lar     ar1, #0271
 9c0a  4080           bit     15, *
@@ -3274,7 +3274,7 @@ a2d9  ae28 038f      splk    @28, #038f
 a2db  b900           lacl    #00
 a2dc  886e           samm    @6e
 a2dd  902f           sacl    @2f
-a2de  a82b 081c      bldd    @2b, #081c
+a2de  a82b 081c      bldd    #081c, @2b
 a2e0  bc00           ldp     #000
 a2e1  ae74 03ce      splk    @74, #03ce
 a2e3  ae76 0014      splk    @76, #0014
@@ -4588,7 +4588,7 @@ a983  7a80 854b      call    854b, *
 a985  bc00           ldp     #000
 a986  ae6f 0043      splk    @6f, #0043
 a988  bc07           ldp     #007
-a989  a812 fff0      bldd    @12, #fff0
+a989  a812 fff0      bldd    #fff0, @12
 a98b  5d1f 0010      opl     @1f, #0010
 a98d  ae4a 003c      splk    @4a, #003c
 a98f  ae4d ac32      splk    @4d, #ac32
@@ -4689,7 +4689,7 @@ aa28  bf80 1555      lacc    #00001555
 aa2a  7a80 89c2      call    89c2, *
 aa2c  ae1b 8297      splk    @1b, #8297
 aa2e  ae1a aa35      splk    @1a, #aa35
-aa30  a812 fff0      bldd    @12, #fff0
+aa30  a812 fff0      bldd    #fff0, @12
 aa32  5d1f 0010      opl     @1f, #0010
 aa34  ef00           ret
 aa35  7a80 89d1      call    89d1, *
@@ -5050,107 +5050,107 @@ ac25  bf09 04e3      lar     ar1, #04e3
 ac27  bb08           rpt     #08
 ac28  98a0           sach    *+
 ac29  ef00           ret
-ac2a  ad2a           bldd    @2a
+ac2a  ad2a           bldd    @2a, bmar
 ac2b  0460           lar     ar4, @60
-ac2c  acf8           bldd    *br0+, ar0
+ac2c  acf8           bldd    bmar, *br0+, ar0
 ac2d  0258           lar     ar2, @58
-ac2e  ac90           bldd    *-
+ac2e  ac90           bldd    bmar, *-
 ac2f  0000           lar     ar0, @00
-ac30  aca5           bldd    *+
+ac30  aca5           bldd    bmar, *+
 ac31  0000           lar     ar0, @00
-ac32  aca3           bldd    *+
+ac32  aca3           bldd    bmar, *+
 ac33  0000           lar     ar0, @00
-ac34  aca5           bldd    *+
+ac34  aca5           bldd    bmar, *+
 ac35  0004           lar     ar0, @04
-ac36  acd1           bldd    *0-
+ac36  acd1           bldd    bmar, *0-
 ac37  0050           lar     ar0, @50
-ac38  ace8           bldd    *0+, ar0
+ac38  ace8           bldd    bmar, *0+, ar0
 ac39  00c0           lar     ar0, *br0-
-ac3a  aca5           bldd    *+
+ac3a  aca5           bldd    bmar, *+
 ac3b  000a           lar     ar0, @0a
-ac3c  acc5           bldd    *br0-
+ac3c  acc5           bldd    bmar, *br0-
 ac3d  0050           lar     ar0, @50
-ac3e  acae           bldd    *+, ar6
+ac3e  acae           bldd    bmar, *+, ar6
 ac3f  0050           lar     ar0, @50
-ac40  ad2e           bldd    @2e
+ac40  ad2e           bldd    @2e, bmar
 ac41  0000           lar     ar0, @00
-ac42  aca5           bldd    *+
+ac42  aca5           bldd    bmar, *+
 ac43  0008           lar     ar0, @08
-ac44  acd1           bldd    *0-
+ac44  acd1           bldd    bmar, *0-
 ac45  0050           lar     ar0, @50
-ac46  ace8           bldd    *0+, ar0
+ac46  ace8           bldd    bmar, *0+, ar0
 ac47  0000           lar     ar0, @00
-ac48  aca5           bldd    *+
+ac48  aca5           bldd    bmar, *+
 ac49  000a           lar     ar0, @0a
-ac4a  acc5           bldd    *br0-
+ac4a  acc5           bldd    bmar, *br0-
 ac4b  0050           lar     ar0, @50
-ac4c  acae           bldd    *+, ar6
+ac4c  acae           bldd    bmar, *+, ar6
 ac4d  0050           lar     ar0, @50
-ac4e  ad2e           bldd    @2e
+ac4e  ad2e           bldd    @2e, bmar
 ac4f  0000           lar     ar0, @00
-ac50  aca5           bldd    *+
+ac50  aca5           bldd    bmar, *+
 ac51  0004           lar     ar0, @04
-ac52  acd1           bldd    *0-
+ac52  acd1           bldd    bmar, *0-
 ac53  0050           lar     ar0, @50
-ac54  acdb           bldd    *0-, ar3
+ac54  acdb           bldd    bmar, *0-, ar3
 ac55  00c0           lar     ar0, *br0-
-ac56  aca5           bldd    *+
+ac56  aca5           bldd    bmar, *+
 ac57  000a           lar     ar0, @0a
-ac58  acbf           bldd    *?
+ac58  acbf           bldd    bmar, *?
 ac59  0050           lar     ar0, @50
-ac5a  acae           bldd    *+, ar6
+ac5a  acae           bldd    bmar, *+, ar6
 ac5b  0050           lar     ar0, @50
-ac5c  ad2e           bldd    @2e
+ac5c  ad2e           bldd    @2e, bmar
 ac5d  000a           lar     ar0, @0a
-ac5e  ad5d           bldd    @5d
+ac5e  ad5d           bldd    @5d, bmar
 ac5f  0050           lar     ar0, @50
-ac60  ac98           bldd    *-, ar0
+ac60  ac98           bldd    bmar, *-, ar0
 ac61  0000           lar     ar0, @00
-ac62  ad5d           bldd    @5d
+ac62  ad5d           bldd    @5d, bmar
 ac63  0050           lar     ar0, @50
-ac64  ada8           bldd    *+, ar0
+ac64  ada8           bldd    *+, ar0, bmar
 ac65  0050           lar     ar0, @50
-ac66  ad75           bldd    @75
+ac66  ad75           bldd    @75, bmar
 ac67  0050           lar     ar0, @50
-ac68  ad9d           bldd    *-, ar5
+ac68  ad9d           bldd    *-, ar5, bmar
 ac69  0050           lar     ar0, @50
-ac6a  adc7           bldd    *br0-
+ac6a  adc7           bldd    *br0-, bmar
 ac6b  0050           lar     ar0, @50
-ac6c  ac98           bldd    *-, ar0
+ac6c  ac98           bldd    bmar, *-, ar0
 ac6d  0000           lar     ar0, @00
-ac6e  aca5           bldd    *+
+ac6e  aca5           bldd    bmar, *+
 ac6f  0048           lar     ar0, @48
-ac70  acd1           bldd    *0-
+ac70  acd1           bldd    bmar, *0-
 ac71  0050           lar     ar0, @50
-ac72  ace2           bldd    *0+
+ac72  ace2           bldd    bmar, *0+
 ac73  00b0           lar     ar0, *?
-ac74  aca5           bldd    *+
+ac74  aca5           bldd    bmar, *+
 ac75  000a           lar     ar0, @0a
-ac76  acbf           bldd    *?
+ac76  acbf           bldd    bmar, *?
 ac77  0050           lar     ar0, @50
-ac78  acae           bldd    *+, ar6
+ac78  acae           bldd    bmar, *+, ar6
 ac79  0050           lar     ar0, @50
-ac7a  ad2e           bldd    @2e
+ac7a  ad2e           bldd    @2e, bmar
 ac7b  0000           lar     ar0, @00
-ac7c  ad5d           bldd    @5d
+ac7c  ad5d           bldd    @5d, bmar
 ac7d  0050           lar     ar0, @50
-ac7e  ada8           bldd    *+, ar0
+ac7e  ada8           bldd    *+, ar0, bmar
 ac7f  0050           lar     ar0, @50
-ac80  ad69           bldd    @69
+ac80  ad69           bldd    @69, bmar
 ac81  0050           lar     ar0, @50
-ac82  ad75           bldd    @75
+ac82  ad75           bldd    @75, bmar
 ac83  0050           lar     ar0, @50
-ac84  ad9d           bldd    *-, ar5
+ac84  ad9d           bldd    *-, ar5, bmar
 ac85  0050           lar     ar0, @50
-ac86  adb5           bldd    *?
+ac86  adb5           bldd    *?, bmar
 ac87  0050           lar     ar0, @50
-ac88  ac98           bldd    *-, ar0
+ac88  ac98           bldd    bmar, *-, ar0
 ac89  0000           lar     ar0, @00
-ac8a  adc7           bldd    *br0-
+ac8a  adc7           bldd    *br0-, bmar
 ac8b  0050           lar     ar0, @50
-ac8c  ad2e           bldd    @2e
+ac8c  ad2e           bldd    @2e, bmar
 ac8d  0004           lar     ar0, @04
-ac8e  aca5           bldd    *+
+ac8e  aca5           bldd    bmar, *+
 ac8f  0000           lar     ar0, @00
 ac90  4f26           bit     0, @26
 ac91  ae4d ac30      splk    @4d, #ac30
@@ -5456,7 +5456,7 @@ ae36  0861           lamm    @61
 ae37  da6d           mpy     #1a6d
 ae38  5a2d           apl     @2d
 ae39  4000           bit     15, @00
-ae3a  a5d3 2593      blpd    *0-, #2593
+ae3a  a5d3 2593      blpd    #2593, *0-
 ae3c  dce4           mpy     #1ce4
 ae3d  465c           bit     9, @5c
 ae3e  4000           bit     15, @00
@@ -7624,9 +7624,9 @@ b89c  bf09 040e      lar     ar1, #040e
 b89e  bb0d           rpt     #0d
 b89f  7790           dmov    *-
 b8a0  7780           dmov    *
-b8a1  a880 0247      bldd    *, #0247
+b8a1  a880 0247      bldd    #0247, *
 b8a3  7808           adrk    #08
-b8a4  a880 024f      bldd    *, #024f
+b8a4  a880 024f      bldd    #024f, *
 b8a6  102b           lacc    @2b
 b8a7  ba01           sub     #01
 b8a8  902b           sacl    @2b
@@ -10623,8 +10623,8 @@ c84a  905e           sacl    @5e
 c84b  015e           lar     ar1, @5e
 c84c  8be0           mar     *0+
 c84d  e200 c853      bcnd    c853, ntc
-c84f  a8a0 04c6      bldd    *+, #04c6
-c851  a8a0 04e3      bldd    *+, #04e3
+c84f  a8a0 04c6      bldd    #04c6, *+
+c851  a8a0 04e3      bldd    #04e3, *+
 c853  695e           lacl    @5e
 c854  215f           add     @5f, 1
 c855  bfa0 21a0      sub     #000021a0
@@ -11549,7 +11549,7 @@ cc88  bfe1           bsar    2
 cc89  bf90 0b00      add     #00000b00
 cc8b  8811           samm    @11
 cc8c  bb01           rpt     #01
-cc8d  a8a0 033e      bldd    *+, #033e
+cc8d  a8a0 033e      bldd    #033e, *+
 cc8f  bf09 0800      lar     ar1, #0800
 cc91  004b           lar     ar0, @4b
 cc92  807d           sar     ar0, @7d

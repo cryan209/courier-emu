@@ -1,0 +1,470 @@
+[
+  {
+    "mode": 0,
+    "flags": 4096,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 0,
+    "flags": 4096,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16937,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 4096,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7468,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 4097,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 0,
+    "flags": 4097,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16940,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 4097,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7471,
+    "valid": false
+  },
+  {
+    "mode": 0,
+    "flags": 4100,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 0,
+    "flags": 4100,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 0,
+    "flags": 4100,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 0,
+    "flags": 4101,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 0,
+    "flags": 4101,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 0,
+    "flags": 4101,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 1,
+    "flags": 4096,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 1,
+    "flags": 4096,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16943,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 4096,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7470,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 4097,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 1,
+    "flags": 4097,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16946,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 4097,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7473,
+    "valid": false
+  },
+  {
+    "mode": 1,
+    "flags": 4100,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 1,
+    "flags": 4100,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 1,
+    "flags": 4100,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 1,
+    "flags": 4101,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 1,
+    "flags": 4101,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 1,
+    "flags": 4101,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 2,
+    "flags": 4096,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 2,
+    "flags": 4096,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16951,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 4096,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7470,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 4097,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 2,
+    "flags": 4097,
+    "active": 1,
+    "record": 2,
+    "sizes": [
+      45,
+      79,
+      79,
+      79,
+      79,
+      79
+    ],
+    "unique": [
+      45,
+      77,
+      77,
+      77,
+      77,
+      77
+    ],
+    "capacity": 138467537955,
+    "steps": 16954,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 4097,
+    "active": 2,
+    "record": 34,
+    "sizes": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "unique": [
+      9,
+      9,
+      10,
+      10,
+      10,
+      10
+    ],
+    "capacity": 810000,
+    "steps": 7473,
+    "valid": false
+  },
+  {
+    "mode": 2,
+    "flags": 4100,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 2,
+    "flags": 4100,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 2,
+    "flags": 4100,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  },
+  {
+    "mode": 2,
+    "flags": 4101,
+    "active": 0,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 2,
+    "flags": 4101,
+    "active": 1,
+    "status": "did not return",
+    "pc": "0xc97f"
+  },
+  {
+    "mode": 2,
+    "flags": 4101,
+    "active": 2,
+    "status": "did not return",
+    "pc": "0xc97d"
+  }
+]
