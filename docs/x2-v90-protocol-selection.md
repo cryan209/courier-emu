@@ -4173,19 +4173,28 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   `0x89b0` repeated, clean from symbol 6829; the first 12 symbols after the ones are the
   descrambler's transient.  The word is the one the generator at `b391` feeds to the scrambler
   routine at `8cb7` (traced: `@49 = 89b0` at the call from `af7d`; `@50` = the word at `8cc5`).
-  It differs from the four-point J pattern `0x8990` in `docs/dsp-training-audit-20261002.md`
-  (the I-modem's J) in one bit, bit 5, which is a flag taken from the host's V.34 options word:
-  the Courier's script entry for J is (state `af17`, parameter `89b0`, count 8) in the table at
-  `ae18`, and `af17` clears bit 5 of the parameter (`apl @49, #ffdf`) unless bit 7 of `0345` is
-  set.  `0345` is written once in the call, at `93de`/`93e0`, from `ff2e` masked to its low byte;
-  `ff2e` holds the argument of host tag `52`, here `1ef8`, so `0345` = `f8` and bit 7 is set.  The
-  supervisor builds that argument at `8a55` from the constant `1ef0` (bit 7 set; the masks `ffc7`
-  and `ffbf` clear only bits 3-5 and 6), so on this firmware the Courier's J always carries bit 5
-  = 1.  The receivers (I-modem `a909`, Courier `a4ac`) compare the received word with bit 5 masked
-  off, for J (`8990`) and the second word (`899f`, entry `af0b`), and a received bit 5 sets
-  bit 9 of `[006f]`, which `aede`, `af30` and `af63` test to choose between two parameter sets.
-  What the options-word bit means in V.34 terms, and why the I-modem's J has it clear, were not
-  established.
+  The repo's earlier J audit (`docs/dsp-training-audit-20261002.md`) names the word `0x8990`; that is
+  the value with this flag masked, which is how both receivers compare (`and #ffdf`).  The word
+  actually generated is `0x89b0` on both ends: the I-modem's V.34 script has the same entries
+  (`b2c4`, `b2d7`; second word `899f` at `b2e5`), the same state code (`b383`-`b38d`, timer
+  `[033a]` + 8 where the Courier adds 5), and a traced V.34 call writes `@49 = 89b0` at `b509`
+  with `0345` = `3e8`, so bit 5 is kept there too.  Bit 5 is a flag taken from the host's V.34
+  options word: the Courier's script entry for J is (`af0f`, `89b0`, 8) at `ae2d` (entry `af17`,
+  `ae1a`, in another script is the same), and the state code clears bit 5 of the parameter
+  (`apl @49, #ffdf`) unless bit 7 of `0345` is set.  `0345` is written once in the call, at
+  `93de`/`93e0`, from the low byte of `ff2e` (`fef2` on the I-modem), the argument of host tag
+  `52`, here `1ef8`, so `0345` = `f8`.  The supervisor builds that argument at `8a55` from `1ef0`
+  (bit 7 set; the masks `ffc7` and `ffbf` clear only bits 3-5 and 6), so bit 5 of J is always 1 on
+  this firmware.  After the load, `93e0`-`93f5` (`98be`-`98d0` on the I-modem) adjust the cell
+  from a line measurement: bit 4 is cleared and bits 8 and 9 set when the measured value passes
+  two thresholds (the I-modem's `0345` goes `1ef8`, `f8`, `e8`, `3e8`; the Courier's stayed `f8`).
+  Argument bit 8 (`0x100`, from S55 bit 7) is dropped by the `#00ff` mask, so it has no effect
+  through this path.  The receivers (I-modem `a909`, Courier `a4ac`) compare the received word
+  with bit 5 masked for J and for the second word `899f`, and a received bit 5 sets bit 9 of
+  `[006f]`; `aede` tests it to choose a symbol width of 4 bits (mask `0f`, shift 4) or 2 bits
+  (mask `03`, shift 2), and `af30`/`af63` test it for the batch width.  So the flag in J asks the
+  peer for the wider training constellation; that is read from the code, not from the
+  Recommendation, and the V.34 name of the field was not checked.
   This replaces earlier readings of the tail as a client record, a two-lane stream or random
   data; those came from not undoing the differential encoding.  The Courier's burst therefore
   ends with J, as the V.34 Phase 3 sequence requires.  The pair probe now traces the analog
@@ -4387,6 +4396,19 @@ per source word) going through exactly the mapper the data mode uses, at
 B + MD = 24 bits per six-symbol frame, **32,000 bit/s**, the client's training
 sequence for the receiver it will use.  The level index equals the table index (the
 `a5` entry, +6652, is index 0), and the parity state runs across frames.
+
+**The repeated word and `099f` are the J sequence.**  `09b0` and `099f` are the Courier's J words
+`89b0` and `899f` with bit 15 dropped (the state keeps a 12-bit register), and their bits
+LSB first, `000011011001` and `111110011001`, are what the bearer shows.  The Courier's receive
+state at `a158` has the same test as the server's `a5cf` (`@78` = 6, the receiver's last two
+dibits) and on success sets the next script to `ae3f`, the entry that sends `899f` (`af0b`).  So
+the answerer sends J while it waits for the caller's S to S-bar reversal, and on seeing it sends
+the second J word and goes on to the next stage, which is what the server's trace shows: `@78`
+becomes 6 after the alternation reverses, `a5d8`/`a5db` select `c929`, and `099f` goes out.
+**The Courier sends `899f` only on the same event**, a received reversal; in this call the
+I-modem sends no S, so the `af0b` state never runs: the `@48` trace of the Courier shows J
+(`af0f`, instructions 824.57M-829.45M, 424 symbols) and then the script restarts at `ae8a`
+(`adff`) with no `af0b`.  The J length is a timer, `@66` loaded from `[033a]` + 5 at `af0f`.
 
 **The repeated word** (`caeb`, parameter `09b0`) is not data from the exchange: it is
 a ROM constant of the script.  Each frame it takes the low six bits of the 12-bit
