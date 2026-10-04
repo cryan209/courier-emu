@@ -17,8 +17,8 @@ import sys
 
 STATES = {
     0xC9A4: "digital zero: octet 7f",
-    0xC9C8: "pattern A: four-level periodic pattern, levels from d235/d236",
-    0xC9DD: "pattern A, closing stretch",
+    0xC9C8: "pattern A: Barker-11 signs, two levels (ab/bd), 11-symbol cycles",
+    0xC9DD: "pattern A, last cycle with every sign inverted",
     0xCA2E: "scrambled ones as two PCMU levels (level octet b1)",
     0xCAEB: "12-bit register, six bits per six-symbol frame, rotated by six",
     0xCA22: "scrambled ones as two PCMU levels (level octet from d237)",

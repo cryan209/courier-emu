@@ -4316,3 +4316,36 @@ described there.
 So E is a 1.25 s nine-magnitude, two-sign PAM training sequence at a level that
 depends on the exchange; what maps its bits to levels, and whether it carries
 anything beyond scrambled bits, was not decoded.
+
+#### Pattern A's rule
+
+`c9c8` clears the counters and sets `@62 = 0712`, `@69 = 00b1` and copies the
+octets `ab`, `bd` from `d235`/`d236` into `0a60`/`0a61`; `c9df` then runs once per
+symbol.  When the 16-bit register `@63` is zero it reloads `@63 = 05b8` and
+`@00 = @62`, and complements `@62` (`ca1b`-`ca21`).  Each symbol it takes the low
+bit of `@00` to choose the level octet, `0a60 + bit` (`ab` for 0, `bd` for 1),
+and the low bit of `@63` as the sign (`ca4c`-`ca55`: a negative level clears
+bit 7 of the octet), shifting both right.  `@63` runs out after 11 shifts, so the
+cycle is 11 symbols, and `@62` alternates `0712` and its complement, giving the
+period of 22.  In symbols, with `c = n // 11` and `k = n % 11`:
+
+```text
+sign  = bit k of 0x05b8
+level = bit k of 0x0712       (c even),  of ~0x0712  (c odd)
+octet = (0xbd if level else 0xab), bit 7 flipped when sign = 1
+```
+
+The last 11 symbols (script entry `c9dd`, parameter `0080`) have bit 7 flipped
+again, so every sign is inverted.  The first 352 symbols are exactly 32 cycles,
+and one more cycle with inverted signs ends the pattern.  `tools/server_pattern_a.py`
+generates this and, against the capture, all 363 octets match, starting at 7.5755 s;
+the octet that follows is `31`, the start of B.
+
+The sign sequence is `+ + + - - - + - - + -`, the **Barker-11 code**, and the
+level sequence `01001000111` (LSB first) gives a two-amplitude pattern whose
+complement is used on alternate cycles.  A Barker code is a timing and
+synchronisation sequence with sharp autocorrelation, and the inversion of all
+signs for the last cycle is a polarity reversal marking the end of the
+preamble.  That reading, that A is the server's synchronisation preamble for
+the client's symbol and six-symbol-frame timing, is an inference from the code's
+structure and the Barker-11 signs, not stated by the firmware.

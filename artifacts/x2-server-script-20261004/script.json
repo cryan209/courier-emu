@@ -29,7 +29,7 @@
    "parameter": "0000",
    "duration_symbols": 352,
    "seconds_at_8000": 0.044,
-   "meaning": "pattern A: four-level periodic pattern, levels from d235/d236"
+   "meaning": "pattern A: Barker-11 signs, two levels (ab/bd), 11-symbol cycles; last 11 symbols inverted"
   },
   {
    "address": "c91f",
@@ -37,7 +37,7 @@
    "parameter": "0080",
    "duration_symbols": 11,
    "seconds_at_8000": 0.0014,
-   "meaning": "pattern A, closing stretch"
+   "meaning": "pattern A: Barker-11 signs, two levels (ab/bd), 11-symbol cycles; last 11 symbols inverted"
   },
   {
    "address": "c922",
@@ -181,5 +181,14 @@
   "cb0c": 11.008,
   "cb3d": 11.147
  },
- "interpreter": "cc85-cc96: state word -> @48, next word -> @49, next -> @4a (symbol count); zero state word halts the script; @4b is the script pointer"
+ "interpreter": "cc85-cc96: state word -> @48, next word -> @49, next -> @4a (symbol count); zero state word halts the script; @4b is the script pointer",
+ "pattern_A_rule": {
+  "barker_register": "05b8",
+  "level_register": "0712 (complemented on odd 11-symbol cycles)",
+  "levels": "ab / bd",
+  "cycle_symbols": 11,
+  "signs_inverted_for_last": 11,
+  "verified_against_capture": "363 of 363 octets",
+  "tool": "tools/server_pattern_a.py"
+ }
 }
