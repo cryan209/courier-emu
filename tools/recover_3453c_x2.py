@@ -134,6 +134,22 @@ def main():
                 assert actual == [c_data[a] for a in (0x7feb, 0x7fe8, 0x7fee)]
                 report["tag70"].append({"input": value, "initial_flags": initial,
                                         "output": actual, "steps": steps})
+        # The negotiation start (0a64) queues INFO0 capability from the plain word
+        # at 7fec; the command-70 word at 7feb is stored but never read.
+        queue_cases = 0
+        for plain in (0, 0x0600, 0x1234, 0xffff):
+            for x2_word in (0, 0x0600, 0xabcd):
+                for flags in (0, 0x40):
+                    for address, v in [(0x7fec, plain), (0x7feb, x2_word),
+                                       (0x77b3, 0), (0x77ba, flags),
+                                       (0x7f18, 0), (0x7f19, 0)]:
+                        core.set_data(address, v)
+                    invoke(0x0a64, 7)
+                    word = (plain | 0x4000) & 0x7fff
+                    assert (core.data(0x7f18), core.data(0x7f19)) == (
+                        word >> 1, (word & 1) << 15), (plain, x2_word, flags)
+                    queue_cases += 1
+        report["info0_capability_queue_cases"] = queue_cases
         shared_cases = 0
         for tag, entry, address in [(0x71, 0x090b, 0x7fea),
                                      (0x72, 0x0921, 0x7fbc),

@@ -10,14 +10,14 @@ stronger evidence than retained strings, but does not establish a complete
 working x2 connection or that every original peer-detection path survives.
 
 An overlay-aware [DSP decompilation bundle](../artifacts/3453c-x2-decomp-20261004/README.md)
-now contains manually lifted C, original disassembly, and 1,769 execution
+now contains manually lifted C, original disassembly, and 1,793 execution
 comparisons against the original DSP code, including the retained scramblers
 and fixed-GPC PCM training generator.
 
 The [server reconstruction](../artifacts/x2-server-decomp-20261004/README.md)
 adds 6,562 C/native comparisons for the pre-V.90 I-modem and shared
 x2/V.90 Quad helpers. It includes the I-modem's route from tag 70 to its
-INFO0 capability buffer, which is still untraced in this 3453C build.
+INFO0 capability buffer. In this 3453C build the matching route does not exist: negotiation start (`0a64`) queues the tag-51 word at `[7fec]` and nothing reads the tag-70 word at `[7feb]`.
 The latest lift includes 4,096 consecutive calls through the server's
 four-state asymmetric startup source. Its 2,010-call cycle comprises
 1,747 `007e` words, seven zeros, and 128 ascending/descending pairs.

@@ -77,12 +77,18 @@ This proves retained x2-era PCM training machinery; it does not establish
 the proprietary name of that wire sequence or distinguish every x2 call
 from V.90.
 
-One notable boundary: overlay 6's entry at `1dc9` initializes INFO-related
-buffers from `[7fec]`, whereas command 70 writes `[7feb]`. There is no
-identified direct read of `[7feb]` in this pass beyond its own setup handler.
-Indexed/indirect consumption remains possible. The original x2 capability
-word's route into transmitted negotiation has **not** been reconstructed
-for 3453C. Retained setup code alone therefore cannot prove x2 works.
+Where the transmitted capability comes from: the supervisor sends the plain
+base word as tag `51` (handler `08e3`, stored at `[7fec]`) and the x2-edited
+word as tag `70` (handler `08f8`, stored at `[7feb]`). Negotiation start
+(`09a9`, `0a04`, `0a58`) calls `0a64`, which reads **only `[7fec]`**, applies
+`| 4000 & 7fff`, and pushes it as a 16-bit field into the INFO0 bit queue at
+`7f18` through `14b8` (the stored value is the word shifted right once, with
+its low bit in `[7f19]` bit 15). There is no 3453C counterpart of the
+I-modem's bit-6 choice between two words, and no read of `[7feb]` anywhere in
+the four images (direct, page-relative or pointer-formed addresses were all
+checked). Command 70 therefore only sets `[7fe8]` bit 15 and `[7fee]` bit 0;
+its x2 asymmetry and CME edits never reach the wire in this build. Overlay 6's
+entry at `1dc9` also seeds its buffers from `[7fec]`.
 
 ## Verification
 
@@ -94,7 +100,7 @@ From the repository root:
 
 Requires the repository's native DSP emulator and `clang`. The verifier
 compiles the actual C file into a temporary shared library and compares it
-against original firmware instructions. All **1,769 cases passed**:
+against original firmware instructions. All **1,793 cases passed**:
 
 - 1,152 scrambler/descrambler cases.
 - 256 training-generator cases, including 768 continuous bits from zero state.
@@ -102,6 +108,7 @@ against original firmware instructions. All **1,769 cases passed**:
 - 20 adjacent mailbox-handler cases.
 - Six state-selector cases and three initial-capability fragment cases.
 - 256 peer-qualification and 64 negotiation-cleanup cases.
+- 24 INFO0 capability-queue cases: output depends on `[7fec]` only.
 
 No modem hardware is accessed. These are isolated routine checks, not a
 complete x2 call simulation. Peer recognition, proprietary modulation

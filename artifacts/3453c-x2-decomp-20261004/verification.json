@@ -188,6 +188,7 @@
     }
   ],
   "c_lift_verified": true,
+  "info0_capability_queue_cases": 24,
   "shared_handler_cases": 20,
   "peer_qualification_fragment_cases": 256,
   "negotiation_cleanup_cases": 64,
@@ -200,5 +201,5 @@
     "width": 6,
     "continuous_bits_from_zero": 768
   },
-  "total_cases": 1769
+  "total_cases": 1793
 }
