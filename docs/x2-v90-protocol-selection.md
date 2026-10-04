@@ -4173,3 +4173,37 @@ side as an ordinary V.34 upstream; x2 makes no change to it.  It ends at bearer
 7.545 s, which is when the I-modem's own wideband signal starts (7.55 s), so
 the server begins its signal as the client's TRN ends.  What the server's signal
 is remains open.
+
+### The server's signal from 7.55 s
+
+After the digital zero, the I-modem's PCMU octets fall into five stretches, each
+using a small fixed set of codewords (`tools/analyze_server_training.py`,
+`artifacts/x2-server-training-20261004/analysis.json`; bearer seconds):
+
+| stretch | time | codewords | what it is |
+|---|---|---|---|
+| A | 7.5755-7.621 | four levels, +-5116 and +-2236 (`ab bd 2b 3d`) | an exactly periodic pattern, period 22 octets |
+| B | 7.621-10.270 | two levels, +-3772 (`b1 31`) | **scrambled ones**: descrambling the sign with 1 + x^-18 + x^-23 gives constant bits from the start to 10.1214 |
+| B tail | 10.1214-10.270 | the same two levels | the descrambled bits become the 12-bit pattern `000011011001`, repeated 94.75 times (about 0.14 s) |
+| C | 10.270-11.020 | two levels, +-1820 (`c1 41`) | scrambled ones again, same polynomial, at lower amplitude, for 0.75 s |
+| D | 11.020-11.164 | six levels, +-5884, +-7676, +-8828 | an exactly periodic pattern, period 36 octets (six periods of six), 32 periods |
+| E | 11.164 on | 34 octets, 17 magnitudes from 292 to 6652, the same set at every one of six positions | many-level data |
+
+One bit per octet in B and C: 8000 bit/s of scrambled ones, level-shifted, which
+is a training source before any real constellation.  The scrambler polynomial
+is the one the answering end uses on the digital path, 1 + x^-18 + x^-23, the
+same as in the symmetric data mode.
+
+Alignment with the client: the Courier's scrambled-ones segment (its TRN) ends at
+bearer 7.545, and the server's pattern A starts 30 ms later; the Courier restarts
+transmitting at about 10.18, 60 ms after the server's B tail begins and 90 ms
+before its C.  So the server's B tail (the repeated 12-bit word) is followed
+within about a tenth of a second by the client's second burst and by the
+amplitude step to C.
+
+Not decoded: what A, the B tail word `000011011001` and the six-level D pattern
+carry, and the content of E (the many-level data, which needs the six-position
+mapper inverted).  The Courier's own 443-symbol tail after its TRN is a similar
+open item: it descrambles to a non-periodic 886-bit stream that does not parse
+as the client record framing (zero separators after 16-bit words fail at every
+offset), so it is something else.

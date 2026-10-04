@@ -1,0 +1,157 @@
+{
+ "file": "imodem-tx.g711 of the 53333/x2 analog Courier to I-modem call (bearer time)",
+ "first_non_zero_octet_s": 7.5755,
+ "segments": [
+  {
+   "from_s": 7.5755,
+   "to_s": 7.6209,
+   "octets": 363,
+   "levels": [
+    -5116,
+    -2236,
+    2236,
+    5116
+   ],
+   "octet_values": [
+    "2b",
+    "3d",
+    "bd",
+    "ab"
+   ]
+  },
+  {
+   "from_s": 7.6209,
+   "to_s": 10.2699,
+   "octets": 21192,
+   "levels": [
+    -3772,
+    3772
+   ],
+   "octet_values": [
+    "31",
+    "b1"
+   ],
+   "scrambled_constant": {
+    "polynomial": "1 + x^-18 + x^-23",
+    "constant_bit": 1,
+    "first_other_bit_at_s": 10.1214
+   },
+   "after_constant_run": {
+    "bits": 1188,
+    "period_bits": 12,
+    "pattern": "000011011001"
+   }
+  },
+  {
+   "from_s": 10.2699,
+   "to_s": 11.0199,
+   "octets": 6000,
+   "levels": [
+    -1820,
+    1820
+   ],
+   "octet_values": [
+    "41",
+    "c1"
+   ],
+   "scrambled_constant": {
+    "polynomial": "1 + x^-18 + x^-23",
+    "constant_bit": 1,
+    "first_other_bit_at_s": null
+   }
+  },
+  {
+   "from_s": 11.0199,
+   "to_s": 11.1639,
+   "octets": 1152,
+   "levels": [
+    -8828,
+    -7676,
+    -5884,
+    5884,
+    7676,
+    8828
+   ],
+   "octet_values": [
+    "1e",
+    "21",
+    "28",
+    "a8",
+    "a1",
+    "9e"
+   ],
+   "exact_period_octets": 36
+  },
+  {
+   "from_s": 11.1639,
+   "to_s": 12.2,
+   "octets": 8289,
+   "levels": [
+    -6652,
+    -6140,
+    -4604,
+    -4092,
+    -3004,
+    -2236,
+    -1564,
+    -924,
+    -292,
+    292,
+    924,
+    1564,
+    2236,
+    3004,
+    4092,
+    4604,
+    6140,
+    6652
+   ],
+   "octet_values": [
+    "25",
+    "27",
+    "2d",
+    "2f",
+    "37",
+    "3d",
+    "45",
+    "4f",
+    "65",
+    "e5",
+    "cf",
+    "c5",
+    "bd",
+    "b7",
+    "af",
+    "ad",
+    "a7",
+    "a5"
+   ]
+  }
+ ],
+ "manual_notes": {
+  "segment_A_exact_period_octets": 22,
+  "segment_D_exact_period_octets": 36,
+  "segment_D_periods": 32,
+  "segment_E_distinct_octets_over_2s": 34,
+  "segment_E_magnitudes": [
+   292,
+   396,
+   924,
+   1180,
+   1564,
+   1980,
+   2236,
+   2748,
+   3004,
+   3516,
+   4092,
+   4348,
+   4604,
+   5116,
+   5884,
+   6140,
+   6652
+  ],
+  "courier_second_wideband_starts_bearer_s": 10.18
+ }
+}
