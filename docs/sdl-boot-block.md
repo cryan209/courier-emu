@@ -64,6 +64,54 @@ bytes, and byte 5 is the product discriminator (`0x58` Courier, `0x59` on
 prints `MODEM FIRMWARE IS CORRUPTED. FIRMWARE DOWNLOAD IS NECESSARY.` and rearms,
 so a failed knock is safe to retry.
 
+## Entering the loader from the application
+
+SDL.EXE has to get a running modem into the loader first. Gene Lowry's
+third-party flash write-up (`README.1ST` in the Metropoli `SD960123.ZIP`) calls
+this an undocumented `AT^BE^GHmX^I^H` command, and says the modem answers
+`3F`/`E3`/`E4`, the MR LED goes out, and there are ten seconds to carry on.
+It is not an AT command. The eight bytes are the knock above.
+
+The application recognises them in the serial receive path, on the board ROM
+(supervisor 7.3.14). `0x89a06` masks the byte with `0x7f` and calls through a
+state vector, `call word ptr [0x0b7c]` at `0x89a09`. A carry return means the
+byte was not consumed and falls through to normal character handling. The
+vector is a chain of one-byte states at `0x8b479`:
+
+| State | Expects | On match |
+|---|---|---|
+| `0xb479` (idle) | `02` | `[0xb7c] = 0xb487` |
+| `0xb487` | `'E'` | `0xb49b` |
+| `0xb49b` | `07` | `0xb4af` |
+| `0xb4af` | `'H'` | `0xb4c3` |
+| `0xb4c3` | `'m'` | `0xb4d7` |
+| `0xb4d7` | `'X'` | `0xb4eb` |
+| `0xb4eb` | `09` | `0xb4ff` |
+| `0xb4ff` | `08` | `cli; jmp far a764:198b` |
+
+Any mismatch resets the vector to `0xb479` and returns carry, so the byte is
+treated as ordinary input. There is no `AT` prefix and nothing is matched after
+the eighth byte: sending the ten bytes in the README only wastes the `AT`. The chain hard-codes `'X'`,
+so it is the Courier product byte, and `0x59` would not match.
+
+`a764:198b` is physical `0xa8fcb`. That is the reset entry of a **copy of the
+loader inside the application**, based at physical `0xa7640` (file `0x27640`).
+It does what `fc00:11e9` does: `cli; cld`, segment registers and `SS` zeroed,
+`SP=0xf8`, `0x24` word records replayed from `cs:0x1898` and 9 byte records
+from `cs:0x1928` as `OUT`s, `0x1897` bytes copied to physical zero, then
+`INT 13h` through the IVT it just wrote (`[0x4c] = 0x0848`).
+
+That copy is a different build from the one in the boot block. It is not
+byte-identical to `fc00:0000..1b13`, and the knock constant sits at base
+`+0x13c` (file `0x2777c`) rather than `+0x141`. In the 1994-95 SDL images the
+banner text follows the constant, so the data hit for the eight bytes in each
+image is this loader copy, not a table the state machine reads.
+
+Not traced: where the `3F`/`E3`/`E4` acknowledgement and the ten-second timeout
+come from. The state machine sends nothing, so they happen after the jump, in
+the loader. The same eight bytes occur in every SDL image from 5/25/94 to
+3/13/98; the state machine itself has been located only in 7.3.14.
+
 ## Identify
 
 `fc00:0992`, and the application carries a byte-identical copy at file `0x28654`:
