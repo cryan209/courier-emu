@@ -4187,6 +4187,19 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   which is mildly short for random data, 4 runs of 5 or more against about 14 expected).  The
   Courier's DSP scrambler routines (`8ca2`, `8cb7`) could not be traced from the pair probe:
   `--analog-dsp-trace-range` returns no events on the analog side.
+  The 25-bit head of lane 0 is, LSB first from the zero after the ones, the bytes `24 13 42`,
+  then `4b` repeating (the filler differs from its own period-8 extension in only two of the
+  eight positions just before it).  It is about one scrambler history long (23 symbols),
+  so it may be a descrambler transient rather than content.  Two checks bear on that.
+  The Courier's scrambler is reset to **all zeros** at the start of TRN: solving the
+  23-bit state that produced the first TRN symbols gives zero exactly and reproduces
+  them (first symbol 446 of the burst; one symbol off either way does not).  Assuming the
+  same reset at the tail start (zero history under the double-pass polynomial) does not make
+  the head clean at any start from 12714 to 12750, so the head is not explained by a zero
+  reset.  It also does not contain the four-point J pattern `0000100110010001` that
+  `docs/dsp-training-audit-20261002.md` finds in the I-modem's J generator (a 16-bit match to
+  a rotation, reversal or complement occurs at one place, about what chance gives), nor a J
+  differentially encoded (all 24 dibit maps, both rotation senses, taps 5 and 18).
   So the Courier's last 443 symbols carry a fixed-filler lane and a data lane; the data lane's
   coding (and whether it is the client record, which would be 17 ones, a zero and 16-bit words
   with separators) is still open.
