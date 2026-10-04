@@ -4167,12 +4167,22 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
 * **About 440 further symbols** of the same four-point constellation, whose
   descrambled bits are not constant (a 34-bit run of ones, then varied bits),
   then the signal stops at bearer 7.69.  The 443 symbols (886 bits) are on the same
-  four-point constellation (same phase spread and amplitude as TRN), not periodic in the
-  symbol or the descrambled-bit domain (best period match 33 %), and carry no 17-ones
-  sync under any of the 24 dibit maps with taps 5, 18, a raw read or a differential read;
-  a scan for a CRC-16 (polynomials `1021`, `8005`, `3d65`, both inits, four bit orders,
-  start offsets 0-59) finds only the matches expected by chance.  So it is neither the
-  MP-style client record framing nor a repeating training pattern; what it is remains open.
+  four-point constellation (same phase spread and amplitude as TRN).  Descrambled as one
+  serial stream with 1 + x^-5 + x^-23 they look random, with no 17-ones sync, no period,
+  no CRC-16 over any span (polynomials `1021`, `8005`, `a001`, both inits and bit orders,
+  start offsets 0-44) and linear complexity of half the length.  The structure appears when
+  the two bits of each dibit are treated as **two lanes, each descrambled on its own** with
+  the same polynomial (equivalent to a serial 1 + x^-10 + x^-46, the square of
+  1 + x^-5 + x^-23, so TRN still descrambles to ones both ways):
+  * **lane 0** (the low bit): 11 ones, a 25-bit head `0001001001100100001000010`, then the
+    byte `2d` (bits `10110100`, LSB first) repeating for the rest of the burst (about 430
+    bits); the raw lane has linear complexity 37, which is this recurrence;
+  * **lane 1** (the high bit): 15 ones, a zero, then about 440 bits that are random by every
+    test tried: linear complexity half the length, no serial scrambler tap pair up to 60
+    makes it simpler, no 16-bit word / zero-separator framing at any phase, no CRC-16.
+  So the Courier's last 443 symbols carry a fixed-filler lane and a data lane; the data lane's
+  coding (and whether it is the client record, which would be 17 ones, a zero and 16-bit words
+  with separators) is still open.
 
 This is the V.34 Phase 3 sequence, and it is exactly the same on the Courier's
 side as an ordinary V.34 upstream; x2 makes no change to it.  It ends at bearer
