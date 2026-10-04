@@ -3980,3 +3980,31 @@ controlled test of the mask: the flips began before the startup source and
 their wire-to-word bit mapping through the reversal and scrambling was not
 worked out.  Whether the per-phase map is a robbed-bit style test is therefore
 still an inference.
+
+### Controlled test: low-bit errors in the startup source give 56000
+
+The startup source crosses the bearer untransformed (a capture of the recorded
+symmetric call shows `7e` x1747, then the zeros, then `00 ff 01 fe 02 fd ...`
+verbatim), so a wire bit is a DSP word bit.  `tools/x2_source_impairment.py`
+(hooked into `tools/probe_imodem_pair.py` by `COURIER_X2_SOURCE_IMPAIR`) waits
+for seven `7e` octets, then flips one bit in every sixth octet of the source
+and stops at the capability frame's double `81` start.  The earlier uncontrolled
+runs failed because they corrupted the pre-source V.34-style handshake and the
+frame itself; this one touches only the source.
+
+| run | host `6a` | CONNECT |
+|---|---|---|
+| unimpaired | `1010` | 64000/ARQ/x2/LAPM, both payloads |
+| LSB, phase 2 | `0e0e` | 56000/ARQ/x2/LAPM, both payloads |
+| LSB, phase 5 | `0e0e` | 56000/ARQ/x2/LAPM, both payloads |
+| bit 1, phase 2 | none | V.34 fallback (24000 / 31200) |
+
+So an LSB error on a single symbol phase of the received source is tolerated,
+recorded in the per-phase map, reported to the peer and costs the 64000
+decision; the same error one bit up is not tolerated and the x2 attempt is
+abandoned.  This confirms the decision logic above (mask bit 6 needs an empty
+map, bit 0 gives 56000) and the LSB-only tolerance in the receiver.  The map is
+shown to behave as a per-phase test of the lowest bit of the source words.
+That the real-world cause is robbed-bit signalling is still the natural
+reading, not something the firmware states.  Evidence:
+`artifacts/x2-source-impairment-20261004/verification.json`.

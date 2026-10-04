@@ -1,0 +1,140 @@
+{
+ "purpose": "Controlled robbed-bit style test: corrupt one symbol phase of the x2 symmetric startup source on the bearer",
+ "setting": "S54=0S58=48 both ends, Ie030002, nvram-230400-switch2.sav, 250000000 instructions",
+ "filter": "tools/x2_source_impairment.py via COURIER_X2_SOURCE_IMPAIR=phase[:mask]",
+ "runs": {
+  "control": {
+   "impair": null,
+   "expected": "64000",
+   "result": {
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "originate": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:1010": 1
+     },
+     "connect": [
+      "CONNECT 64000/ARQ/x2/LAPM"
+     ]
+    },
+    "answer": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:1010": 1
+     },
+     "connect": [
+      "CONNECT 64000/ARQ/x2/LAPM"
+     ]
+    }
+   }
+  },
+  "phase2_lsb": {
+   "impair": "2",
+   "expected": "56000",
+   "result": {
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "originate": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:0e0e": 1
+     },
+     "connect": [
+      "CONNECT 56000/ARQ/x2/LAPM"
+     ]
+    },
+    "answer": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:0e0e": 1
+     },
+     "connect": [
+      "CONNECT 56000/ARQ/x2/LAPM"
+     ]
+    }
+   }
+  },
+  "phase5_lsb": {
+   "impair": "5",
+   "expected": "56000",
+   "result": {
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "originate": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:0e0e": 1
+     },
+     "connect": [
+      "CONNECT 56000/ARQ/x2/LAPM"
+     ]
+    },
+    "answer": {
+     "host": {
+      "0002:0000": 1,
+      "0003:0000": 1,
+      "0004:0000": 1,
+      "005b:0000": 1,
+      "006a:0e0e": 1
+     },
+     "connect": [
+      "CONNECT 56000/ARQ/x2/LAPM"
+     ]
+    }
+   }
+  },
+  "phase2_bit1": {
+   "impair": "2:2",
+   "expected": "x2 lost (error beyond the tolerated low bit)",
+   "result": {
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "originate": {
+     "host": {
+      "0002:0000": 2,
+      "0003:0000": 2,
+      "0004:0000": 1,
+      "005b:0000": 1
+     },
+     "connect": [
+      "CONNECT 24000/ARQ/V34/LAPM"
+     ]
+    },
+    "answer": {
+     "host": {
+      "0002:0000": 2,
+      "0003:0000": 2,
+      "0004:0000": 1
+     },
+     "connect": [
+      "CONNECT 31200/ARQ/V34/LAPM"
+     ]
+    }
+   }
+  }
+ }
+}

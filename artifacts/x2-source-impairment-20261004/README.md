@@ -1,0 +1,14 @@
+# x2 symmetric startup source impairment
+
+`tools/x2_source_impairment.py` flips a bit in one of every six octets of the
+symmetric startup source as it crosses the PCMU bearer (the source is not
+transformed on the wire). Enable it with `COURIER_X2_SOURCE_IMPAIR=phase[:mask]`
+for `tools/probe_imodem_pair.py`:
+
+```
+COURIER_X2_SOURCE_IMPAIR=2 .venv/bin/python tools/probe_imodem_pair.py --protocol x2 --settings S54=0S58=48 --nvram artifacts/imodem-pair-x2-full-rate-routed-20261002/nvram-230400-switch2.sav --instructions 250000000 --originate-send CALLER-X2 --answer-send ANSWER-X2 --output out
+```
+
+Results (`verification.json`): unimpaired 64000/x2 with host report `006a:1010`;
+LSB flips on phase 2 or phase 5 give 56000/x2 with `006a:0e0e` and both payloads
+delivered; a flip of bit 1 on phase 2 loses x2 (V.34 at 24000/31200).
