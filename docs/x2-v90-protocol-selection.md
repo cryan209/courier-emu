@@ -4264,6 +4264,28 @@ amplitude step to C.
 Not decoded: what A and the six-level D pattern carry.  The B tail word is the script
 constant `09b0` followed by `099f`, and E and what follows it are decoded below.
 
+### The Courier's second burst (bearer 10.2 s onward)
+
+The Courier transmits continuously from bearer 10.2 s to the end of the call
+(`tools/demod_psk_burst.py` on `analog-tx.wav`, 3200 baud, 1920 Hz, from analog 35.1 s):
+
+| symbols from the burst start | content |
+|---|---|
+| 0-128 (from 400) | S: two alternating points (quadrants `01`) |
+| 128-144 | S-bar: the opposite pair (`23`) |
+| 144-about 7700 | a two-ring, non-4-point constellation: 25 % of symbols at radius about 2000 and 75 % at about 4900; four-point is the flat ring of Phase 3; this is the 16-point training of Phase 4 (about 2.2 s, the V.34 limit for TRN of 2000 ms plus round trip) |
+| about 7700 onward | a flat ring of radius about 4000 with no 4th-power coherence (0.02-0.12 against 0.5), 14,000 symbols to the end of the capture window; not decoded |
+
+The Courier's script for this burst is `[aea5,0303,0080]` (S), `[aea5,2121,0010]` (S-bar),
+`[aeda,0,0200]` (512 symbols) and then the `afc9`/`b006` frame loop; the `@48` state trace and a
+PC trace of `aeda`-`aeff` show the second pass through `aede` taking the bit-9-set branch
+(`aee4`-`aeea`: `@52` = 4, `@51` = `0f`), which is the four-bit symbol path, where the Phase 3 TRN
+took the clear branch (`aefa`).  `[006f]` is `0x0a43` at the end of the call (bits 9 and 11 set).
+Which instruction set bit 9 was not found: the setters `a4be`, `e6c6` and `ea35` show no
+first-execution in the final core's coverage, and a write trace of `006f` recorded only the boot
+write in this call.  Neither the MP exchange nor any rate field has been found in this burst;
+the part after the 16-point TRN is the open stretch.
+
 ### What the code says the server's signal is
 
 The server's post-marker output is not a set of unrelated routines.  It is a
