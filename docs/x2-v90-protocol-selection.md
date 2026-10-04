@@ -4191,10 +4191,22 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   Argument bit 8 (`0x100`, from S55 bit 7) is dropped by the `#00ff` mask, so it has no effect
   through this path.  The receivers (I-modem `a909`, Courier `a4ac`) compare the received word
   with bit 5 masked for J and for the second word `899f`, and a received bit 5 sets bit 9 of
-  `[006f]`; `aede` tests it to choose a symbol width of 4 bits (mask `0f`, shift 4) or 2 bits
-  (mask `03`, shift 2), and `af30`/`af63` test it for the batch width.  So the flag in J asks the
-  peer for the wider training constellation; that is read from the code, not from the
-  Recommendation, and the V.34 name of the field was not checked.
+  `[006f]`.  The consumers of that bit are `aede` (Courier) and `b356` (I-modem), the state that follows
+  the second J word (script entry `aede`, count `0x200` = 512 symbols), and the batch-width tests at
+  `af30`/`af63` and `b3a1`/`b3b0`; the I-modem's x2 path tests it nowhere.  At `aede`, bit set gives
+  `@52` = 4, `@51` = `0f` (four scrambled bits per symbol); clear gives `@52` = 2, `@51` = 3 (two
+  bits).  The symbol path at `af81`-`af92` uses `@50 >> 2` to index the table at `c20f` and
+  `@50 & 3` to choose one of four quadrant handlers (`8b07`): the first four table entries are
+  the points (1,1), (-3,1), (1,-3), (-3,-3) (a four-point square), the next four (1,5), (5,1),
+  (-3,5), (5,-3), and so on.  With two bits per symbol `@50 >> 2` is always 0, so only the four-point
+  square is sent; with four bits the base point varies too, which is a 16-point constellation.
+  So the code reads as: a received J with bit 5 set makes the receiver send its next 512-symbol
+  training at 16 points instead of 4.  Not exercised: in the traced x2 call the I-modem receives
+  the Courier's J and sets bit 9 (`opl *, #0200` at `a91b`, `[006f]` = `2c0` then `ac0`, instruction
+  1,250,235,301) but does not consume it, the Courier never receives a J, and in the plain V.34
+  call neither side does, so `aede` has not run with either setting and no 16-point training
+  signal has been seen.  The Courier also sets bit 9 itself at `e6c5` and `ea34`.  The V.34 name of
+  the field was not checked.
   This replaces earlier readings of the tail as a client record, a two-lane stream or random
   data; those came from not undoing the differential encoding.  The Courier's burst therefore
   ends with J, as the V.34 Phase 3 sequence requires.  The pair probe now traces the analog
