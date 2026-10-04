@@ -1,0 +1,186 @@
+{
+ "start_s": 12.54,
+ "frames_decoded": 37040,
+ "hdlc": [
+  {
+   "t": 15.781,
+   "bits": 432,
+   "crc_ok": true,
+   "bytes": "03af8280001303038a8900050204000602040007010f08010ff0000f000356343201010302020800030120ffff03485354f101067244"
+  },
+  {
+   "t": 15.924,
+   "bits": 32,
+   "crc_ok": true,
+   "bytes": "03733364"
+  },
+  {
+   "t": 15.937,
+   "bits": 56,
+   "crc_ok": true,
+   "bytes": "010000c94d6040"
+  },
+  {
+   "t": 15.94,
+   "bits": 120,
+   "crc_ok": true,
+   "bytes": "010200cf44c54d2dd8b22d353315e5"
+  },
+  {
+   "t": 15.944,
+   "bits": 64,
+   "crc_ok": true,
+   "bytes": "010400333333ac28"
+  },
+  {
+   "t": 16.153,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "0301026213"
+  },
+  {
+   "t": 16.154,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "0301045476"
+  },
+  {
+   "t": 16.157,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "0301064655"
+  },
+  {
+   "t": 16.16,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03010838bc"
+  },
+  {
+   "t": 16.163,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03010a2a9f"
+  },
+  {
+   "t": 16.164,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03010c1cfa"
+  },
+  {
+   "t": 16.166,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03010e0ed9"
+  },
+  {
+   "t": 16.17,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "030110f120"
+  },
+  {
+   "t": 16.172,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "030112e303"
+  },
+  {
+   "t": 16.175,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "030114d566"
+  },
+  {
+   "t": 16.177,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "030116c745"
+  },
+  {
+   "t": 16.181,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "030118b9ac"
+  },
+  {
+   "t": 16.182,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011aab8f"
+  },
+  {
+   "t": 16.184,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011c9dea"
+  },
+  {
+   "t": 18.287,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 18.901,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "01011dac4e"
+  },
+  {
+   "t": 21.005,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 23.06,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 25.117,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 27.239,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 30.2,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "01011dac4e"
+  },
+  {
+   "t": 31.284,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 34.2,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "01011dac4e"
+  },
+  {
+   "t": 35.33,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "03011d14fb"
+  },
+  {
+   "t": 38.3,
+   "bits": 40,
+   "crc_ok": true,
+   "bytes": "01011dac4e"
+  }
+ ]
+}

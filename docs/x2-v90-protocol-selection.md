@@ -4166,7 +4166,13 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   The scrambler's seed transient ends within 12 symbols of the start of TRN.
 * **About 440 further symbols** of the same four-point constellation, whose
   descrambled bits are not constant (a 34-bit run of ones, then varied bits),
-  then the signal stops at bearer 7.69.  They were not decoded.
+  then the signal stops at bearer 7.69.  The 443 symbols (886 bits) are on the same
+  four-point constellation (same phase spread and amplitude as TRN), not periodic in the
+  symbol or the descrambled-bit domain (best period match 33 %), and carry no 17-ones
+  sync under any of the 24 dibit maps with taps 5, 18, a raw read or a differential read;
+  a scan for a CRC-16 (polynomials `1021`, `8005`, `3d65`, both inits, four bit orders,
+  start offsets 0-59) finds only the matches expected by chance.  So it is neither the
+  MP-style client record framing nor a repeating training pattern; what it is remains open.
 
 This is the V.34 Phase 3 sequence, and it is exactly the same on the Courier's
 side as an ordinary V.34 upstream; x2 makes no change to it.  It ends at bearer
@@ -4201,9 +4207,8 @@ before its C.  So the server's B tail (the repeated 12-bit word) is followed
 within about a tenth of a second by the client's second burst and by the
 amplitude step to C.
 
-Not decoded: what A, the B tail word `000011011001` and the six-level D pattern
-carry, and the content of E (the many-level data, which needs the six-position
-mapper inverted).  The Courier's own 443-symbol tail after its TRN is a similar
+Not decoded: what A and the six-level D pattern carry.  The B tail word is the script
+constant `09b0` followed by `099f`, and E and what follows it are decoded below.  The Courier's own 443-symbol tail after its TRN is a similar
 open item: it descrambles to a non-periodic 886-bit stream that does not parse
 as the client record framing (zero separators after 16-bit words fail at every
 offset), so it is something else.
@@ -4281,14 +4286,10 @@ every codeword through every symbol position (D) and 1.25 s of constellation
 training (E).  After E the script halts and a second script takes over
 (`c936`...), which is where the 12.5 s connect messages start.
 
-Not worked out: the exact generation rule of pattern A, what the 12-bit word
-`09b0` means as data (it is a constant of the script), what the second `caeb`
-entry (`099f`) does after the halt, and the contents of E (the constellation
-builders `d229` and `d0af` were not read).  Pattern D being a sweep of every
-codeword through every position fits the client's six-position measurement
-matrices of `docs/x2-client-record-production.md`, but the Courier's tail
-(886 bits), which would carry that record, did not parse with the framing
-described there.
+Not worked out: the exact generation rule of pattern A and what the six-level sweep D
+carries (it fits the client's six-position measurement matrices, but the Courier's
+886-bit tail, which would carry that record, does not parse as the client record; see
+the section on the Courier's signal).
 
 #### E, from `d229` and `d0af`
 
@@ -4382,16 +4383,38 @@ to 12 (`caee`, 97 times) so that the engine does not advance.  The Courier start
 its second burst about 60 ms after the word begins, so the word looks like a cue
 the client reacts to; that reading is an inference.
 
-**The second `caeb` entry** (`099f`, after the halt at `c928`) is not executed in this
-call.  The `@4b` trace shows the script restarting at `c92c` (the entry for the
-6000-symbol stretch C), written by the restart routine at `b2ad` at 10.2872 s,
-skipping `c929`.  The restart is armed by the handler at `a5cf`, which tests the
-receive-side state `@78` against 6 and chooses the next script from `@1f` bit 10:
-`c929` if it is set, else the other path, so `099f` (which would send the words `1f` and
-`26`, a different closing pair) belongs to the case where `@1f` bit 10 is set, which
-this call does not take.  What sets that bit was not traced.  The restart is
-therefore triggered by the receiver reaching state 6, not by a timer; the
-Courier's burst starts 110 ms before it.
+**The second `caeb` entry** (`099f`, after the halt at `c928`) **is executed in this call.**
+The restart routine at `b2ad` writes the next script address to `@4d` (`03cd`); a data
+trace of that cell shows the handler at `a5cf` store `b2e4` at `a5d8` and then `c929` at
+`a5db`, at DSP instruction 1,348,616,909, so the `xc 2, tc` took the bit-10-set branch.
+The bearer agrees: the last copy of the 12-bit word `000011011001` (`09b0`) is followed
+by `111110011001`, the 12 bits of `099f` sent LSB first (words `1f` then `26`), and then
+the scrambled ones of C from 10.2696 s.  An earlier reading of the `@4b` trace as a restart
+at `c92c` that skipped `c929` was wrong; the 12-symbol entry is too short to show in
+a state trace.
+
+**What sets `@1f` bit 10** (`039f`, DP 7): one instruction, `opl @1f, #1400` at `de15`
+(it sets bits 12 and 10 together), in the routine at `ddf6`.  `ddf6` reads the buffer at
+`0322`, sums a 0x2b2-word table with `lacc16`/`adds`/`sub16`/`subs`, takes the absolute
+value and subtracts a threshold (`mpy #2d00`, `spac`); `xc 2, gt, tc` then sets the
+bits when the result is positive and bit 15 of `ffd9` is set (the bit the tag-`70` handler
+`91a1` sets).  `ddf6` is called from `db6b` after the frame check at `db58` (an octet `e0`
+and a field that equals `@7b`).  Writes to `039f` in the traced call: bit 10 first appears
+at `de15` (DSP instruction 1,118,976,039, value `0x1442`), before the script starts
+(`c915` at 1,175,079,669) and before the restart decision, then `0x1462` after `93c3`.
+`92ef`, `962e`, `965c` and `db32` clear it.  `039f` is also used as a CRC register by
+`9d97`-`9daf`, which is not a path to a stable bit 10.
+
+**What drives the restart (`@78` = 6).**  `@78` (DP 6, `0378`) is the receiver's history
+of the last two dibits: `b8b6`-`b8bf` take `((@00 xor @02) >> 15) & 3` and store
+`(@78 >> 2) + (dibit << 2)`, so the value 6 means the last two dibits were 2 then 1.  Traced
+in this call, `@78` alternates `c`,`3` for 19 symbols, takes `b`, and becomes `6`,`9`,`6`,`9`
+(the reversed alternation); the restart decision follows the first `6` after that change by about 2,100 DSP
+instructions.  An earlier stretch of `6`,`9` for 39 symbols did not restart,
+so `a5cf` runs only in the receive state that is entered after the frame at `db58`;
+what advances that state, and what the alternation corresponds to in the Courier's second
+burst (an S to S-bar reversal fits the two-dibit pattern but its length does not match
+the 128 + 16 symbols the burst starts with), was not worked out.
 
 **`d0af`** is called from E's set-up (`cb57`, `ACC = 0a60`) after `d229` has put the
 nine-octet table at `0a60`.  It runs `d178` twice with `@5c` and `@5d` (both zero
@@ -4402,3 +4425,30 @@ descriptors.  The mapper reads its per-position banks from that region (`d9e1`-`
 are its pointers).  So `d0af` builds the six position banks, all pointing at the
 same nine-entry table, which is why the mapper needs nothing else for E.  This
 is read from the code; the bank layout was not run through.
+
+#### After E: V.42 detection, then LAPM, at 32 kbit/s
+
+From 12.54 s (E ends at 12.41) the server keeps sending six-symbol frames through the same mapper with a different
+nine-entry table, `a5 a8 ab ae b3 b9 bf cb df`, still five independent signs and 19
+amplitude bits (24 bits per frame, 32,000 bit/s); alignment is one octet later than E's.
+Descrambled with 1 + x^-18 + x^-23 (`tools/decode_server_post_e.py`,
+`artifacts/x2-server-post-e-20261004`) the bits are:
+
+| bearer s | content |
+|---|---|
+| 12.54-13.37 | constant ones |
+| 13.37-13.50 | the V.42 answer detection pattern: ten-bit characters `C`, `E` alternating (`0x43`, `0x45`, start bit, LSB first, stop bit) |
+| 13.50-15.78 | HDLC flags (`7e`) |
+| 15.78 | a 432-bit LAPM frame, address `03` control `af` (XID) with the parameter list and the text `V42`, `HST`; CRC-16 valid |
+| 15.92 | `03 73` (UA) |
+| 15.94 | the text `IMODEM-X2-53333` in three I-frames (`01 00 00`, `01 02 00`, `01 04 00`; data `IM`, `ODEM-X2-53`, `333`) |
+| 16.15-16.18 | fifteen supervisory frames `03 01 xx` (control `01` is RR in the two-octet form; `xx` rises by 2 per frame) |
+| 18.3-38.3 | `03 01 1d` and `01 01 1d` (RR) every two to three seconds, flags between |
+| 40.32 | the octet set changes to about 130 levels: the rate step (`006a:0e0d`) |
+
+Every frame has a valid CRC-16.  So E is not a data phase: it trains the receiver, and the
+data mode that follows opens, at 32 kbit/s, with the V.42 detection and a LAPM link
+established across the bearer.  The 12.5 s `006a:010a` report is the connect and the 40.3 s
+`006a:0e0d` is the step to the final rate.  The characters in the I-frames carry even parity in bit 7 (`I` `49` is sent as `c9`, `M` `4d` as `4d`), the DTE
+format of the text, not compression.
+
