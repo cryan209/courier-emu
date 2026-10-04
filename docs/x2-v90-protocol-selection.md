@@ -4207,3 +4207,85 @@ mapper inverted).  The Courier's own 443-symbol tail after its TRN is a similar
 open item: it descrambles to a non-periodic 886-bit stream that does not parse
 as the client record framing (zero separators after 16-bit words fail at every
 offset), so it is something else.
+
+### What the code says the server's signal is
+
+The server's post-marker output is not a set of unrelated routines.  It is a
+**script**, a table of (state, parameter, duration) words in program memory that an
+interpreter at `cc85`-`cc96` steps through (`tools/decode_server_script.py`,
+`artifacts/x2-server-script-20261004/script.json`): the state word is the
+routine address stored in `@48`, the next word goes to `@49` as that routine's
+parameter and the third to `@4a` as a symbol count, and a zero state word halts
+the script.  The script is at `c915`:
+
+| entry | state | parameter | symbols | what the state does |
+|---|---|---|---|---|
+| `c915` | `c9a4` | 0 | 1 | digital zero: the octet `7f` (`c9a4` loads `7f` into `@7f`) |
+| `c919` | `c9a4` | 0 | 20 | the same, 20 symbols more |
+| `c91c` | `c9c8` | 0 | 352 | **pattern A** |
+| `c91f` | `c9dd` | `0080` | 11 | pattern A, closing 11 symbols |
+| `c922` | `ca2e` | 0 | **20004** | **B**: scrambled ones as two PCMU levels (level octet `b1`) |
+| `c925` | `caeb` | `09b0` | 12 | **the repeated word**: a 12-bit register |
+| `c929` | `caeb` | `099f` | 12 | the same state after a halt word |
+| `c92c` | `ca22` | 0 | **6000** | **C**: scrambled ones, level octet from `d237` (`c1`) |
+| `c92f` | `cb0c` | `ffff` | **1152** | **D**: six-octet rotation |
+| `c932` | `cb3d` | `01ff` | 10002 | **E**: constellation training |
+
+The durations are the measured stretch lengths: 363 symbols for A (the 352 and
+11, after the 20 of zero), 20004 for B (exactly 2.5005 s at 8000 symbol/s),
+6000 for C and 1152 for D.  A data trace of `@48` puts the state changes at
+the bearer times of the stretches (c9c8 at 7.570 s, ca2e 7.616, caeb 10.141,
+ca22 10.289, cb0c 11.008, cb3d 11.147), within 20 ms after fitting the DSP
+instruction count to the six boundaries (36.2 million instructions per
+second).
+
+What each state does, from its code:
+
+* **Zero (`c9a4`)**: `@7f = 7f`, the octet the transmit loop sends; the script's
+  first entry has a count of 1 and is followed by a halt word, which is why
+  the zero lasts from the retune (5.42 s) until the script is restarted.
+* **A (`c9c8`/`c9df`, 363 symbols)**: copies two octets from `d235` and
+  `d236` (`ab`, `bd`, the levels +5116 and +2236) into `0a60`, clears
+  counters, and then generates a periodic pattern from a 16-bit rotating
+  register `@63` and these octets with the sign taken from it; its measured
+  period is 22 octets.  The pattern's exact rule was not worked out.
+* **B (`ca2e`/`ca3e`/`ca44`, 20004 symbols)**: copies the level octet (`@69 = b1`)
+  into the table at `04bc`, sets a six-wide mask (`@02 = 6`, `@01 = 3f`), counts
+  `@66` down and, once per six-symbol frame (`cpl @4c, #5`), runs the scrambler
+  (`9053`, the GPC); the output octet is the level octet with the scrambled bit
+  as its sign.  That is the scrambled ones seen on the bearer.
+* **Repeated word (`caeb`)**: at frame position 5 it takes the 12-bit register
+  `@49` (parameter `09b0`), masks it to its low six bits and rotates the word
+  right by six (`caf6`-`cafe`), so `@49` alternates `09b0` and `0c26`
+  every frame (98 times each in the trace) and six bits of it go out per
+  six-symbol frame, one per symbol.  `09b0` is the 12-bit word
+  `000011011001` LSB first that the bearer shows repeating.  It comes from the
+  script, not from a computed value.
+* **C (`ca22`/`ca28`, 6000 symbols)**: the same scrambled-ones machinery with the
+  level octet read from `d237` (`c1`, +1820), 6.3 dB below B.
+* **D (`cb0c`, 1152 symbols)**: reads an octet from the table at `cb06`,
+  `9e 28 a1 21 a8 1e` (the codewords of +-8828, +-5884 and +-7676), at an index
+  `@49` that steps from 1 to 6 once per frame (`cb1b`-`cb21`).  Each of the six
+  symbol positions therefore sends each of the six codewords in turn, giving
+  the 36-symbol period.
+* **E (`cb3d`, 10002 symbols = 1.25 s)**: zeroes the six-position state, sets
+  `@22 = 1` and `@40 = 0013`, and calls the constellation builders `d229` and
+  `d0af`.  The first value of `@40`, 19 (`0013`), is the first entry of the Quad
+  B table (19, 22, 25, 26 to 37), which fits the 19 distinct octets seen in the
+  first half second of E, growing to 34.
+
+So the server's signal is a training sequence in this order: zero, a fixed
+periodic pattern at two levels (A), 2.5 s of scrambled ones (B) with a 12-bit
+word at its end, 0.75 s of scrambled ones 6 dB lower (C), a six-level sweep of
+every codeword through every symbol position (D) and 1.25 s of constellation
+training (E).  After E the script halts and a second script takes over
+(`c936`...), which is where the 12.5 s connect messages start.
+
+Not worked out: the exact generation rule of pattern A, what the 12-bit word
+`09b0` means as data (it is a constant of the script), what the second `caeb`
+entry (`099f`) does after the halt, and the contents of E (the constellation
+builders `d229` and `d0af` were not read).  Pattern D being a sweep of every
+codeword through every position fits the client's six-position measurement
+matrices of `docs/x2-client-record-production.md`, but the Courier's tail
+(886 bits), which would carry that record, did not parse with the framing
+described there.

@@ -1,0 +1,185 @@
+{
+ "dump": "dsp-program.bin of the 53333/x2 analog Courier to I-modem call (artifacts/imodem-analog-x2-53333-production-20261003, local copy; identical words in the 4 October rerun)",
+ "script_start": "c915",
+ "entries": [
+  {
+   "address": "c915",
+   "state": "c9a4",
+   "parameter": "0000",
+   "duration_symbols": 1,
+   "seconds_at_8000": 0.0001,
+   "meaning": "digital zero: octet 7f"
+  },
+  {
+   "address": "c918",
+   "state": "0000",
+   "meaning": "halt marker (one word)"
+  },
+  {
+   "address": "c919",
+   "state": "c9a4",
+   "parameter": "0000",
+   "duration_symbols": 20,
+   "seconds_at_8000": 0.0025,
+   "meaning": "digital zero: octet 7f"
+  },
+  {
+   "address": "c91c",
+   "state": "c9c8",
+   "parameter": "0000",
+   "duration_symbols": 352,
+   "seconds_at_8000": 0.044,
+   "meaning": "pattern A: four-level periodic pattern, levels from d235/d236"
+  },
+  {
+   "address": "c91f",
+   "state": "c9dd",
+   "parameter": "0080",
+   "duration_symbols": 11,
+   "seconds_at_8000": 0.0014,
+   "meaning": "pattern A, closing stretch"
+  },
+  {
+   "address": "c922",
+   "state": "ca2e",
+   "parameter": "0000",
+   "duration_symbols": 20004,
+   "seconds_at_8000": 2.5005,
+   "meaning": "scrambled ones as two PCMU levels (level octet b1)"
+  },
+  {
+   "address": "c925",
+   "state": "caeb",
+   "parameter": "09b0",
+   "duration_symbols": 12,
+   "seconds_at_8000": 0.0015,
+   "meaning": "12-bit register, six bits per six-symbol frame, rotated by six"
+  },
+  {
+   "address": "c928",
+   "state": "0000",
+   "meaning": "halt marker (one word)"
+  },
+  {
+   "address": "c929",
+   "state": "caeb",
+   "parameter": "099f",
+   "duration_symbols": 12,
+   "seconds_at_8000": 0.0015,
+   "meaning": "12-bit register, six bits per six-symbol frame, rotated by six"
+  },
+  {
+   "address": "c92c",
+   "state": "ca22",
+   "parameter": "0000",
+   "duration_symbols": 6000,
+   "seconds_at_8000": 0.75,
+   "meaning": "scrambled ones as two PCMU levels (level octet from d237)"
+  },
+  {
+   "address": "c92f",
+   "state": "cb0c",
+   "parameter": "ffff",
+   "duration_symbols": 1152,
+   "seconds_at_8000": 0.144,
+   "meaning": "six-octet rotation, table at cb06"
+  },
+  {
+   "address": "c932",
+   "state": "cb3d",
+   "parameter": "01ff",
+   "duration_symbols": 10002,
+   "seconds_at_8000": 1.2503,
+   "meaning": "constellation training through d229/d0af, size 0013 at start"
+  },
+  {
+   "address": "c935",
+   "state": "0000",
+   "meaning": "halt marker (one word)"
+  },
+  {
+   "address": "c936",
+   "state": "c9f8",
+   "parameter": "0000",
+   "duration_symbols": 48,
+   "seconds_at_8000": 0.006,
+   "meaning": ""
+  },
+  {
+   "address": "c939",
+   "state": "c9f8",
+   "parameter": "0080",
+   "duration_symbols": 6,
+   "seconds_at_8000": 0.0008,
+   "meaning": ""
+  },
+  {
+   "address": "c93c",
+   "state": "cbb5",
+   "parameter": "0003",
+   "duration_symbols": 0,
+   "seconds_at_8000": 0.0,
+   "meaning": ""
+  }
+ ],
+ "tables": {
+  "d235_d239_octets": [
+   "ab",
+   "bd",
+   "c1",
+   "a5",
+   "a7"
+  ],
+  "cb06_cb0b_octets": [
+   "9e",
+   "28",
+   "a1",
+   "21",
+   "a8",
+   "1e"
+  ],
+  "quad_B_table_c9e0": null
+ },
+ "measured_stretches_bearer_s": {
+  "A": [
+   7.5755,
+   7.6209,
+   363
+  ],
+  "B": [
+   7.6209,
+   10.1214,
+   19983
+  ],
+  "B_tail_to_C": [
+   10.1214,
+   10.2699,
+   1188
+  ],
+  "C": [
+   10.2699,
+   11.0199,
+   6000
+  ],
+  "D": [
+   11.0199,
+   11.1639,
+   1152
+  ],
+  "E": [
+   11.1639,
+   null,
+   null
+  ]
+ },
+ "state_change_times_s_from_data_trace_of_@48": {
+  "c9c8": 7.57,
+  "c9dd": 7.615,
+  "ca2e": 7.616,
+  "caeb": 10.141,
+  "ca22": 10.289,
+  "cb0c": 11.008,
+  "cb3d": 11.147
+ },
+ "interpreter": "cc85-cc96: state word -> @48, next word -> @49, next -> @4a (symbol count); zero state word halts the script; @4b is the script pointer"
+}
