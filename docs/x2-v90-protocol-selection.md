@@ -3928,3 +3928,55 @@ writes `fef4 = 03` (`@6a & 3f = 1`); each end receives exactly one frame with
 `f6a2 = 01` and `f6a4 = 03` (`e4c4`, `e4e9`).  The two ends' frames are
 identical in those fields.  After the exchange the stores at `e991` begin
 (256 distinct values), the data-mode hook.
+
+### The data-mode hooks, and what ends the exchange
+
+`e97e`/`e992` are the symmetric data-mode hooks already verified in
+"Live 64000 symmetric scrambler confirmation": transmit fetches a source word
+(`8419`), masks it (`@01`), applies GPC (`9057`) if mode bit 9, octet reversal
+(`eb55`) if `ffd9` bit 15, and stores it at `[ar1]` (`e990`/`e991`); receive
+loads the word, reverses it, masks it (`@21`), descrambles (`908e`) if mode
+bit 9 and hands it to the sink (`84d3`).  Two sibling pairs are installed by
+the same initializer:
+
+| hooks | installed when | difference |
+|---|---|---|
+| `e97e`/`e992` | default (this call) | single channel, GPC, reversal |
+| `e9af`/`e9c4` | `@60` bit 15 (`e2e0`) | two channels `0888`/`088a` and `0889`/`088b`, each masked `00ff`, no GPC or reversal |
+| `ea00`/`ea0f` | `(@6d & c0) == c0` (`e2c3`, `e672`) | page-`013` single channel, GPC but no reversal |
+
+The receive hook also calls `e9db` while `@73` bit 0 is set (`e9a9`): it steps
+a pointer through a table at `0268`, calls `84ef`, and when the pointer
+reaches its limit clears `@73` bit 0 and sends host tag `70`.  No tag `70`
+reply appears in the saved call, so that monitor was not active and is not
+decoded.
+
+#### What the frame exchange decides
+
+After the frame merge (`e548`-`e568`) `e55f` tests the merged mask `@6a`:
+bit 6 set calls `e67c` (clears `@60` bits 1:0); otherwise bit 0 set calls
+`e695` (clears bit 1, sets bit 0).  `e6c9`-`e6da` then sends host tag `6a`
+with value `1010` when `@60` bit 0 is clear and `0e0e` when it is set.  The
+bits come from the frame: mask bit 6 survives only if the peer's w3 bit 1
+(empty error map) was set (`@71` bit 6), and bit 0 comes from w4.  The
+initial mask is `0041`, so an unimpaired exchange keeps bit 6 and reports
+`1010`; an exchange in which the peer reported errors would drop bit 6 and,
+with bit 0 still set, report `0e0e`.  The values fit 64000 and 56000 in units
+of 4000 bit/s (16 and 14), and the doc above gives ordinals 15 and 13 for the
+same two rates, so the decision looks like 64000 versus 56000.  Only `1010`
+was seen.
+
+The host messages of the whole symmetric call, in order, at both ends:
+`0071:0007`, `0047:0006`, `006b:003d` (the gate message, value `3d` against
+`21` in the asymmetric call), `005b:0000` (`e5df` at the first zero word),
+`006a:1010`, then `0002`, `0003` and `0004`.  The `0048` rate-table replies
+precede these.
+
+Two impairment runs in which the pair harness flipped one bit of every
+non-idle bearer octet did not reproduce `0e0e`.  Flipping the LSB reached the
+zero stage (`005b` present) but sent no `006a` or connection result, and
+flipping the MSB fell back to V.34 (31200) without `005b`.  Neither is a
+controlled test of the mask: the flips began before the startup source and
+their wire-to-word bit mapping through the reversal and scrambling was not
+worked out.  Whether the per-phase map is a robbed-bit style test is therefore
+still an inference.
