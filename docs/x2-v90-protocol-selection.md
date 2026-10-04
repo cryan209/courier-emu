@@ -3686,3 +3686,23 @@ four at two cycles removes every divergence and the call connects at
 loses carrier, so the call is sensitive to those timings and the four should
 stay consistent.  The committed core, with all four at one cycle, also
 connected.
+
+### The gate, in INFO0 numbers
+
+The raw word bits in "The gate before arming" decode with `ITU = 13 + word
+bit` for both `ff00` (remote) and `ff18` (local).  In the Ie030002 listing
+(`95ae`-`95c2`, same shape at QF060003 `9749`-`975d`):
+
+1. remote bit 5 = ITU 18 must be set (high-carrier 3200 ability), else x2 is
+   dropped;
+2. `remote & local` bit 10 = ITU 23: if **both** set, the server leaves this
+   path (Ie030002 `958f`, QF060003 `f71c`), which sets `ffdd`/`ffde` bits `30`,
+   `@1f` bit 13 in QF060003 and installs a different handler pair;
+3. `remote xor local` bit 11 = ITU 24 (CME): equal drops x2 (`965c`/`9813`),
+   different continues to the marker receiver.
+
+The S58 bit mapping in the spec (symmetric-disable clears value bit 11 = ITU
+23; server-disable clears value bit 12 = ITU 24) makes this read: peer must
+be a client by CME, and two symmetric-enabled ends take the other path.  The
+other path was not traced, so "symmetric startup" is inferred from the bits,
+not read from its code.
