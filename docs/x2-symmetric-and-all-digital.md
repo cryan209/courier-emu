@@ -2005,3 +2005,89 @@ So the level word the supervisor computes - `((n-1)*2|1) << 4 | 0a06h` - is
 stored whole in **`ffdf`**, with the index in bits 4--8, and only its top bit
 reaches `ffd9`, as bit **14**.  The four new bits are neighbours of that, not
 part of it.
+
+## Live 64000 symmetric scrambler confirmation 2026-10-04
+
+The successful `Ie030002.nac` digital pair **does enable GPC scrambling in
+both directions**. It also enables octet bit reversal. This resolves the
+activation uncertainty in the earlier IM020104 component reconstruction.
+The live data path is eight source bits → GPC → octet reversal → one PCMU
+bearer octet at 8000 words/s. The source includes modem link framing; this
+is not a direct copy of terminal bytes into the B channel.
+
+| Item | Caller | Answerer |
+|---|---|---|
+| CONNECT | 64000/ARQ/x2/LAPM | 64000/ARQ/x2/LAPM |
+| Engine mode `[03e0]` | `0310` | `0210` |
+| Scramble flag | `0200` set | `0200` set |
+| Width and mask | 8 and `00ff` | 8 and `00ff` |
+| `ffd9` reversal bit | `8000` set | `8000` set |
+| TX and RX callbacks | `e97e`, `e992` | `e97e`, `e992` |
+| TX and RX GPC entries | `9057`, `908e` | `9057`, `908e` |
+| Zero-history captures | 2 | 2 |
+| TX input snapshots after CONNECT | 6720 | 5504 |
+| Consecutive GPC history checks | 6615 | 5418 |
+
+The actual firmware at `e984/e985` tests mode bit 9 and conditionally calls
+`9057`. Its receiver at `e99f/e9a0` tests the same flag and calls `908e`.
+Transmit history is `03d8:03d9`, receive history `031e:031f`.
+
+The initializer `e8e1` clears TX history at `e8e5/e8e6` and RX history at
+`e906/e907`. Read-only snapshots at `e908` find both histories zero twice
+per endpoint: initial setup and again after the data callbacks are selected,
+before CONNECT. The last reset captures have `039a=e97e` and `039b=e992`;
+the resident callback cells still contain the previous callbacks until its
+next dispatch copies them. The last reset DSP instruction counts are
+489442359 on the caller and 645117132 on the answerer. These are local DSP
+counters and must not be compared as a common clock.
+
+After CONNECT, snapshots at `e984` record the masked source word and history
+before scrambling. For every consecutive pair within each captured window,
+the original DSP's next history exactly matches the LSB-first recurrence:
+
+```text
+s[n] = u[n] XOR s[n-18] XOR s[n-23]
+history = (history >> 1) | (s[n] << 22)
+```
+
+All 12033 transitions match. Both distinct markers reach the opposite DTE,
+both DSP and supervisor errors are null, and both PCM underrun counts are
+zero. The sampled windows are not a complete bearer recording. These calls
+do not establish seven-bit activation, every lower-rate negotiation, or
+reset behavior during retrain/fallback. Both roles use GPC in this symmetric
+branch; the role-selected GPA alternative in the Quad PCM mapper does not
+apply merely because one endpoint answers.
+
+Evidence: [verification](../artifacts/x2-scrambler-call-reset-20261004/verification.json),
+[original instruction listing](../artifacts/x2-scrambler-call-reset-20261004/focused.asm),
+and [reproduction notes](../artifacts/x2-scrambler-call-reset-20261004/README.md).
+
+
+## QF060003 57333 profile correction 4 October 2026
+
+Rate index 15 now builds valid, unique banks with DSP product scaling mode
+SPM 1. Earlier SPM 0 duplicate/non-return results were harness errors.
+The default mode-zero profile uses radices 82,70,70,70,70,70 and B=37.
+With MD=6 it carries 43 scrambled bits per six samples (57333⅓ bit/s),
+with all six signs differential and no free shaping signs. Mode/record
+variants include six banks of 72 entries. The corrected payload harness
+checks all fifteen indices and continuous index-15 source-byte recovery.
+The dedicated profile scan checks 28 valid seeded contexts and 1792
+exact-symbol inverses. See `../artifacts/x2-57333-profile-20261004/README.md`.
+These are component profiles; a negotiated 57333 or symmetric 57333 call
+has not been established.
+
+
+## PCM record to data handoff execution 4 October 2026
+
+The Quad server's original four-word PCM record receiver now runs through
+CRC acceptance and record transfer into its working parameters. Its original
+scheduler then chooses a local rate from the peer ceiling and local mask,
+constructs the banks and enters mapped output. This succeeds in forty
+contexts spanning all fifteen indices and sparse local-mask reductions.
+A 57333 case also completes the 4080-sample countdown into payload-source
+activation and queues the original 0003 notification. See
+[x2-rate-and-data-handoff.md](x2-rate-and-data-handoff.md) for reproduction,
+framing, scope and the remaining client measurement-to-record boundary.
+This shared PCM branch evidence does not establish a complete x2 or lower-rate
+symmetric call and does not identify the short proprietary announcement receiver.
