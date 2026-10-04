@@ -136,5 +136,118 @@
     }
    }
   }
+ },
+ "sweep_all_six_phases_lsb": {
+  "note": "LSB flipped on every sixth octet of the startup source counted from the seventh 7e; w2 = ((map<<1)&7e)|1 at fef2",
+  "phases": {
+   "0": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x41"
+    ],
+    "answer_w2": [
+     "0x41"
+    ]
+   },
+   "1": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x3"
+    ],
+    "answer_w2": [
+     "0x3"
+    ]
+   },
+   "2": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x5"
+    ],
+    "answer_w2": [
+     "0x5"
+    ]
+   },
+   "3": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x9"
+    ],
+    "answer_w2": [
+     "0x9"
+    ]
+   },
+   "4": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x11"
+    ],
+    "answer_w2": [
+     "0x11"
+    ]
+   },
+   "5": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "sent_error_map_word_w2": [
+     "0x21"
+    ],
+    "answer_w2": [
+     "0x21"
+    ]
+   }
+  }
  }
 }

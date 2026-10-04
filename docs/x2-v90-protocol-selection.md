@@ -4008,3 +4008,22 @@ shown to behave as a per-phase test of the lowest bit of the source words.
 That the real-world cause is robbed-bit signalling is still the natural
 reading, not something the firmware states.  Evidence:
 `artifacts/x2-source-impairment-20261004/verification.json`.
+
+#### All six phases
+
+The same LSB test on each phase, counted from the seventh `7e` of the run:
+
+| phase | CONNECT | host `6a` | `w2` each end sends | map bit |
+|---|---|---|---|---|
+| 0 | 56000/x2 | `0e0e` | `41` | 5 |
+| 1 | 56000/x2 | `0e0e` | `03` | 0 |
+| 2 | 56000/x2 | `0e0e` | `05` | 1 |
+| 3 | 56000/x2 | `0e0e` | `09` | 2 |
+| 4 | 56000/x2 | `0e0e` | `11` | 3 |
+| 5 | 56000/x2 | `0e0e` | `21` | 4 |
+
+Every phase gives the same rate result, and each produces exactly one map bit,
+a different one each time, identical at both ends: the map really is
+per-phase, and the receiver's phase counter runs one position behind the
+source count (source phase *k* is map bit *(k - 1) mod 6*).  Multi-phase
+errors were not tested.
