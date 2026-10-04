@@ -3672,10 +3672,17 @@ A separate trace of this call shows the accept branch executing
 current working tree, where the call does not connect (below), so it shows the
 marker being accepted, not a completed connection.
 
-#### A regression to know about
+#### The regression, diagnosed
 
-On 2026-10-04 the same command that produced the 53333 result ends in NO
-CARRIER with the uncommitted native changes in `native/c5x_core.cpp`,
-`c5x_core.h` and `c5x_ops.ipp` applied, and connects at 53333/x2 again from a
-clean checkout of `2f0d1fd`.  The marker is accepted in both; the failure is
-later.  This is not diagnosed here.
+The working tree's XC change (conditions sampled one cycle early after a
+single-cycle predecessor) is right, but it exposed wrong cycle counts in
+`native/c5x_ops.ipp`: `APL`, `CPL`, `OPL` and `XPL` with a long immediate
+(`#lk`) are two-word, two-cycle instructions and were charged one cycle.  Every
+XC that diverged between the old and new rule in the 53333 call followed a
+`CPL #lk` (analog `c6c2` and `e46a`, I-modem `9df6`): the new rule treated
+the compare as single-cycle and sampled the TC from before it.  Charging all
+four at two cycles removes every divergence and the call connects at
+53333/x2 with both payloads delivered.  Charging only `CPL` connects and then
+loses carrier, so the call is sensitive to those timings and the four should
+stay consistent.  The committed core, with all four at one cycle, also
+connected.
