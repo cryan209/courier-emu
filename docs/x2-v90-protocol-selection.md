@@ -3824,3 +3824,52 @@ joins the answering end's cycle in progress (hence 0.19 M), then sees the
 zeros and the 128 pairs in full before it starts transmitting.  So each end
 acquires the peer's source phase before settling, and the originating end
 starts last.
+
+#### Mismatch handling (`e427`, `e42e`, `e436`, `e5d7`, `e5df`)
+
+The helpers the receive states share:
+
+| routine | what it does |
+|---|---|
+| `e427` | `@68 = (@68 + 1) mod 6`: a six-phase symbol counter, stepped once per received word |
+| `e42e` | `@76 \|= 1 << @68`: record the current phase in a six-bit error map |
+| `e436` | log `(word & ff) \| tag` while the budget `@72` is non-zero, decrementing it |
+| `e5d7` | the log writer: `[ffdd]` is the write pointer, the log is `ffc0`-`ffd8` |
+| `e5df` | clear the log (`[ffdd] = ffc0`, 25 words zeroed) and send host tag `5b` |
+
+Log tags are `0100` (zero state), `0200` (pair states), `0300` (an unexpected
+word in the zero state) and `0400` (run state).  The budget starts at zero, so
+nothing is logged until it is set: `0012` on an unexpected word in the zero
+state (`e5b9`), `000c` on entering the pair state (`e5ce`).
+
+Per state, what an off-nominal received word does:
+
+* **run (`e571`)**: `007e` counts; `007f` counts and sets the phase's error
+  bit (`e589`); any other word restarts the seven-count (`e580`).
+* **zeros (`e594`)**: `0` and `2` count; `1` and `3` count and set the phase
+  bit (`e5bd`); `007e`/`007f` seen late are accepted back into the run count;
+  anything else clears the log, sends tag `5b`, logs the word with tag `0300`,
+  sets the budget to 18 and restarts at `e580`.  The first zero word also
+  calls `e5df`, so tag `5b` marks the start of the zeros.
+* **pairs (`e440`, `e46b`)**: a word equal to the expected value (the running
+  count, then 255 minus it) advances.  A word equal only with the low bit
+  ignored (`or #1` on both sides, `e44c`-`e453`, `e46b` likewise) advances and
+  sets the phase's error bit.  The first expected word `0` additionally
+  accepts a received `2`, setting `@76` bit 6.  **Anything else sets
+  `@65 = e56f`** (`e461`, the delay slot of the `retd` at `e460`; `e481` in
+  `e46b`), so a bad pair word restarts the whole acquisition from the seven
+  run words.
+
+So the receiver tolerates single low-bit errors, which it records per symbol
+phase, and restarts on anything larger.  The saved symmetric call shows no
+restart in the pair phase at either end: exactly 128 `e46a` and 128 `e486`
+transitions, one `e440` entry, and no write of `e56f` after the first; the
+answering end shows three extra `e571` entries, which are run-state restarts
+of the seven-count.  Nothing in this machine times out; any timeout is
+elsewhere.
+
+After the 128 pairs both ends move to `e499`, which waits for two words
+`0080`/`0081` and then stores five consecutive received words in `f6a0`-`f6a4`
+(`e4af`, `e4b8`, `e4c1`, `e4ce`, `e4e6`), the first of which is the remote
+capability word the gate at `95ae` reads.  That is the next stage and is not
+decoded here.
