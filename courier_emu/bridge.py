@@ -1318,6 +1318,9 @@ class CourierDspBridge:
             # engine, which on 302/403 never starts.
             self.core.set_data_trace_filter(self.dsp_write_watch, True)
             self.core.trace_data_writes(True)
+            limit = os.environ.get("COURIER_DSP_TRACE_LIMIT")
+            if limit and hasattr(self.core, "set_data_event_limit"):
+                self.core.set_data_event_limit(int(limit))
             self._rate_trace_enabled = True
 
     def _configure_boot_rom(self) -> None:
@@ -3746,7 +3749,7 @@ class CourierDspBridge:
             + [{"probe_clock": getattr(self, "probe_clock", [])}],  # PROBE
             dsp_writes=[
                 event for event in self.core.data_events()
-            ][-4096:] if self.dsp_write_watch is not None and hasattr(self.core, "data_events") else [],
+            ][-int(os.environ.get("COURIER_DSP_TRACE_LIMIT", "4096")):] if self.dsp_write_watch is not None and hasattr(self.core, "data_events") else [],
             dsp_cells={
                 name: f"{self.core.data(address):04x}"
                 for address, name in self.dsp_peek.items()

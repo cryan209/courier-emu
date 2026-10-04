@@ -343,6 +343,8 @@ public:
         m_trace_filtered = enabled;
     }
     void clear_data_events() { m_data_events.clear(); }
+    // How many write events the data trace keeps (oldest dropped first); 4096 by default.
+    void set_data_event_limit(std::size_t limit) { m_data_event_limit = limit ? limit : 4096; }
     State state() const;
     SerialState serial_state() const;
     const std::deque<IoEvent> &io_events() const { return m_io_events; }
@@ -451,6 +453,7 @@ private:
     std::deque<IoEvent> m_io_events;
     std::deque<IoEvent> m_mailbox_events;
     std::vector<DataEvent> m_data_events;
+    std::size_t m_data_event_limit = 4096;
     std::array<uint64_t, 65536> m_data_write_counts{};
     std::array<PortStat, 65536> m_io_port_stats{};
     std::deque<uint64_t> m_pc_trace;

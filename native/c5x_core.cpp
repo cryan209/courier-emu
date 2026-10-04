@@ -1069,7 +1069,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     if (m_trace_data_writes && !m_trace_filtered &&
         (address == 0x006f || address == 0x035c || address == 0x069c ||
          address == 0x0b49 || address == 0x039f || address == 0x03c8 || address == 0x03ca)) {
-        if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
+        if (m_data_events.size() >= m_data_event_limit) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     return value;
@@ -1080,7 +1080,7 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
     if (m_trace_data_writes && (!m_trace_filtered || address == m_trace_filter)
         && !(m_trace_filtered && m_trace_changes_only && !m_data_events.empty()
              && m_data_events.back().value == value)) {
-        if (m_data_events.size() >= 4096) m_data_events.erase(m_data_events.begin());
+        if (m_data_events.size() >= m_data_event_limit) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     if (address < 0x60) cpuregs_w(address, value);

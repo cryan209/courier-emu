@@ -4273,18 +4273,40 @@ The Courier transmits continuously from bearer 10.2 s to the end of the call
 |---|---|
 | 0-128 (from 400) | S: two alternating points (quadrants `01`) |
 | 128-144 | S-bar: the opposite pair (`23`) |
-| 144-about 7700 | a two-ring, non-4-point constellation: 25 % of symbols at radius about 2000 and 75 % at about 4900; four-point is the flat ring of Phase 3; this is the 16-point training of Phase 4 (about 2.2 s, the V.34 limit for TRN of 2000 ms plus round trip) |
-| about 7700 onward | a flat ring of radius about 4000 with no 4th-power coherence (0.02-0.12 against 0.5), 14,000 symbols to the end of the capture window; not decoded |
+| 144-about 4900 | TRN at 16 points: rings of 4, 8 and 4 points at radii 2000, 4400 and 6000 (the 4x4 grid in the 45-degree frame of the table `c20f`) |
+| about 4900-7600 | **MP**, at 16 points, 104-bit frames (below) |
+| about 7600 onward | a flat ring of radius about 4000 with no 4th-power coherence: the data-mode symbol loop `afc9`/`b006`, not analysed |
 
-The Courier's script for this burst is `[aea5,0303,0080]` (S), `[aea5,2121,0010]` (S-bar),
-`[aeda,0,0200]` (512 symbols) and then the `afc9`/`b006` frame loop; the `@48` state trace and a
-PC trace of `aeda`-`aeff` show the second pass through `aede` taking the bit-9-set branch
-(`aee4`-`aeea`: `@52` = 4, `@51` = `0f`), which is the four-bit symbol path, where the Phase 3 TRN
-took the clear branch (`aefa`).  `[006f]` is `0x0a43` at the end of the call (bits 9 and 11 set).
-Which instruction set bit 9 was not found: the setters `a4be`, `e6c6` and `ea35` show no
-first-execution in the final core's coverage, and a write trace of `006f` recorded only the boot
-write in this call.  Neither the MP exchange nor any rate field has been found in this burst;
-the part after the 16-point TRN is the open stretch.
+The state trace (`@48`, `03c8`, with `COURIER_DSP_TRACE_LIMIT` raised, DSP instructions) gives
+the order: S and S-bar (`aea5`, 910.79M), TRN (`aeda`, 912.2M, which runs 1.35 s although its
+script count is 512: it holds in `af03` until the next script is installed), MP (`af63`, from
+956.25M to 983.99M, script `[af63,0003,0016]` at `ae4f`), then `af2e`, `af99` and the
+endless `afc9`/`b006` loop from 984.04M (script `ae83`, `[af2e,0,5]`, `[af99,0,0]`).  At
+32.5M DSP instructions per second that puts MP at burst symbols 4875-7607.  `afc9`/`b006` is a V.34
+data-mode mapper: a base point from `c20f` indexed by `@33 >> 3`, a rotation in `@5a` (`8b07`
+handlers), a trellis encoder over the table at `c3af` (`b036`-`b054`) and a bit-inversion
+register `@32`.  The second pass through `aede` takes the bit-9-set branch (`aee4`-`aeea`, `@52` = 4,
+`@51` = `0f`), four bits per symbol, where the Phase 3 TRN took `aefa`; `[006f]` ends at `0x0a43`.  (An
+earlier statement here that `006f` was written only once was an artefact: the final DSP core is a
+fresh rebuild after the call, so a full-length run's write trace holds only its boot write; use a
+capped run.)  What set bit 9 was not found; the setters `a4be`, `e6c6`, `ea35` show no execution.
+
+**The MP.**  `tools/decode_courier_mp16.py` places each symbol in its orbit and rotation, undoes
+the differential encoding (V.34 10.1.3.6: four bits per symbol, I1 I2 differential, Q1 Q2 the
+point), descrambles with 1 + x^-5 + x^-23 and finds the 17-ones sync 94 times, every 104 bits (one
+gap of 208), 90 of the frames identical.  The conventions were fixed by search (clockwise rotation,
+orbit offsets 0, 1, 2, 2, least significant bit first) and only that combination gives more than 9
+syncs.  Read with Table 20 the frame is a Type 0 MP: start bits at 17, 34, 51 and 68 all zero,
+bits 52:67 zero, **maximum call-to-answer rate N = 1 (2400), maximum answer-to-call rate N = 13
+(31200)**, auxiliary channel 0, 16-state trellis, non-linear 0, minimum shaping, acknowledge 0,
+rate mask 4800 through 24000 (nine bits), asymmetric 0.  Caveats: the CRC does not verify against
+Figure 14 (x^16 + x^12 + x^5 + 1, preset ones) over the standard information bits, nor over any
+span searched; the frame is 104 bits where Table 20 has 88, with `bits 69:84` = `0000000010100000`,
+fill `010` and 16 further bits `1101010010100000`; and the maximum answer-to-call rate (31200)
+exceeds the top of the mask (24000).  So the field values are a parse by the standard layout whose
+integrity check failed; whether the extra 16 bits and the CRC differ because this is x2's MP or
+because of a decoding fault in those last bits is open.  The MP carries no field that could
+express 53333 or 56000: the V.34 rate fields stop at 33600.
 
 ### What the code says the server's signal is
 
