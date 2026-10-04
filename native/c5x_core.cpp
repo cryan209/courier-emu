@@ -1077,9 +1077,9 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
 void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 {
     ++m_data_write_counts[address];
-    if (m_trace_data_writes && (!m_trace_filtered || address == m_trace_filter)
+    if (m_trace_data_writes && (!m_trace_filtered || (address >= m_trace_filter && address <= m_trace_filter_last))
         && !(m_trace_filtered && m_trace_changes_only && !m_data_events.empty()
-             && m_data_events.back().value == value)) {
+             && m_data_events.back().address == address && m_data_events.back().value == value)) {
         if (m_data_events.size() >= m_data_event_limit) m_data_events.erase(m_data_events.begin());
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }

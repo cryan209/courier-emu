@@ -336,6 +336,11 @@ void courier_c5x_set_data_event_limit(void *handle, std::size_t limit)
     if (handle) static_cast<C5xCore *>(handle)->set_data_event_limit(limit);
 }
 
+void courier_c5x_set_data_trace_range(void *handle, unsigned first, unsigned last, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_data_trace_range(first, last, enabled != 0);
+}
+
 void courier_c5x_set_coverage(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_coverage(enabled != 0);

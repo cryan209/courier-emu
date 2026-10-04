@@ -325,6 +325,8 @@ class NativeC5x:
         lib.courier_c5x_set_data_trace_filter.restype = None
         lib.courier_c5x_set_data_event_limit.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_set_data_event_limit.restype = None
+        lib.courier_c5x_set_data_trace_range.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_int]
+        lib.courier_c5x_set_data_trace_range.restype = None
         lib.courier_c5x_set_coverage.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_coverage.restype = None
         lib.courier_c5x_get_first_exec.argtypes = [ctypes.c_void_p, ctypes.c_uint]
@@ -857,6 +859,9 @@ class NativeC5x:
     def set_data_trace_filter(self, address: int, enabled: bool = True) -> None:
         """Restrict the write trace to one data cell."""
         self.library.courier_c5x_set_data_trace_filter(self.handle, address, int(enabled))
+
+    def set_data_trace_range(self, first: int, last: int, enabled: bool = True) -> None:
+        self.library.courier_c5x_set_data_trace_range(self.handle, first, last, int(enabled))
 
     def set_data_event_limit(self, limit: int) -> None:
         self.library.courier_c5x_set_data_event_limit(self.handle, limit)

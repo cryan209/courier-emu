@@ -1316,7 +1316,11 @@ class CourierDspBridge:
         if self.dsp_write_watch is not None and hasattr(self.core, "set_data_trace_filter"):
             # Arm the write trace from construction rather than from the call
             # engine, which on 302/403 never starts.
-            self.core.set_data_trace_filter(self.dsp_write_watch, True)
+            last = os.environ.get("COURIER_DSP_WATCH_LAST")
+            if last and hasattr(self.core, "set_data_trace_range"):
+                self.core.set_data_trace_range(self.dsp_write_watch, int(last, 16), True)
+            else:
+                self.core.set_data_trace_filter(self.dsp_write_watch, True)
             self.core.trace_data_writes(True)
             limit = os.environ.get("COURIER_DSP_TRACE_LIMIT")
             if limit and hasattr(self.core, "set_data_event_limit"):

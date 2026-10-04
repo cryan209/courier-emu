@@ -4308,6 +4308,22 @@ integrity check failed; whether the extra 16 bits and the CRC differ because thi
 because of a decoding fault in those last bits is open.  The MP carries no field that could
 express 53333 or 56000: the V.34 rate fields stop at 33600.
 
+**The MP frame is the four-word record, and its CRC verifies.**  Read as 17 ones, a zero, four 16-bit
+words each followed by a zero, a zero and 16 CRC bits (not three words: 17 + 4 x 17 + 17 = 102 bits,
+two trailing zeros, 104 per frame), the CRC the DSP computes (`b11c`-`b133`: reflected 0x8408, preset
+`ffff`, data bits only, emitted LSB first) over the four decoded words is `0x14ad`, exactly the 16
+bits sent.  This is the framing of the server's four-word PCM record receiver
+(`docs/x2-rate-and-data-handoff.md`, `AAA4`-`AAF8`).  The words, from a write trace of the MP buffer
+(`0940`-`0943`, chosen over `ff38` because `039f` bit 14 is set; `COURIER_DSP_WATCH_LAST` gives a
+range): `W1` = `0x0344` (`f87c`; bit 15, the acknowledge bit, is set later at `a536`, instruction
+983.92M), `W2` = `0x1ffe` (`f85d`, the 3200-baud mask from `a35e`) cut to `0x03fe` at `f58f`, `W3` = 0,
+`W4` = `0x0500` (`f895`-`f89c`: `@64` << 8 over a preserved low byte; `@64` = 5, cell `0364`, the
+cell the client-record rate selection adds to its limit).  The server uses `(W1 >> 2) & 15` as the peer
+ceiling: here 1.  `N2` = 13 is simply the top bit of the 3200-baud mask (`a661` is a highest-set-bit
+routine), not an x2 ordinal.  Not worked out: how `N1` = 1 arises, and what `W4`'s `@64` = 5
+means in rate terms.  Earlier statements that the CRC fails and the frame is 104 bits where the standard
+has 88 are superseded by this paragraph.
+
 ### What the code says the server's signal is
 
 The server's post-marker output is not a set of unrelated routines.  It is a

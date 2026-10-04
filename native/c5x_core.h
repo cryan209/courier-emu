@@ -340,6 +340,14 @@ public:
     void set_data_trace_filter(uint16_t address, bool enabled)
     {
         m_trace_filter = address;
+        m_trace_filter_last = address;
+        m_trace_filtered = enabled;
+    }
+    // Watch a range of cells instead of one.
+    void set_data_trace_range(uint16_t first, uint16_t last, bool enabled)
+    {
+        m_trace_filter = first;
+        m_trace_filter_last = last;
         m_trace_filtered = enabled;
     }
     void clear_data_events() { m_data_events.clear(); }
@@ -469,6 +477,7 @@ private:
     bool m_trace_data_writes = false;
     bool m_trace_changes_only = true;
     uint16_t m_trace_filter = 0;
+    uint16_t m_trace_filter_last = 0;
     bool m_trace_filtered = false;
 
     uint16_t m_pc = 0, m_op = 0;
