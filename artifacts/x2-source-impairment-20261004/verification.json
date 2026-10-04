@@ -249,5 +249,82 @@
     ]
    }
   }
+ },
+ "multi_phase_lsb": {
+  "note": "COURIER_X2_SOURCE_IMPAIR=phase,phase,...; w2 equals the OR of the single-phase words",
+  "runs": {
+   "0,3": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "w2_originate": [
+     "0x49"
+    ],
+    "w2_answer": [
+     "0x49"
+    ]
+   },
+   "1,2": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "w2_originate": [
+     "0x7"
+    ],
+    "w2_answer": [
+     "0x7"
+    ]
+   },
+   "0,2,4": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "w2_originate": [
+     "0x55"
+    ],
+    "w2_answer": [
+     "0x55"
+    ]
+   },
+   "0,1,2,3,4,5": {
+    "connect": [
+     "CONNECT 56000/ARQ/x2/LAPM"
+    ],
+    "host_6a": [
+     "006a:0e0e"
+    ],
+    "delivery": {
+     "answer_to_originate": true,
+     "originate_to_answer": true
+    },
+    "w2_originate": [
+     "0x7f"
+    ],
+    "w2_answer": [
+     "0x7f"
+    ]
+   }
+  }
  }
 }

@@ -4027,3 +4027,20 @@ a different one each time, identical at both ends: the map really is
 per-phase, and the receiver's phase counter runs one position behind the
 source count (source phase *k* is map bit *(k - 1) mod 6*).  Multi-phase
 errors were not tested.
+
+#### Several phases at once
+
+`COURIER_X2_SOURCE_IMPAIR` also takes a phase list.  Flipping the LSB on several
+phases of the source:
+
+| phases | `w2` each end sends | single-phase words ORed | CONNECT, host `6a` |
+|---|---|---|---|
+| 0, 3 | `49` | `41 \| 09` | 56000/x2, `0e0e` |
+| 1, 2 | `07` | `03 \| 05` | 56000/x2, `0e0e` |
+| 0, 2, 4 | `55` | `41 \| 05 \| 11` | 56000/x2, `0e0e` |
+| all six | `7f` | all | 56000/x2, `0e0e` |
+
+The map is a plain bitwise union, identical at both ends, and 56000 survives
+every combination, including corruption of the lowest bit on every phase: the
+56000 decision does not depend on that bit.  Only an error above the lowest
+bit (the bit-1 run) takes the call off x2.
