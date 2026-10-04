@@ -171,9 +171,11 @@ Evidence:
 - [Native scrambler execution and state writes](../artifacts/imodem-analog-pair-v34-scrambler-progress-20261002/result.json)
 
 The generator identifies this as sequence J: `b391` extracts two-bit groups
-from `@49 = 8990`, scrambles them through `9053`, and differentially encodes
-them through `b533`. The word's least-significant-bit-first representation is
-`0000100110010001`, exactly the four-point J pattern in ITU-T V.34 Table 18.
+from `@49`, scrambles them through `9053`, and differentially encodes
+them through `b533`. The word is `89b0` (not `8990`: the receivers compare with bit 5 masked,
+which is where `8990` came from); its least-significant-bit-first representation is
+`0000110110010001`, the **16-point** J pattern in ITU-T V.34 Table 18. The four-point pattern is
+`0000100110010001`, `8990`. See `docs/x2-v90-protocol-selection.md` (J bit 5).
 Section 11.3.1.2.4 says the answering modem sends J while awaiting the
 caller's S and S-to-S-bar transition.
 

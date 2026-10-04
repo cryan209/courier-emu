@@ -4205,10 +4205,20 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   the Courier's J and sets bit 9 (`opl *, #0200` at `a91b`, `[006f]` = `2c0` then `ac0`, instruction
   1,250,235,301) but does not consume it, the Courier never receives a J, and in the plain V.34
   call neither side does, so `aede` has not run with either setting and no 16-point training
-  signal has been seen.  The Courier also sets bit 9 itself at `e6c5` and `ea34`.  The choice of a
-  4-point or 16-point training constellation is a V.34 feature (stated by the project owner; the
-  clause and the exact J field were not looked up here), so the reading is consistent with the
-  standard rather than something x2-specific.
+  signal has been seen.  The Courier also sets bit 9 itself at `e6c5` and `ea34`.  This is
+  V.34, not x2: Recommendation V.34 (10/96) 10.1.3.3 and Table 18 define J as a whole number of
+  repetitions of one of two 16-bit patterns, left-most bit first in time, `0000100110010001` for
+  the 4-point constellation (`0x8990` LSB first) and `0000110110010001` for the 16-point one
+  (`0x89b0`), and say J indicates the constellation size used for TRN, MP, MP' and E in Phase 4
+  (10.1.3.2).  The Courier's J is therefore the **16-point** J, and what the DSP calls bit 5 is the
+  single bit that distinguishes the two patterns.  Table 19 (10.1.3.4) defines J' as
+  `1111100110010001`, sent once to terminate J: `0x899f`.  Per 11.3.1.1.7 and 11.4.1.1.1 the call
+  modem sends J after TRN until it detects S followed by S-bar, then sends one J' and TRN; per
+  11.3.1.2.4 the answer modem sends J while waiting for the caller's S to S-bar transition.  That
+  is the `@78` = 6 event, and it is why the Courier sends `899f` only on a received reversal.  The
+  differential encoder for J is initialised from the last TRN symbol (10.1.3.3), which is why the
+  tail is differential where TRN decodes absolute.  The standard text is in
+  `~/v90modem/ITU Docs/T-REC-V.34-199610-S!!PDF-E-1.pdf`.
   This replaces earlier readings of the tail as a client record, a two-lane stream or random
   data; those came from not undoing the differential encoding.  The Courier's burst therefore
   ends with J, as the V.34 Phase 3 sequence requires.  The pair probe now traces the analog
