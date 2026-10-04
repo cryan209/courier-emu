@@ -4164,55 +4164,25 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   with the right quadrant-to-dibit map, the bits are all constant ones, apart
   from a short transient at the start and three short glitches of 10-20 bits.
   The scrambler's seed transient ends within 12 symbols of the start of TRN.
-* **About 440 further symbols** of the same four-point constellation, whose
-  descrambled bits are not constant (a 34-bit run of ones, then varied bits),
-  then the signal stops at bearer 7.69.  The 443 symbols (886 bits) are on the same
-  four-point constellation (same phase spread and amplitude as TRN).  Descrambled as one
-  serial stream with 1 + x^-5 + x^-23 they look random, with no 17-ones sync, no period,
-  no CRC-16 over any span (polynomials `1021`, `8005`, `a001`, both inits and bit orders,
-  start offsets 0-44) and linear complexity of half the length.  The structure appears when
-  the two bits of each dibit are treated as **two lanes, each descrambled on its own** with
-  the same polynomial (equivalent to a serial 1 + x^-10 + x^-46, the square of
-  1 + x^-5 + x^-23, so TRN still descrambles to ones both ways):
-  * **lane 0** (the low bit): 11 ones, a 25-bit head `0001001001100100001000010`, then the
-    byte `2d` (bits `10110100`, LSB first) repeating for the rest of the burst (about 430
-    bits); the raw lane has linear complexity 37, which is this recurrence;
-  * **lane 1** (the high bit): 15 ones, a zero, then about 440 bits that are random by every
-    test tried: linear complexity half the length, no serial scrambler tap pair up to 60
-    makes it simpler, no 16-bit word / zero-separator framing at any phase, no CRC-16.
-  Lane 1 was also tested for: further descrambling one to five times with 1 + x^-5 + x^-23 or
-  1 + x^-18 + x^-23 (still half-length complexity), stride columns (no column of constant bits
-  at any stride 2-39), conditional entropy up to six preceding bits (within sampling noise of a
-  random sequence) and run-length structure (ones-or-zeros runs never exceed 6 in 430 bits,
-  which is mildly short for random data, 4 runs of 5 or more against about 14 expected).  The
-  The pair probe now traces the analog DSP (`--analog-dsp-trace-range`, `--analog-dsp-write-watch`;
-  `COURIER_DSP_DUMP=dir` also writes the final program and data memory and, per program address,
-  the instruction count of its first execution).  The trace range used to return nothing because the
-  DSP is rebuilt at every line-operation reset and the range was set only on the first core.
-  With it: the standard scrambler routines at `8ca2`-`8ce7` and `cb60`-`cc00` are **not executed**
-  in this call, and the scrambler state cells `0358` and `03d8` are not written after the DSP's
-  last rebuild, so the Courier's Phase 3 symbols come from other code that has not been
-  located yet (`c745`-`c746` was traced: it runs 78 times in the retained window and its accumulator cycles
-  through -0x400 ... 0x100 in steps of 0x100, a timing or phase loop, not bits; `e395`-`e3f4`
-  and `a553`-`b38e` are unchecked).  Two cautions on the tooling: `reset()` zeroes the core's
-  instruction counter, so the first-execution counts from different resets are not comparable, and
-  `reset()` used to clear the PC trace, which wiped a range armed by the caller (it now keeps it).
-  The 25-bit head of lane 0 is, LSB first from the zero after the ones, the bytes `24 13 42`,
-  then `4b` repeating (the filler differs from its own period-8 extension in only two of the
-  eight positions just before it).  It is about one scrambler history long (23 symbols),
-  so it may be a descrambler transient rather than content.  Two checks bear on that.
-  The Courier's scrambler is reset to **all zeros** at the start of TRN: solving the
-  23-bit state that produced the first TRN symbols gives zero exactly and reproduces
-  them (first symbol 446 of the burst; one symbol off either way does not).  Assuming the
-  same reset at the tail start (zero history under the double-pass polynomial) does not make
-  the head clean at any start from 12714 to 12750, so the head is not explained by a zero
-  reset.  It also does not contain the four-point J pattern `0000100110010001` that
-  `docs/dsp-training-audit-20261002.md` finds in the I-modem's J generator (a 16-bit match to
-  a rotation, reversal or complement occurs at one place, about what chance gives), nor a J
-  differentially encoded (all 24 dibit maps, both rotation senses, taps 5 and 18).
-  So the Courier's last 443 symbols carry a fixed-filler lane and a data lane; the data lane's
-  coding (and whether it is the client record, which would be 17 ones, a zero and 16-bit words
-  with separators) is still open.
+* **About 440 further symbols** (439, from the end of the ones at symbol 6817 of the burst
+  to the end of the signal at 7256) of the same four-point constellation: the **J sequence**.
+  The scrambler input is the 16-bit word `0x89b0`, sent LSB first (`0000110110010001`) and
+  repeated about 55 times (8 symbols each; 53 whole repeats are clean).  The line carries it scrambled with
+  1 + x^-5 + x^-23 and **differentially encoded** (quadrant change, same dibit map as
+  TRN, which is not differential): decoding the quadrant changes and then descrambling gives
+  `0x89b0` repeated, clean from symbol 6829; the first 12 symbols after the ones are the
+  descrambler's transient.  The word is the one the generator at `b391` feeds to the scrambler
+  routine at `8cb7` (traced: `@49 = 89b0` at the call from `af7d`; `@50` = the word at `8cc5`).
+  It differs from the four-point J pattern `0x8990` in `docs/dsp-training-audit-20261002.md`
+  (the I-modem's J) in one bit, bit 5, which is a field of the sequence (not identified here).
+  This replaces earlier readings of the tail as a client record, a two-lane stream or random
+  data; those came from not undoing the differential encoding.  The Courier's burst therefore
+  ends with J, as the V.34 Phase 3 sequence requires.  The pair probe now traces the analog
+  DSP (`--analog-dsp-trace-range`, `--analog-dsp-write-watch`; `COURIER_DSP_DUMP=dir` writes
+  its final program and data memory and the first-execution count per address) and stopping the
+  analog side at about 116M instructions (analog 32.6 s) leaves the tail's code in the trace
+  window.  `reset()` zeroes the instruction counter, so first-execution counts from different
+  resets are not comparable.
 
 This is the V.34 Phase 3 sequence, and it is exactly the same on the Courier's
 side as an ordinary V.34 upstream; x2 makes no change to it.  It ends at bearer
@@ -4248,10 +4218,7 @@ within about a tenth of a second by the client's second burst and by the
 amplitude step to C.
 
 Not decoded: what A and the six-level D pattern carry.  The B tail word is the script
-constant `09b0` followed by `099f`, and E and what follows it are decoded below.  The Courier's own 443-symbol tail after its TRN is a similar
-open item: it descrambles to a non-periodic 886-bit stream that does not parse
-as the client record framing (zero separators after 16-bit words fail at every
-offset), so it is something else.
+constant `09b0` followed by `099f`, and E and what follows it are decoded below.
 
 ### What the code says the server's signal is
 
@@ -4327,9 +4294,8 @@ training (E).  After E the script halts and a second script takes over
 (`c936`...), which is where the 12.5 s connect messages start.
 
 Not worked out: the exact generation rule of pattern A and what the six-level sweep D
-carries (it fits the client's six-position measurement matrices, but the Courier's
-886-bit tail, which would carry that record, does not parse as the client record; see
-the section on the Courier's signal).
+carries (it fits the client's six-position measurement matrices; the Courier's own tail turned
+out to be the J sequence, not that record, so where the record is sent is open).
 
 #### E, from `d229` and `d0af`
 
