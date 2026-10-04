@@ -3706,3 +3706,48 @@ The S58 bit mapping in the spec (symmetric-disable clears value bit 11 = ITU
 be a client by CME, and two symmetric-enabled ends take the other path.  The
 other path was not traced, so "symmetric startup" is inferred from the bits,
 not read from its code.
+
+### The symmetric branch, traced
+
+The "other path" is not a separate negotiation.  When both INFO0 words have
+ITU 23 set the server writes a mode word and enters the same mode-family
+initializer the host's mode tags normally feed.  Ie030002, from the jump at
+`958f`:
+
+```text
+ead6  ldp #011 / cpl @16,#088c     ; [0896] against 088c
+eada  zap ; xc 2,ntc ; lacc #0080  ; ACC = 0080 if [0896] != 088c, else 0
+eade  or #0010 ; samm @7a          ; mode word [7a] = 0010 or 0090
+eae1  lamm @6f ; and #1            ; role bit
+eae4  bcnd e2aa,neq / b e2ae       ; ACCB = 0 (bit set) or 0100 (clear)
+e2b1  ...                          ; initializer: [60] = [6d] = [7a] | ACCB
+e2fb  bit 4,@6d -> startup-source install (@65=e56f, @6a=0041, @6e=5dc0,
+                                      @74=06d3, @75=e33d)
+```
+
+`@6f` bit 0 is therefore the symmetric role bit: set (answering end) gives
+role bit `0000`, clear (originating end) gives `0100`.  The mode word `0010`
+has bit 4 set, which selects the startup-source install at `e2f8`; the
+initializer is the same code as the I-modem's `e14f`-`e170` block, and
+`@74 = 06d3` is the 1,747-word `007e` run of the startup source described in
+`artifacts/x2-server-decomp-20261004`.  The role bit then splits the ends:
+the answering end sets `@1a = e337`, whose callback runs that source
+(`e33d`, `e348`, `e355`), while the originating end sets `@1a = 8bff`, a short
+stub.  The stub was not decoded further, so what the originating end sends
+first is not established.
+
+QF060003 has the same branch at `f71c`: it sets `ffdd` bits `30`, `@6d = 0010`
+(`+0400` on a clear role bit), `@1f` bit 13, `@1b = f82a`, `@65 = f986`,
+`@74 = 06d3` and `@75 = f753`, with the same `007e`/zero/ramp states at
+`f753`/`f75f`/`f76c`/`f772`.
+
+#### Seen in a symmetric call
+
+In the recorded symmetric pair (`artifacts/x2-xc-pair-20261004`, S58=48 on
+both ends), a PC trace of both I-modem DSPs executes `958f` once each, never
+the marker arm at `95e1`, then `ead6`-`eae4`, and then `e2aa`-`e317` at the
+answering end and `e2ae`-`e317` at the originating end, including the
+`e312` conditional that sets `@1a = 8bff` only at the originating end.  So the
+symmetric pair takes exactly this branch and the asymmetric marker path is not
+used.  The traces are `SCRATCH`-style captures made with an uncommitted
+modified copy of `tools/probe_imodem_pair.py`; they are not saved as artifacts.
