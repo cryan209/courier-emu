@@ -3785,3 +3785,42 @@ lets only the originating end continue to `@74 = 06d3`, `@75 = e33d` and
 source after it has received a run of the answering end's own, while the
 answering end transmits at once.  The exact received-word pattern that ends the
 wait was not tested.
+
+### The receive wait is a receiver for the startup source
+
+The receive state machine that ends the originating end's wait is a word-level
+receiver for the same source the answering end sends.  `@1b = e41c` dispatches
+through `@65`; both ends run it from the same `e56f` start, so it is symmetric
+code, and the source itself carries the sync:
+
+| `@65` state | what it reads in the received word `*` | exits when |
+|---|---|---|
+| `e56f`/`e571` | `007e` or `007f` (the run), counting `@69` from 7 | seven consecutive run words, to `e594` |
+| `e594` | words `0`-`3` (the seven zeros), tolerating a late `007e`/`007f` | seven of them (`e5c0`), to `e440` with `@67 = 0`, `@69 = 00ff` |
+| `e440` / `e46b` | alternate words of the 128 ramp pairs: the first against the running count `@67`, the second against `@69` (255, 254, ...) | `@69` reaches `007f` after 128 pairs (`e48a`) |
+| `e48c` | role bit `@60` bit 8 | originating end only: `@74 = 06d3`, `@75 = e33d`, `@1a = e337` (its own source starts); answering end falls through to `e499` |
+
+This matches the source layout exactly: 1,747 `007e` words, seven zeros, 128
+pairs `(0,255)` to `(127,128)`.  A mismatch goes through the `e436` error
+accounting (`@72`, `@76`); that helper was not decoded.
+
+#### Seen in the symmetric call
+
+A data trace of `@65` at both servers shows the same state chain at each end:
+`e2fe` (`@65 = e56f`) → `e581` (`e571`) → `e590` (`e594`) → `e5d1` (`e440`)
+→ alternating `e46a`/`e486`.  Durations in instructions of each end's own
+DSP:
+
+| phase | originating end | answering end |
+|---|---|---|
+| `e571` (7e run) | 0.19 M | 17.6 M |
+| `e594` (zeros) | 8.47 M | 8.44 M |
+| `e440`/`e46b` (pairs) | 1.24 M until `e497` | continues |
+
+At about 9.7 k instructions per tick pair, 1.24 M is 128 pairs.  The
+answering end waits 17.6 M for the originating end's 7e run to begin, which
+only starts once the originating end's own wait is over; the originating end
+joins the answering end's cycle in progress (hence 0.19 M), then sees the
+zeros and the 128 pairs in full before it starts transmitting.  So each end
+acquires the peer's source phase before settling, and the originating end
+starts last.
