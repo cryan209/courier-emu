@@ -4180,6 +4180,13 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   * **lane 1** (the high bit): 15 ones, a zero, then about 440 bits that are random by every
     test tried: linear complexity half the length, no serial scrambler tap pair up to 60
     makes it simpler, no 16-bit word / zero-separator framing at any phase, no CRC-16.
+  Lane 1 was also tested for: further descrambling one to five times with 1 + x^-5 + x^-23 or
+  1 + x^-18 + x^-23 (still half-length complexity), stride columns (no column of constant bits
+  at any stride 2-39), conditional entropy up to six preceding bits (within sampling noise of a
+  random sequence) and run-length structure (ones-or-zeros runs never exceed 6 in 430 bits,
+  which is mildly short for random data, 4 runs of 5 or more against about 14 expected).  The
+  Courier's DSP scrambler routines (`8ca2`, `8cb7`) could not be traced from the pair probe:
+  `--analog-dsp-trace-range` returns no events on the analog side.
   So the Courier's last 443 symbols carry a fixed-filler lane and a data lane; the data lane's
   coding (and whether it is the client record, which would be 17 ones, a zero and 16-bit words
   with separators) is still open.
