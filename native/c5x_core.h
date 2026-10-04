@@ -460,6 +460,14 @@ private:
 
     uint16_t m_pc = 0, m_op = 0;
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;
+    struct ConditionState {
+        int32_t acc = 0;
+        bool ov = false, carry = false, tc = false;
+    };
+    ConditionState m_condition_start{}, m_xc_condition{};
+    bool m_delay_condition_pending = false;
+    ConditionState condition_state() const;
+    void execute_opcode();
     uint16_t m_treg0 = 0, m_treg1 = 0, m_treg2 = 0;
     uint16_t m_ar[8]{};
     // RPTC. The C5x holds 0 here whenever no RPT is in force: an instruction

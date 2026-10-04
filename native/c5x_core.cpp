@@ -103,6 +103,8 @@ void C5xCore::reset()
     m_greg = 0;
     m_indx = m_dbmr = m_arcr = 0;
     m_st0 = {}; m_st1 = {}; m_pmst = {};
+    m_condition_start = m_xc_condition = condition_state();
+    m_delay_condition_pending = false;
     // MP/MC comes out of reset at the pin's level. This firmware's reset code
     // preserves it - `APL #0x07f8, @07` keeps bit 3 and clears IPTR - so the
     // pin decides what program 0x0000 is for the whole run.
@@ -896,6 +898,18 @@ C5xCore::MemoryMap C5xCore::memory_map() const
 
 void C5xCore::consume_cycles(unsigned cycles)
 {
+    // SPRU056D 4.5.6 and 6-278: XC samples one full cycle early.
+    // A single-cycle predecessor has not yet supplied its new conditions;
+    // a multi-cycle predecessor has. Repeated micro-operations refresh the
+    // start snapshot after each cycle accounting call.
+    // Delayed transfers charge their own cycles after executing the slots.
+    // Those cycles occurred before the slots and must not replace the final
+    // slot's sample with the architectural state at the branch target.
+    if (!m_delay_condition_pending) {
+        m_xc_condition = cycles == 1 ? m_condition_start : condition_state();
+        m_condition_start = condition_state();
+    }
+    m_delay_condition_pending = false;
     m_step_cycles += cycles;
     m_cycles += cycles;
 }
@@ -1402,6 +1416,17 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 void C5xCore::op_group_be() { (this->*s_opcode_table_be[m_op & 0xff])(); }
 void C5xCore::op_group_bf() { (this->*s_opcode_table_bf[m_op & 0xff])(); }
 
+C5xCore::ConditionState C5xCore::condition_state() const
+{
+    return {m_acc, bool(m_st0.ov), bool(m_st1.c), bool(m_st1.tc)};
+}
+
+void C5xCore::execute_opcode()
+{
+    m_condition_start = condition_state();
+    (this->*s_opcode_table[m_op >> 8])();
+}
+
 void C5xCore::delay_slot(uint16_t startpc)
 {
     // CLRC INTM services interrupts inline. In a delay slot that pushed the
@@ -1412,9 +1437,10 @@ void C5xCore::delay_slot(uint16_t startpc)
     // middle of the routine with the wrong ARP.
     const bool outer = m_in_delay_slot;
     m_in_delay_slot = true;
-    m_op = ROPCODE(); (this->*s_opcode_table[m_op >> 8])();
-    while (uint16_t(m_pc - startpc) < 2) { m_op = ROPCODE(); (this->*s_opcode_table[m_op >> 8])(); }
+    m_op = ROPCODE(); execute_opcode();
+    while (uint16_t(m_pc - startpc) < 2) { m_op = ROPCODE(); execute_opcode(); }
     m_in_delay_slot = outer;
+    m_delay_condition_pending = true;
 }
 
 void C5xCore::save_interrupt_context()
@@ -1721,7 +1747,7 @@ void C5xCore::step()
             if (m_pc_captures.size() >= 64) m_pc_captures.pop_front();
             m_pc_captures.push_back(std::move(capture));
         }
-        (this->*s_opcode_table[m_op >> 8])();
+        execute_opcode();
         if (negotiation_loop && m_pc != previous_pc) m_negotiation_loop_active = false;
         if (m_repeat_active && previous_pc == m_rpt_end) {
             if (m_rptc > 0) {

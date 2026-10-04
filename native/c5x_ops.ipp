@@ -1450,7 +1450,21 @@ void C5xCore::op_trap()
 
 void C5xCore::op_xc()
 {
-	if (GET_ZLVC_CONDITION((m_op >> 4) & 0xf, m_op & 0xf) && GET_TP_CONDITION((m_op >> 8) & 0x3))
+	// Evaluate the pipeline sample without replacing the architectural state
+	// used by the following instruction. BIO is an external pin, not one of
+	// the ALU/TC conditions captured here.
+	const auto current = condition_state();
+	m_acc = m_xc_condition.acc;
+	m_st0.ov = m_xc_condition.ov;
+	m_st1.c = m_xc_condition.carry;
+	m_st1.tc = m_xc_condition.tc;
+	const bool execute = GET_ZLVC_CONDITION((m_op >> 4) & 0xf, m_op & 0xf)
+		&& GET_TP_CONDITION((m_op >> 8) & 0x3);
+	m_acc = current.acc;
+	m_st0.ov = current.ov;
+	m_st1.c = current.carry;
+	m_st1.tc = current.tc;
+	if (execute)
 	{
 		CYCLES(1);
 	}
@@ -1747,7 +1761,7 @@ void C5xCore::op_apl_imm()
 	m_st1.tc = (data == 0) ? 1 : 0;
 
 	DM_WRITE16(ea, data);
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_cpl_dbmr()
@@ -1766,7 +1780,7 @@ void C5xCore::op_cpl_imm()
 
 	m_st1.tc = (data == imm) ? 1 : 0;
 
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_opl_dbmr()
@@ -1791,7 +1805,7 @@ void C5xCore::op_opl_imm()
 	m_st1.tc = (data == 0) ? 1 : 0;
 
 	DM_WRITE16(ea, data);
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_splk()
@@ -1820,7 +1834,7 @@ void C5xCore::op_xpl_imm()
 	uint16_t data = DM_READ16(ea) ^ imm;
 	m_st1.tc = (data == 0) ? 1 : 0;
 	DM_WRITE16(ea, data);
-	CYCLES(1);
+	CYCLES(2);
 }
 
 void C5xCore::op_apac()
