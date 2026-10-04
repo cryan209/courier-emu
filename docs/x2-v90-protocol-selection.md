@@ -4349,3 +4349,56 @@ signs for the last cycle is a polarity reversal marking the end of the
 preamble.  That reading, that A is the server's synchronisation preamble for
 the client's symbol and six-symbol-frame timing, is an inference from the code's
 structure and the Barker-11 signs, not stated by the firmware.
+
+### E, the repeated word and the script restart, worked out
+
+**E is the data-frame mapper of clauses 10 and 11 fed with scrambled ones.**  Each
+frame of six symbols, read with six banks of nine entries (the `d229` table), has an
+amplitude integer X made of the six table indices (position 0 least significant,
+base 9); X never reaches 2^19 (maximum 524,271 over 1667 frames, and 20 or so
+frames per other digit or position order exceed it), which fits B = 19 amplitude
+bits per frame (`@40 = 0013`, and 9^6 = 531,441 is just above 2^19).  The toggles
+of the five highest-ranked positions (largest table index first) are the parity
+chain of five independent sign bits, and the sixth sign is a shaping choice.
+Taking the five sign bits and then the 19 bits of X, least significant first,
+24 bits per frame, and descrambling the whole stream with 1 + x^-18 + x^-23, the
+bits are constant ones for all 1667 frames (`tools/decode_server_training_e.py`,
+`artifacts/x2-server-training-e-20261004/analysis.json`); every other MD from 0 to
+6 gives 50 %.  So E is a known source (the script parameter `01ff`: eight ones
+per source word) going through exactly the mapper the data mode uses, at
+B + MD = 24 bits per six-symbol frame, **32,000 bit/s**, the client's training
+sequence for the receiver it will use.  The level index equals the table index (the
+`a5` entry, +6652, is index 0), and the parity state runs across frames.
+
+**The repeated word** (`caeb`, parameter `09b0`) is not data from the exchange: it is
+a ROM constant of the script.  Each frame it takes the low six bits of the 12-bit
+register as the source word and rotates the register by six, so the words
+alternate `30` and `26` (low six bits of `09b0` and of `0c26`); sent LSB first
+through the scrambler at the B level they are the 12-bit bit pattern
+`000011011001` seen on the bearer.  It carries no field that the firmware
+computes.  Its role is a hold: the script has halted at the zero word `c928` (the
+`@4b` trace shows `c928` from 10.141 s) and the state keeps resetting its count
+to 12 (`caee`, 97 times) so that the engine does not advance.  The Courier starts
+its second burst about 60 ms after the word begins, so the word looks like a cue
+the client reacts to; that reading is an inference.
+
+**The second `caeb` entry** (`099f`, after the halt at `c928`) is not executed in this
+call.  The `@4b` trace shows the script restarting at `c92c` (the entry for the
+6000-symbol stretch C), written by the restart routine at `b2ad` at 10.2872 s,
+skipping `c929`.  The restart is armed by the handler at `a5cf`, which tests the
+receive-side state `@78` against 6 and chooses the next script from `@1f` bit 10:
+`c929` if it is set, else the other path, so `099f` (which would send the words `1f` and
+`26`, a different closing pair) belongs to the case where `@1f` bit 10 is set, which
+this call does not take.  What sets that bit was not traced.  The restart is
+therefore triggered by the receiver reaching state 6, not by a timer; the
+Courier's burst starts 110 ms before it.
+
+**`d0af`** is called from E's set-up (`cb57`, `ACC = 0a60`) after `d229` has put the
+nine-octet table at `0a60`.  It runs `d178` twice with `@5c` and `@5d` (both zero
+here), writes six descriptor words at `dced` (`d9f4`, `@42`, `0a60`, `@5c`, `ff16`, `@5d`)
+and then loops six times (`@09 = 5`, `rptb d0e9`), copying per-position bank data
+from the `0a60` table into the area at `d9f4` with word counts taken from the
+descriptors.  The mapper reads its per-position banks from that region (`d9e1`-`d9e4`
+are its pointers).  So `d0af` builds the six position banks, all pointing at the
+same nine-entry table, which is why the mapper needs nothing else for E.  This
+is read from the code; the bank layout was not run through.

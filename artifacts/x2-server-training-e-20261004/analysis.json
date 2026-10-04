@@ -1,0 +1,73 @@
+{
+ "file": "/private/tmp/claude-501/-Users-scottcryan-courier-emu/84b3714f-9fba-47cc-94f0-b5561b2b10f0/scratchpad/final/imodem-tx.g711",
+ "start_s": 11.1639,
+ "symbols": 10002,
+ "table": "low",
+ "octets": [
+  "a5",
+  "a7",
+  "ad",
+  "af",
+  "b7",
+  "bd",
+  "c5",
+  "cf",
+  "e5"
+ ],
+ "by_independent_sign_count": [
+  {
+   "md": 0,
+   "constant_fraction": 0.5054,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 1,
+   "constant_fraction": 0.5017,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 2,
+   "constant_fraction": 0.5042,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 3,
+   "constant_fraction": 0.5004,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 4,
+   "constant_fraction": 0.5087,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 5,
+   "constant_fraction": 1.0,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  },
+  {
+   "md": 6,
+   "constant_fraction": 0.5144,
+   "max_x": 524271,
+   "frames": 1667,
+   "frames_outside_table": 0
+  }
+ ],
+ "decoded": {
+  "md": 5,
+  "bits_per_frame": 24,
+  "bit_rate": 32000
+ }
+}
