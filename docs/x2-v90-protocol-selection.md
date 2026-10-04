@@ -3509,3 +3509,118 @@ ways (shape-only rows, constrained rows, far-call callers).  What would work:
 The cost is now clearly in the 186 domain, not the DSP one, and the payoff is
 specific: `CS` unlocks the overlay table, which unlocks the overlay holding
 the codeword table at `5cf88`, which should place the Sd generator.
+
+## Six-symbol payload core execution checked on 4 October 2026
+
+The larger QF060003 C300 PCM overlay now has a byte-to-codeword semantic lift
+in `artifacts/x2-payload-mapper-20261004/payload_lift.c`, reproduced by
+`tools/recover_x2_payload.py`. This supersedes the earlier statement that the
+input-bit selection rule was entirely unknown. The six positions use sequential
+mixed-radix remainders, followed by differential independent signs and an
+exhaustive minimum-disparity choice for the remaining signs. The three-bit
+parameter at `03ED` is MD, the independent sign count (tested 0 through 6).
+`03C0` is B, the amplitude bit count. A frame consumes MD bits first and B bits
+second, both least significant bit first, then emits six bank-order octets.
+
+The original candidate builder from C862, supplied a preselected rate index and
+seeded received record, produced 28 injective bank profiles covering indices
+1 through 14 and flags 0/1. Mode zero is used through index 13 and mode two at
+index 14. The payload core runs with 039F bit 7 clear and the FFD9 bit 12 output
+override clear. Its final format XOR is zero or 2A. These profiles are constructed
+entry contexts, not captured or completely executed peer negotiations.
+
+Verification includes 512 amplitude cases, 1,024 sign cases, 1,024 source append
+cases, 784 frame inverse cases, and 1,176 original C544 sample steps. A further
+28 streams of 32 frames exercise both source-role flags, both format states and
+all MD values at rate index 10. Their 5,376 original DSP output steps match the
+lift and an ideal symbol inverse recovers 3,920 original bytes. Scrambler history,
+bit-ring wrap, differential parity and disparity monitor persist across frames.
+The aggregate report counts 9,924 heterogeneous check units.
+
+C544 tests availability on every output step, refilling unless the available
+bits are strictly greater than B+MD. The stream harness prefills enough to keep
+this condition after the frame's bit consumption, avoiding unmodeled host source
+callbacks. Source queue/serial delivery is not covered. The copied tenth startup
+bank entry is outside payload selection when the configured radix is nine.
+
+The ideal inverse assumes correctly received octets and known bank selection,
+initial parity and frame alignment. It is not a decompilation of the analogue
+client receiver. Remaining work includes the full x2 enable/overlay edge, valid
+rate-index-15 negotiation, alternate companding override, peer frame acquisition
+and analogue equalization/decoding. Forced high-rate records can produce duplicate
+low-seven-bit entries or nonterminating builder paths; they cannot establish a
+valid negotiated constellation. Draft 0.4 of the technical specification adds
+these payload rules while retaining those limits.
+
+## The 7-bit marker has a receiver: the Quad arms its INFO receiver for 7 bits
+
+> **This retracts** "no identified receiver" in "But the detector is V.34's"
+> and the "four lengths, and 7 is not one of them" table above.  That table
+> was built from the Courier's call sites and from the Quad's pattern
+> detector; it never listed the Quad's *own* arming sites.
+
+QF060003 arms its INFO receiver (`958e`: ACC is the body length, buffer
+`ff08`) from four places, and one of them is 7:
+
+| site | ACC | body | sequence |
+|---|---|---|---|
+| `9613` | `26` | 38 | INFO1a |
+| `96e6`, `9718` | `4d` | 77 | INFO1c / INFO1d |
+| **`9791`** | **`07`** | **7** | **the x2 marker** |
+
+IM020104 (`948a`, `lacl #07 / call 92b1`, with `@67 = 204e` just before it)
+has the same site, so both server generations carry it.  The Courier sends
+the frame; the servers receive it as an ordinary CRC-checked INFO frame.  The
+raw-stream preamble detector at `9f44` is unrelated, as already corrected.
+
+### The gate before arming (`9743`)
+
+```text
+9743  bit 0, @1f  / retc tc     ; return if bit 0 set
+9745  bit 6, @1f  / retc ntc    ; return unless the x2 word is selected
+9749  bit 5, [ff00]             ; remote INFO0 word bit 5 clear -> 9813: drop x2
+9759  [ff00] xor [ff18], & 0800 ; equal in bit 11 -> 9813: drop x2
+```
+
+Dropping x2 at `9813` clears `@1f` bits 6 and 7 and the two `ff00` mask bits;
+that is the same fall-back-to-plain-capability mechanism described for the
+Courier.  If the gate passes the server sets `ffdd` bits `30`, queues host
+words `806b` and a word built from the remote INFO0 field, and arms the
+7-bit receiver at `9791`.  The remote word and local word are packed one bit
+apart (`ff00` against `ff18`), so the bit-11 comparison is stated in raw word
+bits here, not ITU numbers.
+
+### The parse (`97b5`-`97d9`)
+
+`9959` reads 16 bits at offset *k* as `window >> (15 - k)`, with `ff08` the
+low word and `ff07` the high one.  Because the copy at `9f33` takes the
+register starting one word above the CRC, bit 9 of `ff08` is the **first**
+transmitted body bit and bit 15 the last.  The three reads then land exactly
+on the layout the Courier builds:
+
+| read | offset | bits of the body | meaning |
+|---|---|---|---|
+| carrier | 6 | value bit 0 | high-carrier flag, stored at `ff20 + @5b` |
+| first index | 5 | value bits 1:3 | 3-bit symbol-rate index |
+| second index | 2 | value bits 4:6 | 3-bit symbol-rate index |
+
+`@6f` bit 1 (the role flag) chooses which index is the receiver's own:
+set, `@5a` = first and `@5b` = second; clear, the other way round.  If `@5a`
+is 6 (`cpl @5a, #6` at `97d9`) the code takes `9800`: it clears `@6f` bits
+1:0, sets bit 7 of `[0345]` and goes on.  Otherwise it clears `@1f` bits 6
+and 7, zeroes `ff2f`/`ff27` and continues with ordinary V.34 handling.  A
+pre-check at `9826` also sets `ffdd` bits 6 and 7 when the other index is 6.
+
+This closes the loop with the sender.  The Courier originator (`[006f]` bit 1
+clear) sends `4d`, first = 6; the server accepts exactly that with its role
+bit set.  The Courier answerer sends `69`, second = 6, which a server with the
+role bit clear accepts.  The symmetric codes `48` and `49` carry no 6 and
+take the fall-back branch.  The old preamble coincidence `3b` is rejected for
+the same reason.
+
+`tools/verify_x2_marker_receiver.py` executes the original parse for all 128
+body values and both role values (256 cases; 32 accepted, those whose own
+field is 6) and compares each against this layout; the result is
+`artifacts/x2-marker-receiver-20261004/verification.json`.  The CRC and frame
+sync for the 7-bit body use the same `9f4d` checker as every other INFO
+frame; that path was read, not run end to end with a transmitted frame.

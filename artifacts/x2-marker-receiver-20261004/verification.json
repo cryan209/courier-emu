@@ -1,0 +1,2056 @@
+{
+ "image": "docs/x2/Qf060003.zip",
+ "parse": "97b5..97dd",
+ "cases": 256,
+ "accepted": 32,
+ "results": [
+  {
+   "role_bit1": 0,
+   "body": 0,
+   "own_field": 0,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 1,
+   "own_field": 0,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 2,
+   "own_field": 0,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 3,
+   "own_field": 0,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 4,
+   "own_field": 0,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 5,
+   "own_field": 0,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 6,
+   "own_field": 0,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 7,
+   "own_field": 0,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 8,
+   "own_field": 0,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 9,
+   "own_field": 0,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 10,
+   "own_field": 0,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 11,
+   "own_field": 0,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 12,
+   "own_field": 0,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 13,
+   "own_field": 0,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 14,
+   "own_field": 0,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 15,
+   "own_field": 0,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 16,
+   "own_field": 1,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 17,
+   "own_field": 1,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 18,
+   "own_field": 1,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 19,
+   "own_field": 1,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 20,
+   "own_field": 1,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 21,
+   "own_field": 1,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 22,
+   "own_field": 1,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 23,
+   "own_field": 1,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 24,
+   "own_field": 1,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 25,
+   "own_field": 1,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 26,
+   "own_field": 1,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 27,
+   "own_field": 1,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 28,
+   "own_field": 1,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 29,
+   "own_field": 1,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 30,
+   "own_field": 1,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 31,
+   "own_field": 1,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 32,
+   "own_field": 2,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 33,
+   "own_field": 2,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 34,
+   "own_field": 2,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 35,
+   "own_field": 2,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 36,
+   "own_field": 2,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 37,
+   "own_field": 2,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 38,
+   "own_field": 2,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 39,
+   "own_field": 2,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 40,
+   "own_field": 2,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 41,
+   "own_field": 2,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 42,
+   "own_field": 2,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 43,
+   "own_field": 2,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 44,
+   "own_field": 2,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 45,
+   "own_field": 2,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 46,
+   "own_field": 2,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 47,
+   "own_field": 2,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 48,
+   "own_field": 3,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 49,
+   "own_field": 3,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 50,
+   "own_field": 3,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 51,
+   "own_field": 3,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 52,
+   "own_field": 3,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 53,
+   "own_field": 3,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 54,
+   "own_field": 3,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 55,
+   "own_field": 3,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 56,
+   "own_field": 3,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 57,
+   "own_field": 3,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 58,
+   "own_field": 3,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 59,
+   "own_field": 3,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 60,
+   "own_field": 3,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 61,
+   "own_field": 3,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 62,
+   "own_field": 3,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 63,
+   "own_field": 3,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 64,
+   "own_field": 4,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 65,
+   "own_field": 4,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 66,
+   "own_field": 4,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 67,
+   "own_field": 4,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 68,
+   "own_field": 4,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 69,
+   "own_field": 4,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 70,
+   "own_field": 4,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 71,
+   "own_field": 4,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 72,
+   "own_field": 4,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 73,
+   "own_field": 4,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 74,
+   "own_field": 4,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 75,
+   "own_field": 4,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 76,
+   "own_field": 4,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 77,
+   "own_field": 4,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 78,
+   "own_field": 4,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 79,
+   "own_field": 4,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 80,
+   "own_field": 5,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 81,
+   "own_field": 5,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 82,
+   "own_field": 5,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 83,
+   "own_field": 5,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 84,
+   "own_field": 5,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 85,
+   "own_field": 5,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 86,
+   "own_field": 5,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 87,
+   "own_field": 5,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 88,
+   "own_field": 5,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 89,
+   "own_field": 5,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 90,
+   "own_field": 5,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 91,
+   "own_field": 5,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 92,
+   "own_field": 5,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 93,
+   "own_field": 5,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 94,
+   "own_field": 5,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 95,
+   "own_field": 5,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 96,
+   "own_field": 6,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 97,
+   "own_field": 6,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 98,
+   "own_field": 6,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 99,
+   "own_field": 6,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 100,
+   "own_field": 6,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 101,
+   "own_field": 6,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 102,
+   "own_field": 6,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 103,
+   "own_field": 6,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 104,
+   "own_field": 6,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 105,
+   "own_field": 6,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 106,
+   "own_field": 6,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 107,
+   "own_field": 6,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 108,
+   "own_field": 6,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 109,
+   "own_field": 6,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 110,
+   "own_field": 6,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 111,
+   "own_field": 6,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 0,
+   "body": 112,
+   "own_field": 7,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 113,
+   "own_field": 7,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 114,
+   "own_field": 7,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 115,
+   "own_field": 7,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 116,
+   "own_field": 7,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 117,
+   "own_field": 7,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 118,
+   "own_field": 7,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 119,
+   "own_field": 7,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 120,
+   "own_field": 7,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 121,
+   "own_field": 7,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 122,
+   "own_field": 7,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 123,
+   "own_field": 7,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 124,
+   "own_field": 7,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 125,
+   "own_field": 7,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 126,
+   "own_field": 7,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 0,
+   "body": 127,
+   "own_field": 7,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 0,
+   "own_field": 0,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 1,
+   "own_field": 0,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 2,
+   "own_field": 1,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 3,
+   "own_field": 1,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 4,
+   "own_field": 2,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 5,
+   "own_field": 2,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 6,
+   "own_field": 3,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 7,
+   "own_field": 3,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 8,
+   "own_field": 4,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 9,
+   "own_field": 4,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 10,
+   "own_field": 5,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 11,
+   "own_field": 5,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 12,
+   "own_field": 6,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 13,
+   "own_field": 6,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 14,
+   "own_field": 7,
+   "other_field": 0,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 15,
+   "own_field": 7,
+   "other_field": 0,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 16,
+   "own_field": 0,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 17,
+   "own_field": 0,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 18,
+   "own_field": 1,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 19,
+   "own_field": 1,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 20,
+   "own_field": 2,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 21,
+   "own_field": 2,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 22,
+   "own_field": 3,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 23,
+   "own_field": 3,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 24,
+   "own_field": 4,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 25,
+   "own_field": 4,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 26,
+   "own_field": 5,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 27,
+   "own_field": 5,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 28,
+   "own_field": 6,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 29,
+   "own_field": 6,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 30,
+   "own_field": 7,
+   "other_field": 1,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 31,
+   "own_field": 7,
+   "other_field": 1,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 32,
+   "own_field": 0,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 33,
+   "own_field": 0,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 34,
+   "own_field": 1,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 35,
+   "own_field": 1,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 36,
+   "own_field": 2,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 37,
+   "own_field": 2,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 38,
+   "own_field": 3,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 39,
+   "own_field": 3,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 40,
+   "own_field": 4,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 41,
+   "own_field": 4,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 42,
+   "own_field": 5,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 43,
+   "own_field": 5,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 44,
+   "own_field": 6,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 45,
+   "own_field": 6,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 46,
+   "own_field": 7,
+   "other_field": 2,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 47,
+   "own_field": 7,
+   "other_field": 2,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 48,
+   "own_field": 0,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 49,
+   "own_field": 0,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 50,
+   "own_field": 1,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 51,
+   "own_field": 1,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 52,
+   "own_field": 2,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 53,
+   "own_field": 2,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 54,
+   "own_field": 3,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 55,
+   "own_field": 3,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 56,
+   "own_field": 4,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 57,
+   "own_field": 4,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 58,
+   "own_field": 5,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 59,
+   "own_field": 5,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 60,
+   "own_field": 6,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 61,
+   "own_field": 6,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 62,
+   "own_field": 7,
+   "other_field": 3,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 63,
+   "own_field": 7,
+   "other_field": 3,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 64,
+   "own_field": 0,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 65,
+   "own_field": 0,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 66,
+   "own_field": 1,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 67,
+   "own_field": 1,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 68,
+   "own_field": 2,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 69,
+   "own_field": 2,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 70,
+   "own_field": 3,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 71,
+   "own_field": 3,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 72,
+   "own_field": 4,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 73,
+   "own_field": 4,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 74,
+   "own_field": 5,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 75,
+   "own_field": 5,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 76,
+   "own_field": 6,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 77,
+   "own_field": 6,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 78,
+   "own_field": 7,
+   "other_field": 4,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 79,
+   "own_field": 7,
+   "other_field": 4,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 80,
+   "own_field": 0,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 81,
+   "own_field": 0,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 82,
+   "own_field": 1,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 83,
+   "own_field": 1,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 84,
+   "own_field": 2,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 85,
+   "own_field": 2,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 86,
+   "own_field": 3,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 87,
+   "own_field": 3,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 88,
+   "own_field": 4,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 89,
+   "own_field": 4,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 90,
+   "own_field": 5,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 91,
+   "own_field": 5,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 92,
+   "own_field": 6,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 93,
+   "own_field": 6,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 94,
+   "own_field": 7,
+   "other_field": 5,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 95,
+   "own_field": 7,
+   "other_field": 5,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 96,
+   "own_field": 0,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 97,
+   "own_field": 0,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 98,
+   "own_field": 1,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 99,
+   "own_field": 1,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 100,
+   "own_field": 2,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 101,
+   "own_field": 2,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 102,
+   "own_field": 3,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 103,
+   "own_field": 3,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 104,
+   "own_field": 4,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 105,
+   "own_field": 4,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 106,
+   "own_field": 5,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 107,
+   "own_field": 5,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 108,
+   "own_field": 6,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 109,
+   "own_field": 6,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 110,
+   "own_field": 7,
+   "other_field": 6,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 111,
+   "own_field": 7,
+   "other_field": 6,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 112,
+   "own_field": 0,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 113,
+   "own_field": 0,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 114,
+   "own_field": 1,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 115,
+   "own_field": 1,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 116,
+   "own_field": 2,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 117,
+   "own_field": 2,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 118,
+   "own_field": 3,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 119,
+   "own_field": 3,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 120,
+   "own_field": 4,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 121,
+   "own_field": 4,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 122,
+   "own_field": 5,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 123,
+   "own_field": 5,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 124,
+   "own_field": 6,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 125,
+   "own_field": 6,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": true
+  },
+  {
+   "role_bit1": 1,
+   "body": 126,
+   "own_field": 7,
+   "other_field": 7,
+   "carrier": 0,
+   "pcm_marker_accepted": false
+  },
+  {
+   "role_bit1": 1,
+   "body": 127,
+   "own_field": 7,
+   "other_field": 7,
+   "carrier": 1,
+   "pcm_marker_accepted": false
+  }
+ ]
+}
