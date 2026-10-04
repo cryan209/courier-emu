@@ -197,7 +197,9 @@ void C5xCore::reset()
     m_io_port_stats.fill({});
     m_data_events.clear();
     m_data_write_counts.fill(0);
-    m_pc_trace.clear();
+    // A range the caller armed is a diagnostic, not device state: keep what it
+    // recorded across the DSP's resets, as the data-write filter is kept.
+    if (m_trace_last < m_trace_first) m_pc_trace.clear();
     m_pc_captures.clear();
     // Whether writes are traced, and which cell, is a diagnostic the caller
     // arms before the run - not device state the reset line clears. Clearing

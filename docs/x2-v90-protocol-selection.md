@@ -4192,7 +4192,11 @@ analog seconds 30.29-30.37, silence for 60 ms, then a burst from 30.43 to about
   With it: the standard scrambler routines at `8ca2`-`8ce7` and `cb60`-`cc00` are **not executed**
   in this call, and the scrambler state cells `0358` and `03d8` are not written after the DSP's
   last rebuild, so the Courier's Phase 3 symbols come from other code that has not been
-  located yet (`c745`-`c746` has a `bsar 3` shift-xor, `e395`-`e3f4` more, none checked).
+  located yet (`c745`-`c746` was traced: it runs 78 times in the retained window and its accumulator cycles
+  through -0x400 ... 0x100 in steps of 0x100, a timing or phase loop, not bits; `e395`-`e3f4`
+  and `a553`-`b38e` are unchecked).  Two cautions on the tooling: `reset()` zeroes the core's
+  instruction counter, so the first-execution counts from different resets are not comparable, and
+  `reset()` used to clear the PC trace, which wiped a range armed by the caller (it now keeps it).
   The 25-bit head of lane 0 is, LSB first from the zero after the ones, the bytes `24 13 42`,
   then `4b` repeating (the filler differs from its own period-8 extension in only two of the
   eight positions just before it).  It is about one scrambler history long (23 symbols),
