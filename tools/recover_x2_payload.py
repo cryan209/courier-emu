@@ -105,7 +105,7 @@ def main():
  def check_lift(d,fn,addrs):
   getattr(lift,fn)(data)
   for a in addrs:assert data[a]==d[a],(fn,hex(a),hex(data[a]),hex(d[a]))
- rng=random.Random(0xc5df);r=Runner();report={'profile':'QF060003','checks':{}}
+ rng=random.Random(0xc5df);r=Runner();report={'profile':'QF060003','builder_product_scaling_mode':1,'checks':{}}
  for case in range(512):
   d={0x3ed:rng.randrange(7),0x3c0:rng.randrange(1,43),0x3af:rng.randrange(128),0x3c2:rng.getrandbits(12),0x39f:0,0x3fb:1}
   for a in range(0x248,0x250):d[a]=rng.getrandbits(16)
@@ -133,13 +133,15 @@ def main():
   r.put(d);load(d);lift.payload_append(data);r.run(0xb2ba)
   r.compare({a:data[a] for a in d},[0x3d0,0x3d8,0x3d9,0x3ae,*range(0x248,0x250)])
  report['checks']['source_scrambler_and_ring_append']=1024
+ # These are seeded builder profiles, not captured peer negotiations.
  report['negotiated_profiles']=[];roundtrips=0
- for rate in range(1,15):
+ for rate in range(1,16):
   for flag in (0,1):
+   r.core.close();r=Runner()
    # Full unmodified builder after the rate resolver has supplied its index.
-   seed={0x340:(2<<11) if rate==14 else 0,0xe8f1:0,0xe8f2:0x600,0xffd9:flag,0x3fb:1,0x39f:64}
+   seed={0x340:0,0xe8f1:0,0xe8f2:0x600,0xffd9:flag,0x3fb:1,0x39f:64}
    r.put(seed)
-   try:r.run(0xc862,acc=rate)
+   try:r.run(0xc862,acc=rate,spm=1)
    except AssertionError as e:raise AssertionError(('builder profile',rate,flag)) from e
    template={a:r.core.data(a) for a in [0x3c0,0x3c2,*range(0x4b6,0x4bc),*range(0xed4f,0xedcf),*range(0xe8f4,0xebf4)]}
    sizes=[template[0x4bb-i] for i in range(6)]
@@ -172,7 +174,10 @@ def main():
  continuous=0
  for rate in range(1,16):
   for flag in (0,1):
-   r.put({0x340:0,0xe8f1:0,0xe8f2:0x600,0xffd9:flag,0x3fb:1,0x39f:64});r.run(0xc862,acc=rate)
+   r.core.close();r=Runner()
+   r.put({0x340:0,0xe8f1:0,0xe8f2:0x600,0xffd9:flag,0x3fb:1,0x39f:64})
+   try:r.run(0xc862,acc=rate,spm=1)
+   except AssertionError as e:raise AssertionError(('continuous builder profile',rate,flag)) from e
    template={a:r.core.data(a) for a in [0x3c0,0x3c2,0x3ed,0x3ef,0x3a3,*range(0x4b6,0x4bc),*range(0xed4f,0xedcf),*range(0xe8f4,0xebf4)]}
    for md in range(7):
     d=template.copy();d.update({0x3ed:md,0x3af:0,0x3ae:127,0x3da:rng.getrandbits(16),0x3fb:1,0x39f:64,0x3cc:5,0x3f4:5,0x3ca:6,0x3cb:0xc64b,0x3de:0,0x3df:0,0x3c5:0,0x3c6:0,0xffd9:flag,0xe8e4:0})
@@ -186,6 +191,52 @@ def main():
      assert expected==r.core.data(0x3a7)
      continuous+=1
  report['checks']['continuous_frame_mapper_output_samples']=continuous
+ streams=0;stream_samples=0;stream_bytes=0;examples=[]
+ for rate in (10,15):
+  for role in (0,1):
+   for law in (0,1):
+    for md in range(7):
+     r.core.close();r=Runner()
+     r.put({0x340:0,0xe8f1:0,0xe8f2:0x600,0xffd9:law,0x3fb:1,0x39f:64});r.run(0xc862,acc=rate,spm=1)
+     d={a:r.core.data(a) for a in [0x3c0,0x3c2,0x3ed,0x3ef,0x3a3,*range(0x4b6,0x4bc),*range(0xed4f,0xedcf),*range(0xe8f4,0xebf4)]}
+     d.update({0x6f:role,0x3ed:md,0x3af:0,0x3ae:0,0x3da:0,0x3fb:1,0x39f:64,0x3cc:5,0x3f4:5,0x3ca:6,0x3cb:0xc64b,0x3de:0,0x3df:0,0x3c5:0,0x3c6:0,0xffd9:law,0xe8e4:0,0x3d8:0,0x3d9:0,0x3d1:255,0x3d2:8})
+     for a in range(0x4ce,0x4d4):d[a]=0
+     for a in range(0x248,0x250):d[a]=0
+     load(d);r.put(d);original=[];recovered=[];pending=0;pending_bits=0;parity=ctypes.c_uint16(0);descrambler_hi=0;descrambler_lo=0
+     for frame in range(32):
+      # C544 checks availability on every sample call. Keep more than one
+      # whole frame after the first call consumes this frame.
+      count=data[0x3c0]+md
+      while ((data[0x3ae]-data[0x3af])&127)<=2*count:
+       byte=rng.randrange(256);original.append(byte);data[0x3d0]=byte;r.core.set_data(0x3d0,byte)
+       lift.payload_append(data);r.run(0xb2ba)
+       r.compare({a:data[a] for a in [0x3d0,0x3d8,0x3d9,0x3ae,*range(0x248,0x250)]},[0x3d0,0x3d8,0x3d9,0x3ae,*range(0x248,0x250)])
+      if data[0x3ca]==0:data[0x3ca]=6
+      lift.payload_unpack(data);lift.payload_signs(data)
+      emitted=[]
+      for i in range(6):
+       expected=lift.payload_sample(data);r.run(0xc544,spm=1);assert expected==r.core.data(0x3a7)
+       emitted.append(expected);stream_samples+=1
+       r.compare({a:data[a] for a in [0x3af,0x3da,0x3cc,0x3ca,0x4d1,0x4d2]},[0x3af,0x3da,0x3cc,0x3ca,0x4d1,0x4d2])
+      octets=(ctypes.c_uint8*6)(*[x^data[0x3a3] for x in emitted]);decoded=ctypes.c_uint64()
+      assert lift.payload_inverse(data,octets,ctypes.byref(parity),ctypes.byref(decoded))==0
+      pending|=decoded.value<<pending_bits;pending_bits+=count
+      while pending_bits>=8:
+       word=pending&255;pending>>=8;pending_bits-=8
+       if role:byte=(word^(word<<5)^(descrambler_hi>>2)^descrambler_lo)&255
+       else:byte=(word^(descrambler_lo>>5)^descrambler_lo)&255
+       recovered.append(byte)
+       history=((((descrambler_hi|(word<<7))&65535)<<16)|descrambler_lo)>>8
+       descrambler_hi=history>>16;descrambler_lo=history&65535
+      if frame==0 and role==0 and law==0 and md==3:examples.append({'rate_index':rate,'source_octets':original.copy(),'frame_bits':count,'mapped_octets':emitted,'decoded_frame_integer':hex(decoded.value)})
+     assert recovered==original[:len(recovered)],(role,law,md)
+     assert parity.value==r.core.data(0x3da)
+     streams+=1;stream_bytes+=len(recovered)
+ report['checks']['continuous_byte_streams']=streams
+ report['checks']['continuous_stream_samples']=stream_samples
+ report['decoded_source_bytes']=stream_bytes
+ report['stream_scope']='32 frames per stream; byte scrambling, ring wrap/refill, original C544 output, ideal inverse and byte descrambling. Preselected rate indices 10 and 15; all MD 0..6, both scrambler role flags and final format XOR states.'
+ (OUT/'example.json').write_text(json.dumps(examples,indent=2)+'\n')
  r.core.close();tmp.cleanup();report['total_cases']=sum(report['checks'].values())
  (OUT/'verification.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

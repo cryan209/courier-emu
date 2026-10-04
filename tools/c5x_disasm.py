@@ -107,10 +107,15 @@ def decode(words: list[int] | tuple[int, ...], pc: int) -> Instruction:
     elif 0x98 <= base <= 0x9f: text = f"sach    {a}" + (f", {base & 7}" if base & 7 else "")
     elif base == 0xa0: text = f"norm    {a}"
     elif base == 0xa2: text = f"mac     {a}, {imm():04x}"
-    elif base in (0xa3,0xa4,0xa6,0xa7,0xaa,0xab,0xac,0xad):
-        text = f"{ {0xa3:'macd',0xa4:'blpd',0xa6:'tblr',0xa7:'tblw',0xaa:'mads',0xab:'madd',0xac:'bldd',0xad:'bldd'}[base]:7} {a}"
-    elif base in (0xa5,0xa8,0xa9,0xae,0xaf):
-        text = f"{ {0xa5:'blpd',0xa8:'bldd',0xa9:'bldd',0xae:'splk',0xaf:'in'}[base]:7} {a}, #{imm():04x}"
+    elif base in (0xa4,0xac):
+        text = f"{('blpd' if base==0xa4 else 'bldd'):7} bmar, {a}"
+    elif base == 0xad: text = f"bldd    {a}, bmar"
+    elif base in (0xa3,0xa6,0xa7,0xaa,0xab):
+        text = f"{ {0xa3:'macd',0xa6:'tblr',0xa7:'tblw',0xaa:'mads',0xab:'madd'}[base]:7} {a}"
+    elif base in (0xa5,0xa8):
+        text = f"{('blpd' if base==0xa5 else 'bldd'):7} #{imm():04x}, {a}"
+    elif base in (0xa9,0xae,0xaf):
+        text = f"{ {0xa9:'bldd',0xae:'splk',0xaf:'in'}[base]:7} {a}, #{imm():04x}"
     elif 0xb0 <= base <= 0xb7: text = f"lar     ar{base & 7}, #{op & 0xff:02x}"
     elif base == 0xb8: text = f"add     #{op & 0xff:02x}"
     elif base == 0xb9: text = f"lacl    #{op & 0xff:02x}"

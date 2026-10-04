@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -157,6 +158,8 @@ def arguments() -> argparse.Namespace:
                         help="additional AT settings on both ends before dial/answer")
     parser.add_argument("--trace-negotiation", action="store_true",
                         help="capture x2 eligibility fields when DSP parameters are sent")
+    parser.add_argument("--trace-digital-path", action="store_true",
+                        help="trace Ie030002 digital modes and TX scrambler input snapshots")
     parser.add_argument("--product-type", choices=("external", "internal"), default="external",
                         help="select the external DTE or the internal card's host UART")
     parser.add_argument("--internal-baud", choices=(57600, 115200), type=int, default=57600,
@@ -177,6 +180,9 @@ def arguments() -> argparse.Namespace:
 
 
 def run_side(args: argparse.Namespace) -> int:
+    if args.trace_digital_path and hashlib.sha256(args.image.read_bytes()).hexdigest() != (
+            "3f9a7aa8033323c28eebfee950b53267a67b7ad9141ebf30271918d0babbe358"):
+        raise ValueError("digital-path trace addresses require the verified Ie030002.nac build")
     originate = args.worker == "originate"
     peer = G711Peer(args.socket, listen=originate)
     bri = BriNetwork(
@@ -204,13 +210,46 @@ def run_side(args: argparse.Namespace) -> int:
     received_text = ""
     cursor = 0
     host_rate_set = False
+    digital_trace = {"firmware": "Ie030002", "mode_events": [], "samples": [],
+                     "capture_pcs": {"width_reset": "e908", "transmit": "e984"}, "capture_addresses": [
+                         "0380", "0381", "0382", "03d8", "03d9", "03e0",
+                         "031e", "031f", "ffd9", "039a", "039b", "088c", "088d"]}
+    traced_core = None
+    next_trace = 0
+    capture_phase = "width_reset"
+
+    def trace_path(current):
+        nonlocal traced_core, next_trace
+        core = current.mailbox.core
+        if core is None:
+            return
+        if core is not traced_core:
+            core.set_data_trace_filter(0x03e0)
+            core.trace_data_writes()
+            core.set_pc_capture(0xe908, [int(a, 16) for a in digital_trace["capture_addresses"]])
+            traced_core = core
+        if current.instructions < next_trace:
+            return
+        next_trace = current.instructions + 1_000_000
+        digital_trace["mode_events"].extend(core.data_events())
+        core.trace_data_writes(clear=True)
+        captures = core.pc_captures()
+        core.clear_pc_captures()
+        digital_trace["samples"].append({
+            "cpu_instructions": current.instructions,
+            "phase": capture_phase,
+            "cells": {a: core.data(int(a, 16)) for a in digital_trace["capture_addresses"]},
+            "captures": captures,
+        })
 
     def send(current: IsdnMachine, value: str, direction: str = "sent") -> None:
         current.send_serial(_on_the_wire(value, current.dte_framing()))
         transcript.append((current.instructions, direction, value))
 
     def pump(current: IsdnMachine) -> None:
-        nonlocal stage, connected_at, received_text, cursor, host_rate_set
+        nonlocal stage, connected_at, received_text, cursor, host_rate_set, capture_phase, next_trace
+        if args.trace_digital_path:
+            trace_path(current)
         command_pump(current)
         if (args.product_type == "internal" and not host_rate_set
                 and any(direction == "sent" for _, direction, _ in transcript)):
@@ -224,6 +263,12 @@ def run_side(args: argparse.Namespace) -> int:
         cursor = len(transcript)
         if stage == "connecting" and connect_result(received_text) is not None:
             connected_at = current.instructions
+            if args.trace_digital_path:
+                next_trace = 0
+                trace_path(current)
+                current.mailbox.core.set_pc_capture(
+                    0xe984, [int(a, 16) for a in digital_trace["capture_addresses"]])
+                capture_phase = "transmit"
             if payload:
                 send(current, payload, "sent_data")
             stage = "guard" if args.link_diagnostics else "done"
@@ -265,6 +310,8 @@ def run_side(args: argparse.Namespace) -> int:
         machine.mailbox.on_command = observe_command
     try:
         result = machine.run(args.instructions).to_dict()
+        if args.trace_digital_path:
+            result["digital_path_trace"] = digital_trace
         if args.trace_negotiation:
             result["negotiation_trace"] = negotiation
         # The live S-register file, rather than ATSn?'s saved-profile view.
@@ -348,6 +395,8 @@ def main() -> int:
                 command.append("--link-diagnostics")
             if args.trace_negotiation:
                 command.append("--trace-negotiation")
+            if args.trace_digital_path:
+                command.append("--trace-digital-path")
             if args.nvram:
                 command.extend(["--nvram", str(args.nvram.resolve())])
             if args.prime_originate:

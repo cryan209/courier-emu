@@ -31,6 +31,7 @@ MEMBER = "IM020104.NAC"
 # The V.90-era 3.00.02 image's own overlay map, as blob offsets. Images 8 and
 # 11 both load at 9260 and are alternatives; 6 and 10 overlap likewise, so a
 # joined program has to pick one of each pair.
+# Rows are (blob byte offset, DSP word count, program word origin).
 V90_IMAGES = {5: (0xA8690, 4670, 0x8000), 6: (0x90D60, 13909, 0xA000),
               7: (0x97A10, 5173, 0xB800), 8: (0x9A280, 2436, 0x9260),
               9: (0x9B590, 3215, 0xB000), 10: (0x9CEB0, 7536, 0xD100),
