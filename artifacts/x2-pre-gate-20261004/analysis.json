@@ -1,0 +1,116 @@
+{
+ "setting": "S54=0S58=48 both ends, Ie030002, pair harness, COURIER_PAIR_WIRELOG capture",
+ "results": {
+  "originating end (heard ANSam first)": {
+   "file": "gatewire.originate",
+   "seconds": 39.2,
+   "events": [
+    {
+     "from_s": 1.97,
+     "to_s": 3.8,
+     "kind": "answer tone ANSam, about 2100 Hz"
+    },
+    {
+     "from_s": 3.8,
+     "to_s": 4.79,
+     "kind": "V.21 ch2 1650/1850",
+     "octets_hex": "e0 c1 45 13 10 8d e0 c1 45 13 10 8d e0 c1",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 4.82,
+     "to_s": 4.94,
+     "kind": "INFO0 from the answer modem",
+     "body_bits_12_to_28": "11111111101111000",
+     "crc_ok": true,
+     "named_bits": {
+      "18": "3200 sym/s high carrier = 1",
+      "21": "asym LSB = 0",
+      "22": "asym = 1",
+      "23": "asym MSB = 1",
+      "24": "CME = 1",
+      "25": "1664-point = 1",
+      "26": "clock LSB = 0",
+      "27": "clock MSB = 0",
+      "28": "ack = 0"
+     }
+    },
+    {
+     "from_s": 4.94,
+     "to_s": 5.35,
+     "kind": "tone A, 2400 Hz (answer modem)"
+    },
+    {
+     "from_s": 5.351,
+     "to_s": 5.603,
+     "kind": "startup source (7e x1747, zeros, 128 pairs)"
+    },
+    {
+     "from_s": 6.05,
+     "to_s": 39.2,
+     "kind": "full-scale scrambled data"
+    }
+   ]
+  },
+  "answering end (heard CI)": {
+   "file": "gatewire.answer",
+   "seconds": 39.2,
+   "events": [
+    {
+     "from_s": 0.08,
+     "to_s": 1.69,
+     "kind": "V.21 ch1 980/1180",
+     "octets_hex": "ff 00 c1 00 c1 00 c1 00 c1 00 c1 00 c1 00",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 3.2,
+     "to_s": 4.71,
+     "kind": "V.21 ch1 980/1180",
+     "octets_hex": "ff e0 c1 45 13 10 8d e0 c1 45 13 10 8d e0",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 4.75,
+     "to_s": 4.87,
+     "kind": "INFO0 from the call modem",
+     "body_bits_12_to_28": "11111111101111000",
+     "crc_ok": true,
+     "named_bits": {
+      "18": "3200 sym/s high carrier = 1",
+      "21": "asym LSB = 0",
+      "22": "asym = 1",
+      "23": "asym MSB = 1",
+      "24": "CME = 1",
+      "25": "1664-point = 1",
+      "26": "clock LSB = 0",
+      "27": "clock MSB = 0",
+      "28": "ack = 0"
+     }
+    },
+    {
+     "from_s": 4.87,
+     "to_s": 5.21,
+     "kind": "V.21 ch1 980/1180",
+     "octets_hex": "00",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 4.87,
+     "to_s": 5.21,
+     "kind": "tone B, 1200 Hz (call modem)"
+    },
+    {
+     "from_s": 5.704,
+     "to_s": 5.955,
+     "kind": "startup source (7e x1747, zeros, 128 pairs)"
+    },
+    {
+     "from_s": 6.15,
+     "to_s": 39.2,
+     "kind": "full-scale scrambled data"
+    }
+   ]
+  }
+ }
+}

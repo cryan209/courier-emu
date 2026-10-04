@@ -23,8 +23,9 @@ from courier_emu.nac import NacImage
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.x2_source_impairment import SourceImpairment
+from tools.x2_source_impairment import BearerLog, SourceImpairment
 _IMPAIRMENT = SourceImpairment.from_environment()
+_WIRELOG = BearerLog.from_environment()
 DEFAULT_IMAGE = ROOT / "Ie030002.nac"
 FRAME_OCTETS = 800
 HEADER = struct.Struct("<H")
@@ -102,6 +103,8 @@ class G711Peer:
                 self.error = str(exc)
                 self.stop()
                 break
+            if _WIRELOG is not None:
+                _WIRELOG.write(incoming)
             if _IMPAIRMENT is not None:
                 incoming = _IMPAIRMENT.filter(incoming)
             reply.extend(incoming)

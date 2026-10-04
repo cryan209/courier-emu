@@ -4044,3 +4044,47 @@ The map is a plain bitwise union, identical at both ends, and 56000 survives
 every combination, including corruption of the lowest bit on every phase: the
 56000 decision does not depend on that bit.  Only an error above the lowest
 bit (the bit-1 run) takes the call off x2.
+
+## Before the gate: what the bearer carries in the symmetric call
+
+Everything up to the INFO0 gate can be read off the PCMU bearer.  A PCMU
+capture of each end (`COURIER_PAIR_WIRELOG`, decoded by
+`tools/analyze_bearer_handshake.py`, saved in
+`artifacts/x2-pre-gate-20261004/analysis.json`) shows, in bearer seconds from
+the start of the capture:
+
+| time | from | what |
+|---|---|---|
+| 0.08-1.69 | originator | V.8 CI: V.21 channel 1 FSK (980/1180 Hz, 300 baud), octet `c1` repeated |
+| 1.69-1.97 | none | silence; the answering end has not started |
+| 1.97-3.80 | answerer | ANSam, a 2100 Hz tone |
+| 3.20-4.71 | originator | V.8 CM: `e0 c1 45 13 10 8d` repeated, then `00 00 00` (CJ) |
+| 3.80-4.79 | answerer | V.8 JM on V.21 channel 2 (1650/1850 Hz): the same `e0 c1 45 13 10 8d`, repeated |
+| 4.75-4.87 | originator | INFO0, DPSK 600 baud on a 1200 Hz carrier |
+| 4.82-4.94 | answerer | INFO0, DPSK 600 baud on a 2400 Hz carrier |
+| 4.87-5.21 | originator | tone B, 1200 Hz |
+| 4.94-5.35 | answerer | tone A, 2400 Hz |
+| 5.35-5.60 | answerer | the startup source: `7e` x1747, zeros, 128 ramp pairs |
+| 5.70-5.96 | originator | the startup source |
+| 6.05 / 6.15 on | both | full-scale scrambled data |
+
+The CM and the JM carry the same five octets after the `e0` sync, so the
+answering end offers back exactly what the originating end asked for.  The CJ
+is followed by about 70 ms of silence, then INFO0.  The V.8 octet meanings were
+not decoded, because the recommendation is not in the repository.
+
+**Both INFO0 frames decode, with a good CRC, to the same body**, ITU bits 12 to
+28 = `11111111101111000`: all six symbol rates, bit 18 (3200 high carrier), bits
+19 and 20, then bit 21 = 0, bits 22 to 24 = 1 (asymmetry integer 6 and CME), bit
+25 = 1, bits 26 and 27 = 0 (internal clock) and bit 28 = 0.  So both ends send
+bit 23 and bit 24 set and bit 18 set, exactly the condition that sends both
+servers into the symmetric branch at the gate: the gate reads the words that
+were on the wire a fraction of a second earlier.  The gate message `006b` and
+the start of the answering end's source follow the end of tone A within about a
+tenth of a second.
+
+This closes the stretch between call set-up and the gate for this call: V.8
+(CI, ANSam, CM, JM, CJ), INFO0 in both directions, tones A and B, then the
+startup source.  Not covered: the V.8 octet semantics, what tones A and B (a
+fraction of a second each) are used for before the source starts, and the ISDN
+set-up before CI.

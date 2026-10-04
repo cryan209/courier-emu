@@ -49,3 +49,19 @@ class SourceImpairment:
             self.previous = original
             result.append(value)
         return bytes(result)
+
+
+class BearerLog:
+    """Append every octet this endpoint receives to ``<prefix>.<pid>``."""
+
+    def __init__(self, prefix: str):
+        self.path = f"{prefix}.{os.getpid()}"
+
+    @classmethod
+    def from_environment(cls):
+        prefix = os.environ.get("COURIER_PAIR_WIRELOG")
+        return cls(prefix) if prefix else None
+
+    def write(self, octets: bytes) -> None:
+        with open(self.path, "ab") as handle:
+            handle.write(octets)
