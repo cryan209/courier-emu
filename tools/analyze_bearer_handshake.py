@@ -81,10 +81,12 @@ def info0(x, carrier, t0, t1):
     text = "".join(map(str, bits))
     frames, i = [], text.find("01110010")
     while i >= 0:
-        body, crc = bits[i + 8:i + 25], bits[i + 25:i + 41]
-        if len(crc) == 16:
-            frames.append({"body_bits_12_to_28": "".join(map(str, body)),
-                           "crc_ok": crc16(bits[i + 8:i + 41]) in (0xF0B8, 0)})
+        for length in (17, 7, 30):
+            body = bits[i + 8:i + 8 + length]
+            crc = bits[i + 8 + length:i + 8 + length + 16]
+            if len(crc) == 16 and crc16(bits[i + 8:i + 8 + length + 16]) in (0xF0B8, 0):
+                frames.append({"body_length": length, "body_bits": "".join(map(str, body)),
+                               "crc_ok": True})
         i = text.find("01110010", i + 1)
     return frames
 
@@ -112,16 +114,22 @@ def windows(x, w=80):
     return out
 
 
-def runs(win, test, minimum):
-    out, start = [], None
-    for k, (t, rms, peak) in enumerate(win + [(None, 0, -1)]):
-        hit = t is not None and test(rms, peak)
-        if hit and start is None:
-            start = k
-        if not hit and start is not None:
-            if (k - start) * 0.01 >= minimum:
-                out.append((win[start][0], win[k - 1][0] + 0.01))
-            start = None
+def runs(win, test, minimum, gap=3):
+    """Maximal stretches where ``test`` holds, bridging up to ``gap`` failing windows."""
+    out, start, last, miss = [], None, None, 0
+    for k, (t, rms, peak) in enumerate(win):
+        if test(rms, peak):
+            if start is None:
+                start = k
+            last, miss = k, 0
+        elif start is not None:
+            miss += 1
+            if miss > gap:
+                if (last - start + 1) * 0.01 >= minimum:
+                    out.append((win[start][0], win[last][0] + 0.01))
+                start = None
+    if start is not None and (last - start + 1) * 0.01 >= minimum:
+        out.append((win[start][0], win[last][0] + 0.01))
     return out
 
 
@@ -143,6 +151,8 @@ def main(path):
         for t0, t1 in runs(win, lambda r, p, lo=lo, hi=hi: lo <= p <= hi and r > 500, 0.3):
             bits = fsk_bits(x, f1, f0, int(t0 * RATE), int(t1 * RATE))
             o = octets(bits)
+            if len(o) < 3:
+                continue    # a tone in the FSK band, not a message
             add(t0, t1, name, octets_hex=" ".join(f"{v:02x}" for v in o[:14]),
                 note="first 14 decoded octets")
     # Tones A (2400) and B (1200) and the INFO0 burst just before each
@@ -150,13 +160,26 @@ def main(path):
                                       (1200, "tone B, 1200 Hz (call modem)", "call")):
         for t0, t1 in runs(win, lambda r, p, f=freq: abs(p - f) <= 20 and r > 500, 0.2):
             if t1 - t0 > 0.15 and (t1 - t0) < 1.0:
-                frames = info0(x, freq, t0 - 0.12, t0 + 0.02)
-                add(t0, t1, label)
-                if frames:
-                    for f in frames:
-                        add(t0 - 0.12, t0, f"INFO0 from the {carrier_name} modem",
-                            body_bits_12_to_28=f["body_bits_12_to_28"], crc_ok=f["crc_ok"],
-                            named_bits=name_bits(f["body_bits_12_to_28"]))
+                seen, frames = set(), []
+                for lo, hi in ((t0 - 0.25, t0 + 0.12), (t1 - 0.05, t1 + 0.7)):
+                    for f in info0(x, freq, lo, hi):
+                        key = (f["body_length"], f["body_bits"])
+                        if key not in seen:
+                            seen.add(key)
+                            frames.append({**f, "window": (round(lo, 2), round(hi, 2))})
+                glitches = [round(t, 2) for t, r, p in win
+                            if t0 < t < t1 and abs(p - freq) > 20 and r > 500]
+                add(t0, t1, label, off_frequency_windows_s=glitches)
+                for f in frames:
+                    if f["body_length"] == 17:
+                        add(f["window"][0], f["window"][1], f"INFO0 from the {carrier_name} modem (found in this search window)",
+                            body_bits_12_to_28=f["body_bits"], crc_ok=True,
+                            named_bits=name_bits(f["body_bits"]))
+                    elif f["body_length"] == 7:
+                        v = sum(int(b) << k for k, b in enumerate(f["body_bits"]))
+                        add(f["window"][0], f["window"][1], f"7-bit x2 marker frame from the {carrier_name} modem (found in this search window)",
+                            body_bits_first_sent_first=f["body_bits"], crc_ok=True, value_hex=f"{v:02x}",
+                            carrier_bit=v & 1, first_index=(v >> 1) & 7, second_index=(v >> 4) & 7)
     first7e = next((i for i in range(len(raw) - 7) if all(raw[i:i + 7] == 0x7E)), None)
     if first7e is not None:
         add(first7e / RATE, first7e / RATE + 2010 / RATE, "startup source (7e x1747, zeros, 128 pairs)")

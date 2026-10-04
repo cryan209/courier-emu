@@ -4088,3 +4088,57 @@ This closes the stretch between call set-up and the gate for this call: V.8
 startup source.  Not covered: the V.8 octet semantics, what tones A and B (a
 fraction of a second each) are used for before the source starts, and the ISDN
 set-up before CI.
+
+### Before the gate: the asymmetric call (analog Courier to I-modem)
+
+The same analysis on the octets the I-modem received from, and sent to, the
+analog Courier in the 53333/x2 call (`artifacts/x2-pre-gate-20261004/
+analysis-asymmetric.json`; the host timeline is the I-modem's own mailbox
+log, on the same clock):
+
+| time (s) | from | what |
+|---|---|---|
+| 0.70-2.11 | Courier | V.8 CI, `c1` repeated |
+| 1.87-1.89 | host to DSP | the capability and rate commands, including `0070:3dff` and the six `0050` rate words, then `0014` start |
+| 1.92-3.83 | I-modem | ANSam |
+| 3.32-4.60 | Courier | V.8 CM `e0 c1 45 10 10 0d`, repeated |
+| 3.82 | DSP to host | the six `0048` replies |
+| 3.83-4.58 | I-modem | V.8 JM `e0 c1 45 10 10 8d`, repeated |
+| 4.57 | DSP to host | `0071:0007`, `0047:0006` |
+| about 4.65-4.75 | Courier | INFO0 (1200 Hz carrier), body bits 12-28 `11111111100001000`, CRC good |
+| about 4.65-4.75 | I-modem | INFO0 (2400 Hz carrier), body `11111111101111000`, CRC good |
+| 4.71-4.98 / 4.74-5.01 | Courier / I-modem | tone B (1200 Hz) / tone A (2400 Hz), a phase reversal at 4.85 in tone A |
+| 5.01 | DSP to host | `006b:0021`, the gate message, as tone A ends |
+| 5.27-5.35 | Courier | **the 7-bit x2 marker frame** |
+| 5.41 | DSP to host | `0034:0004`, the retune message with index 4 |
+| 5.42-7.58 | I-modem | digital zero (`7f` x17,238) |
+| 5.40-7.65 | Courier | a wideband, non-periodic signal |
+| 7.55 on | I-modem | wideband signal, later full-scale |
+
+Three things this shows:
+
+* **The marker is on the wire.**  The frame decodes (same decoder as INFO0, 7-bit
+  body, CRC-16 passes) to body bits `1011001`, first bit sent first: value `4d`,
+  carrier 1, first index 6, second index 4.  That is the originator code the
+  Courier builder produces and the server parser accepts.
+* **The gate is explained by the INFO0 words.**  The Courier's INFO0 has bit 23
+  clear and bit 24 clear (asymmetry integer 0, no CME), the I-modem's has both
+  set, so "both bit 23" is false and the words differ in bit 24: the marker path.
+  In the symmetric call both words had bit 23 set.
+* **The marker's effect is visible within about 70 ms.**  The `0034:0004`
+  message follows the frame by about 60 ms, and the I-modem's digital zero
+  starts 70 ms after its end, which is the retune and the new idle behaviour
+  described under "After acceptance".
+
+The V.8 octets differ between the two calls.  Symmetric: both messages
+`e0 c1 45 13 10 8d`.  Asymmetric: the Courier's CM ends `10 10 0d` and the
+I-modem's JM `10 10 8d`: the fourth octet is `10` rather than `13` and the CM's
+last octet lacks bit 7 which the JM sets.  Their meaning is not decoded.  The
+Courier's INFO0 has the same bits 12 to 20 as the I-modem's, with bits 21 to
+24 clear and bit 25 set.
+
+Not decoded here: the Courier's wideband signal from 5.40 s and what it is
+(its spectrum is flat and non-periodic, so it is not a line probing signal
+by that test), the I-modem's wideband signal from 7.55 s, and what ends the
+digital zero.  The 12.5 s `006a:010a` report and the later `006a:0e0d`
+(40.3 s) are the connect and a rate step.

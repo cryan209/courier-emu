@@ -1,0 +1,173 @@
+{
+ "setting": "analog Courier 403 (originator) to I-modem Ie030002 (answerer), S58=48 both ends, 53333/x2 production configuration",
+ "bearer": {
+  "imodem_heard_from_courier": {
+   "file": "imodem-rx.g711",
+   "seconds": 94.78,
+   "events": [
+    {
+     "from_s": 0.7,
+     "to_s": 2.11,
+     "kind": "V.21 ch1 980/1180",
+     "octets_hex": "00 c1 00 c1 00 c1 00 c1 00 c1 00 c1 00 c1",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 3.32,
+     "to_s": 4.6,
+     "kind": "V.21 ch1 980/1180",
+     "octets_hex": "e0 c1 45 10 10 0d e0 c1 45 10 10 0d e0 c1",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 4.46,
+     "to_s": 4.83,
+     "kind": "INFO0 from the call modem (found in this search window)",
+     "body_bits_12_to_28": "11111111100001000",
+     "crc_ok": true,
+     "named_bits": {
+      "18": "3200 sym/s high carrier = 1",
+      "21": "asym LSB = 0",
+      "22": "asym = 0",
+      "23": "asym MSB = 0",
+      "24": "CME = 0",
+      "25": "1664-point = 1",
+      "26": "clock LSB = 0",
+      "27": "clock MSB = 0",
+      "28": "ack = 0"
+     }
+    },
+    {
+     "from_s": 4.71,
+     "to_s": 4.98,
+     "kind": "tone B, 1200 Hz (call modem)",
+     "off_frequency_windows_s": [
+      4.73,
+      4.74,
+      4.96
+     ]
+    },
+    {
+     "from_s": 4.93,
+     "to_s": 5.68,
+     "kind": "7-bit x2 marker frame from the call modem (found in this search window)",
+     "body_bits_first_sent_first": "1011001",
+     "crc_ok": true,
+     "value_hex": "4d",
+     "carrier_bit": 1,
+     "first_index": 6,
+     "second_index": 4
+    }
+   ]
+  },
+  "imodem_sent": {
+   "file": "imodem-tx.g711",
+   "seconds": 94.79,
+   "events": [
+    {
+     "from_s": 1.92,
+     "to_s": 3.83,
+     "kind": "answer tone ANSam, about 2100 Hz"
+    },
+    {
+     "from_s": 3.83,
+     "to_s": 4.58,
+     "kind": "V.21 ch2 1650/1850",
+     "octets_hex": "e0 c1 45 10 10 8d e0 c1 45 10 10 8d e0 c1",
+     "note": "first 14 decoded octets"
+    },
+    {
+     "from_s": 4.49,
+     "to_s": 4.86,
+     "kind": "INFO0 from the answer modem (found in this search window)",
+     "body_bits_12_to_28": "11111111101111000",
+     "crc_ok": true,
+     "named_bits": {
+      "18": "3200 sym/s high carrier = 1",
+      "21": "asym LSB = 0",
+      "22": "asym = 1",
+      "23": "asym MSB = 1",
+      "24": "CME = 1",
+      "25": "1664-point = 1",
+      "26": "clock LSB = 0",
+      "27": "clock MSB = 0",
+      "28": "ack = 0"
+     }
+    },
+    {
+     "from_s": 4.74,
+     "to_s": 5.01,
+     "kind": "tone A, 2400 Hz (answer modem)",
+     "off_frequency_windows_s": [
+      4.85
+     ]
+    }
+   ]
+  }
+ },
+ "imodem_host_timeline_excerpt": [
+  "0.2309 cmd 005e:0001",
+  "1.8693 cmd 001a:1b6b",
+  "1.8696 cmd 003c:196b",
+  "1.8741 cmd 000f:0400",
+  "1.8746 cmd 0044:003f",
+  "1.8750 cmd 0048:7fff",
+  "1.8754 cmd 0051:21ff",
+  "1.8758 cmd 0052:1ef8",
+  "1.8766 cmd 0052:1ef8",
+  "1.8770 cmd 0070:3dff",
+  "1.8775 cmd 001c:0008",
+  "1.8779 cmd 001d:0014",
+  "1.8782 cmd 002a:0006",
+  "1.8786 cmd 001a:1b6b",
+  "1.8791 cmd 003c:196b",
+  "1.8795 cmd 001a:1b6b",
+  "1.8799 cmd 003c:196b",
+  "1.8802 cmd 0042:0fff",
+  "1.8807 cmd 0049:fff5",
+  "1.8811 cmd 0050:00c1",
+  "1.8815 cmd 0050:0145",
+  "1.8820 cmd 0050:0213",
+  "1.8824 cmd 0050:0310",
+  "1.8827 cmd 0050:048d",
+  "1.8831 cmd 0050:0500",
+  "1.8836 cmd 0053:3fff",
+  "1.8840 cmd 0071:ffff",
+  "1.8844 cmd 0073:007f",
+  "1.8849 cmd 0074:ffff",
+  "1.8853 cmd 0004:0000",
+  "1.8856 cmd 0014:71df",
+  "3.8165 reply 0048:00c1",
+  "3.8170 reply 0048:0145",
+  "3.8174 reply 0048:0210",
+  "3.8179 reply 0048:0310",
+  "3.8182 reply 0048:048d",
+  "3.8186 reply 0048:0500",
+  "4.5682 reply 0071:0007",
+  "4.5686 reply 0047:0006",
+  "4.5694 cmd 0002:a000",
+  "5.0137 reply 006b:0021",
+  "5.4096 reply 0034:0004",
+  "5.5106 reply 0004:0000",
+  "12.5131 reply 006e:0001",
+  "12.5140 reply 006c:0000",
+  "12.5145 reply 006d:0500",
+  "12.5158 reply 006a:010a",
+  "12.5160 reply 0035:03fe",
+  "12.5164 reply 0036:001c",
+  "12.5168 cmd 000a:0002",
+  "12.5582 reply 0002:0000",
+  "13.0247 reply 0003:0000",
+  "13.0259 cmd 000f:0000",
+  "13.0264 cmd 0006:003f",
+  "13.0267 cmd 000a:0002",
+  "13.4871 cmd 000a:0003",
+  "15.9161 cmd 005b:0001",
+  "15.9235 cmd 005b:0001"
+ ],
+ "bearer_notes": {
+  "server_digital_zero_from_s": 5.421,
+  "server_digital_zero_octet": "7f",
+  "server_digital_zero_octets": 17238
+ }
+}

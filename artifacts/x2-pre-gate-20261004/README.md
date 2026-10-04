@@ -13,3 +13,9 @@ COURIER_PAIR_WIRELOG=/tmp/gatewire .venv/bin/python tools/probe_imodem_pair.py -
 The tool needs numpy. A `V.21 ch1` event that coincides with tone B is the FSK
 detector responding to the 1200 Hz tone, not a message. V.8 octets are listed
 raw: the recommendation text is not in the repository.
+
+`analysis-asymmetric.json` is the same analysis of the octets the I-modem received
+from, and sent to, the analog Courier in the 53333/x2 call (`probe_imodem_analog_pair.py`
+writes `imodem-rx.g711` and `imodem-tx.g711`), with the I-modem's host message
+timeline up to 16 s. INFO0 and marker frames are reported with the search window in
+which they were found, not an exact start time.
