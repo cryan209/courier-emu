@@ -1,0 +1,6977 @@
+{
+  "bri": {
+    "assigned_teis": {
+      "16399": 64
+    },
+    "call_reference": 1,
+    "call_state": "active",
+    "call_tei": 64,
+    "dialled": "7349195",
+    "events": [
+      {
+        "event": "the NT starts activation: INFO2 on the S interface",
+        "instructions": 3000320
+      },
+      {
+        "event": "layer 1 active, the NT has the line up",
+        "instructions": 4000256
+      },
+      {
+        "event": "ID_REQUEST ref 16399: assigning TEI 64",
+        "instructions": 5727744
+      },
+      {
+        "event": "SABME from TEI 64, answering UA",
+        "instructions": 5731840
+      },
+      {
+        "event": "INFORMATION call reference 0",
+        "instructions": 5740544
+      },
+      {
+        "event": "SPID init: ",
+        "instructions": 5740544
+      },
+      {
+        "event": "RELEASE_COMPLETE call reference 0, cause 81",
+        "instructions": 5762560
+      },
+      {
+        "event": "SETUP call reference 1",
+        "instructions": 34122240
+      },
+      {
+        "event": "the modem is calling 7349195",
+        "instructions": 34122240
+      },
+      {
+        "event": "CONNECT_ACKNOWLEDGE call reference 1",
+        "instructions": 35027968
+      }
+    ],
+    "frames_from_modem": 10,
+    "frames_to_modem": 10,
+    "line": "active",
+    "links": {
+      "64": {
+        "established": true,
+        "pending_layer3": 0,
+        "unacknowledged_ns": null,
+        "vr": 4,
+        "vs": 4
+      }
+    },
+    "media": {
+      "channel": 1,
+      "rx_delivered": 199955,
+      "rx_pending": 0,
+      "tx_non_ff": 187189,
+      "tx_octets": 199955
+    },
+    "media_peer": {
+      "engine_exit": null,
+      "error": null,
+      "frames": 199944,
+      "octets_received": 199955,
+      "octets_sent": 199955,
+      "received_non_ff": 125971,
+      "sent_non_ff": 187189,
+      "wall_clock_paced": true
+    },
+    "outbound_setup": {
+      "bearer_capability": "90 90 a2",
+      "low_layer_compatibility": null
+    },
+    "state": "multiple-frame-established",
+    "tei": 64,
+    "undecodable": 0,
+    "v120": null
+  },
+  "digital_path_trace": {
+    "capture_addresses": [
+      "0380",
+      "0381",
+      "0382",
+      "03d8",
+      "03d9",
+      "03e0",
+      "031e",
+      "031f",
+      "ffd9",
+      "039a",
+      "039b",
+      "088c",
+      "088d"
+    ],
+    "capture_pcs": {
+      "transmit": "e984",
+      "width_reset": "e908"
+    },
+    "firmware": "Ie030002",
+    "mode_events": [
+      {
+        "address": 992,
+        "instruction": 184282,
+        "pc": 32831,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 255892294,
+        "pc": 32831,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 268391554,
+        "pc": 32831,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 336859026,
+        "pc": 56095,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 498650008,
+        "pc": 38887,
+        "value": 20
+      },
+      {
+        "address": 992,
+        "instruction": 498880202,
+        "pc": 38887,
+        "value": 19
+      },
+      {
+        "address": 992,
+        "instruction": 499108874,
+        "pc": 38887,
+        "value": 18
+      },
+      {
+        "address": 992,
+        "instruction": 499332743,
+        "pc": 38887,
+        "value": 17
+      },
+      {
+        "address": 992,
+        "instruction": 499556619,
+        "pc": 38887,
+        "value": 16
+      },
+      {
+        "address": 992,
+        "instruction": 499785261,
+        "pc": 38887,
+        "value": 15
+      },
+      {
+        "address": 992,
+        "instruction": 500009125,
+        "pc": 38887,
+        "value": 14
+      },
+      {
+        "address": 992,
+        "instruction": 500233016,
+        "pc": 38887,
+        "value": 13
+      },
+      {
+        "address": 992,
+        "instruction": 500461672,
+        "pc": 38887,
+        "value": 12
+      },
+      {
+        "address": 992,
+        "instruction": 500685527,
+        "pc": 38887,
+        "value": 11
+      },
+      {
+        "address": 992,
+        "instruction": 500909430,
+        "pc": 38887,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 501137910,
+        "pc": 38887,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 501361662,
+        "pc": 38887,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 501585523,
+        "pc": 38887,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 501814165,
+        "pc": 38887,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 502038089,
+        "pc": 38887,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 502261957,
+        "pc": 38887,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 502490611,
+        "pc": 38887,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 502714540,
+        "pc": 38887,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 502938405,
+        "pc": 38887,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 503167061,
+        "pc": 38887,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 504062681,
+        "pc": 38918,
+        "value": 20
+      },
+      {
+        "address": 992,
+        "instruction": 504292958,
+        "pc": 38918,
+        "value": 19
+      },
+      {
+        "address": 992,
+        "instruction": 504521604,
+        "pc": 38918,
+        "value": 18
+      },
+      {
+        "address": 992,
+        "instruction": 504745552,
+        "pc": 38918,
+        "value": 17
+      },
+      {
+        "address": 992,
+        "instruction": 504969358,
+        "pc": 38918,
+        "value": 16
+      },
+      {
+        "address": 992,
+        "instruction": 505198010,
+        "pc": 38918,
+        "value": 15
+      },
+      {
+        "address": 992,
+        "instruction": 505421956,
+        "pc": 38918,
+        "value": 14
+      },
+      {
+        "address": 992,
+        "instruction": 505645856,
+        "pc": 38918,
+        "value": 13
+      },
+      {
+        "address": 992,
+        "instruction": 505874487,
+        "pc": 38918,
+        "value": 12
+      },
+      {
+        "address": 992,
+        "instruction": 506098449,
+        "pc": 38918,
+        "value": 11
+      },
+      {
+        "address": 992,
+        "instruction": 506322249,
+        "pc": 38918,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 506550881,
+        "pc": 38918,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 506774868,
+        "pc": 38918,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 506998555,
+        "pc": 38918,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 507227232,
+        "pc": 38918,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 507451214,
+        "pc": 38918,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 507675128,
+        "pc": 38918,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 507903962,
+        "pc": 38918,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 508128024,
+        "pc": 38918,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 508351882,
+        "pc": 38918,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 508580355,
+        "pc": 38918,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532478724,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532483533,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532491618,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532499605,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532503407,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532510823,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532518828,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532522829,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532530056,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532537932,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532541750,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532549363,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532557112,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532560889,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532568405,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532576244,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532580141,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532587443,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532595451,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532599239,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532606734,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532614703,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532618735,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532625755,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532633827,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532637632,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532644995,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532652982,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532656812,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532664233,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532672230,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532676270,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532683454,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532691484,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532695331,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532702512,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532710505,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532714283,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532721778,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532729637,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532733565,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532740855,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532748855,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532752666,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532760339,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532767984,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532771799,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532779135,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532787188,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532791013,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532798406,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532806405,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532810249,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532817657,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532825688,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532829883,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532836835,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532844742,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532848568,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532856033,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532864015,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532867796,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532875321,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532883197,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532887115,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532894417,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532902623,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532906465,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532913630,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532921604,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532925456,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 532932764,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 532940837,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 532944666,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 532952023,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 532960009,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 532963885,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 532971377,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 532979135,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 532983209,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 532990349,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 532998228,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 533002087,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 533009487,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 533017501,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 533021319,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 533028762,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 533036644,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 533040822,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 533047714,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 533055761,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 533059574,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 533067035,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 533075030,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 533078858,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 533086188,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 533094260,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 533098098,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 533105445,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 533113630,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 533117477,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 533124619,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 533132629,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 533136658,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 533143867,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 533151734,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 533155598,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 533163035,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 533171041,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 533174844,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 533182570,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 533190103,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 533194077,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 533201331,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 533209325,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 533213203,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 533220605,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 533228595,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 533232494,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 533239760,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 533247808,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 533251851,
+        "pc": 39238,
+        "value": 10
+      },
+      {
+        "address": 992,
+        "instruction": 533258889,
+        "pc": 39238,
+        "value": 9
+      },
+      {
+        "address": 992,
+        "instruction": 533266906,
+        "pc": 39238,
+        "value": 8
+      },
+      {
+        "address": 992,
+        "instruction": 533270801,
+        "pc": 39238,
+        "value": 7
+      },
+      {
+        "address": 992,
+        "instruction": 533278135,
+        "pc": 39238,
+        "value": 6
+      },
+      {
+        "address": 992,
+        "instruction": 533286146,
+        "pc": 39238,
+        "value": 5
+      },
+      {
+        "address": 992,
+        "instruction": 533290208,
+        "pc": 39238,
+        "value": 4
+      },
+      {
+        "address": 992,
+        "instruction": 533297379,
+        "pc": 39238,
+        "value": 3
+      },
+      {
+        "address": 992,
+        "instruction": 533305256,
+        "pc": 39238,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 533309176,
+        "pc": 39238,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 533316538,
+        "pc": 39238,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 537923183,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 538158963,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 538389574,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 538623096,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 538852704,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 539083339,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 539316861,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 539546475,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 539777097,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 540010619,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 540240240,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 540470864,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 540704382,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 540933990,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 541164617,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 541398139,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 541627753,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 541858375,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 542091898,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 542321518,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 542552147,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 542785665,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 543015326,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 543246120,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 543479812,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 543709595,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 543940384,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 544174068,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 544403846,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 544634645,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 544868337,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 545098114,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 545328920,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 545562591,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 545792357,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 546023014,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 546256553,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 546486246,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 546716867,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 546950406,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 547180030,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 547410632,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 547644137,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 547873763,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 548104318,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 548337687,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 548567188,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 548797645,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 549031040,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 549260682,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 549491351,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 549724823,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 549954447,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 550185075,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 550418543,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 550648174,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 550878808,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 551112280,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 551341898,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 551572539,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 551806011,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 552035635,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 552266263,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 552499731,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 552729358,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 552959988,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 553193460,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 553423078,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 553653715,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 553887187,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 554116811,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 554347303,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 554580639,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 554810134,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 555040658,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 555274148,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 555503800,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 555734407,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 555967879,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 556197503,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 556428097,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 556661569,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 556891201,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 557121800,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 557355272,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 557584891,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 557815493,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 558048965,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 558278590,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 558509183,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 558742647,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 558972271,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 559202870,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 559436342,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 559665961,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 559896567,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 560130039,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 560359528,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 560589951,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 560823253,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 561052675,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 561283190,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 561516688,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 561746273,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 561976879,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 562210385,
+        "pc": 38830,
+        "value": 2
+      },
+      {
+        "address": 992,
+        "instruction": 562439976,
+        "pc": 38830,
+        "value": 1
+      },
+      {
+        "address": 992,
+        "instruction": 562670569,
+        "pc": 38830,
+        "value": 0
+      },
+      {
+        "address": 992,
+        "instruction": 562904075,
+        "pc": 38830,
+        "value": 2
+      }
+    ],
+    "samples": [
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 0,
+          "039b": 0,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 0,
+          "088d": 0,
+          "ffd9": 0
+        },
+        "cpu_instructions": 742912,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 1743360,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 2743808,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 3744256,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 4744704,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 5745152,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 6745600,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 7746048,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 8746496,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 9746944,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 10747392,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 11747840,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 12748288,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 13748736,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 14749184,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 15749632,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 16750080,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 17750528,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 18750976,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 19751424,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 20751872,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 21752320,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 22752768,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 23753216,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 24753664,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 25754112,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 26754560,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 27755008,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 28755456,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 29755904,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 30756352,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 31756800,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 32757248,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 35839,
+          "088d": 33199,
+          "ffd9": 0
+        },
+        "cpu_instructions": 33757696,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 0,
+          "0381": 0,
+          "0382": 0,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 0
+        },
+        "cpu_instructions": 34758144,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 1,
+          "0381": 0,
+          "0382": 3,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 35758592,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 4,
+          "0381": 0,
+          "0382": 2,
+          "039a": 55974,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 36759040,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 4,
+          "0381": 0,
+          "0382": 2,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 37759488,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 2,
+          "0381": 0,
+          "0382": 2,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 38759936,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 0,
+          "031f": 0,
+          "0380": 1,
+          "0381": 0,
+          "0382": 2,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 39760384,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 1,
+          "031f": 45745,
+          "0380": 4,
+          "0381": 0,
+          "0382": 8,
+          "039a": 33494,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 40760832,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 5,
+          "031f": 32323,
+          "0380": 4,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 41761280,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 65,
+          "031f": 5184,
+          "0380": 4,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 42761728,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 17,
+          "031f": 5136,
+          "0380": 4,
+          "0381": 0,
+          "0382": 8,
+          "039a": 33494,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 43762176,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 84,
+          "031f": 16660,
+          "0380": 4,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 33494,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 44762624,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 45763072,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 46763520,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 47763968,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 2,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 48764416,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 49764864,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 7,
+          "039a": 55974,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 50765312,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 7,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 51765760,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 7,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 52766208,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 449,
+          "0381": 0,
+          "0382": 7,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 53766656,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 6,
+          "039a": 55974,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 54767104,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 6,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 55767552,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 6,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 56768000,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 449,
+          "0381": 0,
+          "0382": 6,
+          "039a": 55974,
+          "039b": 41543,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 57768448,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 449,
+          "0381": 0,
+          "0382": 6,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 58768896,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 5,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 59769344,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 5,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 60769792,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 5,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 61770240,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 898,
+          "0381": 0,
+          "0382": 5,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 62770688,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 449,
+          "0381": 0,
+          "0382": 5,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 41543,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 63771136,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 4,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 55785,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 64771584,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 4163,
+          "0380": 1796,
+          "0381": 0,
+          "0382": 4,
+          "039a": 55974,
+          "039b": 55785,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 55974,
+          "088d": 55785,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 65772032,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 29327,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 65535,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 66772480,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 67772928,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 68773376,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 69773824,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 70774272,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 71774720,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 72775168,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 73775616,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 0,
+          "088c": 40586,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 74776064,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40586,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 1,
+          "088c": 40586,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 75776512,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 1,
+          "088c": 40586,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 76776960,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 1,
+          "088c": 40586,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 77777408,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 78777856,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 79778304,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 80778752,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 81779200,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 82779648,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 83780096,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 84780544,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 85780992,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 86781440,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 87781888,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 88782336,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 89782784,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 90783232,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 91783680,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 92784128,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 93784576,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 94785024,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 95785472,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 96785920,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 97786368,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 98786816,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 99787264,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 100787712,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 101788160,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 102788608,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 103789056,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 104789504,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 105789952,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 106790400,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 107790848,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 108791296,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 109791744,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 110792192,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 111792640,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 112793088,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 113793536,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 114793984,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 115794432,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 116794880,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 117795328,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 118795776,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 119796224,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 120796672,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 121797120,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 122797568,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 123798016,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 124798464,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 125798912,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 126799360,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 127799808,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 128800256,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 129800704,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 130801152,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 131801600,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 132802048,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 133802496,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 134802944,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 135803392,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 136803840,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 137804288,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 138804736,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 139805184,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 140805632,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 141806080,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 142806528,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 143806976,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 144807424,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 145807872,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 146808320,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 147808768,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 148809216,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 149809664,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 150810112,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 151810560,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 152811008,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 153811456,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 154811904,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 155812352,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 40382,
+          "039b": 39926,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 156812800,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 157813248,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 158813696,
+        "phase": "width_reset"
+      },
+      {
+        "captures": [],
+        "cells": {
+          "031e": 68,
+          "031f": 63111,
+          "0380": 0,
+          "0381": 0,
+          "0382": 8,
+          "039a": 35839,
+          "039b": 33199,
+          "03d8": 0,
+          "03d9": 0,
+          "03e0": 2,
+          "088c": 40382,
+          "088d": 39926,
+          "ffd9": 32768
+        },
+        "cpu_instructions": 159814144,
+        "phase": "width_reset"
+      }
+    ]
+  },
+  "download_bytes": 65536,
+  "dsc": {
+    "bearer": {
+      "frames": 254729,
+      "peripheral_slots": [
+        6,
+        7
+      ],
+      "routed_frames": {
+        "1": 200430
+      },
+      "routes": [
+        [
+          1,
+          6
+        ]
+      ],
+      "rx_pending": {
+        "1": 1,
+        "2": 0
+      },
+      "underrun_at": {},
+      "underruns": {}
+    },
+    "d_channel": {
+      "frames_received": 10,
+      "frames_transmitted": 10,
+      "rx_pending": 0,
+      "tx_length_mismatch": 0
+    },
+    "hook": "on-hook",
+    "hook_changes": 0,
+    "liu_state": "F7",
+    "overruns": {},
+    "read_counts": {
+      "CR_IR": 37,
+      "DCB": 66,
+      "DER": 43,
+      "DLC_DRCR": 20,
+      "DLC_RNGR1": 2,
+      "DLC_RNGR2": 2,
+      "DSR1": 33,
+      "DSR2": 186,
+      "INIT": 2,
+      "LIU_LMR1": 5,
+      "LIU_LSR": 7,
+      "MAP_MMR1": 1,
+      "MAP_MMR2": 1
+    },
+    "unknown_registers": {},
+    "written": {
+      "DLC_1_7": "00 00 00 00 00 00 00",
+      "DLC_DMR1": "0b",
+      "DLC_DMR2": "84",
+      "DLC_DMR3": "02",
+      "DLC_DMR4": "0a",
+      "DLC_DRCR": "00 00",
+      "DLC_DRLR": "10 01 10 01 10 01",
+      "DLC_DTCR": "08 00",
+      "DLC_EFCR": "01",
+      "DLC_FRAR4": "01",
+      "DLC_FRAR_1_2_3": "01 01 01",
+      "DLC_RNGR1": "40 00",
+      "DLC_SRAR4": "01",
+      "DLC_SRAR_1_2_3": "01 01 01",
+      "INIT": "11",
+      "LIU_2_4": "00 00 00",
+      "LIU_LMR1": "41",
+      "LIU_LMR2": "78",
+      "LIU_LPR": "00",
+      "LIU_MF": "00",
+      "LIU_MFQB": "00",
+      "MAP_1_10": "31 b1 1b 62 26 a2 bb 16 bb 16 26 a2 1b 62 31 b1 21 d1 12 42 eb b1 61 12 61 12 eb b1 12 42 21 d1 08 08 52 bb 99 00 08 90 00 00 00 00 4e 02",
+      "MAP_MMR1": "00",
+      "MAP_MMR2": "40",
+      "MCR1": "16",
+      "MCR2": "00",
+      "MCR3": "00",
+      "MCR4": "00",
+      "PP_PPCR1": "07",
+      "PP_PPCR2": "01"
+    }
+  },
+  "dte_framing": "7E1",
+  "entry": "4030:0000",
+  "error": null,
+  "firmware_trace": [
+    "LINE_ACTIVE Detected",
+    "l4_SETUP : modem primitive",
+    "BCH_ENABLED Detected",
+    "Prim = N_CONN_CF :"
+  ],
+  "flash": {
+    "autoselects": 0,
+    "commands": [],
+    "device": "0x2223",
+    "erases": 0,
+    "manufacturer": "0x0001",
+    "mode": "array",
+    "programs": 0
+  },
+  "g711_peer": {
+    "engine_exit": 0,
+    "error": null,
+    "frames": 199944,
+    "octets_received": 199955,
+    "octets_sent": 199955,
+    "received_non_ff": 125971,
+    "sent_non_ff": 187189,
+    "wall_clock_paced": true
+  },
+  "hardware_interrupts": 77270,
+  "hot_addresses": [],
+  "instructions": 160000000,
+  "io_summary": {
+    "in 0x001c": 72469,
+    "in 0x001e": 104586,
+    "in 0xf020": 77269,
+    "in 0xf0a0": 154490,
+    "in 0xf4fe": 1388347,
+    "in 0xf8fe": 75355,
+    "out 0x001c": 144941,
+    "out 0x001e": 18732,
+    "out 0x0040": 9950,
+    "out 0x0042": 9950,
+    "out 0x0044": 9947,
+    "out 0x0046": 9947,
+    "out 0x0048": 9947,
+    "out 0x004a": 9947,
+    "out 0xf020": 77274,
+    "out 0xf0a0": 154495
+  },
+  "last_addresses": [],
+  "mailbox": {
+    "bootstrap_words": 4672,
+    "committed": 63,
+    "consumed": 62,
+    "core": {
+      "acc": 0,
+      "accb": 33821134,
+      "ar0": 3038,
+      "ar1": 2186,
+      "ar2": 280,
+      "ar3": 65535,
+      "ar4": 32,
+      "ar5": 916,
+      "ar6": 88,
+      "ar7": 3038,
+      "arcr": 3038,
+      "arp": 7,
+      "cycles": 1284247596,
+      "dp": 7,
+      "flags": 62,
+      "idle": true,
+      "indx": 3038,
+      "instructions": 1114474061,
+      "io_events": 8192,
+      "op": 48674,
+      "pc": 33454,
+      "preg": 528384
+    },
+    "core_stack": [
+      32980,
+      34273,
+      32974,
+      34273,
+      34273,
+      34273,
+      34273,
+      34273
+    ],
+    "download_blocks": 9364,
+    "dsp_status": 1026,
+    "endpoint": "native-c5x",
+    "error": null,
+    "foreground_overlay_assist": false,
+    "foreground_overlay_assists": 0,
+    "latch_writes": 0,
+    "memory_map": {
+      "cnf": 0,
+      "cwsr": 16,
+      "data_daram": 128297477,
+      "data_external": 11,
+      "data_registers": 6712380,
+      "data_reserved": 0,
+      "data_saram": 11409816,
+      "data_shared": 1110198,
+      "iowsr": 1,
+      "iptr": 0,
+      "model": "c51",
+      "mpmc": 0,
+      "mpmc_pin": 0,
+      "ovly": 1,
+      "pdwsr": 10,
+      "program_daram": 34480,
+      "program_external": 336070022,
+      "program_rom": 1297962,
+      "program_saram": 0,
+      "ram": 1,
+      "rom_holes": 0,
+      "rom_present": true,
+      "wait_states": {
+        "external": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          }
+        ],
+        "io_mapping": "8K blocks",
+        "regions": [
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "program",
+            "wait_states": 2
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "program",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 16383,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 32767,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 49151,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 65535,
+            "space": "data",
+            "wait_states": 0
+          },
+          {
+            "first": 0,
+            "last": 8191,
+            "space": "io",
+            "wait_states": 1
+          },
+          {
+            "first": 8192,
+            "last": 16383,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 16384,
+            "last": 24575,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 24576,
+            "last": 32767,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 32768,
+            "last": 40959,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 40960,
+            "last": 49151,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 49152,
+            "last": 57343,
+            "space": "io",
+            "wait_states": 0
+          },
+          {
+            "first": 57344,
+            "last": 65535,
+            "space": "io",
+            "wait_states": 0
+          }
+        ]
+      }
+    },
+    "overlay_control": [
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        1
+      ],
+      [
+        "strobe",
+        2
+      ],
+      [
+        "strobe",
+        4
+      ]
+    ],
+    "overlay_reads": 104586,
+    "overlay_recent": [
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ],
+      [
+        "read",
+        3
+      ]
+    ],
+    "overlay_writes": {
+      "1": 9362,
+      "2": 9362,
+      "4": 6
+    },
+    "pcm": {
+      "attached": true,
+      "frames": 254729,
+      "octets": 509458,
+      "realtime_cycles": 0,
+      "rx_empty_frames": 0,
+      "rx_pending_octets": 2,
+      "sample_rate": 8000,
+      "serial": {
+        "codec_rx_consumed": 0,
+        "codec_rx_peak": 0,
+        "codec_rx_queued": 0,
+        "delay_move_ignored": 0,
+        "delay_move_last_address": 0,
+        "delay_move_last_pc": 0,
+        "drr": 65535,
+        "drr_reads": 254728,
+        "dxr": 46335,
+        "dxr_writes": 254746,
+        "hybrid_frames": 0,
+        "hybrid_peak": 0,
+        "imr": 40,
+        "last_dp_pc": 33446,
+        "last_dp_source": 1,
+        "last_dp_value": 7,
+        "last_drr_pc": 33645,
+        "last_dxr_pc": 33648,
+        "last_spc_pc": 32961,
+        "last_tdxr_pc": 33670,
+        "last_trcv_pc": 0,
+        "last_tspc_pc": 32953,
+        "line_dac_frames": 0,
+        "line_dac_writes": 0,
+        "line_frame_interrupts": 254364,
+        "line_tx_last": 0,
+        "line_tx_last_pc": 32894,
+        "line_tx_nonzero": 0,
+        "line_tx_writes": 6,
+        "negotiation_acc": 0,
+        "negotiation_arp": 0,
+        "negotiation_d26": 0,
+        "negotiation_d76": 0,
+        "negotiation_d77": 0,
+        "negotiation_d78": 0,
+        "negotiation_d79": 0,
+        "negotiation_indx": 0,
+        "negotiation_loop_entries": 0,
+        "negotiation_loop_pc": 0,
+        "negotiation_pair": 0,
+        "negotiation_pair_value": 0,
+        "negotiation_pm": 0,
+        "negotiation_source": 0,
+        "negotiation_source_value": 0,
+        "rx_consumed": 0,
+        "rx_queued": 0,
+        "serial_frame_suppressed": 0,
+        "shadow_dp": 6,
+        "spc": 16584,
+        "spc_writes": 15,
+        "stray_cala_dp": 0,
+        "stray_cala_pc": 0,
+        "stray_cala_target": 0,
+        "tdxr": 58368,
+        "tdxr_writes": 181154,
+        "trcv": 0,
+        "trcv_reads": 0,
+        "tspc": 248,
+        "tspc_writes": 12,
+        "v8_countdown": 0,
+        "v8_dispatch_dp": 0,
+        "v8_dispatch_pc": 0,
+        "v8_dispatches": 0,
+        "v8_flags": 0,
+        "v8_handler": 0,
+        "v8_record": 0,
+        "v8_rx_peak": 0,
+        "v8_rx_state": 0
+      },
+      "slots": [
+        "Bd",
+        "Be"
+      ]
+    },
+    "recent_commands": [
+      [
+        0,
+        0
+      ],
+      [
+        131,
+        131
+      ],
+      [
+        2,
+        53504
+      ],
+      [
+        2,
+        37472
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        91,
+        0
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        94,
+        1
+      ],
+      [
+        1,
+        63
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        21,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        91,
+        1
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        15,
+        1024
+      ],
+      [
+        68,
+        63
+      ],
+      [
+        72,
+        32767
+      ],
+      [
+        81,
+        8703
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        82,
+        7928
+      ],
+      [
+        112,
+        15871
+      ],
+      [
+        28,
+        8
+      ],
+      [
+        29,
+        20
+      ],
+      [
+        42,
+        6
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        26,
+        7019
+      ],
+      [
+        60,
+        6507
+      ],
+      [
+        66,
+        4095
+      ],
+      [
+        73,
+        65525
+      ],
+      [
+        80,
+        193
+      ],
+      [
+        80,
+        325
+      ],
+      [
+        80,
+        531
+      ],
+      [
+        80,
+        784
+      ],
+      [
+        80,
+        1165
+      ],
+      [
+        80,
+        1280
+      ],
+      [
+        83,
+        16383
+      ],
+      [
+        113,
+        65535
+      ],
+      [
+        115,
+        127
+      ],
+      [
+        116,
+        65535
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        31,
+        0
+      ],
+      [
+        25,
+        525
+      ],
+      [
+        23,
+        28895
+      ],
+      [
+        2,
+        40960
+      ]
+    ],
+    "recent_replies": [
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0000",
+      "0008:0001",
+      "0008:0001",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0805",
+      "0008:0804",
+      "0008:0804",
+      "0008:0800",
+      "0008:0811",
+      "0008:0811",
+      "0008:0801",
+      "0008:0811",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0811",
+      "0008:0811",
+      "0008:0801",
+      "0008:0811",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0801",
+      "0008:0811",
+      "0048:00c1",
+      "0048:0145",
+      "0048:0212",
+      "0048:0310",
+      "0048:0400",
+      "0071:0006",
+      "0047:0006"
+    ],
+    "replies_acked": 311,
+    "reply_counts": {
+      "0008:0000": 59,
+      "0008:0001": 2,
+      "0008:0800": 1,
+      "0008:0801": 14,
+      "0008:0804": 2,
+      "0008:0805": 219,
+      "0008:0811": 7,
+      "0047:0006": 1,
+      "0048:00c1": 1,
+      "0048:0145": 1,
+      "0048:0212": 1,
+      "0048:0310": 1,
+      "0048:0400": 1,
+      "0071:0006": 1
+    },
+    "reply_pending": null,
+    "timeline": [
+      "0.0136 reply 0008:0000",
+      "0.0336 reply 0008:0000",
+      "0.0536 reply 0008:0000",
+      "0.0596 cmd 0001:0000",
+      "0.0599 cmd 005e:0001",
+      "0.0602 cmd 0001:003f",
+      "0.0607 cmd 0015:0000",
+      "0.0611 cmd 001f:0000",
+      "0.0615 cmd 0019:020d",
+      "0.0620 cmd 0015:0000",
+      "0.0624 cmd 001f:0000",
+      "0.0628 cmd 0019:020d",
+      "0.0636 cmd 0015:0000",
+      "0.0640 cmd 001f:0000",
+      "0.0644 cmd 0019:020d",
+      "0.0649 cmd 005b:0001",
+      "0.0653 cmd 001a:1b6b",
+      "0.0656 cmd 003c:196b",
+      "0.0660 cmd 000f:0400",
+      "0.0665 cmd 0044:003f",
+      "0.0669 cmd 0048:7fff",
+      "0.0673 cmd 0051:21ff",
+      "0.0676 cmd 0052:1ef8",
+      "0.0681 cmd 0052:1ef8",
+      "0.0685 cmd 0070:3dff",
+      "0.0689 cmd 001c:0008",
+      "0.0694 cmd 001d:0014",
+      "0.0698 cmd 002a:0006",
+      "0.0701 cmd 001a:1b6b",
+      "0.0705 cmd 003c:196b",
+      "0.0710 cmd 001a:1b6b",
+      "0.0714 cmd 003c:196b",
+      "0.0717 cmd 0042:0fff",
+      "0.0722 cmd 0049:fff5",
+      "0.0726 cmd 0050:00c1",
+      "0.0730 cmd 0050:0145",
+      "0.0734 cmd 0050:0213",
+      "0.0739 cmd 0050:0310",
+      "0.0742 cmd 0050:048d",
+      "0.0746 cmd 0050:0500",
+      "0.0750 cmd 0053:3fff",
+      "0.0755 cmd 0071:ffff",
+      "0.0759 cmd 0073:007f",
+      "0.0762 cmd 0074:ffff",
+      "0.0767 cmd 0004:0000",
+      "0.0771 cmd 001f:0000",
+      "0.0775 cmd 0019:020d",
+      "0.0779 cmd 0017:70df",
+      "0.0836 reply 0008:0000",
+      "0.1036 reply 0008:0000",
+      "0.1236 reply 0008:0000",
+      "0.1436 reply 0008:0000",
+      "0.1636 reply 0008:0000",
+      "0.1836 reply 0008:0000",
+      "0.2036 reply 0008:0000",
+      "0.2236 reply 0008:0000",
+      "0.2436 reply 0008:0000",
+      "0.2636 reply 0008:0000",
+      "0.2836 reply 0008:0000",
+      "0.3036 reply 0008:0000",
+      "0.3236 reply 0008:0000",
+      "0.3436 reply 0008:0000",
+      "0.3636 reply 0008:0000",
+      "0.3836 reply 0008:0000",
+      "0.4036 reply 0008:0000",
+      "0.4236 reply 0008:0000",
+      "0.4436 reply 0008:0000",
+      "0.4636 reply 0008:0000",
+      "0.4836 reply 0008:0000",
+      "0.5036 reply 0008:0000",
+      "0.5236 reply 0008:0000",
+      "0.5436 reply 0008:0000",
+      "0.5636 reply 0008:0000",
+      "0.5836 reply 0008:0000",
+      "0.6036 reply 0008:0000",
+      "0.6236 reply 0008:0000",
+      "0.6436 reply 0008:0000",
+      "0.6636 reply 0008:0000",
+      "0.6836 reply 0008:0000",
+      "0.7036 reply 0008:0000",
+      "0.7236 reply 0008:0000",
+      "0.7436 reply 0008:0000",
+      "0.7636 reply 0008:0000",
+      "0.7836 reply 0008:0000",
+      "0.8036 reply 0008:0000",
+      "0.8236 reply 0008:0000",
+      "0.8436 reply 0008:0000",
+      "0.8636 reply 0008:0000",
+      "0.8836 reply 0008:0000",
+      "0.9036 reply 0008:0000",
+      "0.9236 reply 0008:0000",
+      "0.9436 reply 0008:0000",
+      "0.9636 reply 0008:0001",
+      "0.9836 reply 0008:0001",
+      "1.0036 reply 0008:0805",
+      "1.0236 reply 0008:0805",
+      "1.0436 reply 0008:0805",
+      "1.0636 reply 0008:0805",
+      "1.0836 reply 0008:0805",
+      "1.1036 reply 0008:0805",
+      "1.1236 reply 0008:0805",
+      "1.1436 reply 0008:0805",
+      "1.1636 reply 0008:0805",
+      "1.1836 reply 0008:0805",
+      "1.2036 reply 0008:0805",
+      "1.2236 reply 0008:0805",
+      "1.2436 reply 0008:0805",
+      "1.2636 reply 0008:0805",
+      "1.2836 reply 0008:0805",
+      "1.3036 reply 0008:0805",
+      "1.3236 reply 0008:0805",
+      "1.3436 reply 0008:0805",
+      "1.3636 reply 0008:0805",
+      "1.3836 reply 0008:0805",
+      "1.4036 reply 0008:0805",
+      "1.4236 reply 0008:0805",
+      "1.4436 reply 0008:0805",
+      "1.4636 reply 0008:0805",
+      "1.4836 reply 0008:0805",
+      "1.5036 reply 0008:0805",
+      "1.5236 reply 0008:0805",
+      "1.5436 reply 0008:0805",
+      "1.5636 reply 0008:0805",
+      "1.5836 reply 0008:0805",
+      "1.6036 reply 0008:0805",
+      "1.6236 reply 0008:0805",
+      "1.6436 reply 0008:0805",
+      "1.6636 reply 0008:0805",
+      "1.6836 reply 0008:0805",
+      "1.7036 reply 0008:0805",
+      "1.7236 reply 0008:0805",
+      "1.7436 reply 0008:0805",
+      "1.7636 reply 0008:0805",
+      "1.7836 reply 0008:0805",
+      "1.8036 reply 0008:0805",
+      "1.8236 reply 0008:0805",
+      "1.8436 reply 0008:0805",
+      "1.8636 reply 0008:0805",
+      "1.8836 reply 0008:0805",
+      "1.9036 reply 0008:0805",
+      "1.9236 reply 0008:0805",
+      "1.9436 reply 0008:0805",
+      "1.9636 reply 0008:0805",
+      "1.9836 reply 0008:0805",
+      "2.0036 reply 0008:0805",
+      "2.0236 reply 0008:0805",
+      "2.0436 reply 0008:0805",
+      "2.0636 reply 0008:0805",
+      "2.0836 reply 0008:0805",
+      "2.1036 reply 0008:0805",
+      "2.1236 reply 0008:0805",
+      "2.1436 reply 0008:0805",
+      "2.1636 reply 0008:0805",
+      "2.1836 reply 0008:0805",
+      "2.2036 reply 0008:0805",
+      "2.2236 reply 0008:0805",
+      "2.2436 reply 0008:0805",
+      "2.2636 reply 0008:0805",
+      "2.2836 reply 0008:0805",
+      "2.3036 reply 0008:0805",
+      "2.3236 reply 0008:0805",
+      "2.3436 reply 0008:0805",
+      "2.3636 reply 0008:0805",
+      "2.3836 reply 0008:0805",
+      "2.4036 reply 0008:0805",
+      "2.4236 reply 0008:0805",
+      "2.4436 reply 0008:0805",
+      "2.4636 reply 0008:0805",
+      "2.4836 reply 0008:0805",
+      "2.5036 reply 0008:0805",
+      "2.5236 reply 0008:0805",
+      "2.5436 reply 0008:0805",
+      "2.5636 reply 0008:0805",
+      "2.5836 reply 0008:0805",
+      "2.6036 reply 0008:0805",
+      "2.6236 reply 0008:0805",
+      "2.6436 reply 0008:0805",
+      "2.6636 reply 0008:0805",
+      "2.6836 reply 0008:0805",
+      "2.7036 reply 0008:0805",
+      "2.7236 reply 0008:0805",
+      "2.7436 reply 0008:0805",
+      "2.7636 reply 0008:0805",
+      "2.7836 reply 0008:0805",
+      "2.8036 reply 0008:0805",
+      "2.8236 reply 0008:0805",
+      "2.8436 reply 0008:0805",
+      "2.8636 reply 0008:0805",
+      "2.8836 reply 0008:0805",
+      "2.9036 reply 0008:0805",
+      "2.9236 reply 0008:0805",
+      "2.9436 reply 0008:0805",
+      "2.9636 reply 0008:0805",
+      "2.9836 reply 0008:0805",
+      "3.0036 reply 0008:0805",
+      "3.0236 reply 0008:0805",
+      "3.0436 reply 0008:0805",
+      "3.0636 reply 0008:0805",
+      "3.0836 reply 0008:0805",
+      "3.1036 reply 0008:0805",
+      "3.1236 reply 0008:0805",
+      "3.1436 reply 0008:0805",
+      "3.1636 reply 0008:0805",
+      "3.1836 reply 0008:0805",
+      "3.2036 reply 0008:0805",
+      "3.2236 reply 0008:0805",
+      "3.2436 reply 0008:0805",
+      "3.2636 reply 0008:0805",
+      "3.2836 reply 0008:0805",
+      "3.3036 reply 0008:0805",
+      "3.3236 reply 0008:0805",
+      "3.3436 reply 0008:0805",
+      "3.3636 reply 0008:0805",
+      "3.3836 reply 0008:0805",
+      "3.4036 reply 0008:0805",
+      "3.4236 reply 0008:0805",
+      "3.4436 reply 0008:0805",
+      "3.4636 reply 0008:0805",
+      "3.4836 reply 0008:0805",
+      "3.5036 reply 0008:0805",
+      "3.5236 reply 0008:0805",
+      "3.5436 reply 0008:0805",
+      "3.5636 reply 0008:0805",
+      "3.5836 reply 0008:0805",
+      "3.6036 reply 0008:0805",
+      "3.6236 reply 0008:0805",
+      "3.6436 reply 0008:0805",
+      "3.6636 reply 0008:0805",
+      "3.6836 reply 0008:0805",
+      "3.7036 reply 0008:0805",
+      "3.7236 reply 0008:0805",
+      "3.7436 reply 0008:0805",
+      "3.7636 reply 0008:0805",
+      "3.7836 reply 0008:0805",
+      "3.8036 reply 0008:0805",
+      "3.8236 reply 0008:0805",
+      "3.8436 reply 0008:0805",
+      "3.8636 reply 0008:0805",
+      "3.8836 reply 0008:0805",
+      "3.9036 reply 0008:0805",
+      "3.9236 reply 0008:0805",
+      "3.9436 reply 0008:0805",
+      "3.9636 reply 0008:0805",
+      "3.9836 reply 0008:0805",
+      "4.0036 reply 0008:0805",
+      "4.0236 reply 0008:0805",
+      "4.0436 reply 0008:0805",
+      "4.0636 reply 0008:0805",
+      "4.0836 reply 0008:0805",
+      "4.1036 reply 0008:0805",
+      "4.1236 reply 0008:0805",
+      "4.1436 reply 0008:0805",
+      "4.1636 reply 0008:0805",
+      "4.1836 reply 0008:0805",
+      "4.2036 reply 0008:0805",
+      "4.2236 reply 0008:0805",
+      "4.2436 reply 0008:0805",
+      "4.2636 reply 0008:0805",
+      "4.2836 reply 0008:0805",
+      "4.3036 reply 0008:0805",
+      "4.3236 reply 0008:0805",
+      "4.3436 reply 0008:0805",
+      "4.3636 reply 0008:0805",
+      "4.3836 reply 0008:0805",
+      "4.4036 reply 0008:0805",
+      "4.4236 reply 0008:0805",
+      "4.4436 reply 0008:0805",
+      "4.4636 reply 0008:0805",
+      "4.4836 reply 0008:0805",
+      "4.5036 reply 0008:0805",
+      "4.5236 reply 0008:0805",
+      "4.5436 reply 0008:0805",
+      "4.5636 reply 0008:0805",
+      "4.5836 reply 0008:0805",
+      "4.6036 reply 0008:0805",
+      "4.6236 reply 0008:0805",
+      "4.6436 reply 0008:0805",
+      "4.6636 reply 0008:0805",
+      "4.6836 reply 0008:0805",
+      "4.7036 reply 0008:0805",
+      "4.7236 reply 0008:0805",
+      "4.7436 reply 0008:0805",
+      "4.7636 reply 0008:0805",
+      "4.7836 reply 0008:0805",
+      "4.8036 reply 0008:0805",
+      "4.8236 reply 0008:0805",
+      "4.8436 reply 0008:0805",
+      "4.8636 reply 0008:0805",
+      "4.8836 reply 0008:0805",
+      "4.9036 reply 0008:0805",
+      "4.9236 reply 0008:0805",
+      "4.9436 reply 0008:0805",
+      "4.9636 reply 0008:0805",
+      "4.9836 reply 0008:0805",
+      "5.0036 reply 0008:0805",
+      "5.0236 reply 0008:0805",
+      "5.0436 reply 0008:0805",
+      "5.0636 reply 0008:0805",
+      "5.0836 reply 0008:0805",
+      "5.1036 reply 0008:0805",
+      "5.1236 reply 0008:0805",
+      "5.1436 reply 0008:0805",
+      "5.1636 reply 0008:0805",
+      "5.1836 reply 0008:0805",
+      "5.2036 reply 0008:0805",
+      "5.2236 reply 0008:0805",
+      "5.2436 reply 0008:0805",
+      "5.2636 reply 0008:0805",
+      "5.2836 reply 0008:0805",
+      "5.3036 reply 0008:0805",
+      "5.3236 reply 0008:0805",
+      "5.3436 reply 0008:0805",
+      "5.3636 reply 0008:0805",
+      "5.3836 reply 0008:0804",
+      "5.4036 reply 0008:0804",
+      "5.4236 reply 0008:0800",
+      "5.4436 reply 0008:0811",
+      "5.4636 reply 0008:0811",
+      "5.4836 reply 0008:0801",
+      "5.5036 reply 0008:0811",
+      "5.5236 reply 0008:0801",
+      "5.5436 reply 0008:0801",
+      "5.5636 reply 0008:0801",
+      "5.5836 reply 0008:0801",
+      "5.6036 reply 0008:0801",
+      "5.6236 reply 0008:0801",
+      "5.6436 reply 0008:0811",
+      "5.6636 reply 0008:0811",
+      "5.6836 reply 0008:0801",
+      "5.7036 reply 0008:0811",
+      "5.7236 reply 0008:0801",
+      "5.7436 reply 0008:0801",
+      "5.7636 reply 0008:0801",
+      "5.7836 reply 0008:0801",
+      "5.8036 reply 0008:0801",
+      "5.8236 reply 0008:0801",
+      "5.8436 reply 0008:0811",
+      "5.8533 reply 0048:00c1",
+      "5.8534 reply 0048:0145",
+      "5.8537 reply 0048:0212",
+      "5.8543 reply 0048:0310",
+      "5.8546 reply 0048:0400",
+      "6.1556 reply 0071:0006",
+      "6.1561 reply 0047:0006",
+      "6.1567 cmd 0002:a000"
+    ],
+    "tx_ready": true
+  },
+  "negotiation_trace": [
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35371081,
+      "tag": "0070",
+      "value": "3dff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35387465,
+      "tag": "0042",
+      "value": "0fff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35389515,
+      "tag": "0049",
+      "value": "fff5"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35403849,
+      "tag": "0053",
+      "value": "3fff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35405897,
+      "tag": "0071",
+      "value": "ffff"
+    },
+    {
+      "cpu_fields": {
+        "d1b5": 48,
+        "d1d7": 0,
+        "d1db": 11,
+        "d1ea": 4,
+        "e496": 1
+      },
+      "instructions": 35412031,
+      "tag": "0004",
+      "value": "0000"
+    }
+  ],
+  "pic": {
+    "delivered": 77270,
+    "master": {
+      "auto_eoi": false,
+      "irr": 0,
+      "isr": 4,
+      "mask": 179,
+      "vector_base": 32
+    },
+    "slave": {
+      "auto_eoi": false,
+      "irr": 64,
+      "isr": 32,
+      "mask": 131,
+      "vector_base": 40
+    }
+  },
+  "pit": {
+    "clock_hz": 892857,
+    "coalesced_timer_edges": [
+      0,
+      19,
+      0
+    ],
+    "control_writes": 3,
+    "counters": [
+      {
+        "count": 1238,
+        "hz": 480.0306451612903,
+        "index": 0,
+        "initial": 1860,
+        "mode": 2,
+        "period": 1860,
+        "wraps": 15337
+      },
+      {
+        "count": 6451,
+        "hz": 100.00638440860214,
+        "index": 1,
+        "initial": 8928,
+        "mode": 2,
+        "period": 8928,
+        "wraps": 3195
+      },
+      {
+        "count": 8046,
+        "hz": 25.000196001568014,
+        "index": 2,
+        "initial": 35714,
+        "mode": 2,
+        "period": 35714,
+        "wraps": 798
+      }
+    ],
+    "cpu_time_seconds": 32.0,
+    "time_seconds": 32.0
+  },
+  "registers": {
+    "ax": 65284,
+    "bx": 6,
+    "cs": 16432,
+    "cx": 0,
+    "di": 19781,
+    "ds": 9728,
+    "dx": 19748,
+    "es": 9728,
+    "ip": 790,
+    "si": 27824,
+    "sp": 1522,
+    "ss": 2624
+  },
+  "serial": {
+    "a": {
+      "base": "0xf8f8",
+      "baud": 230400,
+      "character_instructions": 218,
+      "divisor": 1,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": 3,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 53,
+      "signals": 0,
+      "transmitted": 12
+    },
+    "b": {
+      "base": "0xf4f8",
+      "baud": 115200,
+      "character_instructions": 435,
+      "divisor": 2,
+      "ier": 11,
+      "input_clock_hz": 3686400,
+      "irq": null,
+      "lcr": 3,
+      "mcr": 0,
+      "overruns": 0,
+      "queued": 0,
+      "received": 0,
+      "signals": 0,
+      "transmitted": 0
+    }
+  },
+  "serial_a": "\r\nOK\r\n\r\nOK\r\n",
+  "serial_b": "",
+  "serial_internal": "",
+  "serial_session": [
+    {
+      "direction": "sent",
+      "instructions": 30000128,
+      "text": "AT*V2=3S58=32&A3&B0\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31596544,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31597568,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 31598592,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 31599616,
+      "text": "K"
+    },
+    {
+      "direction": "received",
+      "instructions": 31600640,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 31601664,
+      "text": "\n"
+    },
+    {
+      "direction": "sent",
+      "instructions": 31601664,
+      "text": "ATS54=0S58=48&A3&B1Q0\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33246720,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33247744,
+      "text": "\n"
+    },
+    {
+      "direction": "received",
+      "instructions": 33248768,
+      "text": "O"
+    },
+    {
+      "direction": "received",
+      "instructions": 33249792,
+      "text": "K"
+    },
+    {
+      "direction": "received",
+      "instructions": 33250816,
+      "text": "\r"
+    },
+    {
+      "direction": "received",
+      "instructions": 33251840,
+      "text": "\n"
+    },
+    {
+      "direction": "sent",
+      "instructions": 33251840,
+      "text": "ATD7349195\r"
+    }
+  ],
+  "software_interrupts": {
+    "0x30": 118017
+  },
+  "status": "instruction-limit",
+  "timer_ticks": 19330,
+  "unmodelled_ports": [
+    "0x0000",
+    "0x0002",
+    "0x0003",
+    "0x0006",
+    "0x0007",
+    "0x000a",
+    "0x000c",
+    "0x000e",
+    "0x0010",
+    "0x0012",
+    "0x0014",
+    "0x0016",
+    "0x0100",
+    "0xf00d",
+    "0xf400",
+    "0xf402",
+    "0xf404",
+    "0xf406",
+    "0xf408",
+    "0xf40a",
+    "0xf40c",
+    "0xf40e",
+    "0xf410",
+    "0xf412",
+    "0xf414",
+    "0xf416",
+    "0xf418",
+    "0xf41a",
+    "0xf41c",
+    "0xf41e",
+    "0xf420",
+    "0xf422",
+    "0xf424",
+    "0xf426",
+    "0xf428",
+    "0xf42a",
+    "0xf42c",
+    "0xf42e",
+    "0xf430",
+    "0xf438",
+    "0xf804",
+    "0xf820",
+    "0xf822",
+    "0xf824",
+    "0xf826",
+    "0xf830",
+    "0xf832",
+    "0xf834",
+    "0xf836",
+    "0xf862",
+    "0xf864",
+    "0xf86c",
+    "0xf870",
+    "0xf874"
+  ],
+  "working_s_registers": {
+    "54": 0,
+    "56": 0,
+    "58": 48
+  }
+}

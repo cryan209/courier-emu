@@ -4545,8 +4545,9 @@ at `c92c` that skipped `c929` was wrong; the 12-symbol entry is too short to sho
 a state trace.
 
 **What sets `@1f` bit 10** (`039f`, DP 7): one instruction, `opl @1f, #1400` at `de15`
-(it sets bits 12 and 10 together), in the routine at `ddf6`.  `ddf6` reads the buffer at
-`0322`, sums a 0x2b2-word table with `lacc16`/`adds`/`sub16`/`subs`, takes the absolute
+(it sets bits 12 and 10 together), in the routine at `ddf6`.  `ddf6` reads the count at
+`0322`, sums differences of 32-bit entries based at `02b2` with
+`lacc16`/`adds`/`sub16`/`subs`, takes the absolute
 value and subtracts a threshold (`mpy #2d00`, `spac`); `xc 2, gt, tc` then sets the
 bits when the result is positive and bit 15 of `ffd9` is set (the bit the tag-`70` handler
 `91a1` sets).  `ddf6` is called from `db6b` after the frame check at `db58` (an octet `e0`
@@ -4662,5 +4663,67 @@ rejected, and 402 V.34 decoder cases pass. Original mapper execution and
 recorded evidence are retained in `artifacts/x2-upstream-b1-20261005`; see
 [the B1 audit](x2-courier-mp-fields.md#continuation-upstream-b1-acquisition).
 
-B1 acquisition is closed; upstream shell/frame decoding and bidirectional
-V.42/LAPM payload remain open. CONNECT remains gated.
+B1 acquisition is verified on the recorded capture. A live call against
+either original Courier type has not reached B1; upstream shell/frame
+decoding and bidirectional V.42/LAPM payload remain open. CONNECT remains gated.
+
+### Closed-loop interop and the V.8 x2 signature, 5 October 2026
+
+`tools/probe_v90modem_closed_loop.py` now connects the actual v90modem engine
+to an original analog Courier 403 or Ie030002 I-modem. Every engine reply is
+generated after consuming fresh native-peer samples. No recording, forced
+DSP state, or synthetic CONNECT supplies the other end. I-modem transport is
+byte-exact PCMU; the analog exchange uses the existing calibrated codec
+conversion. Media runs at 8000 samples/s with wall-clock pacing, because the
+engine's negotiation timeout uses wall time. Evidence, commands, raw streams,
+and native observations are retained in
+[`artifacts/x2-closed-loop-20261005`](../artifacts/x2-closed-loop-20261005/README.md).
+
+Both baseline calls completed V.8, received CRC-valid INFO0, then failed before
+the x2 marker. In the I-modem, `9596..9599` returned because `039f & 0400` was
+clear; the peer entered ordinary V.34 Phase 2 while the engine waited for x2.
+JM's missing PSTN-access octet `8d` was corrected, but that alone did not set
+the native classifier bit. ANSam without periodic phase reversal also did
+not solve it.
+
+The missing proprietary signal is a carrier-phase inversion between repeated
+V.21 CM/JM messages. Ie030002 `dd62..dd64` negates the carrier-amplitude cell
+`03e3` after a message; `dd74..dd76` does so between the following CJ zero
+octets. An unmodified native-pair control captures the alternating `0012` /
+`ffee` amplitude writes at `dd64`, and positive classifier results at `de14`
+(`133769` and `135107`). In the software-peer experiment, adding inversions
+between complete JM messages changes the I-modem classifier ACC at `de14`
+from **−131230 to +210811**. `de15` then sets `039f=1442`, subsequently
+`1462`, and the V.8 report changes from `0071:0006` to **`0071:0007`**. This
+is an executed native threshold decision, not an inference from decoded JM
+octets. v90modem now enables that signature for its x2 mode;
+`ME_V8_X2_PHASE_REVERSAL=0` retains the comparison path. The phase inversion
+does not change the decoded JM bytes.
+
+There are still two later interop gaps:
+
+* The analog peer accepts the waveform signature (`039f=4040`, then `4060`),
+  but later clears its x2 capability flags at `909b` (`039f=0020`) and emits a
+  CRC-valid 7-bit **`13`** frame. `909d..90a6` constructs this fallback from
+  rate index 1: `index*18 + carrier_bit = 13`. The desired fast x2 builder at
+  `9083..908a` would instead send `4d`. Our fixed Tone-A/INFO0 recovery
+  sequence has not reproduced that native fast transition; accepting `13`
+  as `4d` would hide the failure.
+* The I-modem is a digital peer with server/symmetric capabilities. S58=48
+  offers INFO0 `3dff`; S58=50 clears the server capability but still offers
+  `2dff` with symmetric capability. The asymmetric-client diagnostic uses
+  **S58=58** (disable server 2, symmetric 8, V.90 32; retain option 16),
+  producing `25ff`. Its native trace passes `9596` and executes
+  `95c4..95ef`, then `92e2` clears the PCM classification at `92ef` because
+  `ffd9` bit 1 is clear. No marker/B1 follows. The engine also lacks a
+  symmetric x2 session; a successful native symmetric control is evidence
+  of that separate mode, not proof of software-engine interoperability.
+
+The closed loop also exposed two recovery omissions now fixed in the
+software session: it must stop Tone A during MARKER_WAIT, and it must still
+recognize 17-bit acknowledged INFO0 after the initial INFO0 rather than
+interpreting every later frame as a 7-bit marker. Those changes pass the
+recorded session/MP/E tests and the added ACK-recovery check, but do not close
+the remaining live Phase-2 gap. The B1 capture regression still acquires at
+99.9% in both input block sizes, rejects silence, and all 402 V.34 data tests
+pass. **Neither live peer reaches B1, CONNECT, or payload.**

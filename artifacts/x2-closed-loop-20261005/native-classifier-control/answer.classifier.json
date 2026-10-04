@@ -1,0 +1,71 @@
+{
+  "addresses": [
+    "039f",
+    "ffd9",
+    "0322",
+    "03e3"
+  ],
+  "captures": [
+    [
+      554302357,
+      582451106,
+      135107,
+      7,
+      1,
+      66,
+      32768,
+      5,
+      0
+    ]
+  ],
+  "amplitude_writes": [
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 184285
+    },
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 6445244
+    },
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 255492000
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56081,
+      "instruction": 554302615
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 562962185
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 571612073
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 580261635
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 588907307
+    }
+  ]
+}

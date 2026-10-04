@@ -1,0 +1,228 @@
+{
+  "answer": {
+    "bri": {
+      "assigned_teis": {
+        "16399": 64
+      },
+      "call_reference": 1,
+      "call_state": "active",
+      "call_tei": 64,
+      "dialled": "",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5727744
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5731840
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5740544
+        },
+        {
+          "event": "SPID init: ",
+          "instructions": 5740544
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5762560
+        },
+        {
+          "event": "SETUP to the modem from 5551000",
+          "instructions": 20000256
+        },
+        {
+          "event": "ALERTING call reference 1",
+          "instructions": 20030976
+        },
+        {
+          "event": "CONNECT call reference 1",
+          "instructions": 53991424
+        }
+      ],
+      "frames_from_modem": 9,
+      "frames_to_modem": 9,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 3
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 153600,
+        "rx_pending": 0,
+        "tx_non_ff": 136717,
+        "tx_octets": 153613
+      },
+      "media_peer": {
+        "error": null,
+        "frames": 192,
+        "listen": false,
+        "octets_received": 153600,
+        "octets_sent": 153600,
+        "pending": 13,
+        "received_non_ff": 136971,
+        "sent_non_ff": 136704
+      },
+      "outbound_setup": null,
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+    "g711_peer": {
+      "error": null,
+      "frames": 192,
+      "listen": false,
+      "octets_received": 153600,
+      "octets_sent": 153600,
+      "pending": 13,
+      "received_non_ff": 136971,
+      "sent_non_ff": 136704
+    },
+    "modem_connected": true,
+    "serial": "\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2/LAPM\r\n",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 48
+    },
+    "x2_connected": true
+  },
+  "data_delivery": {
+    "answer_to_originate": false,
+    "originate_to_answer": false
+  },
+  "establish": "terminal",
+  "internal_baud": null,
+  "nvram": "/Users/scottcryan/courier-emu/artifacts/imodem-pair-x2-full-rate-routed-20261002/nvram-230400-switch2.sav",
+  "originate": {
+    "bri": {
+      "assigned_teis": {
+        "16399": 64
+      },
+      "call_reference": 1,
+      "call_state": "active",
+      "call_tei": 64,
+      "dialled": "7349195",
+      "events": [
+        {
+          "event": "the NT starts activation: INFO2 on the S interface",
+          "instructions": 3000320
+        },
+        {
+          "event": "layer 1 active, the NT has the line up",
+          "instructions": 4000256
+        },
+        {
+          "event": "ID_REQUEST ref 16399: assigning TEI 64",
+          "instructions": 5727744
+        },
+        {
+          "event": "SABME from TEI 64, answering UA",
+          "instructions": 5731840
+        },
+        {
+          "event": "INFORMATION call reference 0",
+          "instructions": 5740544
+        },
+        {
+          "event": "SPID init: ",
+          "instructions": 5740544
+        },
+        {
+          "event": "RELEASE_COMPLETE call reference 0, cause 81",
+          "instructions": 5762560
+        },
+        {
+          "event": "SETUP call reference 1",
+          "instructions": 34122240
+        },
+        {
+          "event": "the modem is calling 7349195",
+          "instructions": 34122240
+        },
+        {
+          "event": "CONNECT_ACKNOWLEDGE call reference 1",
+          "instructions": 35027968
+        }
+      ],
+      "frames_from_modem": 10,
+      "frames_to_modem": 10,
+      "line": "active",
+      "links": {
+        "64": {
+          "established": true,
+          "pending_layer3": 0,
+          "unacknowledged_ns": null,
+          "vr": 4,
+          "vs": 4
+        }
+      },
+      "media": {
+        "channel": 1,
+        "rx_delivered": 153600,
+        "rx_pending": 0,
+        "tx_non_ff": 167217,
+        "tx_octets": 183955
+      },
+      "media_peer": {
+        "error": "[Errno 32] Broken pipe",
+        "frames": 192,
+        "listen": true,
+        "octets_received": 153600,
+        "octets_sent": 153600,
+        "pending": 0,
+        "received_non_ff": 136704,
+        "sent_non_ff": 136971
+      },
+      "outbound_setup": {
+        "bearer_capability": "90 90 a2",
+        "low_layer_compatibility": null
+      },
+      "state": "multiple-frame-established",
+      "tei": 64,
+      "undecodable": 0,
+      "v120": null
+    },
+    "connect_result": "CONNECT 64000/ARQ/x2/LAPM",
+    "g711_peer": {
+      "error": "[Errno 32] Broken pipe",
+      "frames": 192,
+      "listen": true,
+      "octets_received": 153600,
+      "octets_sent": 153600,
+      "pending": 0,
+      "received_non_ff": 136704,
+      "sent_non_ff": 136971
+    },
+    "modem_connected": true,
+    "serial": "\r\nOK\r\n\r\nOK\r\n\r\nCONNECT 64000/ARQ/x2/LAPM\r\n",
+    "working_s_registers": {
+      "54": 0,
+      "56": 0,
+      "58": 48
+    },
+    "x2_connected": true
+  },
+  "prime_originate": false,
+  "product_type": "external",
+  "protocol": "x2",
+  "settings": "S54=0S58=48"
+}

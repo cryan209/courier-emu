@@ -1,0 +1,209 @@
+{
+  "addresses": [
+    "039f",
+    "ffd9",
+    "0322",
+    "03e3"
+  ],
+  "captures": [
+    [
+      417251850,
+      453406738,
+      133769,
+      7,
+      1,
+      66,
+      32768,
+      5,
+      65518
+    ]
+  ],
+  "amplitude_writes": [
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 184285
+    },
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 6445244
+    },
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 255892297
+    },
+    {
+      "address": 995,
+      "value": 0,
+      "pc": 32831,
+      "instruction": 268391557
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56081,
+      "instruction": 269252195
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 272813949
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 276363183
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 279910165
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 283459511
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 287009066
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 290558911
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 294108354
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 297658222
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 301207661
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 304757495
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 308307141
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 311856850
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 315406577
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 318956397
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 322506158
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56081,
+      "instruction": 376603731
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 384625463
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 392630019
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 400635581
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 408645316
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56676,
+      "instruction": 416650181
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56676,
+      "instruction": 425250646
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56694,
+      "instruction": 426488266
+    },
+    {
+      "address": 995,
+      "value": 18,
+      "pc": 56694,
+      "instruction": 427720899
+    },
+    {
+      "address": 995,
+      "value": 65518,
+      "pc": 56694,
+      "instruction": 428958403
+    },
+    {
+      "address": 995,
+      "value": 59774,
+      "pc": 58729,
+      "instruction": 489112728
+    }
+  ]
+}

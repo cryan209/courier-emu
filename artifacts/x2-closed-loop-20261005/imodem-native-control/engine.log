@@ -1,0 +1,70 @@
+[ME] V.34 datapath: floating point
+[ME] Modem mode: x2 (V.8 offer V34|V22)
+[ME] DTE framing: V.14 8N1
+[ME] V.92 TRN2u receiver: 4-point PAM, L_U=8000
+[ME] V.8 answer tone: ANSam/
+[ME] V.34 start profile: 3200 baud / 31200 bps
+[ME] env: ME_MODE=x2
+[DI] modem PTY slave: /dev/ttys001 (symlink: /private/tmp/imodem-native-control-pty)
+[ME] PCM law set to u-law (PCMU)
+[TRACE +0ms] SIP media connected: role=answerer
+[TRACE +0ms] enter V8: mode=x2 advertised mods=V34|V22
+[ME] SIP connected as answerer, starting V.8 handshake
+[ME] V.8 answer tone in use: ANSam/
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 result: status=5, modulations=0x804 pstn_access=0x0
+[TRACE +245ms] V8 result: status=Call function (CI) received (5) mods=V34|V22 (0x804) protocol=0x0 pstn=0x0 pcm=0x0
+[ME] V.8 peer offer: call function=V series modem data, modulations=none
+[ME] DTE framing (auto from V.8 protocol): V.14 8N1
+[ME] V.8 peer summary: protocol=None, PSTN=PSTN access unknown, PCM=PCM unavailable, NSF=absent, T.66=-1
+[ME] V.8 in progress (status=5)
+[ME] V.8 rx: RMS=2559.7 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=952.8 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 rx: RMS=682.8 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=4093.6 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 rx: RMS=2522.1 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=4093.6 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 rx: RMS=2641.0 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=4093.6 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 rx: RMS=2638.1 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=4093.6 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 result: status=1, modulations=0x804 pstn_access=0x4
+[TRACE +5340ms] V8 result: status=V.8 offered by the other party (1) mods=V34|V22 (0x804) protocol=0x0 pstn=0x4 pcm=0x0
+[ME] V.8 peer offer: call function=V series modem data, modulations=V.22/V.22bis duplex,V.32/V.32bis duplex,V.34 duplex
+[ME] DTE framing (auto from V.8 protocol): V.14 8N1
+[ME] V.8 peer summary: protocol=None, PSTN=DCE on digital, PCM=PCM unavailable, NSF=absent, T.66=-1
+[ME] V.8 in progress (status=1)
+[ME] V.8 rx: RMS=2636.0 (8000 samples) — audio OK
+[ME] V.8 tx: RMS=3429.0 (8000 samples)
+[ME] TX path: state=2 mod=0 fax_active=0 v34=0x0 v22bis=0x0
+[ME] V.8 result: status=2, modulations=0x804 pstn_access=0x4
+[TRACE +6112ms] V8 result: status=V.8 call negotiation successful (2) mods=V34|V22 (0x804) protocol=0x0 pstn=0x4 pcm=0x0
+[ME] V.8 peer offer: call function=V series modem data, modulations=V.22/V.22bis duplex,V.32/V.32bis duplex,V.34 duplex
+[ME] DTE framing (auto from V.8 protocol): V.14 8N1
+[ME] V.8 peer summary: protocol=None, PSTN=DCE on digital, PCM=PCM unavailable, NSF=absent, T.66=-1
+[ME] x2 digital startup: INFO0=3dff; waiting for CRC-valid peer marker (RX sample 48975)
+[TRACE +6113ms] X2 stage=INFO0 tx_sample=0 rx_sample=8000
+[TRACE +6469ms] X2 stage=TONE_A tx_sample=1960 rx_sample=9959
+[TRACE +6545ms] X2 stage=INFO0 tx_sample=2587 rx_sample=10587
+[TRACE +6625ms] X2 stage=TONE_A tx_sample=3241 rx_sample=11240
+[TRACE +6869ms] X2 stage=MARKER_WAIT tx_sample=5242 rx_sample=13241
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=3 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[TRACE +16767ms] X2 stage=FAILED tx_sample=85244 rx_sample=93243
+[ME] TX path: state=5 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=5 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+[ME] TX path: state=5 mod=5 fax_active=0 v34=0x0 v22bis=0x0
+closed loop: samples=159955 state=HANGUP modulation=X2 rx=159955 tx=159955
