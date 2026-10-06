@@ -230,6 +230,9 @@ class Uc:
         self.halted = False
         self.retired = 0
         self._native = None
+        # Per-vector policy for software INTs the native engine may retire
+        # itself (see x86_interpreter.cpp); None leaves every INT to Python.
+        self.native_int_mode: bytearray | None = None
         self._native_fast_out_ports: tuple[int, ...] = ()
         self._native_out_batch_callback: Callable[[memoryview, int], None] | None = None
         # A watched write can schedule device updates after the instruction

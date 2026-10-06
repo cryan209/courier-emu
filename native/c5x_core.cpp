@@ -1499,8 +1499,11 @@ uint64_t C5xCore::advance_timer(uint64_t elapsed)
         return 0;
     }
     const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
-    const uint64_t decrements = 1 + (elapsed - first) / period;
-    m_timer.psc = m_timer.tddr - int((elapsed - first) % period);
+    // A period of one is the usual setting, and avoids two 64-bit divisions
+    // on a path every retired instruction can reach.
+    const uint64_t decrements = period == 1 ? elapsed - first + 1
+        : 1 + (elapsed - first) / period;
+    m_timer.psc = m_timer.tddr - (period == 1 ? 0 : int((elapsed - first) % period));
     // Each underflow decrements TIM, which reaches zero after TIM of them
     // (65536 from zero) and then every PRD (65536 when PRD is zero).
     const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;

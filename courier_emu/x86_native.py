@@ -53,6 +53,7 @@ class NativeInterpreter:
         for port in cpu._native_fast_out_ports:
             self.fast_out[port] = 1
         self.io_events = bytearray(65536 * 4)
+        self.int_counts = bytearray(256 * 4)
         self.out_batch_callback = cpu._native_out_batch_callback
 
     def statistics(self):
@@ -60,6 +61,15 @@ class NativeInterpreter:
                 "zero_batches": self.zero_batches,
                 "instructions_per_batch": self.retired / max(1, self.batches),
                 "exits": self.exits.most_common(20)}
+
+    def take_interrupt_counts(self):
+        """Software INTs retired natively since the last call, by vector."""
+        counts = {
+            vector: int.from_bytes(self.int_counts[vector * 4:vector * 4 + 4], "little")
+            for vector in range(256)
+        }
+        self.int_counts[:] = bytes(len(self.int_counts))
+        return {vector: count for vector, count in counts.items() if count}
 
     def inject_interrupt(self, cpu, vector):
         return bool(self._inject_interrupt(cpu.regs, cpu.memory, vector))
@@ -80,7 +90,8 @@ class NativeInterpreter:
                     self.guard[first:last+1] = self.guard[first:last+1].translate(bytes(v | bit for v in range(256)))
             self.signature = signature
         done, reason, direction, port, size, value, event_count = self.run(
-            cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count
+            cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
+            cpu.native_int_mode, self.int_counts,
         )
         self.handled_io = reason == 8
         self.batches += 1

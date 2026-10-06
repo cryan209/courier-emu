@@ -1071,6 +1071,10 @@ class IsdnMachine:
             if self.with_dsp:
                 native_output_ports.extend(range(DOWNLOAD_PORTS.start, 0x60, 2))
             uc.native_out_batch_add(native_output_ports, apply_native_outputs)
+            # Software INTs enter through the vector table exactly as
+            # push_far does for a hardware interrupt (clearing IF and TF);
+            # the native engine takes them and counts them per vector.
+            uc.native_int_mode = bytearray(b"\x03" * 256)
 
             def service(_uc: Any, retired: int, _data: Any) -> None:
                 self.instructions = instruction_base + retired
@@ -1113,6 +1117,9 @@ class IsdnMachine:
             status = "error"
         if self.cpu_engine == "interpreter":
             self.instructions = instruction_base + uc.retired
+            native = getattr(uc, "_native", None)
+            if native is not None:
+                self.software_interrupts.update(native.take_interrupt_counts())
         if self._stop_reason is not None:
             status = self._stop_reason
 

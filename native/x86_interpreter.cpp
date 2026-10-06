@@ -10,6 +10,10 @@ struct Core {
     uint32_t r[14], saved[14], done=0, reason=0;
     uint32_t io_direction=0, io_port=0, io_size=0, io_value=0;
     const uint8_t *fast_out=nullptr;
+    // Per-vector software INT policy (bit 0: take it here, bit 1: clear IF/TF
+    // on entry) and a running count the harness merges into its own tally.
+    const uint8_t *int_mode=nullptr;
+    uint32_t *int_counts=nullptr;
     uint8_t *io_events=nullptr;
     uint32_t io_event_count=0, io_event_capacity=0;
     std::jmp_buf exit;
@@ -129,6 +133,19 @@ struct Core {
         case 0x61:{for(int k=DI;k>=BP;--k)r[k]=pop();pop();for(int k=BX;k>=AX;--k)r[k]=pop();break;}
         case 0x9a:{uint32_t off=fetch(2),cs=fetch(2);push(r[CS]);push(r[IP]);r[CS]=cs;r[IP]=off;break;}
         case 0xc4:case 0xc5:{int m=fetch();if(m>=192)yield();uint32_t a=ea(m),v=load(a,2),s=load(a+2,2);r[(m>>3)&7]=v;r[op==0xc4?ES:DS]=s;break;}
+        case 0xcd:{
+            // A vector the harness handles itself, or a null entry, leaves
+            // the instruction to the reference engine.
+            uint32_t n=fetch(),table=n*4;
+            if(!int_mode||!(int_mode[n]&1))yield();
+            uint32_t offset=load(table,2),segment=load(table+2,2);
+            if(!offset&&!segment)yield();
+            uint32_t flags=r[F]&65535;
+            push(flags);push(r[CS]);push(r[IP]);
+            r[F]=(int_mode[n]&2)?(flags&~(IF|0x100u)):r[F];
+            r[CS]=segment;r[IP]=offset;
+            if(int_counts)++int_counts[n];
+            break;}
         case 0xcf:r[IP]=pop();r[CS]=pop();r[F]=pop()|2;break;
         case 0xcb:r[IP]=pop();r[CS]=pop();break;
         case 0xc0:case 0xc1:case 0xd0:case 0xd1:case 0xd2:case 0xd3:{
@@ -192,7 +209,9 @@ static uint32_t run_batch(Core &c, uint32_t count) {
             }
             break;
         }
-        if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
+        if(opcode==0xcd&&c.int_mode&&(c.int_mode[c.mem[c.phys(c.r[CS],c.r[IP]+1)]]&1)) {
+            // Handled by step() below.
+        } else if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
         std::memcpy(c.saved,c.r,sizeof(c.r));
         c.step();
         for(int j=0;j<c.nw;++j){const auto &w=c.writes[j];for(int i=0;i<w.size;++i)c.mem[w.address+i]=w.value>>(8*i);}
@@ -208,9 +227,10 @@ extern "C" uint32_t courier_x86_run(uint32_t *regs,uint8_t *mem,const uint8_t *g
 #include <Python.h>
 static PyObject *run_python(PyObject *, PyObject *args) {
     PyObject *registers, *memory, *guard, *fast_out, *io_events;
+    PyObject *int_mode = Py_None, *int_counts = Py_None;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOOOI", &registers, &memory, &guard,
-        &fast_out, &io_events, &count)) return nullptr;
+    if (!PyArg_ParseTuple(args, "OOOOOI|OO", &registers, &memory, &guard,
+        &fast_out, &io_events, &count, &int_mode, &int_counts)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
         !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
@@ -232,6 +252,15 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     c.io_event_capacity=uint32_t(PyByteArray_GET_SIZE(io_events)/4);
     c.mask=uint32_t(PyByteArray_GET_SIZE(memory)-1);
     c.is386=c.mask==0xffffff;
+    if (int_mode != Py_None && int_counts != Py_None) {
+        if (!PyByteArray_Check(int_mode) || PyByteArray_GET_SIZE(int_mode)!=256 ||
+            !PyByteArray_Check(int_counts) || PyByteArray_GET_SIZE(int_counts)!=1024) {
+            PyErr_SetString(PyExc_ValueError,"invalid native interrupt tables");
+            return nullptr;
+        }
+        c.int_mode=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(int_mode));
+        c.int_counts=reinterpret_cast<uint32_t*>(PyByteArray_AS_STRING(int_counts));
+    }
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.
     // Running directly on Core also avoids two redundant full-state copies.

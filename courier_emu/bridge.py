@@ -162,6 +162,10 @@ LANE_BANKS = 6
 # each way, put enough delay on a 403 pair that it stopped training at all.
 # See _queue_line_audio.
 RX_CUSHION_SAMPLES = 32
+# Codec samples to accumulate, and the most service chunks to wait for them,
+# before the line exchange runs (see _service_line).
+LINE_SERVICE_MIN_SAMPLES = 16
+LINE_SERVICE_MAX_SKIP = 8
 LANE_RX_ACK_PORT = 0x1A
 LANE_FIRST_PORT = 0x40
 LANE_DSP_FIRST = 0x58
@@ -678,6 +682,7 @@ class CourierDspBridge:
         self.timebase: Timebase = DEFAULT_COURIER
         self.dsp_cycles_per_x86 = DEFAULT_COURIER.dsp_cycles_per_x86
         self._line_instructions = 0
+        self._line_service_skipped = 0
         # The ASIC's 16-bit status latch, as the CPU reads it at 0x5c/0x5e.
         # Not a C50 register: see `_publish_connected_event`.
         self._status_latch = 0
@@ -928,7 +933,7 @@ class CourierDspBridge:
 
     def _negotiation_audio_status(self) -> dict[str, int]:
         """Summarize the latest codec frame at the V.8 signaling frequencies."""
-        written = self.core.serial_state().get("line_tx_writes", 0)
+        written = self.core.line_tx_writes()
         samples = self.core.line_tx_samples(max(0, written - DAA_FRAME_SAMPLES))
         if not samples:
             return {"samples": 0, "rms": 0}
@@ -2678,6 +2683,15 @@ class CourierDspBridge:
         """
         if self._dsp_cycle_debt < 1:
             return
+        step_cycles = getattr(self.core, "step_cycles", None)
+        if step_cycles is not None:
+            # One native call runs to the cycle target, skipping IDLE spans
+            # that no modelled event can interrupt.
+            ran, elapsed = step_cycles(max(1, int(self._dsp_cycle_debt)))
+            self._dsp_cycle_debt -= elapsed
+            if ran > 0:
+                self._dsp_cpi = 0.9 * self._dsp_cpi + 0.1 * max(1.0, elapsed / ran)
+            return
         state = self.core.state()
         start_cycles, start_instructions = state["cycles"], state["instructions"]
         target = start_cycles + int(self._dsp_cycle_debt)
@@ -3072,8 +3086,8 @@ class CourierDspBridge:
             self._maybe_start_originate_engine()
             if self._call_resume_pending:
                 self._resume_armed_call()
-            serial = self.core.serial_state()
-            self._maybe_assist_t1_acquisition(serial)
+            if self.rx_acquisition_assist:
+                self._maybe_assist_t1_acquisition(self.core.serial_state())
             self._run_dsp_cycles()
             self._collect_dsp_messages()
             if (
@@ -3147,7 +3161,7 @@ class CourierDspBridge:
         # codec receive queue five times faster than the DSP drained it: the
         # datapump was hearing the line about forty seconds late, which is to
         # say it was hearing whatever was on it before the call came up.
-        produced = self.core.serial_state().get("line_tx_writes", 0)
+        produced = self.core.line_tx_writes()
         if produced == self._exchange_codec_last:
             # No codec clock yet - before the download, or a stalled core. The
             # line still has to run, so fall back to the instruction clock at
@@ -3296,7 +3310,7 @@ class CourierDspBridge:
             # Pace on the AC01/03 serial stream.  This is the same changing
             # codec rate used by _take_line_audio, so one codec-to-line
             # conversion determines both frame cadence and frame contents.
-            frames = self.core.serial_state()['line_tx_writes']
+            frames = self.core.line_tx_writes()
             elapsed = max(0, frames - self._audio_codec_frames)
             self._audio_codec_frames = frames
             rate = self.codec_sample_rate()
@@ -3315,7 +3329,20 @@ class CourierDspBridge:
         # 1800 Hz guard tone 1500 - so neither end could train on the other.
         # `_take_line_audio` is the conversion the audio-only path already
         # uses, and it buffers, because six codec samples are five line ones.
-        produced = self.core.serial_state().get("line_tx_writes", 0)
+        produced = self.core.line_tx_writes()
+        # The codec yields a couple of samples per service chunk, and frames
+        # are cut on whole-sample counts, so servicing every chunk only adds
+        # per-call overhead. Wait for a useful batch, but never longer than
+        # LINE_SERVICE_MAX_SKIP chunks, so a stalled clock is still noticed
+        # on the same instruction schedule (the skipped chunks are credited
+        # to the fallback timer below).
+        if (
+            0 < produced - self._line_codec_last < LINE_SERVICE_MIN_SAMPLES
+            and self._line_service_skipped < LINE_SERVICE_MAX_SKIP
+        ):
+            self._line_service_skipped += 1
+            return
+        skipped, self._line_service_skipped = self._line_service_skipped, 0
         self._take_line_audio()
         self._line_service["calls"] += 1
         if produced == self._line_codec_last:
@@ -3326,7 +3353,7 @@ class CourierDspBridge:
             # clock at the same nominal frame. What it ships is the silence
             # the AC01 would be clocking out anyway.
             off_hook = self.daa is not None and self.daa.off_hook
-            self._line_instructions += self.batch
+            self._line_instructions += self.batch * (1 + skipped)
             if self._line_instructions < LINE_FRAME_INSTRUCTIONS:
                 return
             if (

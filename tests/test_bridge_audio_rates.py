@@ -7,14 +7,17 @@ import math
 class _Core:
     def __init__(self, *, codec_rate=8_000.0):
         self.codec_sample_rate = codec_rate
-        self.line_tx_writes = 0
+        self.writes = 0
         self.samples = []
 
     def line_tx_samples(self, start=0):
         return self.samples[start:]
 
+    def line_tx_writes(self):
+        return self.writes
+
     def serial_state(self):
-        return {"line_tx_writes": self.line_tx_writes}
+        return {"line_tx_writes": self.writes}
 
 
 def test_transmit_audio_is_converted_once_from_codec_to_line_rate():
@@ -81,7 +84,7 @@ def test_audio_line_frames_are_paced_at_codec_rate():
 
     # A 100 ms wire frame is 720 codec samples in the 7.2 kHz mode.  Internal
     # datapump timing must not change this codec/line boundary.
-    bridge.core.line_tx_writes = 720
+    bridge.core.writes = 720
     bridge._service_line()
     assert serviced == [True]
     assert bridge._audio_line_samples_due == 0

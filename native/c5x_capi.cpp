@@ -545,6 +545,22 @@ uint16_t courier_c5x_get_line_tx_sample(void *handle, std::size_t index)
     return index < samples.size() ? samples[index] : 0;
 }
 
+uint64_t courier_c5x_get_line_tx_writes(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->serial_state().line_tx_writes : 0;
+}
+
+std::size_t courier_c5x_get_line_tx_samples(void *handle, std::size_t first,
+    uint16_t *values, std::size_t capacity)
+{
+    if (!handle) return 0;
+    const auto &samples = static_cast<C5xCore *>(handle)->line_tx_samples();
+    if (first >= samples.size()) return 0;
+    const std::size_t count = std::min(capacity, samples.size() - first);
+    std::copy_n(samples.begin() + first, count, values);
+    return count;
+}
+
 std::size_t courier_c5x_get_line_tx_clock_events(void *handle, uint64_t *values, std::size_t count)
 {
     if (!handle) return 0;

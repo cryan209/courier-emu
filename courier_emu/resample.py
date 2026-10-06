@@ -39,6 +39,10 @@ CUTOFF = 0.98
 # nearest one; at 1024 that timing error is under 0.1 us at 8 kHz.
 PHASES = 1024
 
+# C-implemented dot product where the interpreter has one (3.12+); the FIR
+# below runs it once per output sample.
+_dot = getattr(math, "sumprod", None) or (lambda a, b: sum(map(mul, a, b)))
+
 
 def _bessel_i0(x: float) -> float:
     total, term, k = 1.0, 1.0, 1
@@ -145,7 +149,7 @@ class BandLimitedResampler:
                 phase = round((instant - times[center]) * input_rate * PHASES)
                 if phase == PHASES:
                     base, phase = base + 1, 0
-                value = sum(map(mul, kernel[phase], history[base:base + TAPS]))
+                value = _dot(kernel[phase], history[base:base + TAPS])
             else:
                 # A clock edge creates two spacings in the same window.
                 # Integrate over their actual times, with local sample widths,
@@ -210,7 +214,7 @@ class BandLimitedResampler:
                 base, phase = base + 1, 0
                 if base > limit:
                     break
-            value = sum(map(mul, kernel[phase], history[base:base + TAPS]))
+            value = _dot(kernel[phase], history[base:base + TAPS])
             result.append(max(-32768, min(32767, int(round(value)))))
             position += step
         consumed = len(history) - TAPS

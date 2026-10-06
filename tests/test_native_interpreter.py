@@ -247,3 +247,56 @@ def test_pusha_watchpoint_rolls_back_all_native_stores(profile):
     assert logs[0] == logs[1]
     assert slow.regs == fast.regs
     assert slow.memory == fast.memory
+
+
+def _enter_vector(cpu, number):
+    """What the harness's INT hook does for a populated vector (isdn.push_far)."""
+    entry = cpu.memory[number * 4:number * 4 + 4]
+    offset, segment = entry[0] | entry[1] << 8, entry[2] | entry[3] << 8
+    if not offset and not segment:
+        return False
+    regs = cpu.regs
+    flags = regs[x86.UC_X86_REG_FLAGS] & 0xFFFF
+    for value in (flags, regs[x86.UC_X86_REG_CS], regs[x86.UC_X86_REG_IP]):
+        regs[x86.UC_X86_REG_SP] = (regs[x86.UC_X86_REG_SP] - 2) & 0xFFFF
+        address = regs[x86.UC_X86_REG_SS] * 16 + regs[x86.UC_X86_REG_SP]
+        cpu.memory[address:address + 2] = value.to_bytes(2, "little")
+    regs[x86.UC_X86_REG_FLAGS] = flags & ~0x0300
+    regs[x86.UC_X86_REG_CS], regs[x86.UC_X86_REG_IP] = segment, offset
+    return True
+
+
+@pytest.mark.parametrize("profile", ["186eb", "386ex"])
+def test_native_software_interrupt_matches_the_harness_hook(profile):
+    slow, fast = pair(profile)
+    seen = [[], []]
+    # int 30h twice through a populated vector, then int 31h through a null
+    # one, which the native engine must leave to the hook.
+    program = bytes.fromhex("b8 05 00 cd 30 cd 30 fb cd 31 90")
+    handler = bytes.fromhex("40 cf")  # inc ax; iret
+    for cpu, log in zip((slow, fast), seen):
+        cpu.memory[0x100:0x100 + len(program)] = program
+        cpu.memory[0x2000:0x2000 + len(handler)] = handler
+        cpu.memory[0x30 * 4:0x30 * 4 + 4] = (0x0000).to_bytes(2, "little") + (0x200).to_bytes(2, "little")
+        cpu.regs[x86.UC_X86_REG_CS] = 0
+        cpu.regs[x86.UC_X86_REG_SS] = 0
+        cpu.regs[x86.UC_X86_REG_SP] = 0x8000
+        cpu.regs[x86.UC_X86_REG_IP] = 0x100
+        cpu.regs[x86.UC_X86_REG_FLAGS] = 0x202
+
+        def on_interrupt(uc, number, log):
+            log.append(number)
+            if not _enter_vector(uc, number):
+                uc.emu_stop()
+
+        cpu.hook_add(x86.UC_HOOK_INTR, on_interrupt, log)
+    fast.native_int_mode = bytearray(b"\x03" * 256)
+    for cpu in (slow, fast):
+        cpu.emu_start(0x100, 0, count=40)
+    assert slow.regs == fast.regs
+    assert slow.memory == fast.memory
+    # Only the null vector reaches the hook on the native engine.
+    assert seen[0] == [0x30, 0x30, 0x31]
+    assert seen[1] == [0x31]
+    assert fast._native.take_interrupt_counts() == {0x30: 2}
+    assert fast._native.take_interrupt_counts() == {}

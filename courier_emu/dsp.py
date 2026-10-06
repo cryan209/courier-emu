@@ -60,6 +60,9 @@ def build_library(*, force: bool = False) -> Path:
     link_flags = ["-dynamiclib"] if sys.platform == "darwin" else ["-shared", "-fPIC"]
     command = [
         "c++", "-std=c++17", "-O3", "-Wall", "-Wextra", "-Wpedantic",
+        # Calls inside the library must not go through the PLT (and so can be
+        # inlined): the core's accessors run several times per DSP instruction.
+        "-fno-semantic-interposition",
         *link_flags,
         *(str(source) for source in LIBRARY_SOURCES[:3]),
         "-o", str(LIBRARY),
@@ -388,6 +391,12 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
+        lib.courier_c5x_get_line_tx_writes.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_line_tx_writes.restype = ctypes.c_uint64
+        lib.courier_c5x_get_line_tx_samples.argtypes = [
+            ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint16),
+            ctypes.c_size_t]
+        lib.courier_c5x_get_line_tx_samples.restype = ctypes.c_size_t
         lib.courier_c5x_get_line_tx_clock_events.argtypes = [
             ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_clock_events.restype = ctypes.c_size_t
@@ -426,23 +435,35 @@ class NativeC5x:
         self.library.courier_c5x_reset(self.handle)
 
     def step(self, count: int) -> None:
-        error = ctypes.create_string_buffer(512)
+        error = self._error_buffer
         result = self.library.courier_c5x_step(self.handle, count, error, len(error))
         if result:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
 
     def step_cycles(self, count: int) -> tuple[int, int]:
         """Run until at least ``count`` additional clock cycles have elapsed."""
-        instructions = ctypes.c_uint64()
-        cycles = ctypes.c_uint64()
-        error = ctypes.create_string_buffer(512)
+        # Called every service chunk: the output cells and error buffer are
+        # allocated once per core rather than once per call.
+        cells = self.__dict__.get("_step_cycles_cells")
+        if cells is None:
+            instructions, cycles = ctypes.c_uint64(), ctypes.c_uint64()
+            cells = self._step_cycles_cells = (
+                instructions, cycles, ctypes.byref(instructions),
+                ctypes.byref(cycles), self._error_buffer)
+        instructions, cycles, instructions_ref, cycles_ref, error = cells
         result = self.library.courier_c5x_step_cycles(
-            self.handle, count, ctypes.byref(instructions), ctypes.byref(cycles),
-            error, len(error),
+            self.handle, count, instructions_ref, cycles_ref, error, len(error),
         )
         if result:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
         return instructions.value, cycles.value
+
+    @property
+    def _error_buffer(self):
+        buffer = self.__dict__.get("_shared_error_buffer")
+        if buffer is None:
+            buffer = self._shared_error_buffer = ctypes.create_string_buffer(512)
+        return buffer
 
     def advance_imodem(
         self, count: int, tx_start: int
@@ -832,7 +853,11 @@ class NativeC5x:
         Zero until the firmware has programmed them, which is the caller's cue
         that there is nothing to resample to yet.
         """
-        return self.codec_state()["sample_rate"]
+        values = self.__dict__.get("_codec_rate_cells")
+        if values is None:
+            values = self._codec_rate_cells = (ctypes.c_uint64 * 36)()
+        self.library.courier_c5x_get_codec_state(self.handle, values, len(values))
+        return values[10] / 1000.0
 
     def set_codec_mclk(self, hz: int) -> None:
         self.library.courier_c5x_set_codec_mclk(self.handle, int(hz))
@@ -974,8 +999,10 @@ class NativeC5x:
             "last_read_pc", "last_write_pc",
         )
         result: dict[str, dict[str, int]] = {}
+        values = self.__dict__.get("_port_stat_cells")
+        if values is None:
+            values = self._port_stat_cells = (ctypes.c_uint64 * len(names))()
         for port in ports:
-            values = (ctypes.c_uint64 * len(names))()
             self.library.courier_c5x_get_io_port_stats(
                 self.handle, port, values, len(values)
             )
@@ -1001,13 +1028,18 @@ class NativeC5x:
             self.handle, phase, buffer, count)
         return [value - 0x10000 if value & 0x8000 else value for value in buffer]
 
+    def line_tx_writes(self) -> int:
+        return self.library.courier_c5x_get_line_tx_writes(self.handle)
+
     def line_tx_samples(self, start: int = 0) -> list[int]:
-        count = self.serial_state()["line_tx_writes"]
-        samples = [
-            int(self.library.courier_c5x_get_line_tx_sample(self.handle, index))
-            for index in range(max(0, start), count)
-        ]
-        return [sample - 0x10000 if sample & 0x8000 else sample for sample in samples]
+        first = max(0, start)
+        count = self.line_tx_writes() - first
+        if count <= 0:
+            return []
+        buffer = (ctypes.c_uint16 * count)()
+        got = self.library.courier_c5x_get_line_tx_samples(
+            self.handle, first, buffer, count)
+        return [value - 0x10000 if value & 0x8000 else value for value in buffer[:got]]
 
     def line_tx_clock_events(self) -> list[tuple[int, float]]:
         count = self.library.courier_c5x_get_line_tx_clock_events(self.handle, None, 0)
