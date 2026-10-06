@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
+#include <stdexcept>
 
 using courier::C5xCore;
 
