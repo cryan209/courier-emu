@@ -624,11 +624,19 @@ class BriNetwork:
             stream = dsc.bearer_tx[channel]
             start = self._media_tx_cursor[channel]
             if active and channel == self.media_channel:
-                fresh = bytes(stream[start:])
+                tail = getattr(stream, "tail", None)
+                if tail is not None:
+                    # Native-backed stream: the bytes and the length in one call.
+                    fresh, length = tail(start)
+                else:
+                    fresh = bytes(stream[start:])
+                    length = len(stream)
                 # Output recorded before CONNECT would be the idle DS0, not
                 # call media, and the cursor keeps it from appearing as such.
                 self.media_tx.extend(fresh)
-            self._media_tx_cursor[channel] = len(stream)
+                self._media_tx_cursor[channel] = length
+            else:
+                self._media_tx_cursor[channel] = len(stream)
         peer = self.v120 if self.v120 is not None else self.media_peer
         if peer is not None and hasattr(peer, "clock"):
             # A far end with a frame clock of its own - a socket line - takes

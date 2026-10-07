@@ -1182,6 +1182,8 @@ class IsdnMachine:
                     self._ledger.rx_present = mailbox.rx is not None
                     native_io.configure(core.handle if live else None, live)
 
+                if os.environ.get("COURIER_NATIVE_BEARER", "1") != "0":
+                    self.mailbox.attach_native_bearer()
                 self.mailbox.enable_pcm_batch()
                 self._pcm_batch = self.mailbox.pcm_batch
                 self._refresh_native_io = refresh_native_io

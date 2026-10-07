@@ -83,6 +83,9 @@ class ImodemDsp(ImodemMailbox):
 
     def __init__(self, dsc=None, *, foreground_overlay_assist=False):
         self._sh = ImodemShared()
+        # The native B-channel path, once attach_native_bearer has set it up.
+        self._nb = None
+        self._pcm_partial_py = b''
         # Network-side halves of frames taken early and not yet finished.
         self._ahead = deque()
         self._ahead_state = None
@@ -126,6 +129,43 @@ class ImodemDsp(ImodemMailbox):
         # instruction, which sizes each step so it does not overshoot.
         self._cycle_debt = 0.0
         self._cpi = 1.35
+
+    # The odd octet of a frame that was split between two exchanges: native
+    # memory once the native bearer is attached.
+    @property
+    def _pcm_partial(self):
+        return self._nb.partial if self._nb is not None else self._pcm_partial_py
+
+    @_pcm_partial.setter
+    def _pcm_partial(self, value):
+        if self._nb is not None:
+            self._nb.partial = value
+        else:
+            self._pcm_partial_py = value
+
+    def attach_native_bearer(self):
+        """Run the B-channel exchange natively (see native_bearer.py).
+
+        Only with a DSC that can keep its queues in native memory and nothing
+        yet in flight; returns whether it did.
+        """
+        dsc = self.dsc
+        if (self._nb is not None or dsc is None or self._ahead
+                or len(self.pcm_tx) or self._pcm_partial
+                or not hasattr(dsc, 'enable_native_bearer')):
+            return False
+        from .native_bearer import PCM, AheadView, NativeBearer, Stream
+        bearer = NativeBearer()
+        dsc.enable_native_bearer(bearer)
+        self._nb = bearer
+        self.pcm_tx = Stream(bearer, PCM)
+        self._ahead = AheadView(bearer)
+        return True
+
+    def _publish_mode(self):
+        """Tell the native path which channels carry the call and what batching is allowed."""
+        self._nb.set_mode(self.lookahead_channels, self.pcm_frame_service is not None,
+                          PCM_LOOKAHEAD_FRAMES if PCM_BATCH_FRAMES else 0)
 
     def close(self):
         if self.core is not None and self._ahead:
@@ -413,24 +453,35 @@ class ImodemDsp(ImodemMailbox):
             octets = self.core.g711_tx(sh.pcm_cursor)
         sh.tx_pending = 0
         sh.pcm_cursor += len(octets)
-        self.pcm_tx.extend(octets)
-        if self.dsc is None or not octets:
-            return
-        # The serial port is in sixteen-bit word format - the firmware writes
-        # SPC = 40c8, so FO is clear - and at 8 kHz that is two eight-bit
-        # peripheral-port time slots per 125 us frame, MSB first. The core
-        # hands them over and takes them back in that order, so a frame is a
-        # pair: the first slot, then the second. An odd octet at the end of a
-        # scheduler slice is half a frame and waits for its other half rather
-        # than being clocked as a whole one.
-        pending = self._pcm_partial + octets
-        self._pcm_partial = pending[len(pending) - len(pending) % PP_SLOTS:]
+        nb = self._nb
+        if nb is not None and octets:
+            # Every frame the native path can settle is settled there, and its
+            # octets recorded; what it leaves - from a frame it does not keep
+            # the books for - is done below.
+            self._publish_mode()
+            pending = nb.exchange(self.core.handle, octets)
+            if not pending:
+                return
+            self._pcm_partial = pending[len(pending) - len(pending) % PP_SLOTS:]
+        else:
+            self.pcm_tx.extend(octets)
+            if self.dsc is None or not octets:
+                return
+            # The serial port is in sixteen-bit word format - the firmware writes
+            # SPC = 40c8, so FO is clear - and at 8 kHz that is two eight-bit
+            # peripheral-port time slots per 125 us frame, MSB first. The core
+            # hands them over and takes them back in that order, so a frame is a
+            # pair: the first slot, then the second. An odd octet at the end of a
+            # scheduler slice is half a frame and waits for its other half rather
+            # than being clocked as a whole one.
+            pending = self._pcm_partial + octets
+            self._pcm_partial = pending[len(pending) - len(pending) % PP_SLOTS:]
         incoming = bytearray()
         dsc = self.dsc
         slots = dsc.peripheral_slots(PP_SLOTS)
         ahead = self._ahead
         frames = len(pending) // PP_SLOTS
-        if (ahead and frames and len(ahead) >= frames
+        if (nb is None and ahead and frames and len(ahead) >= frames
                 and self.pcm_frame_service is None):
             # Several frames whose network side was settled early: finish them
             # in one go if the routing allows.
@@ -468,12 +519,19 @@ class ImodemDsp(ImodemMailbox):
         """Whether frames fed ahead were settled under the DSC's current state."""
         if not self._ahead:
             return True
+        if self._nb is not None:
+            self._publish_mode()
+            return self._nb.lookahead_valid()
         dsc = self.dsc
         return self._ahead_state == dsc.bearer_state(self.lookahead_channels)
 
     def prefeed(self):
         """Keep the core's receive queue fed a few frames ahead (see PCM_BATCH_FRAMES)."""
         if not PCM_BATCH_FRAMES or self.dsc is None or self.core is None:
+            return
+        if self._nb is not None:
+            self._publish_mode()
+            self._nb.prefeed(self.core.handle)
             return
         if self._ahead and not self._lookahead_valid():
             self.cancel_lookahead()
@@ -519,6 +577,9 @@ class ImodemDsp(ImodemMailbox):
         """Hand back receive octets fed ahead, before the MUX's routing changes."""
         ahead = self._ahead
         if not ahead:
+            return
+        if self._nb is not None:
+            self._nb.cancel(self.core.handle if self.core is not None else None)
             return
         if self.core is not None:
             self.core.drop_g711_rx_tail(PP_SLOTS * len(ahead))

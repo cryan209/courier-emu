@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "c5x_core.h"
+#include "bearer.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -1203,3 +1204,188 @@ extern "C" void courier_c5x_get_codec_state(void *handle, uint64_t *values, std:
     };
     std::copy(std::begin(result), std::end(result), values);
 }
+
+// ---- the B-channel path (bearer.hpp); see native_bearer.py for the Python side ----
+
+using courier::Bearer;
+
+extern "C" {
+
+void *courier_bearer_create() { return new Bearer(); }
+void courier_bearer_destroy(void *handle) { delete static_cast<Bearer *>(handle); }
+
+// Streams: kind 0 = rx queue (channel 0/1), 1 = tx, 2 = heard, 3 = pcm_tx (channel ignored).
+std::size_t courier_bearer_length(void *handle, int kind, int channel)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    switch (kind) {
+    case 0: return b->rx[channel].size();
+    case 1: return b->tx[channel].size();
+    case 2: return b->heard[channel].size();
+    default: return b->pcm_tx.size();
+    }
+}
+
+// Copy [start, stop) of a tx/heard/pcm stream, or of the rx queue, to `out`.
+std::size_t courier_bearer_read(void *handle, int kind, int channel,
+    std::size_t start, std::size_t stop, uint8_t *out)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    if (kind == 0) {
+        const auto &queue = b->rx[channel];
+        stop = std::min(stop, queue.size());
+        for (std::size_t index = start; index < stop; ++index) *out++ = queue[index];
+        return stop > start ? stop - start : 0;
+    }
+    const std::vector<uint8_t> &stream =
+        kind == 1 ? b->tx[channel] : kind == 2 ? b->heard[channel] : b->pcm_tx;
+    stop = std::min(stop, stream.size());
+    if (start >= stop) return 0;
+    std::memcpy(out, stream.data() + start, stop - start);
+    return stop - start;
+}
+
+// The stream's length, and a copy of everything from `start` on (up to `capacity`).
+std::size_t courier_bearer_tail(void *handle, int kind, int channel,
+    std::size_t start, uint8_t *out, std::size_t capacity)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    const std::vector<uint8_t> &stream =
+        kind == 1 ? b->tx[channel] : kind == 2 ? b->heard[channel] : b->pcm_tx;
+    const std::size_t total = stream.size();
+    if (start < total)
+        std::memcpy(out, stream.data() + start, std::min(total - start, capacity));
+    return total;
+}
+
+void courier_bearer_append(void *handle, int kind, int channel,
+    const uint8_t *data, std::size_t count)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    switch (kind) {
+    case 0: b->rx[channel].insert(b->rx[channel].end(), data, data + count); break;
+    case 1: b->tx[channel].insert(b->tx[channel].end(), data, data + count); break;
+    case 2: b->heard[channel].insert(b->heard[channel].end(), data, data + count); break;
+    default: b->pcm_tx.insert(b->pcm_tx.end(), data, data + count); break;
+    }
+}
+
+// rx queue: pop the front (returns -1 when empty) or push to the front.
+int courier_bearer_rx_popleft(void *handle, int channel)
+{
+    auto &queue = static_cast<Bearer *>(handle)->rx[channel];
+    if (queue.empty()) return -1;
+    const int value = queue.front();
+    queue.pop_front();
+    return value;
+}
+void courier_bearer_rx_appendleft(void *handle, int channel, int value)
+{
+    static_cast<Bearer *>(handle)->rx[channel].push_front(uint8_t(value));
+}
+void courier_bearer_rx_clear(void *handle, int channel)
+{
+    static_cast<Bearer *>(handle)->rx[channel].clear();
+}
+
+// Scalars: 0 routed[0], 1 routed[1], 2 frames, 3 fed[0], 4 fed[1].
+uint64_t courier_bearer_get(void *handle, int which)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    switch (which) {
+    case 0: return b->routed[0];
+    case 1: return b->routed[1];
+    case 2: return b->frames;
+    case 3: return b->fed[0];
+    default: return b->fed[1];
+    }
+}
+void courier_bearer_set(void *handle, int which, uint64_t value)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    switch (which) {
+    case 0: b->routed[0] = value; break;
+    case 1: b->routed[1] = value; break;
+    case 2: b->frames = value; break;
+    case 3: b->fed[0] = value != 0; break;
+    default: b->fed[1] = value != 0; break;
+    }
+}
+
+void courier_bearer_configure(void *handle, int activated, unsigned route_count,
+    const uint8_t *routes, const uint8_t *slots, uint64_t generation)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    b->activated = activated != 0;
+    b->route_count = std::min(route_count, 3u);
+    for (unsigned index = 0; index < b->route_count; ++index) {
+        b->routes[index][0] = routes[2 * index];
+        b->routes[index][1] = routes[2 * index + 1];
+    }
+    for (unsigned index = 0; index < courier::BEARER_SLOTS; ++index) b->slot[index] = slots[index];
+    b->generation = generation;
+}
+
+void courier_bearer_set_mode(void *handle, uint32_t channels, int frame_service,
+    unsigned lookahead_frames)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    b->channels = channels;
+    b->frame_service = frame_service != 0;
+    b->lookahead_frames = lookahead_frames;
+}
+
+std::size_t courier_bearer_ahead_count(void *handle)
+{
+    return static_cast<Bearer *>(handle)->ahead.size();
+}
+int courier_bearer_lookahead_valid(void *handle)
+{
+    return static_cast<Bearer *>(handle)->lookahead_valid() ? 1 : 0;
+}
+// Pop the oldest settled frame: in1, in2, taken, heard packed in a word.
+// Returns -1 when none.
+int64_t courier_bearer_ahead_popleft(void *handle)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    if (b->ahead.empty()) return -1;
+    const auto entry = b->ahead.front();
+    b->ahead.pop_front();
+    return int64_t(entry.in[0]) | int64_t(entry.in[1]) << 8
+        | int64_t(entry.taken) << 16 | int64_t(entry.heard) << 24;
+}
+void courier_bearer_ahead_clear(void *handle)
+{
+    static_cast<Bearer *>(handle)->ahead.clear();
+}
+void courier_bearer_cancel(void *handle, void *core)
+{
+    static_cast<Bearer *>(handle)->cancel_lookahead(static_cast<C5xCore *>(core));
+}
+void courier_bearer_prefeed(void *handle, void *core)
+{
+    static_cast<Bearer *>(handle)->prefeed(static_cast<C5xCore *>(core));
+}
+// Settle what the C5x transmitted; returns how many octets are left in
+// `remainder` for the harness (0: all done).
+std::size_t courier_bearer_exchange(void *handle, void *core, const uint8_t *octets,
+    std::size_t count, uint8_t *remainder)
+{
+    return static_cast<Bearer *>(handle)->exchange(
+        static_cast<C5xCore *>(core), octets, count, remainder);
+}
+std::size_t courier_bearer_partial(void *handle, uint8_t *out)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    if (!b->partial_valid) return 0;
+    *out = b->partial;
+    return 1;
+}
+void courier_bearer_set_partial(void *handle, const uint8_t *data, std::size_t count)
+{
+    auto *b = static_cast<Bearer *>(handle);
+    b->partial_valid = count != 0;
+    if (count) b->partial = data[count - 1];
+}
+
+}  // extern "C"

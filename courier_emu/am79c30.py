@@ -299,7 +299,7 @@ class Am79C30:
     # AMD Am79C30A/32A data sheet, MUX control registers, table 18.
     bearer_rx: dict = field(default_factory=lambda: {1: deque(), 2: deque()})
     bearer_tx: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
-    bearer_frames: int = 0
+    _bearer_frames: int = 0
     # Bumped whenever what a bearer frame depends on changes: the line coming
     # up or going down, and the MUX and peripheral-port registers.
     bearer_generation: int = 0
@@ -313,6 +313,43 @@ class Am79C30:
     bearer_rx_heard: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
     # Offsets into bearer_rx_heard where an underrun spliced in an idle fill.
     bearer_underrun_at: dict = field(default_factory=lambda: {1: [], 2: []})
+
+    @property
+    def bearer_frames(self) -> int:
+        nb = self.__dict__.get("_nb")
+        return nb.get(2) if nb is not None else self._bearer_frames
+
+    @bearer_frames.setter
+    def bearer_frames(self, value: int) -> None:
+        nb = self.__dict__.get("_nb")
+        if nb is not None:
+            nb.set(2, value)
+        else:
+            self._bearer_frames = value
+
+    def enable_native_bearer(self, bearer) -> None:
+        """Keep the B-channel queues in native memory (see native_bearer.py).
+
+        Only before anything is in them: the containers are replaced, not
+        converted.
+        """
+        from .native_bearer import HEARD, TX, Flags, Routed, RxQueue, Stream
+        assert not any(self.bearer_rx[c] or self.bearer_tx[c] or self.bearer_rx_heard[c]
+                       for c in (1, 2)) and not self._bearer_frames
+        self._nb = bearer
+        self.bearer_rx = {1: RxQueue(bearer, 1), 2: RxQueue(bearer, 2)}
+        self.bearer_tx = {1: Stream(bearer, TX, 1), 2: Stream(bearer, TX, 2)}
+        self.bearer_rx_heard = {1: Stream(bearer, HEARD, 1), 2: Stream(bearer, HEARD, 2)}
+        self.bearer_rx_fed = Flags(bearer)
+        self.bearer_routed = Routed(bearer)
+        self._bearer_changed()
+
+    def _bearer_changed(self) -> None:
+        """Tell the native path what routing the next frame will see."""
+        nb = self.__dict__.get("_nb")
+        if nb is not None:
+            nb.configure(self.activated, self.bearer_routes(),
+                         self.peripheral_slots(2), self.bearer_generation)
 
     def bearer_routes(self) -> list[tuple[int, int]]:
         routes = []
@@ -527,6 +564,7 @@ class Am79C30:
             return
         self.liu_state = state
         self.bearer_generation += 1
+        self._bearer_changed()
         self.ir |= IR_LIU
 
     def activate(self) -> None:
@@ -684,6 +722,7 @@ class Am79C30:
         block[self.cursor] = value & 0xFF
         if register in BEARER_REGISTERS:
             self.bearer_generation += 1
+            self._bearer_changed()
         self.cursor += 1
         self.write_counts[register] += 1
         if register == DLC_DTCR and self.cursor == width:
