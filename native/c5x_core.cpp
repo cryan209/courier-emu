@@ -1118,7 +1118,7 @@ uint16_t C5xCore::fetch_slow(uint16_t address)
 
 inline __attribute__((always_inline)) uint16_t C5xCore::ROPCODE() { return fetch(m_pc++); }
 void C5xCore::CHANGE_PC(uint16_t new_pc) { m_pc = new_pc; }
-uint16_t C5xCore::PM_READ16(uint16_t address) { return fetch(address); }
+inline __attribute__((always_inline)) uint16_t C5xCore::PM_READ16(uint16_t address) { return fetch(address); }
 void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
 {
     switch (program_region(address)) {
@@ -1867,7 +1867,11 @@ bool C5xCore::step_front_rare()
     return false;
 }
 
-void C5xCore::step()
+void C5xCore::step() { step_inline(); }
+
+// The run loops below take this inline: one call per DSP instruction, and the
+// registers it spills, was a measurable part of the step.
+inline __attribute__((always_inline)) void C5xCore::step_inline()
 {
     m_step_cycles = 0;
     // With none of the front flags up, only a vector that can be taken sends
@@ -2137,7 +2141,7 @@ void C5xCore::refresh_event_deadline()
 
 void C5xCore::run(uint64_t instruction_limit)
 {
-    for (uint64_t i = 0; i < instruction_limit; ++i) step();
+    for (uint64_t i = 0; i < instruction_limit; ++i) step_inline();
 }
 
 void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
@@ -2180,7 +2184,7 @@ void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
                 m_instructions += skipped;
             }
         }
-        step();
+        step_inline();
         // The digital board's MUX exchange supplies the next receive word.
         // Return each completed frame before clocking another one; otherwise
         // a long host scheduler slice fabricates empty receive slots.

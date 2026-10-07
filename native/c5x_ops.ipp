@@ -76,56 +76,20 @@ int32_t C5xCore::ADD(uint32_t a, uint32_t b, bool shift16)
 }
 
 
-void C5xCore::update_ar_circular(int ar, int step)
-{
-	int cenb1 = (m_cbcr >> 3) & 0x1;
-	int car1 = m_cbcr & 0x7;
-	int cenb2 = (m_cbcr >> 7) & 0x1;
-	int car2 = (m_cbcr >> 4) & 0x7;
-
-	if (cenb1 && ar == car1)
-	{
-		// update circular buffer 1, note that it only checks ==
-		if (m_ar[ar] == m_cber1)
-		{
-			m_ar[ar] = m_cbsr1;
-		}
-		else
-		{
-			m_ar[ar] += step;
-		}
-	}
-	else if (cenb2 && ar == car2)
-	{
-		// update circular buffer 2, note that it only checks ==
-		if (m_ar[ar] == m_cber2)
-		{
-			m_ar[ar] = m_cbsr2;
-		}
-		else
-		{
-			m_ar[ar] += step;
-		}
-	}
-	else
-	{
-		m_ar[ar] += step;
-	}
-	// The board mirrors ARAU updates of AR0 with NDX clear, as well as LAR.
-	// Memory-mapped writes (SAMM AR0) do not have this side effect.
-	if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
-}
-
 inline __attribute__((always_inline)) void C5xCore::UPDATE_AR(int ar, int step)
 {
-	// Neither circular buffer enabled, which is nearly always.
-	if (__builtin_expect(!(m_cbcr & 0x88), 1))
-	{
+	// A circular buffer's register wraps to its start when it is at its end
+	// (only == is checked); the datapump's filter loops run with one enabled.
+	// The board mirrors ARAU updates of AR0 with NDX clear, as well as LAR.
+	// Memory-mapped writes (SAMM AR0) do not have this side effect.
+	const unsigned cbcr = m_cbcr;
+	if ((cbcr & 0x08) && unsigned(ar) == (cbcr & 7))
+		m_ar[ar] = m_ar[ar] == m_cber1 ? m_cbsr1 : uint16_t(m_ar[ar] + step);
+	else if ((cbcr & 0x80) && unsigned(ar) == ((cbcr >> 4) & 7))
+		m_ar[ar] = m_ar[ar] == m_cber2 ? m_cbsr2 : uint16_t(m_ar[ar] + step);
+	else
 		m_ar[ar] += step;
-		if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
-		return;
-	}
-	update_ar_circular(ar, step);
+	if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
 }
 
 inline __attribute__((always_inline)) void C5xCore::UPDATE_ARP(int nar)

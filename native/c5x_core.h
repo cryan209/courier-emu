@@ -514,6 +514,7 @@ private:
     }
     void execute_opcode();
     bool step_front_rare();
+    void step_inline();
     uint8_t program_kind(uint16_t address) const;
     uint8_t data_kind(uint16_t address) const;
     uint8_t data_map_entry(uint16_t address) const;
@@ -794,10 +795,10 @@ private:
     int32_t SUB(uint32_t a, uint32_t b, bool shift16);
     int32_t ADD(uint32_t a, uint32_t b, bool shift16);
     void UPDATE_AR(int ar, int step);
-    void update_ar_circular(int ar, int step);
     uint16_t indirect_address_rare(uint16_t ea, int arp, int nar);
     void UPDATE_ARP(int nar);
     uint16_t GET_ADDRESS();
+    uint16_t &data_cell(uint8_t kind, uint16_t address);
     bool GET_ZLVC_CONDITION(int zlvc, int zlvc_mask);
     bool GET_TP_CONDITION(int tp);
     int32_t PREG_PSCALER(int32_t preg);
@@ -857,8 +858,21 @@ private:
     void op_sst_st1(); void op_group_be(); void op_group_bf();
 };
 
-// A plain on-chip cell (bit 6 of the data map) with nothing watching it is a
-// counter and an array access; everything else takes the full path.
+// A data cell other than a CPU register, in the storage bits 3-4 of its data
+// map entry name: the cell in m_data, SARAM, the separate global bank, or the
+// external RAM that answers both spaces.
+inline __attribute__((always_inline)) uint16_t &C5xCore::data_cell(uint8_t kind, uint16_t address)
+{
+    switch ((kind >> 3) & 3) {
+    case 0: return m_data[address];
+    case 1: return m_saram[address - C5X_SARAM_DATA_FIRST];
+    case 2: return m_global_data[address];
+    default: return m_program[address];
+    }
+}
+
+// With nothing watching, a data access is a counter and a cell; the CPU
+// registers and anything traced take the full path.
 inline __attribute__((always_inline)) uint16_t C5xCore::DM_READ16(uint16_t address)
 {
     if (__builtin_expect(!m_maps_dirty && !m_trace_data_writes, 1)) {
@@ -871,6 +885,8 @@ inline __attribute__((always_inline)) uint16_t C5xCore::DM_READ16(uint16_t addre
             ++m_map.data_registers;
             return cpuregs_r(address);
         }
+        ++(&m_map.data_registers)[kind & 7];
+        return data_cell(kind, address);
     }
     return dm_read_slow(address);
 }
@@ -878,11 +894,18 @@ inline __attribute__((always_inline)) uint16_t C5xCore::DM_READ16(uint16_t addre
 inline __attribute__((always_inline)) void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
 {
     if (__builtin_expect(!m_maps_dirty && !m_trace_data_writes
-            && !(m_call_tdm_active && address == m_line_dac_slot), 1)
-        && (m_dmap[address] & 0x40)) {
-        ++m_data_write_counts[address];
-        m_data[address] = value;
-        return;
+            && !(m_call_tdm_active && address == m_line_dac_slot), 1)) {
+        const uint8_t kind = m_dmap[address];
+        if (kind & 0x40) {
+            ++m_data_write_counts[address];
+            m_data[address] = value;
+            return;
+        }
+        if (kind != 0) {
+            ++m_data_write_counts[address];
+            data_cell(kind, address) = value;
+            return;
+        }
     }
     if (address < 0x60 && !m_trace_data_writes) {
         ++m_data_write_counts[address];
@@ -892,19 +915,17 @@ inline __attribute__((always_inline)) void C5xCore::DM_WRITE16(uint16_t address,
     dm_write_slow(address, value);
 }
 
-// Code runs from external RAM or the mask ROM; the on-chip RAM windows and
-// the ROM-less hole take the full path.
+// Everything but the ROM-less hole, which is counted twice, is a counter and
+// a cell.
 inline __attribute__((always_inline)) uint16_t C5xCore::fetch(uint16_t address)
 {
     if (__builtin_expect(!m_maps_dirty, 1)) {
-        const uint8_t kind = m_pmap[address];
-        if (kind == 3) {
-            ++m_map.program_external;
-            return m_program[address];
-        }
-        if (kind == 0) {
-            ++m_map.program_rom;
-            return m_rom[address];
+        switch (m_pmap[address]) {
+        case 3: ++m_map.program_external; return m_program[address];
+        case 0: ++m_map.program_rom; return m_rom[address];
+        case 2: ++m_map.program_saram; return m_saram[saram_data_address(address)];
+        case 1: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
+        default: break;
         }
     }
     return fetch_slow(address);
