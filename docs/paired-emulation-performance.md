@@ -239,6 +239,15 @@ once-per-frame code), the native x86 engine 13%, the harness the rest.
 
 What is left, in the order it looks worth doing: the I-modem's call set-up (the
 first ~35 s, where the poll elision cannot yet run because no call is up and the
-worker waits for it), the C5x interpreter itself (a predecoded handler per
+worker waits for it) - measured: of the 245k polls in the 600M-instruction call that
+elision declines for want of an answered call, 75% are in the idle state
+(`call_state` null, waiting for the worker's ring, about the first 100M
+instructions) and 25% are between the offer and the I-modem's answer. So the
+set-up is mostly idle polls, not Q.931 traffic. Running them natively needs
+the native bearer to settle idle frames (no channels, no routes: every output
+is the idle codeword, B1/B2 transmit queues take idle octets, the line clock
+still counts them) and `quiet_until` to cover the idle and ringing states
+(`incoming_call` reads the line's ring flag, which only changes at a line
+frame, so the frame deadline already bounds it), the C5x interpreter itself (a predecoded handler per
 program address would cut the dispatch), and the remaining per-service reads of
 the timers and the panel latch.
