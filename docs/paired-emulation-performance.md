@@ -88,3 +88,30 @@ an inline timer fast path in `step()`, and raising the compiler's inline limits.
 At about 250 host instructions per DSP instruction the cost is spread across
 `step()`, addressing, dispatch and memory access, so a worthwhile gain needs a
 structural rewrite of the dispatch/fetch/memory path rather than local tweaks.
+
+## Python glue
+
+A sampling profile of the full call (every 5 ms of CPU, both processes) puts
+the I-modem at about a third native (C5x 20%, 386 engine 14%) and two thirds
+Python, and the worker at about 27% native and 58% Python. The Python is a long
+flat tail: no function above 4%, a few dozen between 0.7% and 3%.
+
+Trimmed, with results bit-identical to before: one native call collects what a
+DSP service pass reads (status, reply registers, transmitted octets) instead of
+five; PIT counters are skipped until a wrap is due; the console pumps frame and
+slice only when there is something to do; the T200 walk is skipped when no
+timer has expired. That is 13% fewer Python calls and the full call went from
+214 s to 206 s.
+
+What the profile says is left, for whoever goes after real time next:
+
+* In an active call about 80% of polls have a PCM batch to exchange, so
+  skipping idle polls would save little. The exchange itself (flush, prefeed,
+  bearer routing, the line clock) is about a quarter of the I-modem's time.
+* Ports 0x1c/0x1e (the DSP host-port status and strobe) cause about half of
+  the Python exits in both processes (roughly 550k of 1.0M in the I-modem,
+  600k of 770k in the worker, per 250M instructions). Serving them in the
+  native port models would remove those stops, but the models would then have
+  to keep the mailbox's diagnostic logs (`overlay_recent` and friends) exactly.
+* Reaching 120 s means the I-modem's Python going from about 125 s to about
+  55 s; trimming alone will not do that.
