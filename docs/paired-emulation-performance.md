@@ -389,3 +389,22 @@ I-modem; the rest resample the codec's newest samples onto the exchange buffer
 
 49k of the 68k run natively (native worker polls 280k -> 330k); wall 27.5 s ->
 26.2 s, bit-identical on the x2, Bell 103 and V.34 runs.
+
+### The worker's line frames, native
+
+In a call that is through and steady, a line service that completes a frame
+now exchanges it in `courier_worker_poll` too: the frame comes off a native
+copy of the exchange buffer, goes out and the I-modem's frame comes back on
+the line's socket, and the received audio reaches the codec's queue with the
+same peaks, in-flight copy, DAA counts and recordings. All checks precede the
+send; a socket failure takes the service back and sets `LineLink._presend`, so
+Python's redo meets the same failure without sending twice (the I-modem closing
+the line at the end of the x2 call goes this way). It is armed only when the
+buffer is within 48 samples of a frame, because arming it costs more than a
+frame saves otherwise; `COURIER_NATIVE_FRAMES=0` turns it off.
+
+About 3.5k of 6.5k frames run natively, bit-identical, and wall time does not
+move: a frame's cost is the wait for the I-modem's reply. With the worker's
+line path native the remaining worker Python is the services with DTE input or
+an interrupt waiting, the services after exits to Python, and the arming
+itself; the C5x interpreter is still the largest share in both processes.
