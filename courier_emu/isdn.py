@@ -1001,12 +1001,16 @@ class IsdnMachine:
             why["machine"] += 1
             return
         peer = bri.media_peer
-        if (peer is None or not hasattr(peer, "_octets_seen") or not peer.answered
+        active = bri.call_state == "active"
+        if (peer is None or not hasattr(peer, "_octets_seen")
+                or (active and not peer.answered)
                 or peer.cleared or peer._instructions_seen is None
                 or getattr(peer, "realtime_clock", False)):
             why["peer"] += 1
             return
-        if mailbox.lookahead_channels != (bri.media_channel,):
+        # In a call the channel carrying it is fed ahead; with none up, nothing
+        # is, and the native model settles each idle frame as it finishes.
+        if mailbox.lookahead_channels != ((bri.media_channel,) if active else ()):
             why["channels"] += 1
             return
         until = bri.quiet_until(dsc)

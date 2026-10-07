@@ -128,6 +128,11 @@ class BearerLineLink:
             return "", ""
         return None
 
+    def offers_call(self) -> bool:
+        """Whether `incoming_call` would offer a call now (and change nothing)."""
+        return (not (self._offered or self.answered or self.dialled)
+                and (self.line.peer_ringing or self.line.peer_call_state == CALL_RINGING))
+
     def dial(self, number: str) -> None:
         """The I-modem placed a call: ring the analogue end."""
         self.dialled = number

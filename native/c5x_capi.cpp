@@ -562,14 +562,17 @@ struct ImodemHostIo {
         if (sh->needs_service) { ++sh->poll_why[2]; return 0; }
         if (now >= sh->elide_until) { ++sh->poll_why[3]; return 0; }
         courier::Bearer &b = *bearer;
-        if (!b.activated || b.frame_service || !b.channels || !b.lookahead_valid()) {
+        // No channel carries a call: nothing may be fed ahead, and each frame
+        // is settled as it finishes (see clocks()).
+        if (!b.activated || b.frame_service || (!b.channels && !b.ahead.empty())
+            || !b.lookahead_valid()) {
             ++sh->poll_why[4];
             return 0;
         }
         std::size_t flush = 0;
         if (sh->tx_pending) {
             flush = untaken(sh->tx_pending);
-            if (!settles(flush)) { ++sh->poll_why[5]; return 0; }
+            if (!exchanges(flush)) { ++sh->poll_why[5]; return 0; }
         }
         const std::size_t frames = ((b.partial_valid ? 1 : 0) + flush) / courier::BEARER_SLOTS;
         // The line clock sends a frame when enough B1 octets have gathered.

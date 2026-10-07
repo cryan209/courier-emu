@@ -620,14 +620,20 @@ class BriNetwork:
         `_service_media` catches up on at the next one.
         """
         peer = self.media_peer
-        if (self.call_state != "active" or self.media_channel not in (1, 2)
+        if ((self.call_state == "active" and self.media_channel not in (1, 2))
                 or self.v120 is not None or peer is None
                 or not hasattr(peer, "clock") or not dsc.activated
                 or self.activated_at is None or dsc.sent or not peer.line.connected):
             return None
-        if hasattr(peer, "remote_ended") and peer.remote_ended():
+        if (self.call_state not in ("null", "release-request")
+                and hasattr(peer, "remote_ended") and peer.remote_ended()):
             return None
         if self._awaiting_answer:
+            return None
+        # With no call, a pass offers one as soon as the line rings, and the
+        # line only changes when a frame is exchanged, which is a full pass.
+        if self.call_state == "null" and hasattr(peer, "incoming_call") and (
+                not hasattr(peer, "offers_call") or peer.offers_call()):
             return None
         deadlines: list[int] = []
         if self.deactivate_at is not None and not self._deactivated:
