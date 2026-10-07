@@ -227,7 +227,7 @@ public:
 
     enum class Model { C51, C52, C53 };
     explicit C5xCore(Model model = Model::C51);
-    void set_separate_global_memory(bool enabled) { m_separate_global_memory = enabled; }
+    void set_separate_global_memory(bool enabled) { m_separate_global_memory = enabled; invalidate_maps(); }
     void reset();
     void load_program(const uint16_t *words, std::size_t count, uint16_t origin = 0);
     void load_data(const uint16_t *words, std::size_t count, uint16_t origin = 0);
@@ -389,6 +389,7 @@ public:
         m_capture_pc = pc;
         m_capture_addresses = addresses;
         m_pc_captures.clear();
+        update_front_aux();
     }
     const std::deque<std::vector<uint64_t>> &pc_captures() const { return m_pc_captures; }
     void clear_pc_captures() { m_pc_captures.clear(); }
@@ -400,24 +401,25 @@ public:
     {
         m_trace_first = first;
         m_trace_last = last;
+        update_front_aux();
     }
     const std::vector<uint16_t> &line_tx_samples() const { return m_line_tx; }
     const std::vector<std::array<uint64_t, 2>> &line_tx_clock_events() const { return m_line_tx_clock_events; }
     // The per-instruction probes in step(): the V.8 dispatch record, the
     // negotiation-loop capture, the first-execution record and the built-in
-    // 0x0200..0x02FF trace window. They are on by default, as they always
-    // were. A harness that reads none of them - MICA's native board - turns
-    // them off, which is about a tenth of step()'s cost; the window set by
-    // set_pc_trace_range() is traced either way.
+    // 0x0200..0x02FF trace window. They are off by default; a harness that
+    // reads them turns them on. The window set by set_pc_trace_range() is
+    // traced either way.
     // Coverage: the instruction count at which each program address first ran
     // (0 = never), kept per core. Off by default; one predictable branch per step.
     void set_coverage(bool enabled)
     {
         m_coverage = enabled;
         if (enabled && m_first_exec.empty()) m_first_exec.assign(65536, 0);
+        update_front_aux();
     }
     uint64_t first_exec(uint16_t pc) const { return m_first_exec.empty() ? 0 : m_first_exec[pc]; }
-    void set_step_probes(bool enabled) { m_step_probes = enabled; }
+    void set_step_probes(bool enabled) { m_step_probes = enabled; update_front_aux(); }
     bool step_probes() const { return m_step_probes; }
 
 private:
@@ -434,7 +436,11 @@ private:
         int32_t treg0, treg1, treg2;
     };
 
-    using opcode_func = void (C5xCore::*)();
+    // Plain function pointers: a pointer to member costs a second word, an
+    // adjustment and a virtual-bit test on every dispatch.
+    using opcode_func = void (*)(C5xCore *);
+    template <void (C5xCore::*F)()>
+    static void thunk(C5xCore *core) { (core->*F)(); }
     static const opcode_func s_opcode_table[256];
     static const opcode_func s_opcode_table_be[256];
     static const opcode_func s_opcode_table_bf[256];
@@ -501,6 +507,39 @@ private:
     bool m_delay_condition_pending = false;
     ConditionState condition_state() const;
     void execute_opcode();
+    bool step_front_rare();
+    uint8_t program_kind(uint16_t address) const;
+    uint8_t data_kind(uint16_t address) const;
+    uint8_t data_map_entry(uint16_t address) const;
+    void rebuild_maps();
+    void invalidate_maps() { m_maps_dirty = true; }
+    // The mode bits the two tables depend on.
+    unsigned map_modes() const
+    {
+        return m_st1.cnf | m_pmst.ovly << 1 | m_pmst.ram << 2 | m_pmst.mpmc << 3;
+    }
+    bool m_maps_dirty = true;
+    uint64_t m_map_rebuilds = 0;
+    std::array<uint8_t, 65536> m_pmap{}, m_dmap{};
+    void step_events();
+    bool event_due() const;
+    void refresh_event_deadline();
+    // Zero means unknown: step() recomputes it.
+    uint64_t m_event_deadline = 0;
+    // True when step() has anything to do before fetching: see step_front_rare.
+    bool front_is_rare() const
+    {
+        return m_nmi_pending | m_idle | m_front_aux | (m_line_frame_entry >= 0)
+            | bool(m_pmst.braf)
+            | (((m_ifr & m_imr) != 0) & !m_st0.intm & !m_repeat_active);
+    }
+    // The diagnostics step() would otherwise test for every instruction.
+    bool m_front_aux = false;
+    void update_front_aux()
+    {
+        m_front_aux = m_step_probes || m_coverage || !m_capture_addresses.empty()
+            || m_trace_first <= m_trace_last;
+    }
     uint16_t m_treg0 = 0, m_treg1 = 0, m_treg2 = 0;
     uint16_t m_ar[8]{};
     // RPTC. The C5x holds 0 here whenever no RPT is in force: an instruction
@@ -720,6 +759,9 @@ private:
     void PM_WRITE16(uint16_t address, uint16_t value);
     uint16_t DM_READ16(uint16_t address);
     void DM_WRITE16(uint16_t address, uint16_t value);
+    uint16_t dm_read_slow(uint16_t address);
+    uint16_t fetch_slow(uint16_t address);
+    void dm_write_slow(uint16_t address, uint16_t value);
     uint16_t cpuregs_r(uint16_t offset);
     void cpuregs_w(uint16_t offset, uint16_t data);
     uint16_t IO_READ16(uint16_t port);
@@ -729,6 +771,8 @@ private:
     int32_t SUB(uint32_t a, uint32_t b, bool shift16);
     int32_t ADD(uint32_t a, uint32_t b, bool shift16);
     void UPDATE_AR(int ar, int step);
+    void update_ar_circular(int ar, int step);
+    uint16_t indirect_address_rare(uint16_t ea, int arp, int nar);
     void UPDATE_ARP(int nar);
     uint16_t GET_ADDRESS();
     bool GET_ZLVC_CONDITION(int zlvc, int zlvc_mask);
@@ -789,5 +833,58 @@ private:
     void op_setc_xf(); void op_setc_cnf(); void op_setc_intm(); void op_sst_st0();
     void op_sst_st1(); void op_group_be(); void op_group_bf();
 };
+
+// A plain on-chip cell (bit 6 of the data map) with nothing watching it is a
+// counter and an array access; everything else takes the full path.
+inline __attribute__((always_inline)) uint16_t C5xCore::DM_READ16(uint16_t address)
+{
+    if (__builtin_expect(!m_maps_dirty && !m_trace_data_writes, 1)) {
+        const uint8_t kind = m_dmap[address];
+        if (kind & 0x40) {
+            ++(&m_map.data_registers)[kind & 7];
+            return m_data[address];
+        }
+        if (kind == 0) {
+            ++m_map.data_registers;
+            return cpuregs_r(address);
+        }
+    }
+    return dm_read_slow(address);
+}
+
+inline __attribute__((always_inline)) void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
+{
+    if (__builtin_expect(!m_maps_dirty && !m_trace_data_writes
+            && !(m_call_tdm_active && address == m_line_dac_slot), 1)
+        && (m_dmap[address] & 0x40)) {
+        ++m_data_write_counts[address];
+        m_data[address] = value;
+        return;
+    }
+    if (address < 0x60 && !m_trace_data_writes) {
+        ++m_data_write_counts[address];
+        cpuregs_w(address, value);
+        return;
+    }
+    dm_write_slow(address, value);
+}
+
+// Code runs from external RAM or the mask ROM; the on-chip RAM windows and
+// the ROM-less hole take the full path.
+inline __attribute__((always_inline)) uint16_t C5xCore::fetch(uint16_t address)
+{
+    if (__builtin_expect(!m_maps_dirty, 1)) {
+        const uint8_t kind = m_pmap[address];
+        if (kind == 3) {
+            ++m_map.program_external;
+            return m_program[address];
+        }
+        if (kind == 0) {
+            ++m_map.program_rom;
+            return m_rom[address];
+        }
+    }
+    return fetch_slow(address);
+}
 
 } // namespace courier

@@ -76,7 +76,7 @@ int32_t C5xCore::ADD(uint32_t a, uint32_t b, bool shift16)
 }
 
 
-void C5xCore::UPDATE_AR(int ar, int step)
+void C5xCore::update_ar_circular(int ar, int step)
 {
 	int cenb1 = (m_cbcr >> 3) & 0x1;
 	int car1 = m_cbcr & 0x7;
@@ -116,21 +116,28 @@ void C5xCore::UPDATE_AR(int ar, int step)
 	if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
 }
 
-void C5xCore::UPDATE_ARP(int nar)
+inline __attribute__((always_inline)) void C5xCore::UPDATE_AR(int ar, int step)
+{
+	// Neither circular buffer enabled, which is nearly always.
+	if (__builtin_expect(!(m_cbcr & 0x88), 1))
+	{
+		m_ar[ar] += step;
+		if (ar == 0 && !m_pmst.ndx) m_arcr = m_indx = m_ar[0];
+		return;
+	}
+	update_ar_circular(ar, step);
+}
+
+inline __attribute__((always_inline)) void C5xCore::UPDATE_ARP(int nar)
 {
 	m_st1.arb = m_st0.arp;
 	m_st0.arp = nar;
 }
 
-uint16_t C5xCore::GET_ADDRESS()
+// The addressing modes that are not *, *+ and *- (GET_ADDRESS has those).
+uint16_t C5xCore::indirect_address_rare(uint16_t ea, int arp, int nar)
 {
-	if (m_op & 0x80)        // Indirect Addressing
 	{
-		uint16_t ea;
-		int arp = m_st0.arp;
-		int nar = m_op & 0x7;
-
-		ea = m_ar[arp];
 		auto reverse16 = [](uint16_t value) {
 			value = uint16_t((value >> 8) | (value << 8));
 			value = uint16_t(((value & 0xf0f0) >> 4) | ((value & 0x0f0f) << 4));
@@ -244,10 +251,22 @@ uint16_t C5xCore::GET_ADDRESS()
 
 		return ea;
 	}
-	else                    // Direct Addressing
-	{
+}
+
+inline __attribute__((always_inline)) uint16_t C5xCore::GET_ADDRESS()
+{
+	if (!(m_op & 0x80))     // Direct Addressing
 		return m_st0.dp | (m_op & 0x7f);
-	}
+	// Indirect Addressing: *, *+ and *- with or without a new ARP are most of
+	// what runs.
+	const int arp = m_st0.arp;
+	const uint16_t ea = m_ar[arp];
+	const unsigned mode = (m_op >> 3) & 0xf;
+	if (__builtin_expect(mode >= 6, 0))
+		return indirect_address_rare(ea, arp, m_op & 0x7);
+	if (mode >= 2) UPDATE_AR(arp, mode < 4 ? -1 : 1);
+	if (mode & 1) UPDATE_ARP(m_op & 0x7);
+	return ea;
 }
 
 bool C5xCore::GET_ZLVC_CONDITION(int zlvc, int zlvc_mask)
@@ -2219,6 +2238,7 @@ void C5xCore::op_clrc_carry()
 
 void C5xCore::op_clrc_cnf()
 {
+	if (m_st1.cnf) invalidate_maps();
 	m_st1.cnf = 0;
 
 	CYCLES(1);
@@ -2271,6 +2291,7 @@ void C5xCore::op_lst_st1()
 	uint16_t value = DM_READ16(GET_ADDRESS());
 	m_st1.arb = (value >> 13) & 7;
 	m_st0.arp = m_st1.arb;
+	if (m_st1.cnf != ((value >> 12) & 1)) invalidate_maps();
 	m_st1.cnf = (value >> 12) & 1;
 	m_st1.tc = (value >> 11) & 1;
 	m_st1.sxm = (value >> 10) & 1;
@@ -2401,6 +2422,7 @@ void C5xCore::op_setc_xf()
 
 void C5xCore::op_setc_cnf()
 {
+	if (!m_st1.cnf) invalidate_maps();
 	m_st1.cnf = 1;
 
 	CYCLES(1);

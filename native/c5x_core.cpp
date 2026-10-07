@@ -103,6 +103,7 @@ void C5xCore::reset()
     m_greg = 0;
     m_indx = m_dbmr = m_arcr = 0;
     m_st0 = {}; m_st1 = {}; m_pmst = {};
+    invalidate_maps();
     m_condition_start = m_xc_condition = condition_state();
     m_delay_condition_pending = false;
     // MP/MC comes out of reset at the pin's level. This firmware's reset code
@@ -118,6 +119,7 @@ void C5xCore::reset()
     m_nmi_pending = false;
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
+    m_event_deadline = 0;
     m_line_frame_interrupts = 0;
     m_serial_frame_suppressed = 0;
     m_line_frame_next_cycle = 0;
@@ -156,6 +158,7 @@ void C5xCore::reset()
         const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
         if (m_si3034_codec) configure_si3034_codec();
         else m_codec = Ac01{};
+        m_event_deadline = 0;
         m_codec.nominal_mclk_hz = nominal_mclk;
         m_codec.mclk_hz = nominal_mclk;
         m_line_frame_period = AC01_POWERUP_FRAME_PERIOD_CYCLES;
@@ -239,18 +242,22 @@ void C5xCore::load_rom(const uint16_t *words, std::size_t count, uint16_t origin
         throw std::out_of_range("boot ROM image exceeds the selected DSP's on-chip ROM");
     std::copy_n(words, count, m_rom.begin() + origin);
     m_rom_present = true;
+    invalidate_maps();
 }
 
 void C5xCore::set_shared_window(uint16_t first, uint16_t last)
 {
     m_shared_first = first;
     m_shared_last = last;
+    invalidate_maps();
 }
 
 void C5xCore::set_mpmc_pin(uint16_t level)
 {
     m_mpmc_pin = level ? 1 : 0;
+    const unsigned modes = map_modes();
     m_pmst.mpmc = m_mpmc_pin;
+    if (map_modes() != modes) invalidate_maps();
 }
 
 void C5xCore::set_io_callbacks(IoRead read, IoWrite write)
@@ -301,8 +308,10 @@ void C5xCore::queue_g711_rx(const uint8_t *codewords, std::size_t count)
 void C5xCore::configure_rom_codec(bool enabled)
 {
     m_si3034_codec = false;
+    m_event_deadline = 0;
     m_rom_codec = enabled;
     m_codec = Ac01{};
+    m_event_deadline = 0;
     // Until the firmware programs the A and B registers the harness keeps the
     // period it has always used. The datasheet's power-up A = B = 18 would put
     // the part at 4444 Hz, which is a rate this board never runs at; nothing
@@ -318,6 +327,7 @@ void C5xCore::configure_si3034_codec()
     m_rom_codec = true;
     m_si3034_codec = true;
     m_codec = Ac01{};
+    m_event_deadline = 0;
     m_codec.nominal_mclk_hz = nominal_mclk;
     m_codec.mclk_hz = nominal_mclk;
     std::fill(std::begin(m_codec.registers), std::end(m_codec.registers), 0);
@@ -460,6 +470,7 @@ void C5xCore::codec_apply_register(uint16_t word)
         const uint32_t nominal_mclk = m_codec.nominal_mclk_hz;
         const uint32_t mclk = m_codec.mclk_hz;
         m_codec = Ac01{};
+        m_event_deadline = 0;
         m_codec.nominal_mclk_hz = nominal_mclk;
         m_codec.mclk_hz = mclk;
     }
@@ -490,6 +501,7 @@ void C5xCore::codec_transmit(uint16_t word)
         // the legacy AC01 path still decodes it on the DXR write.
         m_codec.secondary_due = true;
         m_codec.secondary_cycle = m_cycles + m_line_frame_period / 2;
+        m_event_deadline = 0;
         break;
     case 1: case 2: ++m_codec.phase_shifts; break;
     default: break;
@@ -524,6 +536,7 @@ void C5xCore::si3034_serial_frame(bool secondary)
     m_codec.rx_ready = ready;
     m_codec.receive_cycle = m_cycles + std::max(1u, m_line_frame_period / 16);
     m_codec.receive_due = (m_serial.spc & SPC_RRST) != 0;
+    m_event_deadline = 0;
     if (m_serial.spc & SPC_XRST) {
         if (!m_st0.intm && (m_imr & (1u << IRQ_XINT)))
             ++m_line_frame_interrupts;
@@ -908,8 +921,9 @@ void C5xCore::consume_cycles(unsigned cycles)
     // Those cycles occurred before the slots and must not replace the final
     // slot's sample with the architectural state at the branch target.
     if (!m_delay_condition_pending) {
-        m_xc_condition = cycles == 1 ? m_condition_start : condition_state();
-        m_condition_start = condition_state();
+        const ConditionState current = condition_state();
+        m_xc_condition = cycles == 1 ? m_condition_start : current;
+        m_condition_start = current;
     }
     m_delay_condition_pending = false;
     m_step_cycles += cycles;
@@ -1012,27 +1026,75 @@ C5xCore::Region C5xCore::data_region(uint16_t address) const
     return Region::Reserved;
 }
 
-uint16_t C5xCore::fetch(uint16_t address)
+// What an address is in program space and in data space, kept as a byte per
+// address so the access paths do not re-derive it from CNF, OVLY, RAM, MP/MC
+// and GREG every time. Whatever changes one of those calls invalidate_maps();
+// the next access rebuilds both tables.
+uint8_t C5xCore::program_kind(uint16_t address) const
 {
     switch (program_region(address)) {
-    case Region::Rom:
-        ++m_map.program_rom;
+    case Region::Rom: return m_rom_present ? 0 : 4;
+    case Region::Daram: return 1;
+    case Region::Saram: return 2;
+    default: return 3;
+    }
+}
+
+uint8_t C5xCore::data_kind(uint16_t address) const
+{
+    // Low three bits pick the m_map counter, the rest the storage.
+    switch (data_region(address)) {
+    case Region::Registers: return 0;
+    case Region::Daram: return 1;
+    case Region::Saram: return 2 | 1 << 3;
+    case Region::Reserved: return 3;
+    case Region::Shared: return 4 | 3 << 3;
+    case Region::Global: return 5 | 2 << 3;
+    default: return 5;
+    }
+}
+
+uint8_t C5xCore::data_map_entry(uint16_t address) const
+{
+    const uint8_t kind = data_kind(address);
+    // Bit 6: a plain cell in m_data that is not one of the CPU registers.
+    return address >= 0x60 && !(kind >> 3) && (kind & 7) ? kind | 0x40 : kind;
+}
+
+void C5xCore::rebuild_maps()
+{
+    for (uint32_t address = 0; address < 65536; ++address) {
+        m_pmap[address] = program_kind(uint16_t(address));
+        m_dmap[address] = data_map_entry(uint16_t(address));
+    }
+    m_maps_dirty = false;
+    ++m_map_rebuilds;
+}
+
+uint16_t C5xCore::fetch_slow(uint16_t address)
+{
+    if (__builtin_expect(m_maps_dirty, 0)) rebuild_maps();
+    const uint8_t kind = m_pmap[address];
+#ifdef C5X_CHECK_MAP
+    if (kind != program_kind(address)) std::abort();
+#endif
+    switch (kind) {
+    case 0: ++m_map.program_rom; return m_rom[address];
+    case 1: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
+    // SARAM is one memory in both spaces, so a fetch reads what data stores
+    // put there - which is how the firmware's own block moves get executed.
+    case 2: ++m_map.program_saram; return m_saram[saram_data_address(address)];
+    case 3: ++m_map.program_external; return m_program[address];
+    default:
         // An XMF carries the program the supervisor downloads and nothing
         // else, so with no ROM supplied this window has no contents. Falling
         // back to the downloaded image is what this harness has always done;
         // counting the fetches is what says how much of a run rests on it.
-        if (!m_rom_present) { ++m_map.rom_holes; break; }
-        return m_rom[address];
-    case Region::Daram: ++m_map.program_daram; return m_data[C5X_B0_FIRST + (address - C5X_B0_PROGRAM_FIRST)];
-    // SARAM is one memory in both spaces, so a fetch reads what data stores
-    // put there - which is how the firmware's own block moves get executed.
-    case Region::Saram: ++m_map.program_saram; return m_saram[saram_data_address(address)];
-    default: ++m_map.program_external; break;
+        ++m_map.program_rom; ++m_map.rom_holes; return m_program[address];
     }
-    return m_program[address];
 }
 
-uint16_t C5xCore::ROPCODE() { return fetch(m_pc++); }
+inline __attribute__((always_inline)) uint16_t C5xCore::ROPCODE() { return fetch(m_pc++); }
 void C5xCore::CHANGE_PC(uint16_t new_pc) { m_pc = new_pc; }
 uint16_t C5xCore::PM_READ16(uint16_t address) { return fetch(address); }
 void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
@@ -1047,23 +1109,21 @@ void C5xCore::PM_WRITE16(uint16_t address, uint16_t value)
     }
     m_program[address] = value;
 }
-uint16_t C5xCore::DM_READ16(uint16_t address)
+uint16_t C5xCore::dm_read_slow(uint16_t address)
 {
-    const Region region = data_region(address);
-    switch (region) {
-    case Region::Registers: ++m_map.data_registers; break;
-    case Region::Daram: ++m_map.data_daram; break;
-    case Region::Saram: ++m_map.data_saram; break;
-    case Region::Reserved: ++m_map.data_reserved; break;
-    case Region::Shared: ++m_map.data_shared; break;
-    case Region::Global: ++m_map.data_external; break;
-    default: ++m_map.data_external; break;
-    }
-    uint16_t value = address < 0x60 ? cpuregs_r(address)
-                   : region == Region::Saram ? m_saram[address - C5X_SARAM_DATA_FIRST]
-                   : region == Region::Global ? m_global_data[address]
-                   : region == Region::Shared ? m_program[address]
-                   : m_data[address];
+    if (__builtin_expect(m_maps_dirty, 0)) rebuild_maps();
+    const uint8_t entry = m_dmap[address];
+#ifdef C5X_CHECK_MAP
+    if (entry != data_map_entry(address)) std::abort();
+#endif
+    const uint8_t kind = entry & 0x3f;
+    ++(&m_map.data_registers)[kind & 7];
+    uint16_t value;
+    if (kind == 1 || kind == 3 || kind == 5) value = m_data[address];
+    else if (address < 0x60) value = cpuregs_r(address);
+    else if (kind == (2 | 1 << 3)) value = m_saram[address - C5X_SARAM_DATA_FIRST];
+    else if (kind == (5 | 2 << 3)) value = m_global_data[address];
+    else value = m_program[address];
     // The read side traces a fixed set of cells. A caller watching one cell
     // wants only that cell, and these reads otherwise flood the buffer.
     if (m_trace_data_writes && !m_trace_filtered &&
@@ -1074,7 +1134,7 @@ uint16_t C5xCore::DM_READ16(uint16_t address)
     }
     return value;
 }
-void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
+void C5xCore::dm_write_slow(uint16_t address, uint16_t value)
 {
     ++m_data_write_counts[address];
     if (m_trace_data_writes && (!m_trace_filtered || (address >= m_trace_filter && address <= m_trace_filter_last))
@@ -1084,7 +1144,15 @@ void C5xCore::DM_WRITE16(uint16_t address, uint16_t value)
         m_data_events.push_back({address, value, static_cast<uint16_t>(m_pc - 1), m_instructions});
     }
     if (address < 0x60) cpuregs_w(address, value);
-    else set_data(address, value);
+    else {
+        if (__builtin_expect(m_maps_dirty, 0)) rebuild_maps();
+        switch ((m_dmap[address] >> 3) & 3) {
+        case 0: m_data[address] = value; break;
+        case 1: m_saram[address - C5X_SARAM_DATA_FIRST] = value; break;
+        case 2: m_global_data[address] = value; break;
+        default: m_program[address] = value; break;
+        }
+    }
     // Which ASIC slot the line datapump's output word lands in. The ISR at
     // 0x0228 keeps a 32-bit phase accumulator in @7c/@7d - 0xfffc/0xfffd at
     // DP 0x1ff - and reading 0xfffd gives that phase, which is a linear ramp
@@ -1337,7 +1405,7 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 {
     switch (offset) {
     case 0x00: return;
-    case 0x05: m_greg = uint8_t(value); return;
+    case 0x05: if (m_greg != uint8_t(value)) invalidate_maps(); m_greg = uint8_t(value); return;
     // The wait-state registers say which regions the firmware expects to be
     // off-chip, which is worth recording even though this core runs every
     // access in one cycle.
@@ -1346,13 +1414,17 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
     case 0x2a: m_cwsr = value; return;
     case 0x04: m_imr = value; return;
     case 0x06: m_ifr &= ~value; return;
-    case 0x07:
+    case 0x07: {
+        const unsigned modes = map_modes();
         // SPRU056D Figure 4-3: IPTR is bits 15-11 (2K-word pages),
         // AVIS is bit 7; bits 10-8 and 6 are reserved and read as zero.
         m_pmst.iptr = (value >> 11) & 0x1f; m_pmst.avis = (value >> 7) & 1;
         m_pmst.ovly = (value >> 5) & 1; m_pmst.ram = (value >> 4) & 1;
         m_pmst.mpmc = (value >> 3) & 1; m_pmst.ndx = (value >> 2) & 1;
-        m_pmst.trm = (value >> 1) & 1; m_pmst.braf = value & 1; return;
+        m_pmst.trm = (value >> 1) & 1; m_pmst.braf = value & 1;
+        if (map_modes() != modes) invalidate_maps();
+        return;
+    }
     case 0x09: m_brcr = value; return;
     case 0x0a: m_pasr = value; return;
     case 0x0b: m_paer = uint16_t(value + 1); return;
@@ -1415,8 +1487,8 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 
 #undef CYCLES
 
-void C5xCore::op_group_be() { (this->*s_opcode_table_be[m_op & 0xff])(); }
-void C5xCore::op_group_bf() { (this->*s_opcode_table_bf[m_op & 0xff])(); }
+void C5xCore::op_group_be() { s_opcode_table_be[m_op & 0xff](this); }
+void C5xCore::op_group_bf() { s_opcode_table_bf[m_op & 0xff](this); }
 
 C5xCore::ConditionState C5xCore::condition_state() const
 {
@@ -1426,7 +1498,7 @@ C5xCore::ConditionState C5xCore::condition_state() const
 void C5xCore::execute_opcode()
 {
     m_condition_start = condition_state();
-    (this->*s_opcode_table[m_op >> 8])();
+    s_opcode_table[m_op >> 8](this);
 }
 
 void C5xCore::delay_slot(uint16_t startpc)
@@ -1453,8 +1525,10 @@ void C5xCore::save_interrupt_context()
 void C5xCore::restore_interrupt_context()
 {
     m_acc = m_shadow.acc; m_accb = m_shadow.accb; m_arcr = m_shadow.arcr;
+    const unsigned modes = map_modes();
     m_indx = m_shadow.indx; m_pmst = m_shadow.pmst; m_preg = m_shadow.preg;
     m_st0 = m_shadow.st0; m_st1 = m_shadow.st1;
+    if (map_modes() != modes) invalidate_maps();
     m_treg0 = m_shadow.treg0; m_treg1 = m_shadow.treg1; m_treg2 = m_shadow.treg2;
     note_dp(4);
 }
@@ -1639,18 +1713,22 @@ void C5xCore::configure_line_frame_interrupt(unsigned irq, uint16_t vector)
     m_line_frame_irq = int(irq);
     m_interrupt_vectors[irq] = vector;
     m_line_frame_next_cycle = m_cycles + m_line_frame_period;
+    m_event_deadline = 0;
 }
 
-void C5xCore::step()
+// Everything step() does before the instruction that the common case has no
+// use for: a pending NMI or vector, IDLE, the scheduled overlay entry, the
+// block-repeat branch and the diagnostic probes. Returns true when the step
+// ended here (a vector was taken).
+bool C5xCore::step_front_rare()
 {
-    m_step_cycles = 0;
     // Both checks refuse at once with nothing pending, which is nearly every
     // step, so the calls are skipped then.
     if (m_nmi_pending) check_nmi();
     // Taking a vector is this step's work: PC is left at the handler's first
     // word for the next one, the way the part spends its own cycles getting
     // there rather than fetching the handler in the same instruction slot.
-    if ((m_ifr & m_imr) && check_interrupts()) { consume_cycles(4); return; }
+    if ((m_ifr & m_imr) && check_interrupts()) { consume_cycles(4); return true; }
     if (m_idle) consume_cycles(1);
     else {
         // The customer-ROM dispatcher publishes call state at the boundary
@@ -1764,6 +1842,28 @@ void C5xCore::step()
             }
         }
     }
+    return false;
+}
+
+void C5xCore::step()
+{
+    m_step_cycles = 0;
+    if (__builtin_expect(front_is_rare(), 0)) {
+        if (step_front_rare()) return;
+    } else {
+        const uint16_t previous_pc = m_pc;
+        m_op = ROPCODE();
+        execute_opcode();
+        if (m_repeat_active && previous_pc == m_rpt_end) {
+            if (m_rptc > 0) {
+                CHANGE_PC(m_rpt_start);
+                --m_rptc;
+            } else {
+                m_rptc = 0;
+                m_repeat_active = false;
+            }
+        }
+    }
     ++m_instructions;
     // The on-chip timer counts CLKOUT, not retired instructions: a three-cycle
     // instruction advances TIM by three. Ticking it once per instruction ran
@@ -1777,6 +1877,20 @@ void C5xCore::step()
     if (!m_timer.tss)
         for (uint64_t expiry = advance_timer(elapsed); expiry; --expiry)
             interrupt(IRQ_TINT);
+#ifdef C5X_CHECK_EVENTS
+    if (m_cycles < m_event_deadline && event_due())
+        std::abort();
+#endif
+    if (__builtin_expect(m_cycles >= m_event_deadline, 0)) {
+        step_events();
+        refresh_event_deadline();
+    }
+}
+
+// The frame-rate events: the codec's receive and secondary words and the
+// line frame. step() comes here only once one can be due.
+void C5xCore::step_events()
+{
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
     // must come from elapsed C5x cycles rather than from observing an OUT.
@@ -1930,6 +2044,28 @@ void C5xCore::step()
         }
         serial_frame_interrupt();
     }
+}
+
+bool C5xCore::event_due() const
+{
+    return (m_si3034_codec && m_codec.receive_due && m_cycles >= m_codec.receive_cycle)
+        || (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due
+            && m_cycles >= m_codec.secondary_cycle)
+        || (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle);
+}
+
+// The earliest cycle at which event_due() can turn true. Whatever changes the
+// inputs to it sets m_event_deadline to zero, and the next step recomputes.
+void C5xCore::refresh_event_deadline()
+{
+    uint64_t deadline = UINT64_MAX;
+    if (m_si3034_codec && m_codec.receive_due)
+        deadline = std::min(deadline, m_codec.receive_cycle);
+    if (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due)
+        deadline = std::min(deadline, m_codec.secondary_cycle);
+    if (m_line_frame_irq >= 0)
+        deadline = std::min(deadline, m_line_frame_next_cycle);
+    m_event_deadline = deadline;
 }
 
 void C5xCore::run(uint64_t instruction_limit)
