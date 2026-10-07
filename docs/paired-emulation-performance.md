@@ -368,3 +368,24 @@ what is left to win is the worker's: its line services (~78k a call, the
 socket exchange, resampler glue and call state), the services with DTE input
 or an interrupt waiting, and the C5x interpreter, which is still the largest
 share in both processes.
+
+### The worker's line services, native
+
+Of the ~68k line services in the x2 call, only ~6.5k exchange a frame with the
+I-modem; the rest resample the codec's newest samples onto the exchange buffer
+(`_take_line_audio`). Those now run in `courier_worker_poll` as well:
+
+- The resampler's retuned state (time-stamped history and the scalars beside
+  it) lives in native memory once it retunes (`resample::Timed`, seeded from
+  the Python state; `COURIER_NATIVE_RESAMPLE=0` keeps the pure-Python path,
+  which the native-versus-Python test compares against across rate changes).
+- The poll converts on that state as a dry run and rolls it back if the
+  buffer would reach a line frame; otherwise it commits and keeps the
+  service's statistics, buffer additions and cursors in the shared structure,
+  which `after_run` hands back.
+- A clock change inside the batch, a rate the resampler is not tuned to, no
+  codec clock, or a resampler not yet retuned stay with Python, as do the
+  frame exchanges (the socket, the call state, the DAA).
+
+49k of the 68k run natively (native worker polls 280k -> 330k); wall 27.5 s ->
+26.2 s, bit-identical on the x2, Bell 103 and V.34 runs.
