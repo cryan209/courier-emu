@@ -298,3 +298,41 @@ enough for a two-stage build.
 The worker is now about 56% C5x, 28% Python (a flat tail, about 200 calls per
 1,024-instruction service) and 12% x86 engine. The I-modem's set-up polls
 (above) would save at most the few percent the worker spends waiting.
+
+### The worker's service loop, native
+
+The x86 engine now runs the worker's fast services itself
+(`courier_worker_poll` in `native/c5x_capi.cpp`, mirrored by
+`courier_emu/worker_poll.py`), the way it runs the I-modem's poll. At the start
+of the batch after each service Python runs, `arm` checks every test
+`fast_service` and `clock_x86_fast` make of state only Python changes
+(`fast_service_static`, `DspBridge.fast_clock_static`, `timer_poll_static`),
+copies the counters into the shared structure and sets a deadline: the next
+80186 timer max count, the board tick, the next scheduled input, and the last
+two services of the run. Until then each service is done natively: the
+codec-frame, line-sample and probe tests, the DSP step (with Python's float
+arithmetic, `fp contract(off)`), and the INT0 frame edge. Anything else hands
+back:
+
+- a test failing, or the deadline: the engine stops before the service and
+  Python runs it (`after_run` has already copied the counters back);
+- a DSP message to collect, the call TDM starting, the C51 entering or leaving
+  its loader loop, or a DSP error: the native poll has done the service up to
+  the DSP step and Python finishes it (`resume`, poll codes 2 and 3).
+
+Three details keep it bit-identical. The 80186 timers are not ticked natively:
+every read or write of a timer register advances it first, so only a max count
+needs the poll's own tick, and the deadline keeps one from falling inside a
+native stretch. End-of-interrupt writes the engine logged in the batch are
+applied to the in-service stack before the frame-edge decision and marked
+(byte 7 of the log entry), so the harness's replay skips the stack for them.
+And port-0x14 lamp writes are neutral to the engine's dirty test; the poll
+declines only if a pending one would change the latch.
+
+Two in three services now run natively (280k of 439k in the x2 call); the rest
+are line services (every five or six), services with DTE bytes or an interrupt
+waiting in Python, and the service after any exit to Python. Wall 37 s ->
+33.6 s, CPU 60.7 s -> 56.3 s; the x2 call, a Bell 103 call and a V.34 dial are
+bit-identical. `COURIER_WORKER_POLL=0` turns it off. The two processes are now
+evenly loaded, each about 62% C5x, so the interpreter is again the lever for
+both.
