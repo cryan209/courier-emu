@@ -396,7 +396,8 @@ struct ImodemHostIo {
     }
 
     // Exchange `count` octets from the C5x's transmit buffer, which must be
-    // settled entirely from frames fed ahead (the caller has checked).
+    // settled entirely, from frames fed ahead or a frame at a time (the
+    // caller has checked: see exchanges()).
     void exchange_taken(std::size_t count)
     {
         ImodemShared *sh = shared;
@@ -414,6 +415,24 @@ struct ImodemHostIo {
         return bearer->ahead.size() >= frames;
     }
 
+    // Whether `count` octets can be exchanged a frame at a time with nothing
+    // fed ahead (Bearer::clock_frame, as ImodemDsp._sync_pcm's exchange does
+    // it), none of them meeting an underrun, whose count is Python's to keep.
+    bool clocks(std::size_t count) const
+    {
+        const courier::Bearer &b = *bearer;
+        if (!b.ahead.empty() || b.frame_service) return false;
+        const std::size_t frames = ((b.partial_valid ? 1 : 0) + count) / courier::BEARER_SLOTS;
+        if (b.activated)
+            for (unsigned channel = 1; channel <= 2; ++channel)
+                if (b.fed[channel - 1] && b.channel_routed(channel)
+                    && b.rx[channel - 1].size() < frames)
+                    return false;
+        return true;
+    }
+
+    bool exchanges(std::size_t count) const { return settles(count) || clocks(count); }
+
     // ImodemDsp.service_pending, for what the native path can do alone.
     // 0: done. 2: nothing was changed and Python must do it. 3: the C5x ran on
     // and the harness has to carry on from there (ImodemDsp.resume_service).
@@ -425,7 +444,7 @@ struct ImodemHostIo {
         const uint64_t writes = core->io_port_stat(0x5f).writes;
         if (reply_due(status, writes)) return 2;
         const std::size_t count = untaken(sh->tx_pending);
-        if (count && (!settles(count)
+        if (count && (!exchanges(count)
                       || (!bearer->ahead.empty() && !bearer->lookahead_valid()))) return 2;
         sh->needs_service = 0;
         sh->tx_pending = 0;
@@ -444,7 +463,7 @@ struct ImodemHostIo {
             const uint16_t now_status = core->io(0x57);
             const std::size_t taken = untaken(0);
             if (reply_due(now_status, core->io_port_stat(0x5f).writes)
-                || (taken && !settles(taken))) {
+                || (taken && !exchanges(taken))) {
                 sh->cycle_debt -= double(elapsed);
                 return 3;
             }
@@ -788,6 +807,20 @@ int courier_imodemio_advance(void *context, uint64_t now, unsigned quantum)
     auto *io = static_cast<ImodemHostIo *>(context);
     if (!io->shared || !io->core || !io->live) return 0;
     return io->advance(now, quantum) ? 1 : 0;
+}
+
+// IsdnMachine._advance_dsp: the advance, and the service it hands back when
+// the native model can do it. 1: done; 2: nothing changed and the harness
+// runs ImodemDsp.service_pending; 3: begun here, ImodemDsp.resume_service
+// finishes it.
+int courier_imodemio_advance_serve(void *context, uint64_t now, unsigned quantum)
+{
+    auto *io = static_cast<ImodemHostIo *>(context);
+    if (!io->shared || !io->core || !io->live) return 2;
+    if (io->advance(now, quantum)) return 1;
+    if (!io->bearer) return 2;
+    const int result = io->service();
+    return result ? result : 1;
 }
 
 void courier_imodemio_set_poll_state(void *context, void *state)

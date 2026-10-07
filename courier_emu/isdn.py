@@ -861,10 +861,14 @@ class IsdnMachine:
             self.mailbox.service_pending()
         native_io = self._native_io
         if native_io is not None and native_io.live:
-            # The native model advances the C5x exactly as below; it hands
-            # back only when the harness has a PCM frame or a reply to take.
-            if not native_io.advance(self.instructions, quantum):
+            # The native model advances the C5x exactly as below, and does the
+            # service that follows when it can; it hands back when the harness
+            # has a reply to take or frames only Python can settle.
+            result = native_io.advance_serve(self.instructions, quantum)
+            if result == 2:
                 self.mailbox.service_pending()
+            elif result == 3:
+                self.mailbox.resume_service()
             return
         elapsed = self.instructions - self._dsp_instructions
         if elapsed < quantum:
@@ -913,10 +917,16 @@ class IsdnMachine:
             if batching:
                 bri = self.bri
                 mailbox = self.mailbox
-                mailbox.lookahead_channels = (
+                channels = (
                     (bri.media_channel,)
                     if bri is not None and bri.call_state == "active"
                     and bri.media_channel in (1, 2) else ())
+                if channels != mailbox.lookahead_channels:
+                    mailbox.lookahead_channels = channels
+                    # Published at once: the native model may exchange frames
+                    # before anything else in this poll would publish it.
+                    if getattr(mailbox, "_nb", None) is not None:
+                        mailbox._publish_mode()
             if batching and self._ledger.tx_pending:
                 # The bearer is about to read what the modem has sent: every frame
                 # the C5x has finished must have been exchanged by now, as it was

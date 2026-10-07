@@ -1368,6 +1368,9 @@ class ImodemHostIo:
         lib.courier_imodemio_advance.argtypes = [
             ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint]
         lib.courier_imodemio_advance.restype = ctypes.c_int
+        lib.courier_imodemio_advance_serve.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint]
+        lib.courier_imodemio_advance_serve.restype = ctypes.c_int
         lib.courier_imodemio_take_counts.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_bearer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
@@ -1382,6 +1385,7 @@ class ImodemHostIo:
             lib.courier_imodemio_access, ctypes.c_void_p).value
         self._counts = ((ctypes.c_uint32 * 256)(), (ctypes.c_uint32 * 256)())
         self._advance = lib.courier_imodemio_advance
+        self._advance_serve = lib.courier_imodemio_advance_serve
         self._applied: tuple | None = None
         self.configure(None, False)
 
@@ -1411,6 +1415,11 @@ class ImodemHostIo:
     def advance(self, now: int, quantum: int = 0) -> bool:
         """Run the C5x to `now` (see IsdnMachine._advance_dsp); False: service."""
         return bool(self._advance(self.context, now, quantum))
+
+    def advance_serve(self, now: int, quantum: int = 0) -> int:
+        """`advance`, and the service it hands back when the native model can
+        do it: 1 done, 2 ImodemDsp.service_pending, 3 ImodemDsp.resume_service."""
+        return self._advance_serve(self.context, now, quantum)
 
     def close(self) -> None:
         if self.context:
