@@ -654,6 +654,30 @@ std::size_t courier_c5x_get_g711_tx_since(void *handle, std::size_t start,
     return available;
 }
 
+// What the I-modem harness reads from the core each time it services the DSP:
+// the host-port status word, the reply registers and the count of writes to
+// the reply strobe, and the transmitted G.711 octets since `tx_start`. With a
+// non-zero `waiting` that is `waiting` octets when that many are there (the
+// native port model's own count), otherwise everything since `tx_start`.
+// Returns the number of octets copied, or SIZE_MAX when they did not fit.
+std::size_t courier_c5x_imodem_collect(void *handle, std::size_t tx_start,
+    std::size_t waiting, uint8_t *out, std::size_t capacity, uint64_t *values)
+{
+    if (!handle) return 0;
+    C5xCore *core = static_cast<C5xCore *>(handle);
+    values[0] = core->io(0x57);
+    values[1] = core->io_output(0x5e);
+    values[2] = core->io_output(0x5f);
+    values[3] = core->io_port_stat(0x5f).writes;
+    const auto &words = core->g711_tx();
+    tx_start = std::min(tx_start, words.size());
+    const std::size_t available = words.size() - tx_start;
+    const std::size_t count = waiting && available >= waiting ? waiting : available;
+    if (count > capacity) return SIZE_MAX;
+    std::copy_n(words.begin() + tx_start, count, out);
+    return count;
+}
+
 void courier_c5x_set_data_trace_filter(void *handle, unsigned address, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_data_trace_filter(

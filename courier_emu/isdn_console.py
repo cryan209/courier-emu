@@ -98,8 +98,12 @@ def scripted_pump(
     response = bytearray()
 
     def pump(machine: Any) -> None:
-        framing = machine.dte_framing()
         incoming = machine.take_serial()
+        sending = (commands and not waiting[0]
+                   and machine.instructions >= next_send[0])
+        if not incoming and not sending:
+            return
+        framing = machine.dte_framing()
         if incoming:
             log.append((machine.instructions, "received", _readable(incoming, framing)))
             if waiting[0]:

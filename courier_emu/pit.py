@@ -119,6 +119,9 @@ class Counter:
     latched: int | None = None
     # Wraps already reported to the interrupt controller.
     reported_wraps: int = 0
+    # The input tick at which the next wrap falls due, so a harness pass that
+    # is earlier than that has nothing to ask (see take_wraps).
+    next_due: float = float("inf")
 
     @property
     def period(self) -> int:
@@ -146,12 +149,14 @@ class Counter:
         self.origin = ticks
         self.programmed = True
         self.reported_wraps = 0
+        self.next_due = ticks + self.period
 
     def take_wraps(self, ticks: int) -> int:
         """Consume and return wraps not yet handed to the interrupt controller."""
         total = self.wraps(ticks)
         new = total - self.reported_wraps
         self.reported_wraps = total
+        self.next_due = self.origin + (total + 1) * self.period if self.programmed else float("inf")
         return max(0, new)
 
 

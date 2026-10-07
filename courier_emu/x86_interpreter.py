@@ -871,9 +871,13 @@ class Uc:
         retired = 0
         while self.running and (not count or retired < count):
             if native is not None:
-                budget = min(count - retired, 65536) if count else 65536
+                budget = 65536
+                if count and count - retired < budget:
+                    budget = count - retired
                 if clock_callback is not None:
-                    budget = min(budget, clock_next - self.retired - 1)
+                    room = clock_next - self.retired - 1
+                    if room < budget:
+                        budget = room
                 if budget > 0:
                     done = native.execute(self, budget)
                     retired += done

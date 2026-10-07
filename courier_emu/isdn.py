@@ -859,8 +859,14 @@ class IsdnMachine:
         if self.mailbox_service and peripheral_instructions >= self._next_mailbox_service:
             self._next_mailbox_service = peripheral_instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
+        ticks = None
         for counter in self.pit.counters:
-            wraps = counter.take_wraps(self.pit.ticks(peripheral_instructions))
+            if ticks is None:
+                ticks = self.pit.ticks(peripheral_instructions)
+            # Not yet due: nothing to report, and nothing to forget either.
+            if ticks < counter.next_due:
+                continue
+            wraps = counter.take_wraps(ticks)
             if not wraps:
                 continue
             self.timer_ticks += wraps

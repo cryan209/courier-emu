@@ -285,10 +285,16 @@ class ImodemDsp(ImodemMailbox):
         core = self.core
         if core is None or self.error is not None:
             return
-        status = core.io(0x57)
-        self._sync_values(status, core.io_output(0x5e), core.io_output(0x5f),
-                          core.io_port_writes(0x5f))
-        octets = self._take_octets(core, sh)
+        status, tag, value, writes, octets = core.imodem_collect(
+            sh.pcm_cursor, sh.tx_pending)
+        if not status & 2 and self.rx is None and writes > sh.reply_writes:
+            # Offering the reply stamps the timeline, which exchanges the
+            # frames waiting: the octets are taken only after that.
+            self._sync_values(status, tag, value, writes)
+            octets = self._take_octets(core, sh)
+        else:
+            sh.tx_pending = 0
+            self._sync_values(status, tag, value, writes)
         if octets:
             if self._ahead and not self._lookahead_valid():
                 self.cancel_lookahead()
@@ -460,11 +466,7 @@ class ImodemDsp(ImodemMailbox):
         """
         waiting = sh.tx_pending
         sh.tx_pending = 0
-        if waiting:
-            octets = core.g711_tx_exact(sh.pcm_cursor, waiting)
-            if len(octets) == waiting:
-                return octets
-        return core.g711_tx(sh.pcm_cursor)
+        return core.imodem_collect(sh.pcm_cursor, waiting)[4]
 
     def flush_pcm(self, refill=True):
         """Exchange every transmitted frame the C5x has finished, then refill."""

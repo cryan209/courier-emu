@@ -939,7 +939,16 @@ class BriNetwork:
         return None
 
     def _timers(self) -> None:
-        for tei, link in list(self.links.items()):
+        now = self.instructions
+        # Nearly every pass has no I-frame timer running out; the walk below
+        # copies the table and tests each link, so it is skipped then.
+        for link in self.links.values():
+            if link.i_expiry is not None and now >= link.i_expiry:
+                links = list(self.links.items())
+                break
+        else:
+            links = ()
+        for tei, link in links:
             if link.i_expiry is None or self.instructions < link.i_expiry:
                 continue
             if link.i_retries >= N200:

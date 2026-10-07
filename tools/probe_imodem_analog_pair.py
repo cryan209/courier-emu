@@ -335,10 +335,11 @@ def main() -> int:
             nonlocal traced_core, next_snapshot, data_sent, received_text, transcript_cursor
             nonlocal diagnostic_stage, connected_at, diagnostic_cursor
             command_pump(current)
-            for _, direction, value in transcript[transcript_cursor:]:
-                if direction == "received":
-                    received_text += value
-            transcript_cursor = len(transcript)
+            if transcript_cursor != len(transcript):
+                for _, direction, value in transcript[transcript_cursor:]:
+                    if direction == "received":
+                        received_text += value
+                transcript_cursor = len(transcript)
             if (args.imodem_send and not data_sent
                     and carrier_connected(received_text, complete=True)):
                 current.send_serial(_on_the_wire(args.imodem_send, current.dte_framing()))

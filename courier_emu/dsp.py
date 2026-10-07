@@ -680,6 +680,31 @@ class NativeC5x:
         storage = (ctypes.c_uint8 * len(codewords)).from_buffer_copy(codewords)
         self.library.courier_c5x_queue_g711_rx(self.handle, storage, len(storage))
 
+    def imodem_collect(self, start: int, waiting: int) -> tuple[int, int, int, int, bytes]:
+        """(status, reply tag, reply value, reply strobe writes, transmitted octets).
+
+        One call for what `IsdnMachine` service passes ask the core for: see
+        courier_c5x_imodem_collect in the native library.
+        """
+        buffers = self.__dict__.get("_collect_buffers")
+        if buffers is None:
+            output = (ctypes.c_uint8 * 4096)()
+            buffers = self._collect_buffers = (
+                output, (ctypes.c_uint64 * 4)(), ctypes.addressof(output))
+            lib = self.library
+            lib.courier_c5x_imodem_collect.argtypes = [
+                ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t,
+                ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p]
+            lib.courier_c5x_imodem_collect.restype = ctypes.c_size_t
+        output, values, address = buffers
+        count = self.library.courier_c5x_imodem_collect(
+            self.handle, start, waiting, address, 4096, ctypes.addressof(values))
+        if count == _SIZE_T_MAX:
+            octets = self.g711_tx(start)
+        else:
+            octets = ctypes.string_at(address, count)
+        return values[0], values[1], values[2], values[3], octets
+
     def g711_tx_exact(self, start: int, count: int) -> bytes:
         """`count` transmitted octets from `start`, when the caller knows how many."""
         storage = (ctypes.c_uint8 * count)()
