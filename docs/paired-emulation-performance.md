@@ -251,3 +251,41 @@ still counts them) and `quiet_until` to cover the idle and ringing states
 frame, so the frame deadline already bounds it), the C5x interpreter itself (a predecoded handler per
 program address would cut the dispatch), and the remaining per-service reads of
 the timers and the panel latch.
+
+## On an Apple Silicon Mac
+
+The same call on a local M-series Mac runs in about 43 s of wall time (72 s of
+CPU across both processes), against the 127-133 s above, and the balance is
+different: the C5x interpreter is 58% of the worker and 55% of the I-modem,
+Python only 25% and 12%. The worker is busy 96-98% of the time and is the
+limiter; the I-modem waits on it. The run used for every figure here:
+
+```bash
+PYTHONPATH=. .venv/bin/python tools/probe_imodem_analog_pair.py --analog-settings 'X1S27=1S54=0S58=48&A3&B1Q0&U26&N39' --imodem-settings 'S54=0S58=48&A3&B1Q0' --imodem-nvram artifacts/imodem-pair-x2-full-rate-routed-20261002/nvram-230400-switch2.sav --instructions 600000000 --analog-instructions 450000000 --analog-send ANALOG-X2-53333 --imodem-send IMODEM-X2-53333 --output OUT
+```
+
+Two runs of one build give identical output apart from the socket and record
+paths, so every change was checked by comparing the whole output directory
+with a baseline, and timed in alternating runs against the previous library
+(`COURIER_C5X_LIBRARY`); run to run noise is about 1.5% of CPU.
+
+- **Slow memory paths.** The worker's datapump reads 20% of its data from SARAM
+  or the shared external window and fetches 7% of its code from SARAM, and all
+  of those went out of line. They are a counter and a cell inline now, as are
+  the circular-buffer AR update (the filter loops run with one enabled) and the
+  step body in the run loops.
+- **Threaded dispatch.** In `run_cycles` each opcode's handler finishes its own
+  step and tail-calls the next handler (`C5xCore::threaded`), with the op body
+  inlined into it. The opcode tables are in the core's translation unit
+  (`c5x_optable.ipp`) for that.
+
+CPU 71-72 s -> 61.8-62.4 s, wall 43.6 s -> 38-39 s (3.1x faster than real
+time). Tried without a measurable gain: folding the tables in without inlining
+the op bodies (the thunks were already a single branch), threading the
+0xBE/0xBF second-level tables, inlining `consume_cycles` and the condition
+tests, reading DMOV's and MAC's regions from the maps, `-mcpu=native`. PGO
+gave 2-3%, not enough for a two-stage build.
+
+The worker is now about 56% C5x, 28% Python (a flat tail, about 200 calls per
+1,024-instruction service) and 12% x86 engine. The I-modem's set-up polls
+(above) would save at most the few percent the worker spends waiting.
