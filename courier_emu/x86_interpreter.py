@@ -238,6 +238,9 @@ class Uc:
         # went to Python (the model's gating may depend on what it did).
         self.native_host_io: tuple[int, int, bytearray] | None = None
         self.native_after_io: Callable[[], None] | None = None
+        self.native_host_base = 0
+        # Optional filter for native_after_io: a 64 KiB table of ports.
+        self.native_after_io_ports: bytearray | None = None
         self._native_fast_out_ports: tuple[int, ...] = ()
         self._native_fast_out_byte_ports: tuple[int, ...] = ()
         self._native_out_batch_callback: Callable[[memoryview, int], None] | None = None

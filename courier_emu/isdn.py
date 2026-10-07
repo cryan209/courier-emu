@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, deque
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
 
@@ -16,6 +17,7 @@ from .peripheral_clock import PeripheralClock
 from .pic import InterruptControllers
 from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
 from .xmp import XmpImage
+from .dsp import ImodemHostIo, ImodemShared
 from .imodem_mailbox import ImodemMailbox
 from .sio import (
     EVEN,
@@ -254,6 +256,9 @@ RTOS_SERVICE_INSTRUCTIONS = INSTRUCTIONS_PER_SECOND // 50   # 20 ms
 # DSP instructions: the C51's PCM highway and timers count cycles, and
 # stepping instructions ran the B channel's 8 kHz fast by the DSP's CPI.
 DSP_CYCLES_PER_CPU_INSTRUCTION = ASIC_DSP_CLOCK_HZ / INSTRUCTIONS_PER_SECOND
+# A status read advances the C5x only if this many 386 instructions (about
+# 6 us) have passed since it last was; see IsdnMachine._advance_dsp.
+DSP_READ_QUANTUM = 32
 
 # Which 8254 counter drives which IRQ line.
 #
@@ -458,8 +463,12 @@ class IsdnMachine:
             from .imodem_dsp import ImodemDsp
             mailbox = ImodemDsp()
         self.with_dsp = with_dsp
-        self._dsp_instructions = 0
         self.mailbox = mailbox if mailbox is not None else ImodemMailbox()
+        # Where the C5x has been run to lives with the rest of the endpoint's
+        # shared state, so the native port model can advance it too.
+        shared = getattr(self.mailbox, "_sh", None)
+        self._ledger = shared if shared is not None else ImodemShared()
+        self._native_io = None
         self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
 
         # Content to lay over the flash window before the firmware runs, as
@@ -644,7 +653,7 @@ class IsdnMachine:
             or self.dsc.handles(port)
         )
         if self.with_dsp and dsp_port:
-            self._advance_dsp()
+            self._advance_dsp(DSP_READ_QUANTUM)
         self.io_counts[("in", port)] += 1
         if self.pit.handles(port):
             return self.pit.read(port, self._peripheral_instructions())
@@ -740,10 +749,36 @@ class IsdnMachine:
                         and self.bri.call_state == "active")
         return self._peripheral_clock.read(self.instructions, realtime)
 
-    def _advance_dsp(self) -> None:
+    @property
+    def _dsp_instructions(self) -> int:
+        return self._ledger.dsp_instructions
+
+    @_dsp_instructions.setter
+    def _dsp_instructions(self, value: int) -> None:
+        self._ledger.dsp_instructions = value
+
+    def _advance_dsp(self, quantum: int = 0) -> None:
+        """Bring the C5x up to the 386's instruction count.
+
+        With a `quantum`, a pass that would advance it by fewer instructions
+        is left for the next one: the C5x is an independent processor, so a
+        status read seeing it a few microseconds behind is what asynchronous
+        hardware looks like, and the skipped time stays owed.
+        """
         if not self.with_dsp:
             return
+        if self._ledger.needs_service:
+            self.mailbox.service_pending()
+        native_io = self._native_io
+        if native_io is not None and native_io.live:
+            # The native model advances the C5x exactly as below; it hands
+            # back only when the harness has a PCM frame or a reply to take.
+            if not native_io.advance(self.instructions, quantum):
+                self.mailbox.service_pending()
+            return
         elapsed = self.instructions - self._dsp_instructions
+        if elapsed < quantum:
+            return
         self._dsp_instructions = self.instructions
         bri = self.bri
         mailbox = self.mailbox
@@ -1090,11 +1125,56 @@ class IsdnMachine:
             # push_far does for a hardware interrupt (clearing IF and TF);
             # the native engine takes them and counts them per vector.
             uc.native_int_mode = bytearray(b"\x03" * 256)
+            if (
+                self.with_dsp
+                and hasattr(self.mailbox, "service_pending")
+                and uc.native_enabled
+                and os.environ.get("COURIER_NATIVE_IO", "1") != "0"
+            ):
+                native_io = self._native_io = ImodemHostIo(
+                    self._ledger,
+                    cycles_per_instruction=DSP_CYCLES_PER_CPU_INSTRUCTION,
+                    read_quantum=DSP_READ_QUANTUM)
+                lane_ports = range(0x40, 0x58, 2)
+                host_ports = bytearray(65536)
+                for port in (0x18, 0x1A, *lane_ports):
+                    host_ports[port] |= 3
+
+                def refresh_native_io() -> None:
+                    mailbox = self.mailbox
+                    core = mailbox.core
+                    bri = self.bri
+                    peer = bri.media_peer if bri is not None else None
+                    live = (
+                        core is not None and not mailbox.reset_status
+                        and not mailbox._loader_started
+                        and mailbox.error is None
+                        and not getattr(peer, "realtime_clock", False)
+                    )
+                    self._ledger.rx_present = mailbox.rx is not None
+                    native_io.configure(core.handle if live else None, live)
+
+                self._refresh_native_io = refresh_native_io
+                uc.native_host_io = (
+                    native_io.function, native_io.context, host_ports)
+                uc.native_host_base = instruction_base
+                uc.native_after_io = refresh_native_io
+                # Only the mailbox's own ports can change what the model
+                # serves; the PIC and the serial ports are a large share of
+                # the exits and cannot.
+                after = bytearray(65536)
+                for port in (0x18, 0x1A, 0x1C, 0x1E, 0x58, 0x5A, 0x5C, 0x5E,
+                             *range(0x40, 0x58)):
+                    after[port] = 1
+                uc.native_after_io_ports = after
+                refresh_native_io()
 
             def service(_uc: Any, retired: int, _data: Any) -> None:
                 self.instructions = instruction_base + retired
                 self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS
                 self.poll_timers()
+                if self._native_io is not None:
+                    self._refresh_native_io()
                 if uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                     vector = self.pic.pending_vector()
                     if vector is not None and push_far(vector):
@@ -1157,7 +1237,20 @@ class IsdnMachine:
         }
         return self._result(status, registers)
 
+    def _flush_native_io(self) -> None:
+        """Fold the accesses the native port model served into the tallies."""
+        native_io = self._native_io
+        if native_io is None or not native_io.context:
+            return
+        reads, writes = native_io.take_counts()
+        for port in range(256):
+            if reads[port]:
+                self.io_counts[("in", port)] += reads[port]
+            if writes[port]:
+                self.io_counts[("out", port)] += writes[port]
+
     def _result(self, status: str, registers: dict[str, int]) -> IsdnRunResult:
+        self._flush_native_io()
         known = set()
         if self.with_dsp:
             known.add(0x1a)
@@ -1208,7 +1301,8 @@ class IsdnMachine:
                                    ("internal", INTERNAL_UART_BASE))
                 if base in self.channels
             },
-            download_bytes=len(self.download),
+            download_bytes=min(MAX_SERIAL_BYTES,
+                               len(self.download) + self._ledger.lane_writes),
             io_summary={
                 f"{direction} {port:#06x}": count
                 for (direction, port), count in self.io_counts.most_common(16)

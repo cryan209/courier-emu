@@ -392,6 +392,9 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
+        lib.courier_c5x_get_io_port_writes.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_c5x_get_io_port_writes.restype = ctypes.c_uint64
         lib.courier_c5x_get_pc.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_pc.restype = ctypes.c_uint16
         lib.courier_c5x_get_line_tx_writes.argtypes = [ctypes.c_void_p]
@@ -776,6 +779,10 @@ class NativeC5x:
                 state[name] -= 0x100000000
         state["idle"] = bool(state["idle"])
         return state
+
+    def io_port_writes(self, port: int) -> int:
+        """How many times the DSP has written one I/O port."""
+        return self.library.courier_c5x_get_io_port_writes(self.handle, port)
 
     def pc(self) -> int:
         return self.library.courier_c5x_get_pc(self.handle)
@@ -1175,3 +1182,91 @@ class LaneHostIo:
         self.library.courier_laneio_take_counts(
             self.context, *(ctypes.addressof(cell) for cell in cells))
         return tuple(list(cell) for cell in cells)  # type: ignore[return-value]
+
+
+class ImodemShared(ctypes.Structure):
+    """State the I-modem endpoint shares, in place, with its native port model.
+
+    The layout mirrors `ImodemShared` in c5x_capi.cpp. Python reads and writes
+    the fields as ordinary attributes; the native model uses the same memory.
+    """
+
+    _fields_ = [
+        ("dsp_instructions", ctypes.c_uint64),
+        ("cycle_debt", ctypes.c_double),
+        ("pcm_cursor", ctypes.c_uint64),
+        ("consumed", ctypes.c_uint64),
+        ("reply_writes", ctypes.c_uint64),
+        ("latch_writes", ctypes.c_uint64),
+        ("lane_writes", ctypes.c_uint64),
+        ("host_pending", ctypes.c_uint8),
+        ("tx_ready", ctypes.c_uint8),
+        ("rx_present", ctypes.c_uint8),
+        ("needs_service", ctypes.c_uint8),
+        ("pad", ctypes.c_uint8 * 4),
+        ("lanes", ctypes.c_uint8 * 0x60),
+    ]
+
+
+class ImodemHostIo:
+    """The I-modem's live data lanes and DSP advance, served inside the x86 engine."""
+
+    def __init__(self, shared: ImodemShared, *, cycles_per_instruction: float,
+                 read_quantum: int) -> None:
+        self.library = load_library()
+        lib = self.library
+        lib.courier_imodemio_create.restype = ctypes.c_void_p
+        lib.courier_imodemio_destroy.argtypes = [ctypes.c_void_p]
+        lib.courier_imodemio_configure.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int,
+            ctypes.c_double, ctypes.c_uint]
+        lib.courier_imodemio_advance.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint]
+        lib.courier_imodemio_advance.restype = ctypes.c_int
+        lib.courier_imodemio_take_counts.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        self.shared = shared
+        self.cycles_per_instruction = cycles_per_instruction
+        self.read_quantum = read_quantum
+        self.context = lib.courier_imodemio_create()
+        self.function = ctypes.cast(
+            lib.courier_imodemio_access, ctypes.c_void_p).value
+        self._counts = ((ctypes.c_uint32 * 256)(), (ctypes.c_uint32 * 256)())
+        self._advance = lib.courier_imodemio_advance
+        self._applied: tuple | None = None
+        self.configure(None, False)
+
+    def configure(self, core_handle: int | None, live: bool) -> None:
+        state = (core_handle, live)
+        if state == self._applied:
+            return
+        self._applied = state
+        self.library.courier_imodemio_configure(
+            self.context, ctypes.addressof(self.shared), core_handle, int(live),
+            self.cycles_per_instruction, self.read_quantum)
+
+    @property
+    def live(self) -> bool:
+        return bool(self._applied and self._applied[1])
+
+    def advance(self, now: int, quantum: int = 0) -> bool:
+        """Run the C5x to `now` (see IsdnMachine._advance_dsp); False: service."""
+        return bool(self._advance(self.context, now, quantum))
+
+    def close(self) -> None:
+        if self.context:
+            self.library.courier_imodemio_destroy(self.context)
+            self.context = None
+
+    def __del__(self) -> None:  # pragma: no cover - interpreter shutdown order
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def take_counts(self) -> tuple[list[int], list[int]]:
+        """(IN counts, OUT counts) by port for accesses served natively."""
+        reads, writes = self._counts
+        self.library.courier_imodemio_take_counts(
+            self.context, ctypes.addressof(reads), ctypes.addressof(writes))
+        return list(reads), list(writes)

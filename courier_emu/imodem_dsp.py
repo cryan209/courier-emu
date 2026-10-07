@@ -3,7 +3,7 @@ from hashlib import sha256
 from pathlib import Path
 import time
 
-from .dsp import NativeC5x
+from .dsp import ImodemShared, NativeC5x
 from .imodem_mailbox import ImodemMailbox
 from .timebase import ASIC_DSP_CLOCK_HZ
 
@@ -30,12 +30,49 @@ PCM_STEP_BATCH = 1024
 ROM_SHA256 = 'd57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9'
 
 
+class _LaneStore:
+    """Window bytes by port, held in memory the native port model also uses."""
+
+    def __init__(self, shared):
+        self._bytes = shared.lanes
+
+    def get(self, port, default=None):
+        return self._bytes[port] if 0 <= port < len(self._bytes) else default
+
+    def __getitem__(self, port):
+        return self._bytes[port]
+
+    def __setitem__(self, port, value):
+        self._bytes[port] = value & 0xFF
+
+
+def _shared_field(name, kind):
+    """A mailbox attribute that lives in the shared struct (see ImodemShared)."""
+    def get(self):
+        return kind(getattr(self._sh, name))
+
+    def put(self, value):
+        setattr(self._sh, name, kind(value))
+
+    return property(get, put)
+
+
 class ImodemDsp(ImodemMailbox):
+    # Scalars the native port model reads and updates in place.
+    tx_ready = _shared_field("tx_ready", bool)
+    host_pending = _shared_field("host_pending", bool)
+    consumed = _shared_field("consumed", int)
+    latch_writes = _shared_field("latch_writes", int)
+    _reply_writes = _shared_field("reply_writes", int)
+    _pcm_cursor = _shared_field("pcm_cursor", int)
+    _cycle_debt = _shared_field("cycle_debt", float)
+
     def __init__(self, dsc=None, *, foreground_overlay_assist=False):
+        self._sh = ImodemShared()
         super().__init__(self._command)
         self.core = None
         self.tx_ready = False
-        self.lanes = {}
+        self.lanes = _LaneStore(self._sh)
         self.boot_words = []
         self.boot_origin = None
         self.boot_status = 0xff
@@ -161,8 +198,9 @@ class ImodemDsp(ImodemMailbox):
         if self.core is None or self.error is not None:
             self._cycle_debt = 0.0
             return
-        self._cycle_debt += cycles
-        if self._cycle_debt < 1:
+        sh = self._sh
+        sh.cycle_debt += cycles
+        if sh.cycle_debt < 1:
             return
         core = self.core
         native_step_cycles = getattr(core, 'step_cycles', None)
@@ -170,11 +208,11 @@ class ImodemDsp(ImodemMailbox):
             native_advance = getattr(core, 'advance_imodem', None)
             if native_advance is not None:
                 ran = elapsed = 0
-                remaining = int(self._cycle_debt)
+                remaining = int(sh.cycle_debt)
                 sync_values = self._sync_values
                 while remaining > 0:
                     done, spent, status, tag, value, writes, octets = native_advance(
-                        remaining, self._pcm_cursor)
+                        remaining, sh.pcm_cursor)
                     sync_values(status, tag, value, writes)
                     if octets:
                         self._sync_pcm(octets)
@@ -185,7 +223,7 @@ class ImodemDsp(ImodemMailbox):
                 ran, elapsed = native_step_cycles(int(self._cycle_debt))
                 self._sync()
                 self._sync_pcm()
-            self._cycle_debt -= elapsed
+            sh.cycle_debt -= elapsed
             if ran > 0:
                 self._cpi = 0.9 * self._cpi + 0.1 * max(1.0, elapsed / ran)
             return
@@ -204,6 +242,26 @@ class ImodemDsp(ImodemMailbox):
         if ran > 0:
             self._cpi = 0.9 * self._cpi + 0.1 * max(
                 1.0, (current - start_cycles) / ran)
+
+    def service_pending(self):
+        """Do what the harness owes after the native port model stopped.
+
+        The model runs the C5x the way `step_cycles` does and stops where
+        that loop would have called into the harness - a finished PCM frame,
+        or a reply to offer - leaving the rest of the owed cycles in the
+        ledger. This performs those calls and carries on with the remainder.
+        """
+        self._sh.needs_service = 0
+        core = self.core
+        if core is None or self.error is not None:
+            return
+        status = core.io(0x57)
+        self._sync_values(status, core.io_output(0x5e), core.io_output(0x5f),
+                          core.io_port_writes(0x5f))
+        octets = core.g711_tx(self._pcm_cursor)
+        if octets:
+            self._sync_pcm(octets)
+        self.step_cycles(0)
 
     def pace_realtime(self, active, now=None, *, max_wall_seconds=None):
         """Advance the digital PCM clock against monotonic wall time.
@@ -268,18 +326,20 @@ class ImodemDsp(ImodemMailbox):
                 break
 
     def _sync_values(self, status, tag, value, writes):
-        if self.host_pending and not status & 1:
-            self.consumed += 1
-            self.host_pending = False
-        self.tx_ready = not bool(status & 1)
-        if not status & 2 and self.rx is None and writes > self._reply_writes:
+        sh = self._sh
+        if sh.host_pending and not status & 1:
+            sh.consumed += 1
+            sh.host_pending = 0
+        sh.tx_ready = 0 if status & 1 else 1
+        if not status & 2 and self.rx is None and writes > sh.reply_writes:
             self.offer_reply(tag, value)
-            self._reply_writes = writes
+            sh.reply_writes = writes
 
     def _sync_pcm(self, octets=None):
+        sh = self._sh
         if octets is None:
-            octets = self.core.g711_tx(self._pcm_cursor)
-        self._pcm_cursor += len(octets)
+            octets = self.core.g711_tx(sh.pcm_cursor)
+        sh.pcm_cursor += len(octets)
         self.pcm_tx.extend(octets)
         if self.dsc is None or not octets:
             return

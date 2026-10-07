@@ -91,9 +91,14 @@ class NativeInterpreter:
                     first, last = max(0, first), min(len(self.guard) - 1, last)
                     self.guard[first:last+1] = self.guard[first:last+1].translate(bytes(v | bit for v in range(256)))
             self.signature = signature
+        host_io = ()
+        if cpu.native_host_io is not None:
+            # The instruction count a port model sees is the harness's own:
+            # its base plus everything retired before this batch.
+            host_io = (*cpu.native_host_io, cpu.native_host_base + cpu.retired)
         done, reason, direction, port, size, value, event_count = self.run(
             cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
-            cpu.native_int_mode, self.int_counts, *(cpu.native_host_io or ()),
+            cpu.native_int_mode, self.int_counts, *host_io,
         )
         self.handled_io = reason == 8
         self.batches += 1
@@ -125,7 +130,9 @@ class NativeInterpreter:
             finally:
                 cpu.retired = original_retired
             done += 1
-            if cpu.native_after_io is not None:
+            if cpu.native_after_io is not None and (
+                    cpu.native_after_io_ports is None
+                    or cpu.native_after_io_ports[port]):
                 cpu.native_after_io()
         self.retired += done
         return done

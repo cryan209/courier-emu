@@ -17,7 +17,8 @@ struct Core {
     // Optional port model: host_ports[port] bit 0 offers IN, bit 1 OUT to
     // host_io, which answers 1 when it served the access (an IN's value goes
     // to *out). Declined accesses leave the engine for the harness as usual.
-    typedef int (*HostIo)(void *context,int direction,uint16_t port,int size,uint16_t value,uint16_t *out);
+    typedef int (*HostIo)(void *context,int direction,uint16_t port,int size,uint16_t value,uint64_t now,uint16_t *out);
+    uint64_t host_base=0;
     HostIo host_io=nullptr;
     void *host_context=nullptr;
     const uint8_t *host_ports=nullptr;
@@ -208,8 +209,11 @@ static uint32_t run_batch(Core &c, uint32_t count) {
             c.prepare_io(opcode);
             if(c.host_io&&(c.host_ports[c.io_port&0xffff]&c.io_direction)) {
                 uint16_t answer=0;
+                // `now` is the instruction count the harness would see for
+                // this access: the one in flight counts as retired.
                 if(c.host_io(c.host_context,int(c.io_direction),uint16_t(c.io_port),
-                             int(c.io_size),uint16_t(c.io_value),&answer)) {
+                             int(c.io_size),uint16_t(c.io_value),
+                             c.host_base+c.done+1,&answer)) {
                     if(c.io_direction==1)
                         c.r[AX]=c.io_size==1?(c.r[AX]&~0xffu)|(answer&0xffu)
                                             :(c.r[AX]&~0xffffu)|answer;
@@ -250,10 +254,11 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     PyObject *registers, *memory, *guard, *fast_out, *io_events;
     PyObject *int_mode = Py_None, *int_counts = Py_None;
     PyObject *host_io = Py_None, *host_context = Py_None, *host_ports = Py_None;
+    PyObject *host_base = Py_None;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOO", &registers, &memory, &guard,
+    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOOO", &registers, &memory, &guard,
         &fast_out, &io_events, &count, &int_mode, &int_counts,
-        &host_io, &host_context, &host_ports)) return nullptr;
+        &host_io, &host_context, &host_ports, &host_base)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
         !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
@@ -295,6 +300,10 @@ static PyObject *run_python(PyObject *, PyObject *args) {
         c.host_io=reinterpret_cast<Core::HostIo>(function);
         c.host_context=reinterpret_cast<void*>(context);
         c.host_ports=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(host_ports));
+        if (host_base != Py_None) {
+            c.host_base=PyLong_AsUnsignedLongLong(host_base);
+            if (PyErr_Occurred()) return nullptr;
+        }
     }
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.

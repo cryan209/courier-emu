@@ -49,6 +49,91 @@ struct LaneHostIo {
 };
 }
 
+namespace {
+// State the I-modem's mailbox endpoint shares with its native port model.
+// Python reads and writes these fields in place through a ctypes mirror of
+// this layout (dsp.py ImodemShared), so neither side marshals anything.
+struct ImodemShared {
+    uint64_t dsp_instructions;   // 386 instruction count the C5x has been run to
+    double cycle_debt;           // C5x cycles owed and not yet run
+    uint64_t pcm_cursor;         // PCM octets already exchanged with the DSC
+    uint64_t consumed;
+    uint64_t reply_writes;
+    uint64_t latch_writes;
+    uint64_t lane_writes;        // lane stores served natively
+    uint8_t host_pending;
+    uint8_t tx_ready;
+    uint8_t rx_present;
+    uint8_t needs_service;       // 1: the harness has work after a native advance
+    uint8_t pad[4];
+    uint8_t lanes[0x60];         // window bytes by port, 0x40..0x5e
+};
+
+// Port model for the I-modem's live data lanes and their DSP advance. It does
+// what ImodemDsp.read/write and IsdnMachine._advance_dsp do for these ports,
+// and stops, leaving `needs_service` set, whenever the harness has to act
+// (a finished PCM frame, a reply to offer) so that work happens in Python in
+// the same order it would have.
+struct ImodemHostIo {
+    ImodemShared *shared = nullptr;
+    C5xCore *core = nullptr;
+    bool live = false;
+    double cycles_per_instruction = 0;
+    uint32_t read_quantum = 0;
+    uint32_t in_count[256] = {}, out_count[256] = {};
+
+    uint16_t word(uint16_t port) const
+    {
+        return uint16_t(shared->lanes[port] | (shared->lanes[port + 2] << 8));
+    }
+
+    // true: the C5x is where the harness would have put it; false: the
+    // harness has to take over from here.
+    bool advance(uint64_t now, uint32_t quantum)
+    {
+        ImodemShared *sh = shared;
+        if (sh->needs_service) return false;
+        const int64_t elapsed = int64_t(now) - int64_t(sh->dsp_instructions);
+        if (elapsed < int64_t(quantum)) return true;
+        sh->dsp_instructions = now;
+        if (!elapsed) return true;
+        sh->cycle_debt += double(elapsed) * cycles_per_instruction;
+        if (sh->cycle_debt < 1) return true;
+        int64_t remaining = int64_t(sh->cycle_debt);
+        uint64_t spent_total = 0;
+        bool stop = false;
+        try {
+            while (remaining > 0) {
+                const uint64_t before = core->cycle_count();
+                core->run_cycles(uint64_t(remaining), true);
+                const uint64_t spent = core->cycle_count() - before;
+                const auto &octets = core->g711_tx();
+                const std::size_t cursor = std::min<std::size_t>(
+                    sh->pcm_cursor, octets.size());
+                const bool frame = octets.size() > cursor;
+                const uint16_t status = core->io(0x57);
+                const uint64_t writes = core->io_port_stat(0x5f).writes;
+                if (sh->host_pending && !(status & 1)) {
+                    ++sh->consumed;
+                    sh->host_pending = 0;
+                }
+                sh->tx_ready = !(status & 1);
+                const bool reply = !(status & 2) && !sh->rx_present
+                    && writes > sh->reply_writes;
+                spent_total += spent;
+                remaining -= int64_t(spent);
+                if (frame || reply) { stop = true; break; }
+            }
+        } catch (const std::exception &) {
+            stop = true;
+        }
+        sh->cycle_debt -= double(spent_total);
+        if (stop) sh->needs_service = 1;
+        return !stop;
+    }
+};
+}
+
 extern "C" {
 
 void *courier_laneio_create() { return new LaneHostIo(); }
@@ -82,7 +167,7 @@ void courier_laneio_set_lane(void *context, unsigned index, uint8_t *byte)
 // direction 1 = IN, 2 = OUT. Returns 1 when served; the answer to an IN is in
 // *out. Byte accesses only.
 int courier_laneio_access(void *context, int direction, uint16_t port,
-    int size, uint16_t value, uint16_t *out)
+    int size, uint16_t value, uint64_t, uint16_t *out)
 {
     auto *io = static_cast<LaneHostIo *>(context);
     if (!io->core || size != 1 || port >= 256) return 0;
@@ -134,6 +219,95 @@ int courier_laneio_access(void *context, int direction, uint16_t port,
     io->out_last[port] = value;
     io->out_seen[port] = 1;
     return 1;
+}
+
+void *courier_imodemio_create() { return new ImodemHostIo(); }
+
+void courier_imodemio_destroy(void *context)
+{
+    delete static_cast<ImodemHostIo *>(context);
+}
+
+// `core` may be null, which declines everything but lane stores.
+void courier_imodemio_configure(void *context, void *shared, void *core,
+    int live, double cycles_per_instruction, unsigned read_quantum)
+{
+    auto *io = static_cast<ImodemHostIo *>(context);
+    io->shared = static_cast<ImodemShared *>(shared);
+    io->core = static_cast<C5xCore *>(core);
+    io->live = live != 0;
+    io->cycles_per_instruction = cycles_per_instruction;
+    io->read_quantum = read_quantum;
+}
+
+// The harness's own advance, for passes that are not port accesses: 1 when the
+// C5x is where the harness would have put it, 0 when it must call
+// service_pending (needs_service is then set).
+int courier_imodemio_advance(void *context, uint64_t now, unsigned quantum)
+{
+    auto *io = static_cast<ImodemHostIo *>(context);
+    if (!io->shared || !io->core || !io->live) return 0;
+    return io->advance(now, quantum) ? 1 : 0;
+}
+
+int courier_imodemio_access(void *context, int direction, uint16_t port,
+    int size, uint16_t value, uint64_t now, uint16_t *out)
+{
+    auto *io = static_cast<ImodemHostIo *>(context);
+    ImodemShared *sh = io->shared;
+    if (!sh || size != 1 || port >= 0x60) return 0;
+    const bool lane = port >= 0x40 && port < 0x58 && !(port & 1);
+    if (direction == 2 && lane) {
+        sh->lanes[port] = uint8_t(value);
+        ++sh->lane_writes;
+        ++io->out_count[port];
+        return 1;
+    }
+    if (!io->core || !io->live) return 0;
+    if (direction == 1) {
+        if (port != 0x18 && port != 0x1a && !lane) return 0;
+        if (!io->advance(now, io->read_quantum)) return 0;
+        uint16_t answer;
+        if (port == 0x18 || port == 0x1a) {
+            const uint16_t status = io->core->io(0x56);
+            answer = port == 0x18 ? uint16_t(0xc0 | (~status & 0x3f))
+                                  : uint16_t(0xc0 | (~(status >> 8) & 0x3f));
+        } else {
+            const unsigned offset = port - 0x40;
+            const uint16_t word = io->core->io_output(uint16_t(0x58 + offset / 4));
+            answer = (word >> ((offset & 2) ? 8 : 0)) & 0xff;
+        }
+        ++io->in_count[port];
+        *out = answer & 0xff;
+        return 1;
+    }
+    // The ack/command latches: 0xff on 0x18 is the loader's reset request.
+    if ((port != 0x18 && port != 0x1a) || (port == 0x18 && (value & 0xff) == 0xff))
+        return 0;
+    if (!io->advance(now, 0)) return 0;
+    uint16_t bits = value & 0x3f;
+    if (port == 0x18) {
+        for (unsigned bank = 0; bank < 6; ++bank)
+            if (bits & (1u << bank))
+                io->core->set_io(uint16_t(0x58 + bank),
+                    io->word(uint16_t(0x40 + 4 * bank)));
+    } else {
+        bits = uint16_t(bits << 8);
+    }
+    io->core->set_io(0x56, uint16_t(io->core->io(0x56) | bits));
+    ++sh->latch_writes;
+    ++io->out_count[port];
+    return 1;
+}
+
+void courier_imodemio_take_counts(void *context, uint32_t *in_counts,
+    uint32_t *out_counts)
+{
+    auto *io = static_cast<ImodemHostIo *>(context);
+    std::memcpy(in_counts, io->in_count, sizeof io->in_count);
+    std::memcpy(out_counts, io->out_count, sizeof io->out_count);
+    std::memset(io->in_count, 0, sizeof io->in_count);
+    std::memset(io->out_count, 0, sizeof io->out_count);
 }
 
 // A write the harness handled itself supersedes the last one served here.
@@ -597,6 +771,11 @@ void courier_c5x_schedule_line_frame_entry(void *handle, uint16_t address)
 void courier_c5x_set_pc(void *handle, uint16_t address)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_pc(address);
+}
+
+uint64_t courier_c5x_get_io_port_writes(void *handle, uint16_t port)
+{
+    return handle ? static_cast<C5xCore *>(handle)->io_port_stat(port).writes : 0;
 }
 
 uint16_t courier_c5x_get_pc(void *handle)
