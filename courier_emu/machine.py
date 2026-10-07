@@ -1643,6 +1643,20 @@ class CourierMachine:
                 _uc.mem_write(0xFF66, (value | 0x08).to_bytes(2, "little"))
                 self.accelerated_delays += 1
 
+        mmio_batched: list[bool] = [False]
+        mmio_batch_ok = (
+            self.cpu_engine == "interpreter" and self.quad_board is None
+            and self.quad_c50 is None and self.quad_usart is None)
+
+        def replay_mmio_writes(events: memoryview, count: int) -> None:
+            # What the engine retired without leaving: replayed in order, ahead
+            # of anything else that looks at the state they change.
+            for offset in range(0, count * 8, 8):
+                on_mmio_write(
+                    uc, 0, int.from_bytes(events[offset:offset + 4], "little"),
+                    events[offset + 6],
+                    events[offset + 4] | events[offset + 5] << 8, None)
+
         def service_chunk(_uc: Any, elapsed: int) -> None:
             """The board's periodic service, `elapsed` instructions on.
 
@@ -1655,6 +1669,14 @@ class CourierMachine:
             does more honestly than testing them after every instruction,
             and it is what lets the code hook go away.
             """
+            if (not mmio_batched[0] and mmio_batch_ok
+                    and len(self.mmio_events) >= self.max_io_events):
+                # The first accesses are kept verbatim; after that the
+                # interrupt controller's end-of-interrupt write needs nothing
+                # but a replay.
+                mmio_batched[0] = True
+                _uc.native_mmio_batch = ((0xFF02, 0xFF03),)
+                _uc.native_mmio_callback = replay_mmio_writes
             if self.quad_c50 is not None:
                 self.quad_c50.service(elapsed)
             if self.quad_terminal is not None:

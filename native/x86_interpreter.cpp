@@ -39,6 +39,12 @@ struct Core {
     uint64_t poll_total=0, poll_next=0, poll_period=0;
     uint32_t poll_code=0, polls_elided=0;
     bool dirty_events=false;
+    // Writes to bytes whose guard has bit 64 are logged here (8 bytes each:
+    // address, value, size) instead of leaving the engine, for the harness to
+    // replay in order before it next looks at anything. Capacity is one batch's
+    // worst case, so there is no overflow check.
+    uint8_t *mmio_events=nullptr;
+    uint32_t mmio_count=0;
     std::jmp_buf exit;
     [[noreturn]] void yield(uint32_t why=1) { reason=why; std::longjmp(exit, 1); }
     uint8_t *mem; const uint8_t *guard; uint32_t mask;
@@ -51,7 +57,11 @@ struct Core {
         if(a+unsigned(n)>mask+1) yield(2);
         // Mapping regions are page-aligned. Watched bytes force a fallback,
         // including straddling accesses (conservative w.r.t. Python hooks).
-        for(int i=0;i<n;++i) if(!(guard[a+i]&p) || (guard[a+i]&(p==1?16:32))) yield(p==1?3:4);
+        for(int i=0;i<n;++i) if(!(guard[a+i]&p) || (guard[a+i]&(p==1?16:32))) {
+            // Bit 64 (writes only): the harness replays this write later.
+            if(p==2&&(guard[a+i]&64)&&(guard[a+i]&p)) continue;
+            yield(p==1?3:4);
+        }
     }
     uint32_t load(uint32_t a,int n) {check(a,n,1); uint32_t v=mem[a]; if(n>=2)v|=uint32_t(mem[a+1])<<8; if(n==4)v|=uint32_t(mem[a+2])<<16|uint32_t(mem[a+3])<<24; return v;}
     void store(uint32_t a,int n,uint32_t v) {check(a,n,2); if(nw==8)yield(); writes[nw++]={a,v,n};}
@@ -269,7 +279,12 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         } else if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
         std::memcpy(c.saved,c.r,sizeof(c.r));
         c.step();
-        for(int j=0;j<c.nw;++j){const auto &w=c.writes[j];for(int i=0;i<w.size;++i)c.mem[w.address+i]=w.value>>(8*i);}
+        for(int j=0;j<c.nw;++j){const auto &w=c.writes[j];for(int i=0;i<w.size;++i)c.mem[w.address+i]=w.value>>(8*i);
+            if(c.mmio_events&&(c.guard[w.address]&64)){
+                uint8_t *event=c.mmio_events+8*c.mmio_count++;
+                event[0]=w.address;event[1]=w.address>>8;event[2]=w.address>>16;event[3]=w.address>>24;
+                event[4]=w.value;event[5]=w.value>>8;event[6]=uint8_t(w.size);event[7]=0;
+            }}
     }
     return c.done;
 }
@@ -286,11 +301,12 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     PyObject *host_io = Py_None, *host_context = Py_None, *host_ports = Py_None;
     PyObject *host_base = Py_None;
     PyObject *poll_fn = Py_None, *poll_context = Py_None, *poll_state = Py_None;
+    PyObject *mmio_events = Py_None;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOOOOOO", &registers, &memory, &guard,
+    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOOOOOOO", &registers, &memory, &guard,
         &fast_out, &io_events, &count, &int_mode, &int_counts,
         &host_io, &host_context, &host_ports, &host_base,
-        &poll_fn, &poll_context, &poll_state)) return nullptr;
+        &poll_fn, &poll_context, &poll_state, &mmio_events)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
         !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
@@ -312,6 +328,12 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     c.io_event_capacity=uint32_t(PyByteArray_GET_SIZE(io_events)/4);
     c.mask=uint32_t(PyByteArray_GET_SIZE(memory)-1);
     c.is386=c.mask==0xffffff;
+    if (mmio_events != Py_None) {
+        if (!PyByteArray_Check(mmio_events) || PyByteArray_GET_SIZE(mmio_events) < 8*8*65536) {
+            PyErr_SetString(PyExc_ValueError,"invalid native mmio buffer"); return nullptr;
+        }
+        c.mmio_events=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(mmio_events));
+    }
     if (int_mode != Py_None && int_counts != Py_None) {
         if (!PyByteArray_Check(int_mode) || PyByteArray_GET_SIZE(int_mode)!=256 ||
             !PyByteArray_Check(int_counts) || PyByteArray_GET_SIZE(int_counts)!=1024) {
@@ -358,9 +380,9 @@ static PyObject *run_python(PyObject *, PyObject *args) {
             PyList_SetItem(registers,i,v);
         }
     }
-    return Py_BuildValue("IIIIIIIKI",done,c.reason,c.io_direction,c.io_port,
+    return Py_BuildValue("IIIIIIIKII",done,c.reason,c.io_direction,c.io_port,
         c.io_size,c.io_value,c.io_event_count,
-        (unsigned long long)c.poll_next,c.poll_code);
+        (unsigned long long)c.poll_next,c.poll_code,c.mmio_count);
 }
 
 static PyObject *inject_interrupt_python(PyObject *, PyObject *args) {

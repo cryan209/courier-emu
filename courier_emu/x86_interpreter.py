@@ -249,6 +249,11 @@ class Uc:
         self._native_fast_out_ports: tuple[int, ...] = ()
         self._native_fast_out_byte_ports: tuple[int, ...] = ()
         self._native_out_batch_callback: Callable[[memoryview, int], None] | None = None
+        # Memory writes the native engine logs rather than leaving for
+        # Python: (first, last) physical byte ranges, and the callback that
+        # replays them in order.
+        self.native_mmio_batch: tuple[tuple[int, int], ...] = ()
+        self.native_mmio_callback: Callable[[memoryview, int], None] | None = None
         # A watched write can schedule device updates after the instruction
         # commits, before another native batch reads the affected memory.
         self._after_instruction: Callable[[], None] | None = None

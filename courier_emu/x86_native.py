@@ -63,6 +63,8 @@ class NativeInterpreter:
         for port in getattr(cpu, "_native_neutral_out_ports", ()):
             self.fast_out[port] |= 4
         self.io_events = bytearray(65536 * 4)
+        # One batch retires at most 65536 instructions of at most 8 writes each.
+        self.mmio_events = bytearray(8 * 8 * 65536)
         self.int_counts = bytearray(256 * 4)
         self.out_batch_callback = cpu._native_out_batch_callback
 
@@ -85,7 +87,7 @@ class NativeInterpreter:
         return bool(self._inject_interrupt(cpu.regs, cpu.memory, vector))
 
     def execute(self, cpu, count):
-        signature = (len(cpu.mapped), len(cpu.hooks))
+        signature = (len(cpu.mapped), len(cpu.hooks), cpu.native_mmio_batch)
         if signature != self.signature:
             self.guard[:] = bytes(len(self.guard))
             for first, last, perms in cpu.mapped:
@@ -98,20 +100,29 @@ class NativeInterpreter:
                         first, last = 0, len(self.guard) - 1
                     first, last = max(0, first), min(len(self.guard) - 1, last)
                     self.guard[first:last+1] = self.guard[first:last+1].translate(bytes(v | bit for v in range(256)))
+            for first, last in cpu.native_mmio_batch:
+                # Writes the harness replays later (see the engine's guard bit 64).
+                for address in range(first, last + 1):
+                    self.guard[address] |= 64
             self.signature = signature
         host_io = ()
+        polling = False
         if cpu.native_host_io is not None:
             # The instruction count a port model sees is the harness's own:
             # its base plus everything retired before this batch.
             host_io = (*cpu.native_host_io, cpu.native_host_base + cpu.retired)
             if cpu.native_poll is not None and cpu._clock_callback is not None:
+                polling = True
                 host_io += (*cpu.native_poll, (cpu.retired, cpu._clock_next, cpu._clock_period))
-        done, reason, direction, port, size, value, event_count, poll_next, poll_code = self.run(
+        batching = cpu.native_mmio_callback is not None and cpu.native_mmio_batch
+        if batching:
+            host_io = (*host_io, *((None,) * (7 - len(host_io))), self.mmio_events)
+        done, reason, direction, port, size, value, event_count, poll_next, poll_code, mmio_count = self.run(
             cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
             cpu.native_int_mode, self.int_counts, *host_io,
         )
         self.poll_code = poll_code
-        if host_io and len(host_io) > 4 and poll_next != cpu._clock_next:
+        if polling and poll_next != cpu._clock_next:
             # Polls the engine ran itself: the next one falls due later.
             cpu._clock_next = poll_next
         self.handled_io = reason == 8
@@ -124,6 +135,14 @@ class NativeInterpreter:
             self.exits[(names[reason], hex(pc), hex(cpu.memory[pc]))] += 1
         if event_count and self.out_batch_callback is not None:
             self.out_batch_callback(memoryview(self.io_events), event_count)
+        if mmio_count:
+            # The replayed handlers see the clock where the batch left it.
+            original_retired = cpu.retired
+            cpu.retired += done
+            try:
+                cpu.native_mmio_callback(memoryview(self.mmio_events), mmio_count)
+            finally:
+                cpu.retired = original_retired
         if self.handled_io:
             # Publish the progress preceding this I/O instruction while its
             # callback runs. Device hooks use the retired count to synchronize
