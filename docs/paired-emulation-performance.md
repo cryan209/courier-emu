@@ -69,6 +69,19 @@ The per-instruction diagnostic probes (V.8 dispatch capture, negotiation-loop
 snapshot, ISR trace) are now off by default; set `COURIER_DSP_PROBES=1` to turn
 them back on. `COURIER_C5X_LIBRARY` names a prebuilt library, for A/B runs.
 
+The interpreter itself was then restructured, each step checked for identical
+results from both processes: `step()` takes a short path unless a vector, IDLE,
+the overlay entry, block repeat or a diagnostic is pending; the timer is brought
+up to date only when an expiry is due or its registers are touched, and the
+frame-rate events share one deadline; program and data space are classified by
+byte tables (cached per CNF/OVLY/RAM/MP-MC/GREG combination, since some firmware
+flips CNF in a tight loop); opcodes dispatch through plain function pointers;
+and the common indirect addressing modes and on-chip RAM accesses are inlined.
+On the filter-loop microbenchmark that is 26.4 -> 13.5 ns per DSP instruction
+(247 -> about 145 host instructions each). On the full call the interpreter is
+now only about a fifth of the I-modem process (Python is two thirds), so wall
+time stayed at about 214 s: the call is Python-bound, not interpreter-bound.
+
 Tried and dropped, because alternating A/B runs showed no gain (the fast build
 was 3-5% slower in wall time): a circular-buffer mask for indirect addressing,
 an inline timer fast path in `step()`, and raising the compiler's inline limits.
