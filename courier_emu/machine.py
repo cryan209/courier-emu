@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, deque
+import math
 import os
 import re
 from dataclasses import asdict, dataclass, field
@@ -8,15 +9,16 @@ from typing import Any, Callable
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import (
-    HOST_STATUS_CELL, LANE_BANKS, LANE_DSP_FIRST, LANE_DSP_STATUS, LANE_FIRST_PORT,
-    LANE_RX_ACK_PORT, CourierDspBridge,
+    C51_ROM_LOADER_LOOP, HOST_STATUS_CELL, HOST_WORD_CELL, LANE_BANKS, LANE_DSP_FIRST,
+    LANE_DSP_STATUS, LANE_FIRST_PORT, LANE_RX_ACK_PORT, LINE_SERVICE_MAX_SKIP,
+    LINE_SERVICE_MIN_SAMPLES, CourierDspBridge,
 )
 from .codec import CodecBringUp
 from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
 from .exchange import LineExchange
-from .line import LineLink
+from .line import LINE_FRAME_INSTRUCTIONS, LineLink
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .quad_usart import QuadUsart
 from .quad_board import QuadBoard
@@ -1650,16 +1652,25 @@ class CourierMachine:
             self.cpu_engine == "interpreter" and self.quad_board is None
             and self.quad_c50 is None and self.quad_usart is None)
 
+        # Set while replaying a write whose end of interrupt the worker's
+        # native poll has already applied to the in-service stack.
+        eoi_applied: list[bool] = [False]
+
         def replay_mmio_writes(events: memoryview, count: int) -> None:
             # What the engine retired without leaving: replayed in order, ahead
             # of anything else that looks at the state they change.
             for offset in range(0, count * 8, 8):
+                eoi_applied[0] = bool(events[offset + 7])
                 on_mmio_write(
                     uc, 0, int.from_bytes(events[offset:offset + 4], "little"),
                     events[offset + 6],
                     events[offset + 4] | events[offset + 5] << 8, None)
+            eoi_applied[0] = False
 
         fixed_refresh: list[Callable[[], None] | None] = [None]
+        # Set by each service Python runs: the worker's native poll may be
+        # armed when the engine next starts a batch.
+        worker_arm: list[bool] = [False]
 
         def service_chunk(_uc: Any, elapsed: int) -> None:
             service_chunk_body(_uc, elapsed)
@@ -2120,21 +2131,32 @@ class CourierMachine:
             and hands what is left of the service to the code it was taken
             from when a later one does.
             """
-            bridge = self.dsp_bridge
-            uart = self.uart
             if (
-                bridge is None or self.stop_requested or self.console is not None
+                not fast_service_static()
+                or (self._serial_input_schedule
+                    and self.instructions >= self._serial_input_schedule[0][0])
+                or not self.dsp_bridge.clock_x86_fast(elapsed)
+            ):
+                return False
+            fast_service_rest(_uc, elapsed)
+            return True
+
+        def fast_service_static() -> bool:
+            """fast_service's tests of state only Python changes."""
+            uart = self.uart
+            return not (
+                self.dsp_bridge is None or self.stop_requested or self.console is not None
                 or self.quad_c50 is not None or self.quad_terminal is not None
                 or self._serial_started or self._supervisor_23 or self._tick_owed
                 or not self.emulate_interrupts
                 or (uart is not None and uart.holding)
-                or (self._serial_input_schedule
-                    and self.instructions >= self._serial_input_schedule[0][0])
                 or (not mmio_batched[0] and mmio_batch_ok
                     and len(self.mmio_events) >= self.max_io_events)
-                or not bridge.clock_x86_fast(elapsed)
-            ):
-                return False
+            )
+
+        def fast_service_rest(_uc: Any, elapsed: int) -> None:
+            """fast_service once the DSP has been clocked."""
+            uart = self.uart
             if self._lane_io is not None:
                 self._refresh_native_lanes()
             # service_tail, with its tests made first.
@@ -2185,7 +2207,24 @@ class CourierMachine:
                 service_tail_suffix(_uc, elapsed)
             if fixed_refresh[0] is not None:
                 fixed_refresh[0]()
-            return True
+
+        def timer_poll_static() -> bool:
+            """fast_service's timer-poll tests of state only Python changes,
+            all coming out the way that leaves only the frame edge to take."""
+            uart = self.uart
+            return not (
+                self.dte_line._edge or self.int1_after_ms is not None
+                or self.serial_rx
+                or (uart is not None and uart.pending)
+                or self._external_interrupt_pending is not None
+                or self._int1_pending is not None
+                or self._timer_interrupt_pending is not None
+                or self.quad_usart is not None or self._quad_profile
+                or self._service_resume or self.cpu_fault is not None
+                or self.interrupt is not None
+                or (self.timers._pending and self.timers.pending_interrupt() is not None)
+                or self._int0_pending is not None
+            )
 
         def on_milestone_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             """The four addresses that name a stage of the boot.
@@ -2800,7 +2839,7 @@ class CourierMachine:
             if self.quad_board is not None:
                 self.quad_board.write_register(address, size, value)
             self.timers.write(address, size, value, self.instructions)
-            if address == 0xFF02 and self._interrupt_stack:
+            if address == 0xFF02 and self._interrupt_stack and not eoi_applied[0]:
                 if value & 0x8000:
                     completed = self._interrupt_stack.pop()
                 else:
@@ -3039,6 +3078,7 @@ class CourierMachine:
                 elapsed = total - self._last_service
                 self._last_service = total
                 self._next_service = total + interpreter_period
+                worker_arm[0] = True
                 if fast_service_on and fast_service(_uc, elapsed):
                     return
                 service_chunk(_uc, elapsed)
@@ -3086,7 +3126,138 @@ class CourierMachine:
                     self._record_io("out", port, 1, value, 0)
                     self.panel.observe_write(port, value, 0, self.instructions)
 
-            uc.native_out_batch_add((), apply_native_panel_writes, byte_ports=(0x14,))
+            # Neutral: the worker's native poll looks at the lamp writes still
+            # waiting for this replay itself (see courier_worker_poll).
+            uc.native_out_batch_add((), apply_native_panel_writes, byte_ports=(0x14,),
+                                    neutral_ports=(0x14,))
+        def install_worker_poll(bridge: Any) -> None:
+            """Let the x86 engine run the services fast_service would take.
+
+            See courier_emu/worker_poll.py. Python arms the native poll at the
+            start of the batch after each service of its own, when every test
+            fast_service makes of state only Python changes comes out the fast
+            way, and sets a deadline before anything it cannot see coming: a
+            timer's max count, the board tick, typed input, the end of the run.
+            Whatever the engine hands back, the fields come back first.
+            """
+            from .worker_poll import NO_LATCH, STACK_SLOTS, WorkerPoll
+
+            poll = self._worker_poll = WorkerPoll()
+            state = poll.state
+            timers = self.timers
+            seen = [0]
+
+            def first_instruction_at(tick: int) -> int:
+                ratio = timers.timebase.ticks_per_instruction
+                at = max(0, int(tick / ratio))
+                while at > 0 and timers._tick(at - 1) >= tick:
+                    at -= 1
+                while timers._tick(at) < tick:
+                    at += 1
+                return at
+
+            def arm() -> None:
+                worker_arm[0] = False
+                core = bridge.core
+                if (core is None or len(self._interrupt_stack) > STACK_SLOTS
+                        or not fast_service_static() or not bridge.fast_clock_static()
+                        or not timer_poll_static()):
+                    return
+                deadlines = [instruction_limit - 2 * interpreter_period]
+                if self._serial_input_schedule:
+                    deadlines.append(self._serial_input_schedule[0][0])
+                if (self._rom_tick or self._quad_modem_tick) and self.tick_ms:
+                    deadlines.append(
+                        self._last_tick + math.ceil(self.tick_ms * INSTRUCTIONS_PER_MS))
+                for timer in timers.timers:
+                    remaining = timer.ticks_to_max_count()
+                    if remaining is not None:
+                        deadlines.append(first_instruction_at(timer.origin + remaining))
+                state.core = core.handle
+                state.instruction_base = instruction_base
+                state.elide_until = max(0, min(deadlines))
+                state.last_service = self._last_service
+                state.timer_poll_owed = self._timer_poll_owed
+                state.timer_poll_period = TIMER_POLL_INSTRUCTIONS
+                state.last_frame = self._last_frame
+                state.frame_instructions = self.frame_instructions
+                state.int0_ok = bool(self._rom_tick)
+                state.int0_in_service = bool(self._int0_in_service)
+                stack = self._interrupt_stack
+                state.stack_depth = len(stack)
+                for index, vector in enumerate(stack):
+                    state.stack[index] = vector
+                state.bridge_instructions = bridge._instructions
+                state.probe_last = getattr(bridge, "_probe_clock_last", 0)
+                state.codec_present = bridge.codec is not None
+                state.codec_instructions = bridge._codec_instructions
+                state.line_frame_instructions = LINE_FRAME_INSTRUCTIONS
+                state.x86_ticks = bridge._x86_ticks
+                state.batch = bridge.batch
+                state.debt = bridge._dsp_cycle_debt
+                state.cpi = bridge._dsp_cpi
+                state.cycles_per_x86 = bridge.dsp_cycles_per_x86
+                state.line_codec_last = bridge._line_codec_last
+                state.line_skipped = bridge._line_service_skipped
+                state.line_min_samples = LINE_SERVICE_MIN_SAMPLES
+                state.line_max_skip = LINE_SERVICE_MAX_SKIP
+                state.boot_rom = bool(bridge.boot_rom_enabled)
+                state.mailbox_writes = bridge._dsp_mailbox_writes
+                state.overlay_active = bool(bridge._call_overlay_active)
+                state.host_port = HOST_WORD_CELL
+                state.loader_in_loop = core.pc() in C51_ROM_LOADER_LOOP
+                state.loader_first = C51_ROM_LOADER_LOOP.start
+                state.loader_end = C51_ROM_LOADER_LOOP.stop
+                latch = self.panel.latches.get(0x14)
+                state.panel_latch = NO_LATCH if latch is None else latch
+                state.io_cursor = state.mmio_cursor = 0
+                state.dirty = 0
+                seen[0] = state.polls
+                state.armed = 1
+
+            def before_run() -> None:
+                if worker_arm[0]:
+                    arm()
+
+            def after_run() -> None:
+                state.armed = 0
+                if not state.dirty:
+                    return
+                state.dirty = 0
+                self._int0_in_service = bool(state.int0_in_service)
+                self._interrupt_stack[:] = state.stack[:state.stack_depth]
+                if state.polls == seen[0]:
+                    return
+                seen[0] = state.polls
+                total = state.last_service
+                self.instructions = total
+                self._last_service = total
+                self._next_service = total + interpreter_period
+                self._timer_poll_owed = state.timer_poll_owed
+                self._last_frame = state.last_frame
+                bridge._instructions = state.bridge_instructions
+                bridge._codec_instructions = state.codec_instructions
+                bridge._x86_ticks = state.x86_ticks
+                bridge._dsp_cycle_debt = state.debt
+                bridge._dsp_cpi = state.cpi
+                bridge._line_service_skipped = state.line_skipped
+                bridge._dsp_mailbox_writes = state.mailbox_writes
+
+            def resume(_uc: Any, _total: int, code: int) -> None:
+                # The native poll did the service up to and including the DSP
+                # step; this is what fast_service does from there.
+                if code == 3:
+                    bridge.error = state.error.decode("utf-8", "replace")
+                else:
+                    bridge.finish_fast_clock(state.step_writes, bool(state.step_tdm))
+                fast_service_rest(_uc, state.resume_elapsed)
+                worker_arm[0] = True
+
+            uc.native_before_run = before_run
+            uc.native_after_run = after_run
+            uc.native_poll = (poll.function, poll.context)
+            uc.native_poll_resume = resume
+
         bridge = self.dsp_bridge
         if (
             self.cpu_engine == "interpreter"
@@ -3240,6 +3411,9 @@ class CourierMachine:
             else:
                 uc.native_after_io = refresh_native_lanes
             refresh_native_lanes()
+            if (fast_service_on and uc.native_enabled
+                    and os.environ.get("COURIER_WORKER_POLL", "1") != "0"):
+                install_worker_poll(bridge)
         mmio = self.hardware_map.mmio
         dsp_queue = self.hardware_map.dsp_queue
         serial_callback = self.hardware_map.serial_callback

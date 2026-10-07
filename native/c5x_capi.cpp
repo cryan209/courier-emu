@@ -112,6 +112,12 @@ struct PollCpu {
     uint32_t *regs;
     uint8_t *memory;
     std::size_t memory_size;
+    const uint8_t *guard;
+    uint8_t *io_events;
+    uint32_t io_event_count;
+    uint8_t *mmio_events;
+    uint32_t mmio_count;
+    uint64_t batch_total;
 };
 enum { REG_SP = 4, REG_CS = 9, REG_SS = 10, REG_IP = 12, REG_FLAGS = 13 };
 struct PollState {
@@ -1878,3 +1884,238 @@ void courier_bearer_set_partial(void *handle, const uint8_t *data, std::size_t c
 }
 
 }  // extern "C"
+
+// The analog worker's service, run inside the x86 engine (see
+// courier_emu/worker_poll.py, which mirrors this structure, and Machine.run's
+// interpreter_service, fast_service and DspBridge.clock_x86_fast, which this
+// does the work of). The harness arms it after a service of its own when
+// nothing but the DSP, the clocks and the DSP's frame edge can move before
+// `elide_until`; the engine then runs each service here until one needs
+// Python, and the harness takes the fields back whenever it regains control.
+namespace {
+
+struct WorkerPollState {
+    void *core;
+    uint64_t armed, dirty, polls;
+    int64_t instruction_base;
+    uint64_t elide_until, last_service;
+    // The 80186 side: the timer poll, the frame edge and the interrupt
+    // controller's in-service stack.
+    int64_t timer_poll_owed;
+    uint64_t timer_poll_period;
+    int64_t last_frame;
+    uint64_t frame_instructions, int0_ok, int0_in_service, stack_depth;
+    uint8_t stack[64];
+    // DspBridge.clock_x86_fast's counters.
+    int64_t bridge_instructions, probe_last;
+    uint64_t codec_present;
+    int64_t codec_instructions, line_frame_instructions, x86_ticks, batch;
+    double debt, cpi, cycles_per_x86;
+    int64_t line_codec_last, line_skipped, line_min_samples, line_max_skip;
+    uint64_t boot_rom, mailbox_writes, overlay_active, host_port;
+    // Whether the C51 sat in its mask-ROM loader loop when armed (the lanes'
+    // configuration depends on it), and that loop.
+    uint64_t loader_in_loop, loader_first, loader_end;
+    // The lamp latch the batched port-0x14 writes must repeat (256: none).
+    uint64_t panel_latch;
+    // How far into the batch's logs this has looked. Arming happens just
+    // before a batch and every batch's end disarms, so the harness zeroes
+    // these when it arms.
+    uint64_t io_cursor, mmio_cursor;
+    // A service handed back after the DSP step (codes 2 and 3).
+    int64_t resume_elapsed;
+    uint64_t step_writes, step_tdm;
+    char error[512];
+};
+
+constexpr uint32_t WORKER_IF = 0x0200;
+constexpr unsigned WORKER_INT0 = 12;
+
+// Machine.on_mmio_write's end-of-interrupt handling, for the writes the
+// engine logged since this batch began; each is marked so the harness's replay
+// leaves the stack alone.
+void worker_apply_eois(WorkerPollState &s, const PollCpu &cpu)
+{
+    if (!cpu.mmio_events) return;
+    for (uint64_t index = s.mmio_cursor; index < cpu.mmio_count; ++index) {
+        uint8_t *event = cpu.mmio_events + 8 * index;
+        const uint32_t address = uint32_t(event[0]) | uint32_t(event[1]) << 8
+            | uint32_t(event[2]) << 16 | uint32_t(event[3]) << 24;
+        const uint16_t value = uint16_t(event[4] | event[5] << 8);
+        if (address == 0xFF02 && s.stack_depth) {
+            unsigned completed;
+            if (value & 0x8000) completed = s.stack[--s.stack_depth];
+            else {
+                completed = value & 0x1f;
+                for (uint64_t at = 0; at < s.stack_depth; ++at)
+                    if (s.stack[at] == completed) {
+                        std::memmove(s.stack + at, s.stack + at + 1, s.stack_depth - at - 1);
+                        --s.stack_depth;
+                        break;
+                    }
+            }
+            if (completed == WORKER_INT0) s.int0_in_service = 0;
+            s.dirty = 1;
+        }
+        event[7] = 1;
+    }
+    s.mmio_cursor = cpu.mmio_count;
+}
+
+bool worker_writable(const PollCpu &cpu, uint32_t address, uint32_t count)
+{
+    if (address + count > cpu.memory_size) return false;
+    for (uint32_t at = address; at < address + count; ++at)
+        if (!(cpu.guard[at] & 2) || (cpu.guard[at] & 32)) return false;
+    return true;
+}
+
+bool worker_readable(const PollCpu &cpu, uint32_t address, uint32_t count)
+{
+    if (address + count > cpu.memory_size) return false;
+    for (uint32_t at = address; at < address + count; ++at)
+        if (!(cpu.guard[at] & 1) || (cpu.guard[at] & 16)) return false;
+    return true;
+}
+
+} // namespace
+
+extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, void *lent)
+{
+    // Python's float arithmetic rounds after every operation.
+#pragma clang fp contract(off)
+    WorkerPollState &s = *static_cast<WorkerPollState *>(context);
+    if (!s.armed) return 0;
+    const PollCpu &cpu = *static_cast<const PollCpu *>(lent);
+    worker_apply_eois(s, cpu);
+    const int64_t total = s.instruction_base + int64_t(now);
+    if (uint64_t(total) >= s.elide_until) { s.armed = 0; return 0; }
+    // Lamp writes waiting for the harness's replay: harmless only if they
+    // leave the latch as it is.
+    for (uint64_t index = s.io_cursor; index < cpu.io_event_count; ++index) {
+        const uint8_t *event = cpu.io_events + 4 * index;
+        if ((event[0] | event[1] << 8) != 0x14 || event[2] != s.panel_latch) { s.armed = 0; return 0; }
+    }
+    s.io_cursor = cpu.io_event_count;
+    C5xCore *core = static_cast<C5xCore *>(s.core);
+    const int64_t elapsed = total - int64_t(s.last_service);
+    // clock_x86_fast's tests that a service can change.
+    if (s.x86_ticks + elapsed < s.batch
+        || (s.codec_present && s.codec_instructions + elapsed >= s.line_frame_instructions)) {
+        s.armed = 0; return 0;
+    }
+    const int64_t fresh = int64_t(core->line_tx_count()) - s.line_codec_last;
+    if (!(0 < fresh && fresh < s.line_min_samples && s.line_skipped < s.line_max_skip)
+        || s.bridge_instructions + elapsed - s.probe_last >= 200000) {
+        s.armed = 0; return 0;
+    }
+    // fast_service's frame edge, decided now: nothing it reads moves in the
+    // DSP step. An entry this cannot make the way dispatch_interrupt would is
+    // left to the harness.
+    const bool timer_poll = s.timer_poll_owed - elapsed <= 0;
+    bool frame_edge = false;
+    uint32_t *r = cpu.regs;
+    const uint32_t sp = r[REG_SP] & 0xFFFF, ss = r[REG_SS] & 0xFFFF;
+    uint32_t slots[3];
+    if (timer_poll && s.int0_ok && !s.int0_in_service && (flags & WORKER_IF)
+        && total - s.last_frame >= int64_t(s.frame_instructions)) {
+        if (!worker_readable(cpu, WORKER_INT0 * 4, 4)) { s.armed = 0; return 0; }
+        const uint8_t *vector = cpu.memory + WORKER_INT0 * 4;
+        if (vector[0] | vector[1] | vector[2] | vector[3]) {
+            for (unsigned k = 0; k < 3; ++k) {
+                slots[k] = (ss * 16 + ((sp - 2 * (k + 1)) & 0xFFFF)) & 0xFFFFF;
+                if (!worker_writable(cpu, slots[k], 2)) { s.armed = 0; return 0; }
+            }
+            if (s.stack_depth >= sizeof s.stack) { s.armed = 0; return 0; }
+            frame_edge = true;
+        }
+    }
+    // interpreter_service's bookkeeping, then clock_x86_fast's commit.
+    s.dirty = 1;
+    s.last_service = uint64_t(total);
+    s.bridge_instructions += elapsed;
+    if (s.codec_present) s.codec_instructions += elapsed;
+    s.x86_ticks += elapsed;
+    s.debt += double(s.x86_ticks) * s.cycles_per_x86;
+    s.x86_ticks = 0;
+    s.line_skipped += 1;
+    uint64_t writes;
+    bool tdm;
+    try {
+        if (s.debt < 1) {
+            writes = core->io_port_stat(uint16_t(s.host_port)).writes;
+            tdm = core->call_tdm_active();
+        } else {
+            const int64_t owed = int64_t(s.debt);
+            const uint64_t before_instructions = core->instruction_count();
+            const uint64_t before_cycles = core->cycle_count();
+            core->run_cycles(uint64_t(owed > 1 ? owed : 1));
+            const uint64_t ran = core->instruction_count() - before_instructions;
+            const uint64_t cycles = core->cycle_count() - before_cycles;
+            writes = core->io_port_stat(uint16_t(s.host_port)).writes;
+            tdm = core->call_tdm_active();
+            s.debt -= double(cycles);
+            if (ran > 0) {
+                const double cpi = double(cycles) / double(ran);
+                s.cpi = 0.9 * s.cpi + 0.1 * (cpi > 1.0 ? cpi : 1.0);
+            }
+        }
+    } catch (const std::exception &exception) {
+        copy_error(s.error, sizeof s.error, exception.what());
+        s.resume_elapsed = elapsed;
+        ++s.polls;
+        s.armed = 0;
+        return 3;
+    }
+    const uint16_t pc = core->program_counter();
+    const bool in_loop = pc >= s.loader_first && pc < s.loader_end;
+    if ((s.boot_rom && writes > s.mailbox_writes) || (!s.overlay_active && tdm)
+        || in_loop != bool(s.loader_in_loop)) {
+        // A DSP message to collect, the call's TDM starting, or the lanes'
+        // configuration changing: the harness finishes this service.
+        s.step_writes = writes;
+        s.step_tdm = tdm;
+        s.resume_elapsed = elapsed;
+        ++s.polls;
+        s.armed = 0;
+        return 2;
+    }
+    if (s.boot_rom) s.mailbox_writes = writes;
+    // fast_service's tail. The 80186 timers are brought up to date lazily:
+    // every access to one advances it first, and the harness made sure none
+    // reaches a max count before elide_until.
+    s.timer_poll_owed -= elapsed;
+    if (s.timer_poll_owed <= 0) {
+        s.timer_poll_owed += int64_t(s.timer_poll_period);
+        if (frame_edge) {
+            s.last_frame += int64_t(s.frame_instructions);
+            if (total - s.last_frame >= int64_t(s.frame_instructions))
+                s.last_frame = total - int64_t(s.frame_instructions);
+            s.int0_in_service = 1;
+            // dispatch_interrupt(INT0_VECTOR, software=False)
+            const uint32_t flags16 = r[REG_FLAGS] & 0xFFFF;
+            const uint32_t values[3] = {flags16, r[REG_CS] & 0xFFFF, r[REG_IP] & 0xFFFF};
+            for (unsigned k = 0; k < 3; ++k) {
+                cpu.memory[slots[k]] = uint8_t(values[k]);
+                cpu.memory[slots[k] + 1] = uint8_t(values[k] >> 8);
+            }
+            r[REG_SP] = (sp - 6) & 0xFFFF;
+            const uint8_t *vector = cpu.memory + WORKER_INT0 * 4;
+            s.stack[s.stack_depth++] = WORKER_INT0;
+            r[REG_FLAGS] = flags16 & ~WORKER_IF;
+            r[REG_CS] = uint32_t(vector[2] | vector[3] << 8);
+            r[REG_IP] = uint32_t(vector[0] | vector[1] << 8);
+        }
+    }
+    ++s.polls;
+    return 1;
+}
+
+// For worker_poll.py to check its mirror of WorkerPollState against.
+extern "C" void courier_worker_poll_layout(uint64_t *out)
+{
+    out[0] = sizeof(WorkerPollState);
+    out[1] = offsetof(WorkerPollState, debt);
+    out[2] = offsetof(WorkerPollState, panel_latch);
+    out[3] = offsetof(WorkerPollState, error);
+}

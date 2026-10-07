@@ -33,7 +33,17 @@ struct Core {
     // engine with reason 9 and that answer in poll_code, for the harness to run
     // its own poll (code 0) or finish a partly done one (codes 2, 3).
     typedef int (*PollFn)(void *context,uint64_t now,uint32_t flags,void *cpu);
-    struct PollCpu { uint32_t *regs; uint8_t *memory; std::size_t memory_size; };
+    // What the poll is lent: the registers and memory (for an interrupt
+    // entry), the guard bytes, the port writes and memory-mapped writes this
+    // batch has logged so far, and what had retired before the batch began,
+    // which tells one batch's logs from the next.
+    struct PollCpu {
+        uint32_t *regs; uint8_t *memory; std::size_t memory_size;
+        const uint8_t *guard;
+        uint8_t *io_events; uint32_t io_event_count;
+        uint8_t *mmio_events; uint32_t mmio_count;
+        uint64_t batch_total;
+    };
     PollFn poll_fn=nullptr;
     void *poll_context=nullptr;
     uint64_t poll_total=0, poll_next=0, poll_period=0;
@@ -227,7 +237,8 @@ static uint32_t run_batch(Core &c, uint32_t count) {
     }
     for (c.done=0;c.done<count;++c.done) {
         if(c.poll_fn&&c.poll_total+c.done+1>=c.poll_next) {
-            Core::PollCpu lent{c.r,c.mem,std::size_t(c.mask)+1};
+            Core::PollCpu lent{c.r,c.mem,std::size_t(c.mask)+1,c.guard,
+                c.io_events,c.io_event_count,c.mmio_events,c.mmio_count,c.poll_total};
             int code=c.dirty_events?0:c.poll_fn(c.poll_context,c.host_base+c.done+1,c.r[F],&lent);
             if(code==1||code==4){
                 c.poll_next=c.poll_total+c.done+1+c.poll_period;++c.polls_elided;

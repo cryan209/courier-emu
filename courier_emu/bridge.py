@@ -3149,20 +3149,68 @@ class CourierDspBridge:
         caller then runs `clock_x86` itself.
         """
         core = self.core
+        if (
+            self._x86_ticks + count < self.batch
+            or (self.codec is not None
+                and self._codec_instructions + count >= LINE_FRAME_INSTRUCTIONS)
+            or not self.fast_clock_static()
+        ):
+            return False
+        # _service_line: the codec has not yet made a batch of samples.
+        produced = core.line_tx_writes()
+        if not (0 < produced - self._line_codec_last < LINE_SERVICE_MIN_SAMPLES
+                and self._line_service_skipped < LINE_SERVICE_MAX_SKIP):
+            return False
+        # Committed: the same updates, in the same order.
+        self._instructions += count
+        if self._instructions - getattr(self, "_probe_clock_last", 0) >= 200_000:  # PROBE
+            self._probe_clock_last = self._instructions
+            try:
+                self.__dict__.setdefault("probe_clock", []).append(
+                    (core.state()["instructions"], self._instructions, core.state()["cycles"]))
+            except Exception:
+                pass
+        if self.codec is not None:
+            self._codec_instructions += count
+        self._x86_ticks += count
+        self._dsp_cycle_debt += self._x86_ticks * self.dsp_cycles_per_x86
+        self._x86_ticks = 0
+        self._line_service_skipped += 1
+        try:
+            if self._dsp_cycle_debt < 1:
+                # _run_dsp_cycles does nothing, so nothing has written.
+                writes = self._port_writes(HOST_WORD_CELL)
+                tdm_active = core.call_tdm_active()
+            else:
+                ran, elapsed, writes, tdm_active = core.service_step(
+                    max(1, int(self._dsp_cycle_debt)), HOST_WORD_CELL)
+                self._dsp_cycle_debt -= elapsed
+                if ran > 0:
+                    self._dsp_cpi = 0.9 * self._dsp_cpi + 0.1 * max(1.0, elapsed / ran)
+        except RuntimeError as exc:
+            self.error = str(exc)
+            return True
+        self.finish_fast_clock(writes, tdm_active)
+        return True
+
+    def fast_clock_static(self) -> bool:
+        """The tests of `clock_x86_fast` that only the harness can change.
+
+        Everything here is bridge, DAA and line state that moves in Python
+        alone, which is what lets the worker's native poll take a service
+        whenever this held at the last one Python ran.
+        """
         daa = self.daa
+        core = self.core
         if (
             self.exchange is not None or self.sip is not None or self._audio_only
             or self.line is None or self.error or not self.active
             or (self.boot_rom_enabled and not self.launched)
             or (self._runtime_mode and not self._runtime_ready)
             or self._call_resume_pending or self.rx_acquisition_assist
-            or self._x86_ticks + count < self.batch
-            or (self.codec is not None
-                and self._codec_instructions + count >= LINE_FRAME_INSTRUCTIONS)
         ):
             return False
-        service_step = getattr(core, "service_step", None)
-        if service_step is None or not hasattr(core, "set_hybrid_return"):
+        if getattr(core, "service_step", None) is None or not hasattr(core, "set_hybrid_return"):
             return False
         # _apply_hybrid_return: nothing to apply.
         off_hook = daa is not None and daa.off_hook
@@ -3170,11 +3218,6 @@ class CourierDspBridge:
         if off_hook and self._line_digital:
             scale = 0
         if scale != self._hybrid_return_applied:
-            return False
-        # _service_line: the codec has not yet made a batch of samples.
-        produced = core.line_tx_writes()
-        if not (0 < produced - self._line_codec_last < LINE_SERVICE_MIN_SAMPLES
-                and self._line_service_skipped < LINE_SERVICE_MAX_SKIP):
             return False
         # _maybe_start_asic_call_engine and _advance_asic_call_phase.
         registers = self.asic_registers
@@ -3203,32 +3246,11 @@ class CourierDspBridge:
                     return False
             elif daa.operation == "originate" and self._commanded_role != "originate":
                 return False
-        # Committed: the same updates, in the same order.
-        self._instructions += count
-        if self._instructions - getattr(self, "_probe_clock_last", 0) >= 200_000:  # PROBE
-            self._probe_clock_last = self._instructions
-            try:
-                self.__dict__.setdefault("probe_clock", []).append(
-                    (core.state()["instructions"], self._instructions, core.state()["cycles"]))
-            except Exception:
-                pass
-        if self.codec is not None:
-            self._codec_instructions += count
-        self._x86_ticks += count
-        self._dsp_cycle_debt += self._x86_ticks * self.dsp_cycles_per_x86
-        self._x86_ticks = 0
-        self._line_service_skipped += 1
+        return True
+
+    def finish_fast_clock(self, writes: int, tdm_active: bool) -> None:
+        """What `clock_x86_fast` does with the DSP step's result."""
         try:
-            if self._dsp_cycle_debt < 1:
-                # _run_dsp_cycles does nothing, so nothing has written.
-                writes = self._port_writes(HOST_WORD_CELL)
-                tdm_active = core.call_tdm_active()
-            else:
-                ran, elapsed, writes, tdm_active = service_step(
-                    max(1, int(self._dsp_cycle_debt)), HOST_WORD_CELL)
-                self._dsp_cycle_debt -= elapsed
-                if ran > 0:
-                    self._dsp_cpi = 0.9 * self._dsp_cpi + 0.1 * max(1.0, elapsed / ran)
             # _collect_dsp_messages
             if self.boot_rom_enabled:
                 if writes <= self._dsp_mailbox_writes:
@@ -3239,7 +3261,6 @@ class CourierDspBridge:
                 self._call_overlay_active = True
         except RuntimeError as exc:
             self.error = str(exc)
-        return True
 
     def set_timebase(self, timebase: Timebase) -> None:
         """Adopt the board the firmware has just identified itself as.

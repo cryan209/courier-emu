@@ -117,10 +117,15 @@ class NativeInterpreter:
         batching = cpu.native_mmio_callback is not None and cpu.native_mmio_batch
         if batching:
             host_io = (*host_io, *((None,) * (7 - len(host_io))), self.mmio_events)
+        if cpu.native_before_run is not None:
+            cpu.native_before_run()
         done, reason, direction, port, size, value, event_count, poll_next, poll_code, mmio_count = self.run(
             cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
             cpu.native_int_mode, self.int_counts, *host_io,
         )
+        if cpu.native_after_run is not None:
+            # Before anything else in Python sees the state a native poll kept.
+            cpu.native_after_run()
         self.poll_code = poll_code
         if polling and poll_next != cpu._clock_next:
             # Polls the engine ran itself: the next one falls due later.

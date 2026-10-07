@@ -367,6 +367,7 @@ public:
     void set_data_event_limit(std::size_t limit) { m_data_event_limit = limit ? limit : 4096; }
     State state() const;
     uint16_t program_counter() const { return m_pc; }
+    std::size_t line_tx_count() const { return m_line_tx.size(); }
     SerialState serial_state() const;
     const std::deque<IoEvent> &io_events() const { return m_io_events; }
     // The mailbox ports on their own. `m_io_events` cannot answer what the

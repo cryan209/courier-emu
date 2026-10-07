@@ -242,6 +242,10 @@ class Uc:
         # the engine began but could not complete (see Core::poll_fn).
         self.native_poll: tuple[int, int] | None = None
         self.native_poll_resume: Callable[[Any, int, int], None] | None = None
+        # Called around every native batch: the poll's arming, and taking back
+        # what it changed before any Python handler runs.
+        self.native_before_run: Callable[[], None] | None = None
+        self.native_after_run: Callable[[], None] | None = None
         self.native_after_io: Callable[[], None] | None = None
         self.native_host_base = 0
         # Optional filter for native_after_io: a 64 KiB table of ports.
