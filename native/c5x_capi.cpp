@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "c5x_core.h"
 #include "bearer.hpp"
+#include "resample.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -1051,6 +1052,18 @@ int courier_c5x_step_cycles(void *handle, uint64_t count,
         copy_error(error, error_size, exception.what());
         return -1;
     }
+}
+
+// resample.BandLimitedResampler._convert_retuned's per-sample loop; see
+// resample.hpp. `kernel` is the PHASES x TAPS table, row after row.
+std::size_t courier_resample_retuned(const double *history, std::size_t history_length,
+    const double *times, std::size_t times_length, const double *kernel,
+    double input_rate, double output_rate, double instant, double support,
+    int16_t *out, std::size_t capacity, double *instant_out, int *status)
+{
+    return courier::resample::retuned(history, history_length, times, times_length,
+        kernel, input_rate, output_rate, instant, support, out, capacity,
+        instant_out, status);
 }
 
 // Step one instruction at a time until a condition holds, at most `limit`

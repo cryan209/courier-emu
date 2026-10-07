@@ -71,3 +71,35 @@ def test_transmit_retune_is_independent_of_scheduler_chunk_size():
             time += count / rate
         outputs.append(output)
     assert outputs[0] == outputs[1]
+
+
+def test_native_retuned_loop_matches_the_python_one(monkeypatch):
+    """The per-sample loop done natively gives the Python's samples exactly."""
+    import math
+    import random
+
+    from courier_emu import resample
+
+    def run(native: bool) -> list[list[int]]:
+        monkeypatch.setenv("COURIER_NATIVE_RESAMPLE", "1" if native else "0")
+        monkeypatch.setattr(resample, "_NATIVE", None)
+        generator = random.Random(7)
+        resampler = resample.BandLimitedResampler()
+        rates = [(9600.0, 8000.0), (7200.0, 8000.0), (7578.95, 8000.0),
+                 (10266.67, 8000.0), (9600.0, 8000.0)]
+        out = []
+        for index in range(240):
+            in_rate, out_rate = rates[(index // 48) % len(rates)]
+            # A drift on top of the programmed rate, as the codec model has.
+            in_rate *= 1 + 0.0003 * math.sin(index / 7)
+            samples = [int(8000 * math.sin(0.05 * (index * 16 + k))
+                           + generator.randint(-50, 50))
+                       for k in range(generator.choice([5, 6, 12, 16, 23]))]
+            out.append(resampler.convert(samples, in_rate, out_rate))
+        return out
+
+    reference = run(False)
+    assert resample._NATIVE is False
+    assert run(True) == reference
+    # It really was the native loop that ran.
+    assert resample._NATIVE

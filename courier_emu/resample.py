@@ -20,7 +20,10 @@ samples and the kernel is read from a finely tabulated set of phases.
 """
 from __future__ import annotations
 
+import ctypes
 import math
+import os
+from array import array
 from bisect import bisect_left, bisect_right
 from operator import mul
 
@@ -103,6 +106,7 @@ def _kernel(cutoff: float) -> list[tuple[float, ...]]:
 
 
 _KERNELS: dict[float, list[tuple[float, ...]]] = {}
+_FLAT_KERNELS: dict[float, array] = {}
 
 
 def _kernel_for(cutoff: float) -> list[tuple[float, ...]]:
@@ -110,6 +114,40 @@ def _kernel_for(cutoff: float) -> list[tuple[float, ...]]:
     if key not in _KERNELS:
         _KERNELS[key] = _kernel(key)
     return _KERNELS[key]
+
+
+def _flat_kernel_for(cutoff: float) -> array:
+    """The same table as one array, row after row, for the native loop."""
+    key = round(cutoff, 9)
+    flat = _FLAT_KERNELS.get(key)
+    if flat is None:
+        flat = _FLAT_KERNELS[key] = array(
+            "d", (tap for row in _kernel_for(cutoff) for tap in row))
+    return flat
+
+
+_NATIVE = None
+
+
+def _native_retuned():
+    """The native per-sample loop of `_convert_retuned`, or False without it."""
+    global _NATIVE
+    if _NATIVE is None:
+        _NATIVE = False
+        if os.environ.get("COURIER_NATIVE_RESAMPLE", "1") != "0":
+            try:
+                from .dsp import load_library
+                function = load_library().courier_resample_retuned
+                function.restype = ctypes.c_size_t
+                function.argtypes = [
+                    ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t,
+                    ctypes.c_void_p, ctypes.c_double, ctypes.c_double, ctypes.c_double,
+                    ctypes.c_double, ctypes.c_void_p, ctypes.c_size_t,
+                    ctypes.c_void_p, ctypes.c_void_p]
+                _NATIVE = function
+            except Exception:  # no library: the Python below is the reference
+                _NATIVE = False
+    return _NATIVE
 
 
 class BandLimitedResampler:
@@ -131,8 +169,8 @@ class BandLimitedResampler:
         # Keep extra input history for a clock change: its old sample spacing
         # must survive until the FIR window has crossed the boundary.
         self._recent_input: list[float] = [0.0] * (2 * TAPS)
-        self._timed_samples: list[float] | None = None
-        self._timed_times: list[float] = []
+        self._timed_samples: array | None = None
+        self._timed_times: array = array("d")
         self._input_time = 0.0
         self._next_time = 0.0
 
@@ -147,9 +185,9 @@ class BandLimitedResampler:
         """
         if self._timed_samples is None:
             old_rate = self.input_rate
-            self._timed_samples = list(self._recent_input)
-            self._timed_times = [k / old_rate for k in
-                                 range(-len(self._recent_input), 0)]
+            self._timed_samples = array("d", self._recent_input)
+            self._timed_times = array("d", (k / old_rate for k in
+                                            range(-len(self._recent_input), 0)))
             self._next_time = (self._position - HALF_TAPS - 1) / old_rate
         history = self._timed_samples
         times = self._timed_times
@@ -157,14 +195,35 @@ class BandLimitedResampler:
         times.extend(self._input_time + k / input_rate for k in range(len(samples)))
         self._input_time += len(samples) / input_rate
         self.input_rate, self.output_rate = input_rate, output_rate
-        kernel = _kernel_for(CUTOFF * min(input_rate, output_rate) / 2 / input_rate)
+        kernel_cutoff = CUTOFF * min(input_rate, output_rate) / 2 / input_rate
+        kernel = _kernel_for(kernel_cutoff)
         self._kernel = kernel
         result = []
         instant = self._next_time
         support = HALF_TAPS / input_rate
         cutoff = CUTOFF * min(input_rate, output_rate) / 2
         norm = _NORM
+        native = _native_retuned()
+        if native:
+            flat_kernel = _flat_kernel_for(kernel_cutoff)
+            out = array("h", bytes(2 * 1024))
+            instant_cell, status_cell = ctypes.c_double(), ctypes.c_int()
         while instant + support <= times[-1] + 1e-12:
+            if native:
+                # Every sample whose window is regular, in one call; what it
+                # leaves is the sample at a clock edge, which the code below
+                # does.
+                written = native(
+                    history.buffer_info()[0], len(history),
+                    times.buffer_info()[0], len(times),
+                    flat_kernel.buffer_info()[0], input_rate, output_rate,
+                    instant, support, out.buffer_info()[0], len(out),
+                    ctypes.addressof(instant_cell), ctypes.addressof(status_cell))
+                if written:
+                    result.extend(out[:written])
+                instant = instant_cell.value
+                if status_cell.value != 1:
+                    continue
             center = bisect_right(times, instant) - 1
             base = center - (HALF_TAPS - 1)
             end = base + TAPS

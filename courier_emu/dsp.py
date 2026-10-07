@@ -25,7 +25,7 @@ SOURCES = (
     NATIVE_DIRECTORY / "c5x_ops.ipp",
 )
 LIBRARY_SOURCES = (SOURCES[:2] + (NATIVE_DIRECTORY / "c5x_capi.cpp",) + SOURCES[3:]
-                   + (NATIVE_DIRECTORY / "bearer.hpp",))
+                   + (NATIVE_DIRECTORY / "bearer.hpp", NATIVE_DIRECTORY / "resample.hpp"))
 _LIBRARY_HANDLE = None
 _SIZE_T_MAX = ctypes.c_size_t(-1).value
 
