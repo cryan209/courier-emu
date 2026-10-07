@@ -1190,6 +1190,9 @@ class LaneHostIo:
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16,
             ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16,
             ctypes.c_uint16]
+        lib.courier_laneio_configure_mailbox.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_int, ctypes.c_uint, ctypes.c_int, ctypes.c_uint]
         lib.courier_laneio_set_lane.argtypes = [
             ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
         lib.courier_laneio_clear_seen.argtypes = [
@@ -1229,6 +1232,14 @@ class LaneHostIo:
         self.library.courier_laneio_configure(
             self.context, core_handle, int(live), command_port, ack_port,
             lane_first, banks, dsp_first, dsp_status)
+
+    def configure_mailbox(self, *, runtime: bool, pending: bool, inbound: bool,
+                          overlay: bool, overlay_status: int, zero_ok: bool,
+                          status_cell: int) -> None:
+        """Publish the bridge flags the 0x1c/0x1e model cannot read off the DSP."""
+        self.library.courier_laneio_configure_mailbox(
+            self.context, int(runtime), int(pending), int(inbound),
+            int(overlay), overlay_status & 0xFF, int(zero_ok), status_cell)
 
     def clear_seen(self, port: int) -> None:
         self.library.courier_laneio_clear_seen(self.context, port)

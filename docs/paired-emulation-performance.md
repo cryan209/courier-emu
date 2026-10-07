@@ -115,3 +115,24 @@ What the profile says is left, for whoever goes after real time next:
   to keep the mailbox's diagnostic logs (`overlay_recent` and friends) exactly.
 * Reaching 120 s means the I-modem's Python going from about 125 s to about
   55 s; trimming alone will not do that.
+
+### Host-port status and strobes, served natively
+
+Both native port models now answer the DSP host-port registers 0x1c/0x1e for
+the accesses that need nothing from the harness, which were about half of all
+exits from the x86 engine:
+
+* I-modem (`ImodemHostIo`): IN 0x1c (the mailbox status word, with the same
+  host-pending/transmit-ready bookkeeping `_sync` does), IN 0x1e, OUT 0x1e
+  (publishing the staged window words and raising the status bits) and OUT 0x1c
+  with neither bit 0 nor bit 1 set. Commits, acknowledgements and replies to
+  offer still go to Python. The 0x1e accesses are logged natively and replayed
+  into the mailbox's `overlay_*` logs, in order, before anything else touches
+  them (`ImodemDsp._drain_overlay`).
+* Analog worker (`LaneHostIo`): IN 0x1c in the ROM protocol's runtime mode
+  (from the DSP status latch plus two flags the harness publishes: a host
+  message staged, a DSP message queued), IN 0x1e (the overlay status byte),
+  and the writes of 0 to either port, which do nothing.
+
+Python calls fell by 29% in the I-modem and 25% in the worker, and the full
+call went from 206 s to 186 s with both processes' results bit-identical.

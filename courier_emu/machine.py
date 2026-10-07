@@ -7,7 +7,7 @@ from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import (
-    LANE_BANKS, LANE_DSP_FIRST, LANE_DSP_STATUS, LANE_FIRST_PORT,
+    HOST_STATUS_CELL, LANE_BANKS, LANE_DSP_FIRST, LANE_DSP_STATUS, LANE_FIRST_PORT,
     LANE_RX_ACK_PORT, CourierDspBridge,
 )
 from .codec import CodecBringUp
@@ -2961,12 +2961,33 @@ class CourierMachine:
                 host_ports[port] |= 1
             for port in (command_port, LANE_RX_ACK_PORT, *lane_ports[::2]):
                 host_ports[port] |= 2
+            # The host-port status and overlay-strobe registers: see
+            # LaneHostIo.serve_mailbox. Only when the transfer protocol is not
+            # itself using them as its command port.
+            mailbox_ports = (
+                getattr(bridge, "board3453", None) is None
+                and self.quad_c50 is None and self.quad_board is None
+                and self.quad_usart is None
+                and 0x1C not in (command_port, LANE_RX_ACK_PORT)
+                and 0x1E not in (command_port, LANE_RX_ACK_PORT)
+                and getattr(bridge, "transfer_start_command", 4) != 0
+                and 0 not in getattr(bridge, "_windows", {0: 0})
+            )
+            if mailbox_ports:
+                for port in (0x1C, 0x1E):
+                    host_ports[port] |= 3
+            # Fixed for the run: what the answers further down depend on.
+            runtime_static = (
+                mailbox_ports and bridge.boot_rom_enabled
+                and getattr(bridge.image, "supervisor_offset", 0) != 0x17BB0
+            )
+            overlay_static = mailbox_ports and command_port != 0x1E
             for index in range(2 * LANE_BANKS):
                 strobe, lane = bridge._lanes[LANE_FIRST_PORT + 2 * index]
                 lane_io.set_lane(index, bridge._windows[strobe], lane)
 
             watched = bool(self.io_watch) or bridge.asic_transparent
-            flagged = (command_port, LANE_RX_ACK_PORT, *lane_ports)
+            flagged = (command_port, LANE_RX_ACK_PORT, *lane_ports, 0x1C, 0x1E)
             applied: list[Any] = [None]
 
             def refresh_native_lanes() -> None:
@@ -2979,9 +3000,17 @@ class CourierMachine:
                     and not (self.port_values
                              and any(port in self.port_values for port in flagged))
                 )
+                active = served and bridge.active
                 state = (
                     bridge.core.handle if served else None,
                     served and bridge._lanes_live(),
+                    runtime_static and active and bridge._runtime_mode
+                    and not bridge._completion_probe,
+                    bridge._runtime_pending is not None,
+                    bool(bridge._runtime_inbound),
+                    overlay_static and active
+                    and not bridge._overlay_destination_pending,
+                    bridge._overlay_status & 0xFF,
                 )
                 if state != applied[0]:
                     applied[0] = state
@@ -2990,8 +3019,14 @@ class CourierMachine:
                         command_port=command_port, ack_port=LANE_RX_ACK_PORT,
                         lane_first=LANE_FIRST_PORT, banks=LANE_BANKS,
                         dsp_first=LANE_DSP_FIRST, dsp_status=LANE_DSP_STATUS)
+                    lane_io.configure_mailbox(
+                        runtime=bool(state[2]), pending=state[3],
+                        inbound=state[4], overlay=bool(state[5]),
+                        overlay_status=state[6], zero_ok=bool(served and mailbox_ports),
+                        status_cell=HOST_STATUS_CELL)
 
-            self._lane_out_ports = frozenset((command_port, LANE_RX_ACK_PORT, *lane_ports[::2]))
+            self._lane_out_ports = frozenset(
+                (command_port, LANE_RX_ACK_PORT, *lane_ports[::2], 0x1C, 0x1E))
             self._refresh_native_lanes = refresh_native_lanes
             uc.native_host_io = (lane_io.function, lane_io.context, host_ports)
             uc.native_after_io = refresh_native_lanes

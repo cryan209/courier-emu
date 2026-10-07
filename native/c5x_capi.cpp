@@ -36,6 +36,43 @@ struct LaneHostIo {
     uint32_t in_count[256] = {}, out_count[256] = {};
     uint16_t out_last[256] = {};
     uint8_t out_seen[256] = {};
+    // The host-port status (0x1c) and overlay-strobe (0x1e) registers, for the
+    // accesses that are a pure function of the DSP's status latch and of the
+    // few bridge flags the harness publishes here (courier_laneio_configure_
+    // mailbox). Whatever else they do - commits, window strobes - is declined.
+    bool mb_runtime = false;     // ROM protocol, runtime mode: 0x1c answers from the latch
+    bool mb_pending = false;     // a host message is staged for delivery
+    bool mb_inbound = false;     // a DSP-to-host message is queued
+    bool mb_overlay = false;     // 0x1e reads answer the overlay status byte
+    bool mb_zero_ok = false;     // a 0 written to 0x1e is not a strobe
+    uint8_t mb_overlay_status = 0;
+    uint16_t mb_status_cell = 0x57;
+
+    // direction 1 = IN, 2 = OUT; true when served.
+    bool serve_mailbox(int direction, uint16_t port, uint16_t value, uint16_t *out)
+    {
+        if (direction == 1) {
+            uint16_t answer;
+            if (port == 0x1c) {
+                if (!mb_runtime) return false;
+                const uint16_t status = core->io(mb_status_cell);
+                answer = (status & 0x0001) || mb_pending ? 0 : 1;
+                if (mb_inbound || ((status ^ 0x0006) & 0x02)) answer |= 2;
+            } else {
+                if (!mb_overlay) return false;
+                answer = mb_overlay_status;
+            }
+            ++in_count[port];
+            *out = answer & 0xff;
+            return true;
+        }
+        if (value & 0xff) return false;
+        if (port == 0x1c ? !mb_runtime : !mb_zero_ok) return false;
+        ++out_count[port];
+        out_last[port] = 0;
+        out_seen[port] = 1;
+        return true;
+    }
 
     uint16_t lane_word(unsigned bank) const
     {
@@ -235,6 +272,22 @@ void courier_laneio_configure(void *context, void *core, int live,
     io->dsp_status = dsp_status;
 }
 
+// What the harness knows about the mailbox ports that the model cannot read
+// off the DSP's latch: see LaneHostIo::serve_mailbox.
+void courier_laneio_configure_mailbox(void *context, int runtime, int pending,
+    int inbound, int overlay, unsigned overlay_status, int zero_ok,
+    unsigned status_cell)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    io->mb_runtime = runtime != 0;
+    io->mb_pending = pending != 0;
+    io->mb_inbound = inbound != 0;
+    io->mb_overlay = overlay != 0;
+    io->mb_overlay_status = uint8_t(overlay_status);
+    io->mb_zero_ok = zero_ok != 0;
+    io->mb_status_cell = uint16_t(status_cell);
+}
+
 void courier_laneio_set_lane(void *context, unsigned index, uint8_t *byte)
 {
     if (index < 16) static_cast<LaneHostIo *>(context)->lane[index] = byte;
@@ -247,6 +300,8 @@ int courier_laneio_access(void *context, int direction, uint16_t port,
 {
     auto *io = static_cast<LaneHostIo *>(context);
     if (!io->core || size != 1 || port >= 256) return 0;
+    if ((port == 0x1c || port == 0x1e) && io->serve_mailbox(direction, port, value, out))
+        return 1;
     const uint16_t mask = uint16_t((1u << io->banks) - 1);
     const uint16_t lane_last = uint16_t(io->lane_first + 4 * io->banks);
     if (direction == 1) {

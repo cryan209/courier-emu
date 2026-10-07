@@ -141,3 +141,43 @@ def test_imodem_model_serves_the_host_port_status_and_strobes():
     finally:
         model.close()
         dsp.close()
+
+
+def test_analog_model_serves_the_mailbox_status_ports_from_the_latch():
+    dsp = core()
+    model = LaneHostIo()
+    try:
+        model.configure(dsp.handle, False, command_port=0x18, ack_port=0x1A,
+                        lane_first=0x40, banks=6, dsp_first=0x58,
+                        dsp_status=0x56)
+        # Until the harness says the runtime protocol is up, they are Python's.
+        assert access(model, 1, 0x1C)[0] == 0
+        assert access(model, 1, 0x1E)[0] == 0
+        model.configure_mailbox(runtime=True, pending=False, inbound=False,
+                                overlay=True, overlay_status=0x07,
+                                zero_ok=True, status_cell=0x57)
+        # Room for a host word unless the DSP has one pending; bit 1 when the
+        # DSP's send-complete flag (inverted in the latch) is up.
+        dsp.set_io(0x57, 0x0006)
+        assert access(model, 1, 0x1C) == (1, 1)
+        dsp.set_io(0x57, 0x0001)
+        assert access(model, 1, 0x1C) == (1, 2)
+        dsp.set_io(0x57, 0x0004)
+        assert access(model, 1, 0x1C) == (1, 3)
+        model.configure_mailbox(runtime=True, pending=True, inbound=True,
+                                overlay=False, overlay_status=0x07,
+                                zero_ok=True, status_cell=0x57)
+        dsp.set_io(0x57, 0x0006)
+        assert access(model, 1, 0x1C) == (1, 2)
+        assert access(model, 1, 0x1E)[0] == 0
+        # Writes that do nothing are served; commits and strobes are not.
+        assert access(model, 2, 0x1C, 0)[0] == 1
+        assert access(model, 2, 0x1C, 2)[0] == 0
+        assert access(model, 2, 0x1E, 0)[0] == 1
+        assert access(model, 2, 0x1E, 4)[0] == 0
+        reads, writes, last, seen = model.take_counts()
+        assert reads[0x1C] == 4 and writes[0x1C] == 1 and writes[0x1E] == 1
+        assert seen[0x1C] == 1 and last[0x1C] == 0
+    finally:
+        model.close()
+        dsp.close()
