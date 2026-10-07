@@ -62,3 +62,16 @@ from the receive octets held ahead. `COURIER_PCM_BATCH=0` turns it off;
 Serving the mailbox's `0x1c`/`0x1e` ports natively on both modems, and a
 faster C5x interpreter (its cost is spread over fetch, addressing and cycle
 accounting rather than any one hot spot).
+
+## C5x interpreter
+
+The per-instruction diagnostic probes (V.8 dispatch capture, negotiation-loop
+snapshot, ISR trace) are now off by default; set `COURIER_DSP_PROBES=1` to turn
+them back on. `COURIER_C5X_LIBRARY` names a prebuilt library, for A/B runs.
+
+Tried and dropped, because alternating A/B runs showed no gain (the fast build
+was 3-5% slower in wall time): a circular-buffer mask for indirect addressing,
+an inline timer fast path in `step()`, and raising the compiler's inline limits.
+At about 250 host instructions per DSP instruction the cost is spread across
+`step()`, addressing, dispatch and memory access, so a worthwhile gain needs a
+structural rewrite of the dispatch/fetch/memory path rather than local tweaks.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -53,6 +54,11 @@ def build_runner(*, force: bool = False) -> Path:
 
 
 def build_library(*, force: bool = False) -> Path:
+    # A prebuilt library can be named outright, which is how builds are
+    # compared against each other.
+    override = os.environ.get("COURIER_C5X_LIBRARY")
+    if override:
+        return Path(override)
     if not force and LIBRARY.exists():
         library_time = LIBRARY.stat().st_mtime_ns
         if all(source.stat().st_mtime_ns <= library_time for source in LIBRARY_SOURCES):
@@ -157,6 +163,11 @@ class NativeC5x:
         if not self._handle:
             raise RuntimeError("failed to create C5x core")
         self.library.courier_c5x_set_separate_global_memory(self.handle, separate_global_memory)
+        # The per-instruction diagnostic probes (V.8 dispatch capture, the
+        # negotiation loop snapshot, the 0x0200-0x02ff ISR trace) cost a few
+        # percent of every run and nothing reads them back unless asked.
+        self.library.courier_c5x_set_step_probes(
+            self.handle, bool(os.environ.get("COURIER_DSP_PROBES")))
         try:
             origins = [origin for origin, _ in image.dsp_program_segments()]
             # The board's external RAM answers both spaces at 0x8000-0xfeff,
@@ -200,6 +211,11 @@ class NativeC5x:
         if not self._handle:
             raise RuntimeError("failed to create C5x core")
         self.library.courier_c5x_set_separate_global_memory(self.handle, separate_global_memory)
+        # The per-instruction diagnostic probes (V.8 dispatch capture, the
+        # negotiation loop snapshot, the 0x0200-0x02ff ISR trace) cost a few
+        # percent of every run and nothing reads them back unless asked.
+        self.library.courier_c5x_set_step_probes(
+            self.handle, bool(os.environ.get("COURIER_DSP_PROBES")))
         try:
             self.load_program(program, origin)
         except Exception:
@@ -331,6 +347,8 @@ class NativeC5x:
         lib.courier_c5x_set_data_event_limit.restype = None
         lib.courier_c5x_set_data_trace_range.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_int]
         lib.courier_c5x_set_data_trace_range.restype = None
+        lib.courier_c5x_set_step_probes.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_set_step_probes.restype = None
         lib.courier_c5x_set_coverage.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_set_coverage.restype = None
         lib.courier_c5x_get_first_exec.argtypes = [ctypes.c_void_p, ctypes.c_uint]

@@ -480,7 +480,7 @@ private:
     std::vector<uint16_t> m_capture_addresses;
     std::deque<std::vector<uint64_t>> m_pc_captures;
     uint16_t m_trace_first = 0xFFFF, m_trace_last = 0;
-    bool m_step_probes = true;
+    bool m_step_probes = false;
     bool m_coverage = false;
     std::vector<uint64_t> m_first_exec;
     uint64_t m_delay_move_ignored = 0;

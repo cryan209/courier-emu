@@ -670,6 +670,11 @@ void courier_c5x_set_data_trace_range(void *handle, unsigned first, unsigned las
     if (handle) static_cast<C5xCore *>(handle)->set_data_trace_range(first, last, enabled != 0);
 }
 
+void courier_c5x_set_step_probes(void *handle, int enabled)
+{
+    if (handle) static_cast<C5xCore *>(handle)->set_step_probes(enabled != 0);
+}
+
 void courier_c5x_set_coverage(void *handle, int enabled)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_coverage(enabled != 0);
