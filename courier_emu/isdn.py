@@ -1165,7 +1165,7 @@ class IsdnMachine:
                     read_quantum=DSP_READ_QUANTUM)
                 lane_ports = range(0x40, 0x58, 2)
                 host_ports = bytearray(65536)
-                for port in (0x18, 0x1A, *lane_ports):
+                for port in (0x18, 0x1A, 0x1C, 0x1E, *lane_ports):
                     host_ports[port] |= 3
 
                 def refresh_native_io() -> None:

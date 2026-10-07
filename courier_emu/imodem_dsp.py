@@ -147,9 +147,42 @@ class ImodemDsp(ImodemMailbox):
         self._realtime_origin = None
         self._ahead.clear()
 
+    def _drain_overlay(self):
+        """Replay the 0x1e accesses the native port model served into the logs.
+
+        They are replayed in order before anything else touches the logs, so
+        the logs read as though every access had come through `read`/`write`.
+        """
+        sh = self._sh
+        count = sh.ov_len
+        if not count:
+            return
+        log = bytes(sh.ov_log[:count])
+        sh.ov_len = 0
+        recent, control = self.overlay_recent, self.overlay_control
+        for entry in log:
+            value = entry & 7
+            if entry & 8:
+                if value in self.overlay_writes:
+                    self.overlay_writes[value] += 1
+                    if len(control) >= 32:
+                        control.pop(0)
+                    control.append(("strobe", value))
+                if len(recent) >= 32:
+                    recent.pop(0)
+                recent.append(("write", value))
+                if value & 2:
+                    self.download_blocks += 1
+            else:
+                self.overlay_reads += 1
+                if len(recent) >= 32:
+                    recent.pop(0)
+                recent.append(("read", value))
+
     def _command(self, tag, value):
         if self.core is None:
             return
+        self._drain_overlay()
         # Image 6 is the first call-time overlay in every supported I-modem
         # build and is loaded at a000. Startup's image 10/11 destinations are
         # d100/9260 and continue through the ordinary idle dispatcher.
@@ -510,6 +543,7 @@ class ImodemDsp(ImodemMailbox):
         if port == 0x1e:
             if self.reset_status:
                 return 0xff
+            self._drain_overlay()
             result = ((~self.core.io(0x57) >> 8) & 7) if self.core else 7
             self.overlay_reads += 1
             if len(self.overlay_recent) >= 32:
@@ -569,6 +603,7 @@ class ImodemDsp(ImodemMailbox):
             return
         if port == 0x1e:
             if self.core and not self.reset_status:
+                self._drain_overlay()
                 masked = value & 7
                 if masked in self.overlay_writes:
                     self.overlay_writes[masked] += 1
@@ -690,6 +725,7 @@ class ImodemDsp(ImodemMailbox):
             raise RuntimeError('DSP resident did not reach its initial IDLE')
 
     def status(self):
+        self._drain_overlay()
         result = super().status()
         result.update(endpoint='native-c5x', bootstrap_words=self.bootstrap_words,
                       consumed=self.consumed, download_blocks=self.download_blocks,

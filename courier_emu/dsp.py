@@ -1264,6 +1264,8 @@ class ImodemShared(ctypes.Structure):
         ("lanes", ctypes.c_uint8 * 0x60),
         ("tx_pending", ctypes.c_uint32),
         ("rx_pending", ctypes.c_uint32),
+        ("ov_len", ctypes.c_uint32),
+        ("ov_log", ctypes.c_uint8 * 8192),
     ]
 
 

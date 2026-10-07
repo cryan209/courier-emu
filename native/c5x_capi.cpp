@@ -50,6 +50,7 @@ struct LaneHostIo {
 }
 
 namespace {
+constexpr std::size_t OV_LOG_CAPACITY = 8192;
 // State the I-modem's mailbox endpoint shares with its native port model.
 // Python reads and writes these fields in place through a ctypes mirror of
 // this layout (dsp.py ImodemShared), so neither side marshals anything.
@@ -71,6 +72,12 @@ struct ImodemShared {
     uint8_t lanes[0x60];         // window bytes by port, 0x40..0x5e
     uint32_t tx_pending;         // transmitted octets the harness has not taken
     uint32_t rx_pending;         // receive octets queued ahead in the core
+    // Host-port 0x1e accesses served natively, in order, for the mailbox's
+    // diagnostic logs: (kind << 3) | value, kind 0 an IN's answer, kind 1 an
+    // OUT's low three bits. The harness replays them (ImodemDsp._drain_overlay)
+    // before it touches those logs itself; the model declines when this is full.
+    uint32_t ov_len;
+    uint8_t ov_log[OV_LOG_CAPACITY];
 };
 
 // Port model for the I-modem's live data lanes and their DSP advance. It does
@@ -89,6 +96,61 @@ struct ImodemHostIo {
     uint16_t word(uint16_t port) const
     {
         return uint16_t(shared->lanes[port] | (shared->lanes[port + 2] << 8));
+    }
+
+    // The host-port status (0x1c) and strobe (0x1e) registers, for the cases
+    // that need nothing from the harness: ImodemDsp.read/write do the same.
+    // Anything else - a command commit, a reply acknowledgement, a reply to
+    // offer, a full log - is declined and left to them.
+    int serve_host_port(int direction, uint16_t port, uint16_t value,
+                        uint64_t now, uint16_t *out)
+    {
+        ImodemShared *sh = shared;
+        if (direction == 1) {
+            if (port == 0x1e && sh->ov_len >= OV_LOG_CAPACITY) return 0;
+            if (!advance(now, read_quantum)) return 0;
+            uint16_t answer;
+            if (port == 0x1e) {
+                answer = uint16_t(~(core->io(0x57) >> 8)) & 7;
+                sh->ov_log[sh->ov_len++] = uint8_t(answer);
+            } else {
+                // ImodemDsp._sync, then the mailbox's status word.
+                const uint16_t status = core->io(0x57);
+                if (sh->host_pending && !(status & 1)) {
+                    ++sh->consumed;
+                    sh->host_pending = 0;
+                }
+                sh->tx_ready = !(status & 1);
+                if (!(status & 2) && !sh->rx_present
+                    && core->io_port_stat(0x5f).writes > sh->reply_writes)
+                    return 0;
+                answer = uint16_t(sh->tx_ready | (sh->rx_present ? 2 : 0));
+            }
+            ++in_count[port];
+            *out = answer;
+            return 1;
+        }
+        value &= 0xff;
+        if (port == 0x1c) {
+            // Bit 0 commits a command and bit 1 acknowledges a reply; with
+            // neither the write does nothing at all.
+            if (value & 3) return 0;
+            if (!advance(now, 0)) return 0;
+        } else {
+            if (sh->ov_len >= OV_LOG_CAPACITY) return 0;
+            if (!advance(now, 0)) return 0;
+            const unsigned masked = value & 7;
+            sh->ov_log[sh->ov_len++] = uint8_t(8 | masked);
+            if (value & 3) {
+                const uint16_t base = (value & 1) ? 0x40 : 0x48;
+                const uint16_t dsp_base = (value & 1) ? 0x58 : 0x5a;
+                for (unsigned i = 0; i < 2; ++i)
+                    core->set_io(uint16_t(dsp_base + i), word(uint16_t(base + 4 * i)));
+            }
+            core->set_io(0x57, uint16_t(core->io(0x57) | (masked << 8)));
+        }
+        ++out_count[port];
+        return 1;
     }
 
     // true: the C5x is where the harness would have put it; false: the
@@ -278,6 +340,7 @@ int courier_imodemio_access(void *context, int direction, uint16_t port,
         return 1;
     }
     if (!io->core || !io->live) return 0;
+    if (port == 0x1c || port == 0x1e) return io->serve_host_port(direction, port, value, now, out);
     if (direction == 1) {
         if (port != 0x18 && port != 0x1a && !lane) return 0;
         if (!io->advance(now, io->read_quantum)) return 0;

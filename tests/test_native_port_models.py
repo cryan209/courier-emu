@@ -97,3 +97,47 @@ def test_imodem_model_shares_state_and_holds_back_for_python():
     finally:
         model.close()
         dsp.close()
+
+
+def test_imodem_model_serves_the_host_port_status_and_strobes():
+    shared = ImodemShared()
+    dsp = core()
+    model = ImodemHostIo(shared, cycles_per_instruction=8.064, read_quantum=32)
+    try:
+        model.configure(dsp.handle, True)
+        shared.dsp_instructions = 100
+        shared.tx_ready = 0
+        dsp.set_io(0x57, 0)
+        # 0x1c reads the mailbox status word: transmit-ready, reply-present.
+        served, value = access(model, 1, 0x1C, now=110)
+        assert served and value == 1 and shared.tx_ready == 1
+        shared.rx_present = 1
+        assert access(model, 1, 0x1C, now=110) == (1, 3)
+        # A reply the harness has yet to offer is its to deal with.
+        shared.rx_present = 0
+        dsp.set_io(0x57, 0)
+        dsp.set_io(0x5F, 0x1234)
+        # Writes to 0x1c that commit or acknowledge are declined; others no-ops.
+        assert access(model, 2, 0x1C, 0x00, now=110)[0] == 1
+        assert access(model, 2, 0x1C, 0x01, now=110)[0] == 0
+        assert access(model, 2, 0x1C, 0x02, now=110)[0] == 0
+        # 0x1e: strobes publish the window's words and raise the status bits.
+        shared.lanes[0x40], shared.lanes[0x42] = 0x21, 0x43
+        shared.lanes[0x48], shared.lanes[0x4A] = 0x65, 0x87
+        assert access(model, 2, 0x1E, 0x01, now=110)[0] == 1
+        assert dsp.io(0x58) == 0x4321 and dsp.io(0x57) == 0x0100
+        assert access(model, 2, 0x1E, 0x02, now=110)[0] == 1
+        assert dsp.io(0x5A) == 0x8765 and dsp.io(0x57) == 0x0300
+        served, value = access(model, 1, 0x1E, now=110)
+        assert served and value == (~0x03 & 7)
+        # The log the harness replays: writes (8|value) and reads, in order.
+        assert list(shared.ov_log[:shared.ov_len]) == [8 | 1, 8 | 2, 4]
+        reads, writes = model.take_counts()
+        assert reads[0x1C] == 2 and reads[0x1E] == 1
+        assert writes[0x1C] == 1 and writes[0x1E] == 2
+        # Not live: Python's.
+        model.configure(dsp.handle, False)
+        assert access(model, 1, 0x1E, now=110)[0] == 0
+    finally:
+        model.close()
+        dsp.close()
