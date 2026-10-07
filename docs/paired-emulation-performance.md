@@ -336,3 +336,35 @@ waiting in Python, and the service after any exit to Python. Wall 37 s ->
 bit-identical. `COURIER_WORKER_POLL=0` turns it off. The two processes are now
 evenly loaded, each about 62% C5x, so the interpreter is again the lever for
 both.
+
+### The I-modem's set-up, native
+
+Sampling both processes' CPU every two seconds showed the I-modem limiting the
+first ~12 s (call set-up: ~1.0 CPU-s per second against the worker's 0.4-0.6,
+64% of it Python) and the worker limiting the call. Four changes, each
+bit-identical on the x2 call (the set-up ones also on a Bell 103 call and a
+V.34 dial):
+
+- **Idle frames settled natively.** With no call nothing is fed ahead, so every
+  PCM frame stopped the native advance for `ImodemDsp.service_pending`, which
+  settled it through the same `Bearer::exchange`. The native service does that
+  itself now when no routed channel could underrun (`ImodemHostIo::clocks`),
+  and `_advance_dsp` uses advance-then-serve (`courier_imodemio_advance_serve`).
+- **Elision before the call.** `quiet_until` covers every call state, declining
+  when a pass would offer an incoming call (`BearerLineLink.offers_call`; the
+  line's ringing changes only on a line frame, which is a full pass);
+  `_update_elision` asks for no lookahead outside an active call instead of an
+  answered peer; the native poll takes a poll with no channel when nothing is
+  fed ahead. Polls declined for the peer: 245k -> 6k.
+- **SETcc, CBW, CWD in the x86 engine** (386 profile): 115k + 85k exits a call
+  at two single instructions.
+- **UART status reads keep elision armed**, as `read_port` always meant to:
+  it marked the poll dirty before reaching the exemption, so the firmware's
+  modem-status loop disarmed it 85k times. Dirty declines: 92k -> 14k.
+
+Native I-modem polls 880k -> 1.14M; wall 33.6 s -> 27.5 s (4.4x real time). The
+worker is now the limiter for the whole call and the I-modem has slack, so
+what is left to win is the worker's: its line services (~78k a call, the
+socket exchange, resampler glue and call state), the services with DTE input
+or an interrupt waiting, and the C5x interpreter, which is still the largest
+share in both processes.
