@@ -188,3 +188,57 @@ Full call: 169 s -> 155 s (I-modem 112.6 s of CPU, worker 140.6 s), results
 bit-identical; about 208k of 244k in-call polls run natively. The I-modem is
 now under the 120 s of line time; the analog worker is the limiter and needs
 the same treatment (native poll, PIC and timers).
+
+## The analog worker
+
+The worker (one Courier board: 80186, C5x, codec model) is the longer pole once
+the I-modem is native: its C5x runs the whole V.34/V.90 data pump, and its
+80186 harness serviced every 1,024 instructions in Python. What was done, in
+the order of what it cost, each step compared with the previous run's full
+results (`tools/probe_imodem_analog_pair.py`, bit for bit):
+
+- **Glue that built more than it needed.** Reading one serial counter built a
+  70-key dictionary, a port-write count went through a six-field array, the
+  resampler recomputed its Kaiser window for every kernel, and the overlay and
+  ROM loaders single-stepped the C5x through ctypes. They are single calls now
+  (`serial_backlog`, `io_port_writes`, `step_until_data`, a shared window).
+- **MMIO and port reads served by the engine.** The 80186's end-of-interrupt
+  write (142k a window) is logged by the native x86 engine (guard bit 64) and
+  replayed in order before Python next runs; the panel latch at port 0x14 (103k
+  reads a window, a polling loop) is worked out by the harness and served by the
+  native port model until a panel port is written. Both only once the first
+  events have been recorded verbatim, as for the lane ports.
+- **A fast path for the service.** `service_chunk` is split into head, clock,
+  tail and the interrupt sources, and `fast_service` makes the tests of the
+  common service in one place and in the same order: nothing for the call state
+  machines to start, the codec frame not due, the line not ready for a frame,
+  the DSP silent. It declines before changing anything when a test says there is
+  work and hands what is left of a service to the original code when a later one
+  does. The DSP step is one call that also returns what is read next
+  (`service_step`), and the DSP's frame interrupt (a quarter of a million
+  entries per call) is entered in the callback instead of leaving the engine for
+  the run loop and re-entering it (`redirect_is_free` keeps the dispatch edge
+  uncharged, as the run loop's own path does). `COURIER_FAST_SERVICE=0` turns it
+  off.
+- **The resampler.** Its retuned path runs for the rest of a call once the codec
+  clock moves, and was a quarter of the glue. The per-sample loop, including the
+  samples at a clock edge, is native (`native/resample.hpp`); the dot products
+  are CPython's `math.sumprod` (a triple-length accumulation, ported and checked
+  against it on 200k random vectors), the Kaiser series uses libm's `pow` as
+  `float ** int` does. `tests/test_resample_rate_changes.py` runs both on random
+  streams with rate changes and compares every sample.
+- **The C5x step.** A third of the worker's DSP steps are inside RPTB bodies and
+  went through the rare path for the block-repeat edge; that edge is on the fast
+  path now, and XC's condition sample is one register.
+
+Full call, same machine, same results: worker CPU 140.6 s -> 109 s, I-modem
+97-105 s (noise from the shared host is +-5%), wall 155 s -> 127-133 s for 120 s
+of line time. Where the worker's time goes now (250M window): the C5x about 47%
+(533M instructions at ~45 ns, dominated by a handful of filter loops and cold
+once-per-frame code), the native x86 engine 13%, the harness the rest.
+
+What is left, in the order it looks worth doing: the I-modem's call set-up (the
+first ~35 s, where the poll elision cannot yet run because no call is up and the
+worker waits for it), the C5x interpreter itself (a predecoded handler per
+program address would cut the dispatch), and the remaining per-service reads of
+the timers and the panel latch.
