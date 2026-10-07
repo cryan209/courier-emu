@@ -1473,16 +1473,16 @@ void C5xCore::op_xc()
 	// used by the following instruction. BIO is an external pin, not one of
 	// the ALU/TC conditions captured here.
 	const auto current = condition_state();
-	m_acc = m_xc_condition.acc;
-	m_st0.ov = m_xc_condition.ov != 0;
-	m_st1.c = m_xc_condition.carry != 0;
-	m_st1.tc = m_xc_condition.tc != 0;
+	m_acc = int32_t(uint32_t(m_xc_condition));
+	m_st0.ov = (m_xc_condition >> 32) & 1;
+	m_st1.c = (m_xc_condition >> 33) & 1;
+	m_st1.tc = (m_xc_condition >> 34) & 1;
 	const bool execute = GET_ZLVC_CONDITION((m_op >> 4) & 0xf, m_op & 0xf)
 		&& GET_TP_CONDITION((m_op >> 8) & 0x3);
-	m_acc = current.acc;
-	m_st0.ov = current.ov != 0;
-	m_st1.c = current.carry != 0;
-	m_st1.tc = current.tc != 0;
+	m_acc = int32_t(uint32_t(current));
+	m_st0.ov = (current >> 32) & 1;
+	m_st1.c = (current >> 33) & 1;
+	m_st1.tc = (current >> 34) & 1;
 	if (execute)
 	{
 		CYCLES(1);

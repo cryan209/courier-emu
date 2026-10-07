@@ -3071,34 +3071,44 @@ class CourierMachine:
                 and not bridge.handles(0x14)
             )
 
+            panel = self.panel
+            # What the latch reads as before the board's own state is
+            # applied: no switch is closed on it unless the run says so.
+            base_14 = 0xFF & ~panel.dip_input(0x14, rom=self._rom_serial is not None)
+            published = [None]    # the answer the native model was last given
+
             def panel_input_14() -> int | None:
                 if 0x14 in self.port_values:
                     return None
-                if not self._terminal_connected and (
-                        self.serial_rx or self.console is not None):
+                connected = self._terminal_connected
+                if not connected and (self.serial_rx or self.console is not None):
                     # Reading the latch is what notices a terminal; leave
                     # that to the read.
                     return None
-                panel = self.panel
-                value = 0xFF & ~panel.dip_input(0x14, rom=self._rom_serial is not None)
-                if panel.board_id is not None:
-                    if panel.strap_sense():
-                        value |= STRAP_SENSE_BIT
-                    else:
-                        value &= ~STRAP_SENSE_BIT
-                value = value | 0x01 if self._terminal_connected else value & ~0x01
                 line = bridge.line
                 exchange = bridge.exchange
                 if (line is not None and line.peer_ringing) or (
                         exchange is not None and exchange.ringing):
                     return None
+                value = base_14
+                if panel.board_id is not None:
+                    if panel.strap_sense():
+                        value |= STRAP_SENSE_BIT
+                    else:
+                        value &= ~STRAP_SENSE_BIT
+                value = value | 0x01 if connected else value & ~0x01
                 return value & ~RING_DETECT_BIT & 0xFF
 
-            def refresh_fixed_inputs() -> None:
+            def refresh_fixed_inputs(force: bool = False) -> None:
                 answer = None
                 if applied[0] is not None and applied[0][0] is not None:
                     answer = panel_input_14()
-                lane_io.set_fixed_input(0x14, answer)
+                # The native side only drops its copy when a panel port is
+                # written, and those writes come back through `after_io` or
+                # the panel replay, which both force.
+                if force or answer != published[0]:
+                    published[0] = answer
+                    lane_io.set_fixed_input(0x14, answer)
 
             if panel_inputs_native:
                 host_ports[0x14] |= 1
@@ -3114,7 +3124,7 @@ class CourierMachine:
             if fixed_refresh[0] is not None:
                 def after_io() -> None:
                     refresh_native_lanes()
-                    refresh_fixed_inputs()
+                    refresh_fixed_inputs(True)
                 uc.native_after_io = after_io
             else:
                 uc.native_after_io = refresh_native_lanes

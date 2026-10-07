@@ -501,16 +501,16 @@ private:
 
     uint16_t m_pc = 0, m_op = 0;
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;
-    struct ConditionState {
-        int32_t acc = 0;
-        // The flags as stored: only op_xc turns them into booleans.
-        uint16_t ov = 0, carry = 0, tc = 0;
-    };
-    ConditionState m_condition_start{}, m_xc_condition{};
+    // What XC samples: the accumulator in the low word, OV, C and TC (as
+    // booleans) in bits 32..34. One register, so that taking and passing it
+    // along every instruction costs no memory traffic.
+    using ConditionState = uint64_t;
+    ConditionState m_condition_start = 0, m_xc_condition = 0;
     bool m_delay_condition_pending = false;
     ConditionState condition_state() const
     {
-        return {m_acc, uint16_t(m_st0.ov), uint16_t(m_st1.c), uint16_t(m_st1.tc)};
+        return uint64_t(uint32_t(m_acc))
+            | uint64_t((m_st0.ov != 0) | (m_st1.c != 0) << 1 | (m_st1.tc != 0) << 2) << 32;
     }
     void execute_opcode();
     bool step_front_rare();
@@ -554,14 +554,6 @@ private:
     void refresh_event_deadline();
     // Zero means unknown: step() recomputes it.
     uint64_t m_event_deadline = 0;
-    // True when step() has anything to do before fetching: see step_front_rare.
-    bool front_is_rare() const
-    {
-        uint32_t flags;
-        std::memcpy(&flags, &m_ff, sizeof flags);
-        return (flags != 0) | bool(m_pmst.braf)
-            | (((m_ifr & m_imr) != 0) & !m_st0.intm & !m_repeat_active);
-    }
     // The diagnostics step() would otherwise test for every instruction.
     void update_front_aux()
     {

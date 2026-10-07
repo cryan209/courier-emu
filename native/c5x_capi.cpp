@@ -1362,6 +1362,16 @@ uint64_t courier_c5x_get_io_port_writes(void *handle, uint16_t port)
     return handle ? static_cast<C5xCore *>(handle)->io_port_stat(port).writes : 0;
 }
 
+// serial_state's queued - consumed: the codec pair when `codec` is set, else
+// the line receive queue.
+int64_t courier_c5x_serial_backlog(void *handle, int codec)
+{
+    if (!handle) return 0;
+    const auto state = static_cast<C5xCore *>(handle)->serial_state();
+    return codec ? int64_t(state.codec_rx_queued - state.codec_rx_consumed)
+                 : int64_t(state.rx_queued - state.rx_consumed);
+}
+
 uint16_t courier_c5x_get_pc(void *handle)
 {
     return handle ? static_cast<C5xCore *>(handle)->program_counter() : 0;

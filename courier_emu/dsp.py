@@ -171,8 +171,6 @@ _SERIAL_STATE_NAMES = (
             "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
             "hybrid_frames", "hybrid_peak",
         )
-_SERIAL_STATE_INDEX = {name: index for index, name in enumerate(_SERIAL_STATE_NAMES)}
-
 
 class NativeC5x:
     """Incrementally stepped C5x instance used by the dual-processor harness."""
@@ -441,6 +439,8 @@ class NativeC5x:
         lib.courier_c5x_get_io_port_writes.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io_port_writes.restype = ctypes.c_uint64
+        lib.courier_c5x_serial_backlog.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_c5x_serial_backlog.restype = ctypes.c_int64
         lib.courier_c5x_get_pc.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_pc.restype = ctypes.c_uint16
         lib.courier_c5x_get_line_tx_writes.argtypes = [ctypes.c_void_p]
@@ -869,14 +869,12 @@ class NativeC5x:
     def pc(self) -> int:
         return self.library.courier_c5x_get_pc(self.handle)
 
-    def serial_counter(self, name: str) -> int:
-        """One `serial_state` field, without building the whole dictionary."""
-        index = _SERIAL_STATE_INDEX[name]
-        cells = self.__dict__.get("_serial_cells")
-        if cells is None:
-            cells = self._serial_cells = (ctypes.c_uint64 * 65)()
-        self.library.courier_c5x_get_serial_state(self.handle, cells, len(cells))
-        return int(cells[index])
+    def serial_backlog(self, codec: bool) -> int:
+        """Words queued to the serial receiver and not yet consumed.
+
+        `serial_state`'s `rx_queued - rx_consumed`, or the codec pair's.
+        """
+        return self.library.courier_c5x_serial_backlog(self.handle, int(codec))
 
     def serial_state(self) -> dict[str, int]:
         values = (ctypes.c_uint64 * 65)()
@@ -1081,14 +1079,6 @@ class NativeC5x:
         if limit is not None:
             result.reverse()
         return result
-
-    def io_port_writes(self, port: int) -> int:
-        """How many times the C5x has written `port` (`io_port_stats`, one field)."""
-        values = self.__dict__.get("_port_stat_cells")
-        if values is None:
-            values = self._port_stat_cells = (ctypes.c_uint64 * 6)()
-        self.library.courier_c5x_get_io_port_stats(self.handle, port, values, len(values))
-        return int(values[1])
 
     def io_port_stats(self, ports: range = range(0x50, 0x60)) -> dict[str, dict[str, int]]:
         names = (

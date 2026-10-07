@@ -1870,9 +1870,22 @@ bool C5xCore::step_front_rare()
 void C5xCore::step()
 {
     m_step_cycles = 0;
-    if (__builtin_expect(front_is_rare(), 0)) {
+    // With none of the front flags up, only a vector that can be taken sends
+    // a step to step_front_rare - and the loop edge of a block repeat, which
+    // is the one rare step that is also the common one inside a RPTB body, so
+    // it is done here: step_front_rare does exactly this, in this order, when
+    // there is nothing else for it to do.
+    uint32_t front;
+    std::memcpy(&front, &m_ff, sizeof front);
+    const bool pending = (m_ifr & m_imr) != 0;
+    const bool vector_due = pending & !m_st0.intm & !m_repeat_active;
+    if (__builtin_expect(front | (m_pmst.braf ? pending : vector_due), 0)) {
         if (step_front_rare()) return;
     } else {
+        if (m_pmst.braf && m_pc == m_paer) {
+            if (m_brcr > 0) CHANGE_PC(m_pasr);
+            if (--m_brcr <= 0) m_pmst.braf = 0;
+        }
         const uint16_t previous_pc = m_pc;
         m_op = ROPCODE();
         execute_opcode();

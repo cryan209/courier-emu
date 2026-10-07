@@ -1544,9 +1544,9 @@ class CourierDspBridge:
 
     def _serial_backlog(self, prefix: str) -> int:
         """Words queued to the DSP's serial receiver and not yet consumed."""
-        counter = getattr(self.core, "serial_counter", None)
-        if counter is not None:
-            return counter(f"{prefix}_queued") - counter(f"{prefix}_consumed")
+        backlog = getattr(self.core, "serial_backlog", None)
+        if backlog is not None:
+            return backlog(prefix == "codec_rx")
         serial = self.core.serial_state()
         return serial.get(f"{prefix}_queued", 0) - serial.get(f"{prefix}_consumed", 0)
 
