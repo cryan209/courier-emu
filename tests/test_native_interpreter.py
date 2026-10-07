@@ -54,6 +54,38 @@ def test_native_randomized_instruction_equivalence(profile):
 
 
 @pytest.mark.parametrize("profile", ["186eb", "386ex"])
+def test_native_setcc_matches_the_reference(profile):
+    # 386 only: the 80186 has no 0x0f escape, and both engines refuse it.
+    rng = random.Random(9)
+    slow, fast = pair(profile)
+    initial_memory = rng.randbytes(len(slow.memory))
+    for cpu in (slow, fast):
+        cpu.memory[:] = initial_memory
+    for i in range(1500):
+        code = bytes([0x0F, 0x90 + rng.randrange(16)]) + rng.randbytes(10)
+        if i % 5 == 0:
+            code = bytes([rng.choice([0x26, 0x2e, 0x36, 0x3e])]) + code
+        regs = [rng.randrange(65536) for _ in range(14)]
+        regs[x86.UC_X86_REG_CS] = 0
+        regs[x86.UC_X86_REG_IP] = 0x1000
+        regs[x86.UC_X86_REG_FLAGS] |= 2
+        errors = []
+        for cpu in (slow, fast):
+            cpu.regs[:] = regs
+            cpu.memory[0x1000:0x1000+len(code)] = code
+            try:
+                cpu.emu_start(0x1000, 0, count=1)
+                errors.append(None)
+            except x86.UcError as exc:
+                errors.append(str(exc))
+        assert errors[0] == errors[1], code.hex()
+        assert slow.regs == fast.regs, (code.hex(), regs, slow.regs, fast.regs)
+        assert slow.memory == fast.memory, code.hex()
+    if profile == "386ex":
+        assert fast._native.retired > 1000
+
+
+@pytest.mark.parametrize("profile", ["186eb", "386ex"])
 def test_native_retires_port_io_before_device_callback(profile):
     slow, fast = pair(profile)
     logs = [[], []]

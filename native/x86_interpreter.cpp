@@ -124,7 +124,9 @@ struct Core {
             if((high>>16)&&!wide_move)yield(5);
             if(wide_move&&(op==0xa4||op==0xa5||(op>=0xaa&&op<=0xad))&&
                ((r[SI]|r[DI]|r[CX])>>16))yield();
-            if(op==0x98||op==0x99)yield();
+            // CBW and CWD write the whole of EAX/EDX, as the reference's
+            // reg_write does; with the upper halves zero (checked above) the
+            // 16-bit forms below give exactly that.
         }
         if(op<0x40 && (op&7)<6){int operation=(op>>3)&7,n=(op&1)?2:1;uint32_t l,q,a=0;int m=0,k=0;
             if((op&7)<4){m=fetch();k=(m>>3)&7;if(m<192)a=ea(m);l=read(m,n,a);q=get(k,n);if(op&2){uint32_t t=l;l=q;q=t;}}
@@ -218,6 +220,12 @@ struct Core {
         case 0x68:push(fetch(2));break;case 0x6a:push(int8_t(fetch()));break;
         case 0x98:r[AX]=uint16_t(int16_t(int8_t(r[AX])));break;
         case 0x99:r[DX]=(r[AX]&0x8000)?65535:0;break;
+        case 0x0f:{
+            // The 386's SETcc (the reference's _two_byte): the condition as a
+            // byte, flags untouched. run_batch lets only these through.
+            if(!is386)yield();
+            int op2=fetch();if(op2<0x90||op2>0x9f)yield();
+            int m=fetch();uint32_t a=m<192?ea(m):0;write(m,1,a,cond(op2&15)?1:0);break;}
         case 0x9b:break;case 0x9c:push(r[F]);break;case 0x9d:r[F]=pop()|2;break;
         case 0x9e:r[F]=(r[F]&~(CF|PF|AF|ZF|SF))|((r[AX]>>8)&(CF|PF|AF|ZF|SF))|2;break;
         case 0x9f:put(4,1,r[F]|2);break;
@@ -287,6 +295,8 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         }
         if(opcode==0xcd&&c.int_mode&&(c.int_mode[c.mem[c.phys(c.r[CS],c.r[IP]+1)]]&1)) {
             // Handled by step() below.
+        } else if(opcode==0x0f&&c.is386&&(c.mem[c.phys(c.r[CS],c.r[IP]+1)]&0xf0)==0x90) {
+            // SETcc: handled by step() below.
         } else if(opcode==0xcd||opcode==0x0f||opcode==0xf4){c.reason=7;break;}
         std::memcpy(c.saved,c.r,sizeof(c.r));
         c.step();
