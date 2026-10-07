@@ -48,6 +48,11 @@ struct LaneHostIo {
     bool mb_zero_ok = false;     // a 0 written to 0x1e is not a strobe
     uint8_t mb_overlay_status = 0;
     uint16_t mb_status_cell = 0x57;
+    // Input ports whose answer the harness has worked out and published (the
+    // panel's latches, say), served until one of the ports it depends on is
+    // written. Any OUT to a port marked in `invalidates` drops them all; the
+    // harness publishes again once it has seen the state change.
+    uint8_t fixed_valid[256] = {}, fixed_value[256] = {}, invalidates[256] = {};
 
     // direction 1 = IN, 2 = OUT; true when served.
     bool serve_mailbox(int direction, uint16_t port, uint16_t value, uint16_t *out)
@@ -661,6 +666,21 @@ void courier_laneio_configure_mailbox(void *context, int runtime, int pending,
     io->mb_status_cell = uint16_t(status_cell);
 }
 
+// Publish (or withdraw) the answer to byte IN `port`; see LaneHostIo::fixed_valid.
+void courier_laneio_set_fixed_input(void *context, unsigned port, int valid, unsigned value)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    if (port < 256) {
+        io->fixed_valid[port] = valid != 0;
+        io->fixed_value[port] = uint8_t(value);
+    }
+}
+
+void courier_laneio_set_invalidating_port(void *context, unsigned port)
+{
+    if (port < 256) static_cast<LaneHostIo *>(context)->invalidates[port] = 1;
+}
+
 void courier_laneio_set_lane(void *context, unsigned index, uint8_t *byte)
 {
     if (index < 16) static_cast<LaneHostIo *>(context)->lane[index] = byte;
@@ -673,6 +693,15 @@ int courier_laneio_access(void *context, int direction, uint16_t port,
 {
     auto *io = static_cast<LaneHostIo *>(context);
     if (!io->core || size != 1 || port >= 256) return 0;
+    if (direction == 1) {
+        if (io->fixed_valid[port]) {
+            ++io->in_count[port];
+            *out = io->fixed_value[port];
+            return 1;
+        }
+    } else if (io->invalidates[port]) {
+        std::memset(io->fixed_valid, 0, sizeof io->fixed_valid);
+    }
     if ((port == 0x1c || port == 0x1e) && io->serve_mailbox(direction, port, value, out))
         return 1;
     const uint16_t mask = uint16_t((1u << io->banks) - 1);

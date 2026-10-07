@@ -1217,6 +1217,10 @@ class LaneHostIo:
             ctypes.c_int, ctypes.c_uint, ctypes.c_int, ctypes.c_uint]
         lib.courier_laneio_set_lane.argtypes = [
             ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
+        lib.courier_laneio_set_fixed_input.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_uint]
+        lib.courier_laneio_set_invalidating_port.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint]
         lib.courier_laneio_clear_seen.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_laneio_take_counts.argtypes = [
@@ -1262,6 +1266,15 @@ class LaneHostIo:
         self.library.courier_laneio_configure_mailbox(
             self.context, int(runtime), int(pending), int(inbound),
             int(overlay), overlay_status & 0xFF, int(zero_ok), status_cell)
+
+    def set_fixed_input(self, port: int, value: int | None) -> None:
+        """Serve byte IN `port` as `value` (None withdraws it) until a write
+        to one of the invalidating ports."""
+        self.library.courier_laneio_set_fixed_input(
+            self.context, port, int(value is not None), (value or 0) & 0xFF)
+
+    def invalidate_on_write(self, port: int) -> None:
+        self.library.courier_laneio_set_invalidating_port(self.context, port)
 
     def clear_seen(self, port: int) -> None:
         self.library.courier_laneio_clear_seen(self.context, port)

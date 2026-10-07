@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter, deque
 import re
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import (
@@ -25,6 +25,7 @@ from .timers import EbInterruptController
 from .panel import (
     DEFAULT_BOARD_ID,
     DEFAULT_DIP_CLOSED,
+    PANEL_PORTS,
     RING_DETECT_BIT,
     RING_DETECT_PORT,
     STRAP_SENSE_BIT,
@@ -1657,7 +1658,16 @@ class CourierMachine:
                     events[offset + 6],
                     events[offset + 4] | events[offset + 5] << 8, None)
 
+        fixed_refresh: list[Callable[[], None] | None] = [None]
+
         def service_chunk(_uc: Any, elapsed: int) -> None:
+            service_chunk_body(_uc, elapsed)
+            if fixed_refresh[0] is not None:
+                # Whatever the service changed is now what the native port
+                # model has to answer the board's input latches from.
+                fixed_refresh[0]()
+
+        def service_chunk_body(_uc: Any, elapsed: int) -> None:
             """The board's periodic service, `elapsed` instructions on.
 
             Everything here used to run inside the per-instruction code
@@ -2105,6 +2115,8 @@ class CourierMachine:
                         for byte in b"\r\nCONNECT\r\n":
                             self._capture_serial(byte)
                         self.serial_trace.append("forced-data-mode")
+            if fixed_refresh[0] is not None:
+                fixed_refresh[0]()
             if milestone == "main-loop" and (
                 not self._serial_started or serial_frontend_missing(_uc)
             ):
@@ -3047,11 +3059,65 @@ class CourierMachine:
                         overlay_status=state[6], zero_ok=bool(served and mailbox_ports),
                         status_cell=HOST_STATUS_CELL)
 
+            # The panel's input latch at 0x14 reads as a function of a few
+            # things only the harness can see. It works that out here and
+            # hands the native model the answer, which stays good until a
+            # panel port is written; every change to what it depends on goes
+            # through a Python callback that publishes it again.
+            panel_inputs_native = (
+                self.quad_c50 is None and self.quad_board is None
+                and self.quad_usart is None and self.ring is None
+                and 0x14 not in (command_port, LANE_RX_ACK_PORT, 0x1C, 0x1E, *lane_ports)
+                and not bridge.handles(0x14)
+            )
+
+            def panel_input_14() -> int | None:
+                if 0x14 in self.port_values:
+                    return None
+                if not self._terminal_connected and (
+                        self.serial_rx or self.console is not None):
+                    # Reading the latch is what notices a terminal; leave
+                    # that to the read.
+                    return None
+                panel = self.panel
+                value = 0xFF & ~panel.dip_input(0x14, rom=self._rom_serial is not None)
+                if panel.board_id is not None:
+                    if panel.strap_sense():
+                        value |= STRAP_SENSE_BIT
+                    else:
+                        value &= ~STRAP_SENSE_BIT
+                value = value | 0x01 if self._terminal_connected else value & ~0x01
+                line = bridge.line
+                exchange = bridge.exchange
+                if (line is not None and line.peer_ringing) or (
+                        exchange is not None and exchange.ringing):
+                    return None
+                return value & ~RING_DETECT_BIT & 0xFF
+
+            def refresh_fixed_inputs() -> None:
+                answer = None
+                if applied[0] is not None and applied[0][0] is not None:
+                    answer = panel_input_14()
+                lane_io.set_fixed_input(0x14, answer)
+
+            if panel_inputs_native:
+                host_ports[0x14] |= 1
+                for port in PANEL_PORTS:
+                    host_ports[port] |= 2
+                    lane_io.invalidate_on_write(port)
+                fixed_refresh[0] = refresh_fixed_inputs
+
             self._lane_out_ports = frozenset(
                 (command_port, LANE_RX_ACK_PORT, *lane_ports[::2], 0x1C, 0x1E))
             self._refresh_native_lanes = refresh_native_lanes
             uc.native_host_io = (lane_io.function, lane_io.context, host_ports)
-            uc.native_after_io = refresh_native_lanes
+            if fixed_refresh[0] is not None:
+                def after_io() -> None:
+                    refresh_native_lanes()
+                    refresh_fixed_inputs()
+                uc.native_after_io = after_io
+            else:
+                uc.native_after_io = refresh_native_lanes
             refresh_native_lanes()
         mmio = self.hardware_map.mmio
         dsp_queue = self.hardware_map.dsp_queue
