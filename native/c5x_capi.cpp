@@ -2000,6 +2000,17 @@ struct WorkerPollState {
     // A service handed back after the DSP step (codes 2 and 3).
     int64_t resume_elapsed;
     uint64_t step_writes, step_tdm;
+    // The line service (DspBridge._service_line and _take_line_audio) for a
+    // batch of codec samples that does not fill a line frame: the resampler's
+    // retuned state (0: not retuned, the harness's), the line's rate and
+    // frame, how many samples the exchange buffer holds, and what the
+    // services done here added to it and to the statistics.
+    void *timed;
+    double line_rate;
+    uint64_t line_frame_samples, buffer_length;
+    int64_t tx_index, peak_codec, peak_line;
+    uint64_t line_calls, tx_consumed, resampled, line_out_count;
+    int16_t line_out[256];
     char error[512];
 };
 
@@ -2079,8 +2090,11 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
         || (s.codec_present && s.codec_instructions + elapsed >= s.line_frame_instructions)) {
         s.armed = 0; return 0;
     }
-    const int64_t fresh = int64_t(core->line_tx_count()) - s.line_codec_last;
-    if (!(0 < fresh && fresh < s.line_min_samples && s.line_skipped < s.line_max_skip)
+    const int64_t produced = int64_t(core->line_tx_count());
+    const int64_t fresh = produced - s.line_codec_last;
+    const bool line_skip = 0 < fresh && fresh < s.line_min_samples
+        && s.line_skipped < s.line_max_skip;
+    if ((!line_skip && (fresh <= 0 || !s.timed))
         || s.bridge_instructions + elapsed - s.probe_last >= 200000) {
         s.armed = 0; return 0;
     }
@@ -2105,6 +2119,34 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
             frame_edge = true;
         }
     }
+    // _service_line with a batch to take: _take_line_audio, converted on the
+    // resampler's own state and taken back unless it leaves no line frame due.
+    courier::resample::Timed *timed = static_cast<courier::resample::Timed *>(s.timed);
+    const auto &line_tx = core->line_tx_samples();
+    const int64_t line_start = s.tx_index;
+    if (!line_skip) {
+        if (line_start < 0 || produced <= line_start) { s.armed = 0; return 0; }
+        // The codec's rate, or the one in force at the batch's first sample;
+        // a clock change inside the batch is the harness's.
+        double rate = double(core->codec_sample_rate_millihz()) / 1000.0;
+        for (const auto &event : core->line_tx_clock_events()) {
+            if (int64_t(event[0]) <= line_start) rate = 40320000.0 / double(event[1]);  // ASIC_DSP_CLOCK_HZ
+            else if (int64_t(event[0]) < produced) { s.armed = 0; return 0; }
+        }
+        if (!(rate > 0) || rate != timed->input_rate || s.line_rate != timed->output_rate
+            || !timed->kernel) {
+            s.armed = 0; return 0;
+        }
+        std::vector<int16_t> samples(size_t(produced - line_start));
+        for (size_t k = 0; k < samples.size(); ++k)
+            samples[k] = int16_t(line_tx[size_t(line_start) + k]);
+        timed->run(samples.data(), samples.size(), rate, s.line_rate, timed->kernel);
+        if (s.buffer_length + timed->out.size() >= s.line_frame_samples
+            || s.line_out_count + timed->out.size() > sizeof s.line_out / sizeof s.line_out[0]) {
+            timed->rollback();
+            s.armed = 0; return 0;
+        }
+    }
     // interpreter_service's bookkeeping, then clock_x86_fast's commit.
     s.dirty = 1;
     s.last_service = uint64_t(total);
@@ -2113,7 +2155,27 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
     s.x86_ticks += elapsed;
     s.debt += double(s.x86_ticks) * s.cycles_per_x86;
     s.x86_ticks = 0;
-    s.line_skipped += 1;
+    if (line_skip) s.line_skipped += 1;
+    else {
+        timed->commit();
+        int64_t peak = 0;
+        for (size_t k = size_t(line_start); k < size_t(produced); ++k)
+            peak = std::max<int64_t>(peak, std::abs(int64_t(int16_t(line_tx[k]))));
+        s.peak_codec = std::max(s.peak_codec, peak);
+        peak = 0;
+        for (const int16_t sample : timed->out) {
+            peak = std::max<int64_t>(peak, std::abs(int64_t(sample)));
+            s.line_out[s.line_out_count++] = sample;
+        }
+        s.peak_line = std::max(s.peak_line, peak);
+        s.buffer_length += timed->out.size();
+        s.resampled += timed->out.size();
+        s.tx_consumed += uint64_t(produced - line_start);
+        s.tx_index = produced;
+        s.line_calls += 1;
+        s.line_codec_last = produced;
+        s.line_skipped = 0;
+    }
     uint64_t writes;
     bool tdm;
     try {

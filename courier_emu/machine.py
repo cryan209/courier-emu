@@ -10,7 +10,7 @@ from typing import Any, Callable
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import (
     C51_ROM_LOADER_LOOP, HOST_STATUS_CELL, HOST_WORD_CELL, LANE_BANKS, LANE_DSP_FIRST,
-    LANE_DSP_STATUS, LANE_FIRST_PORT, LANE_RX_ACK_PORT, LINE_SERVICE_MAX_SKIP,
+    LANE_DSP_STATUS, LANE_FIRST_PORT, LANE_RX_ACK_PORT, LINE_RATE, LINE_SERVICE_MAX_SKIP,
     LINE_SERVICE_MIN_SAMPLES, CourierDspBridge,
 )
 from .codec import CodecBringUp
@@ -18,7 +18,7 @@ from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
 from .exchange import LineExchange
-from .line import LINE_FRAME_INSTRUCTIONS, LineLink
+from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineLink
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .quad_usart import QuadUsart
 from .quad_board import QuadBoard
@@ -3210,6 +3210,18 @@ class CourierMachine:
                 state.loader_end = C51_ROM_LOADER_LOOP.stop
                 latch = self.panel.latches.get(0x14)
                 state.panel_latch = NO_LATCH if latch is None else latch
+                # The line service: the resampler's native state once it has
+                # retuned, and where the exchange buffer and its counts stand.
+                timed = getattr(bridge._codec_to_line, "_timed", None)
+                state.timed = timed.handle if timed is not None else None
+                state.line_rate = float(LINE_RATE)
+                state.line_frame_samples = LINE_FRAME_SAMPLES
+                state.buffer_length = len(bridge._exchange_line_buffer)
+                state.tx_index = bridge._exchange_tx_index
+                state.peak_codec = bridge._line_service["tx_peak_codec"]
+                state.peak_line = bridge._line_service["tx_peak_line"]
+                state.line_calls = state.tx_consumed = state.resampled = 0
+                state.line_out_count = 0
                 state.io_cursor = state.mmio_cursor = 0
                 state.dirty = 0
                 seen[0] = state.polls
@@ -3242,6 +3254,21 @@ class CourierMachine:
                 bridge._dsp_cpi = state.cpi
                 bridge._line_service_skipped = state.line_skipped
                 bridge._dsp_mailbox_writes = state.mailbox_writes
+                if state.line_calls:
+                    service = bridge._line_service
+                    service["calls"] += state.line_calls
+                    service["tx_consumed"] += state.tx_consumed
+                    service["tx_index"] = state.tx_index
+                    service["tx_peak_codec"] = state.peak_codec
+                    service["tx_peak_line"] = state.peak_line
+                    bridge._exchange_tx_index = state.tx_index
+                    bridge._line_codec_last = state.line_codec_last
+                    bridge._line_instructions = 0
+                    bridge._exchange_line_buffer.extend(
+                        state.line_out[:state.line_out_count])
+                    bridge._codec_to_line.converted += state.resampled
+                    state.line_calls = state.tx_consumed = state.resampled = 0
+                    state.line_out_count = 0
 
             def resume(_uc: Any, _total: int, code: int) -> None:
                 # The native poll did the service up to and including the DSP

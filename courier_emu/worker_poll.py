@@ -17,6 +17,7 @@ from .dsp import load_library
 I64, U64, F64 = ctypes.c_int64, ctypes.c_uint64, ctypes.c_double
 STACK_SLOTS = 64
 NO_LATCH = 256
+LINE_OUT_SLOTS = 256
 
 
 class WorkerPollState(ctypes.Structure):
@@ -43,6 +44,13 @@ class WorkerPollState(ctypes.Structure):
         ("io_cursor", U64), ("mmio_cursor", U64),
         ("resume_elapsed", I64),
         ("step_writes", U64), ("step_tdm", U64),
+        ("timed", ctypes.c_void_p),
+        ("line_rate", F64),
+        ("line_frame_samples", U64), ("buffer_length", U64),
+        ("tx_index", I64), ("peak_codec", I64), ("peak_line", I64),
+        ("line_calls", U64), ("tx_consumed", U64), ("resampled", U64),
+        ("line_out_count", U64),
+        ("line_out", ctypes.c_int16 * LINE_OUT_SLOTS),
         ("error", ctypes.c_char * 512),
     ]
 
