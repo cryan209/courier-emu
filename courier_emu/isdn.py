@@ -735,6 +735,14 @@ class IsdnMachine:
             return self.pit.read(port, self._peripheral_instructions())
         if self.pic.handles(port):
             return self.pic.read(port)
+        base = self._uart_of(port)
+        if base is not None and not self.dsc.handles(port):
+            channel = self.channels[base]
+            offset = port - base
+            if not (offset == LSR or (offset == MSR and not channel.deltas
+                                      and not channel.mcr & MCR_LOOPBACK)):
+                self._ledger.poll_dirty = 1
+            return channel.read(port)
         self._ledger.poll_dirty = 1
         if self.dsc.handles(port):
             return self.dsc.read(port)
@@ -754,15 +762,6 @@ class IsdnMachine:
             return self.board_latch & ~BOARD_LATCH_SENSE
         if port in self.mailbox.PORTS:
             return self.port_values.get(port, self.mailbox.read(port))
-        base = self._uart_of(port)
-        if base is not None:
-            channel = self.channels[base]
-            offset = port - base
-            if offset == LSR or (offset == MSR and not channel.deltas
-                                 and not channel.mcr & MCR_LOOPBACK):
-                return channel.read(port)
-            self._ledger.poll_dirty = 1
-            return channel.read(port)
         if port == DIPSWITCH_PORT and port not in self.port_values:
             # A switch that is ON reads 0, the same inversion the modem-status
             # lines carry.
