@@ -151,6 +151,73 @@ def _native_retuned():
     return _NATIVE
 
 
+class _NativeTimed:
+    """BandLimitedResampler's retuned state, kept in native memory.
+
+    The Python attributes it replaces (_timed_samples, _timed_times,
+    _input_time, _next_time) are only seeded from; afterwards this is the
+    state, so that the analog worker's native line service converts on the
+    same copy (see courier_worker_poll).
+    """
+
+    def __init__(self, library, history: array, times: array, input_time: float,
+                 next_time: float, input_rate: float, output_rate: float) -> None:
+        self.library = library
+        self.handle = library.courier_timed_create(_NORM)
+        library.courier_timed_seed(
+            self.handle, history.buffer_info()[0], len(history),
+            times.buffer_info()[0], len(times), input_time, next_time,
+            float(input_rate), float(output_rate))
+        self._out = array("h")
+
+    def convert(self, samples: list[int], input_rate: float, output_rate: float,
+                kernel: array) -> list[int]:
+        values = array("h", samples)
+        count = self.library.courier_timed_convert(
+            self.handle, values.buffer_info()[0], len(values),
+            float(input_rate), float(output_rate), kernel.buffer_info()[0])
+        if not count:
+            return []
+        out = array("h", bytes(2 * count))
+        self.library.courier_timed_take(self.handle, out.buffer_info()[0])
+        return out.tolist()
+
+    def __del__(self) -> None:  # pragma: no cover - interpreter shutdown order
+        try:
+            self.library.courier_timed_destroy(self.handle)
+        except Exception:
+            pass
+
+
+_TIMED_LIBRARY = None
+
+
+def _native_timed_library():
+    """The library with the native retuned state, or False without it."""
+    global _TIMED_LIBRARY
+    if not _native_retuned():
+        return False
+    if _TIMED_LIBRARY is None:
+        _TIMED_LIBRARY = False
+        from .dsp import load_library
+        library = load_library()
+        c = ctypes
+        library.courier_timed_create.restype = c.c_void_p
+        library.courier_timed_create.argtypes = [c.c_double]
+        library.courier_timed_destroy.argtypes = [c.c_void_p]
+        library.courier_timed_seed.argtypes = [
+            c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t,
+            c.c_double, c.c_double, c.c_double, c.c_double]
+        library.courier_timed_convert.restype = c.c_size_t
+        library.courier_timed_convert.argtypes = [
+            c.c_void_p, c.c_void_p, c.c_size_t, c.c_double, c.c_double, c.c_void_p]
+        library.courier_timed_take.argtypes = [c.c_void_p, c.c_void_p]
+        library.courier_timed_converted.restype = c.c_uint64
+        library.courier_timed_converted.argtypes = [c.c_void_p]
+        _TIMED_LIBRARY = library
+    return _TIMED_LIBRARY
+
+
 class BandLimitedResampler:
     """Streaming arbitrary-ratio conversion through a band-limiting kernel.
 
@@ -174,6 +241,7 @@ class BandLimitedResampler:
         self._timed_times: array = array("d")
         self._input_time = 0.0
         self._next_time = 0.0
+        self._timed: _NativeTimed | None = None
 
     def _convert_retuned(self, samples: list[int], input_rate: float,
                          output_rate: float) -> list[int]:
@@ -190,6 +258,20 @@ class BandLimitedResampler:
             self._timed_times = array("d", (k / old_rate for k in
                                             range(-len(self._recent_input), 0)))
             self._next_time = (self._position - HALF_TAPS - 1) / old_rate
+            library = _native_timed_library()
+            if library:
+                self._timed = _NativeTimed(
+                    library, self._timed_samples, self._timed_times,
+                    self._input_time, self._next_time, self.input_rate, self.output_rate)
+        if self._timed is not None:
+            # The same arithmetic, on the native copy of the state.
+            self.input_rate, self.output_rate = input_rate, output_rate
+            kernel_cutoff = CUTOFF * min(input_rate, output_rate) / 2 / input_rate
+            self._kernel = _kernel_for(kernel_cutoff)
+            result = self._timed.convert(samples, input_rate, output_rate,
+                                         _flat_kernel_for(kernel_cutoff))
+            self.converted += len(result)
+            return result
         history = self._timed_samples
         times = self._timed_times
         history.extend(map(float, samples))

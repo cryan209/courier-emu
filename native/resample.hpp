@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace courier {
 namespace resample {
@@ -126,6 +127,81 @@ inline std::size_t retuned(const double *history, std::size_t history_length,
     *instant_out = instant;
     return written;
 }
+
+// BandLimitedResampler's state once it has retuned (_timed_samples,
+// _timed_times and the scalars beside them), and _convert_retuned on it. A
+// conversion can be taken back (rollback) before it is committed, which is
+// what lets the worker's native line service find out whether a line frame
+// falls due before it changes anything.
+struct Timed {
+    std::vector<double> history, times;
+    double input_time = 0, next_time = 0, input_rate = 0, output_rate = 0, norm = 0;
+    uint64_t converted = 0;
+    const double *kernel = nullptr;    // the flat kernel for the rates, owned by Python
+    std::vector<int16_t> out;          // the last conversion's samples
+    std::size_t mark_history = 0, mark_times = 0;
+    double mark_input_time = 0, mark_next_time = 0, mark_input = 0, mark_output = 0;
+    const double *mark_kernel = nullptr;
+
+    // _convert_retuned up to (not including) its trim.
+    void run(const int16_t *samples, std::size_t count, double input, double output,
+             const double *flat_kernel)
+    {
+#pragma clang fp contract(off)
+        mark_history = history.size();
+        mark_times = times.size();
+        mark_input_time = input_time;
+        mark_next_time = next_time;
+        mark_input = input_rate;
+        mark_output = output_rate;
+        mark_kernel = kernel;
+        for (std::size_t k = 0; k < count; ++k) history.push_back(double(samples[k]));
+        for (std::size_t k = 0; k < count; ++k) times.push_back(input_time + double(k) / input);
+        input_time += double(count) / input;
+        input_rate = input;
+        output_rate = output;
+        kernel = flat_kernel;
+        out.clear();
+        double instant = next_time;
+        const double support = double(HALF_TAPS) / input;
+        const double cutoff = 0.98 * std::min(input, output) / 2;
+        int16_t buffer[1024];
+        while (instant + support <= times.back() + 1e-12) {
+            double moved = instant;
+            int status = 0;
+            const std::size_t written = retuned(history.data(), history.size(),
+                times.data(), times.size(), kernel, input, output, instant, support,
+                cutoff, norm, buffer, 1024, &moved, &status);
+            out.insert(out.end(), buffer, buffer + written);
+            instant = moved;
+        }
+        next_time = instant;
+    }
+
+    void rollback()
+    {
+        history.resize(mark_history);
+        times.resize(mark_times);
+        input_time = mark_input_time;
+        next_time = mark_next_time;
+        input_rate = mark_input;
+        output_rate = mark_output;
+        kernel = mark_kernel;
+        out.clear();
+    }
+
+    // The rest of _convert_retuned: keep enough past input for a retune.
+    void commit()
+    {
+#pragma clang fp contract(off)
+        const double horizon = next_time - double(2 * TAPS) / std::min(input_rate, output_rate);
+        const long found = long(std::lower_bound(times.begin(), times.end(), horizon) - times.begin());
+        const long keep = std::max(0L, found - 1);
+        history.erase(history.begin(), history.begin() + keep);
+        times.erase(times.begin(), times.begin() + keep);
+        converted += out.size();
+    }
+};
 
 } // namespace resample
 } // namespace courier

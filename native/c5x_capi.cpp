@@ -1096,6 +1096,45 @@ int courier_c5x_step_cycles(void *handle, uint64_t count,
     }
 }
 
+// BandLimitedResampler's retuned state in native memory (resample.Timed).
+void *courier_timed_create(double norm)
+{
+    auto *timed = new courier::resample::Timed();
+    timed->norm = norm;
+    return timed;
+}
+void courier_timed_destroy(void *handle) { delete static_cast<courier::resample::Timed *>(handle); }
+void courier_timed_seed(void *handle, const double *history, std::size_t history_length,
+    const double *times, std::size_t times_length, double input_time, double next_time,
+    double input_rate, double output_rate)
+{
+    auto &timed = *static_cast<courier::resample::Timed *>(handle);
+    timed.history.assign(history, history + history_length);
+    timed.times.assign(times, times + times_length);
+    timed.input_time = input_time;
+    timed.next_time = next_time;
+    timed.input_rate = input_rate;
+    timed.output_rate = output_rate;
+}
+// One conversion, committed; the samples are left for courier_timed_take.
+std::size_t courier_timed_convert(void *handle, const int16_t *samples, std::size_t count,
+    double input_rate, double output_rate, const double *kernel)
+{
+    auto &timed = *static_cast<courier::resample::Timed *>(handle);
+    timed.run(samples, count, input_rate, output_rate, kernel);
+    timed.commit();
+    return timed.out.size();
+}
+void courier_timed_take(void *handle, int16_t *out)
+{
+    const auto &timed = *static_cast<courier::resample::Timed *>(handle);
+    std::copy(timed.out.begin(), timed.out.end(), out);
+}
+uint64_t courier_timed_converted(void *handle)
+{
+    return static_cast<courier::resample::Timed *>(handle)->converted;
+}
+
 // resample.BandLimitedResampler._convert_retuned's per-sample loop; see
 // resample.hpp. `kernel` is the PHASES x TAPS table, row after row.
 std::size_t courier_resample_retuned(const double *history, std::size_t history_length,
