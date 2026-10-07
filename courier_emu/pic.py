@@ -101,9 +101,9 @@ class Pic8259:
     def raise_line(self, line: int) -> None:
         self.irr |= 1 << line
 
-    def pending(self) -> int | None:
+    def pending(self, irr: int | None = None) -> int | None:
         """Highest-priority unmasked request not already being serviced."""
-        ready = self.irr & ~self.mask
+        ready = (self.irr if irr is None else irr) & ~self.mask
         if not ready:
             return None
         for line in range(8):
@@ -161,6 +161,26 @@ class InterruptControllers:
         else:
             self.slave.raise_line(irq - 8)
             self.master.raise_line(CASCADE_LINE)
+
+    def would_deliver(self, lines) -> bool:
+        """Whether `pending_vector` would hand back a vector once `lines` are asserted.
+
+        Nothing is changed: a cascade request with nothing behind it, which
+        `pending_vector` only tidies away, does not count.
+        """
+        master_irr, slave_irr = self.master.irr, self.slave.irr
+        for irq in lines:
+            if irq < 8:
+                master_irr |= 1 << irq
+            else:
+                slave_irr |= 1 << (irq - 8)
+                master_irr |= 1 << CASCADE_LINE
+        line = self.master.pending(master_irr)
+        if line is None:
+            return False
+        if line == CASCADE_LINE:
+            return self.slave.pending(slave_irr) is not None
+        return True
 
     def pending_vector(self) -> int | None:
         """Resolve the next vector to deliver, or None if nothing is ready."""

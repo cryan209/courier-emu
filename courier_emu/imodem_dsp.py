@@ -375,6 +375,24 @@ class ImodemDsp(ImodemMailbox):
         self.prefeed()
         self.step_cycles(0)
 
+    def resume_service(self):
+        """Carry on a service pass the native port model began, from where it stopped.
+
+        The model ran the C5x owed cycles frame by frame and met something it
+        leaves to Python - a reply to offer, or frames it cannot settle from
+        what was fed ahead - after the run and before taking its results, so
+        this takes them and runs what is still owed.
+        """
+        core = self.core
+        if core is None or self.error is not None:
+            return
+        sh = self._sh
+        status, tag, value, writes, octets = core.imodem_collect(sh.pcm_cursor, 0)
+        self._sync_values(status, tag, value, writes)
+        if octets:
+            self._sync_pcm(octets)
+        self.step_cycles(0)
+
     def pace_realtime(self, active, now=None, *, max_wall_seconds=None):
         """Advance the digital PCM clock against monotonic wall time.
 

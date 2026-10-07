@@ -20,6 +20,8 @@ from .xmp import XmpImage
 from .dsp import ImodemHostIo, ImodemShared
 from .imodem_dsp import PCM_LOOKAHEAD_FRAMES
 from .imodem_mailbox import ImodemMailbox
+from .line import LINE_FRAME_SAMPLES
+from .bearer_line import CPU_INSTRUCTIONS_PER_SAMPLE, HIGHWAY_STALL_SAMPLES
 from .sio import (
     EVEN,
     FRAMING_NAMES,
@@ -28,6 +30,9 @@ from .sio import (
     TERMINAL_PRESENT,
     UART_CLOCK_HIGH_RATES_HZ,
     UART_CLOCK_LOW_RATES_HZ,
+    LSR,
+    MCR_LOOPBACK,
+    MSR,
     SerialChannel,
     framing_of,
     received,
@@ -470,6 +475,10 @@ class IsdnMachine:
         shared = getattr(self.mailbox, "_sh", None)
         self._ledger = shared if shared is not None else ImodemShared()
         self._native_io = None
+        self._elision = False
+        self._elision_enabled = 0
+        self._asserted: list[int] = []
+        self._why = Counter()
         self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
 
         # Content to lay over the flash window before the firmware runs, as
@@ -648,6 +657,8 @@ class IsdnMachine:
             self.machine.emu_stop()
 
     def read_port(self, port: int) -> int:
+        if self._ledger.elided_any:
+            self._catch_up()
         dsp_port = (
             port in (0x18, 0x1a, 0x1c, 0x1e)
             or port in self.mailbox.LANES or 0x40 <= port < 0x58
@@ -656,10 +667,14 @@ class IsdnMachine:
         if self.with_dsp and dsp_port:
             self._advance_dsp(DSP_READ_QUANTUM)
         self.io_counts[("in", port)] += 1
+        # What the poll depends on: a read that changes nothing it looks at
+        # (the PIT and PIC read-backs, the UART status registers) leaves
+        # `poll_dirty` alone, everything else sets it.
         if self.pit.handles(port):
             return self.pit.read(port, self._peripheral_instructions())
         if self.pic.handles(port):
             return self.pic.read(port)
+        self._ledger.poll_dirty = 1
         if self.dsc.handles(port):
             return self.dsc.read(port)
         if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e, *self.mailbox.LANES)
@@ -680,7 +695,13 @@ class IsdnMachine:
             return self.port_values.get(port, self.mailbox.read(port))
         base = self._uart_of(port)
         if base is not None:
-            return self.channels[base].read(port)
+            channel = self.channels[base]
+            offset = port - base
+            if offset == LSR or (offset == MSR and not channel.deltas
+                                 and not channel.mcr & MCR_LOOPBACK):
+                return channel.read(port)
+            self._ledger.poll_dirty = 1
+            return channel.read(port)
         if port == DIPSWITCH_PORT and port not in self.port_values:
             # A switch that is ON reads 0, the same inversion the modem-status
             # lines carry.
@@ -689,6 +710,8 @@ class IsdnMachine:
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:
+        if self._ledger.elided_any:
+            self._catch_up()
         # The 40h..5eh lanes only stage a download word in the host-side
         # bridge. The C5x cannot observe it until a later 18h/1eh strobe, so
         # advancing before every staged byte adds thousands of scheduler
@@ -704,6 +727,7 @@ class IsdnMachine:
                 self.mailbox.flush_pcm()
                 self.mailbox.cancel_lookahead()
         self.io_counts[("out", port)] += 1
+        self._ledger.poll_dirty = 1
         if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
             self.mailbox.write(port, value)
             if port not in DOWNLOAD_PORTS:
@@ -816,28 +840,36 @@ class IsdnMachine:
         if self.bri is not None:
             self.bri._service_media(self.dsc)
 
-    def poll_timers(self) -> None:
-        """Advance the 8254 and hand any counter wraps to the 8259s."""
-        batching = getattr(self, "_pcm_batch", False)
-        if batching:
-            bri = self.bri
-            mailbox = self.mailbox
-            mailbox.lookahead_channels = (
-                (bri.media_channel,)
-                if bri is not None and bri.call_state == "active"
-                and bri.media_channel in (1, 2) else ())
-        if batching and self._ledger.tx_pending:
-            # The bearer is about to read what the modem has sent: every frame
-            # the C5x has finished must have been exchanged by now, as it was
-            # when each was exchanged the moment it finished.
-            self.mailbox.flush_pcm()
-        if self.bri is not None:
-            # Deliver newly arrived B octets before advancing the independent
-            # DSP serial clock in this scheduler pass.
-            self.bri.service(self.dsc, self.instructions)
-        if batching and len(self.mailbox._ahead) * 2 <= PCM_LOOKAHEAD_FRAMES:
-            self.mailbox.prefeed()
-        self._advance_dsp()
+    def poll_timers(self, resume: int = 0) -> None:
+        """Advance the 8254 and hand any counter wraps to the 8259s.
+
+        `resume` finishes a poll the native engine began (see
+        `_native_poll`): the DSP advance has run, and what it left for the
+        harness is done here before the rest.
+        """
+        if resume:
+            self.mailbox.service_pending() if resume == 2 else self.mailbox.resume_service()
+        else:
+            batching = getattr(self, "_pcm_batch", False)
+            if batching:
+                bri = self.bri
+                mailbox = self.mailbox
+                mailbox.lookahead_channels = (
+                    (bri.media_channel,)
+                    if bri is not None and bri.call_state == "active"
+                    and bri.media_channel in (1, 2) else ())
+            if batching and self._ledger.tx_pending:
+                # The bearer is about to read what the modem has sent: every frame
+                # the C5x has finished must have been exchanged by now, as it was
+                # when each was exchanged the moment it finished.
+                self.mailbox.flush_pcm()
+            if self.bri is not None:
+                # Deliver newly arrived B octets before advancing the independent
+                # DSP serial clock in this scheduler pass.
+                self.bri.service(self.dsc, self.instructions)
+            if batching and len(self.mailbox._ahead) * 2 <= PCM_LOOKAHEAD_FRAMES:
+                self.mailbox.prefeed()
+            self._advance_dsp()
         peripheral_instructions = self._peripheral_instructions()
         if self.rtos_service and peripheral_instructions >= self._next_rtos_service:
             self._next_rtos_service = peripheral_instructions + RTOS_SERVICE_INSTRUCTIONS
@@ -875,6 +907,115 @@ class IsdnMachine:
                 pending = bool(controller.irr & (1 << (line % 8)))
                 self._timer_coalesced_wraps[counter.index] += wraps - (not pending)
                 self.pic.raise_irq(line)
+
+    def _update_elision(self) -> None:
+        """Say whether the native engine may skip the next polls, and until when.
+
+        Once a poll has run, the engine can leave the following ones to the
+        native port model (flush, prefeed, advance) as long as everything else
+        in `poll_timers` would find nothing to do: a call is up on the bearer
+        line, the interrupt sources are quiet, the serial lines are idle, and
+        no timer falls due. This works out the first instruction count at
+        which that stops holding; anything the harness touches in between
+        (`poll_dirty`) ends it sooner. See IsdnMachine.poll_timers for what is
+        being skipped, and ImodemHostIo::poll for what is not.
+        """
+        led = self._ledger
+        led.elide_on = 0
+        why = self._why
+        bri, mailbox, dsc = self.bri, self.mailbox, self.dsc
+        native_io = self._native_io
+        if (bri is None or native_io is None or not native_io.live
+                or getattr(mailbox, "_nb", None) is None
+                or mailbox.pcm_frame_service is not None or mailbox.error is not None
+                or mailbox.core is None):
+            why["machine"] += 1
+            return
+        peer = bri.media_peer
+        if (peer is None or not hasattr(peer, "_octets_seen") or not peer.answered
+                or peer.cleared or peer._instructions_seen is None
+                or getattr(peer, "realtime_clock", False)):
+            why["peer"] += 1
+            return
+        if mailbox.lookahead_channels != (bri.media_channel,):
+            why["channels"] += 1
+            return
+        until = bri.quiet_until(dsc)
+        if until is None:
+            why["bri"] += 1
+            return
+        if self._line_walk or self.dsc.sent:
+            why["dsc"] += 1
+            return
+        # Sources that stay asserted: each poll raises them again, which does
+        # nothing once they are in the controller (and is repeated by
+        # `_catch_up` for anything that looks before the next full poll).
+        asserted = [channel.irq for channel in self.channels.values()
+                    if channel.irq is not None and channel.interrupting()]
+        if dsc.interrupting():
+            asserted.append(DSC_IRQ)
+        if self.pic.would_deliver(asserted):
+            why["pic"] += 1
+            return
+        command = self.channels[self.command_base]
+        if len(command.tx) > command._sent:
+            why["output"] += 1
+            return
+        for channel in self.channels.values():
+            if (channel.staged or channel.tx_shift is not None
+                    or channel.tx_holding is not None):
+                why["serial"] += 1
+                return
+        deadlines = [until]
+        if self.offhook_at is not None and not self._offhook_done:
+            deadlines.append(self.offhook_at)
+        if self.serial_pump is not None:
+            due = self.serial_pump.next_due(self)
+            if due is not None:
+                deadlines.append(due)
+        clock = self._peripheral_clock
+        if clock.origin_time is not None:
+            why["clock"] += 1
+            return
+        # The peripheral clock advances one for one with the instruction count
+        # while the run is offline, so a value it must reach is an instruction
+        # count the same distance on.
+        origin = clock.instructions - clock.value
+        for counter in self.pit.counters:
+            if counter.next_due != float("inf"):
+                needed = -(-int(counter.next_due) * INSTRUCTIONS_PER_SECOND // self.pit.clock_hz)
+                deadlines.append(origin + needed)
+        if self.rtos_service:
+            deadlines.append(origin + self._next_rtos_service)
+        if self.mailbox_service:
+            deadlines.append(origin + self._next_mailbox_service)
+        deadlines.append(peer._instructions_seen
+                         + (HIGHWAY_STALL_SAMPLES - peer._stalled_samples)
+                         * CPU_INSTRUCTIONS_PER_SAMPLE)
+        mailbox._publish_mode()
+        led.clock_seen = peer._octets_seen
+        led.clock_pending = len(peer._pending)
+        led.elide_until = max(0, min(deadlines))
+        self._asserted = asserted
+        led.poll_dirty = 0
+        led.elide_on = 1
+        self._elision_enabled += 1
+
+    def _catch_up(self) -> None:
+        """Do to the interrupt controller what the polls the engine skipped would have.
+
+        Each raised the sources that stay asserted and, with IF set, had the
+        controller tidy away a cascade request that led nowhere. Only the last
+        of them leaves a trace, and it is the harness's job to leave it before
+        anything looks at the controller.
+        """
+        led = self._ledger
+        if led.elided_any:
+            led.elided_any = 0
+            for irq in self._asserted:
+                self.pic.raise_irq(irq)
+            if led.elided_if:
+                self.pic.pending_vector()
 
     def _advance_line(self) -> None:
         """Walk the S interface up, one state per step, once the run reaches it."""
@@ -1099,6 +1240,9 @@ class IsdnMachine:
             self.write_port(port, value)
 
         def on_interrupt(_uc: Any, number: int, _data: Any) -> None:
+            self._ledger.poll_dirty = 1
+            if self._ledger.elided_any:
+                self._catch_up()
             # Unicorn retires the `int n` before this hook runs, so IP already
             # points at the next instruction and the opcode is two bytes back.
             cs = uc.reg_read(UC_X86_REG_CS)
@@ -1125,10 +1269,14 @@ class IsdnMachine:
         instruction_base = self.instructions
         if self.cpu_engine == "interpreter" and not profile and observer is None:
             def apply_native_outputs(events: memoryview, count: int) -> None:
+                if self._ledger.elided_any:
+                    self._catch_up()
                 for offset in range(0, count * 4, 4):
                     port = events[offset] | events[offset + 1] << 8
                     value = events[offset + 2]
                     self.io_counts[("out", port)] += 1
+                    if port != BOARD_LATCH_PORT and not 0x40 <= port < 0x60:
+                        self._ledger.poll_dirty = 1
                     if port == BOARD_LATCH_PORT:
                         self.board_latch = value & 0xFF
                     elif self.pic.handles(port):
@@ -1148,7 +1296,8 @@ class IsdnMachine:
             # handled port access.
             uc.native_out_batch_add(
                 native_output_ports, apply_native_outputs,
-                byte_ports=(BOARD_LATCH_PORT,))
+                byte_ports=(BOARD_LATCH_PORT,),
+                neutral_ports=(BOARD_LATCH_PORT, *range(DOWNLOAD_PORTS.start, 0x60, 2)))
             # Software INTs enter through the vector table exactly as
             # push_far does for a hardware interrupt (clearing IF and TF);
             # the native engine takes them and counts them per vector.
@@ -1201,22 +1350,44 @@ class IsdnMachine:
                 uc.native_after_io_ports = after
                 refresh_native_io()
 
-            def service(_uc: Any, retired: int, _data: Any) -> None:
+            def service(_uc: Any, retired: int, _data: Any, resume: int = 0) -> None:
+                if self._ledger.elided_any:
+                    self._catch_up()
                 self.instructions = instruction_base + retired
                 self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS
-                self.poll_timers()
+                self.poll_timers(resume)
                 if self._native_io is not None:
                     self._refresh_native_io()
                 if uc.reg_read(UC_X86_REG_FLAGS) & 0x0200:
                     vector = self.pic.pending_vector()
                     if vector is not None and push_far(vector):
                         self.hardware_interrupts += 1
+                if self._elision:
+                    self._update_elision()
+
+            def service_resume(_uc: Any, retired: int, code: int) -> None:
+                service(_uc, retired, None, code)
 
             def patch_hook(_uc: Any, address: int, _size: int, _data: Any) -> None:
+                self._ledger.poll_dirty = 1
+                if self._ledger.elided_any:
+                    self._catch_up()
                 sync_instruction()
                 patch_at(address)
 
             uc.instruction_clock_add(TIMER_POLL_INSTRUCTIONS, service)
+            if (self._native_io is not None
+                    and getattr(self.mailbox, "_nb", None) is not None
+                    and os.environ.get("COURIER_POLL_ELISION", "1") != "0"
+                    and (self.serial_pump is None
+                         or hasattr(self.serial_pump, "next_due"))):
+                self._native_io.set_bearer(self.mailbox._nb)
+                self._ledger.clock_frame = LINE_FRAME_SAMPLES
+                for channel in self.channels.values():
+                    channel.poll_period = TIMER_POLL_INSTRUCTIONS
+                uc.native_poll = (self._native_io.poll_function, self._native_io.context)
+                uc.native_poll_resume = service_resume
+                self._elision = True
             for address in patch_points:
                 uc.hook_add(UC_HOOK_CODE, patch_hook, None, address, address)
         else:
@@ -1249,6 +1420,11 @@ class IsdnMachine:
                 self.software_interrupts.update(native.take_interrupt_counts())
         if self._stop_reason is not None:
             status = self._stop_reason
+        if self._elision and os.environ.get("COURIER_ELISION_DEBUG"):
+            import sys
+            print(f"elision: native polls {self._ledger.polls_native}, resumed "
+                  f"{self._ledger.polls_resumed}, enabled {self._elision_enabled} {dict(self._why)} native-why {list(self._ledger.poll_why)}",
+                  file=sys.stderr)
 
         registers = {
             name: uc.reg_read(reg)

@@ -49,11 +49,14 @@ class NativeInterpreter:
         self.profile = os.environ.get("COURIER_X86_PROFILE", "0") == "1"
         self.exits = Counter()
         self.handled_io = False
+        self.poll_code = 0
         self.fast_out = bytearray(65536)
         for port in cpu._native_fast_out_ports:
             self.fast_out[port] = 1
         for port in cpu._native_fast_out_byte_ports:
             self.fast_out[port] = 2
+        for port in getattr(cpu, "_native_neutral_out_ports", ()):
+            self.fast_out[port] |= 4
         self.io_events = bytearray(65536 * 4)
         self.int_counts = bytearray(256 * 4)
         self.out_batch_callback = cpu._native_out_batch_callback
@@ -96,10 +99,16 @@ class NativeInterpreter:
             # The instruction count a port model sees is the harness's own:
             # its base plus everything retired before this batch.
             host_io = (*cpu.native_host_io, cpu.native_host_base + cpu.retired)
-        done, reason, direction, port, size, value, event_count = self.run(
+            if cpu.native_poll is not None and cpu._clock_callback is not None:
+                host_io += (*cpu.native_poll, (cpu.retired, cpu._clock_next, cpu._clock_period))
+        done, reason, direction, port, size, value, event_count, poll_next, poll_code = self.run(
             cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
             cpu.native_int_mode, self.int_counts, *host_io,
         )
+        self.poll_code = poll_code
+        if host_io and len(host_io) > 4 and poll_next != cpu._clock_next:
+            # Polls the engine ran itself: the next one falls due later.
+            cpu._clock_next = poll_next
         self.handled_io = reason == 8
         self.batches += 1
         self.zero_batches += done == 0

@@ -119,6 +119,20 @@ def scripted_pump(
             waiting[0] = True
             next_send[0] = machine.instructions + every
 
+    def next_due(machine: Any) -> int | None:
+        """The instruction count at which `pump` next has something to do, or None.
+
+        Output the firmware has sent and nobody has read is something to do
+        now; otherwise only the next command, once its turn comes.
+        """
+        channel = machine.channels[machine.command_base]
+        if len(channel.tx) > channel._sent:
+            return 0
+        if commands and not waiting[0]:
+            return next_send[0]
+        return None
+
+    pump.next_due = next_due  # type: ignore[attr-defined]
     return pump
 
 

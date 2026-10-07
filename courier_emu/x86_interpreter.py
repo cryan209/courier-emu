@@ -237,6 +237,11 @@ class Uc:
         # port model, and a callback run after every port access that still
         # went to Python (the model's gating may depend on what it did).
         self.native_host_io: tuple[int, int, bytearray] | None = None
+        # The harness's own poll, offered to the native engine: (function,
+        # context) as native_host_io is, and the callback that finishes a poll
+        # the engine began but could not complete (see Core::poll_fn).
+        self.native_poll: tuple[int, int] | None = None
+        self.native_poll_resume: Callable[[Any, int, int], None] | None = None
         self.native_after_io: Callable[[], None] | None = None
         self.native_host_base = 0
         # Optional filter for native_after_io: a 64 KiB table of ports.
@@ -251,7 +256,7 @@ class Uc:
 
     def native_out_batch_add(
         self, ports, callback: Callable[[memoryview, int], None],
-        byte_ports=(),
+        byte_ports=(), neutral_ports=(),
     ) -> None:
         """Batch timing-inert port writes retired by the native engine.
 
@@ -262,6 +267,7 @@ class Uc:
         self._native_fast_out_byte_ports = tuple(
             int(port) & 0xFFFF for port in byte_ports)
         self._native_out_batch_callback = callback
+        self._native_neutral_out_ports = tuple(int(port) & 0xFFFF for port in neutral_ports)
 
 
     def instruction_clock_add(
@@ -874,7 +880,7 @@ class Uc:
                 budget = 65536
                 if count and count - retired < budget:
                     budget = count - retired
-                if clock_callback is not None:
+                if clock_callback is not None and self.native_poll is None:
                     room = clock_next - self.retired - 1
                     if room < budget:
                         budget = room
@@ -882,6 +888,7 @@ class Uc:
                     done = native.execute(self, budget)
                     retired += done
                     self.retired += done
+                    clock_next = self._clock_next
                     if count and retired >= count:
                         break
                     if native.handled_io:
@@ -894,7 +901,11 @@ class Uc:
             # case this instruction remains pending for the next emu_start.
             total_about_to_retire = self.retired + 1
             if clock_callback is not None and total_about_to_retire >= clock_next:
-                clock_callback(self, total_about_to_retire, clock_user)
+                if native is not None and native.poll_code >= 2:
+                    code, native.poll_code = native.poll_code, 0
+                    self.native_poll_resume(self, total_about_to_retire, code)
+                else:
+                    clock_callback(self, total_about_to_retire, clock_user)
                 clock_next = total_about_to_retire + clock_period
                 self._clock_next = clock_next
                 if not self.running:

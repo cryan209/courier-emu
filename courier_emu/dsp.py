@@ -1278,6 +1278,17 @@ class ImodemShared(ctypes.Structure):
         ("rx_pending", ctypes.c_uint32),
         ("ov_len", ctypes.c_uint32),
         ("ov_log", ctypes.c_uint8 * 8192),
+        ("elide_until", ctypes.c_uint64),
+        ("clock_seen", ctypes.c_uint64),
+        ("clock_pending", ctypes.c_uint64),
+        ("clock_frame", ctypes.c_uint32),
+        ("poll_dirty", ctypes.c_uint8),
+        ("elide_on", ctypes.c_uint8),
+        ("polls_native", ctypes.c_uint64),
+        ("polls_resumed", ctypes.c_uint64),
+        ("elided_if", ctypes.c_uint8),
+        ("elided_any", ctypes.c_uint8),
+        ("poll_why", ctypes.c_uint64 * 8),
     ]
 
 
@@ -1298,6 +1309,9 @@ class ImodemHostIo:
         lib.courier_imodemio_advance.restype = ctypes.c_int
         lib.courier_imodemio_take_counts.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        lib.courier_imodemio_set_bearer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self.poll_function = ctypes.cast(
+            lib.courier_imodemio_poll, ctypes.c_void_p).value
         self.shared = shared
         self.cycles_per_instruction = cycles_per_instruction
         self.read_quantum = read_quantum
@@ -1317,6 +1331,11 @@ class ImodemHostIo:
         self.library.courier_imodemio_configure(
             self.context, ctypes.addressof(self.shared), core_handle, int(live),
             self.cycles_per_instruction, self.read_quantum)
+
+    def set_bearer(self, bearer) -> None:
+        """Let the engine's poll hook settle PCM frames in this bearer's memory."""
+        self.library.courier_imodemio_set_bearer(
+            self.context, bearer.handle if bearer is not None else None)
 
     @property
     def live(self) -> bool:

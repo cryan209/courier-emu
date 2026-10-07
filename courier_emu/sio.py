@@ -244,6 +244,12 @@ class SerialChannel:
         self.input_clock_hz = input_clock_hz
         self.staged: deque[int] = deque()
         self._next_byte = 0
+        # With the harness polling every `poll_period` instructions, a pass
+        # that finds the channel idle only moves `_next_byte`. A harness that
+        # skips such passes sets the period, and the first pass after a gap
+        # finds `_next_byte` where the skipped one would have left it.
+        self.poll_period: int | None = None
+        self._advanced_at: int | None = None
         self.rx: deque[int] = deque()
         self.tx = bytearray()
         self.ier = 0
@@ -294,6 +300,11 @@ class SerialChannel:
     def advance(self, instructions: int) -> None:
         """Release staged bytes onto the wire at the modelled line rate."""
         character_time = self.character_instructions
+        previous = self._advanced_at
+        self._advanced_at = instructions
+        if (self.staged and self.poll_period is not None and previous is not None
+                and instructions - previous > self.poll_period):
+            self._next_byte = instructions - self.poll_period + character_time
         if not self.staged:
             # An idle line does not bank up credit for a later burst.
             self._next_byte = instructions + character_time

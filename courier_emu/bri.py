@@ -611,6 +611,43 @@ class BriNetwork:
         self._timers()
         self._service_media(dsc)
 
+    def quiet_until(self, dsc: Any) -> int | None:
+        """The instruction count before which `service` would do nothing, or None.
+
+        None when it would act on the next pass, or when this cannot tell: the
+        harness runs every pass then. Otherwise a pass earlier than the count
+        returned only has the B channel's bookkeeping to do, which
+        `_service_media` catches up on at the next one.
+        """
+        peer = self.media_peer
+        if (self.call_state != "active" or self.media_channel not in (1, 2)
+                or self.v120 is not None or peer is None
+                or not hasattr(peer, "clock") or not dsc.activated
+                or self.activated_at is None or dsc.sent or not peer.line.connected):
+            return None
+        if hasattr(peer, "remote_ended") and peer.remote_ended():
+            return None
+        if self._awaiting_answer:
+            return None
+        deadlines: list[int] = []
+        if self.deactivate_at is not None and not self._deactivated:
+            deadlines.append(self.deactivate_at)
+        if self.activate_at is not None and not self._deactivated:
+            if not self._line_started or self._line_walk:
+                return None
+        if (self.establish == "network" and self.state == TEI_UNASSIGNED):
+            deadlines.append(self.activated_at + ESTABLISH_DELAY_INSTRUCTIONS)
+        for link in self.links.values():
+            if link.i_expiry is not None:
+                deadlines.append(link.i_expiry)
+        if self._t200_expiry is not None:
+            deadlines.append(self._t200_expiry)
+        if self._t303_expiry is not None:
+            deadlines.append(self._t303_expiry)
+        if self.call_at is not None and not self._call_placed:
+            deadlines.append(self.call_at)
+        return min(deadlines) if deadlines else 1 << 62
+
     def _service_media(self, dsc: Any) -> None:
         """Carry the B channel, either opaquely or as a V.120 far end."""
         # Not every harness has a bearer. Reaching it through the chip's own

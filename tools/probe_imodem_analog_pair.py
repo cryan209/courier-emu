@@ -389,6 +389,24 @@ def main() -> int:
                 (output / "checkpoints.json").write_text(json.dumps(snapshots, indent=2) + "\n")
                 next_snapshot = current.instructions + args.snapshot_every
 
+        def next_due(current: IsdnMachine) -> int | None:
+            """When `pump` next has something to do (see IsdnMachine._update_elision)."""
+            if args.link_diagnostics and diagnostic_stage != "done":
+                return 0
+            if args.imodem_send and not data_sent and carrier_connected(
+                    received_text, complete=True):
+                return 0
+            core = getattr(current.mailbox, "core", None)
+            if ((trace_range is not None or data_trace_address is not None)
+                    and core is not None and core is not traced_core):
+                return 0
+            due = [command_pump.next_due(current)]
+            if output and args.snapshot_every > 0:
+                due.append(next_snapshot)
+            due = [value for value in due if value is not None]
+            return min(due) if due else None
+
+        pump.next_due = next_due  # type: ignore[attr-defined]
         machine = IsdnMachine(
             NacImage.load(args.imodem),
             with_dsp=True,

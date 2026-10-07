@@ -24,6 +24,19 @@ struct Core {
     const uint8_t *host_ports=nullptr;
     uint8_t *io_events=nullptr;
     uint32_t io_event_count=0, io_event_capacity=0;
+    // Optional harness poll, run here when it needs nothing from Python: at
+    // the instruction that would retire as number `poll_next` (counting from
+    // `poll_total`, what had retired before this batch) the engine asks
+    // poll_fn(context, now). 1: the poll was done; the next falls due
+    // `poll_period` later and execution carries on. Anything else leaves the
+    // engine with reason 9 and that answer in poll_code, for the harness to run
+    // its own poll (code 0) or finish a partly done one (codes 2, 3).
+    typedef int (*PollFn)(void *context,uint64_t now,uint32_t flags);
+    PollFn poll_fn=nullptr;
+    void *poll_context=nullptr;
+    uint64_t poll_total=0, poll_next=0, poll_period=0;
+    uint32_t poll_code=0, polls_elided=0;
+    bool dirty_events=false;
     std::jmp_buf exit;
     [[noreturn]] void yield(uint32_t why=1) { reason=why; std::longjmp(exit, 1); }
     uint8_t *mem; const uint8_t *guard; uint32_t mask;
@@ -201,6 +214,11 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         return c.done;
     }
     for (c.done=0;c.done<count;++c.done) {
+        if(c.poll_fn&&c.poll_total+c.done+1>=c.poll_next) {
+            int code=c.dirty_events?0:c.poll_fn(c.poll_context,c.host_base+c.done+1,c.r[F]);
+            if(code==1){c.poll_next=c.poll_total+c.done+1+c.poll_period;++c.polls_elided;}
+            else {c.poll_code=uint32_t(code);c.reason=9;break;}
+        }
         uint32_t pc=c.phys(c.r[CS],c.r[IP]);
         if(c.guard[pc]&8){c.reason=6;break;}
         uint8_t opcode=c.mem[pc];
@@ -223,9 +241,12 @@ static uint32_t run_batch(Core &c, uint32_t count) {
             }
             // fast_out: 1 batches any width, 2 only byte writes (a port whose
             // replay would otherwise have to know the width).
-            if(c.io_direction==2&&c.fast_out&&c.fast_out[c.io_port]&&
-               (c.fast_out[c.io_port]==1||c.io_size==1)&&
+            if(c.io_direction==2&&c.fast_out&&(c.fast_out[c.io_port]&3)&&
+               ((c.fast_out[c.io_port]&3)==1||c.io_size==1)&&
                c.io_event_count<c.io_event_capacity) {
+                // Bit 2 of fast_out marks a port whose buffered writes the
+                // harness's poll does not depend on.
+                if(!(c.fast_out[c.io_port]&4)) c.dirty_events=1;
                 uint8_t *event=c.io_events+4*c.io_event_count++;
                 event[0]=c.io_port;event[1]=c.io_port>>8;
                 event[2]=c.io_value;event[3]=c.io_value>>8;
@@ -255,10 +276,12 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     PyObject *int_mode = Py_None, *int_counts = Py_None;
     PyObject *host_io = Py_None, *host_context = Py_None, *host_ports = Py_None;
     PyObject *host_base = Py_None;
+    PyObject *poll_fn = Py_None, *poll_context = Py_None, *poll_state = Py_None;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOOO", &registers, &memory, &guard,
+    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOOOOOO", &registers, &memory, &guard,
         &fast_out, &io_events, &count, &int_mode, &int_counts,
-        &host_io, &host_context, &host_ports, &host_base)) return nullptr;
+        &host_io, &host_context, &host_ports, &host_base,
+        &poll_fn, &poll_context, &poll_state)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
         !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
@@ -305,6 +328,18 @@ static PyObject *run_python(PyObject *, PyObject *args) {
             if (PyErr_Occurred()) return nullptr;
         }
     }
+    if (poll_fn != Py_None) {
+        // poll_state: (total retired before this batch, next poll, period)
+        if (!PyTuple_Check(poll_state) || PyTuple_GET_SIZE(poll_state)!=3) {
+            PyErr_SetString(PyExc_ValueError,"invalid native poll state"); return nullptr;
+        }
+        c.poll_fn=reinterpret_cast<Core::PollFn>(PyLong_AsUnsignedLongLong(poll_fn));
+        c.poll_context=reinterpret_cast<void*>(PyLong_AsUnsignedLongLong(poll_context));
+        c.poll_total=PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(poll_state,0));
+        c.poll_next=PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(poll_state,1));
+        c.poll_period=PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(poll_state,2));
+        if (PyErr_Occurred()) return nullptr;
+    }
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.
     // Running directly on Core also avoids two redundant full-state copies.
@@ -314,8 +349,9 @@ static PyObject *run_python(PyObject *, PyObject *args) {
             PyList_SetItem(registers,i,v);
         }
     }
-    return Py_BuildValue("IIIIIII",done,c.reason,c.io_direction,c.io_port,
-        c.io_size,c.io_value,c.io_event_count);
+    return Py_BuildValue("IIIIIIIKI",done,c.reason,c.io_direction,c.io_port,
+        c.io_size,c.io_value,c.io_event_count,
+        (unsigned long long)c.poll_next,c.poll_code);
 }
 
 static PyObject *inject_interrupt_python(PyObject *, PyObject *args) {
