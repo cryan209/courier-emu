@@ -136,3 +136,35 @@ exits from the x86 engine:
 
 Python calls fell by 29% in the I-modem and 25% in the worker, and the full
 call went from 206 s to 186 s with both processes' results bit-identical.
+
+### The PCM bearer path, native
+
+The I-modem's B-channel path is now native (`native/bearer.hpp`): the Am79C30's
+bearer queues, the frames settled ahead of the DSP, and the exchange of
+transmitted frames. `native_bearer.py` holds the Python views of that state
+(the proxies `Am79C30` and `ImodemDsp` use in place of the old containers); the
+Python methods are still the reference and take the frames the native path
+leaves (underruns). `tests/test_native_bearer.py` runs both on random scripts
+and compares everything.
+
+On top of it the x86 engine can run the harness's poll itself
+(`ImodemHostIo::poll`, called from the engine at each poll boundary). With a
+call up on the bearer line it flushes and feeds PCM frames, advances the DSP and
+settles what that finishes, and it calls Python only when something else in
+`poll_timers` has work: a timer or service falls due (`elide_until`), a device
+was touched (`poll_dirty`, set by every Python port handler except the
+read-backs of the PIT, PIC and UART status registers), or the line clock has a
+frame to send. `IsdnMachine._update_elision` decides, after each full poll,
+whether the next ones may be skipped and until when; the engine hands back to
+Python, partway if need be (`resume_service`), for anything it cannot do alone.
+Interrupt sources that stay asserted (UART B's THRE) are raised by the skipped
+polls too, so `_catch_up` does that to the controller before anything looks at
+it. Serial pumps opt in by offering `next_due`. `COURIER_POLL_ELISION=0` and
+`COURIER_NATIVE_BEARER=0` turn the two off.
+
+Full call: 186 s -> 169 s (I-modem 148 s of CPU, worker 134 s), results
+bit-identical. In a call about half the polls are now skipped. What still sends
+the engine back to Python is mostly the timers: the mailbox service
+(every ~2000 instructions), the three PIT counters and the RTOS tick each fall
+due every few polls, and each one is a full poll and an interrupt delivery in
+Python. Serving the PIC and those timers natively is the next step.
