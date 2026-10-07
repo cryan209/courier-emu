@@ -1059,11 +1059,12 @@ int courier_c5x_step_cycles(void *handle, uint64_t count,
 std::size_t courier_resample_retuned(const double *history, std::size_t history_length,
     const double *times, std::size_t times_length, const double *kernel,
     double input_rate, double output_rate, double instant, double support,
+    double cutoff, double norm,
     int16_t *out, std::size_t capacity, double *instant_out, int *status)
 {
     return courier::resample::retuned(history, history_length, times, times_length,
-        kernel, input_rate, output_rate, instant, support, out, capacity,
-        instant_out, status);
+        kernel, input_rate, output_rate, instant, support, cutoff, norm, out,
+        capacity, instant_out, status);
 }
 
 // Step one instruction at a time until a condition holds, at most `limit`

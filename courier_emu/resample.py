@@ -142,7 +142,8 @@ def _native_retuned():
                 function.argtypes = [
                     ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_size_t,
                     ctypes.c_void_p, ctypes.c_double, ctypes.c_double, ctypes.c_double,
-                    ctypes.c_double, ctypes.c_void_p, ctypes.c_size_t,
+                    ctypes.c_double, ctypes.c_double, ctypes.c_double,
+                    ctypes.c_void_p, ctypes.c_size_t,
                     ctypes.c_void_p, ctypes.c_void_p]
                 _NATIVE = function
             except Exception:  # no library: the Python below is the reference
@@ -210,20 +211,17 @@ class BandLimitedResampler:
             instant_cell, status_cell = ctypes.c_double(), ctypes.c_int()
         while instant + support <= times[-1] + 1e-12:
             if native:
-                # Every sample whose window is regular, in one call; what it
-                # leaves is the sample at a clock edge, which the code below
-                # does.
+                # The whole of it, a sample at a clock edge included.
                 written = native(
                     history.buffer_info()[0], len(history),
                     times.buffer_info()[0], len(times),
                     flat_kernel.buffer_info()[0], input_rate, output_rate,
-                    instant, support, out.buffer_info()[0], len(out),
+                    instant, support, cutoff, norm, out.buffer_info()[0], len(out),
                     ctypes.addressof(instant_cell), ctypes.addressof(status_cell))
                 if written:
                     result.extend(out[:written])
                 instant = instant_cell.value
-                if status_cell.value != 1:
-                    continue
+                continue
             center = bisect_right(times, instant) - 1
             base = center - (HALF_TAPS - 1)
             end = base + TAPS
