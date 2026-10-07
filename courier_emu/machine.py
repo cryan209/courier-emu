@@ -3066,6 +3066,19 @@ class CourierMachine:
                 # reads the panel's inputs, not this latch. Replaying in order
                 # before the next handled access keeps those identical; only
                 # the instruction stamp and pc on the record are approximate.
+                latch = self.panel.latches.get(0x14)
+                end = count * 4
+                if (latch is not None and not self.io_watch
+                        and len(self.io_events) >= self.max_io_events
+                        and bytes(events[2:end:4]).count(latch) == count
+                        and bytes(events[0:end:4]).count(0x14) == count
+                        and bytes(events[1:end:4]).count(0) == count):
+                    # A polling loop rewriting the lamps it already shows:
+                    # all the loop below would change is the tallies.
+                    self.output_latches[0x14] = latch
+                    self.io_counts[("out", 0x14, 1)] += count
+                    self.panel.writes[0x14] = self.panel.writes.get(0x14, 0) + count
+                    return
                 for offset in range(0, count * 4, 4):
                     port = events[offset] | events[offset + 1] << 8
                     value = events[offset + 2]
