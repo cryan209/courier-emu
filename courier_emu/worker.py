@@ -101,6 +101,7 @@ def main() -> int:
     parser.add_argument("--sip-password-env", default="COURIER_SIP_PASSWORD")
     parser.add_argument("--sip-local-port", type=_number, default=0)
     parser.add_argument("--rtp-local-port", type=_number, default=0)
+    parser.add_argument("--sip-codec", choices=("pcmu", "pcma"), default="pcmu")
     parser.add_argument("--dsp-rx-pcm")
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
@@ -185,6 +186,7 @@ def main() -> int:
                 target=args.sip_target,
                 local_port=args.sip_local_port,
                 rtp_port=args.rtp_local_port,
+                codec=args.sip_codec,
             )
         )
 

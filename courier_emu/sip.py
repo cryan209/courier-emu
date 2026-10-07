@@ -41,6 +41,44 @@ def ulaw_to_linear(value: int) -> int:
     return -sample if value & 0x80 else sample
 
 
+_ALAW_SEGMENT_ENDS = (0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF)
+
+
+def linear_to_alaw(sample: int) -> int:
+    """G.711 A-law, on the 13-bit magnitude scale the law is defined on."""
+    sample = max(-32_768, min(32_767, int(sample))) >> 3
+    if sample >= 0:
+        mask = 0xD5
+    else:
+        mask = 0x55
+        sample = -sample - 1
+    for segment, end in enumerate(_ALAW_SEGMENT_ENDS):
+        if sample <= end:
+            break
+    else:
+        return 0x7F ^ mask
+    shift = 1 if segment < 2 else segment
+    return ((segment << 4) | ((sample >> shift) & 0x0F)) ^ mask
+
+
+def alaw_to_linear(value: int) -> int:
+    value ^= 0x55
+    sample = (value & 0x0F) << 4
+    segment = (value & 0x70) >> 4
+    if segment == 0:
+        sample += 8
+    else:
+        sample = (sample + 0x108) << (segment - 1)
+    return sample if value & 0x80 else -sample
+
+
+# RTP/AVP static payload types (RFC 3551) and their G.711 laws.
+CODECS = {
+    "pcmu": (0, "PCMU", linear_to_ulaw, ulaw_to_linear),
+    "pcma": (8, "PCMA", linear_to_alaw, alaw_to_linear),
+}
+
+
 class RateConverter:
     """Streaming zero-order rate conversion for the exact 9.6/8 kHz ratio."""
 
@@ -212,13 +250,21 @@ class SipConfig:
     local_port: int = 0
     rtp_port: int = 0
     display_name: str = "Courier Emulator"
+    codec: str = "pcmu"
 
 
 class SipSession:
-    """Minimal UDP SIP client with Digest INVITE and PCMU RTP."""
+    """Minimal UDP SIP client with Digest INVITE and G.711 RTP."""
+
+    payload_type = 0
+    encoding = "PCMU"
+    _encode = staticmethod(linear_to_ulaw)
+    _decode = staticmethod(ulaw_to_linear)
 
     def __init__(self, config: SipConfig) -> None:
         self.config = config
+        (self.payload_type, self.encoding,
+         self._encode, self._decode) = CODECS[config.codec]
         self.server_host, self.server_port = _split_server(config.server)
         addresses = socket.getaddrinfo(
             self.server_host, self.server_port, socket.AF_INET, socket.SOCK_DGRAM
@@ -363,8 +409,8 @@ class SipSession:
             "s=Courier Emulator",
             f"c=IN IP4 {self.local_ip}",
             "t=0 0",
-            f"m=audio {self.rtp_port} RTP/AVP 0",
-            "a=rtpmap:0 PCMU/8000",
+            f"m=audio {self.rtp_port} RTP/AVP {self.payload_type}",
+            f"a=rtpmap:{self.payload_type} {self.encoding}/8000",
             "a=sendrecv",
             "",
         )
@@ -537,10 +583,11 @@ class SipSession:
                 fields = line.split()
                 port = int(fields[1])
                 payloads = fields[3:]
-        if port and "0" in payloads:
+        if port and str(self.payload_type) in payloads:
             self.remote_rtp = (host, port)
         elif port:
-            raise ValueError("SIP peer did not accept PCMU payload 0")
+            raise ValueError(f"SIP peer did not accept {self.encoding} "
+                             f"payload {self.payload_type}")
         else:
             raise ValueError("SIP peer did not offer an audio RTP port")
 
@@ -823,12 +870,12 @@ class SipSession:
                 packet, _source = self.rtp_socket.recvfrom(2_048)
             except BlockingIOError:
                 break
-            if len(packet) < 12 or packet[1] & 0x7F != 0:
+            if len(packet) < 12 or packet[1] & 0x7F != self.payload_type:
                 continue
             if self.codewords:
                 self._rx_codewords.extend(packet[12:])
             else:
-                self._rx_audio.extend(ulaw_to_linear(value)
+                self._rx_audio.extend(self._decode(value)
                                       for value in packet[12:])
             self.rtp_packets_received += 1
             self.rtp_octets_received += len(packet) - 12
@@ -869,6 +916,10 @@ class SipSession:
     # side, which really does have to resample.
 
     def set_codewords(self, enabled: bool = True) -> None:
+        # The bearer's codewords are mu-law; passing them through as A-law
+        # would be a different signal, not a different encoding of it.
+        if enabled and self.payload_type != 0:
+            raise ValueError("codeword mode carries PCMU only")
         self.codewords = enabled
 
     def send_pcmu(self, octets: bytes) -> None:
@@ -927,10 +978,10 @@ class SipSession:
             payload = (
                 bytes(self._tx_codewords.popleft() for _ in range(RTP_PACKET_SAMPLES))
                 if self.codewords else
-                bytes(linear_to_ulaw(self._tx_audio.popleft())
+                bytes(self._encode(self._tx_audio.popleft())
                       for _ in range(RTP_PACKET_SAMPLES))
             )
-            header = bytes((0x80, 0x00))
+            header = bytes((0x80, self.payload_type))
             header += self._rtp_sequence.to_bytes(2, "big")
             header += self._rtp_timestamp.to_bytes(4, "big")
             header += self._rtp_ssrc.to_bytes(4, "big")

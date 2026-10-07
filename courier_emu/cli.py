@@ -300,6 +300,7 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--sip-password-env", args.sip_password_env))
         command.extend(("--sip-local-port", str(args.sip_local_port)))
         command.extend(("--rtp-local-port", str(args.rtp_local_port)))
+        command.extend(("--sip-codec", args.sip_codec))
         if args.sip_target:
             command.extend(("--sip-target", args.sip_target))
     if args.nvram:
@@ -1177,6 +1178,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--sip-local-port", type=_number, default=0)
     run.add_argument("--rtp-local-port", type=_number, default=0)
+    run.add_argument(
+        "--sip-codec",
+        choices=("pcmu", "pcma"),
+        default="pcmu",
+        help="G.711 law to offer: pcmu (mu-law) or pcma (A-law)",
+    )
     run.add_argument(
         "--board-id",
         type=_board_id,
