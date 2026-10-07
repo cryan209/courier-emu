@@ -150,6 +150,30 @@ def decode_wait_states(pdwsr: int, iowsr: int, cwsr: int) -> dict[str, Any]:
 SHARED_WINDOW = (0x8000, 0xFEFF)
 
 
+_SERIAL_STATE_NAMES = (
+            "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
+            "rx_consumed", "rx_queued",
+            "codec_rx_consumed", "codec_rx_queued",
+            "last_drr_pc", "last_dxr_pc", "last_spc_pc",
+            "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
+            "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
+            "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
+            "serial_frame_suppressed", "shadow_dp",
+            "last_dp_pc", "last_dp_value", "last_dp_source",
+            "stray_cala_pc", "stray_cala_target", "stray_cala_dp",
+            "line_dac_writes", "line_dac_frames",
+            "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak", "codec_rx_peak",
+            "negotiation_loop_entries", "negotiation_loop_pc", "negotiation_source", "negotiation_pair", "negotiation_source_value",
+            "negotiation_pair_value", "negotiation_acc", "v8_dispatches",
+            "v8_record", "v8_handler", "v8_countdown", "v8_flags",
+            "v8_dispatch_pc", "v8_dispatch_dp",
+            "negotiation_d76", "negotiation_d77", "negotiation_d78", "negotiation_d79",
+            "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
+            "hybrid_frames", "hybrid_peak",
+        )
+_SERIAL_STATE_INDEX = {name: index for index, name in enumerate(_SERIAL_STATE_NAMES)}
+
+
 class NativeC5x:
     """Incrementally stepped C5x instance used by the dual-processor harness."""
 
@@ -845,30 +869,19 @@ class NativeC5x:
     def pc(self) -> int:
         return self.library.courier_c5x_get_pc(self.handle)
 
+    def serial_counter(self, name: str) -> int:
+        """One `serial_state` field, without building the whole dictionary."""
+        index = _SERIAL_STATE_INDEX[name]
+        cells = self.__dict__.get("_serial_cells")
+        if cells is None:
+            cells = self._serial_cells = (ctypes.c_uint64 * 65)()
+        self.library.courier_c5x_get_serial_state(self.handle, cells, len(cells))
+        return int(cells[index])
+
     def serial_state(self) -> dict[str, int]:
         values = (ctypes.c_uint64 * 65)()
         self.library.courier_c5x_get_serial_state(self.handle, values, len(values))
-        names = (
-            "drr", "dxr", "spc", "drr_reads", "dxr_writes", "spc_writes",
-            "rx_consumed", "rx_queued",
-            "codec_rx_consumed", "codec_rx_queued",
-            "last_drr_pc", "last_dxr_pc", "last_spc_pc",
-            "trcv", "tdxr", "tspc", "trcv_reads", "tdxr_writes", "tspc_writes",
-            "last_trcv_pc", "last_tdxr_pc", "last_tspc_pc",
-            "line_tx_writes", "line_tx_nonzero", "line_frame_interrupts",
-            "serial_frame_suppressed", "shadow_dp",
-            "last_dp_pc", "last_dp_value", "last_dp_source",
-            "stray_cala_pc", "stray_cala_target", "stray_cala_dp",
-            "line_dac_writes", "line_dac_frames",
-            "line_tx_last", "line_tx_last_pc", "imr", "v8_rx_state", "v8_rx_peak", "codec_rx_peak",
-            "negotiation_loop_entries", "negotiation_loop_pc", "negotiation_source", "negotiation_pair", "negotiation_source_value",
-            "negotiation_pair_value", "negotiation_acc", "v8_dispatches",
-            "v8_record", "v8_handler", "v8_countdown", "v8_flags",
-            "v8_dispatch_pc", "v8_dispatch_dp",
-            "negotiation_d76", "negotiation_d77", "negotiation_d78", "negotiation_d79",
-            "negotiation_d26", "negotiation_indx", "negotiation_arp", "negotiation_pm",
-            "hybrid_frames", "hybrid_peak",
-        )
+        names = _SERIAL_STATE_NAMES
         state = dict(zip(names, map(int, values), strict=True))
         if state["negotiation_acc"] & 0x80000000:
             state["negotiation_acc"] -= 0x100000000
@@ -1068,6 +1081,14 @@ class NativeC5x:
         if limit is not None:
             result.reverse()
         return result
+
+    def io_port_writes(self, port: int) -> int:
+        """How many times the C5x has written `port` (`io_port_stats`, one field)."""
+        values = self.__dict__.get("_port_stat_cells")
+        if values is None:
+            values = self._port_stat_cells = (ctypes.c_uint64 * 6)()
+        self.library.courier_c5x_get_io_port_stats(self.handle, port, values, len(values))
+        return int(values[1])
 
     def io_port_stats(self, ports: range = range(0x50, 0x60)) -> dict[str, dict[str, int]]:
         names = (

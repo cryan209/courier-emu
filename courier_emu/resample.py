@@ -53,6 +53,32 @@ def _bessel_i0(x: float) -> float:
     return total
 
 
+_NORM = _bessel_i0(KAISER_BETA)
+_WINDOWS: list[tuple[float, ...]] | None = None
+
+
+def _windows() -> list[tuple[float, ...]]:
+    """The Kaiser window at each tap of each phase.
+
+    It depends on the tap's offset from the output instant and not on the
+    cutoff, so every kernel shares it; only the sinc is computed per cutoff.
+    """
+    global _WINDOWS
+    if _WINDOWS is None:
+        table = []
+        for phase in range(PHASES):
+            fraction = phase / PHASES
+            row = []
+            for k in range(TAPS):
+                t = k - (HALF_TAPS - 1) - fraction
+                ratio = t / HALF_TAPS
+                row.append(_bessel_i0(KAISER_BETA * math.sqrt(1 - ratio * ratio))
+                           / _NORM if abs(ratio) < 1 else 0.0)
+            table.append(tuple(row))
+        _WINDOWS = table
+    return _WINDOWS
+
+
 def _kernel(cutoff: float) -> list[tuple[float, ...]]:
     """The windowed sinc at each phase, `cutoff` in cycles per input sample.
 
@@ -60,19 +86,17 @@ def _kernel(cutoff: float) -> list[tuple[float, ...]]:
     input sample HALF_TAPS-1 to HALF_TAPS of the window. Each phase is
     normalised to unit DC gain, so a constant passes through exactly.
     """
-    norm = _bessel_i0(KAISER_BETA)
+    windows = _windows()
     table = []
     for phase in range(PHASES):
         fraction = phase / PHASES
+        row = windows[phase]
         taps = []
         for k in range(TAPS):
             t = k - (HALF_TAPS - 1) - fraction      # input minus output time
             x = 2 * cutoff * t
             sinc = 1.0 if x == 0 else math.sin(math.pi * x) / (math.pi * x)
-            ratio = t / HALF_TAPS
-            window = (_bessel_i0(KAISER_BETA * math.sqrt(1 - ratio * ratio))
-                      / norm) if abs(ratio) < 1 else 0.0
-            taps.append(2 * cutoff * sinc * window)
+            taps.append(2 * cutoff * sinc * row[k])
         total = sum(taps)
         table.append(tuple(tap / total for tap in taps))
     return table
@@ -139,7 +163,7 @@ class BandLimitedResampler:
         instant = self._next_time
         support = HALF_TAPS / input_rate
         cutoff = CUTOFF * min(input_rate, output_rate) / 2
-        norm = _bessel_i0(KAISER_BETA)
+        norm = _NORM
         while instant + support <= times[-1] + 1e-12:
             center = bisect_right(times, instant) - 1
             base = center - (HALF_TAPS - 1)

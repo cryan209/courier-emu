@@ -925,9 +925,8 @@ class CourierDspBridge:
             # comes back. Trim using the raw FIFO size for clocked input or
             # the queued/consumed codec-word counters for legacy input.
             self._codec_in_flight.extend(converted)
-            serial = self.core.serial_state()
             pending = (self.core.codec_state()["codec_rx_size"] if clocked_input else
-                       serial.get("codec_rx_queued", 0) - serial.get("codec_rx_consumed", 0))
+                       self._serial_backlog("codec_rx"))
             while len(self._codec_in_flight) > max(0, pending):
                 self._codec_in_flight.popleft()
 
@@ -1543,9 +1542,24 @@ class CourierDspBridge:
             )
         self._loader_started = True
 
+    def _serial_backlog(self, prefix: str) -> int:
+        """Words queued to the DSP's serial receiver and not yet consumed."""
+        counter = getattr(self.core, "serial_counter", None)
+        if counter is not None:
+            return counter(f"{prefix}_queued") - counter(f"{prefix}_consumed")
+        serial = self.core.serial_state()
+        return serial.get(f"{prefix}_queued", 0) - serial.get(f"{prefix}_consumed", 0)
+
+    def _port_writes(self, port: int) -> int:
+        """Writes the DSP has made to `port`, from whichever core is attached."""
+        count = getattr(self.core, "io_port_writes", None)
+        if count is not None:
+            return count(port)
+        return self.core.io_port_stats([port]).get(f"0x{port:02x}", {}).get("writes", 0)
+
     def _commit_rom_group(self, strobe: int) -> None:
         self._start_rom_loader()
-        before = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+        before = self._port_writes(0x56)
         if strobe in self._windows:
             window = self._windows[strobe]
             # The CPU sees two byte-wide banks at 40..4e and 50..5e.  On the
@@ -1561,7 +1575,7 @@ class CourierDspBridge:
         self.core.set_io(0x56, strobe)
         for _ in range(4096):
             self.core.step(1)
-            writes = self.core.io_port_stats([0x56]).get("0x56", {}).get("writes", 0)
+            writes = self._port_writes(0x56)
             if writes > before:
                 return
         raise RuntimeError(f"C51 ROM loader did not acknowledge strobe {strobe}")
@@ -1791,8 +1805,7 @@ class CourierDspBridge:
         """
         if not self.boot_rom_enabled or not hasattr(self.core, "io_port_stats"):
             return
-        stats = self.core.io_port_stats(range(HOST_WORD_CELL, HOST_WORD_CELL + 1))
-        writes = stats.get(f"0x{HOST_WORD_CELL:02x}", {}).get("writes", 0)
+        writes = self._port_writes(HOST_WORD_CELL)
         if writes <= self._dsp_mailbox_writes:
             self._dsp_mailbox_writes = writes
             return
@@ -2999,13 +3012,10 @@ class CourierDspBridge:
                 and self.daa.off_hook
                 and not self.rx_samples
             ):
-                serial = self.core.serial_state()
                 if self._call_overlay_active or self.boot_rom_enabled:
-                    queued = serial.get("codec_rx_queued", 0) - serial.get(
-                        "codec_rx_consumed", 0
-                    )
+                    queued = self._serial_backlog("codec_rx")
                 else:
-                    queued = serial.get("rx_queued", 0) - serial.get("rx_consumed", 0)
+                    queued = self._serial_backlog("rx")
                 # The physical DAA continues filling its receive FIFO while
                 # the supervisor is still bringing the datapump online. Keep
                 # enough board-side audio queued for the five-frame detector

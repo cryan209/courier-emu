@@ -47,6 +47,11 @@ class NativeInterpreter:
         self.batches = 0
         self.zero_batches = 0
         self.profile = os.environ.get("COURIER_X86_PROFILE", "0") == "1"
+        if self.profile:
+            import atexit, json
+            atexit.register(lambda: open(os.environ["COURIER_X86_PROFILE_OUT"] + str(os.getpid()), "w").write(json.dumps(
+                {"batches": self.batches, "retired": self.retired, "zero": self.zero_batches,
+                 "exits": [[list(k), v] for k, v in self.exits.most_common(60)]})) if os.environ.get("COURIER_X86_PROFILE_OUT") else None)
         self.exits = Counter()
         self.handled_io = False
         self.poll_code = 0
@@ -115,7 +120,7 @@ class NativeInterpreter:
         if self.profile and reason:
             pc = cpu._physical(cpu.regs[UC_X86_REG_CS], cpu.regs[UC_X86_REG_IP])
             names = ("budget", "unsupported", "boundary", "read-watch", "write-watch",
-                     "wide-registers", "code-hook", "system", "io")
+                     "wide-registers", "code-hook", "system", "io", "poll")
             self.exits[(names[reason], hex(pc), hex(cpu.memory[pc]))] += 1
         if event_count and self.out_batch_callback is not None:
             self.out_batch_callback(memoryview(self.io_events), event_count)
