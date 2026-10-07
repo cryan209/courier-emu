@@ -96,9 +96,7 @@ class LineFrame:
     call_state: int = CALL_IDLE
 
     def encode(self) -> bytes:
-        body = b"".join(
-            int(sample).to_bytes(2, "little", signed=True) for sample in self.samples
-        )
+        body = struct.pack(f"<{len(self.samples)}h", *map(int, self.samples))
         header = _HEADER.pack(
             self.instructions & 0xFFFFFFFF,
             int(self.off_hook),
@@ -111,10 +109,13 @@ class LineFrame:
     @classmethod
     def decode(cls, header: bytes, body: bytes) -> "LineFrame":
         instructions, off_hook, ringing, call_state, count = _HEADER.unpack(header)
-        samples = [
-            int.from_bytes(body[index : index + 2], "little", signed=True)
-            for index in range(0, 2 * count, 2)
-        ]
+        if len(body) >= 2 * count:
+            samples = list(struct.unpack_from(f"<{count}h", body))
+        else:
+            samples = [
+                int.from_bytes(body[index : index + 2], "little", signed=True)
+                for index in range(0, 2 * count, 2)
+            ]
         return cls(instructions, bool(off_hook), bool(ringing), samples,
                    int(call_state))
 
@@ -274,7 +275,10 @@ class LineLink:
         self.peer_ringing = bool(ringing)
         self.peer_call_state = int(call_state)
         peer = LineFrame.decode(header, body)
-        self._inbound.extend(int(sample * self.loss_gain) for sample in peer.samples)
+        if self.loss_gain == 1.0:
+            self._inbound.extend(peer.samples)
+        else:
+            self._inbound.extend(int(sample * self.loss_gain) for sample in peer.samples)
         self.received_samples += len(peer.samples)
 
     def receive_audio(self, count: int | None = None) -> list[int]:

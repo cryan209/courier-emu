@@ -317,6 +317,11 @@ DSP_STREAM_PORT = asic.dsp_register("stream")
 ASIC_DSP_PORT_MASK = 0x2F
 
 
+
+def _peak(samples) -> int:
+    """The largest magnitude among integer samples, 0 for none: max(abs(s))."""
+    return max(max(samples), -min(samples)) if samples else 0
+
 def asic_decodes(port: int, canonical: int) -> bool:
     "Does the ASIC see `port` as `canonical`? See ASIC_DSP_PORT_MASK."
     return (port & ASIC_DSP_PORT_MASK) == (canonical & ASIC_DSP_PORT_MASK)
@@ -858,11 +863,11 @@ class CourierDspBridge:
         self._line_service["tx_index"] = self._exchange_tx_index
         self._line_service["tx_peak_codec"] = max(
             self._line_service["tx_peak_codec"],
-            max((abs(sample) for sample in produced), default=0),
+            _peak(produced),
         )
         self._line_service["tx_peak_line"] = max(
             self._line_service["tx_peak_line"],
-            max((abs(sample) for sample in converted), default=0),
+            _peak(converted),
         )
         self._exchange_line_buffer.extend(converted)
 
@@ -871,7 +876,7 @@ class CourierDspBridge:
         if not samples:
             return
         self._codec_in_peak = max(
-            self._codec_in_peak, max(abs(sample) for sample in samples))
+            self._codec_in_peak, _peak(samples))
         rate = self.codec_sample_rate()
         clocked_input = (getattr(self, "boot_rom_enabled", False) and self.line is not None
                          and hasattr(self.core, "queue_line_rx"))
@@ -904,7 +909,7 @@ class CourierDspBridge:
             # is built at the call boundary and takes the counter and the
             # queued audio with it, so the peak reads zero afterwards whether
             # or not the tone ever arrived.
-            peak = max(abs(sample) for sample in converted)
+            peak = _peak(converted)
             if peak:
                 self._codec_handed_peak = max(self._codec_handed_peak, peak)
                 self._codec_handed_at = self._instructions
@@ -3081,7 +3086,7 @@ class CourierDspBridge:
                         samples = self.daa.render(count)
                     if samples:
                         self._codec_queue_peak = max(
-                            self._codec_queue_peak, max(abs(sample) for sample in samples)
+                            self._codec_queue_peak, _peak(samples)
                         )
                     if (
                         (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
@@ -3323,14 +3328,14 @@ class CourierDspBridge:
         else:
             incoming = self.exchange.service(off_hook, samples, LINE_FRAME_SAMPLES)
         if incoming:
-            self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
+            self._line_rx_peak = max(self._line_rx_peak, _peak(incoming))
             if (
                 (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                 and hasattr(self.core, "queue_codec_rx")
             ):
                 self._queue_line_audio(incoming)
                 self._codec_queue_peak = max(
-                    self._codec_queue_peak, max(abs(sample) for sample in incoming)
+                    self._codec_queue_peak, _peak(incoming)
                 )
             else:
                 self._exchange_rx_samples.extend(incoming)
@@ -3377,7 +3382,7 @@ class CourierDspBridge:
             incoming = [0] * len(incoming)
         if incoming:
             self._line_rx_peak = max(self._line_rx_peak,
-                                     max(abs(sample) for sample in incoming))
+                                     _peak(incoming))
             self._queue_line_audio(incoming)
         self._audio_line_trace.append({
             "frame": self.line.frames, "instructions": self._instructions,
@@ -3695,7 +3700,7 @@ class CourierDspBridge:
             # the switch puts on it, which the DAA renders locally.
             incoming = [0] * len(incoming)
         if incoming:
-            self._line_rx_peak = max(self._line_rx_peak, max(abs(sample) for sample in incoming))
+            self._line_rx_peak = max(self._line_rx_peak, _peak(incoming))
             if (
                 (self._call_overlay_active or self._call_resume_pending or self.boot_rom_enabled)
                 and hasattr(self.core, "queue_codec_rx")
@@ -3705,7 +3710,7 @@ class CourierDspBridge:
                 # socket service and the batched DSP scheduler.
                 self._queue_line_audio(incoming)
                 self._codec_queue_peak = max(
-                    self._codec_queue_peak, max(abs(sample) for sample in incoming)
+                    self._codec_queue_peak, _peak(incoming)
                 )
             else:
                 self._line_rx_samples.extend(incoming)

@@ -696,7 +696,8 @@ class NativeC5x:
         """Queue 8 kHz line audio for conversion at actual ADC clock edges."""
         if not samples:
             return
-        storage = (ctypes.c_uint16 * len(samples))(*(s & 0xffff for s in samples))
+        # ctypes keeps the low sixteen bits, as & 0xffff would.
+        storage = (ctypes.c_uint16 * len(samples))(*samples)
         self.library.courier_c5x_queue_line_rx(self.handle, storage, len(storage))
 
     def set_hybrid_return(self, return_scale: int, delay: int = 0) -> None:

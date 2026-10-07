@@ -192,7 +192,7 @@ class BandLimitedResampler:
             self._next_time = (self._position - HALF_TAPS - 1) / old_rate
         history = self._timed_samples
         times = self._timed_times
-        history.extend(float(s) for s in samples)
+        history.extend(map(float, samples))
         times.extend(self._input_time + k / input_rate for k in range(len(samples)))
         self._input_time += len(samples) / input_rate
         self.input_rate, self.output_rate = input_rate, output_rate
