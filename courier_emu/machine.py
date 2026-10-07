@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, deque
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
@@ -1667,62 +1668,294 @@ class CourierMachine:
                 # model has to answer the board's input latches from.
                 fixed_refresh[0]()
 
-        def service_chunk_body(_uc: Any, elapsed: int) -> None:
-            """The board's periodic service, `elapsed` instructions on.
-
-            Everything here used to run inside the per-instruction code
-            hook. None of it is per-instruction work: the DSP clock is
-            frame-paced, the console poll has its own period, and the
-            interrupt sources are all edges the board samples rather than
-            things the 80186 does. Servicing them every
-            SERVICE_INSTRUCTIONS models the sampling the hardware actually
-            does more honestly than testing them after every instruction,
-            and it is what lets the code hook go away.
-            """
-            if (not mmio_batched[0] and mmio_batch_ok
-                    and len(self.mmio_events) >= self.max_io_events):
-                # The first accesses are kept verbatim; after that the
-                # interrupt controller's end-of-interrupt write needs nothing
-                # but a replay.
-                mmio_batched[0] = True
-                _uc.native_mmio_batch = ((0xFF02, 0xFF03),)
-                _uc.native_mmio_callback = replay_mmio_writes
-            if self.quad_c50 is not None:
-                self.quad_c50.service(elapsed)
-            if self.quad_terminal is not None:
-                self.quad_terminal.service(
-                    self, bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200))
-            if self.console is not None:
-                self._console_owed -= elapsed
-                if self._console_owed <= 0:
-                    self._console_owed += self.console.poll_instructions
-                    # Take only what a small input FIFO has room for. Reading
-                    # everything the pty offered let `sz` hand 84 KB to the
-                    # modem in two seconds and then time out waiting for an
-                    # acknowledgement the 9600-baud line was still minutes
-                    # from delivering.
-                    typed = self.console.poll(
-                        CONSOLE_INPUT_FIFO - len(self.serial_rx))
-                    if typed:
-                        self.serial_rx.extend(typed)
-                        # Input that lands mid-cooldown would otherwise wait
-                        # out a transmit-side pause of up to 4096
-                        # instructions.
-                        self._serial_cooldown = min(self._serial_cooldown, 64)
-                    if self.console.closed:
-                        self.stop_requested = True
-            while (self._serial_input_schedule
-                   and self.instructions >= self._serial_input_schedule[0][0]):
-                _, typed = self._serial_input_schedule.popleft()
-                self.serial_rx.extend(typed)
-                self._serial_cooldown = min(self._serial_cooldown, 64)
-                self.serial_trace.append(f"typed at {self.instructions}")
-            if self.stop_requested:
+        def service_after_tick(_uc: Any, elapsed: int, interrupts_on: bool) -> None:
+            """Every interrupt source the board raises on a service, once the timers have run."""
+            # The ROM arms INT1 and starts timer 1 as a stopwatch, then
+            # reads that stopwatch in the handler to derive a bit period.
+            # Only one thing on the board can be measured that way: the
+            # start bit. Drive INT1 from the wire's mark-to-space edge, so
+            # the interval the firmware measures is the interval a
+            # character actually took to arrive.
+            if (
+                self.timers.controller.enabled("int1")
+                and self._external_interrupt_pending is None
+                and interrupts_on
+                and self.dte_line.take_edge()
+            ):
+                self._external_interrupt_pending = INT1_VECTOR
+                self.int1_delivered = True
                 _uc.emu_stop()
-            if self.dsp_bridge is not None and not self.stop_requested:
-                self.dsp_bridge.clock_x86(elapsed)
-                if self._lane_io is not None:
-                    self._refresh_native_lanes()
+            if (
+                not self.int1_delivered
+                and self.int1_after_ms is not None
+                and self.timers.controller.enabled("int1")
+                and self._int1_armed_at is None
+            ):
+                self._int1_armed_at = self.instructions
+            if (
+                not self.int1_delivered
+                and self._int1_armed_at is not None
+                and self.instructions - self._int1_armed_at
+                >= self.int1_after_ms * INSTRUCTIONS_PER_MS
+                and interrupts_on
+                and self.timers.controller.enabled("int1")
+                and self._external_interrupt_pending is None
+            ):
+                self._external_interrupt_pending = INT1_VECTOR
+                self.int1_delivered = True
+                _uc.emu_stop()
+            elif (
+                self._timer_interrupt_pending is None
+                and self.timers.pending_interrupt() is not None
+                and interrupts_on
+            ):
+                self._timer_interrupt_pending = self.timers.take_interrupt()
+                _uc.emu_stop()
+            if (
+                self.uart is not None
+                and not self.uart.pending
+                and self.quad_terminal is None
+                # The ROM deliberately disables the integrated receiver
+                # while its timer/INT1 autobaud front end watches the raw
+                # pin. A physical DTE can still put a character on that
+                # pin; payload runs continue to require the UART enable.
+                and (self.uart.receive_enabled or self._rom_tick)
+                and self.serial_rx
+                and interrupts_on
+                and self.instructions >= DTE_TYPING_INSTRUCTIONS
+                and (
+                    not self._rom_dte_opened
+                    or self.uart.holding
+                    # Past CONNECT the command parser is not in the path at
+                    # all: the firmware has installed its data-mode
+                    # receiver in the same cell (4502 on this ROM), which
+                    # this test read as "still busy" and never typed
+                    # another character into a connected session.
+                    or self.online_mode
+                    # Let the parser finish its command/result before
+                    # starting the next queued byte. Its busy RX handler
+                    # deliberately discards input during this interval.
+                    or int.from_bytes(_uc.mem_read(self._serial_callbacks + 4, 2), "little")
+                    in (self._rom_serial.command_idle, self._rom_serial.command_collecting)
+                )
+                and (
+                    not self._rom_tick
+                    # The ROM must have a receive callback installed
+                    # before a character means anything to it. Requiring
+                    # one specific pointer value here was reading a
+                    # constant out of the IDSDL302 reference build: the
+                    # captured 7.4.16 board holds zero in this cell for
+                    # the whole run, so no ROM but that one could ever
+                    # take input. What the callback has to be is present.
+                    or self._rom_dte_opened
+                    or int.from_bytes(_uc.mem_read(self._serial_callbacks, 2), "little") != 0
+                )
+            ):
+                if self._rom_serial is not None and not self._rom_dte_opened:
+                    # CPU-only DTE adapter: enter the ROM's byte-oriented
+                    # attention detector after boot. This substitutes for
+                    # raw-pin autobaud, not for AT parsing or UART output.
+                    layout = self._rom_serial
+                    _uc.mem_write(layout.mode, b"\x02")
+                    _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
+                    _uc.mem_write(layout.callbacks + 4, layout.command_idle.to_bytes(2, "little"))
+                    flags = _uc.mem_read(layout.output_flags, 1)[0]
+                    _uc.mem_write(layout.output_flags, bytes((flags & ~1,)))
+                    self._rom_dte_opened = True
+                    self._trace_serial("rom-dte: firmware attention adapter")
+                elif self._rom_dte_opened and not self.uart.holding:
+                    layout = self._rom_serial
+                    command = int.from_bytes(_uc.mem_read(layout.callbacks + 4, 2), "little")
+                    if command == layout.command_idle:
+                        # Firmware has finished the previous command and
+                        # requested attention/autobaud again. Retain its
+                        # command state; route the next byte through its
+                        # A/T detector instead of the raw-pin sampler.
+                        _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
+                # Put the character on the wire before handing it over.
+                # The ROM's callback chain watches the raw line for the
+                # idle-then-start transition, so a byte that appeared in
+                # the buffer with the line never having gone low is one
+                # the chain cannot see.
+                if not self.dte_line.busy:
+                    # Put the character on the wire and let it run at the
+                    # terminal's rate. `holding` is no longer a window the
+                    # harness opens and closes; it reports what the line is
+                    # doing, so the paths that ask whether a character is
+                    # arriving still get an answer.
+                    self.dte_line.begin(self.serial_rx[0], self.instructions)
+                    self.uart.holding = True
+                    self._rx_started_at = self.instructions
+                    self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
+                    self._rom_rx_bit = 0
+                elif self.dte_line.complete(self.instructions):
+                    self.dte_line.idle()
+                    self.uart.holding = False
+                    if self._rom_dte_opened:
+                        # Temporary autobaud handlers reuse type 0x14.
+                        # The byte-oriented adapter delivers through this
+                        # image's integrated-UART ISR.
+                        vector = self._rom_serial.receive_isr.to_bytes(2, "little")
+                        _uc.mem_write(0x0050, vector + b"\x00\x80")
+                        self.uart.control = 0x21
+                    byte = self.serial_rx.popleft()
+                    self._trace_serial(
+                        f"rom-rx {byte:02x} callbacks="
+                        + bytes(_uc.mem_read(self._serial_callbacks, 6)).hex()
+                    )
+                    # Read the line the terminal typed alongside the
+                    # firmware, which parses it for itself. Nothing is
+                    # intercepted; the line model needs the text only to
+                    # know whether this end was told to answer or to call.
+                    if byte in (10, 13):
+                        typed = attention_body(bytes(self._rom_command_line))
+                        self._rom_command_line.clear()
+                        if typed is not None and self.dsp_bridge is not None:
+                            self.dsp_bridge.note_dte_command(typed)
+                    else:
+                        self._rom_command_line.append(byte)
+                    self.uart.deliver(byte)
+                    _uc.emu_stop()
+            if self.quad_usart is not None:
+                # The DUART drives Quad INT0 (type 0x0c). Its ISR starts
+                # with STI, so IF alone cannot prevent recursive entry:
+                # retain in-service until the firmware's PCB EOI write.
+                self.quad_usart.advance()
+                if (interrupts_on and self.quad_usart.irq_pending
+                        and self.timers.controller.enabled("int0")
+                        and not self._int0_in_service
+                        and self._int0_pending is None):
+                    self._int0_pending = INT0_VECTOR
+            # The modem's C50 timer pulses XF (8467..847f). Route those
+            # edges to its INT0, separately from the controller's DUART.
+            # Retain in-service through EOI: the modem ISR also uses STI.
+            if (self.quad_c50 is not None and self.quad_c50.irq_pending
+                    and interrupts_on and self.timers.controller.enabled("int0")
+                    and not self._int0_in_service and self._int0_pending is None):
+                self._int0_pending = INT0_VECTOR
+                self.quad_c50.irq_pending = False
+            # The frame ISR at 93a34 opens with STI too, so the 80186's
+            # in-service bit is what stops the next edge re-entering it
+            # before its EOI; without it each frame nested 0x1a bytes deeper
+            # until the stack reached the vector table. The edge that
+            # arrives meanwhile is kept by `_last_frame` and fires once.
+            if (
+                not self._quad_profile
+                and self._int0_pending is None
+                and not self._int0_in_service
+                and interrupts_on
+                and self.instructions - self._last_frame >= self.frame_instructions
+                and self._int0_vector_installed(_uc)
+            ):
+                # Advance the phase by exactly one period, the way the
+                # bridge's own counters do, instead of restarting it here.
+                # Resetting it to `now` absorbed every polling delay
+                # permanently: the check only runs at the service loop's
+                # granularity, so each edge landed a little late and the
+                # next was measured from the late one. It cost 4.8% - 510.5
+                # Hz delivered against 536 nominal - and it cost it
+                # unevenly, because the granularity depends on what the CPU
+                # is running, which is how a constant offset appeared
+                # between two countdowns that should have matched.
+                #
+                # A debt of more than one period is dropped rather than
+                # burst, which is what the hardware does: the controller
+                # latches one pending edge, and `_int0_pending` is that one
+                # slot. Interrupts being off for a while loses edges on the
+                # board too; it does not bank them.
+                self._last_frame += self.frame_instructions
+                if self.instructions - self._last_frame >= self.frame_instructions:
+                    self._last_frame = self.instructions - self.frame_instructions
+                self._int0_pending = INT0_VECTOR
+            if interrupts_on and (
+                self._int0_pending is not None
+                or self.uart is not None and self.uart.pending
+                or self._external_interrupt_pending is not None
+                or self._int1_pending is not None
+                or self._timer_interrupt_pending is not None
+            ):
+                # A source is queued but the run loop only dispatches when
+                # emulation stops, and every branch that stops it is gated
+                # on nothing being queued. One source left over from an
+                # iteration that dispatched a different one therefore
+                # wedged the run: no stop, so no dispatch, so no further
+                # stop. Stop again while anything is outstanding. The
+                # dispatch clears IF, so a handler still runs to its IRET
+                # before the next source is delivered.
+                _uc.emu_stop()
+
+        def service_tail_suffix(_uc: Any, elapsed: int) -> None:
+            """The board tick and the DSP-paced tick."""
+            if (
+                self._serial_started
+                and self.tick_ms
+                and not self.emulate_interrupts
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and self._external_interrupt_pending is None
+                and self.instructions - self._last_tick
+                >= self.tick_ms * INSTRUCTIONS_PER_MS
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+                # This firmware keeps int3 masked throughout, so nothing is
+                # delivered here today. Honouring the mask is the point: an
+                # edge the firmware has switched off is one the board cannot
+                # take, and delivering it anyway is what turned the linked
+                # pair's ATA from NO CARRIER into OK.
+                and self.timers.controller.enabled("int3")
+            ):
+                # The board's periodic edge, which the supervisor's countdown
+                # chain hangs off. A ROM run reaches its own time base from
+                # the reset vector, so this stands in only for a payload run.
+                self._last_tick = self.instructions
+                self._external_interrupt_pending = self.hardware_map.tick_vector
+                self.ticks += 1
+                _uc.emu_stop()
+            if (
+                (self._rom_tick or self._quad_modem_tick)
+                and self.tick_ms
+                and (not self._quad_modem_tick or self.timers.controller.enabled("int3"))
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and self._external_interrupt_pending is None
+                and self._timer_interrupt_pending is None
+                and self.instructions - self._last_tick
+                >= self.tick_ms * INSTRUCTIONS_PER_MS
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+            ):
+                # The tick keeps the vector the ROM's own handlers install.
+                # INT1 rides alongside it whenever the firmware has that
+                # source unmasked - it is gated on the mask rather than
+                # bypassing it, unlike the tick.
+                self._last_tick = self.instructions
+                self._external_interrupt_pending = self.hardware_map.tick_vector
+                if (
+                    self._rom_tick
+                    and self._int1_pending is None
+                    and self.timers.controller.enabled("int1")
+                ):
+                    self._int1_pending = INT1_VECTOR
+
+                self.ticks += 1
+                _uc.emu_stop()
+            if (
+                self._tick_owed
+                and not self._serial_in_handler
+                and not self._timer_in_handler
+                and self._external_interrupt_pending is None
+                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+            ):
+                # The DSP-paced source deliberately does not consult the
+                # int3 mask: what it models is a board that generates this
+                # edge from the same source as the DSP frame rather than from
+                # the 80186 pin the firmware masked.
+                self._tick_owed = False
+                self._last_tick = self.instructions
+                self._external_interrupt_pending = self.hardware_map.tick_vector
+                self.ticks += 1
+                _uc.emu_stop()
+
+        def service_tail(_uc: Any, elapsed: int) -> None:
+            """Everything a service does once the DSP has been clocked."""
             if self._serial_started and not self._serial_in_handler:
                 if self._serial_cooldown:
                     self._serial_cooldown = max(0, self._serial_cooldown - elapsed)
@@ -1810,286 +2043,149 @@ class CourierMachine:
                 self._timer_poll_owed += TIMER_POLL_INSTRUCTIONS
                 self.timers.tick(self.instructions)
                 interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
-                # The ROM arms INT1 and starts timer 1 as a stopwatch, then
-                # reads that stopwatch in the handler to derive a bit period.
-                # Only one thing on the board can be measured that way: the
-                # start bit. Drive INT1 from the wire's mark-to-space edge, so
-                # the interval the firmware measures is the interval a
-                # character actually took to arrive.
+                service_after_tick(_uc, elapsed, interrupts_on)
+            service_tail_suffix(_uc, elapsed)
+
+        def service_chunk_body(_uc: Any, elapsed: int) -> None:
+            """The board's periodic service, `elapsed` instructions on.
+
+            Everything here used to run inside the per-instruction code
+            hook. None of it is per-instruction work: the DSP clock is
+            frame-paced, the console poll has its own period, and the
+            interrupt sources are all edges the board samples rather than
+            things the 80186 does. Servicing them every
+            SERVICE_INSTRUCTIONS models the sampling the hardware actually
+            does more honestly than testing them after every instruction,
+            and it is what lets the code hook go away.
+            """
+            if (not mmio_batched[0] and mmio_batch_ok
+                    and len(self.mmio_events) >= self.max_io_events):
+                # The first accesses are kept verbatim; after that the
+                # interrupt controller's end-of-interrupt write needs nothing
+                # but a replay.
+                mmio_batched[0] = True
+                _uc.native_mmio_batch = ((0xFF02, 0xFF03),)
+                _uc.native_mmio_callback = replay_mmio_writes
+            if self.quad_c50 is not None:
+                self.quad_c50.service(elapsed)
+            if self.quad_terminal is not None:
+                self.quad_terminal.service(
+                    self, bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200))
+            if self.console is not None:
+                self._console_owed -= elapsed
+                if self._console_owed <= 0:
+                    self._console_owed += self.console.poll_instructions
+                    # Take only what a small input FIFO has room for. Reading
+                    # everything the pty offered let `sz` hand 84 KB to the
+                    # modem in two seconds and then time out waiting for an
+                    # acknowledgement the 9600-baud line was still minutes
+                    # from delivering.
+                    typed = self.console.poll(
+                        CONSOLE_INPUT_FIFO - len(self.serial_rx))
+                    if typed:
+                        self.serial_rx.extend(typed)
+                        # Input that lands mid-cooldown would otherwise wait
+                        # out a transmit-side pause of up to 4096
+                        # instructions.
+                        self._serial_cooldown = min(self._serial_cooldown, 64)
+                    if self.console.closed:
+                        self.stop_requested = True
+            while (self._serial_input_schedule
+                   and self.instructions >= self._serial_input_schedule[0][0]):
+                _, typed = self._serial_input_schedule.popleft()
+                self.serial_rx.extend(typed)
+                self._serial_cooldown = min(self._serial_cooldown, 64)
+                self.serial_trace.append(f"typed at {self.instructions}")
+            if self.stop_requested:
+                _uc.emu_stop()
+            if self.dsp_bridge is not None and not self.stop_requested:
+                self.dsp_bridge.clock_x86(elapsed)
+                if self._lane_io is not None:
+                    self._refresh_native_lanes()
+            service_tail(_uc, elapsed)
+
+        fast_service_on = (
+            self.cpu_engine == "interpreter"
+            and os.environ.get("COURIER_FAST_SERVICE", "1") != "0")
+
+        def fast_service(_uc: Any, elapsed: int) -> bool:
+            """`service_chunk` for the service in which nothing needs doing.
+
+            Almost every one is: the DSP is clocked and the sources of
+            interrupts have nothing to say, or the only thing they say is the
+            DSP's frame edge, which is delivered here rather than by leaving
+            the engine for the run loop and entering it again. Every
+            test is the one the full service makes, in its order; this returns
+            False, having changed nothing, when any of the first ones fails,
+            and hands what is left of the service to the code it was taken
+            from when a later one does.
+            """
+            bridge = self.dsp_bridge
+            uart = self.uart
+            if (
+                bridge is None or self.stop_requested or self.console is not None
+                or self.quad_c50 is not None or self.quad_terminal is not None
+                or self._serial_started or self._supervisor_23 or self._tick_owed
+                or not self.emulate_interrupts
+                or (uart is not None and uart.holding)
+                or (self._serial_input_schedule
+                    and self.instructions >= self._serial_input_schedule[0][0])
+                or (not mmio_batched[0] and mmio_batch_ok
+                    and len(self.mmio_events) >= self.max_io_events)
+                or not bridge.clock_x86_fast(elapsed)
+            ):
+                return False
+            if self._lane_io is not None:
+                self._refresh_native_lanes()
+            # service_tail, with its tests made first.
+            self._timer_poll_owed -= elapsed
+            if self._timer_poll_owed <= 0:
+                self._timer_poll_owed += TIMER_POLL_INSTRUCTIONS
+                instructions = self.instructions
+                self.timers.tick(instructions)
+                interrupts_on = bool(_uc.reg_read(UC_X86_REG_FLAGS) & 0x0200)
+                tick_due = (
+                    (self._rom_tick or self._quad_modem_tick) and self.tick_ms
+                    and instructions - self._last_tick >= self.tick_ms * INSTRUCTIONS_PER_MS)
                 if (
-                    self.timers.controller.enabled("int1")
-                    and self._external_interrupt_pending is None
-                    and interrupts_on
-                    and self.dte_line.take_edge()
-                ):
-                    self._external_interrupt_pending = INT1_VECTOR
-                    self.int1_delivered = True
-                    _uc.emu_stop()
-                if (
-                    not self.int1_delivered
-                    and self.int1_after_ms is not None
-                    and self.timers.controller.enabled("int1")
-                    and self._int1_armed_at is None
-                ):
-                    self._int1_armed_at = self.instructions
-                if (
-                    not self.int1_delivered
-                    and self._int1_armed_at is not None
-                    and self.instructions - self._int1_armed_at
-                    >= self.int1_after_ms * INSTRUCTIONS_PER_MS
-                    and interrupts_on
-                    and self.timers.controller.enabled("int1")
-                    and self._external_interrupt_pending is None
-                ):
-                    self._external_interrupt_pending = INT1_VECTOR
-                    self.int1_delivered = True
-                    _uc.emu_stop()
-                elif (
-                    self._timer_interrupt_pending is None
-                    and self.timers.pending_interrupt() is not None
-                    and interrupts_on
-                ):
-                    self._timer_interrupt_pending = self.timers.take_interrupt()
-                    _uc.emu_stop()
-                if (
-                    self.uart is not None
-                    and not self.uart.pending
-                    and self.quad_terminal is None
-                    # The ROM deliberately disables the integrated receiver
-                    # while its timer/INT1 autobaud front end watches the raw
-                    # pin. A physical DTE can still put a character on that
-                    # pin; payload runs continue to require the UART enable.
-                    and (self.uart.receive_enabled or self._rom_tick)
-                    and self.serial_rx
-                    and interrupts_on
-                    and self.instructions >= DTE_TYPING_INSTRUCTIONS
-                    and (
-                        not self._rom_dte_opened
-                        or self.uart.holding
-                        # Past CONNECT the command parser is not in the path at
-                        # all: the firmware has installed its data-mode
-                        # receiver in the same cell (4502 on this ROM), which
-                        # this test read as "still busy" and never typed
-                        # another character into a connected session.
-                        or self.online_mode
-                        # Let the parser finish its command/result before
-                        # starting the next queued byte. Its busy RX handler
-                        # deliberately discards input during this interval.
-                        or int.from_bytes(_uc.mem_read(self._serial_callbacks + 4, 2), "little")
-                        in (self._rom_serial.command_idle, self._rom_serial.command_collecting)
-                    )
-                    and (
-                        not self._rom_tick
-                        # The ROM must have a receive callback installed
-                        # before a character means anything to it. Requiring
-                        # one specific pointer value here was reading a
-                        # constant out of the IDSDL302 reference build: the
-                        # captured 7.4.16 board holds zero in this cell for
-                        # the whole run, so no ROM but that one could ever
-                        # take input. What the callback has to be is present.
-                        or self._rom_dte_opened
-                        or int.from_bytes(_uc.mem_read(self._serial_callbacks, 2), "little") != 0
-                    )
-                ):
-                    if self._rom_serial is not None and not self._rom_dte_opened:
-                        # CPU-only DTE adapter: enter the ROM's byte-oriented
-                        # attention detector after boot. This substitutes for
-                        # raw-pin autobaud, not for AT parsing or UART output.
-                        layout = self._rom_serial
-                        _uc.mem_write(layout.mode, b"\x02")
-                        _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
-                        _uc.mem_write(layout.callbacks + 4, layout.command_idle.to_bytes(2, "little"))
-                        flags = _uc.mem_read(layout.output_flags, 1)[0]
-                        _uc.mem_write(layout.output_flags, bytes((flags & ~1,)))
-                        self._rom_dte_opened = True
-                        self._trace_serial("rom-dte: firmware attention adapter")
-                    elif self._rom_dte_opened and not self.uart.holding:
-                        layout = self._rom_serial
-                        command = int.from_bytes(_uc.mem_read(layout.callbacks + 4, 2), "little")
-                        if command == layout.command_idle:
-                            # Firmware has finished the previous command and
-                            # requested attention/autobaud again. Retain its
-                            # command state; route the next byte through its
-                            # A/T detector instead of the raw-pin sampler.
-                            _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
-                    # Put the character on the wire before handing it over.
-                    # The ROM's callback chain watches the raw line for the
-                    # idle-then-start transition, so a byte that appeared in
-                    # the buffer with the line never having gone low is one
-                    # the chain cannot see.
-                    if not self.dte_line.busy:
-                        # Put the character on the wire and let it run at the
-                        # terminal's rate. `holding` is no longer a window the
-                        # harness opens and closes; it reports what the line is
-                        # doing, so the paths that ask whether a character is
-                        # arriving still get an answer.
-                        self.dte_line.begin(self.serial_rx[0], self.instructions)
-                        self.uart.holding = True
-                        self._rx_started_at = self.instructions
-                        self._rx_edge_at = self.instructions + RX_BIT_INSTRUCTIONS
-                        self._rom_rx_bit = 0
-                    elif self.dte_line.complete(self.instructions):
-                        self.dte_line.idle()
-                        self.uart.holding = False
-                        if self._rom_dte_opened:
-                            # Temporary autobaud handlers reuse type 0x14.
-                            # The byte-oriented adapter delivers through this
-                            # image's integrated-UART ISR.
-                            vector = self._rom_serial.receive_isr.to_bytes(2, "little")
-                            _uc.mem_write(0x0050, vector + b"\x00\x80")
-                            self.uart.control = 0x21
-                        byte = self.serial_rx.popleft()
-                        self._trace_serial(
-                            f"rom-rx {byte:02x} callbacks="
-                            + bytes(_uc.mem_read(self._serial_callbacks, 6)).hex()
-                        )
-                        # Read the line the terminal typed alongside the
-                        # firmware, which parses it for itself. Nothing is
-                        # intercepted; the line model needs the text only to
-                        # know whether this end was told to answer or to call.
-                        if byte in (10, 13):
-                            typed = attention_body(bytes(self._rom_command_line))
-                            self._rom_command_line.clear()
-                            if typed is not None and self.dsp_bridge is not None:
-                                self.dsp_bridge.note_dte_command(typed)
-                        else:
-                            self._rom_command_line.append(byte)
-                        self.uart.deliver(byte)
-                        _uc.emu_stop()
-                if self.quad_usart is not None:
-                    # The DUART drives Quad INT0 (type 0x0c). Its ISR starts
-                    # with STI, so IF alone cannot prevent recursive entry:
-                    # retain in-service until the firmware's PCB EOI write.
-                    self.quad_usart.advance()
-                    if (interrupts_on and self.quad_usart.irq_pending
-                            and self.timers.controller.enabled("int0")
-                            and not self._int0_in_service
-                            and self._int0_pending is None):
-                        self._int0_pending = INT0_VECTOR
-                # The modem's C50 timer pulses XF (8467..847f). Route those
-                # edges to its INT0, separately from the controller's DUART.
-                # Retain in-service through EOI: the modem ISR also uses STI.
-                if (self.quad_c50 is not None and self.quad_c50.irq_pending
-                        and interrupts_on and self.timers.controller.enabled("int0")
-                        and not self._int0_in_service and self._int0_pending is None):
-                    self._int0_pending = INT0_VECTOR
-                    self.quad_c50.irq_pending = False
-                # The frame ISR at 93a34 opens with STI too, so the 80186's
-                # in-service bit is what stops the next edge re-entering it
-                # before its EOI; without it each frame nested 0x1a bytes deeper
-                # until the stack reached the vector table. The edge that
-                # arrives meanwhile is kept by `_last_frame` and fires once.
-                if (
-                    not self._quad_profile
-                    and self._int0_pending is None
-                    and not self._int0_in_service
-                    and interrupts_on
-                    and self.instructions - self._last_frame >= self.frame_instructions
-                    and self._int0_vector_installed(_uc)
-                ):
-                    # Advance the phase by exactly one period, the way the
-                    # bridge's own counters do, instead of restarting it here.
-                    # Resetting it to `now` absorbed every polling delay
-                    # permanently: the check only runs at the service loop's
-                    # granularity, so each edge landed a little late and the
-                    # next was measured from the late one. It cost 4.8% - 510.5
-                    # Hz delivered against 536 nominal - and it cost it
-                    # unevenly, because the granularity depends on what the CPU
-                    # is running, which is how a constant offset appeared
-                    # between two countdowns that should have matched.
-                    #
-                    # A debt of more than one period is dropped rather than
-                    # burst, which is what the hardware does: the controller
-                    # latches one pending edge, and `_int0_pending` is that one
-                    # slot. Interrupts being off for a while loses edges on the
-                    # board too; it does not bank them.
-                    self._last_frame += self.frame_instructions
-                    if self.instructions - self._last_frame >= self.frame_instructions:
-                        self._last_frame = self.instructions - self.frame_instructions
-                    self._int0_pending = INT0_VECTOR
-                if interrupts_on and (
-                    self._int0_pending is not None
-                    or self.uart is not None and self.uart.pending
+                    self.dte_line._edge or tick_due
+                    or self.int1_after_ms is not None
+                    or self.serial_rx
+                    or (uart is not None and uart.pending)
                     or self._external_interrupt_pending is not None
                     or self._int1_pending is not None
                     or self._timer_interrupt_pending is not None
+                    or self.quad_usart is not None or self._quad_profile
+                    or self._service_resume or self.cpu_fault is not None
+                    or self.interrupt is not None
+                    or (self.timers._pending and self.timers.pending_interrupt() is not None)
                 ):
-                    # A source is queued but the run loop only dispatches when
-                    # emulation stops, and every branch that stops it is gated
-                    # on nothing being queued. One source left over from an
-                    # iteration that dispatched a different one therefore
-                    # wedged the run: no stop, so no dispatch, so no further
-                    # stop. Stop again while anything is outstanding. The
-                    # dispatch clears IF, so a handler still runs to its IRET
-                    # before the next source is delivered.
-                    _uc.emu_stop()
-            if (
-                self._serial_started
-                and self.tick_ms
-                and not self.emulate_interrupts
-                and not self._serial_in_handler
-                and not self._timer_in_handler
-                and self._external_interrupt_pending is None
-                and self.instructions - self._last_tick
-                >= self.tick_ms * INSTRUCTIONS_PER_MS
-                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
-                # This firmware keeps int3 masked throughout, so nothing is
-                # delivered here today. Honouring the mask is the point: an
-                # edge the firmware has switched off is one the board cannot
-                # take, and delivering it anyway is what turned the linked
-                # pair's ATA from NO CARRIER into OK.
-                and self.timers.controller.enabled("int3")
-            ):
-                # The board's periodic edge, which the supervisor's countdown
-                # chain hangs off. A ROM run reaches its own time base from
-                # the reset vector, so this stands in only for a payload run.
-                self._last_tick = self.instructions
-                self._external_interrupt_pending = self.hardware_map.tick_vector
-                self.ticks += 1
-                _uc.emu_stop()
-            if (
-                (self._rom_tick or self._quad_modem_tick)
-                and self.tick_ms
-                and (not self._quad_modem_tick or self.timers.controller.enabled("int3"))
-                and not self._serial_in_handler
-                and not self._timer_in_handler
-                and self._external_interrupt_pending is None
-                and self._timer_interrupt_pending is None
-                and self.instructions - self._last_tick
-                >= self.tick_ms * INSTRUCTIONS_PER_MS
-                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
-            ):
-                # The tick keeps the vector the ROM's own handlers install.
-                # INT1 rides alongside it whenever the firmware has that
-                # source unmasked - it is gated on the mask rather than
-                # bypassing it, unlike the tick.
-                self._last_tick = self.instructions
-                self._external_interrupt_pending = self.hardware_map.tick_vector
-                if (
-                    self._rom_tick
-                    and self._int1_pending is None
-                    and self.timers.controller.enabled("int1")
+                    service_after_tick(_uc, elapsed, interrupts_on)
+                    service_tail_suffix(_uc, elapsed)
+                elif (
+                    self._int0_pending is None and not self._int0_in_service
+                    and interrupts_on
+                    and instructions - self._last_frame >= self.frame_instructions
+                    and self._int0_vector_installed(_uc)
                 ):
-                    self._int1_pending = INT1_VECTOR
-
-                self.ticks += 1
-                _uc.emu_stop()
-            if (
-                self._tick_owed
-                and not self._serial_in_handler
-                and not self._timer_in_handler
-                and self._external_interrupt_pending is None
-                and _uc.reg_read(UC_X86_REG_FLAGS) & 0x0200
+                    # The DSP's frame edge, and nothing else: take it now.
+                    self._last_frame += self.frame_instructions
+                    if instructions - self._last_frame >= self.frame_instructions:
+                        self._last_frame = instructions - self.frame_instructions
+                    self._int0_in_service = True
+                    dispatch_interrupt(INT0_VECTOR, software=False)
+                    _uc.redirect_is_free = True
+                elif self._int0_pending is not None and interrupts_on:
+                    service_after_tick(_uc, elapsed, interrupts_on)
+                    service_tail_suffix(_uc, elapsed)
+            elif (
+                (self._rom_tick or self._quad_modem_tick) and self.tick_ms
+                and self.instructions - self._last_tick >= self.tick_ms * INSTRUCTIONS_PER_MS
             ):
-                # The DSP-paced source deliberately does not consult the
-                # int3 mask: what it models is a board that generates this
-                # edge from the same source as the DSP frame rather than from
-                # the 80186 pin the firmware masked.
-                self._tick_owed = False
-                self._last_tick = self.instructions
-                self._external_interrupt_pending = self.hardware_map.tick_vector
-                self.ticks += 1
-                _uc.emu_stop()
+                service_tail_suffix(_uc, elapsed)
+            if fixed_refresh[0] is not None:
+                fixed_refresh[0]()
+            return True
 
         def on_milestone_code(_uc: Any, address: int, _size: int, _data: Any) -> None:
             """The four addresses that name a stage of the boot.
@@ -2943,6 +3039,8 @@ class CourierMachine:
                 elapsed = total - self._last_service
                 self._last_service = total
                 self._next_service = total + interpreter_period
+                if fast_service_on and fast_service(_uc, elapsed):
+                    return
                 service_chunk(_uc, elapsed)
 
             uc.instruction_clock_add(interpreter_period, interpreter_service)

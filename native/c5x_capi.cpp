@@ -1053,6 +1053,54 @@ int courier_c5x_step_cycles(void *handle, uint64_t count,
     }
 }
 
+// Step one instruction at a time until a condition holds, at most `limit`
+// times: mode 0, until data cell `a` reads `b`; mode 1, until the writes to
+// I/O port `a` exceed `b`. Returns 1 when it held (and where the loop stopped
+// is *steps), 0 when the limit ran out, -1 on an error.
+int courier_c5x_step_until(void *handle, int mode, uint16_t a, uint64_t b,
+    uint64_t limit, uint64_t *steps, char *error, std::size_t error_size)
+{
+    try {
+        if (!handle) throw std::runtime_error("null C5x handle");
+        C5xCore *core = static_cast<C5xCore *>(handle);
+        for (uint64_t index = 0; index < limit; ++index) {
+            core->run(1);
+            const bool held = mode == 0 ? core->data(a) == b
+                                        : core->io_port_stat(a).writes > b;
+            if (held) { *steps = index + 1; return 1; }
+        }
+        *steps = limit;
+        return 0;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return -1;
+    }
+}
+
+// One service's DSP work for the analog worker: run the cycles it is owed,
+// then report what the harness looks at straight afterwards, so that it costs
+// one call. out[0] instructions, out[1] cycles, out[2] writes to `port`,
+// out[3] whether the call TDM is active.
+int courier_c5x_service_step(void *handle, uint64_t count, uint16_t port,
+    uint64_t *out, char *error, std::size_t error_size)
+{
+    try {
+        if (!handle) throw std::runtime_error("null C5x handle");
+        C5xCore *core = static_cast<C5xCore *>(handle);
+        const uint64_t before_instructions = core->instruction_count();
+        const uint64_t before_cycles = core->cycle_count();
+        core->run_cycles(count);
+        out[0] = core->instruction_count() - before_instructions;
+        out[1] = core->cycle_count() - before_cycles;
+        out[2] = core->io_port_stat(port).writes;
+        out[3] = core->call_tdm_active() ? 1 : 0;
+        return 0;
+    } catch (const std::exception &exception) {
+        copy_error(error, error_size, exception.what());
+        return -1;
+    }
+}
+
 std::size_t courier_c5x_advance_imodem(void *handle, uint64_t count,
     std::size_t tx_start, uint8_t *tx, std::size_t tx_capacity,
     uint64_t *values, std::size_t value_count,

@@ -439,6 +439,12 @@ class NativeC5x:
         lib.courier_c5x_get_io_port_writes.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io_port_writes.restype = ctypes.c_uint64
+        lib.courier_c5x_service_step.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint16, ctypes.c_void_p,
+            ctypes.c_char_p, ctypes.c_size_t]
+        lib.courier_c5x_step_until.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16, ctypes.c_uint64,
+            ctypes.c_uint64, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
         lib.courier_c5x_serial_backlog.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.courier_c5x_serial_backlog.restype = ctypes.c_int64
         lib.courier_c5x_get_pc.argtypes = [ctypes.c_void_p]
@@ -509,6 +515,36 @@ class NativeC5x:
         if result:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
         return instructions.value, cycles.value
+
+    def _step_until(self, mode: int, a: int, b: int, limit: int) -> bool:
+        steps = ctypes.c_uint64()
+        error = self._error_buffer
+        result = self.library.courier_c5x_step_until(
+            self.handle, mode, a, b, limit, ctypes.addressof(steps), error, len(error))
+        if result < 0:
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+        return bool(result)
+
+    def step_until_data(self, address: int, value: int, limit: int) -> bool:
+        """Run one instruction at a time until data cell `address` holds `value`."""
+        return self._step_until(0, address, value, limit)
+
+    def step_until_port_written(self, port: int, writes: int, limit: int) -> bool:
+        """Run one instruction at a time until `port` has more than `writes` writes."""
+        return self._step_until(1, port, writes, limit)
+
+    def service_step(self, count: int, port: int) -> tuple[int, int, int, bool]:
+        """`step_cycles`, plus the writes to `port` and the call TDM's state after it."""
+        cells = self.__dict__.get("_service_cells")
+        if cells is None:
+            out = (ctypes.c_uint64 * 4)()
+            cells = self._service_cells = (out, ctypes.addressof(out), self._error_buffer)
+        out, address, error = cells
+        result = self.library.courier_c5x_service_step(
+            self.handle, count, port, address, error, len(error))
+        if result:
+            raise RuntimeError(error.value.decode("utf-8", "replace"))
+        return out[0], out[1], out[2], bool(out[3])
 
     @property
     def _error_buffer(self):

@@ -1573,11 +1573,15 @@ class CourierDspBridge:
                 self.core.set_io(dsp_base + index // 2,
                                  window[index] | (window[index + 1] << 8))
         self.core.set_io(0x56, strobe)
-        for _ in range(4096):
-            self.core.step(1)
-            writes = self._port_writes(0x56)
-            if writes > before:
+        step_until = getattr(self.core, "step_until_port_written", None)
+        if step_until is not None:
+            if step_until(0x56, before, 4096):
                 return
+        else:
+            for _ in range(4096):
+                self.core.step(1)
+                if self._port_writes(0x56) > before:
+                    return
         raise RuntimeError(f"C51 ROM loader did not acknowledge strobe {strobe}")
 
     def _configure_frame_interrupt(self) -> None:
@@ -2240,21 +2244,30 @@ class CourierDspBridge:
 
         def settle(base: int) -> bool:
             """Step the resident until it has taken the four words from `base`."""
-            for _ in range(20_000):
-                self.core.step(1)
-                if self.core.data(0xFF62) == (base + 4) & 0xFFFF:
-                    # ff62 is written in the branch delay slot just before the
-                    # loader returns to its idle/poll loop. Do not advertise
-                    # the next bank yet: an idle-path 0300 write in that short
-                    # tail can otherwise clear a newly raised 0200 before it is
-                    # consumed. The caller may have interrupted ordinary
-                    # resident work and need not return to an IDLE instruction
-                    # immediately. A small tail is enough to retire the branch,
-                    # INTR and status poll; the next 0200 event is raised only
-                    # after it has elapsed.
-                    self.core.step(32)
-                    self._overlay_groups.append((base, bytes(block)))
-                    return True
+            target = (base + 4) & 0xFFFF
+            step_until = getattr(self.core, "step_until_data", None)
+            if step_until is not None:
+                reached = step_until(0xFF62, target, 20_000)
+            else:
+                reached = False
+                for _ in range(20_000):
+                    self.core.step(1)
+                    if self.core.data(0xFF62) == target:
+                        reached = True
+                        break
+            if reached:
+                # ff62 is written in the branch delay slot just before the
+                # loader returns to its idle/poll loop. Do not advertise
+                # the next bank yet: an idle-path 0300 write in that short
+                # tail can otherwise clear a newly raised 0200 before it is
+                # consumed. The caller may have interrupted ordinary
+                # resident work and need not return to an IDLE instruction
+                # immediately. A small tail is enough to retire the branch,
+                # INTR and status poll; the next 0200 event is raised only
+                # after it has elapsed.
+                self.core.step(32)
+                self._overlay_groups.append((base, bytes(block)))
+                return True
             return False
 
         # The idle/status paths also write 0300 to this latch. The loader alone
@@ -3118,6 +3131,110 @@ class CourierDspBridge:
                     self.sip.send_audio(self._sip_tx_rate.convert(samples))
         except RuntimeError as exc:
             self.error = str(exc)
+
+    def clock_x86_fast(self, count: int) -> bool:
+        """`clock_x86` for the service in which nothing moves but the DSP.
+
+        Nearly every service is one: the codec's frame is not due, the line has
+        no frame to send, the call state machines have nothing to start and the
+        DSP has said nothing. Each of those is a test that comes out the same
+        way, and they cost more than the DSP step they surround, so this makes
+        them in one place and in the order `clock_x86` does. It returns False,
+        having changed nothing, when any of them says there is work; the
+        caller then runs `clock_x86` itself.
+        """
+        core = self.core
+        daa = self.daa
+        if (
+            self.exchange is not None or self.sip is not None or self._audio_only
+            or self.line is None or self.error or not self.active
+            or (self.boot_rom_enabled and not self.launched)
+            or (self._runtime_mode and not self._runtime_ready)
+            or self._call_resume_pending or self.rx_acquisition_assist
+            or self._x86_ticks + count < self.batch
+            or (self.codec is not None
+                and self._codec_instructions + count >= LINE_FRAME_INSTRUCTIONS)
+        ):
+            return False
+        service_step = getattr(core, "service_step", None)
+        if service_step is None or not hasattr(core, "set_hybrid_return"):
+            return False
+        # _apply_hybrid_return: nothing to apply.
+        off_hook = daa is not None and daa.off_hook
+        scale = self.HYBRID_RETURN_OFF_HOOK if off_hook else self.HYBRID_RETURN_ON_HOOK
+        if off_hook and self._line_digital:
+            scale = 0
+        if scale != self._hybrid_return_applied:
+            return False
+        # _service_line: the codec has not yet made a batch of samples.
+        produced = core.line_tx_writes()
+        if not (0 < produced - self._line_codec_last < LINE_SERVICE_MIN_SAMPLES
+                and self._line_service_skipped < LINE_SERVICE_MAX_SKIP):
+            return False
+        # _maybe_start_asic_call_engine and _advance_asic_call_phase.
+        registers = self.asic_registers
+        if not (registers.get(0x82) != 0x00A0 or self._call_overlay is None
+                or daa is None or not daa.detector_qualified):
+            return False
+        if (self._asic_call_engine_started and self._call_overlay_active
+                and registers.get(0x82) == 0x0060):
+            return False
+        # The DAA's receive queue: topped up only from samples somebody has
+        # queued for it, and the dialer starts only on digits.
+        if daa is not None and daa.off_hook and not self.rx_samples and (
+                self._sip_rx_samples or self._exchange_rx_samples
+                or self._line_rx_samples
+                or (self.dial_digits and daa.operation == "originate"
+                    and daa.dial_tone_qualified
+                    and (self._asic_call_engine_started or self._call_overlay is None))):
+            return False
+        # _maybe_start_answer_engine and _maybe_start_originate_engine.
+        if not (self._v8_armed or self._call_overlay_active or daa is None
+                or not daa.detector_qualified):
+            if daa.operation == "answer":
+                return False
+            if daa.operation == "dialing":
+                if self.line.peer_off_hook:
+                    return False
+            elif daa.operation == "originate" and self._commanded_role != "originate":
+                return False
+        # Committed: the same updates, in the same order.
+        self._instructions += count
+        if self._instructions - getattr(self, "_probe_clock_last", 0) >= 200_000:  # PROBE
+            self._probe_clock_last = self._instructions
+            try:
+                self.__dict__.setdefault("probe_clock", []).append(
+                    (core.state()["instructions"], self._instructions, core.state()["cycles"]))
+            except Exception:
+                pass
+        if self.codec is not None:
+            self._codec_instructions += count
+        self._x86_ticks += count
+        self._dsp_cycle_debt += self._x86_ticks * self.dsp_cycles_per_x86
+        self._x86_ticks = 0
+        self._line_service_skipped += 1
+        try:
+            if self._dsp_cycle_debt < 1:
+                # _run_dsp_cycles does nothing, so nothing has written.
+                writes = self._port_writes(HOST_WORD_CELL)
+                tdm_active = core.call_tdm_active()
+            else:
+                ran, elapsed, writes, tdm_active = service_step(
+                    max(1, int(self._dsp_cycle_debt)), HOST_WORD_CELL)
+                self._dsp_cycle_debt -= elapsed
+                if ran > 0:
+                    self._dsp_cpi = 0.9 * self._dsp_cpi + 0.1 * max(1.0, elapsed / ran)
+            # _collect_dsp_messages
+            if self.boot_rom_enabled:
+                if writes <= self._dsp_mailbox_writes:
+                    self._dsp_mailbox_writes = writes
+                else:
+                    self._collect_dsp_messages()
+            if not self._call_overlay_active and tdm_active:
+                self._call_overlay_active = True
+        except RuntimeError as exc:
+            self.error = str(exc)
+        return True
 
     def set_timebase(self, timebase: Timebase) -> None:
         """Adopt the board the firmware has just identified itself as.

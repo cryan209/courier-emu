@@ -252,6 +252,10 @@ class Uc:
         # Memory writes the native engine logs rather than leaving for
         # Python: (first, last) physical byte ranges, and the callback that
         # replays them in order.
+        # Set by a clock callback that has entered an interrupt itself and
+        # wants the dispatch edge not charged (the run loop's own path for the
+        # same interrupt is not charged either).
+        self.redirect_is_free = False
         self.native_mmio_batch: tuple[tuple[int, int], ...] = ()
         self.native_mmio_callback: Callable[[memoryview, int], None] | None = None
         # A watched write can schedule device updates after the instruction
@@ -934,8 +938,11 @@ class Uc:
                 # Unicorn charges this dispatch edge against emu_start's
                 # count even though the redirected instruction itself runs on
                 # the following edge. Match that scheduling contract.
-                retired += 1
-                self.retired += 1
+                if self.redirect_is_free:
+                    self.redirect_is_free = False
+                else:
+                    retired += 1
+                    self.retired += 1
                 continue
             segment_override = None
             operand_size = 2
