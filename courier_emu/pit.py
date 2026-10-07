@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ctypes
 from dataclasses import dataclass, field
+
+from .poll_state import INFINITE, PitSlot, PollState, shared_field
 
 from .timebase import IMODEM_386EX
 
@@ -100,28 +103,51 @@ def ticks_for(instructions: int, clock_hz: int = CLOCK_HZ) -> int:
     return instructions * clock_hz // INSTRUCTIONS_PER_SECOND
 
 
-@dataclass
 class Counter:
-    """One 8254 counter, counting down from the harness's instruction clock."""
+    """One 8254 counter, counting down from the harness's instruction clock.
 
-    index: int
-    mode: int = 0
-    access: int = ACCESS_LOW_THEN_HIGH
-    bcd: bool = False
-    initial: int = 0
+    What the harness's poll needs to find the next wrap - `initial`, `origin`,
+    `programmed`, `reported_wraps`, `next_due` - lives in a `PitSlot` shared with
+    the native port model (poll_state.py); `bind` moves the counter onto the
+    harness's copy.
+    """
+
     # Input tick at which `initial` was loaded, so a reprogrammed counter starts
     # its period from the write rather than from the start of the run.
-    origin: int = 0
-    programmed: bool = False
-    # Write and read sequencing for the two-byte access mode.
-    write_low: int | None = None
-    read_high_next: bool = False
-    latched: int | None = None
+    origin = shared_field("origin")
+    initial = shared_field("initial")
+    programmed = shared_field("programmed", bool)
     # Wraps already reported to the interrupt controller.
-    reported_wraps: int = 0
-    # The input tick at which the next wrap falls due, so a harness pass that
-    # is earlier than that has nothing to ask (see take_wraps).
-    next_due: float = float("inf")
+    reported_wraps = shared_field("reported")
+
+    def __init__(self, index: int, mode: int = 0, access: int = ACCESS_LOW_THEN_HIGH,
+                 bcd: bool = False) -> None:
+        self.index = index
+        self.mode = mode
+        self.access = access
+        self.bcd = bcd
+        # Write and read sequencing for the two-byte access mode.
+        self.write_low: int | None = None
+        self.read_high_next = False
+        self.latched: int | None = None
+        self._s = PitSlot()
+        self._s.next_due = INFINITE
+
+    @property
+    def next_due(self) -> float:
+        """The input tick at which the next wrap falls due, so a harness pass
+        that is earlier than that has nothing to ask (see take_wraps)."""
+        value = self._s.next_due
+        return float("inf") if value == INFINITE else value
+
+    @next_due.setter
+    def next_due(self, value: float) -> None:
+        self._s.next_due = INFINITE if value == float("inf") else int(value)
+
+    def bind(self, slot: PitSlot) -> None:
+        ctypes.memmove(ctypes.addressof(slot), ctypes.addressof(self._s),
+                       ctypes.sizeof(PitSlot))
+        self._s = slot
 
     @property
     def period(self) -> int:
@@ -169,6 +195,13 @@ class ProgrammableIntervalTimer:
         default_factory=lambda: (Counter(0), Counter(1), Counter(2))
     )
     control_writes: int = 0
+
+    def bind(self, state: PollState) -> None:
+        """Keep the counters' wrap bookkeeping in the harness's shared state."""
+        for counter, slot in zip(self.counters, state.pit):
+            counter.bind(slot)
+        state.pit_clock_hz = self.clock_hz
+        state.ips = INSTRUCTIONS_PER_SECOND
 
     def ticks(self, instructions: int) -> int:
         return ticks_for(instructions, self.clock_hz)

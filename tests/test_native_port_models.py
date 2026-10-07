@@ -181,3 +181,46 @@ def test_analog_model_serves_the_mailbox_status_ports_from_the_latch():
     finally:
         model.close()
         dsp.close()
+
+
+def test_native_pic_ports_match_the_python_controllers():
+    import random
+
+    from courier_emu.pic import PORTS, InterruptControllers
+    from courier_emu.poll_state import PollState
+
+    rng = random.Random(3)
+    for trial in range(40):
+        state = PollState()
+        native = InterruptControllers()
+        native.bind(state)
+        python = InterruptControllers()
+        shared = ImodemShared()
+        model = ImodemHostIo(shared, cycles_per_instruction=8.0, read_quantum=32)
+        model.set_poll_state(state)
+        try:
+            for _ in range(200):
+                port = rng.choice(PORTS)
+                action = rng.choice(("write", "write", "read", "raise"))
+                if action == "raise":
+                    irq = rng.randrange(16)
+                    native.raise_irq(irq)
+                    python.raise_irq(irq)
+                elif action == "write":
+                    value = rng.choice((0x11, 0x20, 0x28, 0x04, 0x02, 0x01, 0x0A, 0x0B,
+                                        0x20, 0x60, 0x62, 0xFF, 0x00, rng.randrange(256)))
+                    assert access(model, 2, port, value)[0] == 1
+                    python.write(port, value)
+                else:
+                    served, value = access(model, 1, port)
+                    assert served and value == python.read(port)
+                assert (native.master.irr, native.master.isr, native.master.mask,
+                        native.master.vector_base, native.master.init_words) == (
+                    python.master.irr, python.master.isr, python.master.mask,
+                    python.master.vector_base, python.master.init_words)
+                assert (native.slave.irr, native.slave.isr, native.slave.mask,
+                        native.slave.vector_base) == (
+                    python.slave.irr, python.slave.isr, python.slave.mask,
+                    python.slave.vector_base)
+        finally:
+            model.close()

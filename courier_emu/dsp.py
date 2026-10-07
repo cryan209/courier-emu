@@ -1310,6 +1310,7 @@ class ImodemHostIo:
         lib.courier_imodemio_take_counts.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_bearer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        lib.courier_imodemio_set_poll_state.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.poll_function = ctypes.cast(
             lib.courier_imodemio_poll, ctypes.c_void_p).value
         self.shared = shared
@@ -1331,6 +1332,11 @@ class ImodemHostIo:
         self.library.courier_imodemio_configure(
             self.context, ctypes.addressof(self.shared), core_handle, int(live),
             self.cycles_per_instruction, self.read_quantum)
+
+    def set_poll_state(self, state) -> None:
+        """Serve the interrupt controllers' ports from the harness's shared state."""
+        self.library.courier_imodemio_set_poll_state(
+            self.context, ctypes.addressof(state) if state is not None else None)
 
     def set_bearer(self, bearer) -> None:
         """Let the engine's poll hook settle PCM frames in this bearer's memory."""

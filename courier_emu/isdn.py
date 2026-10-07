@@ -14,7 +14,8 @@ from .bri import BriNetwork
 from .timebase import ASIC_DSP_CLOCK_HZ
 from . import imodem_trace
 from .peripheral_clock import PeripheralClock
-from .pic import InterruptControllers
+from .poll_state import MAX_ASSERTED, PollState
+from .pic import PORTS as PIC_PORTS, InterruptControllers
 from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .dsp import ImodemHostIo, ImodemShared
@@ -372,6 +373,28 @@ KEYPRESS_ABORT = 0x17
 DTR_DROPPED = 0x01
 
 
+class _Cells:
+    """A short list over a ctypes array, as `_timer_coalesced_wraps` is used."""
+
+    def __init__(self, array) -> None:
+        self._array = array
+
+    def __getitem__(self, index):
+        return self._array[index]
+
+    def __setitem__(self, index, value) -> None:
+        self._array[index] = value
+
+    def __iter__(self):
+        return iter(list(self._array))
+
+    def __len__(self) -> int:
+        return len(self._array)
+
+    def __eq__(self, other) -> bool:
+        return list(self._array) == list(other)
+
+
 @dataclass
 class IsdnRunResult:
     status: str
@@ -462,7 +485,6 @@ class IsdnMachine:
         self.profile = profile
         self.mailbox_service = mailbox_service
         self.rtos_service = rtos_service
-        self._next_rtos_service = RTOS_SERVICE_INSTRUCTIONS
         if with_dsp and mailbox is not None:
             raise ValueError('with_dsp and an explicit mailbox are mutually exclusive')
         if with_dsp:
@@ -476,10 +498,10 @@ class IsdnMachine:
         self._ledger = shared if shared is not None else ImodemShared()
         self._native_io = None
         self._elision = False
+        self._run_end = 1 << 62
         self._elision_enabled = 0
         self._asserted: list[int] = []
         self._why = Counter()
-        self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
 
         # Content to lay over the flash window before the firmware runs, as
         # (physical address, bytes). The payload is an update image and stops
@@ -537,6 +559,13 @@ class IsdnMachine:
         self.pit = ProgrammableIntervalTimer()
         self._peripheral_clock = PeripheralClock(INSTRUCTIONS_PER_SECOND)
         self.pic = InterruptControllers()
+        # The interrupt controllers' registers, the 8254's wrap bookkeeping and
+        # the counters the poll keeps are shared with the native port model.
+        self._ps = PollState()
+        self.pic.bind(self._ps)
+        self.pit.bind(self._ps)
+        self._next_rtos_service = RTOS_SERVICE_INSTRUCTIONS
+        self._next_mailbox_service = MAILBOX_SERVICE_INSTRUCTIONS
         self.dsc = Am79C30()
         if with_dsp:
             self.mailbox.dsc = self.dsc
@@ -549,9 +578,6 @@ class IsdnMachine:
         self.uart_clock_select = 0
 
         self.instructions = 0
-        self.timer_ticks = 0
-        self._timer_coalesced_wraps = [0, 0, 0]
-        self.hardware_interrupts = 0
         self.software_interrupts: Counter[int] = Counter()
         self.io_counts: Counter[tuple[str, int]] = Counter()
         self.channels: dict[int, SerialChannel] = {
@@ -592,6 +618,43 @@ class IsdnMachine:
         self.error: str | None = None
         self._stop_reason: str | None = None
         self._next_poll = TIMER_POLL_INSTRUCTIONS
+
+    # Counters the poll keeps, in the state it shares with the native port model.
+    @property
+    def timer_ticks(self) -> int:
+        return self._ps.timer_ticks
+
+    @timer_ticks.setter
+    def timer_ticks(self, value: int) -> None:
+        self._ps.timer_ticks = value
+
+    @property
+    def hardware_interrupts(self) -> int:
+        return self._ps.hardware_interrupts
+
+    @hardware_interrupts.setter
+    def hardware_interrupts(self, value: int) -> None:
+        self._ps.hardware_interrupts = value
+
+    @property
+    def _next_rtos_service(self) -> int:
+        return self._ps.next_rtos
+
+    @_next_rtos_service.setter
+    def _next_rtos_service(self, value: int) -> None:
+        self._ps.next_rtos = value
+
+    @property
+    def _next_mailbox_service(self) -> int:
+        return self._ps.next_mailbox
+
+    @_next_mailbox_service.setter
+    def _next_mailbox_service(self, value: int) -> None:
+        self._ps.next_mailbox = value
+
+    @property
+    def _timer_coalesced_wraps(self):
+        return _Cells(self._ps.coalesced)
 
     # -- image -------------------------------------------------------------
 
@@ -657,8 +720,6 @@ class IsdnMachine:
             self.machine.emu_stop()
 
     def read_port(self, port: int) -> int:
-        if self._ledger.elided_any:
-            self._catch_up()
         dsp_port = (
             port in (0x18, 0x1a, 0x1c, 0x1e)
             or port in self.mailbox.LANES or 0x40 <= port < 0x58
@@ -710,8 +771,6 @@ class IsdnMachine:
         return self.port_values.get(port, 0)
 
     def write_port(self, port: int, value: int) -> None:
-        if self._ledger.elided_any:
-            self._catch_up()
         # The 40h..5eh lanes only stage a download word in the host-side
         # bridge. The C5x cannot observe it until a later 18h/1eh strobe, so
         # advancing before every staged byte adds thousands of scheduler
@@ -909,16 +968,16 @@ class IsdnMachine:
                 self.pic.raise_irq(line)
 
     def _update_elision(self) -> None:
-        """Say whether the native engine may skip the next polls, and until when.
+        """Say whether the native engine may run the next polls, and until when.
 
-        Once a poll has run, the engine can leave the following ones to the
-        native port model (flush, prefeed, advance) as long as everything else
-        in `poll_timers` would find nothing to do: a call is up on the bearer
-        line, the interrupt sources are quiet, the serial lines are idle, and
-        no timer falls due. This works out the first instruction count at
-        which that stops holding; anything the harness touches in between
-        (`poll_dirty`) ends it sooner. See IsdnMachine.poll_timers for what is
-        being skipped, and ImodemHostIo::poll for what is not.
+        Once a poll has run, the engine can run the following ones itself (the
+        DSP, the PCM exchange, the interrupt controllers, the timers and the
+        interrupt that results; see ImodemHostIo::poll) as long as everything
+        else in `poll_timers` would find nothing to do: a call is up on the
+        bearer line, the serial lines are idle, nobody has touched a device
+        (`poll_dirty`), and no timer of the harness's own falls due. This
+        works out what the engine needs to know and the first instruction count
+        at which that stops holding.
         """
         led = self._ledger
         led.elide_on = 0
@@ -947,16 +1006,6 @@ class IsdnMachine:
         if self._line_walk or self.dsc.sent:
             why["dsc"] += 1
             return
-        # Sources that stay asserted: each poll raises them again, which does
-        # nothing once they are in the controller (and is repeated by
-        # `_catch_up` for anything that looks before the next full poll).
-        asserted = [channel.irq for channel in self.channels.values()
-                    if channel.irq is not None and channel.interrupting()]
-        if dsc.interrupting():
-            asserted.append(DSC_IRQ)
-        if self.pic.would_deliver(asserted):
-            why["pic"] += 1
-            return
         command = self.channels[self.command_base]
         if len(command.tx) > command._sent:
             why["output"] += 1
@@ -966,56 +1015,46 @@ class IsdnMachine:
                     or channel.tx_holding is not None):
                 why["serial"] += 1
                 return
-        deadlines = [until]
+        clock = self._peripheral_clock
+        if clock.origin_time is not None:
+            why["clock"] += 1
+            return
+        # Sources that stay asserted are raised again by every poll.
+        asserted = [channel.irq for channel in self.channels.values()
+                    if channel.irq is not None and channel.interrupting()]
+        if dsc.interrupting():
+            asserted.append(DSC_IRQ)
+        if len(asserted) > MAX_ASSERTED:
+            why["asserted"] += 1
+            return
+        # The last polls of a run are Python's, so what the engine defers
+        # (the B channel's bookkeeping) is settled when the run ends.
+        deadlines = [until, self._run_end - 2 * TIMER_POLL_INSTRUCTIONS]
         if self.offhook_at is not None and not self._offhook_done:
             deadlines.append(self.offhook_at)
         if self.serial_pump is not None:
             due = self.serial_pump.next_due(self)
             if due is not None:
                 deadlines.append(due)
-        clock = self._peripheral_clock
-        if clock.origin_time is not None:
-            why["clock"] += 1
-            return
-        # The peripheral clock advances one for one with the instruction count
-        # while the run is offline, so a value it must reach is an instruction
-        # count the same distance on.
-        origin = clock.instructions - clock.value
-        for counter in self.pit.counters:
-            if counter.next_due != float("inf"):
-                needed = -(-int(counter.next_due) * INSTRUCTIONS_PER_SECOND // self.pit.clock_hz)
-                deadlines.append(origin + needed)
-        if self.rtos_service:
-            deadlines.append(origin + self._next_rtos_service)
-        if self.mailbox_service:
-            deadlines.append(origin + self._next_mailbox_service)
         deadlines.append(peer._instructions_seen
                          + (HIGHWAY_STALL_SAMPLES - peer._stalled_samples)
                          * CPU_INSTRUCTIONS_PER_SAMPLE)
         mailbox._publish_mode()
+        state = self._ps
+        # The peripheral clock advances one for one with the instruction count
+        # while the run is offline: it reads (instructions - origin).
+        state.clock_origin = clock.instructions - clock.value
+        state.rtos_on = bool(self.rtos_service)
+        state.mailbox_on = bool(self.mailbox_service)
+        state.asserted_count = len(asserted)
+        for index, line in enumerate(asserted):
+            state.asserted[index] = line
         led.clock_seen = peer._octets_seen
         led.clock_pending = len(peer._pending)
         led.elide_until = max(0, min(deadlines))
-        self._asserted = asserted
         led.poll_dirty = 0
         led.elide_on = 1
         self._elision_enabled += 1
-
-    def _catch_up(self) -> None:
-        """Do to the interrupt controller what the polls the engine skipped would have.
-
-        Each raised the sources that stay asserted and, with IF set, had the
-        controller tidy away a cascade request that led nowhere. Only the last
-        of them leaves a trace, and it is the harness's job to leave it before
-        anything looks at the controller.
-        """
-        led = self._ledger
-        if led.elided_any:
-            led.elided_any = 0
-            for irq in self._asserted:
-                self.pic.raise_irq(irq)
-            if led.elided_if:
-                self.pic.pending_vector()
 
     def _advance_line(self) -> None:
         """Walk the S interface up, one state per step, once the run reaches it."""
@@ -1241,8 +1280,6 @@ class IsdnMachine:
 
         def on_interrupt(_uc: Any, number: int, _data: Any) -> None:
             self._ledger.poll_dirty = 1
-            if self._ledger.elided_any:
-                self._catch_up()
             # Unicorn retires the `int n` before this hook runs, so IP already
             # points at the next instruction and the opcode is two bytes back.
             cs = uc.reg_read(UC_X86_REG_CS)
@@ -1267,10 +1304,9 @@ class IsdnMachine:
             return False
 
         instruction_base = self.instructions
+        self._run_end = instruction_base + instructions
         if self.cpu_engine == "interpreter" and not profile and observer is None:
             def apply_native_outputs(events: memoryview, count: int) -> None:
-                if self._ledger.elided_any:
-                    self._catch_up()
                 for offset in range(0, count * 4, 4):
                     port = events[offset] | events[offset + 1] << 8
                     value = events[offset + 2]
@@ -1316,6 +1352,18 @@ class IsdnMachine:
                 host_ports = bytearray(65536)
                 for port in (0x18, 0x1A, 0x1C, 0x1E, *lane_ports):
                     host_ports[port] |= 3
+                # The interrupt controllers' ports are served from the shared
+                # state, with no Python on either side of an access.
+                native_io.set_poll_state(self._ps)
+                self._ps.rtos_interval = RTOS_SERVICE_INSTRUCTIONS
+                self._ps.mailbox_interval = MAILBOX_SERVICE_INSTRUCTIONS
+                for index in range(3):
+                    lines = list(self.counter_irq.get(index, ()))[:4]
+                    for entry in range(4):
+                        self._ps.counter_irq[4 * index + entry] = (
+                            lines[entry] if entry < len(lines) else -1)
+                for port in PIC_PORTS:
+                    host_ports[port] |= 3
 
                 def refresh_native_io() -> None:
                     mailbox = self.mailbox
@@ -1351,8 +1399,6 @@ class IsdnMachine:
                 refresh_native_io()
 
             def service(_uc: Any, retired: int, _data: Any, resume: int = 0) -> None:
-                if self._ledger.elided_any:
-                    self._catch_up()
                 self.instructions = instruction_base + retired
                 self._next_poll = self.instructions + TIMER_POLL_INSTRUCTIONS
                 self.poll_timers(resume)
@@ -1370,8 +1416,6 @@ class IsdnMachine:
 
             def patch_hook(_uc: Any, address: int, _size: int, _data: Any) -> None:
                 self._ledger.poll_dirty = 1
-                if self._ledger.elided_any:
-                    self._catch_up()
                 sync_instruction()
                 patch_at(address)
 
@@ -1456,8 +1500,20 @@ class IsdnMachine:
                 self.io_counts[("in", port)] += reads[port]
             if writes[port]:
                 self.io_counts[("out", port)] += writes[port]
+        # The interrupt controllers' four ports are tallied in the shared state.
+        for index, port in enumerate(PIC_PORTS):
+            if self._ps.pic_in[index]:
+                self.io_counts[("in", port)] += self._ps.pic_in[index]
+                self._ps.pic_in[index] = 0
+            if self._ps.pic_out[index]:
+                self.io_counts[("out", port)] += self._ps.pic_out[index]
+                self._ps.pic_out[index] = 0
 
     def _result(self, status: str, registers: dict[str, int]) -> IsdnRunResult:
+        # Polls the engine ran itself read the peripheral clock too.
+        clock = self._peripheral_clock
+        if self._ps.last_poll > clock.instructions and clock.origin_time is None:
+            clock.read(self._ps.last_poll, False)
         if getattr(self, "_pcm_batch", False):
             self.mailbox.flush_pcm()
         self._flush_native_io()
@@ -1524,7 +1580,7 @@ class IsdnMachine:
                 **self.pit.status(self._peripheral_instructions()),
                 "time_seconds": self._peripheral_clock.value / INSTRUCTIONS_PER_SECOND,
                 "cpu_time_seconds": self.instructions / INSTRUCTIONS_PER_SECOND,
-                "coalesced_timer_edges": self._timer_coalesced_wraps,
+                "coalesced_timer_edges": list(self._timer_coalesced_wraps),
             },
             pic=self.pic.status(),
             dsc=self.dsc.status(),

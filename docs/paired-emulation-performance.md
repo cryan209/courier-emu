@@ -168,3 +168,23 @@ the engine back to Python is mostly the timers: the mailbox service
 (every ~2000 instructions), the three PIT counters and the RTOS tick each fall
 due every few polls, and each one is a full poll and an interrupt delivery in
 Python. Serving the PIC and those timers natively is the next step.
+
+## Native PIC and timers
+
+The interrupt controllers, the 8254's wrap bookkeeping and the service
+deadlines now live in one ctypes structure (`courier_emu/poll_state.py`, mirrored
+by `PollState` in `c5x_capi.cpp`). `Pic8259`, `Counter` and `IsdnMachine` read
+and write its fields as ordinary attributes, so Python and the native model
+share the same memory and never copy. The PIC ports (0xF020/1, 0xF0A0/1) are
+served by the host-port model, and the native poll takes the timer wraps, the
+RTOS and mailbox deadlines and the asserted interrupt lines itself, then enters
+the interrupt in the engine (`enter_interrupt`). Python's dispatch charges one
+retired instruction per injected interrupt, so the engine does the same
+(poll code 4) to stay bit-identical.
+`tests/test_native_port_models.py` checks the native PIC ports against the
+Python controllers.
+
+Full call: 169 s -> 155 s (I-modem 112.6 s of CPU, worker 140.6 s), results
+bit-identical; about 208k of 244k in-call polls run natively. The I-modem is
+now under the 120 s of line time; the analog worker is the limiter and needs
+the same treatment (native poll, PIC and timers).

@@ -88,6 +88,132 @@ struct LaneHostIo {
 }
 
 namespace {
+// The interrupt controllers' registers, the 8254's wrap bookkeeping and the
+// counters the poll keeps: the layout of PollState in poll_state.py.
+struct PicChip {
+    uint8_t vector_base, mask, irr, isr, auto_eoi, read_isr, expect_icw4, single, init_words;
+};
+struct PitSlot {
+    uint64_t next_due, origin, reported;
+    uint32_t initial;
+    uint8_t programmed;
+};
+constexpr uint64_t PIT_INFINITE = ~uint64_t(0);
+
+// The engine's registers and memory, lent to the poll for an interrupt entry
+// (x86_interpreter.cpp's Core, in the order its register array has them).
+struct PollCpu {
+    uint32_t *regs;
+    uint8_t *memory;
+    std::size_t memory_size;
+};
+enum { REG_SP = 4, REG_CS = 9, REG_SS = 10, REG_IP = 12, REG_FLAGS = 13 };
+struct PollState {
+    PicChip pic[2];
+    uint64_t delivered;
+    PitSlot pit[3];
+    uint64_t timer_ticks;
+    uint64_t coalesced[3];
+    int8_t counter_irq[12];
+    uint64_t pit_clock_hz, ips;
+    int64_t clock_origin;
+    uint64_t next_rtos, next_mailbox, rtos_interval, mailbox_interval;
+    uint8_t rtos_on, mailbox_on;
+    uint8_t asserted_count, asserted[8];
+    uint64_t hardware_interrupts;
+    uint64_t last_poll;
+    uint64_t pic_in[4], pic_out[4];
+};
+
+// pic.py, line for line.
+namespace pic {
+constexpr unsigned CASCADE = 2;
+inline void command(PicChip &c, uint8_t value)
+{
+    if (value & 0x10) {
+        c.expect_icw4 = value & 1;
+        c.single = (value & 2) != 0;
+        c.init_words = 1;
+        c.isr = 0;
+        c.irr = 0;
+        return;
+    }
+    if (value & 0x08) {
+        if (value == 0x0B) c.read_isr = 1;
+        else if (value == 0x0A) c.read_isr = 0;
+        return;
+    }
+    if (value & 0x20) {
+        if (value & 0x40) {
+            c.isr &= uint8_t(~(1u << (value & 7)));
+        } else {
+            for (unsigned line = 0; line < 8; ++line)
+                if (c.isr & (1u << line)) { c.isr &= uint8_t(~(1u << line)); break; }
+        }
+    }
+}
+inline void data(PicChip &c, uint8_t value)
+{
+    if (c.init_words == 1) {
+        c.vector_base = value & 0xF8;
+        if (!c.single) c.init_words = 2;
+        else c.init_words = c.expect_icw4 ? 3 : 0;
+        return;
+    }
+    if (c.init_words == 2) { c.init_words = c.expect_icw4 ? 3 : 0; return; }
+    if (c.init_words == 3) { c.auto_eoi = (value & 2) != 0; c.init_words = 0; return; }
+    c.mask = value;
+}
+inline int pending(const PicChip &c, uint8_t irr)
+{
+    const uint8_t ready = irr & uint8_t(~c.mask);
+    if (!ready) return -1;
+    for (unsigned line = 0; line < 8; ++line) {
+        const uint8_t bit = uint8_t(1u << line);
+        if (c.isr & bit) return -1;
+        if (ready & bit) return int(line);
+    }
+    return -1;
+}
+inline void acknowledge(PicChip &c, unsigned line)
+{
+    c.irr &= uint8_t(~(1u << line));
+    if (!c.auto_eoi) c.isr |= uint8_t(1u << line);
+}
+inline void raise(PollState &s, unsigned irq)
+{
+    if (irq < 8) {
+        s.pic[0].irr |= uint8_t(1u << irq);
+    } else {
+        s.pic[1].irr |= uint8_t(1u << (irq - 8));
+        s.pic[0].irr |= uint8_t(1u << CASCADE);
+    }
+}
+// InterruptControllers.pending_vector: -1 when nothing is ready.
+inline int pending_vector(PollState &s)
+{
+    PicChip &master = s.pic[0], &slave = s.pic[1];
+    const int line = pending(master, master.irr);
+    if (line < 0) return -1;
+    if (line == int(CASCADE)) {
+        const int slave_line = pending(slave, slave.irr);
+        if (slave_line < 0) {
+            master.irr &= uint8_t(~(1u << CASCADE));
+            return -1;
+        }
+        acknowledge(master, CASCADE);
+        acknowledge(slave, unsigned(slave_line));
+        ++s.delivered;
+        return slave.vector_base + slave_line;
+    }
+    acknowledge(master, unsigned(line));
+    ++s.delivered;
+    return master.vector_base + line;
+}
+}  // namespace pic
+}
+
+namespace {
 constexpr std::size_t OV_LOG_CAPACITY = 8192;
 // State the I-modem's mailbox endpoint shares with its native port model.
 // Python reads and writes these fields in place through a ctypes mirror of
@@ -145,6 +271,30 @@ struct ImodemHostIo {
     uint32_t read_quantum = 0;
     uint32_t in_count[256] = {}, out_count[256] = {};
     courier::Bearer *bearer = nullptr;
+    PollState *ps = nullptr;
+
+    // The 8259 registers at 0xf020/0xf021 and 0xf0a0/0xf0a1.
+    bool serve_pic(int direction, uint16_t port, uint16_t value, uint16_t *out)
+    {
+        unsigned slot;
+        switch (port) {
+        case 0xF020: slot = 0; break;
+        case 0xF021: slot = 1; break;
+        case 0xF0A0: slot = 2; break;
+        case 0xF0A1: slot = 3; break;
+        default: return false;
+        }
+        PicChip &chip = ps->pic[slot >> 1];
+        if (direction == 1) {
+            *out = (slot & 1) ? chip.mask : (chip.read_isr ? chip.isr : chip.irr);
+            ++ps->pic_in[slot];
+        } else {
+            if (slot & 1) pic::data(chip, uint8_t(value));
+            else pic::command(chip, uint8_t(value));
+            ++ps->pic_out[slot];
+        }
+        return true;
+    }
 
     uint16_t word(uint16_t port) const
     {
@@ -298,7 +448,82 @@ struct ImodemHostIo {
     // (flush, prefeed, advance), when everything else in that poll is known to
     // do nothing. 1: done; 0: run the whole poll in Python; 2/3: the poll was
     // begun here and Python finishes it.
-    int poll(uint64_t now, uint32_t flags)
+    // IsdnMachine.push_far: take `vector` through the vector table. False for
+    // a null vector, with nothing changed.
+    static bool enter_interrupt(const PollCpu &cpu, unsigned vector)
+    {
+        uint32_t *r = cpu.regs;
+        uint8_t *mem = cpu.memory;
+        const std::size_t length = cpu.memory_size;
+        const uint32_t table = vector * 4;
+        const uint16_t offset = uint16_t(mem[table] | uint16_t(mem[table + 1]) << 8);
+        const uint16_t segment = uint16_t(mem[table + 2] | uint16_t(mem[table + 3]) << 8);
+        if (!offset && !segment) return false;
+        uint16_t sp = uint16_t(r[REG_SP]);
+        const uint16_t values[] = {uint16_t(r[REG_FLAGS]), uint16_t(r[REG_CS]), uint16_t(r[REG_IP])};
+        for (uint16_t value : values) {
+            sp = uint16_t(sp - 2);
+            const uint32_t address = uint32_t(((r[REG_SS] & 65535) * 16 + sp) % length);
+            mem[address] = uint8_t(value);
+            mem[(address + 1) % length] = uint8_t(value >> 8);
+        }
+        r[REG_SP] = sp;
+        r[REG_FLAGS] = uint16_t(r[REG_FLAGS]) & ~uint32_t(0x0200 | 0x0100);
+        r[REG_CS] = segment;
+        r[REG_IP] = offset;
+        return true;
+    }
+
+    // What is left of IsdnMachine.poll_timers once the DSP has been dealt with,
+    // and of its caller's tail: the services that raise a line when due, the
+    // sources that stay asserted, the 8254 wraps, and the interrupt the
+    // controller hands over if IF allows one.
+    bool tail(uint64_t now, uint32_t flags, const PollCpu &cpu)
+    {
+        PollState &s = *ps;
+        const uint64_t value = uint64_t(int64_t(now) - s.clock_origin);
+        if (s.rtos_on && value >= s.next_rtos) {
+            s.next_rtos = value + s.rtos_interval;
+            pic::raise(s, 11);
+        }
+        for (unsigned index = 0; index < s.asserted_count; ++index) pic::raise(s, s.asserted[index]);
+        if (s.mailbox_on && value >= s.next_mailbox) {
+            s.next_mailbox = value + s.mailbox_interval;
+            pic::raise(s, 13);
+        }
+        const uint64_t ticks = value * s.pit_clock_hz / s.ips;
+        for (unsigned index = 0; index < 3; ++index) {
+            PitSlot &slot = s.pit[index];
+            if (ticks < slot.next_due) continue;
+            const uint64_t period = slot.initial ? slot.initial : 65536;
+            const uint64_t elapsed = ticks > slot.origin ? ticks - slot.origin : 0;
+            const uint64_t total = slot.programmed ? elapsed / period : 0;
+            const uint64_t fresh = total > slot.reported ? total - slot.reported : 0;
+            slot.reported = total;
+            slot.next_due = slot.programmed ? slot.origin + (total + 1) * period : PIT_INFINITE;
+            if (!fresh) continue;
+            s.timer_ticks += fresh;
+            for (unsigned entry = 0; entry < 4 && s.counter_irq[4 * index + entry] >= 0; ++entry) {
+                const unsigned line = unsigned(s.counter_irq[4 * index + entry]);
+                const PicChip &chip = s.pic[line >= 8 ? 1 : 0];
+                const bool already = (chip.irr >> (line % 8)) & 1;
+                s.coalesced[index] += fresh - (already ? 0 : 1);
+                pic::raise(s, line);
+            }
+        }
+        s.last_poll = now;
+        bool delivered = false;
+        if (flags & 0x200) {
+            const int vector = pic::pending_vector(s);
+            if (vector >= 0 && enter_interrupt(cpu, unsigned(vector))) {
+                ++s.hardware_interrupts;
+                delivered = true;
+            }
+        }
+        return delivered;
+    }
+
+    int poll(uint64_t now, uint32_t flags, const PollCpu &cpu)
     {
         ImodemShared *sh = shared;
         if (!sh || !core || !live || !bearer || !sh->elide_on) return 0;
@@ -325,14 +550,17 @@ struct ImodemHostIo {
             b.prefeed(core);
         }
         if (b.ahead.size() * 2 <= b.lookahead_frames) b.prefeed(core);
-        // The poll's tail looks at IF, so the harness has to know it was set.
-        sh->elided_if = (flags & 0x200) ? 1 : 0;
-        sh->elided_any = 1;
-        if (advance(now, 0)) { ++sh->polls_native; return 1; }
-        const int result = service();
-        if (result == 0) { ++sh->polls_native; return 1; }
-        ++sh->polls_resumed;
-        return result;
+        int result = 0;
+        if (!advance(now, 0)) result = service();
+        if (result) {
+            ++sh->polls_resumed;
+            return result;
+        }
+        const bool delivered = tail(now, flags, cpu);
+        ++sh->polls_native;
+        // An interrupt taken costs the dispatch edge one retired instruction
+        // that executes nothing (see Core::poll_fn).
+        return delivered ? 4 : 1;
     }
 
     // true: the C5x is where the harness would have put it; false: the
@@ -526,14 +754,19 @@ int courier_imodemio_advance(void *context, uint64_t now, unsigned quantum)
     return io->advance(now, quantum) ? 1 : 0;
 }
 
+void courier_imodemio_set_poll_state(void *context, void *state)
+{
+    static_cast<ImodemHostIo *>(context)->ps = static_cast<PollState *>(state);
+}
+
 void courier_imodemio_set_bearer(void *context, void *bearer)
 {
     static_cast<ImodemHostIo *>(context)->bearer = static_cast<courier::Bearer *>(bearer);
 }
 
-int courier_imodemio_poll(void *context, uint64_t now, uint32_t flags)
+int courier_imodemio_poll(void *context, uint64_t now, uint32_t flags, void *cpu)
 {
-    return static_cast<ImodemHostIo *>(context)->poll(now, flags);
+    return static_cast<ImodemHostIo *>(context)->poll(now, flags, *static_cast<PollCpu *>(cpu));
 }
 
 int courier_imodemio_access(void *context, int direction, uint16_t port,
@@ -541,6 +774,7 @@ int courier_imodemio_access(void *context, int direction, uint16_t port,
 {
     auto *io = static_cast<ImodemHostIo *>(context);
     ImodemShared *sh = io->shared;
+    if (io->ps && port >= 0xF020 && io->serve_pic(direction, port, value, out)) return 1;
     if (!sh || size != 1 || port >= 0x60) return 0;
     const bool lane = port >= 0x40 && port < 0x58 && !(port & 1);
     if (direction == 2 && lane) {

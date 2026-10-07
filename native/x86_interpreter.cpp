@@ -28,10 +28,12 @@ struct Core {
     // the instruction that would retire as number `poll_next` (counting from
     // `poll_total`, what had retired before this batch) the engine asks
     // poll_fn(context, now). 1: the poll was done; the next falls due
-    // `poll_period` later and execution carries on. Anything else leaves the
+    // `poll_period` later and execution carries on (4: and an interrupt was
+    // taken, which retires one instruction without running it). Anything else leaves the
     // engine with reason 9 and that answer in poll_code, for the harness to run
     // its own poll (code 0) or finish a partly done one (codes 2, 3).
-    typedef int (*PollFn)(void *context,uint64_t now,uint32_t flags);
+    typedef int (*PollFn)(void *context,uint64_t now,uint32_t flags,void *cpu);
+    struct PollCpu { uint32_t *regs; uint8_t *memory; std::size_t memory_size; };
     PollFn poll_fn=nullptr;
     void *poll_context=nullptr;
     uint64_t poll_total=0, poll_next=0, poll_period=0;
@@ -215,8 +217,15 @@ static uint32_t run_batch(Core &c, uint32_t count) {
     }
     for (c.done=0;c.done<count;++c.done) {
         if(c.poll_fn&&c.poll_total+c.done+1>=c.poll_next) {
-            int code=c.dirty_events?0:c.poll_fn(c.poll_context,c.host_base+c.done+1,c.r[F]);
-            if(code==1){c.poll_next=c.poll_total+c.done+1+c.poll_period;++c.polls_elided;}
+            Core::PollCpu lent{c.r,c.mem,std::size_t(c.mask)+1};
+            int code=c.dirty_events?0:c.poll_fn(c.poll_context,c.host_base+c.done+1,c.r[F],&lent);
+            if(code==1||code==4){
+                c.poll_next=c.poll_total+c.done+1+c.poll_period;++c.polls_elided;
+                // Code 4: the poll took an interrupt. The harness charges the
+                // instruction that dispatch edge retires without executing
+                // one, and so does the engine.
+                if(code==4)continue;
+            }
             else {c.poll_code=uint32_t(code);c.reason=9;break;}
         }
         uint32_t pc=c.phys(c.r[CS],c.r[IP]);
@@ -343,7 +352,7 @@ static PyObject *run_python(PyObject *, PyObject *args) {
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.
     // Running directly on Core also avoids two redundant full-state copies.
-    if(done||c.reason==8)for(int i=0;i<14;++i){
+    if(done||c.reason==8||c.polls_elided)for(int i=0;i<14;++i){
         if(c.r[i]!=original[i]){
             PyObject *v=PyLong_FromUnsignedLong(c.r[i]);if(!v)return nullptr;
             PyList_SetItem(registers,i,v);

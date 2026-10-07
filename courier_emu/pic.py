@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ctypes
 from dataclasses import dataclass, field
+
+from .poll_state import PicChip, PollState, shared_field
 
 
 # A cascaded pair of Intel 8259s, as the ISDN Courier programs them:
@@ -32,21 +35,40 @@ OCW2_SPECIFIC = 0x40
 ICW4_AUTO_EOI = 0x02
 
 
-@dataclass
 class Pic8259:
-    """One 8259, tracking the request, service, and mask registers."""
+    """One 8259, tracking the request, service, and mask registers.
 
-    name: str
-    vector_base: int = 0
-    mask: int = 0xFF
-    irr: int = 0
-    isr: int = 0
-    auto_eoi: bool = False
-    read_isr: bool = False
+    The registers live in a `PicChip` (poll_state.py), so the native port model
+    can run the same logic on the same memory; `bind` moves a chip onto the
+    harness's shared copy.
+    """
+
+    vector_base = shared_field("vector_base")
+    mask = shared_field("mask")
+    irr = shared_field("irr")
+    isr = shared_field("isr")
+    auto_eoi = shared_field("auto_eoi", bool)
+    read_isr = shared_field("read_isr", bool)
     # Remaining ICW words expected: 0 means the chip is initialised.
-    init_words: int = 0
-    expect_icw4: bool = False
-    single: bool = False
+    init_words = shared_field("init_words")
+    expect_icw4 = shared_field("expect_icw4", bool)
+    single = shared_field("single", bool)
+
+    def __init__(self, name: str, vector_base: int = 0, mask: int = 0xFF,
+                 irr: int = 0, isr: int = 0, auto_eoi: bool = False,
+                 read_isr: bool = False, init_words: int = 0,
+                 expect_icw4: bool = False, single: bool = False) -> None:
+        self.name = name
+        self._s = PicChip()
+        self.vector_base, self.mask, self.irr, self.isr = vector_base, mask, irr, isr
+        self.auto_eoi, self.read_isr, self.init_words = auto_eoi, read_isr, init_words
+        self.expect_icw4, self.single = expect_icw4, single
+
+    def bind(self, chip: PicChip) -> None:
+        """Carry on in `chip`, which takes over this one's registers."""
+        ctypes.memmove(ctypes.addressof(chip), ctypes.addressof(self._s),
+                       ctypes.sizeof(PicChip))
+        self._s = chip
 
     def command(self, value: int) -> None:
         if value & ICW1_INIT:
@@ -127,7 +149,26 @@ class InterruptControllers:
 
     master: Pic8259 = field(default_factory=lambda: Pic8259("master"))
     slave: Pic8259 = field(default_factory=lambda: Pic8259("slave"))
-    delivered: int = 0
+    _delivered: int = 0
+    _state: PollState | None = None
+
+    @property
+    def delivered(self) -> int:
+        return self._state.delivered if self._state is not None else self._delivered
+
+    @delivered.setter
+    def delivered(self, value: int) -> None:
+        if self._state is not None:
+            self._state.delivered = value
+        else:
+            self._delivered = value
+
+    def bind(self, state: PollState) -> None:
+        """Keep the controllers' registers in the harness's shared state."""
+        state.delivered = self._delivered
+        self.master.bind(state.pic[0])
+        self.slave.bind(state.pic[1])
+        self._state = state
 
     def handles(self, port: int) -> bool:
         return port in PORTS
