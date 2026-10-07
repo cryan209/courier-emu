@@ -279,12 +279,21 @@ with a baseline, and timed in alternating runs against the previous library
   inlined into it. The opcode tables are in the core's translation unit
   (`c5x_optable.ipp`) for that.
 
-CPU 71-72 s -> 61.8-62.4 s, wall 43.6 s -> 38-39 s (3.1x faster than real
+- **Per-frame sample loops in Python.** The peak meters, the line frame's
+  encode and decode and the resampler's history went through a generator per
+  sample; they are C-level now, and a native batch of port-0x14 lamp writes
+  that all repeat the latched value is replayed as its three tallies.
+
+CPU 71-72 s -> 60.7-61.2 s, wall 43.6 s -> 37-38 s (3.2x faster than real
 time). Tried without a measurable gain: folding the tables in without inlining
 the op bodies (the thunks were already a single branch), threading the
-0xBE/0xBF second-level tables, inlining `consume_cycles` and the condition
-tests, reading DMOV's and MAC's regions from the maps, `-mcpu=native`. PGO
-gave 2-3%, not enough for a two-stage build.
+0xBE/0xBF second-level tables, a threaded handler per value of the
+direct/indirect bit (with `__builtin_assume` folding `GET_ADDRESS`; the code
+growth cancelled it), inlining `consume_cycles` and the condition tests,
+reading DMOV's and MAC's regions from the maps, `-mcpu=native`, and entering
+the worker's interrupts on the interpreter's registers directly instead of
+through the accessors (cProfile overstates that cost). PGO gave 2-3%, not
+enough for a two-stage build.
 
 The worker is now about 56% C5x, 28% Python (a flat tail, about 200 calls per
 1,024-instruction service) and 12% x86 engine. The I-modem's set-up polls
