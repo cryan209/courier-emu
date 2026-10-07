@@ -65,6 +65,11 @@ class ImodemMailbox:
         return True
 
     def _stamp(self, kind: str, tag: int, value: int) -> None:
+        shared = getattr(self, '_sh', None)
+        if shared is not None and shared.tx_pending:
+            # The stamp is read off the B-channel octets heard so far, so
+            # every finished frame must have been exchanged first.
+            self.flush_pcm()
         dsc = getattr(self, 'dsc', None)
         heard = len(dsc.bearer_rx_heard[1]) if dsc is not None else 0
         if heard and len(self.timeline) < 4000:

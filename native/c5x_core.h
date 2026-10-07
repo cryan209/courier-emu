@@ -3,6 +3,7 @@
 // BSD-3-Clause tms320c5x core, copyright Ville Linde.
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -256,6 +257,14 @@ public:
     void configure_digital_pcm(bool enabled, uint16_t idle_codeword = 0xff,
         uint32_t clock_hz = 20'160'000);
     void queue_g711_rx(const uint8_t *codewords, std::size_t count);
+    // Take back the last `count` queued receive octets, which are the ones
+    // fed furthest ahead and so the only ones the C5x cannot have consumed.
+    std::size_t drop_g711_rx_tail(std::size_t count)
+    {
+        count = std::min(count, m_g711_rx.size());
+        for (std::size_t index = 0; index < count; ++index) m_g711_rx.pop_back();
+        return count;
+    }
     uint64_t g711_rx_underruns() const { return m_g711_rx_underruns; }
     std::size_t g711_rx_pending() const { return m_g711_rx.size(); }
     const std::vector<uint8_t> &g711_tx() const { return m_g711_tx; }

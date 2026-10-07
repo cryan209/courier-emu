@@ -65,8 +65,12 @@ struct ImodemShared {
     uint8_t tx_ready;
     uint8_t rx_present;
     uint8_t needs_service;       // 1: the harness has work after a native advance
-    uint8_t pad[4];
+    // Stop for the harness once this many transmitted PCM octets are waiting
+    // (0: at every finished frame, which is the unbatched behaviour).
+    uint32_t flush_octets;
     uint8_t lanes[0x60];         // window bytes by port, 0x40..0x5e
+    uint32_t tx_pending;         // transmitted octets the harness has not taken
+    uint32_t rx_pending;         // receive octets queued ahead in the core
 };
 
 // Port model for the I-modem's live data lanes and their DSP advance. It does
@@ -110,7 +114,17 @@ struct ImodemHostIo {
                 const auto &octets = core->g711_tx();
                 const std::size_t cursor = std::min<std::size_t>(
                     sh->pcm_cursor, octets.size());
-                const bool frame = octets.size() > cursor;
+                const std::size_t waiting = octets.size() - cursor;
+                const std::size_t queued = core->g711_rx_pending();
+                sh->tx_pending = uint32_t(waiting);
+                sh->rx_pending = uint32_t(queued);
+                // A finished frame is the harness's to exchange. With receive
+                // octets queued ahead the C5x can run on through several, up
+                // to flush_octets of transmit, and must stop before one that
+                // would find the queue empty.
+                const bool frame = waiting > 0
+                    && (sh->flush_octets == 0 || waiting >= sh->flush_octets
+                        || queued < 2);
                 const uint16_t status = core->io(0x57);
                 const uint64_t writes = core->io_port_stat(0x5f).writes;
                 if (sh->host_pending && !(status & 1)) {
@@ -608,6 +622,11 @@ uint64_t courier_c5x_get_g711_rx_underruns(void *handle)
 std::size_t courier_c5x_get_g711_rx_pending(void *handle)
 {
     return handle ? static_cast<C5xCore *>(handle)->g711_rx_pending() : 0;
+}
+
+std::size_t courier_c5x_drop_g711_rx_tail(void *handle, std::size_t count)
+{
+    return handle ? static_cast<C5xCore *>(handle)->drop_g711_rx_tail(count) : 0;
 }
 
 void courier_c5x_queue_g711_rx(void *handle, const uint8_t *codewords, std::size_t count)

@@ -392,6 +392,9 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
+        lib.courier_c5x_drop_g711_rx_tail.argtypes = [
+            ctypes.c_void_p, ctypes.c_size_t]
+        lib.courier_c5x_drop_g711_rx_tail.restype = ctypes.c_size_t
         lib.courier_c5x_get_io_port_writes.argtypes = [
             ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_io_port_writes.restype = ctypes.c_uint64
@@ -659,6 +662,13 @@ class NativeC5x:
         storage = (ctypes.c_uint8 * len(codewords)).from_buffer_copy(codewords)
         self.library.courier_c5x_queue_g711_rx(self.handle, storage, len(storage))
 
+    def g711_tx_exact(self, start: int, count: int) -> bytes:
+        """`count` transmitted octets from `start`, when the caller knows how many."""
+        storage = (ctypes.c_uint8 * count)()
+        got = int(self.library.courier_c5x_get_g711_tx_since(
+            self.handle, start, storage, count))
+        return bytes(storage[:min(got, count)])
+
     def g711_tx(self, start: int = 0) -> bytes:
         start = max(0, start)
         count = int(self.library.courier_c5x_get_g711_tx_since(
@@ -779,6 +789,10 @@ class NativeC5x:
                 state[name] -= 0x100000000
         state["idle"] = bool(state["idle"])
         return state
+
+    def drop_g711_rx_tail(self, count: int) -> int:
+        """Un-queue the last `count` receive octets; returns how many went."""
+        return self.library.courier_c5x_drop_g711_rx_tail(self.handle, count)
 
     def io_port_writes(self, port: int) -> int:
         """How many times the DSP has written one I/O port."""
@@ -1203,8 +1217,10 @@ class ImodemShared(ctypes.Structure):
         ("tx_ready", ctypes.c_uint8),
         ("rx_present", ctypes.c_uint8),
         ("needs_service", ctypes.c_uint8),
-        ("pad", ctypes.c_uint8 * 4),
+        ("flush_octets", ctypes.c_uint32),
         ("lanes", ctypes.c_uint8 * 0x60),
+        ("tx_pending", ctypes.c_uint32),
+        ("rx_pending", ctypes.c_uint32),
     ]
 
 

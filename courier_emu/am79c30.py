@@ -136,6 +136,8 @@ BB_PORT = 0x0305     # Bb transmit/receive - never touched on this board
 BC_PORT = 0x0306     # Bc transmit/receive - likewise
 DSR2_PORT = 0x0307   # D-channel status 2: the byte-by-byte handshake
 PORTS = range(COMMAND_PORT, DSR2_PORT + 1)
+# The registers a bearer frame's routing and slot positions come from.
+BEARER_REGISTERS = (0x41, 0x42, 0x43, 0xC0)
 
 # IR, read at the command port. Each bit is named by the branch the firmware's
 # ISR takes on it; the mask it loops on is 0x2f.
@@ -298,6 +300,9 @@ class Am79C30:
     bearer_rx: dict = field(default_factory=lambda: {1: deque(), 2: deque()})
     bearer_tx: dict = field(default_factory=lambda: {1: bytearray(), 2: bytearray()})
     bearer_frames: int = 0
+    # Bumped whenever what a bearer frame depends on changes: the line coming
+    # up or going down, and the MUX and peripheral-port registers.
+    bearer_generation: int = 0
     bearer_routed: Counter = field(default_factory=Counter)
     # Frames a channel had no network octet for, once any had been queued:
     # each one is an idle codeword spliced into the far end's audio.
@@ -366,6 +371,11 @@ class Am79C30:
                         len(self.bearer_rx_heard[channel]))
             if self.activated and self.bearer_rx_fed[channel]:
                 self.bearer_rx_heard[channel].append(inputs[channel])
+        return self._route_bearer(inputs, peripheral, routes, idle)
+
+    def _route_bearer(self, inputs: dict[int, int], peripheral: dict[int, int],
+                      routes: list[tuple[int, int]], idle: int) -> dict[int, int]:
+        """The second half of a frame: the MUX's outputs, and what B1/B2 sent."""
         outputs = {port: idle for port in range(1, 9)}
         for left, right in routes:
             if not self.activated and (left in (1, 2) or right in (1, 2)):
@@ -379,6 +389,126 @@ class Am79C30:
             self.bearer_tx[channel].append(outputs[channel])
         self.bearer_frames += 1
         return outputs
+
+    def bearer_state(self, channels: tuple[int, ...]) -> tuple:
+        """What `bearer_take_ahead` assumed: the line and routing, and the call's channel."""
+        return (self.bearer_generation, channels)
+
+    def bearer_take_ahead(self, slots: list[int | None], count: int,
+                          channels: tuple[int, ...],
+                          idle: int = 0xff) -> tuple[list[tuple[dict, dict, list]], bytes]:
+        """Take the network side of up to `count` future frames, early.
+
+        What a frame hands the modem comes from the B1/B2 queues alone unless
+        the MUX loops one peripheral slot back to another, so for an ordinary
+        call it can be settled before the modem has sent its half. Each
+        returned entry is finished later with `bearer_finish_frame`, in order,
+        and the second return value is the octets those frames put on the
+        peripheral port's `slots`.
+
+        `channels` are the B channels carrying the call. Only frames for which
+        each of them already has an octet queued are taken: a frame's octet is
+        whatever is queued when it comes due, so settling an empty queue early
+        would hide what arrives before then. Nothing is taken when the line is
+        down, when no channel carries a call, or when a route joins two
+        peripheral ports; the caller then falls back to clock_bearer, frame by
+        frame.
+        """
+        if not self.activated or not channels:
+            return [], b''
+        routes = self.bearer_routes()
+        if any(left not in (1, 2) and right not in (1, 2)
+               for left, right in routes):
+            return [], b''
+        entries: list[tuple[dict, dict, list]] = []
+        octets = bytearray()
+        for _ in range(count):
+            if any(not self.bearer_rx[channel] for channel in channels):
+                break
+            # A channel outside the call that has been fed and run dry would
+            # be an underrun: clock_bearer's to account for.
+            if any(not self.bearer_rx[channel] and self.bearer_rx_fed[channel]
+                   for channel in (1, 2) if channel not in channels):
+                break
+            inputs: dict[int, int] = {}
+            heard: dict[int, int] = {}
+            taken: list[int] = []
+            for channel in (1, 2):
+                queue = self.bearer_rx[channel]
+                if queue:
+                    inputs[channel] = queue.popleft()
+                    taken.append(channel)
+                else:
+                    inputs[channel] = idle
+                if self.bearer_rx_fed[channel]:
+                    heard[channel] = inputs[channel]
+            outputs = {port: idle for port in range(1, 9)}
+            for left, right in routes:
+                outputs[left] = inputs.get(right, idle)
+                outputs[right] = inputs.get(left, idle)
+            octets.extend(outputs.get(port, idle) if port else idle
+                          for port in slots)
+            entries.append((inputs, heard, taken))
+        return entries, bytes(octets)
+
+    def bearer_return_ahead(self, entries: list[tuple[dict, dict, list]]) -> None:
+        """Put frames `bearer_take_ahead` took, but nothing finished, back."""
+        for channel_inputs, _heard, taken in reversed(entries):
+            for channel in taken:
+                self.bearer_rx[channel].appendleft(channel_inputs[channel])
+
+    def bearer_finish_batch(self, entries: list[tuple[dict, dict, list]],
+                            octets: bytes | bytearray,
+                            slots: list[int | None], idle: int = 0xff) -> bool:
+        """`bearer_finish_frame` for a run of frames at once, when that is easy.
+
+        `octets` holds the modem's transmitted octets, `len(slots)` per frame.
+        For the usual routing - every route joins one B channel to one
+        peripheral port, no channel or port twice - a frame's only dependence
+        on the modem is that the routed channel carries the port's octet, so
+        the run reduces to slicing. Anything else returns False with nothing
+        done, and the caller finishes the frames one by one.
+        """
+        if not self.activated:
+            return False
+        count = len(entries)
+        step = len(slots)
+        if count * step != len(octets):
+            return False
+        routes = self.bearer_routes()
+        carried: dict[int, int | None] = {}
+        ports: set[int] = set()
+        for left, right in routes:
+            channel, port = (left, right) if left in (1, 2) else (right, left)
+            if (channel not in (1, 2) or port in (1, 2) or channel in carried
+                    or port in ports):
+                return False
+            carried[channel] = port
+            ports.add(port)
+        for channel in (1, 2):
+            port = carried.get(channel)
+            if port is not None and port in slots:
+                self.bearer_tx[channel].extend(octets[slots.index(port)::step])
+                self.bearer_routed[channel] += count
+            else:
+                self.bearer_tx[channel].extend(bytes((idle,)) * count)
+        for channel in (1, 2):
+            values = [heard[channel] for _, heard, _ in entries
+                      if channel in heard]
+            if values:
+                self.bearer_rx_heard[channel].extend(values)
+        self.bearer_frames += count
+        return True
+
+    def bearer_finish_frame(self, entry: tuple[dict, dict, list],
+                            peripheral: dict[int, int], idle: int = 0xff) -> None:
+        """Finish a frame whose network side `bearer_take_ahead` settled."""
+        channel_inputs, heard, _taken = entry
+        for channel, value in heard.items():
+            self.bearer_rx_heard[channel].append(value)
+        inputs = {port: value & 0xff for port, value in peripheral.items()}
+        inputs.update(channel_inputs)
+        self._route_bearer(inputs, peripheral, self.bearer_routes(), idle)
 
     def handles(self, port: int) -> bool:
         return port in PORTS
@@ -396,6 +526,7 @@ class Am79C30:
         if state == self.liu_state:
             return
         self.liu_state = state
+        self.bearer_generation += 1
         self.ir |= IR_LIU
 
     def activate(self) -> None:
@@ -551,6 +682,8 @@ class Am79C30:
             self.overruns[register] += 1
             return
         block[self.cursor] = value & 0xFF
+        if register in BEARER_REGISTERS:
+            self.bearer_generation += 1
         self.cursor += 1
         self.write_counts[register] += 1
         if register == DLC_DTCR and self.cursor == width:

@@ -1,5 +1,7 @@
 """I-modem C5x endpoint: captured bootstrap, native runtime mailbox/overlays."""
+from collections import deque
 from hashlib import sha256
+import os
 from pathlib import Path
 import time
 
@@ -26,6 +28,17 @@ REALTIME_STEP_BATCH = 65_536
 # Return each serial frame to the receive FIFO before the C51 can clock the
 # next one. A 1024-instruction slice is shorter than a 5040-cycle PCM frame.
 PCM_STEP_BATCH = 1024
+
+# PCM frames the DSP may run between visits from the harness. Receive octets
+# for the next PCM_LOOKAHEAD_FRAMES frames are fed to it ahead of time (they
+# come from the DSC's B-channel queues, which only the harness fills), and its
+# transmitted octets are exchanged in batches of up to PCM_BATCH_FRAMES.
+# COURIER_PCM_BATCH=0 exchanges one frame at a time. The harness turns this
+# on (enable_pcm_batch) only with the native port model, where the C5x runs
+# between visits; it is exact: the I-modem's state matches the unbatched
+# path's, bit for bit, apart from the octets held ahead.
+PCM_BATCH_FRAMES = int(os.environ.get("COURIER_PCM_BATCH", "4"))
+PCM_LOOKAHEAD_FRAMES = max(8, 2 * PCM_BATCH_FRAMES)
 
 ROM_SHA256 = 'd57bc46e1bcd6d4dc8872b97bba2d98ba8fb6b8661440c566b534f0b3f82fac9'
 
@@ -58,6 +71,7 @@ def _shared_field(name, kind):
 
 
 class ImodemDsp(ImodemMailbox):
+    pcm_batch = False
     # Scalars the native port model reads and updates in place.
     tx_ready = _shared_field("tx_ready", bool)
     host_pending = _shared_field("host_pending", bool)
@@ -69,6 +83,12 @@ class ImodemDsp(ImodemMailbox):
 
     def __init__(self, dsc=None, *, foreground_overlay_assist=False):
         self._sh = ImodemShared()
+        # Network-side halves of frames taken early and not yet finished.
+        self._ahead = deque()
+        self._ahead_state = None
+        # The B channels carrying a call, which the harness sets as it learns
+        # of one (empty: nothing is fed ahead).
+        self.lookahead_channels = ()
         super().__init__(self._command)
         self.core = None
         self.tx_ready = False
@@ -108,6 +128,14 @@ class ImodemDsp(ImodemMailbox):
         self._cpi = 1.35
 
     def close(self):
+        if self.core is not None and self._ahead:
+            # Frames the C5x finished are still owed their exchange, and what
+            # was fed ahead for it was never the C5x's to consume.
+            try:
+                self.flush_pcm(refill=False)
+            except RuntimeError:
+                pass
+            self.cancel_lookahead()
         if self.core is not None:
             self.core.close()
             self.core = None
@@ -117,6 +145,7 @@ class ImodemDsp(ImodemMailbox):
         # first command is not the usual 0002:d100 recovery command.
         self._call_overlay_mode = False
         self._realtime_origin = None
+        self._ahead.clear()
 
     def _command(self, tag, value):
         if self.core is None:
@@ -251,16 +280,20 @@ class ImodemDsp(ImodemMailbox):
         or a reply to offer - leaving the rest of the owed cycles in the
         ledger. This performs those calls and carries on with the remainder.
         """
-        self._sh.needs_service = 0
+        sh = self._sh
+        sh.needs_service = 0
         core = self.core
         if core is None or self.error is not None:
             return
         status = core.io(0x57)
         self._sync_values(status, core.io_output(0x5e), core.io_output(0x5f),
                           core.io_port_writes(0x5f))
-        octets = core.g711_tx(self._pcm_cursor)
+        octets = self._take_octets(core, sh)
         if octets:
+            if self._ahead and not self._lookahead_valid():
+                self.cancel_lookahead()
             self._sync_pcm(octets)
+        self.prefeed()
         self.step_cycles(0)
 
     def pace_realtime(self, active, now=None, *, max_wall_seconds=None):
@@ -339,6 +372,7 @@ class ImodemDsp(ImodemMailbox):
         sh = self._sh
         if octets is None:
             octets = self.core.g711_tx(sh.pcm_cursor)
+        sh.tx_pending = 0
         sh.pcm_cursor += len(octets)
         self.pcm_tx.extend(octets)
         if self.dsc is None or not octets:
@@ -353,20 +387,108 @@ class ImodemDsp(ImodemMailbox):
         pending = self._pcm_partial + octets
         self._pcm_partial = pending[len(pending) - len(pending) % PP_SLOTS:]
         incoming = bytearray()
-        slots = self.dsc.peripheral_slots(PP_SLOTS)
-        for frame in range(len(pending) // PP_SLOTS):
+        dsc = self.dsc
+        slots = dsc.peripheral_slots(PP_SLOTS)
+        ahead = self._ahead
+        frames = len(pending) // PP_SLOTS
+        if (ahead and frames and len(ahead) >= frames
+                and self.pcm_frame_service is None):
+            # Several frames whose network side was settled early: finish them
+            # in one go if the routing allows.
+            entries = [ahead[index] for index in range(frames)]
+            if dsc.bearer_finish_batch(
+                    entries, pending[:frames * PP_SLOTS], slots, IDLE_CODEWORD):
+                for _ in range(frames):
+                    ahead.popleft()
+                return
+        for frame in range(frames):
             sent = pending[frame * PP_SLOTS:(frame + 1) * PP_SLOTS]
-            # One MUX exchange per frame, whatever the slot count: B1 still
-            # carries one octet per 125 us, which is what makes it 64 kbit/s.
-            outputs = self.dsc.clock_bearer({
-                port: octet for port, octet in zip(slots, sent) if port
-            })
-            incoming.extend(outputs.get(port, IDLE_CODEWORD) if port
-                            else IDLE_CODEWORD for port in slots)
+            peripheral = {port: octet for port, octet in zip(slots, sent) if port}
+            if ahead:
+                # The network side of this frame was settled earlier, and its
+                # receive octets are already queued in the core.
+                dsc.bearer_finish_frame(ahead.popleft(), peripheral)
+            else:
+                # One MUX exchange per frame, whatever the slot count: B1 still
+                # carries one octet per 125 us, which is what makes it 64 kbit/s.
+                outputs = dsc.clock_bearer(peripheral)
+                incoming.extend(outputs.get(port, IDLE_CODEWORD) if port
+                                else IDLE_CODEWORD for port in slots)
             if self.pcm_frame_service is not None:
                 self.pcm_frame_service()
         if incoming:
             self.core.queue_g711_rx(bytes(incoming))
+
+    def enable_pcm_batch(self):
+        """Let the C5x run several PCM frames between visits (see PCM_BATCH_FRAMES)."""
+        if PCM_BATCH_FRAMES:
+            self.pcm_batch = True
+            self._sh.flush_octets = PP_SLOTS * PCM_BATCH_FRAMES
+
+    def _lookahead_valid(self):
+        """Whether frames fed ahead were settled under the DSC's current state."""
+        if not self._ahead:
+            return True
+        dsc = self.dsc
+        return self._ahead_state == dsc.bearer_state(self.lookahead_channels)
+
+    def prefeed(self):
+        """Keep the core's receive queue fed a few frames ahead (see PCM_BATCH_FRAMES)."""
+        if not PCM_BATCH_FRAMES or self.dsc is None or self.core is None:
+            return
+        if self._ahead and not self._lookahead_valid():
+            self.cancel_lookahead()
+        want = PCM_LOOKAHEAD_FRAMES - len(self._ahead)
+        if want * 2 < PCM_LOOKAHEAD_FRAMES:
+            return
+        dsc = self.dsc
+        state = dsc.bearer_state(self.lookahead_channels)
+        entries, octets = dsc.bearer_take_ahead(
+            dsc.peripheral_slots(PP_SLOTS), want, self.lookahead_channels)
+        if entries:
+            self._ahead.extend(entries)
+            self._ahead_state = state
+            self.core.queue_g711_rx(octets)
+
+    @staticmethod
+    def _take_octets(core, sh):
+        """The octets the C5x has transmitted that have not been exchanged.
+
+        The native model publishes how many are waiting, so the usual case is
+        one native call; the count is only a hint and anything else falls back
+        to asking the core.
+        """
+        waiting = sh.tx_pending
+        sh.tx_pending = 0
+        if waiting:
+            octets = core.g711_tx_exact(sh.pcm_cursor, waiting)
+            if len(octets) == waiting:
+                return octets
+        return core.g711_tx(sh.pcm_cursor)
+
+    def flush_pcm(self, refill=True):
+        """Exchange every transmitted frame the C5x has finished, then refill."""
+        core = self.core
+        if core is None or self.error is not None:
+            return
+        sh = self._sh
+        octets = self._take_octets(core, sh)
+        if octets:
+            if self._ahead and not self._lookahead_valid():
+                self.cancel_lookahead()
+            self._sync_pcm(octets)
+        if refill:
+            self.prefeed()
+
+    def cancel_lookahead(self):
+        """Hand back receive octets fed ahead, before the MUX's routing changes."""
+        ahead = self._ahead
+        if not ahead:
+            return
+        if self.core is not None:
+            self.core.drop_g711_rx_tail(PP_SLOTS * len(ahead))
+        self.dsc.bearer_return_ahead(list(ahead))
+        ahead.clear()
 
     def read(self, port):
         if self.core and not self.reset_status and not self._loader_started:
@@ -552,6 +674,7 @@ class ImodemDsp(ImodemMailbox):
         self._reply_writes = 0
         self._pcm_cursor = 0
         self._pcm_partial = b''
+        self._ahead.clear()
         self._realtime_origin = None
         # The bootstrap completion bus must not expose a running mailbox
         # before resident initialization clears PA7. Wait for its first IDLE,

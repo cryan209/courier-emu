@@ -18,6 +18,7 @@ from .pic import InterruptControllers
 from .pit import INSTRUCTIONS_PER_SECOND, ProgrammableIntervalTimer
 from .xmp import XmpImage
 from .dsp import ImodemHostIo, ImodemShared
+from .imodem_dsp import PCM_LOOKAHEAD_FRAMES
 from .imodem_mailbox import ImodemMailbox
 from .sio import (
     EVEN,
@@ -696,6 +697,12 @@ class IsdnMachine:
             port in (0x18, 0x1a, 0x1c, 0x1e) or self.dsc.handles(port)
         ):
             self._advance_dsp()
+            if getattr(self, "_pcm_batch", False) and self.dsc.handles(port):
+                # A write to the DSC may change its routing: finish every
+                # frame the C5x has already run under the old one, and take
+                # back the receive frames fed ahead for it.
+                self.mailbox.flush_pcm()
+                self.mailbox.cancel_lookahead()
         self.io_counts[("out", port)] += 1
         if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e) or 0x40 <= port <= 0x5e):
             self.mailbox.write(port, value)
@@ -811,10 +818,25 @@ class IsdnMachine:
 
     def poll_timers(self) -> None:
         """Advance the 8254 and hand any counter wraps to the 8259s."""
+        batching = getattr(self, "_pcm_batch", False)
+        if batching:
+            bri = self.bri
+            mailbox = self.mailbox
+            mailbox.lookahead_channels = (
+                (bri.media_channel,)
+                if bri is not None and bri.call_state == "active"
+                and bri.media_channel in (1, 2) else ())
+        if batching and self._ledger.tx_pending:
+            # The bearer is about to read what the modem has sent: every frame
+            # the C5x has finished must have been exchanged by now, as it was
+            # when each was exchanged the moment it finished.
+            self.mailbox.flush_pcm()
         if self.bri is not None:
             # Deliver newly arrived B octets before advancing the independent
             # DSP serial clock in this scheduler pass.
             self.bri.service(self.dsc, self.instructions)
+        if batching and len(self.mailbox._ahead) * 2 <= PCM_LOOKAHEAD_FRAMES:
+            self.mailbox.prefeed()
         self._advance_dsp()
         peripheral_instructions = self._peripheral_instructions()
         if self.rtos_service and peripheral_instructions >= self._next_rtos_service:
@@ -1154,6 +1176,8 @@ class IsdnMachine:
                     self._ledger.rx_present = mailbox.rx is not None
                     native_io.configure(core.handle if live else None, live)
 
+                self.mailbox.enable_pcm_batch()
+                self._pcm_batch = self.mailbox.pcm_batch
                 self._refresh_native_io = refresh_native_io
                 uc.native_host_io = (
                     native_io.function, native_io.context, host_ports)
@@ -1250,6 +1274,8 @@ class IsdnMachine:
                 self.io_counts[("out", port)] += writes[port]
 
     def _result(self, status: str, registers: dict[str, int]) -> IsdnRunResult:
+        if getattr(self, "_pcm_batch", False):
+            self.mailbox.flush_pcm()
         self._flush_native_io()
         known = set()
         if self.with_dsp:
