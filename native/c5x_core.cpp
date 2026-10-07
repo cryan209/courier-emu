@@ -1686,8 +1686,7 @@ void C5xCore::step()
             if (--m_brcr <= 0) m_pmst.braf = 0;
         }
         uint16_t previous_pc = m_pc;
-        if (m_step_probes && std::find(m_v8_dispatch_pcs.begin(), m_v8_dispatch_pcs.end(),
-                previous_pc) != m_v8_dispatch_pcs.end()) {
+        if (m_step_probes && m_v8_dispatch_map[previous_pc]) {
             ++m_v8_dispatches;
             m_v8_dispatch_pc = previous_pc;
             m_v8_record = uint16_t(m_acc);
@@ -1730,9 +1729,9 @@ void C5xCore::step()
         m_op = ROPCODE();
         if (m_coverage && !m_first_exec[previous_pc]) m_first_exec[previous_pc] = m_instructions + 1;
         if (m_step_probes) {   // PROBE: first-ever execution of each PC after 1.6G instructions
-            static std::vector<uint8_t> seen(65536, 0);
-            if (!seen[previous_pc]) {
-                seen[previous_pc] = 1;
+            uint8_t &seen = m_pc_seen[previous_pc];
+            if (!seen) {
+                seen = 1;
                 if (m_instructions > 1600000000ULL && m_pc_trace.size() < 65536)
                     m_pc_trace.push_back((uint64_t(previous_pc) << 48) | (uint64_t(m_op) << 32) | 0xFEEDu);
             }

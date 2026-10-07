@@ -58,10 +58,13 @@ def test_t1_acquisition_assist_requires_opt_in_and_proven_return():
 
 class LoopCore:
     def __init__(self, pc: int):
-        self.pc = pc
+        self._pc = pc
+
+    def pc(self) -> int:
+        return self._pc
 
     def state(self) -> dict[str, int]:
-        return {"pc": self.pc}
+        return {"pc": self._pc}
 
 
 def bridge_at(pc: int, started: bool = True):

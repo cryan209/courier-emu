@@ -233,7 +233,13 @@ class Uc:
         # Per-vector policy for software INTs the native engine may retire
         # itself (see x86_interpreter.cpp); None leaves every INT to Python.
         self.native_int_mode: bytearray | None = None
+        # (function address, context address, 64 KiB port table) of a native
+        # port model, and a callback run after every port access that still
+        # went to Python (the model's gating may depend on what it did).
+        self.native_host_io: tuple[int, int, bytearray] | None = None
+        self.native_after_io: Callable[[], None] | None = None
         self._native_fast_out_ports: tuple[int, ...] = ()
+        self._native_fast_out_byte_ports: tuple[int, ...] = ()
         self._native_out_batch_callback: Callable[[memoryview, int], None] | None = None
         # A watched write can schedule device updates after the instruction
         # commits, before another native batch reads the affected memory.
@@ -241,10 +247,17 @@ class Uc:
         self.native_enabled = os.environ.get("COURIER_X86_NATIVE", "1") != "0"
 
     def native_out_batch_add(
-        self, ports, callback: Callable[[memoryview, int], None]
+        self, ports, callback: Callable[[memoryview, int], None],
+        byte_ports=(),
     ) -> None:
-        """Batch timing-inert port writes retired by the native engine."""
+        """Batch timing-inert port writes retired by the native engine.
+
+        `byte_ports` are batched only when written a byte at a time; the
+        event carries no width, so the callback may assume one.
+        """
         self._native_fast_out_ports = tuple(int(port) & 0xFFFF for port in ports)
+        self._native_fast_out_byte_ports = tuple(
+            int(port) & 0xFFFF for port in byte_ports)
         self._native_out_batch_callback = callback
 
 

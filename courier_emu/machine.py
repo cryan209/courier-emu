@@ -6,7 +6,10 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
-from .bridge import CourierDspBridge
+from .bridge import (
+    LANE_BANKS, LANE_DSP_FIRST, LANE_DSP_STATUS, LANE_FIRST_PORT,
+    LANE_RX_ACK_PORT, CourierDspBridge,
+)
 from .codec import CodecBringUp
 from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
@@ -559,6 +562,8 @@ class CourierMachine:
         self.quad_usart = quad_board.usart if quad_board is not None else quad_usart
         self._quad_profile = self.quad_usart is not None or getattr(image, "quad_profile", False)
         self.output_latches: dict[int, int] = {}
+        self._lane_io: Any = None
+        self._lane_out_ports: frozenset[int] = frozenset()
         # The ROM builds' port 0 control latch, and the speaker hanging off
         # bit 0x40 of it. Powers up clear; the firmware read-modify-writes it.
         self.port0_latch = 0
@@ -1684,6 +1689,8 @@ class CourierMachine:
                 _uc.emu_stop()
             if self.dsp_bridge is not None and not self.stop_requested:
                 self.dsp_bridge.clock_x86(elapsed)
+                if self._lane_io is not None:
+                    self._refresh_native_lanes()
             if self._serial_started and not self._serial_in_handler:
                 if self._serial_cooldown:
                     self._serial_cooldown = max(0, self._serial_cooldown - elapsed)
@@ -2441,6 +2448,8 @@ class CourierMachine:
             mask = (1 << (size * 8)) - 1
             value &= mask
             self.output_latches[port] = value
+            if self._lane_io is not None and port in self._lane_out_ports:
+                self._lane_io.clear_seen(port)
             if self.uart is not None and port == 0 and size == 1:
                 # 0x81703 raises bit 0x40 and drops it again in the next
                 # instruction pair. Count the rising edges: the cadence is the
@@ -2910,6 +2919,83 @@ class CourierMachine:
         uc.hook_add(UC_HOOK_INSN, on_in, None, 1, 0, UC_X86_INS_IN)
         uc.hook_add(UC_HOOK_INSN, on_out, None, 1, 0, UC_X86_INS_OUT)
         uc.hook_add(UC_HOOK_INTR, on_interrupt)
+        if (
+            self.cpu_engine == "interpreter"
+            and self.quad_c50 is None and self.quad_board is None
+            and self.quad_usart is None
+            and not self.io_watch
+            and 0x14 not in self.uart_ports
+            and (self.dsp_bridge is None
+                 or not getattr(self.dsp_bridge, "asic_transparent", False))
+        ):
+            def apply_native_panel_writes(events: memoryview, count: int) -> None:
+                # Port 0x14 is a front-panel latch: nothing but the lamp model
+                # and the I/O tallies look at a write, and an IN of the port
+                # reads the panel's inputs, not this latch. Replaying in order
+                # before the next handled access keeps those identical; only
+                # the instruction stamp and pc on the record are approximate.
+                for offset in range(0, count * 4, 4):
+                    port = events[offset] | events[offset + 1] << 8
+                    value = events[offset + 2]
+                    self.output_latches[port] = value
+                    self._record_io("out", port, 1, value, 0)
+                    self.panel.observe_write(port, value, 0, self.instructions)
+
+            uc.native_out_batch_add((), apply_native_panel_writes, byte_ports=(0x14,))
+        bridge = self.dsp_bridge
+        if (
+            self.cpu_engine == "interpreter"
+            and bridge is not None
+            and getattr(bridge, "boot_rom_enabled", False)
+            and getattr(bridge, "board3453", None) is None
+            and hasattr(bridge, "_lanes_live")
+            and uc.native_enabled
+        ):
+            from .dsp import LaneHostIo
+
+            lane_io = self._lane_io = LaneHostIo()
+            command_port = bridge.transfer.command_port
+            lane_ports = range(LANE_FIRST_PORT, LANE_FIRST_PORT + 4 * LANE_BANKS)
+            host_ports = bytearray(65536)
+            for port in (command_port, LANE_RX_ACK_PORT, *lane_ports):
+                host_ports[port] |= 1
+            for port in (command_port, LANE_RX_ACK_PORT, *lane_ports[::2]):
+                host_ports[port] |= 2
+            for index in range(2 * LANE_BANKS):
+                strobe, lane = bridge._lanes[LANE_FIRST_PORT + 2 * index]
+                lane_io.set_lane(index, bridge._windows[strobe], lane)
+
+            watched = bool(self.io_watch) or bridge.asic_transparent
+            flagged = (command_port, LANE_RX_ACK_PORT, *lane_ports)
+            applied: list[Any] = [None]
+
+            def refresh_native_lanes() -> None:
+                served = (
+                    not watched
+                    and not bridge._completion_probe
+                    # The first events are kept verbatim; the model only takes
+                    # over once there is nothing left to record.
+                    and len(self.io_events) >= self.max_io_events
+                    and not (self.port_values
+                             and any(port in self.port_values for port in flagged))
+                )
+                state = (
+                    bridge.core.handle if served else None,
+                    served and bridge._lanes_live(),
+                )
+                if state != applied[0]:
+                    applied[0] = state
+                    lane_io.configure(
+                        state[0], state[1],
+                        command_port=command_port, ack_port=LANE_RX_ACK_PORT,
+                        lane_first=LANE_FIRST_PORT, banks=LANE_BANKS,
+                        dsp_first=LANE_DSP_FIRST, dsp_status=LANE_DSP_STATUS)
+
+            self._lane_out_ports = frozenset((command_port, LANE_RX_ACK_PORT, *lane_ports[::2]))
+            self._refresh_native_lanes = refresh_native_lanes
+            uc.native_host_io = (lane_io.function, lane_io.context, host_ports)
+            uc.native_after_io = refresh_native_lanes
+            refresh_native_lanes()
         mmio = self.hardware_map.mmio
         dsp_queue = self.hardware_map.dsp_queue
         serial_callback = self.hardware_map.serial_callback
@@ -3072,6 +3158,7 @@ class CourierMachine:
             "flags": UC_X86_REG_FLAGS,
         }
         registers = {name: uc.reg_read(reg) for name, reg in register_ids.items()}
+        self._flush_native_io()
         final_callbacks = bytes(uc.mem_read(self._serial_callbacks, 6))
         self.serial_trace.append(
             f"final callbacks[{self._serial_callbacks:03x}]="
@@ -3177,6 +3264,24 @@ class CourierMachine:
             },
             interrupt_vectors=interrupt_vectors,
         )
+
+    def _flush_native_io(self) -> None:
+        """Fold what the native port model served into the I/O tallies.
+
+        Those accesses never reached `_record_io`; their counts and the last
+        value written to each port are what everything downstream reads.
+        """
+        lane_io = self._lane_io
+        if lane_io is None or not lane_io.context:
+            return
+        reads, writes, last, seen = lane_io.take_counts()
+        for port in range(256):
+            if reads[port]:
+                self.io_counts[("in", port, 1)] += reads[port]
+            if writes[port]:
+                self.io_counts[("out", port, 1)] += writes[port]
+            if seen[port]:
+                self.output_latches[port] = last[port]
 
     def _record_io(self, direction: str, port: int, size: int, value: int, pc: int) -> None:
         self.io_counts[(direction, port, size)] += 1

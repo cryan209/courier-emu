@@ -741,24 +741,32 @@ class IsdnMachine:
         return self._peripheral_clock.read(self.instructions, realtime)
 
     def _advance_dsp(self) -> None:
-        if self.with_dsp:
-            elapsed = self.instructions - self._dsp_instructions
-            self._dsp_instructions = self.instructions
-            peer = self.bri.media_peer if self.bri is not None else None
+        if not self.with_dsp:
+            return
+        elapsed = self.instructions - self._dsp_instructions
+        self._dsp_instructions = self.instructions
+        bri = self.bri
+        mailbox = self.mailbox
+        realtime = False
+        if bri is not None:
+            peer = bri.media_peer
             realtime = bool(
                 peer is not None
                 and getattr(peer, "realtime_clock", False)
-                and self.bri.call_state == "active"
+                and bri.call_state == "active"
             )
-            if hasattr(self.mailbox, 'pcm_frame_service'):
-                self.mailbox.pcm_frame_service = (
-                    self._service_pcm_frame if realtime else None)
-            if hasattr(self.mailbox, "pace_realtime"):
-                self.mailbox.pace_realtime(realtime, max_wall_seconds=0.001)
+        if hasattr(mailbox, 'pcm_frame_service'):
+            service = self._service_pcm_frame if realtime else None
+            if mailbox.pcm_frame_service != service:
+                mailbox.pcm_frame_service = service
+        pace = getattr(mailbox, "pace_realtime", None)
+        if pace is not None:
+            if realtime or getattr(mailbox, "_realtime_origin", None) is not None:
+                pace(realtime, max_wall_seconds=0.001)
                 if realtime:
                     return
-            if elapsed:
-                self.mailbox.step_cycles(elapsed * DSP_CYCLES_PER_CPU_INSTRUCTION)
+        if elapsed:
+            mailbox.step_cycles(elapsed * DSP_CYCLES_PER_CPU_INSTRUCTION)
 
     def _service_pcm_frame(self) -> None:
         # A realtime catch-up pass can span multiple DS0 frames. Exchange
@@ -1058,7 +1066,9 @@ class IsdnMachine:
                     port = events[offset] | events[offset + 1] << 8
                     value = events[offset + 2]
                     self.io_counts[("out", port)] += 1
-                    if self.pic.handles(port):
+                    if port == BOARD_LATCH_PORT:
+                        self.board_latch = value & 0xFF
+                    elif self.pic.handles(port):
                         self.pic.write(port, value)
                     elif self.with_dsp:
                         self.mailbox.lanes[port] = value
@@ -1070,7 +1080,12 @@ class IsdnMachine:
             native_output_ports = [0xF020, 0xF021, 0xF0A0, 0xF0A1]
             if self.with_dsp:
                 native_output_ports.extend(range(DOWNLOAD_PORTS.start, 0x60, 2))
-            uc.native_out_batch_add(native_output_ports, apply_native_outputs)
+            # The board latch drives lamps and is read back only through
+            # this model, so its writes replay in order before the next
+            # handled port access.
+            uc.native_out_batch_add(
+                native_output_ports, apply_native_outputs,
+                byte_ports=(BOARD_LATCH_PORT,))
             # Software INTs enter through the vector table exactly as
             # push_far does for a hardware interrupt (clearing IF and TF);
             # the native engine takes them and counts them per vector.

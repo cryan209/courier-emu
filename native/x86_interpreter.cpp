@@ -14,6 +14,13 @@ struct Core {
     // on entry) and a running count the harness merges into its own tally.
     const uint8_t *int_mode=nullptr;
     uint32_t *int_counts=nullptr;
+    // Optional port model: host_ports[port] bit 0 offers IN, bit 1 OUT to
+    // host_io, which answers 1 when it served the access (an IN's value goes
+    // to *out). Declined accesses leave the engine for the harness as usual.
+    typedef int (*HostIo)(void *context,int direction,uint16_t port,int size,uint16_t value,uint16_t *out);
+    HostIo host_io=nullptr;
+    void *host_context=nullptr;
+    const uint8_t *host_ports=nullptr;
     uint8_t *io_events=nullptr;
     uint32_t io_event_count=0, io_event_capacity=0;
     std::jmp_buf exit;
@@ -199,7 +206,21 @@ static uint32_t run_batch(Core &c, uint32_t count) {
         if(opcode==0xec||opcode==0xed||opcode==0xee||opcode==0xef||
            opcode==0xe4||opcode==0xe5||opcode==0xe6||opcode==0xe7) {
             c.prepare_io(opcode);
+            if(c.host_io&&(c.host_ports[c.io_port&0xffff]&c.io_direction)) {
+                uint16_t answer=0;
+                if(c.host_io(c.host_context,int(c.io_direction),uint16_t(c.io_port),
+                             int(c.io_size),uint16_t(c.io_value),&answer)) {
+                    if(c.io_direction==1)
+                        c.r[AX]=c.io_size==1?(c.r[AX]&~0xffu)|(answer&0xffu)
+                                            :(c.r[AX]&~0xffffu)|answer;
+                    c.reason=0;
+                    continue;
+                }
+            }
+            // fast_out: 1 batches any width, 2 only byte writes (a port whose
+            // replay would otherwise have to know the width).
             if(c.io_direction==2&&c.fast_out&&c.fast_out[c.io_port]&&
+               (c.fast_out[c.io_port]==1||c.io_size==1)&&
                c.io_event_count<c.io_event_capacity) {
                 uint8_t *event=c.io_events+4*c.io_event_count++;
                 event[0]=c.io_port;event[1]=c.io_port>>8;
@@ -228,9 +249,11 @@ extern "C" uint32_t courier_x86_run(uint32_t *regs,uint8_t *mem,const uint8_t *g
 static PyObject *run_python(PyObject *, PyObject *args) {
     PyObject *registers, *memory, *guard, *fast_out, *io_events;
     PyObject *int_mode = Py_None, *int_counts = Py_None;
+    PyObject *host_io = Py_None, *host_context = Py_None, *host_ports = Py_None;
     unsigned int count;
-    if (!PyArg_ParseTuple(args, "OOOOOI|OO", &registers, &memory, &guard,
-        &fast_out, &io_events, &count, &int_mode, &int_counts)) return nullptr;
+    if (!PyArg_ParseTuple(args, "OOOOOI|OOOOO", &registers, &memory, &guard,
+        &fast_out, &io_events, &count, &int_mode, &int_counts,
+        &host_io, &host_context, &host_ports)) return nullptr;
     if (!PyList_Check(registers) || PyList_GET_SIZE(registers)!=14 ||
         !PyByteArray_Check(memory) || !PyByteArray_Check(guard) ||
         !PyByteArray_Check(fast_out) || PyByteArray_GET_SIZE(fast_out)!=65536 ||
@@ -260,6 +283,18 @@ static PyObject *run_python(PyObject *, PyObject *args) {
         }
         c.int_mode=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(int_mode));
         c.int_counts=reinterpret_cast<uint32_t*>(PyByteArray_AS_STRING(int_counts));
+    }
+    if (host_io != Py_None) {
+        const unsigned long long function = PyLong_AsUnsignedLongLong(host_io);
+        const unsigned long long context = PyLong_AsUnsignedLongLong(host_context);
+        if (PyErr_Occurred()) return nullptr;
+        if (!PyByteArray_Check(host_ports) || PyByteArray_GET_SIZE(host_ports)!=65536) {
+            PyErr_SetString(PyExc_ValueError,"invalid native port table");
+            return nullptr;
+        }
+        c.host_io=reinterpret_cast<Core::HostIo>(function);
+        c.host_context=reinterpret_cast<void*>(context);
+        c.host_ports=reinterpret_cast<uint8_t*>(PyByteArray_AS_STRING(host_ports));
     }
     uint32_t done=run_batch(c,count);
     // Convert each register once on entry; publish only changed registers.

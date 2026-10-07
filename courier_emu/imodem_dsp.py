@@ -164,16 +164,18 @@ class ImodemDsp(ImodemMailbox):
         self._cycle_debt += cycles
         if self._cycle_debt < 1:
             return
-        native_step_cycles = getattr(self.core, 'step_cycles', None)
+        core = self.core
+        native_step_cycles = getattr(core, 'step_cycles', None)
         if native_step_cycles is not None:
-            native_advance = getattr(self.core, 'advance_imodem', None)
+            native_advance = getattr(core, 'advance_imodem', None)
             if native_advance is not None:
                 ran = elapsed = 0
                 remaining = int(self._cycle_debt)
+                sync_values = self._sync_values
                 while remaining > 0:
                     done, spent, status, tag, value, writes, octets = native_advance(
                         remaining, self._pcm_cursor)
-                    self._sync_values(status, tag, value, writes)
+                    sync_values(status, tag, value, writes)
                     if octets:
                         self._sync_pcm(octets)
                     ran += done

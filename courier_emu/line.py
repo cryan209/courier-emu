@@ -21,6 +21,17 @@ LINE_FRAME_SAMPLES = DAA_SAMPLE_RATE * LINE_FRAME_MS // 1_000
 LINE_FRAME_MS = LINE_FRAME_SAMPLES * 1_000 // DAA_SAMPLE_RATE
 LINE_FRAME_INSTRUCTIONS = LINE_FRAME_MS * INSTRUCTIONS_PER_MS
 
+# Frames each side may have in flight before it must wait for the far end's.
+# One is the original swap: send a frame, block for the peer's frame of the
+# same index. N lets a side run N-1 frames ahead of the other, which is the
+# same as N-1 frames of extra transit delay on the line (the first N-1
+# exchanges receive silence). Pair it with a smaller COURIER_LINE_FRAME_MS to
+# keep the end-to-end delay where it was: 5 ms frames and a window of 4 are
+# the 20 ms the training scripts were tuned against.
+LINE_WINDOW_FRAMES = int(os.environ.get("COURIER_LINE_WINDOW", "1"))
+if not 1 <= LINE_WINDOW_FRAMES <= 64:
+    raise ValueError("COURIER_LINE_WINDOW must be between 1 and 64")
+
 # Each side blocks until the far end delivers its frame, which is what keeps
 # two independently executing instances on the same emulated clock. The timeout
 # only exists so a peer that stops early ends the call instead of the run.
@@ -141,6 +152,7 @@ class LineLink:
     # hot.
     digital: bool = False
     frames: int = 0
+    frames_received: int = 0
     peer_off_hook: bool = False
     peer_ringing: bool = False
     # The shared state above, as the far end last advertised it.
@@ -150,6 +162,7 @@ class LineLink:
     error: str | None = None
     received_samples: int = 0
     sent_samples: int = 0
+    _sent_frames: int = field(default=0, repr=False)
     _socket: Any = field(default=None, repr=False)
     _server: Any = field(default=None, repr=False)
     _inbound: list[int] = field(default_factory=list, repr=False)
@@ -215,6 +228,9 @@ class LineLink:
             for recording in (self._tx_record, self._rx_record):
                 recording.setparams((1, 2, DAA_SAMPLE_RATE, 0, 'NONE', 'not compressed'))
         encoded = frame.encode()
+        self._sent_frames += 1
+        # Frames still owed from the far end before this exchange may return.
+        owed = max(0, self._sent_frames - LINE_WINDOW_FRAMES + 1 - self.frames_received)
         try:
             if self.audio_only:
                 # Fixed line sample rate, signed little-endian PCM16. Only
@@ -233,10 +249,16 @@ class LineLink:
                 self._socket.sendall(encoded)
                 if self._tx_record is not None:
                     self._tx_record.writeframesraw(encoded[_HEADER.size:])
+                if owed == 0:
+                    # Still inside the transit delay: nothing has arrived yet.
+                    self.frames += 1
+                    self.sent_samples += len(frame.samples)
+                    return
                 header = self._receive(_HEADER.size)
                 instructions, off_hook, ringing, call_state, count = (
                     _HEADER.unpack(header))
             body = self._receive(2 * count)
+            self.frames_received += 1
             if self._rx_record is not None:
                 self._rx_record.writeframesraw(body)
         except (OSError, ConnectionError) as exc:

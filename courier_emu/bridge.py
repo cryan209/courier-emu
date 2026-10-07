@@ -1508,7 +1508,7 @@ class CourierDspBridge:
         """
         if not self._loader_started:
             return True
-        return self.core.state()["pc"] in C51_ROM_LOADER_LOOP
+        return self.core.pc() in C51_ROM_LOADER_LOOP
 
     def _start_rom_loader(self) -> None:
         if not self.boot_rom_enabled or self._loader_started:

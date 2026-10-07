@@ -52,6 +52,8 @@ class NativeInterpreter:
         self.fast_out = bytearray(65536)
         for port in cpu._native_fast_out_ports:
             self.fast_out[port] = 1
+        for port in cpu._native_fast_out_byte_ports:
+            self.fast_out[port] = 2
         self.io_events = bytearray(65536 * 4)
         self.int_counts = bytearray(256 * 4)
         self.out_batch_callback = cpu._native_out_batch_callback
@@ -91,7 +93,7 @@ class NativeInterpreter:
             self.signature = signature
         done, reason, direction, port, size, value, event_count = self.run(
             cpu.regs, cpu.memory, self.guard, self.fast_out, self.io_events, count,
-            cpu.native_int_mode, self.int_counts,
+            cpu.native_int_mode, self.int_counts, *(cpu.native_host_io or ()),
         )
         self.handled_io = reason == 8
         self.batches += 1
@@ -123,5 +125,7 @@ class NativeInterpreter:
             finally:
                 cpu.retired = original_retired
             done += 1
+            if cpu.native_after_io is not None:
+                cpu.native_after_io()
         self.retired += done
         return done

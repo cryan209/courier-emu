@@ -19,7 +19,142 @@ void copy_error(char *buffer, std::size_t size, const char *message)
 }
 }
 
+namespace {
+// Port-level model of the analogue board's live data lanes, run inside the
+// x86 engine so the CPU's polling of them does not leave native code. Only
+// the lane regime lives here: it is a pure function of the DSP's I/O cells
+// and the supervisor's window bytes, so it answers exactly what the harness's
+// Python handlers answer. Everything else is declined and goes to Python.
+struct LaneHostIo {
+    C5xCore *core = nullptr;
+    bool live = false;
+    uint16_t command_port = 0x18, ack_port = 0x1a;
+    uint16_t lane_first = 0x40, banks = 6, dsp_first = 0x58, dsp_status = 0x56;
+    // Window bytes behind ports lane_first + 2 * index, index < 2 * banks.
+    uint8_t *lane[16] = {};
+    // Accesses served here, to be folded into the harness's I/O tallies.
+    uint32_t in_count[256] = {}, out_count[256] = {};
+    uint16_t out_last[256] = {};
+    uint8_t out_seen[256] = {};
+
+    uint16_t lane_word(unsigned bank) const
+    {
+        uint16_t word = 0;
+        for (unsigned half = 0; half < 2; ++half) {
+            const uint8_t *byte = lane[2 * bank + half];
+            word |= uint16_t((byte ? *byte : 0xff) << (8 * half));
+        }
+        return word;
+    }
+};
+}
+
 extern "C" {
+
+void *courier_laneio_create() { return new LaneHostIo(); }
+
+void courier_laneio_destroy(void *context)
+{
+    delete static_cast<LaneHostIo *>(context);
+}
+
+// `core` may be null, which declines every access.
+void courier_laneio_configure(void *context, void *core, int live,
+    uint16_t command_port, uint16_t ack_port, uint16_t lane_first,
+    uint16_t banks, uint16_t dsp_first, uint16_t dsp_status)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    io->core = static_cast<C5xCore *>(core);
+    io->live = live != 0;
+    io->command_port = command_port;
+    io->ack_port = ack_port;
+    io->lane_first = lane_first;
+    io->banks = banks > 8 ? 8 : banks;
+    io->dsp_first = dsp_first;
+    io->dsp_status = dsp_status;
+}
+
+void courier_laneio_set_lane(void *context, unsigned index, uint8_t *byte)
+{
+    if (index < 16) static_cast<LaneHostIo *>(context)->lane[index] = byte;
+}
+
+// direction 1 = IN, 2 = OUT. Returns 1 when served; the answer to an IN is in
+// *out. Byte accesses only.
+int courier_laneio_access(void *context, int direction, uint16_t port,
+    int size, uint16_t value, uint16_t *out)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    if (!io->core || size != 1 || port >= 256) return 0;
+    const uint16_t mask = uint16_t((1u << io->banks) - 1);
+    const uint16_t lane_last = uint16_t(io->lane_first + 4 * io->banks);
+    if (direction == 1) {
+        if (!io->live) return 0;
+        uint16_t answer;
+        if (port == io->command_port || port == io->ack_port) {
+            const uint16_t status = io->core->io(io->dsp_status);
+            answer = port == io->command_port
+                ? uint16_t(0xC0 | (~status & mask))
+                : uint16_t(0xC0 | (~(status >> 8) & mask));
+        } else if (port >= io->lane_first && port < lane_last) {
+            const unsigned offset = port - io->lane_first;
+            const uint16_t word = io->core->io_output(
+                uint16_t(io->dsp_first + offset / 4));
+            answer = (word >> ((offset & 2) ? 8 : 0)) & 0xff;
+        } else {
+            return 0;
+        }
+        ++io->in_count[port];
+        *out = answer & 0xff;
+        return 1;
+    }
+    value &= 0xff;
+    if (port == io->command_port || port == io->ack_port) {
+        if (!io->live) return 0;
+        uint16_t bits = value & mask;
+        if (port == io->command_port) {
+            for (unsigned bank = 0; bank < io->banks; ++bank)
+                if (bits & (1u << bank))
+                    io->core->set_io(uint16_t(io->dsp_first + bank),
+                        io->lane_word(bank));
+        } else {
+            bits = uint16_t(bits << 8);
+        }
+        io->core->set_io(io->dsp_status,
+            uint16_t(io->core->io(io->dsp_status) | bits));
+    } else if (port >= io->lane_first && port < lane_last
+               && !((port - io->lane_first) & 1)) {
+        uint8_t *byte = io->lane[(port - io->lane_first) / 2];
+        if (!byte) return 0;
+        *byte = uint8_t(value);
+    } else {
+        return 0;
+    }
+    ++io->out_count[port];
+    io->out_last[port] = value;
+    io->out_seen[port] = 1;
+    return 1;
+}
+
+// A write the harness handled itself supersedes the last one served here.
+void courier_laneio_clear_seen(void *context, uint16_t port)
+{
+    if (port < 256) static_cast<LaneHostIo *>(context)->out_seen[port] = 0;
+}
+
+// Copy out and clear the tallies of accesses served so far.
+void courier_laneio_take_counts(void *context, uint32_t *in_counts,
+    uint32_t *out_counts, uint16_t *last, uint8_t *seen)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    std::memcpy(in_counts, io->in_count, sizeof io->in_count);
+    std::memcpy(out_counts, io->out_count, sizeof io->out_count);
+    std::memcpy(last, io->out_last, sizeof io->out_last);
+    std::memcpy(seen, io->out_seen, sizeof io->out_seen);
+    std::memset(io->in_count, 0, sizeof io->in_count);
+    std::memset(io->out_count, 0, sizeof io->out_count);
+    std::memset(io->out_seen, 0, sizeof io->out_seen);
+}
 
 void *courier_c5x_create()
 {
@@ -462,6 +597,11 @@ void courier_c5x_schedule_line_frame_entry(void *handle, uint16_t address)
 void courier_c5x_set_pc(void *handle, uint16_t address)
 {
     if (handle) static_cast<C5xCore *>(handle)->set_pc(address);
+}
+
+uint16_t courier_c5x_get_pc(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->program_counter() : 0;
 }
 
 void courier_c5x_get_state(void *handle, uint64_t *values, std::size_t count)

@@ -25,6 +25,7 @@ SOURCES = (
 )
 LIBRARY_SOURCES = SOURCES[:2] + (NATIVE_DIRECTORY / "c5x_capi.cpp",) + SOURCES[3:]
 _LIBRARY_HANDLE = None
+_SIZE_T_MAX = ctypes.c_size_t(-1).value
 
 
 def build_runner(*, force: bool = False) -> Path:
@@ -391,6 +392,8 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_line_tx_sample.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_get_line_tx_sample.restype = ctypes.c_uint16
+        lib.courier_c5x_get_pc.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_pc.restype = ctypes.c_uint16
         lib.courier_c5x_get_line_tx_writes.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_line_tx_writes.restype = ctypes.c_uint64
         lib.courier_c5x_get_line_tx_samples.argtypes = [
@@ -472,25 +475,30 @@ class NativeC5x:
 
         The caller exchanges that frame before running the remaining cycles.
         """
-        capacity = 64
-        buffers = getattr(self, "_imodem_advance_buffers", None)
+        buffers = self.__dict__.get("_imodem_advance_buffers")
         if buffers is None:
-            buffers = (
-                (ctypes.c_uint8 * capacity)(),
-                (ctypes.c_uint64 * 6)(),
-                ctypes.create_string_buffer(512),
-            )
-            self._imodem_advance_buffers = buffers
-        output, values, error = buffers
+            capacity = 64
+            output = (ctypes.c_uint8 * capacity)()
+            values = (ctypes.c_uint64 * 6)()
+            buffers = self._imodem_advance_buffers = (
+                output, values, ctypes.create_string_buffer(512), capacity,
+                ctypes.addressof(output))
+        output, values, error, capacity, output_address = buffers
         available = self.library.courier_c5x_advance_imodem(
             self.handle, count, tx_start, output, capacity,
-            values, len(values), error, len(error),
+            values, 6, error, 512,
         )
-        if available == ctypes.c_size_t(-1).value:
+        if available == _SIZE_T_MAX:
             raise RuntimeError(error.value.decode("utf-8", "replace"))
         if available > capacity:
-            return (*map(int, values), self.g711_tx(tx_start))
-        return (*map(int, values), bytes(output[:available]))
+            octets = self.g711_tx(tx_start)
+        elif available:
+            octets = ctypes.string_at(output_address, available)
+        else:
+            octets = b""
+        # Indexing a ctypes array already yields Python ints.
+        return (values[0], values[1], values[2], values[3], values[4],
+                values[5], octets)
 
     def configure_rom_codec(self, enabled: bool = True) -> None:
         self.library.courier_c5x_configure_rom_codec(self.handle, int(enabled))
@@ -768,6 +776,9 @@ class NativeC5x:
                 state[name] -= 0x100000000
         state["idle"] = bool(state["idle"])
         return state
+
+    def pc(self) -> int:
+        return self.library.courier_c5x_get_pc(self.handle)
 
     def serial_state(self) -> dict[str, int]:
         values = (ctypes.c_uint64 * 65)()
@@ -1096,3 +1107,71 @@ def run_dsp(
         detail = process.stderr.strip() or process.stdout.strip()
         raise RuntimeError(f"C5x runner failed: {detail}")
     return json.loads(process.stdout)
+
+
+class LaneHostIo:
+    """The analogue board's live data lanes, answered inside the x86 engine.
+
+    Wraps the native context in libcourier_c5x. `function` and `context` are
+    the addresses the x86 engine calls; everything else is configuration the
+    harness refreshes as the board's state changes.
+    """
+
+    def __init__(self) -> None:
+        self.library = load_library()
+        lib = self.library
+        lib.courier_laneio_create.restype = ctypes.c_void_p
+        lib.courier_laneio_destroy.argtypes = [ctypes.c_void_p]
+        lib.courier_laneio_configure.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_uint16,
+            ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16,
+            ctypes.c_uint16]
+        lib.courier_laneio_set_lane.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
+        lib.courier_laneio_clear_seen.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint16]
+        lib.courier_laneio_take_counts.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+            ctypes.c_void_p]
+        self.context = lib.courier_laneio_create()
+        self.function = ctypes.cast(
+            lib.courier_laneio_access, ctypes.c_void_p).value
+        self._counts = (
+            (ctypes.c_uint32 * 256)(), (ctypes.c_uint32 * 256)(),
+            (ctypes.c_uint16 * 256)(), (ctypes.c_uint8 * 256)())
+        self._anchors: list[Any] = []
+
+    def close(self) -> None:
+        if self.context:
+            self.library.courier_laneio_destroy(self.context)
+            self.context = None
+
+    def __del__(self) -> None:  # pragma: no cover - interpreter shutdown order
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def set_lane(self, index: int, window: bytearray, lane: int) -> None:
+        """Point lane `index` at one byte of a window the harness also uses."""
+        anchor = (ctypes.c_char * len(window)).from_buffer(window)
+        self._anchors.append(anchor)
+        self.library.courier_laneio_set_lane(
+            self.context, index, ctypes.addressof(anchor) + lane)
+
+    def configure(self, core_handle: int | None, live: bool, *,
+                  command_port: int, ack_port: int, lane_first: int, banks: int,
+                  dsp_first: int, dsp_status: int) -> None:
+        self.library.courier_laneio_configure(
+            self.context, core_handle, int(live), command_port, ack_port,
+            lane_first, banks, dsp_first, dsp_status)
+
+    def clear_seen(self, port: int) -> None:
+        self.library.courier_laneio_clear_seen(self.context, port)
+
+    def take_counts(self) -> tuple[list[int], list[int], list[int], list[int]]:
+        """(in counts, out counts, last value written, written-at-all) by port."""
+        cells = self._counts
+        self.library.courier_laneio_take_counts(
+            self.context, *(ctypes.addressof(cell) for cell in cells))
+        return tuple(list(cell) for cell in cells)  # type: ignore[return-value]

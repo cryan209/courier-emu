@@ -315,8 +315,9 @@ public:
     void set_v8_dispatch_pcs(const uint16_t *pcs, std::size_t count)
     {
         m_v8_dispatch_pcs.clear();
+        std::fill(m_v8_dispatch_map.begin(), m_v8_dispatch_map.end(), uint8_t(0));
         for (std::size_t index = 0; index < count; ++index)
-            m_v8_dispatch_pcs.push_back(pcs[index]);
+            { m_v8_dispatch_pcs.push_back(pcs[index]); m_v8_dispatch_map[pcs[index]] = 1; }
     }
     void set_call_tdm_active(bool active) { m_call_tdm_active = active; }
     bool call_tdm_active() const { return m_call_tdm_active; }
@@ -354,6 +355,7 @@ public:
     // How many write events the data trace keeps (oldest dropped first); 4096 by default.
     void set_data_event_limit(std::size_t limit) { m_data_event_limit = limit ? limit : 4096; }
     State state() const;
+    uint16_t program_counter() const { return m_pc; }
     SerialState serial_state() const;
     const std::deque<IoEvent> &io_events() const { return m_io_events; }
     // The mailbox ports on their own. `m_io_events` cannot answer what the
@@ -559,6 +561,10 @@ private:
     unsigned m_line_dac_count = 0;
     bool m_call_tdm_active = false;
     std::vector<uint16_t> m_v8_dispatch_pcs{0xc418};
+    // The same set as a bitmap: tested on every retired instruction.
+    std::vector<uint8_t> m_v8_dispatch_map = [] {
+        std::vector<uint8_t> map(65536, 0); map[0xc418] = 1; return map; }();
+    std::vector<uint8_t> m_pc_seen = std::vector<uint8_t>(65536, 0);
     uint16_t m_v8_dispatch_pc = 0;
     uint16_t m_v8_dispatch_dp = 0;
     uint16_t m_line_dac_slot = 0xfffd;
