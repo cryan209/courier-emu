@@ -1067,12 +1067,30 @@ uint8_t C5xCore::data_map_entry(uint16_t address) const
 
 void C5xCore::rebuild_maps()
 {
-    for (uint32_t address = 0; address < 65536; ++address) {
-        m_pmap[address] = program_kind(uint16_t(address));
-        m_dmap[address] = data_map_entry(uint16_t(address));
-    }
+    // GREG only matters once it is a boundary the board decodes.
+    const MapKey key{map_modes(), m_separate_global_memory && m_greg >= 0x80 ? m_greg : 0u,
+        m_shared_first, m_shared_last, m_rom_present, m_separate_global_memory};
     m_maps_dirty = false;
-    ++m_map_rebuilds;
+    MapSet *set = nullptr;
+    for (const auto &candidate : m_map_sets)
+        if (candidate->key == key) { set = candidate.get(); break; }
+    if (!set) {
+        if (m_map_sets.size() < 16) {
+            m_map_sets.push_back(std::make_unique<MapSet>());
+            set = m_map_sets.back().get();
+        } else {
+            set = m_map_sets[m_map_victim].get();
+            m_map_victim = (m_map_victim + 1) % m_map_sets.size();
+        }
+        set->key = key;
+        for (uint32_t address = 0; address < 65536; ++address) {
+            set->program[address] = program_kind(uint16_t(address));
+            set->data[address] = data_map_entry(uint16_t(address));
+        }
+        ++m_map_rebuilds;
+    }
+    m_pmap = set->program.data();
+    m_dmap = set->data.data();
 }
 
 uint16_t C5xCore::fetch_slow(uint16_t address)

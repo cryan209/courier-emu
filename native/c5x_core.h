@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <memory>
 #include <deque>
 #include <string>
 #include <string>
@@ -525,7 +526,26 @@ private:
     }
     bool m_maps_dirty = true;
     uint64_t m_map_rebuilds = 0;
-    std::array<uint8_t, 65536> m_pmap{}, m_dmap{};
+    // One pair of tables per combination of the inputs to the classification
+    // that the run has met; firmware that flips CNF or OVLY in a tight loop
+    // then costs a lookup instead of a rebuild.
+    struct MapKey {
+        unsigned modes; unsigned greg; uint16_t shared_first, shared_last;
+        bool rom_present, separate;
+        bool operator==(const MapKey &o) const
+        {
+            return modes == o.modes && greg == o.greg && shared_first == o.shared_first
+                && shared_last == o.shared_last && rom_present == o.rom_present
+                && separate == o.separate;
+        }
+    };
+    struct MapSet {
+        MapKey key;
+        std::array<uint8_t, 65536> program, data;
+    };
+    std::vector<std::unique_ptr<MapSet>> m_map_sets;
+    const uint8_t *m_pmap = nullptr, *m_dmap = nullptr;
+    std::size_t m_map_victim = 0;
     void step_events();
     void sync_timer_view();
     uint64_t timer_distance() const;
