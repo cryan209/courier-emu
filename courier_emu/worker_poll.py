@@ -17,7 +17,8 @@ from .dsp import load_library
 I64, U64, F64 = ctypes.c_int64, ctypes.c_uint64, ctypes.c_double
 STACK_SLOTS = 64
 NO_LATCH = 256
-LINE_OUT_SLOTS = 256
+LINE_BUFFER_SLOTS = 512
+RECORD_SLOTS = 4096
 
 
 class WorkerPollState(ctypes.Structure):
@@ -46,11 +47,30 @@ class WorkerPollState(ctypes.Structure):
         ("step_writes", U64), ("step_tdm", U64),
         ("timed", ctypes.c_void_p),
         ("line_rate", F64),
-        ("line_frame_samples", U64), ("buffer_length", U64),
+        ("line_frame_samples", U64),
         ("tx_index", I64), ("peak_codec", I64), ("peak_line", I64),
         ("line_calls", U64), ("tx_consumed", U64), ("resampled", U64),
-        ("line_out_count", U64),
-        ("line_out", ctypes.c_int16 * LINE_OUT_SLOTS),
+        ("line_buffer_count", U64),
+        ("line_buffer", ctypes.c_int16 * LINE_BUFFER_SLOTS),
+        ("frame_ok", U64),
+        ("socket_fd", I64),
+        ("loss_gain", F64),
+        ("frame_budget", U64), ("line_frame_period", U64),
+        ("line_frames", U64), ("frames_received", U64), ("sent_frames", U64),
+        ("sent_samples", U64), ("received_samples", U64),
+        ("peer_instructions", I64),
+        ("peer_off_hook", U64), ("peer_ringing", U64), ("peer_call_state", U64),
+        ("codec_registers", U64 * 9), ("codec_mclk", U64), ("codec_empty_seen", U64),
+        ("codec_rate_seen", F64),
+        ("detector_present", U64), ("daa_samples", U64), ("daa_line_state", U64),
+        ("line_rx_peak", I64), ("codec_in_peak", I64), ("codec_handed_peak", I64),
+        ("codec_handed_at", I64), ("codec_handed_ever", I64), ("codec_queue_peak", I64),
+        ("in_flight_length", U64), ("frames_done", U64), ("record", U64),
+        ("presend_error", U64),
+        ("tx_record_count", U64), ("rx_record_count", U64), ("rx_log_count", U64),
+        ("tx_record", ctypes.c_int16 * RECORD_SLOTS),
+        ("rx_record", ctypes.c_int16 * RECORD_SLOTS),
+        ("rx_log", ctypes.c_int16 * RECORD_SLOTS),
         ("error", ctypes.c_char * 512),
     ]
 
@@ -63,7 +83,7 @@ class WorkerPoll:
         layout = (ctypes.c_uint64 * 4)()
         library.courier_worker_poll_layout(layout)
         expected = (ctypes.sizeof(WorkerPollState), WorkerPollState.debt.offset,
-                    WorkerPollState.panel_latch.offset, WorkerPollState.error.offset)
+                    WorkerPollState.frame_ok.offset, WorkerPollState.error.offset)
         if tuple(layout) != expected:
             raise RuntimeError(f"WorkerPollState layout {tuple(layout)} != {expected}")
         self.state = WorkerPollState()

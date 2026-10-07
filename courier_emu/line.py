@@ -120,6 +120,13 @@ class LineFrame:
                    int(call_state))
 
 
+def _presend_failure(code: int) -> OSError:
+    """The exception a socket call that failed with `code` raised (1000: timeout)."""
+    if code == 1000:
+        return TimeoutError("timed out")
+    return OSError(code, os.strerror(code))
+
+
 @dataclass
 class LineLink:
     """A two-wire line shared by two Courier instances.
@@ -169,6 +176,13 @@ class LineLink:
     _inbound: list[int] = field(default_factory=list, repr=False)
     _tx_record: Any = field(default=None, repr=False)
     _rx_record: Any = field(default=None, repr=False)
+    # A frame the worker's native line service already sent and then took
+    # back (see courier_worker_poll): 1, it went out and its reply did not
+    # come (the far end closed the line); 2000 + errno or 3000, receiving
+    # failed or timed out; 4000 + errno or 5000, sending did. The next
+    # exchange is that frame again, and meets the same failure without
+    # sending it twice.
+    _presend: int = field(default=0, repr=False)
 
     def __post_init__(self) -> None:
         if self.digital:
@@ -247,7 +261,11 @@ class LineLink:
                 call_state = CALL_ANSWERED
                 header = _HEADER.pack(0, 0, 0, call_state, count)
             else:
-                self._socket.sendall(encoded)
+                presend, self._presend = self._presend, 0
+                if presend >= 4000:
+                    raise _presend_failure(presend - 4000)
+                if not presend:
+                    self._socket.sendall(encoded)
                 if self._tx_record is not None:
                     self._tx_record.writeframesraw(encoded[_HEADER.size:])
                 if owed == 0:
@@ -255,6 +273,8 @@ class LineLink:
                     self.frames += 1
                     self.sent_samples += len(frame.samples)
                     return
+                if presend >= 2000:
+                    raise _presend_failure(presend - 2000)
                 header = self._receive(_HEADER.size)
                 instructions, off_hook, ringing, call_state, count = (
                     _HEADER.unpack(header))

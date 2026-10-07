@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from array import array
+import ctypes
 from collections import Counter, deque
 import math
 import os
@@ -18,7 +20,10 @@ from .console import SerialConsole
 from .daa import INSTRUCTIONS_PER_MS, CourierDaa, RingSource
 from .flash import FLASH_SIZE, SERVICE_ERASE, SERVICE_WRITE, ParameterFlash
 from .exchange import LineExchange
-from .line import LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES, LineLink
+from .line import (
+    CALL_ANSWERED, CALL_STATE_NAMES, LINE_FRAME_INSTRUCTIONS, LINE_FRAME_SAMPLES,
+    LINE_WINDOW_FRAMES, LineLink,
+)
 from .nvram import BIT_CHIP_SELECT, BIT_CLOCK, BIT_DATA, BIT_READY, CourierNvram
 from .quad_usart import QuadUsart
 from .quad_board import QuadBoard
@@ -3144,6 +3149,7 @@ class CourierMachine:
 
             poll = self._worker_poll = WorkerPoll()
             state = poll.state
+            line_buffer_address = ctypes.addressof(state.line_buffer)
             timers = self.timers
             seen = [0]
 
@@ -3216,16 +3222,125 @@ class CourierMachine:
                 state.timed = timed.handle if timed is not None else None
                 state.line_rate = float(LINE_RATE)
                 state.line_frame_samples = LINE_FRAME_SAMPLES
-                state.buffer_length = len(bridge._exchange_line_buffer)
+                buffer = bridge._exchange_line_buffer
+                if len(buffer) > len(state.line_buffer):
+                    return
+                state.line_buffer_count = len(buffer)
+                if buffer:
+                    seed = array("h", buffer)
+                    ctypes.memmove(line_buffer_address, seed.buffer_info()[0], 2 * len(seed))
                 state.tx_index = bridge._exchange_tx_index
                 state.peak_codec = bridge._line_service["tx_peak_codec"]
                 state.peak_line = bridge._line_service["tx_peak_line"]
                 state.line_calls = state.tx_consumed = state.resampled = 0
-                state.line_out_count = 0
+                state.frame_ok = 0
+                # Arming the frame exchange costs more than the frame saves
+                # unless one is near: within about three line services.
+                if native_frames and len(buffer) >= LINE_FRAME_SAMPLES - FRAME_ARM_MARGIN:
+                    arm_frames(bridge)
                 state.io_cursor = state.mmio_cursor = 0
                 state.dirty = 0
                 seen[0] = state.polls
                 state.armed = 1
+
+            FRAME_ARM_MARGIN = 48
+            native_frames = os.environ.get("COURIER_NATIVE_FRAMES", "1") != "0"
+
+            def arm_frames(bridge: Any) -> None:
+                """The frame exchange, for a call that is through and steady."""
+                line, daa, core = bridge.line, bridge.daa, bridge.core
+                service = bridge._line_service
+                registers = bridge._codec_registers_seen
+                clock = bridge._codec_clock_seen
+                state.frame_ok = 0
+                state.frames_done = state.daa_samples = state.daa_line_state = 0
+                state.tx_record_count = state.rx_record_count = state.rx_log_count = 0
+                if not (
+                    isinstance(line, LineLink) and line.connected and not line.audio_only
+                    and LINE_WINDOW_FRAMES == 1 and not line._inbound and not line._presend
+                    and (line.record_prefix is None
+                         or (line._tx_record is not None and line._rx_record is not None))
+                    and bridge._call_state == CALL_ANSWERED
+                    and line.peer_off_hook and not line.peer_ringing
+                    and line.peer_call_state <= CALL_ANSWERED
+                    and service.get("call_state") == CALL_STATE_NAMES[CALL_ANSWERED]
+                    and "rx_empty_connected" in service
+                    and daa is not None and daa.off_hook
+                    and daa.operation not in ("originate", "dialing")
+                    and not bridge._peer_ring_last
+                    and not bridge.legacy_carrier_fallback and not bridge._carrier_probe
+                    and bridge.boot_rom_enabled
+                    and hasattr(core, "queue_line_rx") and hasattr(core, "queue_codec_rx")
+                    and hasattr(core, "codec_state") and not getattr(core, "closed", False)
+                    and not getattr(core, "_si3034_codec", False)
+                    and hasattr(bridge, "_codec_empty_seen")
+                    and registers is not None and len(registers) == 9 and clock is not None
+                ):
+                    return
+                state.socket_fd = line._socket.fileno()
+                state.loss_gain = line.loss_gain
+                budget = bridge.line_frame_budget
+                state.frame_budget = ((1 << 64) - 1 if budget is None
+                                      or bridge.on_line_frame_budget is None else budget)
+                state.line_frame_period = LINE_FRAME_INSTRUCTIONS
+                state.line_frames = line.frames
+                state.frames_received = line.frames_received
+                state.sent_frames = line._sent_frames
+                state.sent_samples = line.sent_samples
+                state.received_samples = line.received_samples
+                state.peer_instructions = line.peer_instructions
+                state.peer_off_hook = line.peer_off_hook
+                state.peer_ringing = line.peer_ringing
+                state.peer_call_state = line.peer_call_state
+                for index, value in enumerate(registers):
+                    state.codec_registers[index] = value
+                state.codec_mclk, state.codec_rate_seen = clock
+                state.codec_empty_seen = bridge._codec_empty_seen
+                state.detector_present = bool(daa.detector_present)
+                state.line_rx_peak = bridge._line_rx_peak
+                state.codec_in_peak = bridge._codec_in_peak
+                state.codec_handed_peak = bridge._codec_handed_peak
+                state.codec_handed_at = bridge._codec_handed_at
+                state.codec_handed_ever = bridge._codec_handed_ever
+                state.codec_queue_peak = bridge._codec_queue_peak
+                state.in_flight_length = len(bridge._codec_in_flight)
+                state.record = line.record_prefix is not None
+                state.frame_ok = 1
+
+            def take_back_frames(bridge: Any) -> None:
+                line, daa = bridge.line, bridge.daa
+                line.frames = state.line_frames
+                line.frames_received = state.frames_received
+                line._sent_frames = state.sent_frames
+                line.sent_samples = state.sent_samples
+                line.received_samples = state.received_samples
+                line.peer_instructions = state.peer_instructions
+                line.peer_off_hook = bool(state.peer_off_hook)
+                line.peer_ringing = bool(state.peer_ringing)
+                line.peer_call_state = state.peer_call_state
+                if state.record:
+                    line._tx_record.writeframesraw(
+                        array("h", state.tx_record[:state.tx_record_count]).tobytes())
+                    line._rx_record.writeframesraw(
+                        array("h", state.rx_record[:state.rx_record_count]).tobytes())
+                bridge._line_service["drained_frames"] += state.frames_done
+                bridge._line_tx_index = state.tx_index
+                bridge._line_rx_peak = state.line_rx_peak
+                bridge._codec_in_peak = state.codec_in_peak
+                bridge._codec_handed_peak = state.codec_handed_peak
+                bridge._codec_handed_at = state.codec_handed_at
+                bridge._codec_handed_ever = state.codec_handed_ever
+                bridge._codec_queue_peak = state.codec_queue_peak
+                in_flight = bridge._codec_in_flight
+                in_flight.extend(state.rx_log[:state.rx_log_count])
+                while len(in_flight) > state.in_flight_length:
+                    in_flight.popleft()
+                daa.line_state = "ringing" if state.daa_line_state == 2 else "quiet"
+                if state.daa_samples:
+                    daa.generated_samples += state.daa_samples
+                    daa.qualified_samples += state.daa_samples
+                state.frames_done = state.daa_samples = state.daa_line_state = 0
+                state.tx_record_count = state.rx_record_count = state.rx_log_count = 0
 
             def before_run() -> None:
                 if worker_arm[0]:
@@ -3233,6 +3348,12 @@ class CourierMachine:
 
             def after_run() -> None:
                 state.armed = 0
+                if state.presend_error:
+                    # A frame the native service sent and took back: the
+                    # harness's exchange of it must not send it again.
+                    if bridge.line is not None:
+                        bridge.line._presend = state.presend_error
+                    state.presend_error = 0
                 if not state.dirty:
                     return
                 state.dirty = 0
@@ -3264,11 +3385,11 @@ class CourierMachine:
                     bridge._exchange_tx_index = state.tx_index
                     bridge._line_codec_last = state.line_codec_last
                     bridge._line_instructions = 0
-                    bridge._exchange_line_buffer.extend(
-                        state.line_out[:state.line_out_count])
+                    bridge._exchange_line_buffer[:] = state.line_buffer[:state.line_buffer_count]
                     bridge._codec_to_line.converted += state.resampled
                     state.line_calls = state.tx_consumed = state.resampled = 0
-                    state.line_out_count = 0
+                    if state.frames_done:
+                        take_back_frames(bridge)
 
             def resume(_uc: Any, _total: int, code: int) -> None:
                 # The native poll did the service up to and including the DSP

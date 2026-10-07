@@ -9,6 +9,9 @@
 #include <cstring>
 #include <exception>
 #include <stdexcept>
+#include <cerrno>
+#include <poll.h>
+#include <sys/socket.h>
 
 using courier::C5xCore;
 
@@ -2007,10 +2010,35 @@ struct WorkerPollState {
     // services done here added to it and to the statistics.
     void *timed;
     double line_rate;
-    uint64_t line_frame_samples, buffer_length;
+    uint64_t line_frame_samples;
     int64_t tx_index, peak_codec, peak_line;
-    uint64_t line_calls, tx_consumed, resampled, line_out_count;
-    int16_t line_out[256];
+    uint64_t line_calls, tx_consumed, resampled;
+    // The exchange buffer itself (_exchange_line_buffer), seeded when armed.
+    uint64_t line_buffer_count;
+    int16_t line_buffer[512];
+    // The frame exchange (_service_line_frame and LineLink.exchange) in a
+    // call that is through and steady: allowed when frame_ok, on the line's
+    // socket; the line's counters and its peer's state; the codec state the
+    // frame's register note must find unchanged; the receive side's peaks,
+    // the in-flight copy's length and the DAA's counts; what the recordings
+    // and the in-flight copy are owed. presend_error: a frame this sent and
+    // then took back (1: sent, else -errno or -1000 for a timeout), which
+    // LineLink.exchange must not send again.
+    uint64_t frame_ok;
+    int64_t socket_fd;
+    double loss_gain;
+    uint64_t frame_budget, line_frame_period;
+    uint64_t line_frames, frames_received, sent_frames, sent_samples, received_samples;
+    int64_t peer_instructions;
+    uint64_t peer_off_hook, peer_ringing, peer_call_state;
+    uint64_t codec_registers[9], codec_mclk, codec_empty_seen;
+    double codec_rate_seen;
+    uint64_t detector_present, daa_samples, daa_line_state;
+    int64_t line_rx_peak, codec_in_peak, codec_handed_peak, codec_handed_at,
+        codec_handed_ever, codec_queue_peak;
+    uint64_t in_flight_length, frames_done, record, presend_error;
+    uint64_t tx_record_count, rx_record_count, rx_log_count;
+    int16_t tx_record[4096], rx_record[4096], rx_log[4096];
     char error[512];
 };
 
@@ -2056,12 +2084,119 @@ bool worker_writable(const PollCpu &cpu, uint32_t address, uint32_t count)
     return true;
 }
 
+// LineLink's socket has a timeout, which leaves it non-blocking: wait for it
+// the way Python's socket does, 30 s a call. 0: done; an errno; -1000: timed
+// out; -1 (receiving): the far end closed the line.
+constexpr int WORKER_TIMEOUT = -1000, WORKER_CLOSED = -1;
+constexpr int WORKER_SOCKET_MS = 30000;
+
+int worker_wait(int fd, short events)
+{
+    for (;;) {
+        pollfd entry{fd, events, 0};
+        const int ready = ::poll(&entry, 1, WORKER_SOCKET_MS);
+        if (ready > 0) return 0;
+        if (ready == 0) return WORKER_TIMEOUT;
+        if (errno != EINTR) return errno;
+    }
+}
+
+int worker_send(int fd, const uint8_t *data, std::size_t count)
+{
+    std::size_t done = 0;
+    while (done < count) {
+        const ssize_t sent = ::send(fd, data + done, count - done, 0);
+        if (sent > 0) { done += std::size_t(sent); continue; }
+        if (sent < 0 && errno == EINTR) continue;
+        if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (const int failed = worker_wait(fd, POLLOUT)) return failed;
+            continue;
+        }
+        return errno;
+    }
+    return 0;
+}
+
+int worker_receive(int fd, uint8_t *data, std::size_t count)
+{
+    std::size_t done = 0;
+    while (done < count) {
+        const ssize_t got = ::recv(fd, data + done, count - done, 0);
+        if (got > 0) { done += std::size_t(got); continue; }
+        if (got == 0) return WORKER_CLOSED;
+        if (errno == EINTR) continue;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            if (const int failed = worker_wait(fd, POLLIN)) return failed;
+            continue;
+        }
+        return errno;
+    }
+    return 0;
+}
+
 bool worker_readable(const PollCpu &cpu, uint32_t address, uint32_t count)
 {
     if (address + count > cpu.memory_size) return false;
     for (uint32_t at = address; at < address + count; ++at)
         if (!(cpu.guard[at] & 1) || (cpu.guard[at] & 16)) return false;
     return true;
+}
+
+// What _service_line_frame does once the far end's frame is in: the frame
+// leaves the exchange buffer, LineLink.exchange's bookkeeping and recordings,
+// and the received audio into the codec's queue (_queue_line_audio on its
+// clocked-input path), the peaks and the DAA.
+void worker_commit_frame(WorkerPollState &s, C5xCore *core, const int16_t *wire,
+                         const uint8_t *header, const std::vector<int16_t> &body)
+{
+#pragma clang fp contract(off)
+    const uint64_t frame = s.line_frame_samples;
+    std::memmove(s.line_buffer, s.line_buffer + frame,
+                 std::size_t(s.line_buffer_count - frame) * sizeof s.line_buffer[0]);
+    s.line_buffer_count -= frame;
+    s.frames_done += 1;
+    s.sent_frames += 1;
+    if (s.record)
+        for (uint64_t k = 0; k < frame; ++k) s.tx_record[s.tx_record_count++] = wire[k];
+    s.frames_received += 1;
+    if (s.record)
+        for (const int16_t sample : body) s.rx_record[s.rx_record_count++] = sample;
+    s.line_frames += 1;
+    s.sent_samples += frame;
+    uint32_t stamp;
+    std::memcpy(&stamp, header, 4);
+    s.peer_instructions = stamp;
+    s.peer_off_hook = header[4] != 0;
+    s.peer_ringing = header[5] != 0;
+    s.peer_call_state = header[6];
+    std::vector<int64_t> incoming(body.size());
+    for (std::size_t k = 0; k < body.size(); ++k)
+        incoming[k] = s.loss_gain == 1.0 ? int64_t(body[k])
+                                         : int64_t(double(body[k]) * s.loss_gain);
+    s.received_samples += body.size();
+    if (!incoming.empty()) {
+        int64_t peak = 0;
+        for (const int64_t value : incoming) peak = std::max<int64_t>(peak, value < 0 ? -value : value);
+        s.line_rx_peak = std::max(s.line_rx_peak, peak);
+        s.codec_in_peak = std::max(s.codec_in_peak, peak);
+        if (peak) {
+            s.codec_handed_peak = std::max(s.codec_handed_peak, peak);
+            s.codec_handed_at = s.bridge_instructions;
+            s.codec_handed_ever = s.bridge_instructions;
+        }
+        std::vector<uint16_t> words(incoming.size());
+        for (std::size_t k = 0; k < incoming.size(); ++k) {
+            words[k] = uint16_t(incoming[k]);
+            s.rx_log[s.rx_log_count++] = int16_t(incoming[k]);
+        }
+        core->queue_line_rx(words.data(), words.size());
+        const uint64_t pending = core->codec_state().codec_rx_size;
+        s.in_flight_length = std::min<uint64_t>(s.in_flight_length + incoming.size(), pending);
+        s.codec_queue_peak = std::max(s.codec_queue_peak, peak);
+    }
+    // The socket is connected, so the line is quiet unless the far end rings.
+    s.daa_line_state = s.peer_ringing ? 2 : 1;
+    if (!body.empty() && s.detector_present) s.daa_samples += body.size();
 }
 
 } // namespace
@@ -2124,6 +2259,7 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
     courier::resample::Timed *timed = static_cast<courier::resample::Timed *>(s.timed);
     const auto &line_tx = core->line_tx_samples();
     const int64_t line_start = s.tx_index;
+    bool frame = false;
     if (!line_skip) {
         if (line_start < 0 || produced <= line_start) { s.armed = 0; return 0; }
         // The codec's rate, or the one in force at the batch's first sample;
@@ -2141,9 +2277,65 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
         for (size_t k = 0; k < samples.size(); ++k)
             samples[k] = int16_t(line_tx[size_t(line_start) + k]);
         timed->run(samples.data(), samples.size(), rate, s.line_rate, timed->kernel);
-        if (s.buffer_length + timed->out.size() >= s.line_frame_samples
-            || s.line_out_count + timed->out.size() > sizeof s.line_out / sizeof s.line_out[0]) {
+        const uint64_t buffered = s.line_buffer_count + timed->out.size();
+        if (buffered >= 2 * s.line_frame_samples || buffered > 512
+            || (buffered >= s.line_frame_samples && !s.frame_ok)) {
             timed->rollback();
+            s.armed = 0; return 0;
+        }
+        frame = buffered >= s.line_frame_samples;
+    }
+    // _service_line_frame, for the one frame the batch completes.
+    int16_t wire[512];
+    uint8_t header[9];
+    std::vector<int16_t> body;
+    if (frame) {
+        // _note_codec_registers must have nothing to note, the frame budget
+        // nothing to call, and the logs room for the frame.
+        const auto codec = core->codec_state();
+        bool same = codec.rx_empty_frames == s.codec_empty_seen && codec.mclk_hz == s.codec_mclk
+            && double(codec.sample_rate_millihz) / 1000.0 == s.codec_rate_seen;
+        for (unsigned index = 0; index < 9; ++index)
+            same = same && codec.registers[index] == s.codec_registers[index];
+        if (!same || s.line_frames + 1 >= s.frame_budget
+            || s.tx_record_count + s.line_frame_samples > 4096
+            || s.rx_record_count + 2048 > 4096 || s.rx_log_count + 2048 > 4096) {
+            timed->rollback();
+            s.armed = 0; return 0;
+        }
+        const uint64_t from_buffer = std::min<uint64_t>(s.line_buffer_count, s.line_frame_samples);
+        for (uint64_t k = 0; k < from_buffer; ++k) wire[k] = s.line_buffer[k];
+        for (uint64_t k = from_buffer; k < s.line_frame_samples; ++k)
+            wire[k] = timed->out[size_t(k - from_buffer)];
+        // LineFrame.encode: <IBBBH and the samples. Off hook, not ringing,
+        // the call answered.
+        std::vector<uint8_t> packet(9 + 2 * s.line_frame_samples);
+        const uint32_t stamp = uint32_t(s.line_frames * s.line_frame_period);
+        std::memcpy(packet.data(), &stamp, 4);
+        packet[4] = 1; packet[5] = 0; packet[6] = 3;
+        const uint16_t count = uint16_t(s.line_frame_samples);
+        std::memcpy(packet.data() + 7, &count, 2);
+        std::memcpy(packet.data() + 9, wire, 2 * s.line_frame_samples);
+        const int fd = int(s.socket_fd);
+        if (const int failed = worker_send(fd, packet.data(), packet.size())) {
+            timed->rollback();
+            s.presend_error = failed == WORKER_TIMEOUT ? 5000 : 4000 + uint64_t(failed);
+            s.armed = 0; return 0;
+        }
+        int failed = worker_receive(fd, header, sizeof header);
+        if (!failed) {
+            uint16_t peer_count;
+            std::memcpy(&peer_count, header + 7, 2);
+            if (peer_count > 2048) std::abort();   // no far end sends frames this long
+            body.resize(peer_count);
+            failed = worker_receive(fd, reinterpret_cast<uint8_t *>(body.data()), 2 * std::size_t(peer_count));
+        }
+        if (failed) {
+            // Taken back: the harness runs this service again, and its
+            // exchange meets the same failure without sending a second time.
+            timed->rollback();
+            s.presend_error = failed == WORKER_CLOSED ? 1
+                : failed == WORKER_TIMEOUT ? 3000 : 2000 + uint64_t(failed);
             s.armed = 0; return 0;
         }
     }
@@ -2165,16 +2357,16 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
         peak = 0;
         for (const int16_t sample : timed->out) {
             peak = std::max<int64_t>(peak, std::abs(int64_t(sample)));
-            s.line_out[s.line_out_count++] = sample;
+            s.line_buffer[s.line_buffer_count++] = sample;
         }
         s.peak_line = std::max(s.peak_line, peak);
-        s.buffer_length += timed->out.size();
         s.resampled += timed->out.size();
         s.tx_consumed += uint64_t(produced - line_start);
         s.tx_index = produced;
         s.line_calls += 1;
         s.line_codec_last = produced;
         s.line_skipped = 0;
+        if (frame) worker_commit_frame(s, core, wire, header, body);
     }
     uint64_t writes;
     bool tdm;
@@ -2244,6 +2436,9 @@ extern "C" int courier_worker_poll(void *context, uint64_t now, uint32_t flags, 
             r[REG_IP] = uint32_t(vector[0] | vector[1] << 8);
         }
     }
+    // A far end that hangs up or rings changes the next frame's call state:
+    // that one is the harness's.
+    if (frame && !(s.peer_off_hook && !s.peer_ringing && s.peer_call_state <= 3)) s.armed = 0;
     ++s.polls;
     return 1;
 }
@@ -2253,6 +2448,6 @@ extern "C" void courier_worker_poll_layout(uint64_t *out)
 {
     out[0] = sizeof(WorkerPollState);
     out[1] = offsetof(WorkerPollState, debt);
-    out[2] = offsetof(WorkerPollState, panel_latch);
+    out[2] = offsetof(WorkerPollState, frame_ok);
     out[3] = offsetof(WorkerPollState, error);
 }
