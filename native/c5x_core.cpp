@@ -116,7 +116,7 @@ void C5xCore::reset()
     m_xf_falling_edges = 0;
     m_ifr = m_imr = 0;
     m_timer.tss = false;
-    m_nmi_pending = false;
+    m_ff.nmi_pending = false;
     m_interrupt_vectors.fill(0xffff);
     m_line_frame_irq = -1;
     m_event_deadline = 0;
@@ -131,12 +131,13 @@ void C5xCore::reset()
     m_call_tdm_active = false;
     for (auto &phase : m_line_phase_tx) phase.clear();
     m_line_frame_entry = -1;
+    m_ff.entry = false;
     m_pending_overlay.clear();
     std::fill(std::begin(m_pcstack), std::end(m_pcstack), 0);
     m_pcstack_ptr = 0;
     m_rpt_start = m_rpt_end = 0;
     m_cbcr = m_cbsr1 = m_cber1 = m_cbsr2 = m_cber2 = 0;
-    m_timer = {}; m_serial = {}; m_tdm = {}; m_shadow = {};
+    m_timer = {}; m_tail_cycle = 0; m_serial = {}; m_tdm = {}; m_shadow = {};
     // On this board RS is shared with the AC01.  configure_rom_codec() opts
     // into that board wiring; later DSP resets must therefore return the
     // external codec's control registers and frame state to power-up too.
@@ -189,7 +190,7 @@ void C5xCore::reset()
     m_negotiation_d78 = m_negotiation_d79 = 0;
     m_negotiation_d26 = m_negotiation_indx = 0;
     m_negotiation_arp = m_negotiation_pm = 0;
-    m_idle = false;
+    m_ff.idle = false;
     m_instructions = m_cycles = 0;
     m_step_cycles = 0;
     m_io.fill(0xffff);
@@ -228,6 +229,7 @@ void C5xCore::schedule_call_overlay(uint16_t origin, const uint16_t *words,
         m_pending_call_registers.begin());
     m_pending_call_selector = selector;
     m_line_frame_entry = entry;
+    m_ff.entry = entry >= 0;
 }
 
 void C5xCore::load_data(const uint16_t *words, std::size_t count, uint16_t origin)
@@ -880,8 +882,10 @@ uint16_t C5xCore::register_value(uint16_t offset) const
     case 0x20: return m_serial.drr;
     case 0x21: return m_serial.dxr;
     case 0x22: return m_serial.spc;
-    case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
-    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) |
+    case 0x24: const_cast<C5xCore *>(this)->sync_timer_view(); return m_timer.tim;
+    case 0x25: const_cast<C5xCore *>(this)->sync_timer_view(); return m_timer.prd;
+    case 0x26: const_cast<C5xCore *>(this)->sync_timer_view();
+        return uint16_t(((m_timer.psc & 0xf) << 6) |
         (m_timer.tss ? 0x10 : 0) | (m_timer.tddr & 0xf));
     case 0x28: return m_pdwsr;
     case 0x29: return m_iowsr;
@@ -1379,8 +1383,10 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
         if ((m_serial.spc & SPC_RRST) && ready) value |= SPC_RRDY;
         return value;
     }
-    case 0x24: return m_timer.tim; case 0x25: return m_timer.prd;
-    case 0x26: return uint16_t(((m_timer.psc & 0xf) << 6) |
+    case 0x24: sync_timer_view(); return m_timer.tim;
+    case 0x25: sync_timer_view(); return m_timer.prd;
+    case 0x26: sync_timer_view();
+        return uint16_t(((m_timer.psc & 0xf) << 6) |
         (m_timer.tss ? 0x10 : 0) | (m_timer.tddr & 0xf));
     case 0x28: return m_pdwsr;
     case 0x29: return m_iowsr;
@@ -1459,8 +1465,10 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
         if (!(m_serial.spc & SPC_XRST) && (value & SPC_XRST)) m_codec.tx_ready = true;
         m_serial.spc = value; ++m_serial.spc_writes;
         m_serial.last_spc_pc = uint16_t(m_pc - 1); return;
-    case 0x24: m_timer.tim = value; return; case 0x25: m_timer.prd = value; return;
+    case 0x24: sync_timer_view(); m_event_deadline = 0; m_timer.tim = value; return;
+    case 0x25: sync_timer_view(); m_event_deadline = 0; m_timer.prd = value; return;
     case 0x26:
+        sync_timer_view(); m_event_deadline = 0;
         m_timer.tddr = value & 0xf; m_timer.psc = (value >> 6) & 0xf;
         m_timer.tss = (value & 0x10) != 0;
         if (value & 0x20) { m_timer.tim = m_timer.prd; m_timer.psc = m_timer.tddr; }
@@ -1489,11 +1497,6 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 
 void C5xCore::op_group_be() { s_opcode_table_be[m_op & 0xff](this); }
 void C5xCore::op_group_bf() { s_opcode_table_bf[m_op & 0xff](this); }
-
-C5xCore::ConditionState C5xCore::condition_state() const
-{
-    return {m_acc, bool(m_st0.ov), bool(m_st1.c), bool(m_st1.tc)};
-}
 
 void C5xCore::execute_opcode()
 {
@@ -1552,7 +1555,7 @@ bool C5xCore::check_interrupts()
         m_pc = vector != 0xffff
             ? vector
             : uint16_t((m_pmst.iptr << 11) | ((irq + 1) << 1));
-        m_ifr &= ~(1u << irq); m_idle = false; save_interrupt_context();
+        m_ifr &= ~(1u << irq); m_ff.idle = false; save_interrupt_context();
         return true;
     }
     return false;
@@ -1599,7 +1602,7 @@ void C5xCore::interrupt(unsigned irq)
     // source also wakes IDLE while INTM is set, leaving IFR pending.
     m_ifr |= uint16_t(1u << irq);
     if (m_imr & (1u << irq)) {
-        m_idle = false;
+        m_ff.idle = false;
     }
     check_interrupts();
 }
@@ -1609,17 +1612,17 @@ void C5xCore::nmi()
     // The pin is asynchronous but the core completes its pipeline before
     // taking the trap. Keep it pending until step() reaches an eligible
     // instruction boundary instead of changing PC in the host callback.
-    m_nmi_pending = true;
-    m_idle = false;
+    m_ff.nmi_pending = true;
+    m_ff.idle = false;
 }
 
 bool C5xCore::check_nmi()
 {
     if (
-        !m_nmi_pending || m_in_delay_slot
+        !m_ff.nmi_pending || m_in_delay_slot
         || m_repeat_active || m_pmst.braf
     ) return false;
-    m_nmi_pending = false;
+    m_ff.nmi_pending = false;
     // NMI ignores IMR/INTM, but not IPTR: its slot is offset 0x24 inside the
     // same relocatable vector table as every other vector (SPRU056D Figure
     // 4-3), and the mask ROM's own table is only at 0x0024 because IPTR is
@@ -1628,7 +1631,7 @@ bool C5xCore::check_nmi()
     PUSH_STACK(m_pc);
     m_st0.intm = 1;
     m_pc = uint16_t((m_pmst.iptr << 11) | 0x0024);
-    m_idle = false;
+    m_ff.idle = false;
     return true;
 }
 
@@ -1724,12 +1727,12 @@ bool C5xCore::step_front_rare()
 {
     // Both checks refuse at once with nothing pending, which is nearly every
     // step, so the calls are skipped then.
-    if (m_nmi_pending) check_nmi();
+    if (m_ff.nmi_pending) check_nmi();
     // Taking a vector is this step's work: PC is left at the handler's first
     // word for the next one, the way the part spends its own cycles getting
     // there rather than fetching the handler in the same instruction slot.
     if ((m_ifr & m_imr) && check_interrupts()) { consume_cycles(4); return true; }
-    if (m_idle) consume_cycles(1);
+    if (m_ff.idle) consume_cycles(1);
     else {
         // The customer-ROM dispatcher publishes call state at the boundary
         // immediately before the idle frame's ADC block. Waiting for this PC
@@ -1758,6 +1761,7 @@ bool C5xCore::step_front_rare()
             }
             CHANGE_PC(uint16_t(m_line_frame_entry));
             m_line_frame_entry = -1;
+            m_ff.entry = false;
         }
         if (m_pmst.braf && m_pc == m_paer) {
             if (m_brcr > 0) CHANGE_PC(m_pasr);
@@ -1872,11 +1876,10 @@ void C5xCore::step()
     // MICA portware's frame-rate check at program 0x80cd reloads TIM from
     // PRD, waits one serial frame and averages 256 readings, and rejected
     // every clock rate because of this.
-    const uint64_t elapsed = m_cycles - m_timer.serviced_cycle;
-    m_timer.serviced_cycle = m_cycles;
-    if (!m_timer.tss)
-        for (uint64_t expiry = advance_timer(elapsed); expiry; --expiry)
-            interrupt(IRQ_TINT);
+    // It is only brought up to date when an expiry can be due (step_events), or
+    // when something reads or writes it (sync_timer_view); m_tail_cycle is the
+    // cycle those would see it at, which is where an eager timer would be.
+    m_tail_cycle = m_cycles;
 #ifdef C5X_CHECK_EVENTS
     if (m_cycles < m_event_deadline && event_due())
         std::abort();
@@ -1891,6 +1894,13 @@ void C5xCore::step()
 // line frame. step() comes here only once one can be due.
 void C5xCore::step_events()
 {
+    {
+        const uint64_t elapsed = m_cycles - m_timer.serviced_cycle;
+        m_timer.serviced_cycle = m_cycles;
+        if (!m_timer.tss)
+            for (uint64_t expiry = advance_timer(elapsed); expiry; --expiry)
+                interrupt(IRQ_TINT);
+    }
     // The ASIC is the TDM clock master. Its edge continues while the DSP is
     // inside an overlay and no longer executing the idle DAC loop, so cadence
     // must come from elapsed C5x cycles rather than from observing an OUT.
@@ -2048,10 +2058,28 @@ void C5xCore::step_events()
 
 bool C5xCore::event_due() const
 {
-    return (m_si3034_codec && m_codec.receive_due && m_cycles >= m_codec.receive_cycle)
+    return (!m_timer.tss && m_tail_cycle - m_timer.serviced_cycle >= timer_distance())
+        || (m_si3034_codec && m_codec.receive_due && m_cycles >= m_codec.receive_cycle)
         || (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due
             && m_cycles >= m_codec.secondary_cycle)
         || (m_line_frame_irq >= 0 && m_cycles >= m_line_frame_next_cycle);
+}
+
+uint64_t C5xCore::timer_distance() const
+{
+    const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
+    const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
+    const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
+    return first + (to_zero - 1) * period;
+}
+
+// Bring the timer registers up to the cycle an eager timer would have reached.
+// No expiry can be pending: step_events delivers those the moment they fall due.
+void C5xCore::sync_timer_view()
+{
+    const uint64_t elapsed = m_tail_cycle - m_timer.serviced_cycle;
+    m_timer.serviced_cycle = m_tail_cycle;
+    if (!m_timer.tss && elapsed) advance_timer(elapsed);
 }
 
 // The earliest cycle at which event_due() can turn true. Whatever changes the
@@ -2059,6 +2087,14 @@ bool C5xCore::event_due() const
 void C5xCore::refresh_event_deadline()
 {
     uint64_t deadline = UINT64_MAX;
+    // The first TINT: the prescaler's first underflow, then TIM counting down
+    // to zero at one decrement per TDDR cycles (advance_timer's closed form).
+    if (!m_timer.tss) {
+        const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
+        const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
+        const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
+        deadline = m_timer.serviced_cycle + first + (to_zero - 1) * period;
+    }
     if (m_si3034_codec && m_codec.receive_due)
         deadline = std::min(deadline, m_codec.receive_cycle);
     if (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due)
@@ -2082,7 +2118,8 @@ void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
         // running. Skip only cycles on which no modeled event can occur, then
         // use the ordinary step() for the event boundary itself. This keeps
         // timer, serial-frame and interrupt recognition in one implementation.
-        if (m_idle && !m_nmi_pending && !(m_ifr & m_imr)) {
+        if (m_ff.idle && !m_ff.nmi_pending && !(m_ifr & m_imr)) {
+            sync_timer_view();
             uint64_t distance = target - m_cycles;
             if (!m_timer.tss) {
                 const uint64_t first = m_timer.psc > 1
@@ -2128,7 +2165,7 @@ C5xCore::State C5xCore::state() const
         uint16_t((m_st0.intm << 7) | (m_st0.ovm << 6) | (m_st0.ov << 5) |
                  (m_st1.sxm << 4) | (m_st1.c << 3) | (m_st1.tc << 2) |
                  (m_st1.xf << 1) | m_st1.cnf),
-        m_idle, m_instructions, m_cycles};
+        m_ff.idle, m_instructions, m_cycles};
     std::copy(std::begin(m_ar), std::end(m_ar), result.ar.begin());
     return result;
 }

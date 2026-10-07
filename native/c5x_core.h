@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <deque>
 #include <string>
@@ -313,7 +314,7 @@ public:
     CodecState codec_state() const;
     // Conversion rate in milli-hertz, so 7578.947 Hz survives the trip.
     uint64_t codec_sample_rate_millihz() const { return m_codec.sample_rate_millihz; }
-    void schedule_line_frame_entry(uint16_t address) { m_line_frame_entry = address; }
+    void schedule_line_frame_entry(uint16_t address) { m_line_frame_entry = address; m_ff.entry = true; }
     void schedule_call_overlay(uint16_t origin, const uint16_t *words,
         std::size_t count, uint16_t entry, const uint16_t *registers,
         uint16_t selector);
@@ -330,7 +331,7 @@ public:
     }
     void set_call_tdm_active(bool active) { m_call_tdm_active = active; }
     bool call_tdm_active() const { return m_call_tdm_active; }
-    void set_pc(uint16_t address) { m_pc = address; m_idle = false; }
+    void set_pc(uint16_t address) { m_pc = address; m_ff.idle = false; }
     void step();
     void run(uint64_t instruction_limit);
     void run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame = false);
@@ -501,11 +502,15 @@ private:
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;
     struct ConditionState {
         int32_t acc = 0;
-        bool ov = false, carry = false, tc = false;
+        // The flags as stored: only op_xc turns them into booleans.
+        uint16_t ov = 0, carry = 0, tc = 0;
     };
     ConditionState m_condition_start{}, m_xc_condition{};
     bool m_delay_condition_pending = false;
-    ConditionState condition_state() const;
+    ConditionState condition_state() const
+    {
+        return {m_acc, uint16_t(m_st0.ov), uint16_t(m_st1.c), uint16_t(m_st1.tc)};
+    }
     void execute_opcode();
     bool step_front_rare();
     uint8_t program_kind(uint16_t address) const;
@@ -522,6 +527,9 @@ private:
     uint64_t m_map_rebuilds = 0;
     std::array<uint8_t, 65536> m_pmap{}, m_dmap{};
     void step_events();
+    void sync_timer_view();
+    uint64_t timer_distance() const;
+    uint64_t m_tail_cycle = 0;
     bool event_due() const;
     void refresh_event_deadline();
     // Zero means unknown: step() recomputes it.
@@ -529,15 +537,15 @@ private:
     // True when step() has anything to do before fetching: see step_front_rare.
     bool front_is_rare() const
     {
-        return m_nmi_pending | m_idle | m_front_aux | (m_line_frame_entry >= 0)
-            | bool(m_pmst.braf)
+        uint32_t flags;
+        std::memcpy(&flags, &m_ff, sizeof flags);
+        return (flags != 0) | bool(m_pmst.braf)
             | (((m_ifr & m_imr) != 0) & !m_st0.intm & !m_repeat_active);
     }
     // The diagnostics step() would otherwise test for every instruction.
-    bool m_front_aux = false;
     void update_front_aux()
     {
-        m_front_aux = m_step_probes || m_coverage || !m_capture_addresses.empty()
+        m_ff.aux = m_step_probes || m_coverage || !m_capture_addresses.empty()
             || m_trace_first <= m_trace_last;
     }
     uint16_t m_treg0 = 0, m_treg1 = 0, m_treg2 = 0;
@@ -588,7 +596,6 @@ private:
     // External NMI is sampled at an instruction boundary.  It cannot be
     // serviced in the middle of a delayed branch or a repeated instruction,
     // and unlike a maskable interrupt it does not use the context shadow.
-    bool m_nmi_pending = false;
     std::array<uint16_t, 16> m_interrupt_vectors{};
     int m_line_frame_irq = -1;
     uint64_t m_line_frame_interrupts = 0;
@@ -618,6 +625,11 @@ private:
     uint16_t m_line_dac_slot = 0xfffd;
     std::vector<uint16_t> m_line_phase_tx[4];
     int m_line_frame_entry = -1;
+    // Bytes that step() tests as one word: see front_is_rare().
+    struct FrontFlags {
+        bool nmi_pending = false, idle = false, aux = false, entry = false;
+    } m_ff;
+    static_assert(sizeof(FrontFlags) == 4, "FrontFlags is read as a word");
     uint16_t m_pending_overlay_origin = 0;
     std::vector<uint16_t> m_pending_overlay;
     std::array<uint16_t, 7> m_pending_call_registers{};
@@ -740,7 +752,6 @@ private:
         uint16_t last_trcv_pc = 0, last_tdxr_pc = 0, last_tspc_pc = 0;
     } m_tdm;
     shadow_t m_shadow{};
-    bool m_idle = false;
     uint64_t m_instructions = 0, m_cycles = 0;
     unsigned m_step_cycles = 0;
 

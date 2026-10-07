@@ -1401,7 +1401,7 @@ void C5xCore::op_intr()
 	m_st0.intm = 1;
 	save_interrupt_context();
 	CHANGE_PC(uint16_t((m_pmst.iptr << 11) | ((m_op & 0x1f) << 1)));
-	m_idle = false;
+	m_ff.idle = false;
 	CYCLES(4);
 }
 
@@ -1474,15 +1474,15 @@ void C5xCore::op_xc()
 	// the ALU/TC conditions captured here.
 	const auto current = condition_state();
 	m_acc = m_xc_condition.acc;
-	m_st0.ov = m_xc_condition.ov;
-	m_st1.c = m_xc_condition.carry;
-	m_st1.tc = m_xc_condition.tc;
+	m_st0.ov = m_xc_condition.ov != 0;
+	m_st1.c = m_xc_condition.carry != 0;
+	m_st1.tc = m_xc_condition.tc != 0;
 	const bool execute = GET_ZLVC_CONDITION((m_op >> 4) & 0xf, m_op & 0xf)
 		&& GET_TP_CONDITION((m_op >> 8) & 0x3);
 	m_acc = current.acc;
-	m_st0.ov = current.ov;
-	m_st1.c = current.carry;
-	m_st1.tc = current.tc;
+	m_st0.ov = current.ov != 0;
+	m_st1.c = current.carry != 0;
+	m_st1.tc = current.tc != 0;
 	if (execute)
 	{
 		CYCLES(1);
@@ -2265,7 +2265,7 @@ void C5xCore::op_clrc_xf()
 
 void C5xCore::op_idle()
 {
-	m_idle = true;
+	m_ff.idle = true;
 }
 
 void C5xCore::op_idle2()
