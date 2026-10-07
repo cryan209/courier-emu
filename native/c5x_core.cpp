@@ -192,7 +192,6 @@ void C5xCore::reset()
     m_negotiation_arp = m_negotiation_pm = 0;
     m_ff.idle = false;
     m_instructions = m_cycles = 0;
-    m_step_cycles = 0;
     m_io.fill(0xffff);
     m_mailbox_output.fill(0);
     m_asic_output.fill(0xffff);
@@ -930,7 +929,6 @@ void C5xCore::consume_cycles(unsigned cycles)
         m_condition_start = current;
     }
     m_delay_condition_pending = false;
-    m_step_cycles += cycles;
     m_cycles += cycles;
 }
 
@@ -1510,6 +1508,7 @@ void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 #define CYCLES(x) consume_cycles(x)
 
 #include "c5x_ops.ipp"
+#include "c5x_optable.ipp"
 
 #undef CYCLES
 
@@ -1519,7 +1518,7 @@ void C5xCore::op_group_bf() { s_opcode_table_bf[m_op & 0xff](this); }
 void C5xCore::execute_opcode()
 {
     m_condition_start = condition_state();
-    s_opcode_table[m_op >> 8](this);
+    s_opcode_table[m_op >> 8].plain(this);
 }
 
 void C5xCore::delay_slot(uint16_t startpc)
@@ -1867,42 +1866,48 @@ bool C5xCore::step_front_rare()
     return false;
 }
 
-void C5xCore::step() { step_inline(); }
-
-// The run loops below take this inline: one call per DSP instruction, and the
-// registers it spills, was a measurable part of the step.
-inline __attribute__((always_inline)) void C5xCore::step_inline()
+// With none of the front flags up, only a vector that can be taken sends a
+// step to step_front_rare - and the loop edge of a block repeat, which is the
+// one rare step that is also the common one inside a RPTB body, so it is done
+// in step_begin: step_front_rare does exactly this, in this order, when there
+// is nothing else for it to do.
+inline __attribute__((always_inline)) bool C5xCore::step_is_rare() const
 {
-    m_step_cycles = 0;
-    // With none of the front flags up, only a vector that can be taken sends
-    // a step to step_front_rare - and the loop edge of a block repeat, which
-    // is the one rare step that is also the common one inside a RPTB body, so
-    // it is done here: step_front_rare does exactly this, in this order, when
-    // there is nothing else for it to do.
     uint32_t front;
     std::memcpy(&front, &m_ff, sizeof front);
     const bool pending = (m_ifr & m_imr) != 0;
     const bool vector_due = pending & !m_st0.intm & !m_repeat_active;
-    if (__builtin_expect(front | (m_pmst.braf ? pending : vector_due), 0)) {
-        if (step_front_rare()) return;
-    } else {
-        if (m_pmst.braf && m_pc == m_paer) {
-            if (m_brcr > 0) CHANGE_PC(m_pasr);
-            if (--m_brcr <= 0) m_pmst.braf = 0;
-        }
-        const uint16_t previous_pc = m_pc;
-        m_op = ROPCODE();
-        execute_opcode();
-        if (m_repeat_active && previous_pc == m_rpt_end) {
-            if (m_rptc > 0) {
-                CHANGE_PC(m_rpt_start);
-                --m_rptc;
-            } else {
-                m_rptc = 0;
-                m_repeat_active = false;
-            }
+    return front | (m_pmst.braf ? pending : vector_due);
+}
+
+// The common step up to the dispatch.
+inline __attribute__((always_inline)) void C5xCore::step_begin()
+{
+    if (m_pmst.braf && m_pc == m_paer) {
+        if (m_brcr > 0) CHANGE_PC(m_pasr);
+        if (--m_brcr <= 0) m_pmst.braf = 0;
+    }
+    m_previous_pc = m_pc;
+    m_op = ROPCODE();
+    m_condition_start = condition_state();
+}
+
+// And after it.
+inline __attribute__((always_inline)) void C5xCore::step_repeat_edge()
+{
+    if (m_repeat_active && m_previous_pc == m_rpt_end) {
+        if (m_rptc > 0) {
+            CHANGE_PC(m_rpt_start);
+            --m_rptc;
+        } else {
+            m_rptc = 0;
+            m_repeat_active = false;
         }
     }
+}
+
+inline __attribute__((always_inline)) void C5xCore::step_retire()
+{
     ++m_instructions;
     // The on-chip timer counts CLKOUT, not retired instructions: a three-cycle
     // instruction advances TIM by three. Ticking it once per instruction ran
@@ -1923,6 +1928,41 @@ inline __attribute__((always_inline)) void C5xCore::step_inline()
         step_events();
         refresh_event_deadline();
     }
+}
+
+void C5xCore::step() { step_inline(); }
+
+// The run loops below take this inline: one call per DSP instruction, and the
+// registers it spills, was a measurable part of the step.
+inline __attribute__((always_inline)) void C5xCore::step_inline()
+{
+    if (__builtin_expect(step_is_rare(), 0)) {
+        if (step_front_rare()) return;
+    } else {
+        step_begin();
+        s_opcode_table[m_op >> 8].plain(this);
+        step_repeat_edge();
+    }
+    step_retire();
+}
+
+// run_cycles' steps, threaded: each opcode's handler finishes its own step
+// and dispatches the next one itself, so every opcode has a dispatch branch of
+// its own to predict instead of all of them sharing the one in the loop. It
+// hands back to the loop for anything step_inline would not do on its fast
+// path, and wherever the loop would stop or look at IDLE.
+template <void (C5xCore::*F)()>
+void C5xCore::threaded(C5xCore *core)
+{
+    [[clang::always_inline]] (core->*F)();
+    core->step_repeat_edge();
+    core->step_retire();
+    if (core->m_cycles >= core->m_run_target
+        || (core->m_run_yield && core->m_g711_tx.size() != core->m_run_pcm_size)
+        || core->step_is_rare())
+        return;
+    core->step_begin();
+    [[clang::musttail]] return s_opcode_table[core->m_op >> 8].threaded(core);
 }
 
 // The frame-rate events: the codec's receive and secondary words and the
@@ -2184,7 +2224,15 @@ void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
                 m_instructions += skipped;
             }
         }
-        step_inline();
+        if (__builtin_expect(step_is_rare(), 0))
+            step_inline();
+        else {
+            m_run_target = target;
+            m_run_yield = yield_on_pcm_frame;
+            m_run_pcm_size = initial_pcm_size;
+            step_begin();
+            s_opcode_table[m_op >> 8].threaded(this);
+        }
         // The digital board's MUX exchange supplies the next receive word.
         // Return each completed frame before clocking another one; otherwise
         // a long host scheduler slice fabricates empty receive slots.

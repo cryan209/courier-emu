@@ -443,7 +443,11 @@ private:
     using opcode_func = void (*)(C5xCore *);
     template <void (C5xCore::*F)()>
     static void thunk(C5xCore *core) { (core->*F)(); }
-    static const opcode_func s_opcode_table[256];
+    template <void (C5xCore::*F)()>
+    static void threaded(C5xCore *core);
+    // An opcode's handler on its own, and threaded for run_cycles.
+    struct OpcodeEntry { opcode_func plain, threaded; };
+    static const OpcodeEntry s_opcode_table[256];
     static const opcode_func s_opcode_table_be[256];
     static const opcode_func s_opcode_table_bf[256];
 
@@ -515,6 +519,15 @@ private:
     void execute_opcode();
     bool step_front_rare();
     void step_inline();
+    bool step_is_rare() const;
+    void step_begin();
+    void step_repeat_edge();
+    void step_retire();
+    uint16_t m_previous_pc = 0;
+    // Where a threaded run stops: see C5xCore::threaded.
+    uint64_t m_run_target = 0;
+    std::size_t m_run_pcm_size = 0;
+    bool m_run_yield = false;
     uint8_t program_kind(uint16_t address) const;
     uint8_t data_kind(uint16_t address) const;
     uint8_t data_map_entry(uint16_t address) const;
@@ -766,7 +779,6 @@ private:
     } m_tdm;
     shadow_t m_shadow{};
     uint64_t m_instructions = 0, m_cycles = 0;
-    unsigned m_step_cycles = 0;
 
     void consume_cycles(unsigned cycles);
     uint64_t advance_timer(uint64_t elapsed);

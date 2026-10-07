@@ -19,12 +19,12 @@ RUNNER = BUILD_DIRECTORY / "c5x_runner"
 LIBRARY = BUILD_DIRECTORY / ("libcourier_c5x.dylib" if sys.platform == "darwin" else "libcourier_c5x.so")
 SOURCES = (
     NATIVE_DIRECTORY / "c5x_core.cpp",
-    NATIVE_DIRECTORY / "c5x_optable.cpp",
     NATIVE_DIRECTORY / "c5x_runner.cpp",
     NATIVE_DIRECTORY / "c5x_core.h",
     NATIVE_DIRECTORY / "c5x_ops.ipp",
+    NATIVE_DIRECTORY / "c5x_optable.ipp",
 )
-LIBRARY_SOURCES = (SOURCES[:2] + (NATIVE_DIRECTORY / "c5x_capi.cpp",) + SOURCES[3:]
+LIBRARY_SOURCES = (SOURCES[:1] + (NATIVE_DIRECTORY / "c5x_capi.cpp",) + SOURCES[2:]
                    + (NATIVE_DIRECTORY / "bearer.hpp", NATIVE_DIRECTORY / "resample.hpp"))
 _LIBRARY_HANDLE = None
 _SIZE_T_MAX = ctypes.c_size_t(-1).value
@@ -43,7 +43,7 @@ def build_runner(*, force: bool = False) -> Path:
         "-Wall",
         "-Wextra",
         "-Wpedantic",
-        *(str(source) for source in SOURCES[:3]),
+        *(str(source) for source in SOURCES[:2]),
         "-o",
         str(RUNNER),
     ]
@@ -72,7 +72,7 @@ def build_library(*, force: bool = False) -> Path:
         # inlined): the core's accessors run several times per DSP instruction.
         "-fno-semantic-interposition",
         *link_flags,
-        *(str(source) for source in LIBRARY_SOURCES[:3]),
+        *(str(source) for source in LIBRARY_SOURCES[:2]),
         "-o", str(LIBRARY),
     ]
     process = subprocess.run(command, text=True, capture_output=True)

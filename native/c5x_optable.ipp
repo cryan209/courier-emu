@@ -1,91 +1,91 @@
 // license:BSD-3-Clause
 // copyright-holders:Ville Linde
-#include "c5x_core.h"
+// Included by c5x_core.cpp after the op bodies: a threaded handler finishes
+// its step inline, so it has to see them.
 
-namespace courier {
-
-const C5xCore::opcode_func C5xCore::s_opcode_table[256] =
+#define C5X_OP(name) {&C5xCore::thunk<&C5xCore::name>, &C5xCore::threaded<&C5xCore::name>}
+const C5xCore::OpcodeEntry C5xCore::s_opcode_table[256] =
 {
 	/* 0x00 - 0x0f */
-	&C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,
-	&C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,     &C5xCore::thunk<&C5xCore::op_lar_mem>,
-	&C5xCore::thunk<&C5xCore::op_lamm>,        &C5xCore::thunk<&C5xCore::op_smmr>,        &C5xCore::thunk<&C5xCore::op_subc>,        &C5xCore::thunk<&C5xCore::op_rpt_mem>,
-	&C5xCore::thunk<&C5xCore::op_out>,         &C5xCore::thunk<&C5xCore::op_ldp_mem>,     &C5xCore::thunk<&C5xCore::op_lst_st0>,     &C5xCore::thunk<&C5xCore::op_lst_st1>,
+	C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),
+	C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),     C5X_OP(op_lar_mem),
+	C5X_OP(op_lamm),        C5X_OP(op_smmr),        C5X_OP(op_subc),        C5X_OP(op_rpt_mem),
+	C5X_OP(op_out),         C5X_OP(op_ldp_mem),     C5X_OP(op_lst_st0),     C5X_OP(op_lst_st1),
 	/* 0x10 - 0x1f */
-	&C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,
-	&C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,
-	&C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,
-	&C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_mem>,
+	C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),
+	C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),
+	C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),
+	C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),    C5X_OP(op_lacc_mem),
 	/* 0x20 - 0x2f */
-	&C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,
-	&C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,
-	&C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,
-	&C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,     &C5xCore::thunk<&C5xCore::op_add_mem>,
+	C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),
+	C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),
+	C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),
+	C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),     C5X_OP(op_add_mem),
 	/* 0x30 - 0x3f */
-	&C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,
-	&C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,
-	&C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,
-	&C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,     &C5xCore::thunk<&C5xCore::op_sub_mem>,
+	C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),
+	C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),
+	C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),
+	C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),     C5X_OP(op_sub_mem),
 	/* 0x40 - 0x4f */
-	&C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,
-	&C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,
-	&C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,
-	&C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,         &C5xCore::thunk<&C5xCore::op_bit>,
+	C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),
+	C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),
+	C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),
+	C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),         C5X_OP(op_bit),
 	/* 0x50 - 0x5f */
-	&C5xCore::thunk<&C5xCore::op_mpya>,        &C5xCore::thunk<&C5xCore::op_mpys>,        &C5xCore::thunk<&C5xCore::op_sqra>,        &C5xCore::thunk<&C5xCore::op_sqrs>,
-	&C5xCore::thunk<&C5xCore::op_mpy_mem>,     &C5xCore::thunk<&C5xCore::op_mpyu>,        &C5xCore::thunk<&C5xCore::op_invalid>,     &C5xCore::thunk<&C5xCore::op_bldp>,
-	&C5xCore::thunk<&C5xCore::op_xpl_dbmr>,    &C5xCore::thunk<&C5xCore::op_opl_dbmr>,    &C5xCore::thunk<&C5xCore::op_apl_dbmr>,    &C5xCore::thunk<&C5xCore::op_cpl_dbmr>,
-	&C5xCore::thunk<&C5xCore::op_xpl_imm>,     &C5xCore::thunk<&C5xCore::op_opl_imm>,     &C5xCore::thunk<&C5xCore::op_apl_imm>,     &C5xCore::thunk<&C5xCore::op_cpl_imm>,
+	C5X_OP(op_mpya),        C5X_OP(op_mpys),        C5X_OP(op_sqra),        C5X_OP(op_sqrs),
+	C5X_OP(op_mpy_mem),     C5X_OP(op_mpyu),        C5X_OP(op_invalid),     C5X_OP(op_bldp),
+	C5X_OP(op_xpl_dbmr),    C5X_OP(op_opl_dbmr),    C5X_OP(op_apl_dbmr),    C5X_OP(op_cpl_dbmr),
+	C5X_OP(op_xpl_imm),     C5X_OP(op_opl_imm),     C5X_OP(op_apl_imm),     C5X_OP(op_cpl_imm),
 	/* 0x60 - 0x6f */
-	&C5xCore::thunk<&C5xCore::op_addc>,        &C5xCore::thunk<&C5xCore::op_add_s16_mem>, &C5xCore::thunk<&C5xCore::op_adds>,        &C5xCore::thunk<&C5xCore::op_addt>,
-	&C5xCore::thunk<&C5xCore::op_subb>,        &C5xCore::thunk<&C5xCore::op_sub_s16_mem>, &C5xCore::thunk<&C5xCore::op_subs>,        &C5xCore::thunk<&C5xCore::op_subt>,
-	&C5xCore::thunk<&C5xCore::op_zalr>,        &C5xCore::thunk<&C5xCore::op_lacl_mem>,    &C5xCore::thunk<&C5xCore::op_lacc_s16_mem>,&C5xCore::thunk<&C5xCore::op_lact>,
-	&C5xCore::thunk<&C5xCore::op_xor_mem>,     &C5xCore::thunk<&C5xCore::op_or_mem>,      &C5xCore::thunk<&C5xCore::op_and_mem>,     &C5xCore::thunk<&C5xCore::op_bitt>,
+	C5X_OP(op_addc),        C5X_OP(op_add_s16_mem), C5X_OP(op_adds),        C5X_OP(op_addt),
+	C5X_OP(op_subb),        C5X_OP(op_sub_s16_mem), C5X_OP(op_subs),        C5X_OP(op_subt),
+	C5X_OP(op_zalr),        C5X_OP(op_lacl_mem),    C5X_OP(op_lacc_s16_mem),C5X_OP(op_lact),
+	C5X_OP(op_xor_mem),     C5X_OP(op_or_mem),      C5X_OP(op_and_mem),     C5X_OP(op_bitt),
 	/* 0x70 - 0x7f */
-	&C5xCore::thunk<&C5xCore::op_lta>,         &C5xCore::thunk<&C5xCore::op_ltp>,         &C5xCore::thunk<&C5xCore::op_ltd>,         &C5xCore::thunk<&C5xCore::op_lt>,
-	&C5xCore::thunk<&C5xCore::op_lts>,         &C5xCore::thunk<&C5xCore::op_lph>,         &C5xCore::thunk<&C5xCore::op_pshd>,        &C5xCore::thunk<&C5xCore::op_dmov>,
-	&C5xCore::thunk<&C5xCore::op_adrk>,        &C5xCore::thunk<&C5xCore::op_b>,           &C5xCore::thunk<&C5xCore::op_call>,        &C5xCore::thunk<&C5xCore::op_banz>,
-	&C5xCore::thunk<&C5xCore::op_sbrk>,        &C5xCore::thunk<&C5xCore::op_bd>,          &C5xCore::thunk<&C5xCore::op_calld>,       &C5xCore::thunk<&C5xCore::op_banzd>,
+	C5X_OP(op_lta),         C5X_OP(op_ltp),         C5X_OP(op_ltd),         C5X_OP(op_lt),
+	C5X_OP(op_lts),         C5X_OP(op_lph),         C5X_OP(op_pshd),        C5X_OP(op_dmov),
+	C5X_OP(op_adrk),        C5X_OP(op_b),           C5X_OP(op_call),        C5X_OP(op_banz),
+	C5X_OP(op_sbrk),        C5X_OP(op_bd),          C5X_OP(op_calld),       C5X_OP(op_banzd),
 	/* 0x80 - 0x8f */
-	&C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,
-	&C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,         &C5xCore::thunk<&C5xCore::op_sar>,
-	&C5xCore::thunk<&C5xCore::op_samm>,        &C5xCore::thunk<&C5xCore::op_lmmr>,        &C5xCore::thunk<&C5xCore::op_popd>,        &C5xCore::thunk<&C5xCore::op_mar>,
-	&C5xCore::thunk<&C5xCore::op_spl>,         &C5xCore::thunk<&C5xCore::op_sph>,         &C5xCore::thunk<&C5xCore::op_sst_st0>,     &C5xCore::thunk<&C5xCore::op_sst_st1>,
+	C5X_OP(op_sar),         C5X_OP(op_sar),         C5X_OP(op_sar),         C5X_OP(op_sar),
+	C5X_OP(op_sar),         C5X_OP(op_sar),         C5X_OP(op_sar),         C5X_OP(op_sar),
+	C5X_OP(op_samm),        C5X_OP(op_lmmr),        C5X_OP(op_popd),        C5X_OP(op_mar),
+	C5X_OP(op_spl),         C5X_OP(op_sph),         C5X_OP(op_sst_st0),     C5X_OP(op_sst_st1),
 	/* 0x90 - 0x9f */
-	&C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,
-	&C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,        &C5xCore::thunk<&C5xCore::op_sacl>,
-	&C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,
-	&C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,        &C5xCore::thunk<&C5xCore::op_sach>,
+	C5X_OP(op_sacl),        C5X_OP(op_sacl),        C5X_OP(op_sacl),        C5X_OP(op_sacl),
+	C5X_OP(op_sacl),        C5X_OP(op_sacl),        C5X_OP(op_sacl),        C5X_OP(op_sacl),
+	C5X_OP(op_sach),        C5X_OP(op_sach),        C5X_OP(op_sach),        C5X_OP(op_sach),
+	C5X_OP(op_sach),        C5X_OP(op_sach),        C5X_OP(op_sach),        C5X_OP(op_sach),
 	/* 0xa0 - 0xaf */
-	&C5xCore::thunk<&C5xCore::op_norm>,        &C5xCore::thunk<&C5xCore::op_invalid>,     &C5xCore::thunk<&C5xCore::op_mac>,         &C5xCore::thunk<&C5xCore::op_macd>,
-	&C5xCore::thunk<&C5xCore::op_blpd_bmar>,   &C5xCore::thunk<&C5xCore::op_blpd_imm>,    &C5xCore::thunk<&C5xCore::op_tblr>,        &C5xCore::thunk<&C5xCore::op_tblw>,
-	&C5xCore::thunk<&C5xCore::op_bldd_slimm>,  &C5xCore::thunk<&C5xCore::op_bldd_dlimm>,  &C5xCore::thunk<&C5xCore::op_mads>,        &C5xCore::thunk<&C5xCore::op_madd>,
-	&C5xCore::thunk<&C5xCore::op_bldd_sbmar>,  &C5xCore::thunk<&C5xCore::op_bldd_dbmar>,  &C5xCore::thunk<&C5xCore::op_splk>,        &C5xCore::thunk<&C5xCore::op_in>,
+	C5X_OP(op_norm),        C5X_OP(op_invalid),     C5X_OP(op_mac),         C5X_OP(op_macd),
+	C5X_OP(op_blpd_bmar),   C5X_OP(op_blpd_imm),    C5X_OP(op_tblr),        C5X_OP(op_tblw),
+	C5X_OP(op_bldd_slimm),  C5X_OP(op_bldd_dlimm),  C5X_OP(op_mads),        C5X_OP(op_madd),
+	C5X_OP(op_bldd_sbmar),  C5X_OP(op_bldd_dbmar),  C5X_OP(op_splk),        C5X_OP(op_in),
 	/* 0xb0 - 0xbf */
-	&C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,
-	&C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,    &C5xCore::thunk<&C5xCore::op_lar_simm>,
-	&C5xCore::thunk<&C5xCore::op_add_simm>,    &C5xCore::thunk<&C5xCore::op_lacl_simm>,   &C5xCore::thunk<&C5xCore::op_sub_simm>,    &C5xCore::thunk<&C5xCore::op_rpt_simm>,
-	&C5xCore::thunk<&C5xCore::op_ldp_imm>,     &C5xCore::thunk<&C5xCore::op_ldp_imm>,     &C5xCore::thunk<&C5xCore::op_group_be>,    &C5xCore::thunk<&C5xCore::op_group_bf>,
+	C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),
+	C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),    C5X_OP(op_lar_simm),
+	C5X_OP(op_add_simm),    C5X_OP(op_lacl_simm),   C5X_OP(op_sub_simm),    C5X_OP(op_rpt_simm),
+	C5X_OP(op_ldp_imm),     C5X_OP(op_ldp_imm),     C5X_OP(op_group_be),    C5X_OP(op_group_bf),
 	/* 0xc0 - 0xcf */
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
 	/* 0xd0 - 0xdf */
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
-	&C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,    &C5xCore::thunk<&C5xCore::op_mpy_simm>,
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
+	C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),    C5X_OP(op_mpy_simm),
 	/* 0xe0 - 0xef */
-	&C5xCore::thunk<&C5xCore::op_bcnd>,        &C5xCore::thunk<&C5xCore::op_bcnd>,        &C5xCore::thunk<&C5xCore::op_bcnd>,        &C5xCore::thunk<&C5xCore::op_bcnd>,
-	&C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,
-	&C5xCore::thunk<&C5xCore::op_cc>,          &C5xCore::thunk<&C5xCore::op_cc>,          &C5xCore::thunk<&C5xCore::op_cc>,          &C5xCore::thunk<&C5xCore::op_cc>,
-	&C5xCore::thunk<&C5xCore::op_retc>,        &C5xCore::thunk<&C5xCore::op_retc>,        &C5xCore::thunk<&C5xCore::op_retc>,        &C5xCore::thunk<&C5xCore::op_retc>,
+	C5X_OP(op_bcnd),        C5X_OP(op_bcnd),        C5X_OP(op_bcnd),        C5X_OP(op_bcnd),
+	C5X_OP(op_xc),          C5X_OP(op_xc),          C5X_OP(op_xc),          C5X_OP(op_xc),
+	C5X_OP(op_cc),          C5X_OP(op_cc),          C5X_OP(op_cc),          C5X_OP(op_cc),
+	C5X_OP(op_retc),        C5X_OP(op_retc),        C5X_OP(op_retc),        C5X_OP(op_retc),
 	/* 0xf0 - 0xff */
-	&C5xCore::thunk<&C5xCore::op_bcndd>,       &C5xCore::thunk<&C5xCore::op_bcndd>,       &C5xCore::thunk<&C5xCore::op_bcndd>,       &C5xCore::thunk<&C5xCore::op_bcndd>,
-	&C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,          &C5xCore::thunk<&C5xCore::op_xc>,
-	&C5xCore::thunk<&C5xCore::op_ccd>,         &C5xCore::thunk<&C5xCore::op_ccd>,         &C5xCore::thunk<&C5xCore::op_ccd>,         &C5xCore::thunk<&C5xCore::op_ccd>,
-	&C5xCore::thunk<&C5xCore::op_retcd>,       &C5xCore::thunk<&C5xCore::op_retcd>,       &C5xCore::thunk<&C5xCore::op_retcd>,       &C5xCore::thunk<&C5xCore::op_retcd>
+	C5X_OP(op_bcndd),       C5X_OP(op_bcndd),       C5X_OP(op_bcndd),       C5X_OP(op_bcndd),
+	C5X_OP(op_xc),          C5X_OP(op_xc),          C5X_OP(op_xc),          C5X_OP(op_xc),
+	C5X_OP(op_ccd),         C5X_OP(op_ccd),         C5X_OP(op_ccd),         C5X_OP(op_ccd),
+	C5X_OP(op_retcd),       C5X_OP(op_retcd),       C5X_OP(op_retcd),       C5X_OP(op_retcd)
 };
 
 const C5xCore::opcode_func C5xCore::s_opcode_table_be[256] =
@@ -256,4 +256,4 @@ const C5xCore::opcode_func C5xCore::s_opcode_table_bf[256] =
 	&C5xCore::thunk<&C5xCore::op_invalid>,     &C5xCore::thunk<&C5xCore::op_invalid>,     &C5xCore::thunk<&C5xCore::op_invalid>,     &C5xCore::thunk<&C5xCore::op_invalid>,
 };
 
-} // namespace courier
+#undef C5X_OP
