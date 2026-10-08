@@ -864,11 +864,13 @@ class CourierMachine:
         # CONNECT is the DTE boundary: subsequent bytes are payload, not AT
         # commands. The firmware still owns the transition unless forced.
         #
-        # Compare the seven data bits. This DTE runs 7E1, so the result code
-        # arrives as `c3 cf 4e 4e c5 c3 d4` - CONNECT with an even-parity bit
-        # in the eighth - and matching raw bytes missed it on every character
-        # whose parity happened to be odd. The run stayed in command mode for
-        # ever after its own CONNECT.
+        # Compare the seven data bits. With an erased settings EEPROM the
+        # firmware falls back to 7E1, so the result code arrives as
+        # `c3 cf 4e 4e c5 c3 d4` - CONNECT with an even-parity bit in the
+        # eighth - and matching raw bytes missed it on every character whose
+        # parity happened to be odd. The run stayed in command mode for ever
+        # after its own CONNECT. An 8N1 profile (the 403's own EEPROM) has
+        # bit 7 clear in every result code, so the mask costs it nothing.
         recent = bytes(byte & 0x7F for byte in self.serial[-10:])
         if not self.online_mode and b"CONNECT" in recent.upper():
             self.online_mode = True
