@@ -1253,6 +1253,16 @@ class LaneHostIo:
         lib.courier_laneio_take_counts.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
             ctypes.c_void_p]
+        lib.courier_laneio_set_overlay_window.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint,
+            ctypes.c_char_p, ctypes.c_uint]
+        lib.courier_laneio_set_overlay_strobes.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_laneio_overlay_pending.restype = ctypes.c_size_t
+        lib.courier_laneio_overlay_pending.argtypes = [ctypes.c_void_p]
+        lib.courier_laneio_take_overlay.restype = ctypes.c_size_t
+        lib.courier_laneio_take_overlay.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_uint), ctypes.c_char_p, ctypes.c_size_t]
         self.context = lib.courier_laneio_create()
         self.function = ctypes.cast(
             lib.courier_laneio_access, ctypes.c_void_p).value
@@ -1312,6 +1322,38 @@ class LaneHostIo:
         self.library.courier_laneio_take_counts(
             self.context, *(ctypes.addressof(cell) for cell in cells))
         return tuple(list(cell) for cell in cells)  # type: ignore[return-value]
+
+    def set_overlay_window(self, window: bytearray, *, first: int, start: int,
+                           strobes: tuple[int, ...]) -> None:
+        """Hand the overlay strobes the first window and the strobe values."""
+        anchor = (ctypes.c_char * len(window)).from_buffer(window)
+        self._anchors.append(anchor)
+        self.library.courier_laneio_set_overlay_window(
+            self.context, ctypes.addressof(anchor), first, start,
+            bytes(strobes), len(strobes))
+
+    def set_overlay_strobes(self, enabled: bool) -> None:
+        self.library.courier_laneio_set_overlay_strobes(self.context, int(enabled))
+
+    def overlay_pending(self) -> int:
+        return self.library.courier_laneio_overlay_pending(self.context)
+
+    def take_overlay(self) -> tuple[list[tuple[int, int | None, bytes, bytes]], int, str]:
+        """The strobes served natively since the last call, as (strobe, base
+        or None, half, block); the overlay status byte; any commit error."""
+        count = self.overlay_pending()
+        rows = (ctypes.c_uint8 * (16 * max(1, count)))()
+        status = ctypes.c_uint()
+        error = ctypes.create_string_buffer(256)
+        taken = self.library.courier_laneio_take_overlay(
+            self.context, rows, count, ctypes.byref(status), error, len(error))
+        raw = bytes(rows)
+        events = []
+        for index in range(taken):
+            row = raw[16 * index:16 * index + 16]
+            base = row[2] | (row[3] << 8) if row[1] else None
+            events.append((row[0], base, row[4:8], row[8:16]))
+        return events, status.value, error.value.decode("utf-8", "replace")
 
 
 class ImodemShared(ctypes.Structure):

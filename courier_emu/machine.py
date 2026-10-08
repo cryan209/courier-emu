@@ -3451,12 +3451,31 @@ class CourierMachine:
             for index in range(2 * LANE_BANKS):
                 strobe, lane = bridge._lanes[LANE_FIRST_PORT + 2 * index]
                 lane_io.set_lane(index, bridge._windows[strobe], lane)
+            # A mid-call overlay's half-block strobes: one OUT 1e per four
+            # bytes, and each `2` commits a group to the C51 loader. Served in
+            # Python they cost an engine exit apiece - about ten thousand in
+            # a row, a 300 ms stall in a live call. COURIER_NATIVE_OVERLAY=0
+            # leaves them to `bridge.write`.
+            overlay_native = (
+                overlay_static and bridge.boot_rom_enabled
+                and os.environ.get("COURIER_NATIVE_OVERLAY", "1") != "0"
+            )
+            if overlay_native:
+                lane_io.set_overlay_window(
+                    bridge._windows[bridge.transfer.first_strobe],
+                    first=bridge.transfer.first_strobe,
+                    start=bridge.transfer_start_command,
+                    strobes=tuple(bridge._windows))
+                bridge._native_overlay = lane_io
 
             watched = bool(self.io_watch) or bridge.asic_transparent
             flagged = (command_port, LANE_RX_ACK_PORT, *lane_ports, 0x1C, 0x1E)
             applied: list[Any] = [None]
 
             def refresh_native_lanes() -> None:
+                # What the native strobes did is replayed before anything here
+                # reads the overlay state it changed.
+                bridge._drain_native_overlay()
                 served = (
                     not watched
                     and not bridge._completion_probe
@@ -3479,6 +3498,7 @@ class CourierMachine:
                     bridge._overlay_status & 0xFF,
                 )
                 if state != applied[0]:
+                    lane_io.set_overlay_strobes(bool(overlay_native and state[5]))
                     applied[0] = state
                     lane_io.configure(
                         state[0], state[1],

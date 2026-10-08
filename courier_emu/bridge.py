@@ -403,6 +403,8 @@ class BridgeStatus:
     codec_handed_peak: int = 0
     codec_handed_at: int = 0
     core_rebuilt_at: int = 0
+    # Overlay half-block strobes the x86 engine's port model served natively.
+    overlay_strobes_native: int = 0
     codec_replayed: int = 0
     # Messages the resident originated, as opposed to the ones the bridge
     # synthesises for it at call-overlay activation.
@@ -421,6 +423,10 @@ class BridgeStatus:
 
 class CourierDspBridge:
     """Courier host-port window plus a batched 80186/C50 clock scheduler."""
+
+    # See __init__; class-level so a bridge built without it has neither.
+    _native_overlay = None
+    overlay_strobes_native = 0
 
     def __init__(
         self,
@@ -587,6 +593,11 @@ class CourierDspBridge:
         # The loader spends the same value on both ends of a transfer, so
         # this is what tells the two apart. See the write path.
         self._overlay_halves_since_start = 0
+        # The x86 engine's native port model, when it serves the overlay's
+        # half-block strobes itself (LaneHostIo.serve_strobe). What it did is
+        # replayed here by `_drain_native_overlay` before anything reads it.
+        self._native_overlay = None
+        self.overlay_strobes_native = 0
         self.overlay_destination_waits = 0
         self.overlay_destinations: list[str] = []
         self.transfer_commands = 0
@@ -2233,6 +2244,34 @@ class CourierDspBridge:
         self._overlay_groups = []
         self._overlay_target = None
 
+    def _drain_native_overlay(self) -> None:
+        """Replay the half-block strobes the native port model served.
+
+        Each is what the DSP_COMMAND_PORT branch of `write` would have done
+        with it: the native side has already committed the group to the C51
+        loader (`_commit_overlay_group`'s DSP work) and kept the status byte;
+        the bookkeeping - the half count, the committed groups and
+        `_accumulate_overlay`'s identification and read-back - runs here, in
+        the same order, before anything else looks at it.
+        """
+        native = self._native_overlay
+        if native is None or not native.overlay_pending():
+            return
+        events, status, error = native.take_overlay()
+        self._overlay_status = status
+        for strobe, base, half, block in events:
+            self._overlay_halves_since_start += 1
+            self.overlay_strobes_native += 1
+            if strobe == 2:
+                if base is None:
+                    # The commit failed: `_commit_overlay_group` raises here,
+                    # before the half is accumulated.
+                    raise RuntimeError(error or "native overlay commit failed")
+                self._overlay_groups.append((base, block))
+            self._accumulate_overlay(half, group_committed=strobe == 2)
+        if error:
+            raise RuntimeError(error)
+
     def _commit_overlay_group(self, block: bytes) -> None:
         """Expose four words to the resident loader and await its real ACK."""
         if len(block) != 8:
@@ -2383,6 +2422,8 @@ class CourierDspBridge:
         )
 
     def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
+        if self._native_overlay is not None:
+            self._drain_native_overlay()
         if getattr(self, "board3453", None) is not None:
             self.board3453.write(port, size, value, pc)
             return
@@ -2759,6 +2800,8 @@ class CourierDspBridge:
         return word
 
     def read(self, port: int, size: int) -> int | None:
+        if self._native_overlay is not None:
+            self._drain_native_overlay()
         if getattr(self, "board3453", None) is not None:
             return self.board3453.read(port, size)
         if size == 1 and (
@@ -3793,6 +3836,8 @@ class CourierDspBridge:
         # Hand back the last one built while it was live.
         if getattr(self.core, "closed", False) and self._last_status is not None:
             return self._last_status
+        if self._native_overlay is not None:
+            self._drain_native_overlay()
         status = BridgeStatus(
             active=self.active,
             launched=self.launched,
@@ -3805,6 +3850,7 @@ class CourierDspBridge:
             ),
             bootstraps=self.bootstraps,
             overlay_downloads=self.overlay_downloads,
+            overlay_strobes_native=self.overlay_strobes_native,
             line_service=dict(
                 self._line_service,
                 buffer_left=len(self._exchange_line_buffer),

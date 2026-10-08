@@ -10,6 +10,9 @@
 #include <exception>
 #include <stdexcept>
 #include <cerrno>
+#include <cstdio>
+#include <string>
+#include <vector>
 #include <poll.h>
 #include <sys/socket.h>
 
@@ -58,6 +61,100 @@ struct LaneHostIo {
     // harness publishes again once it has seen the state change.
     uint8_t fixed_valid[256] = {}, fixed_value[256] = {}, invalidates[256] = {};
 
+    // A mid-call overlay's half-block strobes on 0x1e: bridge.py's
+    // DSP_COMMAND_PORT branch of `write`, for every strobe but the transfer's
+    // start/end. Each half is logged for the harness to replay through
+    // `_accumulate_overlay`; a `2` also commits the window's four words to the
+    // C51 resident loader here, as `_commit_overlay_group` does, because the
+    // loader has to have taken them before the supervisor's next OUT.
+    struct OverlayEvent {
+        uint8_t strobe, committed;
+        uint16_t base;
+        uint8_t half[4], block[8];
+    };
+    bool ov_strobes = false;     // the harness's overlay preconditions hold
+    uint8_t ov_first = 1, ov_start = 4;
+    uint8_t ov_window_strobe[256] = {};
+    uint8_t *ov_window = nullptr;  // the first transfer window's eight bytes
+    std::vector<OverlayEvent> ov_events;
+    std::string ov_error;
+
+    void ov_present(const uint8_t *block)
+    {
+        for (unsigned index = 0; index < 4; ++index)
+            core->set_io(uint16_t(0x58 + index),
+                uint16_t(block[2 * index] | (block[2 * index + 1] << 8)));
+        // _present_to_dsp(0x0200): the four-word-ready flag and the doorbell.
+        core->set_io(0x57, uint16_t(core->io(0x57) | 0x0200));
+        core->interrupt(1);
+    }
+
+    bool ov_settle(uint16_t base)
+    {
+        const uint16_t target = uint16_t(base + 4);
+        for (unsigned step = 0; step < 20000; ++step) {
+            core->run(1);
+            if (core->data(0xFF62) == target) {
+                core->run(32);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ov_commit(OverlayEvent &event)
+    {
+        try {
+            const uint16_t destination = core->data(0xFF62);
+            ov_present(event.block);
+            mb_overlay_status &= uint8_t(~0x02);
+            uint16_t base = destination;
+            bool settled = ov_settle(destination);
+            if (!settled) {
+                const uint16_t repointed = core->data(0xFF62);
+                if (repointed != destination) {
+                    ov_present(event.block);
+                    base = repointed;
+                    settled = ov_settle(repointed);
+                }
+            }
+            if (settled) {
+                mb_overlay_status |= 0x02;
+                event.committed = 1;
+                event.base = base;
+                return true;
+            }
+            char message[160];
+            std::snprintf(message, sizeof message,
+                "C51 resident loader did not acknowledge overlay block: "
+                "destination=%04x, ff62=%04x, pa7=%04x",
+                destination, core->data(0xFF62), core->io(0x57));
+            ov_error = message;
+        } catch (const std::exception &exception) {
+            ov_error = exception.what();
+        }
+        return false;
+    }
+
+    bool serve_strobe(uint8_t strobe)
+    {
+        if (!ov_strobes || !ov_window || strobe == ov_start
+                || !ov_window_strobe[strobe] || !ov_error.empty())
+            return false;
+        OverlayEvent event{};
+        event.strobe = strobe;
+        std::memcpy(event.half, ov_window + (strobe == ov_first ? 0 : 4), 4);
+        if (strobe == 2) {
+            std::memcpy(event.block, ov_window, 8);
+            ov_commit(event);
+        }
+        ov_events.push_back(event);
+        ++out_count[0x1e];
+        out_last[0x1e] = strobe;
+        out_seen[0x1e] = 1;
+        return true;
+    }
+
     // direction 1 = IN, 2 = OUT; true when served.
     bool serve_mailbox(int direction, uint16_t port, uint16_t value, uint16_t *out)
     {
@@ -76,7 +173,8 @@ struct LaneHostIo {
             *out = answer & 0xff;
             return true;
         }
-        if (value & 0xff) return false;
+        if (value & 0xff)
+            return port == 0x1e && serve_strobe(uint8_t(value));
         if (port == 0x1c ? !mb_runtime : !mb_zero_ok) return false;
         ++out_count[port];
         out_last[port] = 0;
@@ -716,6 +814,56 @@ void courier_laneio_set_invalidating_port(void *context, unsigned port)
 void courier_laneio_set_lane(void *context, unsigned index, uint8_t *byte)
 {
     if (index < 16) static_cast<LaneHostIo *>(context)->lane[index] = byte;
+}
+
+// The overlay strobes' fixed shape: the first window's bytes, its strobe, the
+// start/end strobe, and every strobe that has a window. See serve_strobe.
+void courier_laneio_set_overlay_window(void *context, uint8_t *window,
+    unsigned first, unsigned start, const uint8_t *strobes, unsigned count)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    io->ov_window = window;
+    io->ov_first = uint8_t(first);
+    io->ov_start = uint8_t(start);
+    std::memset(io->ov_window_strobe, 0, sizeof io->ov_window_strobe);
+    for (unsigned index = 0; index < count; ++index)
+        io->ov_window_strobe[strobes[index]] = 1;
+}
+
+void courier_laneio_set_overlay_strobes(void *context, int enabled)
+{
+    static_cast<LaneHostIo *>(context)->ov_strobes = enabled != 0;
+}
+
+std::size_t courier_laneio_overlay_pending(void *context)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    return io->ov_events.size() + (io->ov_error.empty() ? 0 : 1);
+}
+
+// Hand over the logged strobes, 16 bytes each: strobe, committed, base (LE),
+// half[4], block[8]. *status is the overlay status byte as the strobes left it,
+// and a commit failure's message goes to `error`. Returns the event count.
+std::size_t courier_laneio_take_overlay(void *context, uint8_t *out,
+    std::size_t capacity, unsigned *status, char *error, std::size_t error_size)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    const std::size_t count = std::min(capacity, io->ov_events.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        const auto &event = io->ov_events[index];
+        uint8_t *row = out + 16 * index;
+        row[0] = event.strobe;
+        row[1] = event.committed;
+        row[2] = uint8_t(event.base);
+        row[3] = uint8_t(event.base >> 8);
+        std::memcpy(row + 4, event.half, 4);
+        std::memcpy(row + 8, event.block, 8);
+    }
+    io->ov_events.erase(io->ov_events.begin(), io->ov_events.begin() + count);
+    *status = io->mb_overlay_status;
+    copy_error(error, error_size, io->ov_error.c_str());
+    io->ov_error.clear();
+    return count;
 }
 
 // direction 1 = IN, 2 = OUT. Returns 1 when served; the answer to an IN is in
