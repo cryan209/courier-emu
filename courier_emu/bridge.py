@@ -4141,7 +4141,9 @@ class CourierDspBridge:
         return value
 
     def close(self) -> None:
-        if self.sip is not None:
+        if self._sip_line is not None:
+            self._sip_line.close()      # closes self.sip too
+        elif self.sip is not None:
             self.sip.close()
         if self.line is not None:
             self.line.close()

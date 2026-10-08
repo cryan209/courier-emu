@@ -27,7 +27,10 @@ and hears ringback or busy, exactly as it does against the bare exchange.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import array
+import os
 import time
+import wave
 from typing import Any
 
 from .daa import DAA_SAMPLE_RATE
@@ -71,6 +74,17 @@ class SipLine:
         self.exchange.incoming_rings = self.inbound_rings
         self.exchange.router = self._route
         self.exchange.peer_audio = self._peer_audio
+        # Outbound RTP on its own 20 ms clock. Otherwise packets leave only
+        # while `_pace` waits for the next frame: none while the emulator
+        # works through one (about half of every 100 ms), then the backlog at
+        # once - measured on 7900, 2172 of 3604 gaps were zero and 1243 over
+        # 40 ms, jitter a relaying PBX hands straight to the far modem. The
+        # buffer covers the producer's lateness; COURIER_SIP_TX_BUFFER_MS=0
+        # turns the clock off.
+        buffer_ms = int(os.environ.get("COURIER_SIP_TX_BUFFER_MS", "150"))
+        if buffer_ms > 0 and hasattr(self.sip, "enable_media_clock"):
+            self.sip.enable_media_clock(buffer_samples=max(
+                RTP_PACKET_SAMPLES, PCMU_RATE * buffer_ms // 1000))
         self._to_network = PolyphaseResampler(self.line_rate, PCMU_RATE)
         self._from_network = PolyphaseResampler(PCMU_RATE, self.line_rate)
         self._pending: list[int] = []
@@ -95,6 +109,19 @@ class SipLine:
         self.underrun_samples = 0
         self.pending_peak = 0
         self.underrun_log: list[tuple[int, int]] = []
+        # COURIER_SIP_RECORD=PREFIX writes the connected loop audio at the
+        # line rate: PREFIX-tx.wav what the modem sent, PREFIX-rx.wav what
+        # it was given back.
+        self._recordings = None
+        prefix = os.environ.get("COURIER_SIP_RECORD")
+        if prefix:
+            self._recordings = []
+            for side in ("tx", "rx"):
+                recording = wave.open(f"{prefix}-{side}.wav", "wb")
+                recording.setnchannels(1)
+                recording.setsampwidth(2)
+                recording.setframerate(self.line_rate)
+                self._recordings.append(recording)
 
     # -- the two faces ---------------------------------------------------
 
@@ -147,6 +174,16 @@ class SipLine:
 
     def _peer_audio(self, count: int, transmitted: list[int]) -> list[int]:
         """The connected path: loop transmit to RTP, RTP to loop receive."""
+        samples = self._peer_samples(count, transmitted)
+        if self._recordings is not None:
+            sent = list(transmitted or ())[:count]
+            sent += [0] * (count - len(sent))
+            for recording, block in zip(self._recordings, (sent, samples)):
+                clipped = (max(-32768, min(32767, int(x))) for x in block)
+                recording.writeframes(array.array("h", clipped).tobytes())
+        return samples
+
+    def _peer_samples(self, count: int, transmitted: list[int]) -> list[int]:
         if transmitted:
             self.sip.send_audio(self._to_network.convert(transmitted))
         self._pending.extend(self._from_network.convert(self.sip.receive_audio()))
@@ -222,6 +259,10 @@ class SipLine:
         }
 
     def close(self) -> None:
+        if self._recordings is not None:
+            for recording in self._recordings:
+                recording.close()
+            self._recordings = None
         self.sip.close()
 
 
