@@ -201,12 +201,14 @@ class LineLink:
             self._g711 = [decode(encode(level - 32768)) for level in range(65536)]
         # COURIER_LINE_SKEW_PPM=N: the far end's sample clock runs N ppm fast
         # (negative, slow) against this end's - what any real far end has and
-        # a pair of emulators never does. Inbound audio is resampled by linear
-        # interpolation. Python's exchange only, like the G.711 leg.
+        # a pair of emulators never does. Inbound audio is resampled through
+        # the band-limited kernel (linear interpolation scores ~9 dB SNR in
+        # band, which would swamp the offset being tested). Python's exchange
+        # only, like the G.711 leg.
         skew = float(os.environ.get("COURIER_LINE_SKEW_PPM", "0") or 0)
         if skew:
-            # [step, phase, previous sample]
-            self._skew = [1.0 - skew * 1e-6, 0.0, 0]
+            from .resample import BandLimitedResampler
+            self._skew = (BandLimitedResampler(), 8000.0 * (1 + skew * 1e-6), 8000.0)
 
     def open(self) -> None:
         """Bind or connect the socket. The listening side binds first."""
@@ -316,16 +318,8 @@ class LineLink:
         self.peer_call_state = int(call_state)
         peer = LineFrame.decode(header, body)
         if self._skew is not None:
-            step, phase, previous = self._skew
-            resampled = []
-            for sample in peer.samples:
-                while phase < 1.0:
-                    resampled.append(int(previous + (sample - previous) * phase))
-                    phase += step
-                phase -= 1.0
-                previous = sample
-            self._skew[1], self._skew[2] = phase, previous
-            peer.samples = resampled
+            resampler, far_rate, near_rate = self._skew
+            peer.samples = resampler.convert(list(peer.samples), far_rate, near_rate)
         if self._g711 is not None:
             table = self._g711
             self._inbound.extend(
