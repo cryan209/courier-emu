@@ -237,8 +237,10 @@ SYSTEM_CONTROL_PORT = 0xF092
 # ticks, which at the harness ratio is a few thousand instructions.
 TIMER_POLL_INSTRUCTIONS = 512
 
-# INT 2d -> 4030:0316 -> [2600:c893] is the mailbox service path.
-# This instruction cadence is a harness choice, not a recovered board clock.
+# INT 2d -> 4030:0316 -> [2600:c893] is the mailbox service path. IRQ13 is
+# the 386EX's INT6 pin and, with a DSP, each of its timer expiries (PRD 41a4,
+# ~2400 Hz - the firmware's ms*256/107 tick) raises it. This instruction
+# cadence is only the capture-only endpoint's stand-in, with no DSP to pulse it.
 MAILBOX_SERVICE_INSTRUCTIONS = 2048
 # The vector table at 40573 installs IRQ11 (INT 2b) at 7360:1f56.
 # That ISR advances VRTX time and the ISDN software timers (46bc:0002),
@@ -959,7 +961,19 @@ class IsdnMachine:
             self.dsc.set_hook(False)
         if self.dsc.interrupting():
             self.pic.raise_irq(DSC_IRQ)
-        if self.mailbox_service and peripheral_instructions >= self._next_mailbox_service:
+        if self.mailbox_service and self.with_dsp:
+            # IRQ13 is the 386EX's INT6 pin (INTCFG 0x0d), and the DSP's timer
+            # output reaches it through the ASIC: one edge per TOUT pulse.
+            # A DSP held in reset, with no core yet, pulses nothing.
+            core = getattr(self.mailbox, "core", None)
+            if core is not None:
+                expiries = core.timer_expiries()
+                if expiries > self._ps.tout_seen:
+                    self.pic.raise_irq(13)
+                self._ps.tout_seen = expiries
+        elif self.mailbox_service and peripheral_instructions >= self._next_mailbox_service:
+            # No DSP is modelled, so nothing pulses the pin: the capture-only
+            # endpoint keeps a cadence of its own to drain the command ring.
             self._next_mailbox_service = peripheral_instructions + MAILBOX_SERVICE_INSTRUCTIONS
             self.pic.raise_irq(13)
         ticks = None
@@ -1373,6 +1387,7 @@ class IsdnMachine:
                 native_io.set_poll_state(self._ps)
                 self._ps.rtos_interval = RTOS_SERVICE_INSTRUCTIONS
                 self._ps.mailbox_interval = MAILBOX_SERVICE_INSTRUCTIONS
+                self._ps.tout_on = 1
                 for index in range(3):
                     lines = list(self.counter_irq.get(index, ()))[:4]
                     for entry in range(4):

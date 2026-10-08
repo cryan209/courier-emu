@@ -1617,6 +1617,9 @@ uint64_t C5xCore::advance_timer(uint64_t elapsed)
     const uint64_t reload = uint64_t(m_timer.prd) + 1;
     const uint64_t after = decrements - to_zero;
     m_timer.tim = uint16_t(m_timer.prd - after % reload);
+    // Counted here rather than where TINT is raised: sync_timer_view runs the
+    // timer on too, and TOUT pulses whoever brought the count up to date.
+    m_timer_expiries += 1 + after / reload;
     return 1 + after / reload;
 }
 

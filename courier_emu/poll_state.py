@@ -50,6 +50,8 @@ class PollState(ctypes.Structure):
         ("hardware_interrupts", U64),
         ("last_poll", U64),          # the instruction count of the last native poll
         ("pic_in", U64 * 4), ("pic_out", U64 * 4),
+        # IRQ13 follows the DSP's timer output (IsdnMachine.poll_timers).
+        ("tout_on", U8), ("tout_seen", U64),
     ]
 
     def __init__(self) -> None:

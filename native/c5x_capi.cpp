@@ -306,6 +306,10 @@ struct PollState {
     uint64_t hardware_interrupts;
     uint64_t last_poll;
     uint64_t pic_in[4], pic_out[4];
+    // IRQ13 from the DSP's timer output: raised when the core's expiry count
+    // has moved past tout_seen (IsdnMachine.poll_timers does the same).
+    uint8_t tout_on;
+    uint64_t tout_seen;
 };
 
 // pic.py, line for line.
@@ -376,6 +380,9 @@ inline void raise(PollState &s, unsigned irq)
 inline int pending_vector(PollState &s)
 {
     PicChip &master = s.pic[0], &slave = s.pic[1];
+    // IR2 is the slave's INT output: asserted again once an EOI unblocks a
+    // request that waited behind the one in service (pic.py).
+    if (pending(slave, slave.irr) >= 0) master.irr |= uint8_t(1u << CASCADE);
     const int line = pending(master, master.irr);
     if (line < 0) return -1;
     if (line == int(CASCADE)) {
@@ -693,7 +700,12 @@ struct ImodemHostIo {
             pic::raise(s, 11);
         }
         for (unsigned index = 0; index < s.asserted_count; ++index) pic::raise(s, s.asserted[index]);
-        if (s.mailbox_on && value >= s.next_mailbox) {
+        if (s.mailbox_on && s.tout_on && core) {
+            // A fresh core (a reboot) starts its count again from zero.
+            const uint64_t expiries = core->timer_expiries();
+            if (expiries > s.tout_seen) pic::raise(s, 13);
+            s.tout_seen = expiries;
+        } else if (s.mailbox_on && value >= s.next_mailbox) {
             s.next_mailbox = value + s.mailbox_interval;
             pic::raise(s, 13);
         }
@@ -1630,6 +1642,11 @@ void courier_c5x_configure_digital_pcm(void *handle, int enabled,
 uint64_t courier_c5x_get_g711_rx_underruns(void *handle)
 {
     return handle ? static_cast<C5xCore *>(handle)->g711_rx_underruns() : 0;
+}
+
+uint64_t courier_c5x_get_timer_expiries(void *handle)
+{
+    return handle ? static_cast<C5xCore *>(handle)->timer_expiries() : 0;
 }
 
 std::size_t courier_c5x_get_g711_rx_pending(void *handle)

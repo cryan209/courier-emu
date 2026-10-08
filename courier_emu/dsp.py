@@ -328,6 +328,8 @@ class NativeC5x:
         ]
         lib.courier_c5x_get_g711_rx_underruns.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_g711_rx_underruns.restype = ctypes.c_uint64
+        lib.courier_c5x_get_timer_expiries.argtypes = [ctypes.c_void_p]
+        lib.courier_c5x_get_timer_expiries.restype = ctypes.c_uint64
         lib.courier_c5x_get_g711_rx_pending.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_get_g711_rx_pending.restype = ctypes.c_size_t
         lib.courier_c5x_queue_g711_rx.argtypes = [
@@ -738,6 +740,10 @@ class NativeC5x:
 
     def g711_rx_pending(self) -> int:
         return int(self.library.courier_c5x_get_g711_rx_pending(self.handle))
+
+    def timer_expiries(self) -> int:
+        """Pulses on TOUT so far: every time TIM reached zero, masked or not."""
+        return int(self.library.courier_c5x_get_timer_expiries(self.handle))
 
     def queue_g711_rx(self, codewords: bytes) -> None:
         """Queue opaque G.711 octets; companding is the call's concern."""

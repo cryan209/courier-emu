@@ -1,5 +1,6 @@
 """The native lane port models answer what the Python handlers answer."""
 import ctypes
+import struct
 
 from courier_emu.dsp import ImodemHostIo, ImodemShared, LaneHostIo, NativeC5x
 
@@ -238,3 +239,17 @@ def test_rom_build_stream_word_reaches_the_cpu_window():
         dsp.set_pc(0x8000)
         dsp.step(2)
         assert dsp.io_output(0x60) == 0x1234
+
+
+def test_timer_expiries_count_tout_pulses_at_the_prd_rate():
+    # splk #99, PRD (@25) / splk #20, TCR (TRB reloads TIM) / b $ - TIM
+    # reaches zero every 100 cycles with TDDR 0, TINT masked or not: IRQ13 on
+    # the I-modem follows these pulses.
+    words = (0xAE25, 99, 0xAE26, 0x0020, 0x7980, 0x0004)
+    with NativeC5x.from_program(0, struct.pack('<6H', *words)) as dsp:
+        dsp.step(2)
+        before = dsp.timer_expiries()
+        dsp.step_cycles(100_000)
+        assert dsp.register(0x25) == 99
+        # SPRU056D 9.3.2: TINT rate = CLKOUT / ((TDDR+1) * (PRD+1)).
+        assert abs(dsp.timer_expiries() - before - 1000) <= 1

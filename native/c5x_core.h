@@ -338,6 +338,9 @@ public:
     void run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame = false);
     uint64_t instruction_count() const { return m_instructions; }
     uint64_t cycle_count() const { return m_cycles; }
+    // Times TIM has reached zero since the core was made: each is a pulse on
+    // TOUT, masked TINT or not. Never cleared, so a reset cannot hide one.
+    uint64_t timer_expiries() const { return m_timer_expiries; }
     // A diagnostic record of the writes to one memory-mapped register:
     // the cycle, the writing instruction and the value, up to `capacity`.
     struct RegisterWrite { uint64_t cycle; uint16_t pc, value; };
@@ -791,6 +794,7 @@ private:
     } m_tdm;
     shadow_t m_shadow{};
     uint64_t m_instructions = 0, m_cycles = 0;
+    uint64_t m_timer_expiries = 0;
 
     void consume_cycles(unsigned cycles);
     uint64_t advance_timer(uint64_t elapsed);
