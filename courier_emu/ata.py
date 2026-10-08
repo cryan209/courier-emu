@@ -89,6 +89,12 @@ class SipLine:
         self.frames = 0
         self.late_frames = 0
         self.late_spikes: list[tuple[int, float, str]] = []
+        # Connected frames the far end's audio did not fill, the silence
+        # padded in for them, and the deepest backlog of received samples.
+        self.underrun_frames = 0
+        self.underrun_samples = 0
+        self.pending_peak = 0
+        self.underrun_log: list[tuple[int, int]] = []
 
     # -- the two faces ---------------------------------------------------
 
@@ -144,10 +150,16 @@ class SipLine:
         if transmitted:
             self.sip.send_audio(self._to_network.convert(transmitted))
         self._pending.extend(self._from_network.convert(self.sip.receive_audio()))
+        self.pending_peak = max(self.pending_peak, len(self._pending))
         if len(self._pending) < count:
             # Nothing has arrived yet, or the far end is between packets. An
             # underrun is silence on the loop, which is what an ATA carries.
-            samples = self._pending + [0] * (count - len(self._pending))
+            short = count - len(self._pending)
+            self.underrun_frames += 1
+            self.underrun_samples += short
+            if len(self.underrun_log) < 64:
+                self.underrun_log.append((self.frames, short))
+            samples = self._pending + [0] * short
             self._pending = []
             return samples
         samples = self._pending[:count]
@@ -202,6 +214,10 @@ class SipLine:
             "frames": self.frames,
             "late_frames": self.late_frames,
             "late_spikes": self.late_spikes,
+            "underrun_frames": self.underrun_frames,
+            "underrun_samples": self.underrun_samples,
+            "underrun_log": self.underrun_log,
+            "pending_peak": self.pending_peak,
             "sip": self.sip.status(),
         }
 

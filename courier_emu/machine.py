@@ -11,7 +11,8 @@ from typing import Any, Callable
 
 from .xmf import FLASH_PHYSICAL_BASE, XmfImage
 from .bridge import (
-    C51_ROM_LOADER_LOOP, HOST_STATUS_CELL, HOST_WORD_CELL, LANE_BANKS, LANE_DSP_FIRST,
+    C51_ROM_LOADER_LOOP, DSP_RUNTIME_PORTS, HOST_STATUS_CELL, HOST_WORD_CELL, LANE_BANKS,
+    LANE_DSP_FIRST,
     LANE_DSP_STATUS, LANE_FIRST_PORT, LANE_RX_ACK_PORT, LINE_RATE, LINE_SERVICE_MAX_SKIP,
     LINE_SERVICE_MIN_SAMPLES, CourierDspBridge,
 )
@@ -3460,6 +3461,33 @@ class CourierMachine:
                 overlay_static and bridge.boot_rom_enabled
                 and os.environ.get("COURIER_NATIVE_OVERLAY", "1") != "0"
             )
+            # COURIER_LANE_CAPTURE=PATH records the lanes' traffic to PATH
+            # (16-byte records; LaneHostIo::record), appended at each flush.
+            # `{pid}` in PATH separates the two ends of a `link` pair.
+            self._lane_capture = os.environ.get("COURIER_LANE_CAPTURE", "").replace(
+                "{pid}", str(os.getpid()))
+            if self._lane_capture:
+                open(self._lane_capture, "wb").close()
+                lane_io.set_capture(True)
+            # The boot download: the mask-ROM loader's strobes on the command
+            # port and the window bytes on 58..5e, ~21k OUTs that each left
+            # the engine. COURIER_NATIVE_BOOT=0 leaves them to `bridge.write`.
+            boot_native = (
+                bridge.boot_rom_enabled
+                and bridge.transfer.mailbox_shares_window
+                and all(port in bridge._lanes for port in DSP_RUNTIME_PORTS)
+                and os.environ.get("COURIER_NATIVE_BOOT", "1") != "0"
+            )
+            if boot_native:
+                lane_io.configure_boot(
+                    dict(bridge._windows),
+                    [(bridge._windows[bridge._lanes[port][0]], bridge._lanes[port][1])
+                     for port in DSP_RUNTIME_PORTS],
+                    first=bridge.transfer.first_strobe,
+                    checksum=bridge.transfer.checksum_strobe)
+                for port in DSP_RUNTIME_PORTS:
+                    host_ports[port] |= 2
+                bridge._native_boot = lane_io
             if overlay_native:
                 lane_io.set_overlay_window(
                     bridge._windows[bridge.transfer.first_strobe],
@@ -3471,10 +3499,12 @@ class CourierMachine:
             watched = bool(self.io_watch) or bridge.asic_transparent
             flagged = (command_port, LANE_RX_ACK_PORT, *lane_ports, 0x1C, 0x1E)
             applied: list[Any] = [None]
+            applied_boot: list[Any] = [None]
 
             def refresh_native_lanes() -> None:
                 # What the native strobes did is replayed before anything here
-                # reads the overlay state it changed.
+                # reads the state they changed.
+                bridge._drain_native_boot()
                 bridge._drain_native_overlay()
                 served = (
                     not watched
@@ -3497,6 +3527,16 @@ class CourierMachine:
                     and not bridge._overlay_destination_pending,
                     bridge._overlay_status & 0xFF,
                 )
+                if boot_native:
+                    boot = (
+                        served and not bridge.active and bridge._loader_started,
+                        served and not bridge.active,
+                        bridge.bootstrap_target_size - len(bridge.bootstrap),
+                    )
+                    if boot != applied_boot[0]:
+                        applied_boot[0] = boot
+                        lane_io.set_boot_state(
+                            strobes=boot[0], stores=boot[1], remaining=boot[2])
                 if state != applied[0]:
                     lane_io.set_overlay_strobes(bool(overlay_native and state[5]))
                     applied[0] = state
@@ -3570,7 +3610,8 @@ class CourierMachine:
                 fixed_refresh[0] = refresh_fixed_inputs
 
             self._lane_out_ports = frozenset(
-                (command_port, LANE_RX_ACK_PORT, *lane_ports[::2], 0x1C, 0x1E))
+                (command_port, LANE_RX_ACK_PORT, *lane_ports[::2], 0x1C, 0x1E,
+                 *(DSP_RUNTIME_PORTS if boot_native else ())))
             self._refresh_native_lanes = refresh_native_lanes
             uc.native_host_io = (lane_io.function, lane_io.context, host_ports)
             if fixed_refresh[0] is not None:
@@ -3862,6 +3903,9 @@ class CourierMachine:
         lane_io = self._lane_io
         if lane_io is None or not lane_io.context:
             return
+        if getattr(self, "_lane_capture", None):
+            with open(self._lane_capture, "ab") as capture:
+                capture.write(lane_io.take_capture())
         reads, writes, last, seen = lane_io.take_counts()
         for port in range(256):
             if reads[port]:

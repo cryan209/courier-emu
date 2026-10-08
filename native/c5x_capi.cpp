@@ -79,6 +79,73 @@ struct LaneHostIo {
     std::vector<OverlayEvent> ov_events;
     std::string ov_error;
 
+    // The boot download through the C51's mask-ROM loader: bridge.py's
+    // command-port branch of `write` while `_rom_loader_armed`, for every
+    // strobe but the one that completes the bootstrap (activation stays with
+    // the harness), and the window bytes on 58..5e, which carry the transfer
+    // until the program is in and the mailbox only after. Each strobe is
+    // `_commit_rom_group`: four words at 58 or 5c, the strobe in @56, and the
+    // loader stepped until it writes @56 back. The window it sent is logged
+    // for the harness to append to the bootstrap.
+    struct BootEvent { uint8_t strobe, failed; uint8_t window[8]; };
+    bool boot_strobes = false, boot_stores = false;
+    uint8_t boot_first = 1;
+    int boot_checksum = -1;
+    uint8_t *boot_window[256] = {};
+    uint8_t *boot_lane[4] = {};      // ports 58, 5a, 5c, 5e
+    int64_t boot_remaining = 0;      // bootstrap bytes still to come
+    std::vector<BootEvent> boot_events;
+    std::string boot_error;
+
+    bool serve_boot_strobe(uint8_t strobe)
+    {
+        if (!boot_strobes || !boot_window[strobe] || int(strobe) == boot_checksum
+                || boot_remaining <= 8 || !boot_error.empty())
+            return false;
+        const uint16_t pc = core->program_counter();
+        if (pc < 0x0638 || pc >= 0x0653) return false;
+        BootEvent event{};
+        event.strobe = strobe;
+        std::memcpy(event.window, boot_window[strobe], 8);
+        try {
+            const uint64_t before = core->io_port_stat(0x56).writes;
+            const uint16_t base = uint16_t(0x58 + 4 * (strobe - boot_first));
+            for (unsigned index = 0; index < 4; ++index)
+                core->set_io(uint16_t(base + index), uint16_t(
+                    event.window[2 * index] | (event.window[2 * index + 1] << 8)));
+            core->set_io(0x56, strobe);
+            bool acknowledged = false;
+            for (unsigned step = 0; step < 4096 && !acknowledged; ++step) {
+                core->run(1);
+                acknowledged = core->io_port_stat(0x56).writes > before;
+            }
+            if (!acknowledged) {
+                char message[80];
+                std::snprintf(message, sizeof message,
+                    "C51 ROM loader did not acknowledge strobe %u", unsigned(strobe));
+                boot_error = message;
+            }
+        } catch (const std::exception &exception) {
+            boot_error = exception.what();
+        }
+        event.failed = !boot_error.empty();
+        boot_events.push_back(event);
+        boot_remaining -= 8;
+        return true;
+    }
+
+    // An opt-in record of the data lanes' traffic, for decoding what the two
+    // processors exchange: kind 1 a word the CPU committed to a bank, 2 the
+    // CPU's receive acknowledgement, 3 a lane byte the CPU read.
+    struct LaneRecord { uint64_t now; uint8_t kind, port; uint16_t value; };
+    bool cap_on = false;
+    std::vector<LaneRecord> cap;
+    void record(uint64_t now, uint8_t kind, uint8_t port, uint16_t value)
+    {
+        if (cap_on && cap.size() < (std::size_t(1) << 24))
+            cap.push_back({now, kind, port, value});
+    }
+
     void ov_present(const uint8_t *block)
     {
         for (unsigned index = 0; index < 4; ++index)
@@ -830,6 +897,85 @@ void courier_laneio_set_overlay_window(void *context, uint8_t *window,
         io->ov_window_strobe[strobes[index]] = 1;
 }
 
+// The boot download's fixed shape: the window behind each strobe, the first
+// strobe, the checksum strobe (-1 for none), and the bytes behind 58..5e.
+void courier_laneio_set_boot_window(void *context, unsigned strobe, uint8_t *window)
+{
+    if (strobe < 256) static_cast<LaneHostIo *>(context)->boot_window[strobe] = window;
+}
+void courier_laneio_set_boot_lane(void *context, unsigned index, uint8_t *byte)
+{
+    if (index < 4) static_cast<LaneHostIo *>(context)->boot_lane[index] = byte;
+}
+void courier_laneio_configure_boot(void *context, unsigned first, int checksum)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    io->boot_first = uint8_t(first);
+    io->boot_checksum = checksum;
+}
+// What the harness knows now: whether strobes and window stores may be served,
+// and how many bootstrap bytes are still to come.
+void courier_laneio_set_boot_state(void *context, int strobes, int stores, int64_t remaining)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    io->boot_strobes = strobes != 0;
+    io->boot_stores = stores != 0;
+    io->boot_remaining = remaining;
+}
+std::size_t courier_laneio_boot_pending(void *context)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    return io->boot_events.size() + (io->boot_error.empty() ? 0 : 1);
+}
+// The logged strobes, 10 bytes each: strobe, failed, window[8]. Returns the
+// count; a loader failure's message goes to `error`.
+std::size_t courier_laneio_take_boot(void *context, uint8_t *out, std::size_t capacity,
+    char *error, std::size_t error_size)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    const std::size_t count = std::min(capacity, io->boot_events.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        const auto &event = io->boot_events[index];
+        out[10 * index] = event.strobe;
+        out[10 * index + 1] = event.failed;
+        std::memcpy(out + 10 * index + 2, event.window, 8);
+    }
+    io->boot_events.erase(io->boot_events.begin(), io->boot_events.begin() + count);
+    copy_error(error, error_size, io->boot_error.c_str());
+    io->boot_error.clear();
+    return count;
+}
+
+void courier_laneio_set_capture(void *context, int enabled)
+{
+    static_cast<LaneHostIo *>(context)->cap_on = enabled != 0;
+}
+
+// The capture so far, 16 bytes a record (instruction count, kind, port or
+// bank, value, all little-endian); returns the records copied and drops them.
+std::size_t courier_laneio_take_capture(void *context, uint8_t *out, std::size_t capacity)
+{
+    auto *io = static_cast<LaneHostIo *>(context);
+    const std::size_t count = std::min(capacity, io->cap.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        const auto &entry = io->cap[index];
+        uint8_t *row = out + 16 * index;
+        std::memcpy(row, &entry.now, 8);
+        row[8] = entry.kind;
+        row[9] = entry.port;
+        row[10] = uint8_t(entry.value);
+        row[11] = uint8_t(entry.value >> 8);
+        std::memset(row + 12, 0, 4);
+    }
+    io->cap.erase(io->cap.begin(), io->cap.begin() + count);
+    return count;
+}
+
+std::size_t courier_laneio_capture_size(void *context)
+{
+    return static_cast<LaneHostIo *>(context)->cap.size();
+}
+
 void courier_laneio_set_overlay_strobes(void *context, int enabled)
 {
     static_cast<LaneHostIo *>(context)->ov_strobes = enabled != 0;
@@ -869,7 +1015,7 @@ std::size_t courier_laneio_take_overlay(void *context, uint8_t *out,
 // direction 1 = IN, 2 = OUT. Returns 1 when served; the answer to an IN is in
 // *out. Byte accesses only.
 int courier_laneio_access(void *context, int direction, uint16_t port,
-    int size, uint16_t value, uint64_t, uint16_t *out)
+    int size, uint16_t value, uint64_t now, uint16_t *out)
 {
     auto *io = static_cast<LaneHostIo *>(context);
     if (!io->core || size != 1 || port >= 256) return 0;
@@ -899,6 +1045,7 @@ int courier_laneio_access(void *context, int direction, uint16_t port,
             const uint16_t word = io->core->io_output(
                 uint16_t(io->dsp_first + offset / 4));
             answer = (word >> ((offset & 2) ? 8 : 0)) & 0xff;
+            io->record(now, 3, uint8_t(port), answer);
         } else {
             return 0;
         }
@@ -907,15 +1054,33 @@ int courier_laneio_access(void *context, int direction, uint16_t port,
         return 1;
     }
     value &= 0xff;
+    if (!io->live && port == io->command_port && io->serve_boot_strobe(uint8_t(value))) {
+        ++io->out_count[port];
+        io->out_last[port] = value;
+        io->out_seen[port] = 1;
+        return 1;
+    }
+    if (port >= 0x58 && port <= 0x5e && !(port & 1)) {
+        uint8_t *byte = io->boot_stores ? io->boot_lane[(port - 0x58) / 2] : nullptr;
+        if (!byte) return 0;
+        *byte = uint8_t(value);
+        ++io->out_count[port];
+        io->out_last[port] = value;
+        io->out_seen[port] = 1;
+        return 1;
+    }
     if (port == io->command_port || port == io->ack_port) {
         if (!io->live) return 0;
         uint16_t bits = value & mask;
         if (port == io->command_port) {
             for (unsigned bank = 0; bank < io->banks; ++bank)
-                if (bits & (1u << bank))
+                if (bits & (1u << bank)) {
                     io->core->set_io(uint16_t(io->dsp_first + bank),
                         io->lane_word(bank));
+                    io->record(now, 1, uint8_t(bank), io->lane_word(bank));
+                }
         } else {
+            io->record(now, 2, uint8_t(port), bits);
             bits = uint16_t(bits << 8);
         }
         io->core->set_io(io->dsp_status,

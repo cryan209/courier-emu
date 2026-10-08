@@ -1257,6 +1257,26 @@ class LaneHostIo:
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint,
             ctypes.c_char_p, ctypes.c_uint]
         lib.courier_laneio_set_overlay_strobes.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_laneio_set_capture.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_laneio_set_boot_window.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
+        lib.courier_laneio_set_boot_lane.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
+        lib.courier_laneio_configure_boot.argtypes = [
+            ctypes.c_void_p, ctypes.c_uint, ctypes.c_int]
+        lib.courier_laneio_set_boot_state.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int64]
+        lib.courier_laneio_boot_pending.restype = ctypes.c_size_t
+        lib.courier_laneio_boot_pending.argtypes = [ctypes.c_void_p]
+        lib.courier_laneio_take_boot.restype = ctypes.c_size_t
+        lib.courier_laneio_take_boot.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t,
+            ctypes.c_char_p, ctypes.c_size_t]
+        lib.courier_laneio_capture_size.restype = ctypes.c_size_t
+        lib.courier_laneio_capture_size.argtypes = [ctypes.c_void_p]
+        lib.courier_laneio_take_capture.restype = ctypes.c_size_t
+        lib.courier_laneio_take_capture.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_laneio_overlay_pending.restype = ctypes.c_size_t
         lib.courier_laneio_overlay_pending.argtypes = [ctypes.c_void_p]
         lib.courier_laneio_take_overlay.restype = ctypes.c_size_t
@@ -1331,6 +1351,55 @@ class LaneHostIo:
         self.library.courier_laneio_set_overlay_window(
             self.context, ctypes.addressof(anchor), first, start,
             bytes(strobes), len(strobes))
+
+    def _address(self, window: bytearray, offset: int = 0) -> int:
+        anchor = (ctypes.c_char * len(window)).from_buffer(window)
+        self._anchors.append(anchor)
+        return ctypes.addressof(anchor) + offset
+
+    def configure_boot(self, windows: dict[int, bytearray], lanes: list[tuple[bytearray, int]],
+                       *, first: int, checksum: int | None) -> None:
+        """The boot download's windows by strobe, and the bytes behind 58..5e."""
+        for strobe, window in windows.items():
+            self.library.courier_laneio_set_boot_window(
+                self.context, strobe, self._address(window))
+        for index, (window, lane) in enumerate(lanes):
+            self.library.courier_laneio_set_boot_lane(
+                self.context, index, self._address(window, lane))
+        self.library.courier_laneio_configure_boot(
+            self.context, first, -1 if checksum is None else checksum)
+
+    def set_boot_state(self, *, strobes: bool, stores: bool, remaining: int) -> None:
+        self.library.courier_laneio_set_boot_state(
+            self.context, int(strobes), int(stores), remaining)
+
+    def boot_pending(self) -> int:
+        return self.library.courier_laneio_boot_pending(self.context)
+
+    def take_boot(self) -> tuple[list[tuple[int, bool, bytes]], str]:
+        """The boot strobes served natively, as (strobe, failed, window)."""
+        count = self.boot_pending()
+        rows = (ctypes.c_uint8 * (10 * max(1, count)))()
+        error = ctypes.create_string_buffer(256)
+        taken = self.library.courier_laneio_take_boot(
+            self.context, rows, count, error, len(error))
+        raw = bytes(rows)
+        events = [(raw[10 * i], bool(raw[10 * i + 1]), raw[10 * i + 2:10 * i + 10])
+                  for i in range(taken)]
+        return events, error.value.decode("utf-8", "replace")
+
+    def set_capture(self, enabled: bool) -> None:
+        """Record the lanes' traffic; see LaneHostIo::record."""
+        self.library.courier_laneio_set_capture(self.context, int(enabled))
+
+    def take_capture(self) -> bytes:
+        """The records so far, 16 bytes each, and drop them."""
+        count = self.library.courier_laneio_capture_size(self.context)
+        if not count:
+            return b""
+        rows = (ctypes.c_uint8 * (16 * count))()
+        taken = self.library.courier_laneio_take_capture(self.context, rows, count)
+        return bytes(rows)[:16 * taken]
 
     def set_overlay_strobes(self, enabled: bool) -> None:
         self.library.courier_laneio_set_overlay_strobes(self.context, int(enabled))

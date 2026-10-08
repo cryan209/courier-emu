@@ -405,6 +405,8 @@ class BridgeStatus:
     core_rebuilt_at: int = 0
     # Overlay half-block strobes the x86 engine's port model served natively.
     overlay_strobes_native: int = 0
+    # Boot-download strobes it served natively.
+    boot_strobes_native: int = 0
     codec_replayed: int = 0
     # Messages the resident originated, as opposed to the ones the bridge
     # synthesises for it at call-overlay activation.
@@ -427,6 +429,8 @@ class CourierDspBridge:
     # See __init__; class-level so a bridge built without it has neither.
     _native_overlay = None
     overlay_strobes_native = 0
+    _native_boot = None
+    boot_strobes_native = 0
 
     def __init__(
         self,
@@ -2244,6 +2248,28 @@ class CourierDspBridge:
         self._overlay_groups = []
         self._overlay_target = None
 
+    def _drain_native_boot(self) -> None:
+        """Replay the boot strobes the native port model served.
+
+        Each is the command-port branch of `write` for a window strobe while
+        the mask-ROM loader is armed: the native side has run
+        `_commit_rom_group`; the bootstrap bookkeeping runs here. It never
+        serves the strobe that completes the bootstrap, so none of these
+        activates the program.
+        """
+        native = self._native_boot
+        if native is None or not native.boot_pending():
+            return
+        events, error = native.take_boot()
+        for strobe, failed, window in events:
+            if failed:
+                raise RuntimeError(error or f"C51 ROM loader did not acknowledge strobe {strobe}")
+            self.boot_strobes_native += 1
+            self.transfer_commands += 1
+            self.bootstrap.extend(window)
+        if error:
+            raise RuntimeError(error)
+
     def _drain_native_overlay(self) -> None:
         """Replay the half-block strobes the native port model served.
 
@@ -2422,6 +2448,8 @@ class CourierDspBridge:
         )
 
     def write(self, port: int, size: int, value: int, pc: int | None = None) -> None:
+        if self._native_boot is not None:
+            self._drain_native_boot()
         if self._native_overlay is not None:
             self._drain_native_overlay()
         if getattr(self, "board3453", None) is not None:
@@ -2800,6 +2828,8 @@ class CourierDspBridge:
         return word
 
     def read(self, port: int, size: int) -> int | None:
+        if self._native_boot is not None:
+            self._drain_native_boot()
         if self._native_overlay is not None:
             self._drain_native_overlay()
         if getattr(self, "board3453", None) is not None:
@@ -3836,6 +3866,8 @@ class CourierDspBridge:
         # Hand back the last one built while it was live.
         if getattr(self.core, "closed", False) and self._last_status is not None:
             return self._last_status
+        if self._native_boot is not None:
+            self._drain_native_boot()
         if self._native_overlay is not None:
             self._drain_native_overlay()
         status = BridgeStatus(
@@ -3851,6 +3883,7 @@ class CourierDspBridge:
             bootstraps=self.bootstraps,
             overlay_downloads=self.overlay_downloads,
             overlay_strobes_native=self.overlay_strobes_native,
+            boot_strobes_native=self.boot_strobes_native,
             line_service=dict(
                 self._line_service,
                 buffer_left=len(self._exchange_line_buffer),
