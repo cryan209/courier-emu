@@ -185,6 +185,7 @@ class LineLink:
     _presend: int = field(default=0, repr=False)
     _g711 = None   # see __post_init__; not a dataclass field
     _skew = None
+    _lowpass = None
 
     def __post_init__(self) -> None:
         if self.digital:
@@ -205,6 +206,22 @@ class LineLink:
         # the band-limited kernel (linear interpolation scores ~9 dB SNR in
         # band, which would swamp the offset being tested). Python's exchange
         # only, like the G.711 leg.
+        # COURIER_LINE_LOWPASS_HZ=F: a band-limited line - an 8th-order
+        # Butterworth low-pass at F (four RBJ biquads), so line probing has
+        # to settle on a narrower symbol rate than the pair's 3429 baud.
+        cutoff = float(os.environ.get("COURIER_LINE_LOWPASS_HZ", "0") or 0)
+        if cutoff:
+            import math
+            w0 = 2 * math.pi * cutoff / 8000.0
+            sections = []
+            for k in range(1, 5):
+                q = 1 / (2 * math.cos((2 * k - 1) * math.pi / 16))
+                alpha = math.sin(w0) / (2 * q)
+                a0 = 1 + alpha
+                b0 = (1 - math.cos(w0)) / 2 / a0
+                sections.append([b0, 2 * b0, b0, -2 * math.cos(w0) / a0,
+                                 (1 - alpha) / a0, 0.0, 0.0])
+            self._lowpass = sections
         skew = float(os.environ.get("COURIER_LINE_SKEW_PPM", "0") or 0)
         if skew:
             from .resample import BandLimitedResampler
@@ -320,6 +337,17 @@ class LineLink:
         if self._skew is not None:
             resampler, far_rate, near_rate = self._skew
             peer.samples = resampler.convert(list(peer.samples), far_rate, near_rate)
+        if self._lowpass is not None:
+            samples = [float(v) for v in peer.samples]
+            for section in self._lowpass:
+                b0, b1, b2, a1, a2, z1, z2 = section
+                for index, x in enumerate(samples):
+                    y = b0 * x + z1
+                    z1 = b1 * x - a1 * y + z2
+                    z2 = b2 * x - a2 * y
+                    samples[index] = y
+                section[5], section[6] = z1, z2
+            peer.samples = [int(max(-32768, min(32767, v))) for v in samples]
         if self._g711 is not None:
             table = self._g711
             self._inbound.extend(
