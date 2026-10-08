@@ -32,7 +32,8 @@ from typing import Any
 
 from .daa import DAA_SAMPLE_RATE
 from .exchange import LineExchange
-from .sip import PCMU_RATE, PolyphaseResampler, SipConfig, SipSession
+from .sip import (PCMU_RATE, RTP_PACKET_SAMPLES, PolyphaseResampler,
+                  SipConfig, SipSession)
 
 
 # The SIP states that mean the call is still being set up, so the exchange
@@ -78,7 +79,16 @@ class SipLine:
         self.answered = 0
         self._next_frame_at: float | None = None
         self.paced_seconds = 0.0
+        # Each frame's lateness, summed: the area under the lag curve, not the
+        # lag. `peak_late_seconds` is the worst a frame started behind its
+        # wall-clock slot, and `late_frames` how many started more than one
+        # 20 ms RTP packet behind it - sleep overshoot makes nearly every
+        # frame a fraction of a millisecond late.
         self.late_seconds = 0.0
+        self.peak_late_seconds = 0.0
+        self.frames = 0
+        self.late_frames = 0
+        self.late_spikes: list[tuple[int, float, str]] = []
 
     # -- the two faces ---------------------------------------------------
 
@@ -108,7 +118,15 @@ class SipLine:
             time.sleep(delay)
             self.paced_seconds += delay
             now = time.monotonic()
-        self.late_seconds += max(0.0, now - deadline)
+        late = max(0.0, now - deadline)
+        self.late_seconds += late
+        self.peak_late_seconds = max(self.peak_late_seconds, late)
+        self.frames += 1
+        if late > RTP_PACKET_SAMPLES / PCMU_RATE:
+            self.late_frames += 1
+            if len(self.late_spikes) < 64:
+                self.late_spikes.append(
+                    (self.frames, round(late * 1000, 1), self.exchange.state))
         self._next_frame_at = deadline + count / self.line_rate
 
     def _route(self, number: str) -> str | None:
@@ -180,6 +198,10 @@ class SipLine:
             "answered": self.answered,
             "paced_ms": round(self.paced_seconds * 1000),
             "late_ms": round(self.late_seconds * 1000),
+            "peak_late_ms": round(self.peak_late_seconds * 1000, 1),
+            "frames": self.frames,
+            "late_frames": self.late_frames,
+            "late_spikes": self.late_spikes,
             "sip": self.sip.status(),
         }
 
