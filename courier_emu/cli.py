@@ -356,10 +356,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--serial-input-hex", serial_input.hex()))
     if getattr(args, "serial_input_on_ring", False):
         command.append("--serial-input-on-ring")
-    after_connect = b"".join(value.encode("latin-1")
-                             for value in getattr(args, "send_after_connect", []))
-    if after_connect:
-        command.extend(("--serial-after-connect-hex", after_connect.hex()))
+    for value in getattr(args, "send_after_connect", []):
+        command.extend(("--serial-after-connect-hex", value.encode("latin-1").hex()))
     return command
 
 
@@ -1428,7 +1426,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="TEXT",
         help="literal Latin-1 data to send once the modem has printed its "
-        "CONNECT line, as a terminal does; repeatable",
+        "CONNECT line, as a terminal does; repeatable, each after the first "
+        "sent after a pause longer than the escape guard time, so '+++' and then "
+        "'ATI11\\r' escapes the call and queries it",
     )
 
     link = subparsers.add_parser(

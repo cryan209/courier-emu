@@ -16,6 +16,10 @@ class RomSerialLayout:
     command_collecting: int
     mode: int
     output_flags: int
+    # The command state "+++" leaves a call in. The firmware installs it
+    # like command_idle and then waits for autobaud just the same; "AT"
+    # takes it to the collector, CR executes the line, ATO resumes the call.
+    online_idle: int
 
 
 def locate_rom_serial(data: bytes, callbacks: int) -> RomSerialLayout | None:
@@ -31,9 +35,13 @@ def locate_rom_serial(data: bytes, callbacks: int) -> RomSerialLayout | None:
     }
     matches = {name: list(re.finditer(pattern, resident, re.S))
                for name, pattern in patterns.items()}
-    commands = [m for m in matches["command"]
-                if resident[int.from_bytes(m[1], "little"):][:8] == b"\x32\xe4\x93\xd1\xe3\x2e\xff\xa7"]
-    matches["command"] = commands
+    installers = matches["command"]
+    matches["command"] = [m for m in installers
+                          if resident[int.from_bytes(m[1], "little"):][:8] == b"\x32\xe4\x93\xd1\xe3\x2e\xff\xa7"]
+    # Its online twin is installed the same way and opens on events 8
+    # and 0x0b: cmp al,8 / je / cmp al,0x0b / jne.
+    matches["online"] = [m for m in installers
+                         if resident[int.from_bytes(m[1], "little"):][:8] == b"\x3c\x08\x74\x0c\x3c\x0b\x75\x06"]
     if any(len(found) != 1 for found in matches.values()):
         return None
     m = {name: found[0] for name, found in matches.items()}
@@ -48,4 +56,5 @@ def locate_rom_serial(data: bytes, callbacks: int) -> RomSerialLayout | None:
     return RomSerialLayout(callbacks, m["isr"].start(), m["attention"].start(),
                            idle, collecting,
                            int.from_bytes(m["mode"][1], "little"),
-                           int.from_bytes(m["output"][1], "little"))
+                           int.from_bytes(m["output"][1], "little"),
+                           int.from_bytes(m["online"][1], "little"))

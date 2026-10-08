@@ -188,6 +188,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--imodem-send", default="", help="text to send from the I-modem DTE after CONNECT")
     result.add_argument("--link-diagnostics", action="store_true",
                         help="query the I-modem's ATI6 after carrier and resume data mode")
+    result.add_argument("--diagnostics-command", action="append", default=[], metavar="AT",
+                        help="what --link-diagnostics asks, in order; repeatable (default ATI6)")
     result.add_argument(
         "--snapshot-every", type=int, default=25_000_000,
         help="write periodic DSP checkpoints when --output is set (0 disables)",
@@ -326,6 +328,7 @@ def main() -> int:
         diagnostic_stage = "connecting"
         connected_at = 0
         diagnostic_cursor = 0
+        queries = list(args.diagnostics_command or ["ATI6"])
 
         def send(current: IsdnMachine, value: str, direction: str = "sent") -> None:
             current.send_serial(_on_the_wire(value, current.dte_framing()))
@@ -352,8 +355,9 @@ def main() -> int:
                 elif diagnostic_stage == "guard" and current.instructions >= connected_at + 20_000_000:
                     send(current, "+++")
                     diagnostic_stage, diagnostic_cursor = "escaping", len(received_text)
-                elif diagnostic_stage == "escaping" and "\r\nOK\r\n" in received_text[diagnostic_cursor:]:
-                    send(current, "ATI6\r")
+                elif (diagnostic_stage in ("escaping", "diagnostics") and queries
+                        and "\r\nOK\r\n" in received_text[diagnostic_cursor:]):
+                    send(current, queries.pop(0) + "\r")
                     diagnostic_stage, diagnostic_cursor = "diagnostics", len(received_text)
                 elif diagnostic_stage == "diagnostics" and "\r\nOK\r\n" in received_text[diagnostic_cursor:]:
                     send(current, "ATO\r")

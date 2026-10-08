@@ -120,6 +120,9 @@ SPIN_UNIQUE_ADDRESSES = 4
 # at 0x662d7. Every screen that pauses spins on one of these, so they are
 # recovered from the image rather than listed - main211 has nine.
 KEY_WAIT_TEST = bytes.fromhex("f606ee1c20")
+# The pause between the chunks a terminal sends after CONNECT: longer than
+# the default S12 escape guard (50 fiftieths, one second) on both sides.
+AFTER_CONNECT_GUARD_MS = 1500
 # The firmware's time base. Vector 0x0f - INT3 on the 80186 - enters at
 # 5b5e:0b1a, which is a chain of countdowns the rest of the supervisor
 # arms and waits on: [0x15b], [0x174], [0x738], [0x742], [0x84f] and
@@ -494,7 +497,7 @@ class CourierMachine:
         dsp_tx_pcm: str | None = None,
         serial_input: bytes = b"",
         serial_input_on_ring: bool = False,
-        serial_input_after_connect: bytes = b"",
+        serial_input_after_connect: list[bytes] | None = None,
         serial_input_schedule: list[tuple[int, bytes]] | None = None,
         daa: CourierDaa | None = None,
         ring: RingSource | None = None,
@@ -628,8 +631,12 @@ class CourierMachine:
             sorted(serial_input_schedule or []))
         # Data a terminal sends once the call is up. Typed any earlier it
         # would abort the dial, so it waits for the CONNECT line to end.
-        self._serial_input_after_connect: deque[int] = deque(
-            serial_input_after_connect)
+        # The first goes at once, as before; each later chunk follows a pause
+        # longer than the S12 escape guard, so a chunk of "+++" escapes to
+        # command mode and the next is a command. (Typing has been idle since
+        # the dial, which is the guard ahead of a leading "+++".)
+        self._serial_input_after_connect: list[bytes] = [
+            chunk for chunk in serial_input_after_connect or [] if chunk]
         self._alternate_line = bytearray()
         self._rom_command_line = bytearray()
         self.console = console
@@ -720,6 +727,7 @@ class CourierMachine:
         #: The terminal's wire. Sampled by address, never by PC.
         self.dte_line = DteTransmitLine(DTE_BIT_INSTRUCTIONS)
         self._rom_dte_opened = False
+        self._online_attention_armed = False
         self._previous_address: int | None = None
         # The C52 comes out of board reset held, the same as the part does.
         self._dsp_in_reset = True
@@ -878,9 +886,13 @@ class CourierMachine:
             self.serial_trace.append("entered-data-mode")
         if (self.online_mode and self._serial_input_after_connect
                 and value & 0x7F == 0x0A):
-            self.serial_rx.extend(self._serial_input_after_connect)
+            guard = AFTER_CONNECT_GUARD_MS * INSTRUCTIONS_PER_MS
+            self._serial_input_schedule = deque(sorted([
+                *self._serial_input_schedule,
+                *((self.instructions + guard * index, chunk)
+                  for index, chunk in enumerate(self._serial_input_after_connect))]))
             self._serial_input_after_connect.clear()
-            self.serial_trace.append("connect: released held data")
+            self.serial_trace.append("connect: scheduled held data")
         if self.console is not None:
             self.console.write(value if self.online_mode else value & 0x7F)
 
@@ -1785,12 +1797,22 @@ class CourierMachine:
                 elif self._rom_dte_opened and not self.uart.holding:
                     layout = self._rom_serial
                     command = int.from_bytes(_uc.mem_read(layout.callbacks + 4, 2), "little")
-                    if command == layout.command_idle:
+                    if command != layout.online_idle:
+                        self._online_attention_armed = False
+                    if command == layout.command_idle or (
+                            command == layout.online_idle
+                            and not self._online_attention_armed):
                         # Firmware has finished the previous command and
-                        # requested attention/autobaud again. Retain its
+                        # requested attention/autobaud again - or "+++" has
+                        # left the call in its online command state, which
+                        # waits for autobaud the same way. Retain its
                         # command state; route the next byte through its
                         # A/T detector instead of the raw-pin sampler.
+                        # The online state ignores the A and stays put while
+                        # "AT" installs the line collector, so there it is
+                        # done once per line, until the CR is delivered.
                         _uc.mem_write(layout.callbacks, layout.attention.to_bytes(2, "little"))
+                        self._online_attention_armed = command == layout.online_idle
                 # Put the character on the wire before handing it over.
                 # The ROM's callback chain watches the raw line for the
                 # idle-then-start transition, so a byte that appeared in
@@ -1813,9 +1835,21 @@ class CourierMachine:
                     if self._rom_dte_opened:
                         # Temporary autobaud handlers reuse type 0x14.
                         # The byte-oriented adapter delivers through this
-                        # image's integrated-UART ISR.
-                        vector = self._rom_serial.receive_isr.to_bytes(2, "little")
-                        _uc.mem_write(0x0050, vector + b"\x00\x80")
+                        # image's integrated-UART ISR. Only in command
+                        # mode: in a call the firmware swaps type 0x14
+                        # itself - the 403's tick chain installs the
+                        # receiver that counts "+++" (0x81829) once S12 has
+                        # elapsed, and any other character puts back the one
+                        # that does not (0x8189d). Overwriting it made the
+                        # escape data. The command cell, not CONNECT having
+                        # been seen, says which: after "+++" it is idle again.
+                        layout = self._rom_serial
+                        command = int.from_bytes(
+                            _uc.mem_read(layout.callbacks + 4, 2), "little")
+                        if command in (layout.command_idle, layout.command_collecting,
+                                       layout.online_idle):
+                            vector = self._rom_serial.receive_isr.to_bytes(2, "little")
+                            _uc.mem_write(0x0050, vector + b"\x00\x80")
                         self.uart.control = 0x21
                     byte = self.serial_rx.popleft()
                     self._trace_serial(
@@ -1827,6 +1861,7 @@ class CourierMachine:
                     # intercepted; the line model needs the text only to
                     # know whether this end was told to answer or to call.
                     if byte in (10, 13):
+                        self._online_attention_armed = False
                         typed = attention_body(bytes(self._rom_command_line))
                         self._rom_command_line.clear()
                         if typed is not None and self.dsp_bridge is not None:

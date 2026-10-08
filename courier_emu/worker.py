@@ -106,7 +106,7 @@ def main() -> int:
     parser.add_argument("--dsp-rx-pcm")
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
-    parser.add_argument("--serial-after-connect-hex", default="")
+    parser.add_argument("--serial-after-connect-hex", action="append", default=[])
     parser.add_argument("--serial-schedule", action="append", default=[],
                         metavar="INSTRUCTIONS:HEX")
     parser.add_argument(
@@ -268,7 +268,8 @@ def main() -> int:
         dsp_tx_pcm=args.dsp_tx_pcm,
         serial_input=bytes.fromhex(args.serial_input_hex),
         serial_input_on_ring=args.serial_input_on_ring,
-        serial_input_after_connect=bytes.fromhex(args.serial_after_connect_hex),
+        serial_input_after_connect=[bytes.fromhex(chunk)
+                                    for chunk in args.serial_after_connect_hex],
         serial_input_schedule=[
             (_number(when), bytes.fromhex(data))
             for when, _, data in (entry.partition(":") for entry in args.serial_schedule)],
