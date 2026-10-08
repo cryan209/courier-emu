@@ -159,7 +159,7 @@ class PacketSession:
 @pytest.mark.parametrize('reserve', [320, 800])
 def test_packet_jitter_preserves_every_codeword_without_midstream_silence(reserve):
     session = PacketSession()
-    bearer = BearerSipLine(session, receive_buffer_samples=reserve)
+    bearer = BearerSipLine(session, receive_buffer_samples=reserve, receive_lead=0)
     source = bytes(i % 254 for i in range(1920))
     # The third packet is 10 ms late; the following one catches up. The DSP
     # still requires one octet every 125 us throughout the gap.
@@ -181,7 +181,7 @@ def test_packet_jitter_preserves_every_codeword_without_midstream_silence(reserv
 
 def test_new_call_primes_receive_buffer_again():
     session = PacketSession()
-    bearer = BearerSipLine(session)
+    bearer = BearerSipLine(session, receive_lead=0)
     bearer.started = True
     session.received.extend(b'\x11' * 320)
     assert bearer.exchange(b'\xff') == b'\x11'
@@ -193,7 +193,7 @@ def test_new_call_primes_receive_buffer_again():
 
 def test_receive_outage_rebuilds_reserve_before_resuming_waveform():
     session = PacketSession()
-    bearer = BearerSipLine(session)
+    bearer = BearerSipLine(session, receive_lead=0)
     session.received.extend(b'\x11' * 320)
     output = bytearray()
     resumed = bytes(i % 254 for i in range(640))
@@ -257,3 +257,17 @@ def test_a_refused_invite_clears_the_modem_call():
     assert bearer.remote_ended()
     bearer.stop()
     assert not bearer.awaits_answer and not bearer.remote_ended()
+
+
+def test_receive_data_is_handed_over_ahead_of_the_modem():
+    # The native port model runs frames from receive data already queued, so
+    # the bearer keeps receive_lead octets ahead - of what has arrived only.
+    session = PacketSession()
+    bearer = BearerSipLine(session, receive_lead=80)
+    assert bearer.feeds_ahead
+    session.received.extend(bytes(range(200)))
+    session.received.extend(bytes(range(200, 256)) + bytes(range(64)))
+    first = bearer.exchange(b'\xff')
+    assert first == bytes(range(81))          # one for the octet, 80 ahead
+    assert bearer.exchange(b'\xff' * 4) == bytes(range(81, 85))
+    assert bearer.underrun == 0

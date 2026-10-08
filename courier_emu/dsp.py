@@ -1512,6 +1512,8 @@ class ImodemHostIo:
         lib.courier_imodemio_set_bearer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_poll_state.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_wallclock.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.courier_imodemio_set_wall_target.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+        self._set_wall_target = lib.courier_imodemio_set_wall_target
         self.poll_function = ctypes.cast(
             lib.courier_imodemio_poll, ctypes.c_void_p).value
         self.shared = shared
@@ -1542,6 +1544,10 @@ class ImodemHostIo:
     @property
     def wallclock(self) -> bool:
         return bool(self._applied and self._applied[2])
+
+    def set_wall_target(self, cycles: int) -> None:
+        """In wallclock mode, the core cycle to run the C5x up to."""
+        self._set_wall_target(self.context, cycles)
 
     def set_poll_state(self, state) -> None:
         """Serve the interrupt controllers' ports from the harness's shared state."""

@@ -461,6 +461,9 @@ struct ImodemHostIo {
     // not from the 386's instruction count: the ports are then served from
     // wherever that left the core, and advance() steps nothing.
     bool wallclock = false;
+    // With wallclock, the core cycle the harness's wall clock has reached:
+    // advance() runs the C5x up to it, as it runs it up to `now` otherwise.
+    uint64_t wall_target = 0;
     double cycles_per_instruction = 0;
     uint32_t read_quantum = 0;
     uint32_t in_count[256] = {}, out_count[256] = {};
@@ -790,14 +793,27 @@ struct ImodemHostIo {
     {
         ImodemShared *sh = shared;
         if (sh->needs_service) return false;
-        if (wallclock) return true;
-        const int64_t elapsed = int64_t(now) - int64_t(sh->dsp_instructions);
-        if (elapsed < int64_t(quantum)) return true;
-        sh->dsp_instructions = now;
-        if (!elapsed) return true;
-        sh->cycle_debt += double(elapsed) * cycles_per_instruction;
-        if (sh->cycle_debt < 1) return true;
-        int64_t remaining = int64_t(sh->cycle_debt);
+        int64_t remaining;
+        if (wallclock) {
+            // The owed time is the wall clock's, not the instruction count's;
+            // a read's quantum still keeps a tight poll from stepping a
+            // handful of cycles at a time.
+            // Kept current, so the instruction-coupled advance resumes from
+            // here rather than owing the whole call once the bearer drops.
+            sh->dsp_instructions = now;
+            const uint64_t at = core->cycle_count();
+            if (wall_target <= at) return true;
+            remaining = int64_t(wall_target - at);
+            if (double(remaining) < double(quantum) * cycles_per_instruction) return true;
+        } else {
+            const int64_t elapsed = int64_t(now) - int64_t(sh->dsp_instructions);
+            if (elapsed < int64_t(quantum)) return true;
+            sh->dsp_instructions = now;
+            if (!elapsed) return true;
+            sh->cycle_debt += double(elapsed) * cycles_per_instruction;
+            if (sh->cycle_debt < 1) return true;
+            remaining = int64_t(sh->cycle_debt);
+        }
         uint64_t spent_total = 0;
         bool stop = false;
         try {
@@ -835,7 +851,7 @@ struct ImodemHostIo {
         } catch (const std::exception &) {
             stop = true;
         }
-        sh->cycle_debt -= double(spent_total);
+        if (!wallclock) sh->cycle_debt -= double(spent_total);
         if (stop) sh->needs_service = 1;
         return !stop;
     }
@@ -1167,6 +1183,11 @@ int courier_imodemio_advance_serve(void *context, uint64_t now, unsigned quantum
 void courier_imodemio_set_wallclock(void *context, int enabled)
 {
     static_cast<ImodemHostIo *>(context)->wallclock = enabled != 0;
+}
+
+void courier_imodemio_set_wall_target(void *context, uint64_t cycles)
+{
+    static_cast<ImodemHostIo *>(context)->wall_target = cycles;
 }
 
 void courier_imodemio_set_poll_state(void *context, void *state)

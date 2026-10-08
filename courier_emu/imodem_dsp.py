@@ -395,6 +395,25 @@ class ImodemDsp(ImodemMailbox):
             self._sync_pcm(octets)
         self.step_cycles(0)
 
+    def realtime_target(self, now=None):
+        """The core cycle wall time has reached since the bearer came up.
+
+        pace_realtime's clock, for a caller that runs the C5x itself (the
+        native port model in wallclock mode): the same origin, so either may
+        carry on from the other.
+        """
+        current_time = time.monotonic() if now is None else float(now)
+        cycles = self.core.state()['cycles']
+        if self._realtime_origin is None:
+            self._realtime_origin = (current_time, cycles)
+            self._realtime_seen = cycles
+            return cycles
+        origin_time, origin_cycles = self._realtime_origin
+        self.realtime_cycles += max(0, cycles - getattr(self, "_realtime_seen", cycles))
+        self._realtime_seen = cycles
+        return origin_cycles + int(
+            max(0.0, current_time - origin_time) * DIGITAL_PCM_CLOCK_HZ)
+
     def pace_realtime(self, active, now=None, *, max_wall_seconds=None):
         """Advance the digital PCM clock against monotonic wall time.
 

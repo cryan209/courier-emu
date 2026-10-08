@@ -868,8 +868,17 @@ class IsdnMachine:
             self.mailbox.service_pending()
         realtime = self._live_bearer()
         native_io = self._native_io
+        # In a live call the native port model runs the C5x up to the wall
+        # clock and settles frames from the receive data fed ahead, as it does
+        # offline - the per-frame Python round trip cost the 386 most of its
+        # time. Without it, pace_realtime steps frame by frame instead.
+        native_realtime = bool(realtime and native_io is not None and native_io.live
+                               and native_io.wallclock
+                               and getattr(self.mailbox, "_nb", None) is not None
+                               and getattr(self.bri.media_peer, "feeds_ahead", False))
         if hasattr(self.mailbox, 'pcm_frame_service'):
-            service = self._service_pcm_frame if realtime else None
+            service = (self._service_pcm_frame
+                       if realtime and not native_realtime else None)
             if self.mailbox.pcm_frame_service != service:
                 self.mailbox.pcm_frame_service = service
         if (not realtime
@@ -877,7 +886,9 @@ class IsdnMachine:
             # The call is over: drop the wall-clock origin, or the next one
             # would start by catching up the whole gap between them.
             self.mailbox.pace_realtime(False)
-        if native_io is not None and native_io.live and not realtime:
+        if native_realtime:
+            native_io.set_wall_target(self.mailbox.realtime_target())
+        if native_io is not None and native_io.live and (native_realtime or not realtime):
             # The native model advances the C5x exactly as below, and does the
             # service that follows when it can; it hands back when the harness
             # has a reply to take or frames only Python can settle.

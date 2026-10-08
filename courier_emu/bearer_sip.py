@@ -47,11 +47,18 @@ class BearerSipLine:
     # Tells the coupled I-modem harness that this peer carries an externally
     # clocked, live bearer. Offline byte sources retain instruction pacing.
     realtime_clock = True
+    # Receive data is handed over ahead of the modem's own octets, so the
+    # native port model can run whole frames without coming back for each.
+    feeds_ahead = True
+    # How far ahead, in octets: 10 ms, out of the 40 ms the playout reserve
+    # holds. Never more than is actually buffered, and never filler.
+    RECEIVE_LEAD = 80
 
     def __init__(self, session: Any, *, target: str = "",
                  record: Any = None, silence: int = PCMU_SILENCE,
                  receive_buffer_samples: int = 320,
-                 transmit_buffer_samples: int = 480) -> None:
+                 transmit_buffer_samples: int = 480,
+                 receive_lead: int = RECEIVE_LEAD) -> None:
         self.session = session
         self.session.set_codewords(True)
         if hasattr(self.session, 'enable_media_clock'):
@@ -77,6 +84,9 @@ class BearerSipLine:
         self.receive_buffer_samples = max(0, receive_buffer_samples)
         self._receive_octets: deque[int] = deque()
         self._receive_started = False
+        # Receive octets handed over beyond the transmit ones: the lead.
+        self.receive_lead = max(0, receive_lead)
+        self._lead = 0
 
     # -- what the call does to it ------------------------------------------
 
@@ -160,6 +170,7 @@ class BearerSipLine:
         self.session.hangup()
         self._receive_octets.clear()
         self._receive_started = False
+        self._lead = 0
         self.events.append("the ISDN call cleared: hanging up the SIP leg")
 
     # -- the bearer --------------------------------------------------------
@@ -206,6 +217,15 @@ class BearerSipLine:
             # filler: it is what an idle timeslot carries, and it is counted.
             self.underrun += len(octets) - len(received)
             received += bytes((self.silence,)) * (len(octets) - len(received))
+        if self._receive_started and self._lead < self.receive_lead:
+            extra = min(self.receive_lead - self._lead, len(self._receive_octets))
+            if extra:
+                ahead = bytes(self._receive_octets.popleft() for _ in range(extra))
+                self._lead += extra
+                self.octets_from_rtp += extra
+                if self.record is not None:
+                    self.record.write(ahead)
+                received += ahead
         self.octets_out += len(received)
         return received
 
