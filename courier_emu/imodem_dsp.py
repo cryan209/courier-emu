@@ -72,6 +72,8 @@ def _shared_field(name, kind):
 
 class ImodemDsp(ImodemMailbox):
     pcm_batch = False
+    # The DSP's stream window: the sender's port-0x60 word, high byte on 0x62.
+    STREAM_PORTS = (0x60, 0x62)
     # Scalars the native port model reads and updates in place.
     tx_ready = _shared_field("tx_ready", bool)
     host_pending = _shared_field("host_pending", bool)
@@ -608,9 +610,15 @@ class ImodemDsp(ImodemMailbox):
         if self.core and not self.reset_status and not self._loader_started:
             status = self.core.io(0x56)
             if port == 0x18:
-                return 0xc0 | (~status & 0x3f)
+                # Bit 7 is a word from the stream sender at 0x8980, which
+                # clears PA6 bit 7 as it writes port 0x60; the ISR at b4992
+                # tests it before the collector at [c9f9] reads 0x62/0x60.
+                return 0x40 | (~status & 0xbf)
             if port == 0x1a:
                 return 0xc0 | (~(status >> 8) & 0x3f)
+            if port in self.STREAM_PORTS:
+                word = self.core.io_output(0x60)
+                return (word >> (8 if port == 0x62 else 0)) & 0xff
             if 0x40 <= port < 0x58 and port % 2 == 0:
                 offset = port - 0x40
                 word = self.core.io_output(0x58 + offset // 4)
@@ -645,6 +653,9 @@ class ImodemDsp(ImodemMailbox):
             # bits mean the corresponding outgoing word has been taken.
             bits = value & 0x3f
             if port == 0x18:
+                # 0x80 acknowledges a stream word: PA6 bit 7 is what the
+                # resume poll at 0x894a waits on before sending the next.
+                bits |= value & 0x80
                 for bank in range(6):
                     if bits & (1 << bank):
                         self.core.set_io(0x58 + bank, self._word(0x40 + 4 * bank))

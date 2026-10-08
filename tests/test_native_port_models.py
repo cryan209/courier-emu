@@ -157,13 +157,16 @@ def test_analog_model_serves_the_mailbox_status_ports_from_the_latch():
                                 overlay=True, overlay_status=0x07,
                                 zero_ok=True, status_cell=0x57)
         # Room for a host word unless the DSP has one pending; bit 1 when the
-        # DSP's send-complete flag (inverted in the latch) is up.
+        # DSP's send-complete flag (inverted in the latch) is up, and bit 2
+        # the same for a word from the stream sender.
         dsp.set_io(0x57, 0x0006)
         assert access(model, 1, 0x1C) == (1, 1)
         dsp.set_io(0x57, 0x0001)
-        assert access(model, 1, 0x1C) == (1, 2)
+        assert access(model, 1, 0x1C) == (1, 6)
         dsp.set_io(0x57, 0x0004)
         assert access(model, 1, 0x1C) == (1, 3)
+        dsp.set_io(0x57, 0x0002)
+        assert access(model, 1, 0x1C) == (1, 5)
         model.configure_mailbox(runtime=True, pending=True, inbound=True,
                                 overlay=False, overlay_status=0x07,
                                 zero_ok=True, status_cell=0x57)
@@ -176,7 +179,7 @@ def test_analog_model_serves_the_mailbox_status_ports_from_the_latch():
         assert access(model, 2, 0x1E, 0)[0] == 1
         assert access(model, 2, 0x1E, 4)[0] == 0
         reads, writes, last, seen = model.take_counts()
-        assert reads[0x1C] == 4 and writes[0x1C] == 1 and writes[0x1E] == 1
+        assert reads[0x1C] == 5 and writes[0x1C] == 1 and writes[0x1E] == 1
         assert seen[0x1C] == 1 and last[0x1C] == 0
     finally:
         model.close()
@@ -224,3 +227,14 @@ def test_native_pic_ports_match_the_python_controllers():
                     python.slave.vector_base)
         finally:
             model.close()
+
+
+def test_rom_build_stream_word_reaches_the_cpu_window():
+    # The stream sender's `out *, 0060` (DSP 3.1.2 at 0x849e) is what the CPU
+    # reads back through 0x60/0x62, which bridge.py serves from io_output.
+    words = (0xAE7D, 0x1234, 0x0C7D, 0x0060)  # splk #1234, @7d / out @7d, 0060
+    with NativeC5x.from_program(0x8000, b"".join(w.to_bytes(2, "little") for w in words)) as dsp:
+        dsp.configure_rom_codec()
+        dsp.set_pc(0x8000)
+        dsp.step(2)
+        assert dsp.io_output(0x60) == 0x1234

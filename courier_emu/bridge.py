@@ -2911,6 +2911,13 @@ class CourierDspBridge:
                     or self._dsp_completion_status() & DSP_SEND_COMPLETE
                 ):
                     status |= 2
+                # Bit 2 is a word from the stream sender at 0x849e, which
+                # clears PA7 bit 2 the way 0x83d6 clears bit 1. Leaving it out
+                # meant the supervisor never read 0x60/0x62 or acknowledged,
+                # so every streamed reply - ATI11's tag 57, the idle page's
+                # 46, ATY12's 45 - timed out and printed zeros.
+                if self._dsp_completion_status() & DSP_STREAM_READY:
+                    status |= 4
                 return status
             status = int(self._runtime_ready) | (2 if self._runtime_inbound else 0)
             # The DSP's own two completions, reported where the CPU looks for

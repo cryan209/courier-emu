@@ -720,9 +720,10 @@ class IsdnMachine:
             self.machine.emu_stop()
 
     def read_port(self, port: int) -> int:
+        stream_port = port in getattr(self.mailbox, "STREAM_PORTS", ())
         dsp_port = (
             port in (0x18, 0x1a, 0x1c, 0x1e)
-            or port in self.mailbox.LANES or 0x40 <= port < 0x58
+            or port in self.mailbox.LANES or 0x40 <= port < 0x58 or stream_port
             or self.dsc.handles(port)
         )
         if self.with_dsp and dsp_port:
@@ -747,7 +748,7 @@ class IsdnMachine:
         if self.dsc.handles(port):
             return self.dsc.read(port)
         if self.with_dsp and (port in (0x18, 0x1a, 0x1c, 0x1e, *self.mailbox.LANES)
-                              or 0x40 <= port < 0x58):
+                              or 0x40 <= port < 0x58 or stream_port):
             return self.mailbox.read(port)
         if port == DSP_HANDSHAKE_PORT:
             return self.dsp_handshake

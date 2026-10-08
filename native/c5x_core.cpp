@@ -1233,6 +1233,13 @@ void C5xCore::IO_WRITE16(uint16_t port, uint16_t value)
         m_io[port] &= uint16_t(~value);
     else if (m_host_mailbox && port >= 0x5e && port <= 0x60)
         m_mailbox_output[port - 0x5e] = value;
+    else if (m_rom_codec && port == 0x60) {
+        // The stream sender's `out *, 0060` (0x849e): io_output serves the
+        // CPU's 0x60/0x62 from this holding register, which nothing wrote,
+        // so every streamed reply - ATI11's tag 57 among them - read zero.
+        m_mailbox_output[2] = value;
+        m_io[port] = value;
+    }
     else if (m_rom_codec && port >= 0x50 && port <= 0x5f) {
         m_asic_output[port - 0x50] = value;
         // PA6 is the data lanes' handshake, and the resident clears a bit by

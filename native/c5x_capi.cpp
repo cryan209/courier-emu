@@ -232,6 +232,9 @@ struct LaneHostIo {
                 const uint16_t status = core->io(mb_status_cell);
                 answer = (status & 0x0001) || mb_pending ? 0 : 1;
                 if (mb_inbound || ((status ^ 0x0006) & 0x02)) answer |= 2;
+                // A word from the stream sender at 0x849e, which clears PA7
+                // bit 2 as the message sender clears bit 1: bridge.py's read.
+                if ((status ^ 0x0006) & 0x04) answer |= 4;
             } else {
                 if (!mb_overlay) return false;
                 answer = mb_overlay_status;
@@ -1179,7 +1182,9 @@ int courier_imodemio_access(void *context, int direction, uint16_t port,
         uint16_t answer;
         if (port == 0x18 || port == 0x1a) {
             const uint16_t status = io->core->io(0x56);
-            answer = port == 0x18 ? uint16_t(0xc0 | (~status & 0x3f))
+            // 0x18 bit 7: a stream word, PA6 bit 7 cleared by the sender
+            // at 0x8980 (ImodemDsp.read).
+            answer = port == 0x18 ? uint16_t(0x40 | (~status & 0xbf))
                                   : uint16_t(0xc0 | (~(status >> 8) & 0x3f));
         } else {
             const unsigned offset = port - 0x40;
@@ -1196,6 +1201,7 @@ int courier_imodemio_access(void *context, int direction, uint16_t port,
     if (!io->advance(now, 0)) return 0;
     uint16_t bits = value & 0x3f;
     if (port == 0x18) {
+        bits |= value & 0x80;  // a stream acknowledgement (ImodemDsp.write)
         for (unsigned bank = 0; bank < 6; ++bank)
             if (bits & (1u << bank))
                 io->core->set_io(uint16_t(0x58 + bank),

@@ -33,3 +33,24 @@ def test_runtime_data_banks_have_separate_holding_registers_and_acknowledgements
         assert endpoint.read(0x1a) == 0xc0
     finally:
         endpoint.close()
+
+
+def test_stream_word_raises_0x18_bit_7_until_acknowledged():
+    # The sender at 0x8980: out *, 0060, then 80 to PA6 (write-one-to-clear).
+    endpoint = ImodemDsp()
+    program = (0xae7d, 0x1234, 0x0c7d, 0x0060, 0xb980, 0x8856)
+    endpoint.core = NativeC5x.from_program(0, struct.pack('<6H', *program))
+    endpoint.core.configure_rom_codec()
+    endpoint.reset_status = False
+    try:
+        endpoint.core.set_io(0x56, 0x80)  # acknowledged: room for a word
+        assert not endpoint.read(0x18) & 0x80
+        endpoint.core.step(4)
+        assert endpoint.read(0x18) & 0x80
+        assert (endpoint.read(0x62), endpoint.read(0x60)) == (0x12, 0x34)
+        # The ISR's acknowledgement is what the resume poll at 0x894a tests.
+        endpoint.write(0x18, 0x80)
+        assert endpoint.core.io(0x56) & 0x80
+        assert not endpoint.read(0x18) & 0x80
+    finally:
+        endpoint.close()
