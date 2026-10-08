@@ -183,10 +183,30 @@ class LineLink:
     # exchange is that frame again, and meets the same failure without
     # sending it twice.
     _presend: int = field(default=0, repr=False)
+    _g711 = None   # see __post_init__; not a dataclass field
+    _skew = None
 
     def __post_init__(self) -> None:
         if self.digital:
             self.loss_gain = 1.0
+        # COURIER_LINE_G711=alaw|ulaw puts a digital network leg between the
+        # pair: what arrives is quantised through that law after the loop
+        # loss, as a call carried over G.711 would be. Python's exchange
+        # only; set COURIER_NATIVE_FRAMES=0 with it.
+        law = os.environ.get("COURIER_LINE_G711", "")
+        self._g711 = None
+        if law:
+            from .sip import CODECS
+            _, _, encode, decode = CODECS["pcma" if law == "alaw" else "pcmu"]
+            self._g711 = [decode(encode(level - 32768)) for level in range(65536)]
+        # COURIER_LINE_SKEW_PPM=N: the far end's sample clock runs N ppm fast
+        # (negative, slow) against this end's - what any real far end has and
+        # a pair of emulators never does. Inbound audio is resampled by linear
+        # interpolation. Python's exchange only, like the G.711 leg.
+        skew = float(os.environ.get("COURIER_LINE_SKEW_PPM", "0") or 0)
+        if skew:
+            # [step, phase, previous sample]
+            self._skew = [1.0 - skew * 1e-6, 0.0, 0]
 
     def open(self) -> None:
         """Bind or connect the socket. The listening side binds first."""
@@ -295,7 +315,23 @@ class LineLink:
         self.peer_ringing = bool(ringing)
         self.peer_call_state = int(call_state)
         peer = LineFrame.decode(header, body)
-        if self.loss_gain == 1.0:
+        if self._skew is not None:
+            step, phase, previous = self._skew
+            resampled = []
+            for sample in peer.samples:
+                while phase < 1.0:
+                    resampled.append(int(previous + (sample - previous) * phase))
+                    phase += step
+                phase -= 1.0
+                previous = sample
+            self._skew[1], self._skew[2] = phase, previous
+            peer.samples = resampled
+        if self._g711 is not None:
+            table = self._g711
+            self._inbound.extend(
+                table[max(-32768, min(32767, int(sample * self.loss_gain))) + 32768]
+                for sample in peer.samples)
+        elif self.loss_gain == 1.0:
             self._inbound.extend(peer.samples)
         else:
             self._inbound.extend(int(sample * self.loss_gain) for sample in peer.samples)
