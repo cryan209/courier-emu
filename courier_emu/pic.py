@@ -216,6 +216,8 @@ class InterruptControllers:
             else:
                 slave_irr |= 1 << (irq - 8)
                 master_irr |= 1 << CASCADE_LINE
+        if self.slave.pending(slave_irr) is not None:
+            master_irr |= 1 << CASCADE_LINE
         line = self.master.pending(master_irr)
         if line is None:
             return False
@@ -225,6 +227,12 @@ class InterruptControllers:
 
     def pending_vector(self) -> int | None:
         """Resolve the next vector to deliver, or None if nothing is ready."""
+        # The master's IR2 is the slave's INT output, not a latch set only by
+        # raise_irq: a request that waited behind one in service asks again
+        # once that one's EOI unblocks it. Without this an IRQ13 raised with
+        # IRQ11 was stranded until the next IRQ13 re-asserted the cascade.
+        if self.slave.pending() is not None:
+            self.master.irr |= 1 << CASCADE_LINE
         line = self.master.pending()
         if line is None:
             return None
