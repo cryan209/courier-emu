@@ -1,0 +1,57 @@
+[
+  {
+    "frame": "01020a0225",
+    "link_state": 3,
+    "events": [
+      {
+        "event": "EEPROM writer reached",
+        "record": "681702"
+      }
+    ],
+    "record_after": "681702",
+    "expected_31": "681702",
+    "ip": "0xf000"
+  },
+  {
+    "frame": "03020a0225",
+    "link_state": 3,
+    "events": [
+      {
+        "event": "EEPROM writer reached",
+        "record": "681702"
+      }
+    ],
+    "record_after": "681702",
+    "expected_31": "681702",
+    "ip": "0xf000"
+  },
+  {
+    "frame": "01120a0225",
+    "link_state": 3,
+    "events": [],
+    "record_after": "280f12",
+    "expected_31": "681702",
+    "ip": "0xf000"
+  },
+  {
+    "frame": "01020a0125",
+    "link_state": 3,
+    "events": [],
+    "record_after": "280f12",
+    "expected_31": "681702",
+    "ip": "0xf000"
+  },
+  {
+    "frame": "01020a0225",
+    "link_state": 0,
+    "events": [
+      {
+        "event": "EEPROM writer reached",
+        "record": "681702"
+      }
+    ],
+    "record_after": "681702",
+    "expected_31": "681702",
+    "ip": "0xf000"
+  }
+]

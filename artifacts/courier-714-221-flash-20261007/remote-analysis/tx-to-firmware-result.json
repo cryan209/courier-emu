@@ -1,0 +1,15 @@
+{
+  "frame": "01020a0225",
+  "link_state": 3,
+  "events": [
+    {
+      "event": "EEPROM writer reached",
+      "record": "681702"
+    }
+  ],
+  "record_after": "681702",
+  "expected_31": "681702",
+  "ip": "0xf000",
+  "hdlc_fcs_valid": true,
+  "sender": "v90modem built SpanDSP V.42 control queue"
+}

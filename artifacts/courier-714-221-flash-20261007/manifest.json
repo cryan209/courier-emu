@@ -1,0 +1,33 @@
+{
+  "status": "complete",
+  "device": "/dev/cu.usbserial-FT4TQOFT",
+  "baud": 115200,
+  "started_utc": "2026-10-07T09:14:07.055898+00:00",
+  "physical_start": 524288,
+  "length": 524288,
+  "page_bytes": 256,
+  "copies_required_per_page": 2,
+  "pages_verified": 2048,
+  "terminal_status_counts": {
+    "ERROR": 4100
+  },
+  "failed_attempts": [],
+  "firmware_writes": false,
+  "firmware_upload": false,
+  "assumptions": [
+    "CPU addresses 80000..fffff expose the 512 KiB flash at runtime.",
+    "Identical repeated reads establish capture consistency, not the absence of bank aliases.",
+    "DSP internal ROM is outside the scope of this CPU-memory capture."
+  ],
+  "elapsed_seconds": 1100.52,
+  "identity": "ATI7\r\r\nUSRobotics Courier V.Everything Configuration Profile...\r\n\r\nProduct type           US/Canada External\r\nOptions                HST,V32bis,Terbo,VFC,V34+\r\nFax Options            Class 1,Class 2.0\r\nClock Freq             20.16Mhz\r\nFlash ROM              512k\r\nRam                    64k\r\n\r\nSupervisor date        02/25/97\r\nDSP date               02/25/97\r\n\r\nSupervisor rev         7.1.4\r\nDSP rev                2.2.1\r\n\r\nSerial Number          7309550013402381\r\n\r\nOK\r\n",
+  "firmware": {
+    "supervisor": "7.1.4",
+    "dsp": "2.2.1",
+    "clock_mhz": "20.16"
+  },
+  "image": "courier-board.rom",
+  "sha256": "99e61a6a54082a745da367f79864aea7ae95263aa5ac12516d53e319a97252fb",
+  "anchors_rechecked": true,
+  "finished_utc": "2026-10-07T09:32:27.596638+00:00"
+}

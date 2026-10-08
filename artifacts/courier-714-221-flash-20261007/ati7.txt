@@ -1,0 +1,19 @@
+ATI7
+USRobotics Courier V.Everything Configuration Profile...
+
+Product type           US/Canada External
+Options                HST,V32bis,Terbo,VFC,V34+
+Fax Options            Class 1,Class 2.0
+Clock Freq             20.16Mhz
+Flash ROM              512k
+Ram                    64k
+
+Supervisor date        02/25/97
+DSP date               02/25/97
+
+Supervisor rev         7.1.4
+DSP rev                2.2.1
+
+Serial Number          7309550013402381
+
+OK
