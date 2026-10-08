@@ -1,0 +1,20 @@
+{
+  "type": "imodem",
+  "engine": {
+    "frames": 199944,
+    "octets_sent": 199955,
+    "octets_received": 199955,
+    "sent_non_ff": 187553,
+    "received_non_ff": 127250,
+    "error": null,
+    "wall_clock_paced": true,
+    "environment": {
+      "ME_MODE": "x2"
+    },
+    "engine_sha256": "a3b64c8a02715b785331682e792510d03665d2f067c618d7c4bb2d62cdedc116",
+    "engine_exit": 0
+  },
+  "nvram": "/Users/scottcryan/courier-emu/artifacts/imodem-pair-x2-full-rate-routed-20261002/nvram-230400-switch2.sav",
+  "settings": "S54=0S58=58&A3&B1Q0",
+  "instructions": 160000000
+}

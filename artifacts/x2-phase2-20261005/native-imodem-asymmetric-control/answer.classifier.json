@@ -1,0 +1,71 @@
+{
+  "addresses": [
+    "039f",
+    "ffd9",
+    "0322",
+    "03e3"
+  ],
+  "captures": [
+    [
+      554302357,
+      582451106,
+      135107,
+      7,
+      1,
+      66,
+      32768,
+      5,
+      0
+    ]
+  ],
+  "control_writes": [
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 184953
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 6445912
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 255492668
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 37477,
+      "instruction": 491152216
+    },
+    {
+      "address": 65497,
+      "value": 32768,
+      "pc": 37505,
+      "instruction": 491198790
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 38357,
+      "instruction": 609499441
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 37624,
+      "instruction": 631067133
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 41142,
+      "instruction": 741022275
+    }
+  ]
+}

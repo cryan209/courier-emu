@@ -4700,7 +4700,7 @@ octets. v90modem now enables that signature for its x2 mode;
 `ME_V8_X2_PHASE_REVERSAL=0` retains the comparison path. The phase inversion
 does not change the decoded JM bytes.
 
-There are still two later interop gaps:
+At this checkpoint there were two later interop gaps (the analog Phase 2 gap is fixed in the continuation below):
 
 * The analog peer accepts the waveform signature (`039f=4040`, then `4060`),
   but later clears its x2 capability flags at `909b` (`039f=0020`) and emits a
@@ -4727,3 +4727,50 @@ recorded session/MP/E tests and the added ACK-recovery check, but do not close
 the remaining live Phase-2 gap. The B1 capture regression still acquires at
 99.9% in both input block sizes, rejects silence, and all 402 V.34 data tests
 pass. **Neither live peer reaches B1, CONNECT, or payload.**
+
+
+### Received-tone Phase 2 and live analog marker fix, 5 October 2026
+
+The software session now advances on the received 1200 Hz Tone B rather than
+fixed Tone A timers. After detecting B and transmitting A for at least 50 ms,
+it reverses A, measures B's response, then reverses A again 40 ms after the
+received B reversal. Ten milliseconds later it sends a 160 ms multitone probe,
+then waits silently for the marker. These timings come from V.34 (10/1996)
+§11.2.1.2.3–.5; the probe frequencies/signs come from §10.1.2.4/Table 17.
+The successful original I-modem-to-analog trace contains that probe at
+approximately 5.01–5.17 s; the previous interpretation as a silent gap was
+wrong. Its RMS is approximately 2450, close to the preceding Tone A. The
+software uses that observed PCM-server level, without the ordinary analog
+L1 +6 dB boost. This is a short x2 probe before its marker, not evidence that
+x2 skips all line probing. Repeated unacknowledged INFO0 also restarts
+acknowledged INFO0 before Tone A (V.34 §11.2.2.2.1).
+
+Two independently launched, paced feedback calls (`analog-probe` and
+`analog-recovery`) now accept **marker `4d`**, decode CRC-valid MP
+**`0344/03fe/0000/0500`**, and advance the software downstream script through
+DATA_STARTUP/PAYLOAD. Their raw streams are identical because the emulated
+calls are deterministic; each run generates replies from its own fresh RX.
+`analog-recovery` executes the native fast builder at **9083** and never
+executes fallback **909b**. Its native E handler **AE83**, E paths **AF2E/AF38**,
+and B1 **B1A1/B1B4/B1C2** are never executed. Consequently this fixes the
+Phase 2 blocker, but does **not** establish live upstream E/B1, modem CONNECT,
+or bidirectional user payload. The software PAYLOAD stage alone is not a
+peer connection result. Next, trace the native training/MP-to-E handoff and
+its acknowledgement/startup conditions; an upstream-detector change alone
+cannot repair a native peer that never emits E/B1.
+
+The I-modem S58=58 diagnostic now recovers repeated INFO0, completes both A
+reversals and the probe, but still receives no `4d`. A fresh control with an
+original native I-modem caller at S58=58 and original native answerer at
+S58=48 also returns NO CARRIER/no CONNECT. That failing control cannot qualify
+this asymmetric configuration as a software interop target. It does not rule
+out other valid native configurations. The known working native S58=48
+symmetric pair still requires a separate symmetric session implementation.
+
+The session tests check silence rejection, repeated INFO0 recovery, and
+received-tone timing with input chunks 1/17/160. Recorded MP/E session tests,
+99.9% B1 acquisition at 17/160 samples, silence rejection, all 402 V.34 data
+cases, and production builds pass. The live harness now offers
+`--require-marker` to fail unless its fresh feedback call accepts `4d`.
+Commands, raw media, engine hashes, and native path coverage are retained in
+[the Phase 2 evidence](../artifacts/x2-phase2-20261005/README.md).

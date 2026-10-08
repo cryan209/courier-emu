@@ -1,0 +1,17 @@
+{
+  "run": "analog-recovery",
+  "format": "65536 little-endian uint64 first-execution CPU instruction counts; zero means never executed",
+  "source_sha256": "2e5bcea101fea995f21015844735375983eeee28a6da7bbebf56412792bd145e",
+  "selected_pc_first_execution": {
+    "9083": 569512359,
+    "909b": 0,
+    "aea5": 574302815,
+    "ae83": 0,
+    "af2e": 0,
+    "af38": 0,
+    "af63": 781398263,
+    "b1a1": 0,
+    "b1b4": 0,
+    "b1c2": 0
+  }
+}

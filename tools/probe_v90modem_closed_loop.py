@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import select
 import struct
@@ -78,11 +79,15 @@ class EnginePeer:
             for f in (self.log,self.rx,self.tx): f.close()
 
     def status(self):
+        log_path=self.output/'engine.log'
+        transcript=log_path.read_text() if log_path.exists() else ''
         return {'frames':self.frames,'octets_sent':self.samples,'octets_received':self.samples,
                 'sent_non_ff':self.sent_non_ff,'received_non_ff':self.received_non_ff,
                 'error':self.error,'wall_clock_paced':not self.fast,
                 'environment':getattr(self,'environment',{}),
                 'engine_sha256':getattr(self,'engine_sha256',None),
+                'stages':re.findall(r'X2 stage=(\w+)',transcript),
+                'accepted_markers':re.findall(r'X2 accepted marker=([0-9a-f]+)',transcript),
                 'engine_exit':self.process.returncode if self.process else None}
 
 
@@ -191,7 +196,12 @@ def main():
     p.add_argument('--classifier',action='store_true',help='trace the native PCM classifier instead of the INFO0 gate')
     p.add_argument('--imodem-settings',default='S54=0S58=58&A3&B1Q0',
                    help='disable I-modem server (2), symmetric (8), and V.90 (32); retain constellation option 16')
+    p.add_argument('--require-marker',action='store_true',help='fail unless the live engine accepts the supported 4d x2 marker')
     args=p.parse_args();args.output=args.output.resolve()
     args.output.mkdir(parents=True,exist_ok=False)
     (analog if args.type=='analog' else imodem)(args)
+    if args.require_marker:
+        result=json.loads((args.output/'call.json').read_text())
+        if '4d' not in result['engine']['accepted_markers']:
+            raise SystemExit('live peer did not negotiate the supported x2 marker')
 if __name__=='__main__':main()

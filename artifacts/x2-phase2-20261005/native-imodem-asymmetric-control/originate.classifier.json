@@ -1,0 +1,89 @@
+{
+  "addresses": [
+    "039f",
+    "ffd9",
+    "0322",
+    "03e3"
+  ],
+  "captures": [
+    [
+      417251850,
+      453406738,
+      133769,
+      7,
+      1,
+      66,
+      32768,
+      5,
+      65518
+    ]
+  ],
+  "control_writes": [
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 184953
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 6445912
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 255892965
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 268392225
+    },
+    {
+      "address": 65497,
+      "value": 32768,
+      "pc": 37505,
+      "instruction": 268715930
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 38357,
+      "instruction": 453609378
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 37624,
+      "instruction": 475503381
+    },
+    {
+      "address": 65497,
+      "value": 32772,
+      "pc": 41142,
+      "instruction": 606316298
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 964019640
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 966416158
+    },
+    {
+      "address": 65497,
+      "value": 0,
+      "pc": 32853,
+      "instruction": 976493678
+    }
+  ]
+}
