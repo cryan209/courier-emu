@@ -1592,29 +1592,29 @@ bool C5xCore::check_interrupts()
 // cycle, run after every instruction, and the costliest line in step(). The
 // caller raises TINT once per expiry, in order; nothing interrupt() does
 // reads the timer, so the final state can be set first.
+// SPRU056D 9.3.2: a counter that has decremented to zero generates its borrow
+// on the next CLKOUT cycle and reloads, so each counts through zero - PSC
+// borrows after PSC+1 cycles and then every TDDR+1, TIM expires after TIM+1
+// borrows and then every PRD+1. TINT rate = CLKOUT / ((TDDR+1) * (PRD+1)).
 uint64_t C5xCore::advance_timer(uint64_t elapsed)
 {
-    // The prescaler underflows when a tick takes PSC to zero or below: after
-    // max(PSC, 1) ticks, then every max(TDDR, 1).
-    const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
+    const uint64_t first = uint64_t(m_timer.psc) + 1;
     if (elapsed < first) {
         m_timer.psc -= int(elapsed);
         return 0;
     }
-    const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
-    // A period of one is the usual setting, and avoids two 64-bit divisions
+    // A TDDR of zero is the usual setting, and avoids two 64-bit divisions
     // on a path every retired instruction can reach.
+    const uint64_t period = uint64_t(m_timer.tddr) + 1;
     const uint64_t decrements = period == 1 ? elapsed - first + 1
         : 1 + (elapsed - first) / period;
     m_timer.psc = m_timer.tddr - (period == 1 ? 0 : int((elapsed - first) % period));
-    // Each underflow decrements TIM, which reaches zero after TIM of them
-    // (65536 from zero) and then every PRD (65536 when PRD is zero).
-    const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
+    const uint64_t to_zero = uint64_t(m_timer.tim) + 1;
     if (decrements < to_zero) {
         m_timer.tim = uint16_t(m_timer.tim - decrements);
         return 0;
     }
-    const uint64_t reload = m_timer.prd ? m_timer.prd : 0x10000;
+    const uint64_t reload = uint64_t(m_timer.prd) + 1;
     const uint64_t after = decrements - to_zero;
     m_timer.tim = uint16_t(m_timer.prd - after % reload);
     return 1 + after / reload;
@@ -2151,10 +2151,9 @@ bool C5xCore::event_due() const
 
 uint64_t C5xCore::timer_distance() const
 {
-    const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
-    const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
-    const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
-    return first + (to_zero - 1) * period;
+    // advance_timer's closed form: PSC's first borrow, then TIM more of them.
+    return uint64_t(m_timer.psc) + 1
+        + uint64_t(m_timer.tim) * (uint64_t(m_timer.tddr) + 1);
 }
 
 // Bring the timer registers up to the cycle an eager timer would have reached.
@@ -2171,14 +2170,9 @@ void C5xCore::sync_timer_view()
 void C5xCore::refresh_event_deadline()
 {
     uint64_t deadline = UINT64_MAX;
-    // The first TINT: the prescaler's first underflow, then TIM counting down
-    // to zero at one decrement per TDDR cycles (advance_timer's closed form).
-    if (!m_timer.tss) {
-        const uint64_t first = m_timer.psc > 1 ? uint64_t(m_timer.psc) : 1;
-        const uint64_t period = m_timer.tddr > 1 ? uint64_t(m_timer.tddr) : 1;
-        const uint64_t to_zero = m_timer.tim ? m_timer.tim : 0x10000;
-        deadline = m_timer.serviced_cycle + first + (to_zero - 1) * period;
-    }
+    // The first TINT.
+    if (!m_timer.tss)
+        deadline = m_timer.serviced_cycle + timer_distance();
     if (m_si3034_codec && m_codec.receive_due)
         deadline = std::min(deadline, m_codec.receive_cycle);
     if (m_rom_codec && m_line_frame_irq >= 0 && m_codec.secondary_due)
@@ -2205,16 +2199,8 @@ void C5xCore::run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame)
         if (m_ff.idle && !m_ff.nmi_pending && !(m_ifr & m_imr)) {
             sync_timer_view();
             uint64_t distance = target - m_cycles;
-            if (!m_timer.tss) {
-                const uint64_t first = m_timer.psc > 1
-                    ? uint64_t(m_timer.psc) : 1;
-                const uint64_t period = m_timer.tddr > 1
-                    ? uint64_t(m_timer.tddr) : 1;
-                const uint64_t decrements = m_timer.tim
-                    ? uint64_t(m_timer.tim) : 0x10000;
-                distance = std::min(distance,
-                    first + (decrements - 1) * period);
-            }
+            if (!m_timer.tss)
+                distance = std::min(distance, timer_distance());
             if (m_line_frame_irq >= 0 && m_line_frame_next_cycle > m_cycles)
                 distance = std::min(distance,
                     m_line_frame_next_cycle - m_cycles);
