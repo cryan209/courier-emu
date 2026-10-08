@@ -61,6 +61,7 @@ class BearerSipLine:
         self.record = record
         self.silence = silence
         self.started = False
+        self.invited = False
         self.alerted = False
         self._answer_pending = False
         self._answer_audio = bytearray()
@@ -88,15 +89,35 @@ class BearerSipLine:
         self.dialled = number
         if not self.target:
             self.target = number
+        # Ring the far end now. The switch holds the modem's CONNECT until it
+        # answers (awaits_answer), as a real one does; connecting at once had
+        # the modem's first frames - X.75's SABM - go out before Asterisk's
+        # 200 OK, into a call that was not there yet.
+        self._invite()
+
+    @property
+    def awaits_answer(self) -> bool:
+        """A call the modem placed waits for the SIP answer before CONNECT."""
+        return self.invited
+
+    def far_end_answered(self) -> bool:
+        return self.invited and self.session.state == "connected"
+
+    def _invite(self) -> None:
+        if self.invited or not self.target:
+            return
+        self.invited = True
+        self.session.start_call(self.target)
+        self.events.append(f"INVITE to {self.target}")
 
     def start(self) -> None:
-        """The B channel is up: place the SIP call that is its far end."""
+        """The B channel is up: place the SIP call that is its far end, unless
+        the modem's dial already did."""
         if self.started:
             return
         self.started = True
         if self.target:
-            self.session.start_call(self.target)
-            self.events.append(f"INVITE to {self.target}")
+            self._invite()
         else:
             # Q.931 CONNECT can precede the DSP answer waveform by seconds.
             # Keep SIP ringing until the bearer actually has audio to send.
@@ -115,8 +136,10 @@ class BearerSipLine:
         return self.session.incoming_from, self.session.incoming_to
 
     def remote_ended(self) -> bool:
-        """Whether SIP CANCEL/BYE requires clearing the BRI call."""
-        return self.session.state == "closed"
+        """Whether SIP CANCEL/BYE - or a refused INVITE - requires clearing
+        the BRI call."""
+        return (self.session.state == "closed"
+                or (self.invited and self.session.state == "failed"))
 
     def ring(self) -> None:
         """Mirror Q.931 ALERTING to the SIP caller."""
@@ -130,6 +153,7 @@ class BearerSipLine:
         if not self.started or self._answer_pending:
             self.session.reject_incoming()
         self.started = False
+        self.invited = False
         self.alerted = False
         self._answer_pending = False
         self._answer_audio.clear()

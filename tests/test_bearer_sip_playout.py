@@ -207,3 +207,53 @@ def test_receive_outage_rebuilds_reserve_before_resuming_waveform():
     assert output[320:960] == b'\xff' * 640
     assert output[960:] == resumed
     assert bearer.underrun == 640
+
+
+class OutgoingSession:
+    direction = ''
+
+    def __init__(self):
+        self.state = 'idle'
+        self.calls = []
+
+    def set_codewords(self, enabled):
+        assert enabled
+
+    def start_call(self, number):
+        self.calls.append(number)
+        self.state = 'inviting'
+
+    def poll(self):
+        pass
+
+    def reject_incoming(self):
+        pass
+
+    def hangup(self):
+        self.state = 'idle'
+
+
+def test_modem_dial_invites_at_once_and_connect_waits_for_the_answer():
+    session = OutgoingSession()
+    bearer = BearerSipLine(session)
+    assert not bearer.awaits_answer
+    bearer.dial('7910')
+    assert session.calls == ['7910'] and bearer.awaits_answer
+    assert not bearer.far_end_answered()
+    session.state = 'ringing'
+    assert not bearer.far_end_answered() and not bearer.remote_ended()
+    session.state = 'connected'
+    assert bearer.far_end_answered()
+    # The bearer coming up afterwards does not INVITE a second time.
+    bearer.start()
+    assert session.calls == ['7910']
+
+
+def test_a_refused_invite_clears_the_modem_call():
+    session = OutgoingSession()
+    bearer = BearerSipLine(session)
+    bearer.dial('7910')
+    session.state = 'failed'
+    assert bearer.remote_ended()
+    bearer.stop()
+    assert not bearer.awaits_answer and not bearer.remote_ended()
