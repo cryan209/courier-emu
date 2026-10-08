@@ -338,6 +338,14 @@ public:
     void run_cycles(uint64_t cycle_limit, bool yield_on_pcm_frame = false);
     uint64_t instruction_count() const { return m_instructions; }
     uint64_t cycle_count() const { return m_cycles; }
+    // A diagnostic record of the writes to one memory-mapped register:
+    // the cycle, the writing instruction and the value, up to `capacity`.
+    struct RegisterWrite { uint64_t cycle; uint16_t pc, value; };
+    void trace_register(int reg, std::size_t capacity)
+    {
+        m_trace_register = reg; m_trace_capacity = capacity; m_register_trace.clear();
+    }
+    const std::vector<RegisterWrite> &register_trace() const { return m_register_trace; }
     std::array<uint64_t, 3> delay_move_state() const {
         return {m_delay_move_ignored, m_delay_move_last_pc, m_delay_move_last_address};
     }
@@ -505,6 +513,9 @@ private:
     bool m_trace_filtered = false;
 
     uint16_t m_pc = 0, m_op = 0;
+    int m_trace_register = -1;
+    std::size_t m_trace_capacity = 0;
+    std::vector<RegisterWrite> m_register_trace;
     int32_t m_acc = 0, m_accb = 0, m_preg = 0;
     // What XC samples: the accumulator in the low word, OV, C and TC (as
     // booleans) in bits 32..34. One register, so that taking and passing it

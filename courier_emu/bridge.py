@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from dataclasses import dataclass, field
+import json
 import math
 import os
 from hashlib import sha256
@@ -1333,6 +1334,12 @@ class CourierDspBridge:
         """
         if os.environ.get("COURIER_DSP_DUMP") and hasattr(self.core, "set_coverage"):
             self.core.set_coverage(True)
+        # COURIER_DSP_TRACE_REGISTER=0x25 records the writes to that memory-
+        # mapped register, written to COURIER_DSP_TRACE_FILE (JSON lines, one
+        # per core) as each core is retired.
+        traced = os.environ.get("COURIER_DSP_TRACE_REGISTER")
+        if traced and hasattr(self.core, "trace_register"):
+            self.core.trace_register(int(traced, 0), 4_000_000)
         if self._dsp_trace_range is not None and hasattr(self.core, "set_pc_trace_range"):
             # A third C50 trace window, for a handler the two compiled-in
             # ranges do not cover.
@@ -2669,6 +2676,7 @@ class CourierDspBridge:
             # operation. Recognize the program's first transfer window; port
             # 0x1c also carries ordinary handshakes and is not a reset signal
             # by itself.
+            self._dump_register_trace()
             self.core.close()
             self.core = NativeC5x(self.image)
             # The trace settings belong to the core that is gone.
@@ -4140,7 +4148,17 @@ class CourierDspBridge:
         self._last_snapshots[name] = value
         return value
 
+    def _dump_register_trace(self) -> None:
+        path = os.environ.get("COURIER_DSP_TRACE_FILE")
+        if not (path and os.environ.get("COURIER_DSP_TRACE_REGISTER")
+                and hasattr(self.core, "register_trace")):
+            return
+        path = path.replace("{pid}", str(os.getpid()))
+        with open(path, "a") as out:
+            out.write(json.dumps(self.core.register_trace()) + "\n")
+
     def close(self) -> None:
+        self._dump_register_trace()
         if self._sip_line is not None:
             self._sip_line.close()      # closes self.sip too
         elif self.sip is not None:

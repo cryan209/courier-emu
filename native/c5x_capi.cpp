@@ -1781,6 +1781,25 @@ uint64_t courier_c5x_get_data_write_count(void *handle, uint16_t address)
     return handle ? static_cast<C5xCore *>(handle)->data_write_count(address) : 0;
 }
 
+void courier_c5x_trace_register(void *handle, int reg, std::size_t capacity)
+{
+    if (handle) static_cast<C5xCore *>(handle)->trace_register(reg, capacity);
+}
+
+// The traced writes, 12 bytes each: cycle (8), pc (2), value (2).
+std::size_t courier_c5x_take_register_trace(void *handle, uint8_t *out, std::size_t capacity)
+{
+    if (!handle) return 0;
+    const auto &trace = static_cast<C5xCore *>(handle)->register_trace();
+    const std::size_t count = std::min(capacity, trace.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        std::memcpy(out + 12 * index, &trace[index].cycle, 8);
+        std::memcpy(out + 12 * index + 8, &trace[index].pc, 2);
+        std::memcpy(out + 12 * index + 10, &trace[index].value, 2);
+    }
+    return trace.size();
+}
+
 void courier_c5x_interrupt(void *handle, unsigned irq)
 {
     if (handle) static_cast<C5xCore *>(handle)->interrupt(irq);

@@ -388,6 +388,10 @@ class NativeC5x:
         lib.courier_c5x_get_data_write_count.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
         lib.courier_c5x_get_data_write_count.restype = ctypes.c_uint64
         lib.courier_c5x_interrupt.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+        lib.courier_c5x_trace_register.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
+        lib.courier_c5x_take_register_trace.restype = ctypes.c_size_t
+        lib.courier_c5x_take_register_trace.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
         lib.courier_c5x_nmi.argtypes = [ctypes.c_void_p]
         lib.courier_c5x_nmi.restype = None
         lib.courier_c5x_configure_line_frame_interrupt.argtypes = [
@@ -850,6 +854,21 @@ class NativeC5x:
         needs this instead.
         """
         return int(self.library.courier_c5x_get_register(self.handle, offset))
+
+    def trace_register(self, register: int, capacity: int) -> None:
+        """Record writes to one memory-mapped register (see register_trace)."""
+        self.library.courier_c5x_trace_register(self.handle, register, capacity)
+
+    def register_trace(self) -> list[tuple[int, int, int]]:
+        """The traced writes as (cycle, pc, value)."""
+        count = self.library.courier_c5x_take_register_trace(self.handle, None, 0)
+        rows = (ctypes.c_uint8 * (12 * max(1, count)))()
+        self.library.courier_c5x_take_register_trace(self.handle, rows, count)
+        raw = bytes(rows)
+        return [(int.from_bytes(raw[12 * i:12 * i + 8], "little"),
+                 int.from_bytes(raw[12 * i + 8:12 * i + 10], "little"),
+                 int.from_bytes(raw[12 * i + 10:12 * i + 12], "little"))
+                for i in range(count)]
 
     def interrupt(self, irq: int) -> None:
         self.library.courier_c5x_interrupt(self.handle, irq)

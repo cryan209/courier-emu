@@ -1425,6 +1425,8 @@ uint16_t C5xCore::cpuregs_r(uint16_t offset)
 
 void C5xCore::cpuregs_w(uint16_t offset, uint16_t value)
 {
+    if (int(offset) == m_trace_register && m_register_trace.size() < m_trace_capacity)
+        m_register_trace.push_back({m_cycles, uint16_t(m_pc - 1), value});
     switch (offset) {
     case 0x00: return;
     case 0x05: if (m_greg != uint8_t(value)) invalidate_maps(); m_greg = uint8_t(value); return;
