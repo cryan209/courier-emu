@@ -102,6 +102,7 @@ def main() -> int:
     parser.add_argument("--sip-local-port", type=_number, default=0)
     parser.add_argument("--rtp-local-port", type=_number, default=0)
     parser.add_argument("--sip-codec", choices=("pcmu", "pcma"), default="pcmu")
+    parser.add_argument("--exchange-line-peer")
     parser.add_argument("--dsp-rx-pcm")
     parser.add_argument("--dsp-tx-pcm")
     parser.add_argument("--serial-input-hex", default="")
@@ -177,7 +178,10 @@ def main() -> int:
         ]
 
     sip = None
-    if args.sip_server:
+    if args.exchange_line_peer:
+        from .ata import LinePeerSession
+        sip = LinePeerSession(args.exchange_line_peer)
+    elif args.sip_server:
         sip = SipSession(
             SipConfig(
                 server=args.sip_server,

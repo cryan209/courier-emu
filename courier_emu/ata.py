@@ -139,6 +139,10 @@ class SipLine:
 
     def _pace(self, count: int) -> None:
         """Keep the simulated subscriber loop on the RTP wall clock."""
+        if not getattr(self.sip, "realtime", True):
+            # A far end clocked by the emulators themselves (LinePeerSession):
+            # there is no wall clock to keep.
+            return
         now = time.monotonic()
         if self._next_frame_at is None:
             self._next_frame_at = now
@@ -269,3 +273,79 @@ class SipLine:
 def connect(config: SipConfig, line_rate: int = DAA_SAMPLE_RATE, **kwargs: Any) -> SipLine:
     """Open a SIP session and put a loop in front of it."""
     return SipLine(sip=SipSession(config), line_rate=line_rate, **kwargs)
+
+
+class LinePeerSession:
+    """A far end for `SipLine` made of a line link to another Courier.
+
+    It stands where a `SipSession` stands, so the modem behind the exchange
+    runs exactly the path a SIP call takes - `SipLine`, the exchange, the
+    bridge's unclocked conversions - while the far end is an ordinary
+    line-link Courier (`run --line-link PATH --line-listen`) that is rung and
+    answers. The link is lockstep, so each `poll` is one line frame each way
+    and nothing is paced to wall time.
+    """
+
+    realtime = False
+
+    def __init__(self, path: str, *, listen: bool = False) -> None:
+        from .line import LineLink
+        self.link = LineLink(path=path, listen=listen)
+        self.link.open()
+        self.state = "idle"
+        self.last_status = 0
+        self.number = ""
+        self.error = ""
+        self.events: list[str] = []
+        self._tx: list[int] = []
+        self._rx: list[int] = []
+
+    def start_call(self, number: str) -> None:
+        self.number = number
+        self.state = "ringing"
+        self.last_status = 180
+        self.events.append(f"ring {number}")
+
+    def poll(self) -> None:
+        from .line import (CALL_ANSWERED, CALL_IDLE, CALL_RINGING, LINE_FRAME_INSTRUCTIONS,
+                           LINE_FRAME_SAMPLES, LineFrame)
+        connected = self.state == "connected"
+        samples = self._tx[:LINE_FRAME_SAMPLES] if connected else []
+        del self._tx[:len(samples)]
+        samples += [0] * (LINE_FRAME_SAMPLES - len(samples))
+        self.link.exchange(LineFrame(
+            instructions=self.link.frames * LINE_FRAME_INSTRUCTIONS,
+            off_hook=self.state in ("ringing", "connected"),
+            ringing=self.state == "ringing",
+            samples=samples,
+            call_state=(CALL_ANSWERED if connected
+                        else CALL_RINGING if self.state == "ringing" else CALL_IDLE)))
+        received = self.link.receive_audio()
+        if self.state == "ringing" and self.link.peer_off_hook:
+            self.state, self.last_status = "connected", 200
+            self.events.append("answered")
+        elif connected and not self.link.peer_off_hook:
+            self.state = "closed"
+            self.events.append("far end hung up")
+        if self.state == "connected":
+            self._rx.extend(received)
+
+    def send_audio(self, samples: list[int]) -> None:
+        if self.state == "connected":
+            self._tx.extend(samples)
+
+    def receive_audio(self) -> list[int]:
+        samples, self._rx = self._rx, []
+        return samples
+
+    def hangup(self) -> None:
+        if self.state in ("ringing", "connected"):
+            self.events.append("hung up")
+        self.state = "closed"
+
+    def status(self) -> dict[str, Any]:
+        return {"far_end": "line-link", "state": self.state, "number": self.number,
+                "events": self.events[-16:], "link": self.link.status()}
+
+    def close(self) -> None:
+        self.link.close()

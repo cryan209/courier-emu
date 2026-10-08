@@ -303,6 +303,8 @@ def _worker_command(args: argparse.Namespace) -> list[str]:
         command.extend(("--sip-codec", args.sip_codec))
         if args.sip_target:
             command.extend(("--sip-target", args.sip_target))
+    if getattr(args, "exchange_line_peer", None):
+        command.extend(("--exchange-line-peer", str(Path(args.exchange_line_peer))))
     if args.nvram:
         command.extend(("--nvram", str(Path(args.nvram).resolve())))
     if args.nvram_fixture:
@@ -1178,6 +1180,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--sip-local-port", type=_number, default=0)
     run.add_argument("--rtp-local-port", type=_number, default=0)
+    run.add_argument(
+        "--exchange-line-peer",
+        metavar="PATH",
+        help="with --exchange: the far end is a line-link Courier on this "
+        "socket (run --line-link PATH --line-listen), reached through the "
+        "same SipLine path a SIP call takes",
+    )
     run.add_argument(
         "--sip-codec",
         choices=("pcmu", "pcma"),
