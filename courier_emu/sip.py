@@ -76,6 +76,10 @@ def alaw_to_linear(value: int) -> int:
 CODECS = {
     "pcmu": (0, "PCMU", linear_to_ulaw, ulaw_to_linear),
     "pcma": (8, "PCMA", linear_to_alaw, alaw_to_linear),
+    # RFC 4040: 64 kbit/s unrestricted digital, no law at all. It has no
+    # static payload type; 97 is offered and the peer's rtpmap wins. Only
+    # codeword mode means anything here - the G.711 pair is a placeholder.
+    "clearmode": (97, "CLEARMODE", linear_to_ulaw, ulaw_to_linear),
 }
 
 
@@ -583,6 +587,12 @@ class SipSession:
                 fields = line.split()
                 port = int(fields[1])
                 payloads = fields[3:]
+            elif line.startswith("a=rtpmap:"):
+                # A dynamic payload type is whatever number the peer gave it.
+                number, _, mapping = line[len("a=rtpmap:"):].partition(" ")
+                if (mapping.split("/")[0].upper() == self.encoding
+                        and number in payloads):
+                    self.payload_type = int(number)
         if port and str(self.payload_type) in payloads:
             self.remote_rtp = (host, port)
         elif port:
@@ -916,10 +926,11 @@ class SipSession:
     # side, which really does have to resample.
 
     def set_codewords(self, enabled: bool = True) -> None:
-        # The bearer's codewords are mu-law; passing them through as A-law
-        # would be a different signal, not a different encoding of it.
-        if enabled and self.payload_type != 0:
-            raise ValueError("codeword mode carries PCMU only")
+        # The octets go out under whichever payload type was negotiated,
+        # unchanged. An audio bearer's codewords are mu-law, so PCMA would be
+        # a different signal; an unrestricted digital bearer (V.120, X.75,
+        # clear channel) has no law at all, and CLEARMODE is how it asks the
+        # far gateway for a digital call rather than a voice one.
         self.codewords = enabled
 
     def send_pcmu(self, octets: bytes) -> None:

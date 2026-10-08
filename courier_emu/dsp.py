@@ -1505,6 +1505,7 @@ class ImodemHostIo:
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_bearer.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         lib.courier_imodemio_set_poll_state.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        lib.courier_imodemio_set_wallclock.argtypes = [ctypes.c_void_p, ctypes.c_int]
         self.poll_function = ctypes.cast(
             lib.courier_imodemio_poll, ctypes.c_void_p).value
         self.shared = shared
@@ -1519,14 +1520,22 @@ class ImodemHostIo:
         self._applied: tuple | None = None
         self.configure(None, False)
 
-    def configure(self, core_handle: int | None, live: bool) -> None:
-        state = (core_handle, live)
+    def configure(self, core_handle: int | None, live: bool,
+                  wallclock: bool = False) -> None:
+        """`wallclock`: serve the ports while the harness paces the C5x
+        against wall time, without stepping it (a live bearer)."""
+        state = (core_handle, live, wallclock)
         if state == self._applied:
             return
         self._applied = state
         self.library.courier_imodemio_configure(
             self.context, ctypes.addressof(self.shared), core_handle, int(live),
             self.cycles_per_instruction, self.read_quantum)
+        self.library.courier_imodemio_set_wallclock(self.context, int(wallclock))
+
+    @property
+    def wallclock(self) -> bool:
+        return bool(self._applied and self._applied[2])
 
     def set_poll_state(self, state) -> None:
         """Serve the interrupt controllers' ports from the harness's shared state."""

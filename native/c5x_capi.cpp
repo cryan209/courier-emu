@@ -450,6 +450,10 @@ struct ImodemHostIo {
     ImodemShared *shared = nullptr;
     C5xCore *core = nullptr;
     bool live = false;
+    // A live bearer clocks the C5x from wall time (ImodemDsp.pace_realtime),
+    // not from the 386's instruction count: the ports are then served from
+    // wherever that left the core, and advance() steps nothing.
+    bool wallclock = false;
     double cycles_per_instruction = 0;
     uint32_t read_quantum = 0;
     uint32_t in_count[256] = {}, out_count[256] = {};
@@ -774,6 +778,7 @@ struct ImodemHostIo {
     {
         ImodemShared *sh = shared;
         if (sh->needs_service) return false;
+        if (wallclock) return true;
         const int64_t elapsed = int64_t(now) - int64_t(sh->dsp_instructions);
         if (elapsed < int64_t(quantum)) return true;
         sh->dsp_instructions = now;
@@ -1143,6 +1148,13 @@ int courier_imodemio_advance_serve(void *context, uint64_t now, unsigned quantum
     if (!io->bearer) return 2;
     const int result = io->service();
     return result ? result : 1;
+}
+
+// Serve the ports without stepping the C5x, which the harness is pacing
+// against wall time (see ImodemHostIo::wallclock).
+void courier_imodemio_set_wallclock(void *context, int enabled)
+{
+    static_cast<ImodemHostIo *>(context)->wallclock = enabled != 0;
 }
 
 void courier_imodemio_set_poll_state(void *context, void *state)

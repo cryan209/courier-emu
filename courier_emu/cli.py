@@ -782,6 +782,16 @@ def build_parser() -> argparse.ArgumentParser:
              "taken on the command line (default: COURIER_SIP_PASSWORD)",
     )
     isdn_run.add_argument(
+        "--bri-sip-codec",
+        choices=("pcmu", "pcma", "clearmode"),
+        default="pcmu",
+        help="the RTP payload the B channel's octets travel as, unchanged. "
+             "pcmu suits an audio bearer, whose codewords are mu-law; "
+             "clearmode (RFC 4040) carries a digital bearer (V.120, X.75, "
+             "clear channel) and tells the far gateway it is one; pcma "
+             "crosses an A-law network untranscoded (default: pcmu)",
+    )
+    isdn_run.add_argument(
         "--bri-sip-target",
         metavar="NUMBER",
         help="the number to INVITE once the ISDN call is up",
@@ -1757,6 +1767,7 @@ def main(argv: list[str] | None = None) -> int:
                             password=os.environ.get(
                                 args.bri_sip_password_env, ""),
                             local_port=args.bri_sip_local_port,
+                            codec=args.bri_sip_codec,
                         ))
                     if args.bri_sip_register:
                         sip_session.register()

@@ -832,11 +832,16 @@ class IsdnMachine:
 
     # -- timing ------------------------------------------------------------
 
+    def _live_bearer(self) -> bool:
+        """Whether a call is up on a far end with its own wall clock (SIP),
+        so the C5x is paced against wall time rather than instructions."""
+        bri = self.bri
+        peer = bri.media_peer if bri is not None else None
+        return bool(peer is not None and getattr(peer, "realtime_clock", False)
+                    and bri.call_state == "active")
+
     def _peripheral_instructions(self) -> int:
-        peer = self.bri.media_peer if self.bri is not None else None
-        realtime = bool(self.with_dsp and peer is not None
-                        and getattr(peer, "realtime_clock", False)
-                        and self.bri.call_state == "active")
+        realtime = self.with_dsp and self._live_bearer()
         return self._peripheral_clock.read(self.instructions, realtime)
 
     @property
@@ -859,8 +864,18 @@ class IsdnMachine:
             return
         if self._ledger.needs_service:
             self.mailbox.service_pending()
+        realtime = self._live_bearer()
         native_io = self._native_io
-        if native_io is not None and native_io.live:
+        if hasattr(self.mailbox, 'pcm_frame_service'):
+            service = self._service_pcm_frame if realtime else None
+            if self.mailbox.pcm_frame_service != service:
+                self.mailbox.pcm_frame_service = service
+        if (not realtime
+                and getattr(self.mailbox, "_realtime_origin", None) is not None):
+            # The call is over: drop the wall-clock origin, or the next one
+            # would start by catching up the whole gap between them.
+            self.mailbox.pace_realtime(False)
+        if native_io is not None and native_io.live and not realtime:
             # The native model advances the C5x exactly as below, and does the
             # service that follows when it can; it hands back when the harness
             # has a reply to take or frames only Python can settle.
@@ -874,20 +889,7 @@ class IsdnMachine:
         if elapsed < quantum:
             return
         self._dsp_instructions = self.instructions
-        bri = self.bri
         mailbox = self.mailbox
-        realtime = False
-        if bri is not None:
-            peer = bri.media_peer
-            realtime = bool(
-                peer is not None
-                and getattr(peer, "realtime_clock", False)
-                and bri.call_state == "active"
-            )
-        if hasattr(mailbox, 'pcm_frame_service'):
-            service = self._service_pcm_frame if realtime else None
-            if mailbox.pcm_frame_service != service:
-                mailbox.pcm_frame_service = service
         pace = getattr(mailbox, "pace_realtime", None)
         if pace is not None:
             if realtime or getattr(mailbox, "_realtime_origin", None) is not None:
@@ -1382,16 +1384,18 @@ class IsdnMachine:
                 def refresh_native_io() -> None:
                     mailbox = self.mailbox
                     core = mailbox.core
-                    bri = self.bri
-                    peer = bri.media_peer if bri is not None else None
                     live = (
                         core is not None and not mailbox.reset_status
                         and not mailbox._loader_started
                         and mailbox.error is None
-                        and not getattr(peer, "realtime_clock", False)
                     )
                     self._ledger.rx_present = mailbox.rx is not None
-                    native_io.configure(core.handle if live else None, live)
+                    # During a live call the ports are still served natively -
+                    # through Python the 386 cannot keep up with the data
+                    # lanes, and livelocks in the IRQ13 handler draining them -
+                    # but the C5x is left to pace_realtime's wall clock.
+                    native_io.configure(core.handle if live else None, live,
+                                        wallclock=self._live_bearer())
 
                 if os.environ.get("COURIER_NATIVE_BEARER", "1") != "0":
                     self.mailbox.attach_native_bearer()
